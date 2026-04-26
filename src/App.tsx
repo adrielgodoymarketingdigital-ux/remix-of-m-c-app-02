@@ -14,6 +14,7 @@ import { ComVerificacaoPlano } from "./components/auth/ComVerificacaoPlano";
 import { ComVerificacaoFuncionario } from "./components/auth/ComVerificacaoFuncionario";
 import { ProtectedAppRoute } from "./components/auth/ProtectedAppRoute";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
+import AuthCallback from "@/components/AuthCallback";
 
 // Lazy-loaded pages — split into per-route bundles so o app inicial fica leve no mobile
 const LandingLP1 = lazy(() => import("./pages/LandingLP1"));
@@ -100,7 +101,8 @@ function AppRoutes() {
           <Route path="/" element={<Landing />} />
           <Route path="/lp1" element={<LandingLP1 />} />
           <Route path="/lp2" element={<LandingLP2 />} />
-          <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/auth" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/obrigado" element={<Obrigado />} />
           <Route path="/completar-cadastro" element={<CompletarCadastro />} />
