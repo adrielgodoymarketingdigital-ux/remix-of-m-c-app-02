@@ -350,7 +350,7 @@ const Auth = () => {
                   Esqueceu a senha?
                 </button>
               </DialogTrigger>
-              <DialogContent className="bg-slate-900 border-white/10 text-white">
+              <DialogContent className="bg-slate-900 border-white/10 text-white max-w-md mx-auto top-[30%] translate-y-0">
                 <DialogHeader>
                   <DialogTitle className="text-white">Redefinir Senha</DialogTitle>
                   <DialogDescription className="text-slate-400">
