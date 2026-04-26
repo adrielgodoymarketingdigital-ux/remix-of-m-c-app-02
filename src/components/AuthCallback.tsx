@@ -39,7 +39,15 @@ const AuthCallback = () => {
           console.error('[AuthCallback] exchange error:', error.message);
           navigate('/auth?error=exchange_failed', { replace: true });
         } else {
-          navigate('/dashboard', { replace: true });
+          // Verifica se é um recovery de senha
+          const isRecovery = data?.session?.user?.recovery_sent_at || 
+                             window.location.search.includes('type=recovery') ||
+                             data?.session?.amr?.some?.((a: {method: string}) => a.method === 'otp');
+          if (isRecovery) {
+            navigate('/reset-password', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
         }
         return;
       }
