@@ -20,8 +20,12 @@ const ResetPassword = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let subscription: { unsubscribe: () => void } | null = null;
+    let cancelled = false;
+
     const markValid = () => {
-      if (!validRef.current) {
+      if (!validRef.current && !cancelled) {
         validRef.current = true;
         setIsValidSession(true);
         setChecking(false);
@@ -29,7 +33,7 @@ const ResetPassword = () => {
     };
 
     const markInvalid = () => {
-      if (!validRef.current) {
+      if (!validRef.current && !cancelled) {
         setChecking(false);
         toast({
           variant: "destructive",
@@ -40,35 +44,48 @@ const ResetPassword = () => {
       }
     };
 
-    // Tenta extrair tokens do hash (implicit flow: #access_token=...&type=recovery)
-    const hash = window.location.hash.slice(1);
-    const hashParams = new URLSearchParams(hash);
-    const accessToken = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
-    const type = hashParams.get("type");
+    const init = async () => {
+      // Caso 1: tokens no hash (implicit flow direto sem passar pelo callback)
+      const hash = window.location.hash.slice(1);
+      const hashParams = new URLSearchParams(hash);
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
 
-    if (accessToken && refreshToken && type === "recovery") {
-      supabase.auth
-        .setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ error }) => {
-          if (error) markInvalid();
-          else markValid();
+      if (accessToken && refreshToken && type === "recovery") {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
         });
-      return;
-    }
-
-    // Sem tokens no hash: escuta evento PASSWORD_RECOVERY (pode vir do cliente já autenticado)
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" && session) {
-        markValid();
+        if (error) markInvalid();
+        else markValid();
+        return;
       }
-    });
 
-    const timeout = setTimeout(markInvalid, 6000);
+      // Caso 2: chegou via /auth/callback que já setou a sessão
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        markValid();
+        return;
+      }
+
+      // Caso 3: escuta evento PASSWORD_RECOVERY caso o cliente ainda esteja processando
+      const { data: authListener } = supabase.auth.onAuthStateChange((event, sess) => {
+        if (event === "PASSWORD_RECOVERY" && sess) {
+          markValid();
+        }
+      });
+      subscription = authListener.subscription;
+
+      timeout = setTimeout(markInvalid, 6000);
+    };
+
+    init();
 
     return () => {
-      clearTimeout(timeout);
-      authListener.subscription.unsubscribe();
+      cancelled = true;
+      if (timeout) clearTimeout(timeout);
+      if (subscription) subscription.unsubscribe();
     };
   }, [navigate, toast]);
 
