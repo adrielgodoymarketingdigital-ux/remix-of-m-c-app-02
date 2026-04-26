@@ -6,26 +6,37 @@ const AuthCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) { navigate("/auth?error=oauth_failed"); return; }
-        if (data.session) {
-          navigate("/dashboard", { replace: true });
+    const handleCallback = async () => {
+      // Implicit flow: token vem no hash da URL (#access_token=...)
+      const hash = window.location.hash;
+      const params = new URLSearchParams(hash.replace('#', ''));
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (error) {
+          console.error('Erro ao setar sessão:', error.message);
+          navigate('/auth?error=set_session_failed', { replace: true });
         } else {
-          const { data: exchangeData, error: exchangeError } =
-            await supabase.auth.exchangeCodeForSession(window.location.href);
-          if (exchangeError || !exchangeData.session) {
-            navigate("/auth?error=session_exchange_failed");
-          } else {
-            navigate("/dashboard", { replace: true });
-          }
+          navigate('/dashboard', { replace: true });
         }
-      } catch (err) {
-        navigate("/auth?error=unexpected");
+        return;
+      }
+
+      // Fallback: verifica se já tem sessão ativa
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/auth?error=no_session', { replace: true });
       }
     };
-    handleAuthCallback();
+
+    handleCallback();
   }, [navigate]);
 
   return (
