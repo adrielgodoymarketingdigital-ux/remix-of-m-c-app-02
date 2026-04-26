@@ -1,0 +1,1 @@
+ALTER TABLE public.assinaturas ADD COLUMN ticto_order_id text DEFAULT NULL;

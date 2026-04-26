@@ -1,0 +1,1 @@
+ALTER TABLE public.tutoriais_videos ADD COLUMN IF NOT EXISTS capa_url TEXT;

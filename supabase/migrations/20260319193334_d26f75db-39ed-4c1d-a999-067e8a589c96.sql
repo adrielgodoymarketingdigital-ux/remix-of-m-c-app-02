@@ -1,0 +1,1 @@
+UPDATE public.assinaturas SET plano_tipo = 'intermediario_mensal', status = 'active', updated_at = now() WHERE user_id = 'a22ac988-591f-4593-977c-5bb4f2accc7b';

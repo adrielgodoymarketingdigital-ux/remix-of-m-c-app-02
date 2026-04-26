@@ -1,0 +1,2 @@
+-- Regenerar tipos TypeScript
+-- Esta migração vazia força a regeneração dos tipos

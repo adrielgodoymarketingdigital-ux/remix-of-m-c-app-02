@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_ordens_servico_funcionario ON ordens_servico(funcionario_id);

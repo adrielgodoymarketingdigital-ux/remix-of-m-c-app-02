@@ -1,0 +1,1338 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Landing Page Colors - Black & Orange Theme */
+    --landing-orange: 24 100% 50%;
+    --landing-orange-glow: 24 100% 45%;
+    --landing-black: 0 0% 0%;
+    --landing-dark-gray: 0 0% 10%;
+    --landing-gray: 0 0% 20%;
+    --landing-light-gray: 0 0% 70%;
+    
+    /* Clean Dashboard Colors - Soft & Modern (for content areas) */
+    --background: 210 20% 98%;
+    --foreground: 220 14% 10%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 220 14% 10%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 14% 10%;
+    
+    /* Primary - Blue accent */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary - Very Light Gray */
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 220 14% 20%;
+    
+    /* Muted - Subtle Gray */
+    --muted: 210 16% 95%;
+    --muted-foreground: 215 14% 45%;
+    
+    /* Accent - Soft Blue Tint */
+    --accent: 210 20% 94%;
+    --accent-foreground: 220 14% 20%;
+    
+    /* Destructive - Soft Red */
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Success - Soft Green */
+    --success: 152 60% 40%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Borders and inputs - Softer borders */
+    --border: 214 20% 90%;
+    --input: 214 20% 92%;
+    --ring: 217 91% 60%;
+    
+    --radius: 0.625rem;
+    
+    /* Sidebar colors - Tech Dark Theme */
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 215 20% 75%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 5%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 47% 15%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Orange color available for landing page */
+    --orange: 24 100% 50%;
+    --orange-foreground: 0 0% 100%;
+
+    /* Softer shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 10px 20px -4px rgb(0 0 0 / 0.08);
+    --shadow-xl: 0 20px 30px -8px rgb(0 0 0 / 0.1);
+    --shadow-orange: 0 10px 30px -10px rgb(255 102 0 / 0.3);
+    --shadow-orange-intense: 0 20px 60px -15px rgb(255 102 0 / 0.5);
+    --shadow-glow: 0 0 40px rgb(255 102 0 / 0.4);
+    --shadow-blue-glow: 0 0 30px -5px rgba(59, 130, 246, 0.4);
+
+    /* Smooth transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Force light theme for onboarding page */
+  .onboarding-light {
+    --background: 210 20% 98%;
+    --foreground: 220 14% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 14% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 14% 10%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 220 14% 20%;
+    --muted: 210 16% 95%;
+    --muted-foreground: 215 14% 45%;
+    --accent: 210 20% 94%;
+    --accent-foreground: 220 14% 20%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 90%;
+    --input: 214 20% 92%;
+    --ring: 217 91% 60%;
+    color-scheme: light;
+  }
+
+  .dark {
+    --background: 222 20% 8%;
+    --foreground: 210 20% 98%;
+
+    --card: 222 18% 11%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 222 18% 11%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 20% 8%;
+
+    --secondary: 222 16% 16%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 222 16% 16%;
+    --muted-foreground: 215 14% 60%;
+
+    --accent: 222 16% 18%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 222 16% 20%;
+    --input: 222 16% 18%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 215 20% 75%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 5%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 47% 15%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+/* Custom Color Variables for personalization */
+:root {
+  --custom-primary-from: #1e40af;
+  --custom-primary-via: #1d4ed8;
+  --custom-primary-to: #0891b2;
+  --custom-card-from: #1e3a8a;
+  --custom-card-via: #1d4ed8;
+  --custom-card-to: #0891b2;
+}
+
+/* Primary Gradient Button */
+.btn-primary-gradient {
+  background: linear-gradient(to right, var(--custom-primary-from), var(--custom-primary-via), var(--custom-primary-to));
+  transition: all 0.2s ease;
+}
+
+.btn-primary-gradient:hover {
+  filter: brightness(0.9);
+}
+
+/* Card Faturamento Gradient */
+.card-faturamento-gradient {
+  background: linear-gradient(to right, var(--custom-card-from), var(--custom-card-via), var(--custom-card-to));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl lg:text-5xl;
+  }
+
+  h2 {
+    @apply text-3xl lg:text-4xl;
+  }
+
+  h3 {
+    @apply text-2xl lg:text-3xl;
+  }
+}
+
+/* Mobile-friendly utilities */
+@layer utilities {
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
+  /* Safe area classes for notch/home indicator */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Touch manipulation for better scrolling */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Better tap targets on mobile - only for interactive elements without explicit height */
+  button:not([class*="h-"]), 
+  [role="button"]:not([class*="h-"]) {
+    min-height: 44px;
+  }
+  
+  /* Active state for mobile cards */
+  .mobile-card-item:active {
+    @apply bg-muted/50;
+  }
+
+  /* Smoother scrolling on mobile */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Bottom navigation safe area */
+  .has-bottom-nav {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Mobile card styles for tables */
+.mobile-card-list {
+  @apply space-y-3;
+}
+
+.mobile-card-item {
+  @apply p-4 bg-card border rounded-lg shadow-sm;
+}
+
+/* Smooth scroll in modals */
+.dialog-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Mobile app-like transitions */
+@media (max-width: 1023px) {
+  .page-transition {
+    animation: slideIn 0.2s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0.8;
+      transform: translateX(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+/* Print Styles */
+@media print {
+  /* Imprimir somente o portal de impressão */
+  #root {
+    display: none !important;
+  }
+
+  #print-root {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Page setup - Full A4 page */
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Hide screen-only elements */
+  .print-trigger-container,
+  .no-print,
+  [data-print-hide="true"] {
+    display: none !important;
+  }
+
+  /* Forçar impressão em 1 página - escala automática para caber */
+  .impressao-ordem-container {
+    width: 194mm !important;
+    max-width: 194mm !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    font-size: 9pt !important;
+    font-weight: 500 !important;
+    color: #000 !important;
+  }
+
+  /* Controle de paginação */
+  .impressao-header,
+  .impressao-grid-2,
+  .impressao-grid-defeito-valor,
+  .impressao-termo-garantia,
+  .impressao-footer {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Ensure exact colors in print */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+}
+
+/* Screen Styles for Print Preview */
+.print-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  padding-top: 80px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.print-trigger-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  display: flex;
+  gap: 1rem;
+  padding: 2rem;
+  background: hsl(var(--background));
+  border: 2px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xl);
+}
+
+.print-trigger-button,
+.print-close-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.print-trigger-button {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+}
+
+.print-trigger-button:hover {
+  opacity: 0.9;
+}
+
+.print-close-button {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.print-close-button:hover {
+  background: hsl(var(--accent));
+}
+
+/* ===== Print Container - Ocupar toda folha A4 ===== */
+.impressao-ordem-container {
+  width: 194mm;
+  max-width: 194mm;
+  min-height: 270mm;
+  margin: 0 auto;
+  padding: 3mm;
+  background: white;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9pt;
+  font-weight: 500;
+  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Header */
+.impressao-header {
+  margin-bottom: 3mm;
+  padding-bottom: 2mm;
+  border-bottom: 1.5pt solid #000;
+}
+
+.impressao-header-content {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  margin-bottom: 1.5mm;
+}
+
+.impressao-logo {
+  width: 14mm;
+  height: 14mm;
+  object-fit: contain;
+}
+
+.impressao-header-info {
+  flex: 1;
+}
+
+.impressao-titulo {
+  font-size: 14pt;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  margin: 0;
+  color: #000;
+}
+
+.impressao-numero-os {
+  font-size: 10pt;
+  font-weight: 800;
+  margin-top: 0.5mm;
+  color: #000;
+}
+
+.impressao-data-status {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  margin-top: 0.5mm;
+  font-size: 8pt;
+  font-weight: 600;
+  color: #000;
+}
+
+.impressao-badge {
+  display: inline-block;
+  padding: 0.3mm 1.5mm;
+  border-radius: 1px;
+  font-size: 7pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #eee;
+  color: #000;
+  border: 1pt solid #000;
+}
+
+.impressao-loja-info {
+  padding: 1.5mm;
+  background: #f5f5f5;
+  border-radius: 1px;
+  font-size: 7.5pt;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #000;
+}
+
+.impressao-loja-info .text-sm {
+  font-size: 8pt;
+}
+
+.impressao-loja-info .text-xs {
+  font-size: 6pt;
+}
+
+/* Grids */
+.impressao-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm;
+  margin-bottom: 3mm;
+}
+
+.impressao-grid-defeito-valor {
+  display: grid;
+  grid-template-columns: 7fr 3fr;
+  gap: 3mm;
+  align-items: stretch;
+  margin-bottom: 3mm;
+}
+
+.impressao-grid-adaptativo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3mm;
+  margin-bottom: 3mm;
+  flex: 1;
+}
+
+/* Blocks */
+.impressao-block {
+  border: 1pt solid #000;
+  border-radius: 1px;
+  overflow: visible;
+  padding: 2mm;
+  min-height: 0;
+}
+
+.impressao-block-minimal {
+  padding: 1.5mm;
+}
+
+.impressao-block-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+  padding: 1mm 1.5mm;
+  margin-bottom: 1.5mm;
+  background: #eee;
+  border-bottom: 1pt solid #000;
+}
+
+.impressao-block-header-minimal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5mm;
+}
+
+.impressao-icon {
+  width: 3mm;
+  height: 3mm;
+  color: #000;
+}
+
+.impressao-block-title {
+  font-size: 8pt;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0;
+  color: #000;
+}
+
+.impressao-block-content {
+  padding: 0;
+}
+
+/* Fields */
+.impressao-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1mm;
+  font-size: 8pt;
+}
+
+.impressao-field:last-child {
+  margin-bottom: 0;
+}
+
+.impressao-label {
+  font-weight: 700;
+  color: #000;
+  min-width: 18mm;
+}
+
+.impressao-value {
+  font-weight: 600;
+  color: #000;
+  text-align: right;
+  flex: 1;
+}
+
+/* Defeito */
+.impressao-defeito {
+  font-size: 8.5pt;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #000;
+  margin: 0;
+}
+
+.impressao-defeito-block {
+  min-height: 12mm;
+}
+
+/* Valor */
+.impressao-valor-block {
+  display: flex;
+  flex-direction: column;
+  min-height: 12mm;
+}
+
+.impressao-valor-block .impressao-block-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5mm;
+  flex: 1;
+}
+
+.impressao-valor-total {
+  font-size: 13pt;
+  font-weight: 900;
+  color: #000;
+}
+
+/* Senha */
+.impressao-senha-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 3mm;
+}
+
+.impressao-senha-info {
+  flex: 1;
+}
+
+.impressao-senha-valor {
+  font-family: "Courier New", monospace;
+  font-weight: 900;
+  font-size: 10pt;
+  color: #000;
+  letter-spacing: 1px;
+}
+
+/* Checklist - layout melhorado */
+.impressao-checklist {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1mm 2mm;
+}
+
+.impressao-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 1mm;
+  font-size: 7.5pt;
+  font-weight: 600;
+  padding: 0.5mm 1mm;
+  background: #f5f5f5;
+  border-radius: 1px;
+}
+
+.impressao-checklist-icon {
+  width: 2.5mm;
+  height: 2.5mm;
+  color: #000;
+  flex-shrink: 0;
+}
+
+.impressao-checklist-label {
+  flex: 1;
+  text-transform: capitalize;
+  color: #000;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.impressao-check-ok,
+.impressao-check-erro {
+  width: 3mm;
+  height: 3mm;
+  flex-shrink: 0;
+}
+
+.impressao-check-ok {
+  color: hsl(var(--success));
+}
+
+.impressao-check-erro {
+  color: hsl(var(--destructive));
+}
+
+/* Itens do Serviço (Serviços + Produtos) */
+.impressao-itens-lista {
+  margin-bottom: 2mm;
+}
+
+.impressao-itens-lista:last-child {
+  margin-bottom: 0;
+}
+
+.impressao-itens-titulo {
+  font-size: 7.5pt;
+  font-weight: 800;
+  color: #000;
+  margin-bottom: 1mm;
+  text-transform: uppercase;
+}
+
+.impressao-item-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 8pt;
+  font-weight: 500;
+  padding: 0.5mm 0;
+  border-bottom: 0.5pt dotted #000;
+}
+
+.impressao-item-linha:last-child {
+  border-bottom: none;
+}
+
+.impressao-item-nome {
+  color: #000;
+  font-weight: 500;
+  flex: 1;
+  padding-right: 2mm;
+}
+
+.impressao-item-valor {
+  font-weight: 700;
+  color: #000;
+  white-space: nowrap;
+}
+
+/* Avarias */
+.impressao-avarias-container {
+  display: flex;
+  gap: 3mm;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.impressao-silhueta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 35mm;
+}
+
+.impressao-silhueta-label {
+  text-align: center;
+  font-size: 7.5pt;
+  font-weight: 700;
+  margin-bottom: 0.5mm;
+  color: #000;
+  text-transform: uppercase;
+}
+
+/* Termo - melhorado */
+.impressao-termo-garantia {
+  margin-top: auto;
+  padding: 2mm;
+  background: #f5f5f5;
+  border: 1pt solid #000;
+  border-radius: 1px;
+}
+
+.impressao-termo-title {
+  font-size: 7.5pt;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 1.5mm;
+  color: #000;
+  text-align: center;
+}
+
+.impressao-termo-text {
+  font-size: 6.5pt;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #000;
+  text-align: justify;
+  margin: 0;
+}
+
+/* Footer - Assinaturas melhoradas */
+.impressao-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10mm;
+  margin-top: 3mm;
+  padding-top: 3mm;
+  border-top: 1.5pt solid #000;
+}
+
+.impressao-assinatura {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.impressao-linha-assinatura {
+  width: 100%;
+  height: 1pt;
+  background: #000;
+  margin-top: 10mm;
+  margin-bottom: 1.5mm;
+}
+
+.impressao-assinatura-digital {
+  width: 100%;
+  max-height: 12mm;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1.5mm;
+}
+
+.impressao-assinatura-imagem {
+  max-width: 100%;
+  max-height: 11mm;
+  object-fit: contain;
+}
+
+.impressao-assinatura-label {
+  text-align: center;
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.impressao-assinatura-data {
+  text-align: center;
+  font-size: 6.5pt;
+  font-weight: 500;
+  color: #000;
+  margin-top: 0.5mm;
+}
+
+/* ===== Termo de Responsabilidade Styles ===== */
+.termo-responsabilidade-container {
+  width: 194mm;
+  max-width: 194mm;
+  min-height: 270mm;
+  margin: 0 auto;
+  padding: 6mm;
+  background: white;
+  color: black;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 9pt;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+.termo-header {
+  margin-bottom: 5mm;
+  padding-bottom: 3mm;
+  border-bottom: 2px solid currentColor;
+}
+
+.termo-header-content {
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+}
+
+.termo-logo {
+  width: 20mm;
+  height: 20mm;
+  object-fit: contain;
+}
+
+.termo-header-info {
+  flex: 1;
+}
+
+.termo-nome-loja {
+  font-size: 14pt;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.termo-endereco {
+  font-size: 8pt;
+  color: #444;
+  margin: 1mm 0;
+}
+
+.termo-contatos {
+  display: flex;
+  gap: 4mm;
+  font-size: 8pt;
+  color: #666;
+}
+
+.termo-titulo-container {
+  text-align: center;
+  margin: 4mm 0;
+  padding: 2mm 0;
+}
+
+.termo-titulo {
+  font-size: 12pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.termo-dados {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2mm 4mm;
+  margin: 4mm 0;
+  padding: 3mm;
+  border: 1px solid #ddd;
+  background: #f9f9f9;
+}
+
+.termo-campo {
+  display: flex;
+  gap: 2mm;
+}
+
+.termo-campo-full {
+  grid-column: 1 / -1;
+}
+
+.termo-campo-label {
+  font-weight: 600;
+  font-size: 8pt;
+  white-space: nowrap;
+}
+
+.termo-campo-valor {
+  font-size: 8pt;
+  border-bottom: 1px dotted #999;
+  flex: 1;
+  min-width: 20mm;
+}
+
+.termo-introducao {
+  font-size: 9pt;
+  font-weight: 600;
+  margin: 4mm 0 2mm;
+}
+
+.termo-secoes {
+  margin: 3mm 0;
+}
+
+.termo-secao {
+  margin-bottom: 3mm;
+}
+
+.termo-secao-titulo {
+  font-size: 10pt;
+  font-weight: 700;
+  margin: 3mm 0 2mm;
+  text-transform: uppercase;
+}
+
+.termo-clausulas {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+}
+
+.termo-clausula {
+  display: flex;
+  align-items: flex-start;
+  gap: 2mm;
+}
+
+.termo-checkbox {
+  font-size: 10pt;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.5mm;
+}
+
+.termo-clausula-texto {
+  font-size: 8pt;
+  line-height: 1.4;
+  margin: 0;
+  text-align: justify;
+}
+
+.termo-declaracao {
+  text-align: center;
+  font-weight: 600;
+  font-size: 9pt;
+  margin: 5mm 0;
+  padding: 3mm;
+  border: 1px solid currentColor;
+  background: #fafafa;
+}
+
+.termo-assinatura-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8mm;
+  gap: 5mm;
+}
+
+.termo-data {
+  font-size: 9pt;
+}
+
+.termo-assinatura {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1mm;
+}
+
+.termo-linha-assinatura {
+  width: 80mm;
+  height: 0;
+  border-bottom: 1px solid #333;
+  margin-top: 15mm;
+}
+
+.termo-assinatura span {
+  font-size: 8pt;
+  color: #666;
+}
+
+.termo-rodape {
+  display: flex;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 4mm;
+  border-top: 1px solid #ddd;
+  font-size: 7pt;
+  color: #999;
+}
+
+@media print {
+  .termo-responsabilidade-container {
+    width: 194mm !important;
+    max-width: 194mm !important;
+    min-height: auto !important;
+    max-height: 281mm !important;
+    padding: 5mm !important;
+    margin: 0 !important;
+  }
+
+  /* ===== Formato 80mm (Cupom / NFe) ===== */
+  .impressao-formato-80mm {
+    width: 76mm !important;
+    max-width: 76mm !important;
+    min-height: auto !important;
+    max-height: none !important;
+    padding: 2mm !important;
+    font-size: 7pt !important;
+  }
+
+  .impressao-formato-80mm .impressao-logo {
+    width: 25mm !important;
+    height: auto !important;
+    max-height: 12mm !important;
+  }
+
+  .impressao-formato-80mm .impressao-header-content {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .impressao-formato-80mm .impressao-titulo {
+    font-size: 10pt !important;
+  }
+
+  .impressao-formato-80mm .impressao-numero-os {
+    font-size: 8pt !important;
+  }
+
+  .impressao-formato-80mm .impressao-loja-info {
+    text-align: center !important;
+  }
+
+  .impressao-formato-80mm .impressao-grid-2,
+  .impressao-formato-80mm .impressao-grid-defeito-valor,
+  .impressao-formato-80mm .impressao-grid-adaptativo {
+    grid-template-columns: 1fr !important;
+  }
+
+  .impressao-formato-80mm .impressao-footer {
+    grid-template-columns: 1fr !important;
+    gap: 5mm !important;
+  }
+
+  .impressao-formato-80mm .impressao-checklist {
+    grid-template-columns: 1fr !important;
+  }
+
+  .impressao-formato-80mm .impressao-avarias-container {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .impressao-formato-80mm .impressao-silhueta {
+    max-width: 50mm !important;
+  }
+
+  .impressao-formato-80mm .impressao-valor-total {
+    font-size: 10pt !important;
+  }
+
+  .impressao-formato-80mm .impressao-linha-assinatura {
+    margin-top: 6mm !important;
+  }
+
+  .impressao-formato-80mm .impressao-block {
+    border-style: dashed !important;
+  }
+}
+
+/* Screen preview for 80mm format */
+.impressao-formato-80mm {
+  width: 76mm;
+  max-width: 76mm;
+  min-height: auto;
+  font-size: 7pt;
+}
+
+/* ===== Cupom 80mm Receipt Layout ===== */
+.cupom-80mm-container {
+  width: 76mm;
+  max-width: 76mm;
+  margin: 0 auto;
+  padding: 2mm;
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  font-size: 9pt;
+  line-height: 1.4;
+  color: #000;
+  background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  font-weight: 500;
+}
+
+.cupom-section {
+  margin-bottom: 2mm;
+  padding-bottom: 2mm;
+}
+
+.cupom-border-bottom {
+  border-bottom: 1.5px dashed #000;
+}
+
+.cupom-center {
+  text-align: center;
+}
+
+.cupom-logo {
+  max-width: 28mm;
+  max-height: 14mm;
+  margin: 0 auto;
+  display: block;
+}
+
+.cupom-loja-nome {
+  font-weight: 900;
+  font-size: 11pt;
+  letter-spacing: 0.3px;
+}
+
+.cupom-small {
+  font-size: 7pt;
+  color: #000;
+  font-weight: 500;
+}
+
+.cupom-os-numero {
+  font-weight: 900;
+  font-size: 12pt;
+}
+
+.cupom-section-title {
+  font-weight: 800;
+  font-size: 8pt;
+  text-transform: uppercase;
+  color: #000;
+  margin-bottom: 1mm;
+  letter-spacing: 0.5px;
+}
+
+.cupom-line-between {
+  display: flex;
+  justify-content: space-between;
+  gap: 2mm;
+  font-weight: 600;
+}
+
+.cupom-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+  font-weight: 500;
+}
+
+.cupom-total {
+  text-align: center;
+  font-weight: 900;
+  font-size: 13pt;
+  padding: 2.5mm 0;
+  border-top: 2px dashed #000;
+  border-bottom: 2px dashed #000;
+}
+
+.cupom-termo {
+  font-size: 6.5pt;
+  color: #000;
+  text-align: center;
+  font-weight: 500;
+}
+
+.cupom-assinaturas {
+  display: flex;
+  flex-direction: column;
+  gap: 4mm;
+  padding-top: 2mm;
+  border-top: 1.5px dashed #000;
+}
+
+.cupom-assinatura-bloco {
+  text-align: center;
+}
+
+.cupom-linha-assinatura {
+  border-bottom: 1px solid #333;
+  margin: 8mm 4mm 1mm;
+}
+
+.cupom-assinatura-img {
+  max-width: 40mm;
+  max-height: 15mm;
+  margin: 0 auto;
+  display: block;
+}
+
+/* ===== 80mm page size override ===== */
+@media print {
+  .cupom-80mm-container {
+    width: 76mm !important;
+    max-width: 76mm !important;
+    padding: 2mm !important;
+  }
+
+  .impressao-formato-80mm ~ * {
+    /* placeholder to ensure specificity */
+  }
+}
+
+/* Separate @page for 80mm — applied via JS class on body */
+@media print {
+  body.print-80mm {
+    width: 80mm !important;
+  }
+
+  body.print-80mm #print-root {
+    width: 76mm !important;
+  }
+
+  body.print-80mm .cupom-80mm-container {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Force hide app content when printing 80mm to avoid render conflicts */
+  body.print-80mm #root {
+    display: none !important;
+  }
+}

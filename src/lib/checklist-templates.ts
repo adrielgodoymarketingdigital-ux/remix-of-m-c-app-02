@@ -1,0 +1,301 @@
+export const checklistTemplates: Record<string, string[]> = {
+  celular: [
+    'tela',
+    'alto_falante',
+    'microfone',
+    'camera_frontal',
+    'camera_traseira',
+    'flash',
+    'botoes',
+    'biometria',
+    'bateria',
+    'wifi',
+    'bluetooth',
+    'nfc',
+    'chip',
+    'conectores',
+    'peca_trocada'
+  ],
+  celular_ios: [
+    'tela',
+    'alto_falante',
+    'microfone',
+    'camera_frontal',
+    'camera_traseira',
+    'flash',
+    'botoes',
+    'face_id',
+    'touch_id',
+    'bateria',
+    'wifi',
+    'bluetooth',
+    'nfc',
+    'chip',
+    'conectores',
+    'peca_trocada'
+  ],
+  celular_android: [
+    'tela',
+    'alto_falante',
+    'microfone',
+    'camera_frontal',
+    'camera_traseira',
+    'flash',
+    'botoes',
+    'desbloqueio_facial',
+    'biometria',
+    'bateria',
+    'wifi',
+    'bluetooth',
+    'nfc',
+    'chip',
+    'conectores',
+    'peca_trocada'
+  ],
+  tablet: [
+    'tela',
+    'alto_falante',
+    'microfone',
+    'camera_frontal',
+    'camera_traseira',
+    'botoes',
+    'bateria',
+    'wifi',
+    'bluetooth',
+    'nfc',
+    'conectores',
+    'peca_trocada'
+  ],
+  tablet_ios: [
+    'tela',
+    'alto_falante',
+    'microfone',
+    'camera_frontal',
+    'camera_traseira',
+    'botoes',
+    'face_id',
+    'touch_id',
+    'bateria',
+    'wifi',
+    'bluetooth',
+    'nfc',
+    'conectores',
+    'peca_trocada'
+  ],
+  tablet_android: [
+    'tela',
+    'alto_falante',
+    'microfone',
+    'camera_frontal',
+    'camera_traseira',
+    'botoes',
+    'desbloqueio_facial',
+    'biometria',
+    'bateria',
+    'wifi',
+    'bluetooth',
+    'nfc',
+    'conectores',
+    'peca_trocada'
+  ],
+  notebook: [
+    'tela',
+    'teclado',
+    'touchpad',
+    'webcam',
+    'microfone',
+    'alto_falantes',
+    'portas_usb',
+    'porta_hdmi',
+    'bateria',
+    'carregador',
+    'wifi',
+    'bluetooth',
+    'peca_trocada'
+  ],
+  notebook_macbook: [
+    'tela',
+    'teclado',
+    'touchpad',
+    'webcam',
+    'microfone',
+    'alto_falantes',
+    'portas_usb',
+    'porta_hdmi',
+    'bateria',
+    'carregador',
+    'wifi',
+    'bluetooth',
+    'touch_bar',
+    'magsafe',
+    'thunderbolt',
+    'touch_id_teclado',
+    'peca_trocada'
+  ],
+  notebook_outro: [
+    'tela',
+    'teclado',
+    'touchpad',
+    'webcam',
+    'microfone',
+    'alto_falantes',
+    'portas_usb',
+    'porta_hdmi',
+    'bateria',
+    'carregador',
+    'wifi',
+    'bluetooth',
+    'peca_trocada'
+  ],
+  computador: [
+    'monitor',
+    'teclado',
+    'mouse',
+    'fonte',
+    'portas_usb',
+    'audio',
+    'rede',
+    'coolers',
+    'peca_trocada'
+  ],
+  'notebook/computador': [
+    'tela',
+    'teclado',
+    'touchpad',
+    'webcam',
+    'microfone',
+    'alto_falantes',
+    'portas_usb',
+    'porta_hdmi',
+    'bateria',
+    'carregador',
+    'wifi',
+    'bluetooth',
+    'peca_trocada'
+  ],
+  'notebook/computador_macbook': [
+    'tela',
+    'teclado',
+    'touchpad',
+    'webcam',
+    'microfone',
+    'alto_falantes',
+    'portas_usb',
+    'porta_hdmi',
+    'bateria',
+    'carregador',
+    'wifi',
+    'bluetooth',
+    'touch_bar',
+    'magsafe',
+    'thunderbolt',
+    'touch_id_teclado',
+    'peca_trocada'
+  ],
+  'notebook/computador_imac': [
+    'monitor',
+    'teclado',
+    'mouse',
+    'fonte',
+    'portas_usb',
+    'audio',
+    'rede',
+    'bluetooth',
+    'wifi',
+    'webcam',
+    'peca_trocada'
+  ],
+  'notebook/computador_outro': [
+    'tela',
+    'teclado',
+    'touchpad',
+    'webcam',
+    'microfone',
+    'alto_falantes',
+    'portas_usb',
+    'porta_hdmi',
+    'bateria',
+    'carregador',
+    'wifi',
+    'bluetooth',
+    'peca_trocada'
+  ],
+  relogio_smart: [
+    'tela',
+    'touch',
+    'coroa_digital',
+    'botoes',
+    'bateria',
+    'sensores',
+    'bluetooth',
+    'wifi',
+    'nfc',
+    'conectores',
+    'pulseira',
+    'peca_trocada'
+  ]
+};
+
+export const checklistLabels: Record<string, string> = {
+  tela: 'Tela',
+  alto_falante: 'Alto-falante',
+  microfone: 'Microfone',
+  camera_frontal: 'Câmera Frontal',
+  camera_traseira: 'Câmera Traseira',
+  flash: 'Flash',
+  botoes: 'Botões',
+  biometria: 'Biometria',
+  bateria: 'Bateria',
+  wifi: 'Wi-Fi',
+  bluetooth: 'Bluetooth',
+  chip: 'Chip/Sinal',
+  conectores: 'Conectores',
+  teclado: 'Teclado',
+  touchpad: 'Touchpad',
+  webcam: 'Webcam',
+  alto_falantes: 'Alto-falantes',
+  portas_usb: 'Portas USB',
+  porta_hdmi: 'Porta HDMI',
+  carregador: 'Carregador',
+  monitor: 'Monitor',
+  mouse: 'Mouse',
+  fonte: 'Fonte',
+  audio: 'Saída de Áudio',
+  rede: 'Rede (Ethernet)',
+  coolers: 'Coolers/Ventilação',
+  face_id: 'Face ID',
+  touch_id: 'Touch ID',
+  desbloqueio_facial: 'Desbloqueio Facial',
+  touch_bar: 'Touch Bar',
+  magsafe: 'MagSafe',
+  thunderbolt: 'Thunderbolt',
+  touch_id_teclado: 'Touch ID',
+  touch: 'Touch Screen',
+  coroa_digital: 'Coroa Digital',
+  sensores: 'Sensores',
+  pulseira: 'Pulseira',
+  nfc: 'NFC',
+  peca_trocada: 'Peça Trocada'
+};
+
+export const getChecklistKey = (tipo: string, sistema?: string, fabricante?: string): string => {
+  const tipoLower = tipo.toLowerCase().replace(/\//g, '/');
+  
+  if ((tipoLower === 'celular' || tipoLower === 'tablet') && sistema) {
+    const sistemaKey = sistema === 'ios' ? 'ios' : 'android';
+    return `${tipoLower}_${sistemaKey}`;
+  }
+  
+  if (tipoLower === 'notebook/computador' && fabricante) {
+    const fabricanteKey = fabricante.toLowerCase() === 'macbook' ? 'macbook' : 
+                          fabricante.toLowerCase() === 'imac' ? 'imac' : 'outro';
+    return `${tipoLower}_${fabricanteKey}`;
+  }
+  
+  if (tipoLower === 'notebook' && fabricante) {
+    const fabricanteKey = fabricante === 'macbook' ? 'macbook' : 'outro';
+    return `${tipoLower}_${fabricanteKey}`;
+  }
+  
+  return tipoLower;
+};

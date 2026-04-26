@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Méc" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+    <title>Méc - Sistema de Gestão para Assistência Técnica</title>
+    <meta name="description" content="Sistema completo de gestão para assistências técnicas. PDV, ordem de serviço, controle de estoque, relatórios financeiros e muito mais.">
+    <meta name="version" content="2026-01-03-004" />
+    <meta name="author" content="Méc" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    
+    
+    <meta property="og:type" content="website" />
+    
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@MecApp" />
+    
+
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '25083280627997998');
+    fbq('track', 'PageView');
+    </script>
+    <!-- End Meta Pixel Code -->
+
+    <!-- UTMify Pixel Code -->
+    <script>
+      window.pixelId = "69389ff6e59dc06089d47ffb";
+      var a = document.createElement("script");
+      a.setAttribute("async", "");
+      a.setAttribute("defer", "");
+      a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
+      document.head.appendChild(a);
+    </script>
+    <!-- End UTMify Pixel Code -->
+
+    <!-- Tracking Params Capture (Meta CAPI + UTM) -->
+    <script>
+      (function() {
+        // Helper para ler cookie
+        function getCookie(name) {
+          try {
+            var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+            return match && match[2] ? decodeURIComponent(match[2]) : null;
+          } catch(e) {
+            return null;
+          }
+        }
+        
+        // Helper para escrever cookie
+        function setCookie(name, value, days) {
+          var expires = '';
+          if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = '; expires=' + date.toUTCString();
+          }
+          document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/; SameSite=Lax';
+        }
+        
+        // Capturar parâmetros da URL no carregamento
+        var initialParams = new URLSearchParams(window.location.search);
+        var keys = ['fbclid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+        
+        keys.forEach(function(key) {
+          var value = initialParams.get(key);
+          if (value) {
+            localStorage.setItem('tracking_' + key, value);
+          }
+        });
+        
+        // Gerar _fbc a partir do fbclid (formato oficial do Facebook: fb.{subdomain}.{timestamp}.{fbclid})
+        var fbclid = initialParams.get('fbclid') || localStorage.getItem('tracking_fbclid');
+        if (fbclid) {
+          var existingFbc = getCookie('_fbc');
+          if (!existingFbc) {
+            var fbc = 'fb.1.' + Date.now() + '.' + fbclid;
+            setCookie('_fbc', fbc, 90);
+          }
+        }
+      })();
+    </script>
+    <!-- End Tracking Params Capture -->
+    <meta property="og:title" content="Méc - Sistema de Gestão para Assistência Técnica">
+  <meta name="twitter:title" content="Méc - Sistema de Gestão para Assistência Técnica">
+  <meta property="og:description" content="Sistema completo de gestão para assistências técnicas. PDV, ordem de serviço, controle de estoque, relatórios financeiros e muito mais.">
+  <meta name="twitter:description" content="Sistema completo de gestão para assistências técnicas. PDV, ordem de serviço, controle de estoque, relatórios financeiros e muito mais.">
+</head>
+
+  <body>
+    <!-- Meta Pixel noscript fallback -->
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=25083280627997998&ev=PageView&noscript=1"
+    /></noscript>
+    
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

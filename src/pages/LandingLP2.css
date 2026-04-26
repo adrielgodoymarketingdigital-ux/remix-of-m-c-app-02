@@ -1,0 +1,171 @@
+/* LP2 Dark Aggressive Theme Overrides */
+
+.lp2-dark {
+  --lp2-bg: #030408;
+  --lp2-surface: #0A0D14;
+  --lp2-panel: #111520;
+  --lp2-border: rgba(255, 255, 255, 0.08);
+  --lp2-neon: #00F0FF;
+  --lp2-metallic: #8A91A6;
+  --lp2-text: #e4e4e7;
+  --lp2-text-muted: #71717a;
+
+  background: var(--lp2-bg) !important;
+  color: var(--lp2-text);
+}
+
+/* Override all section backgrounds */
+.lp2-dark section {
+  background: var(--lp2-bg) !important;
+}
+
+.lp2-dark section .bg-white,
+.lp2-dark section .bg-slate-50,
+.lp2-dark section .bg-slate-100,
+.lp2-dark section .bg-gradient-to-b {
+  background: var(--lp2-bg) !important;
+}
+
+/* Card overrides */
+.lp2-dark .bg-white {
+  background: var(--lp2-panel) !important;
+}
+
+.lp2-dark .bg-slate-50,
+.lp2-dark .bg-slate-100 {
+  background: var(--lp2-surface) !important;
+}
+
+.lp2-dark .bg-gradient-to-br.from-slate-50,
+.lp2-dark .bg-gradient-to-b.from-slate-50,
+.lp2-dark .bg-gradient-to-b.from-white {
+  background: var(--lp2-bg) !important;
+}
+
+/* Text color overrides */
+.lp2-dark .text-slate-900,
+.lp2-dark .text-slate-800 {
+  color: #ffffff !important;
+}
+
+.lp2-dark .text-slate-700 {
+  color: #d4d4d8 !important;
+}
+
+.lp2-dark .text-slate-600 {
+  color: var(--lp2-metallic) !important;
+}
+
+.lp2-dark .text-slate-500 {
+  color: var(--lp2-text-muted) !important;
+}
+
+.lp2-dark .text-slate-400 {
+  color: #52525b !important;
+}
+
+/* Border overrides */
+.lp2-dark .border-slate-200,
+.lp2-dark .border-slate-300 {
+  border-color: var(--lp2-border) !important;
+}
+
+.lp2-dark .border-slate-100 {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Card backgrounds in sections */
+.lp2-dark .bg-gradient-to-br.from-slate-900 {
+  background: var(--lp2-panel) !important;
+}
+
+/* Green/Blue accents remain */
+.lp2-dark .bg-green-50,
+.lp2-dark .bg-blue-50,
+.lp2-dark .bg-red-50,
+.lp2-dark .bg-orange-50,
+.lp2-dark .bg-cyan-50,
+.lp2-dark .bg-amber-50,
+.lp2-dark .bg-purple-50,
+.lp2-dark .bg-indigo-50 {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.lp2-dark .border-green-200,
+.lp2-dark .border-blue-200,
+.lp2-dark .border-red-200,
+.lp2-dark .border-orange-200 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Shadows */
+.lp2-dark .shadow-sm,
+.lp2-dark .shadow-md,
+.lp2-dark .shadow-lg,
+.lp2-dark .shadow-xl,
+.lp2-dark .shadow-2xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Background blurred elements */
+.lp2-dark .bg-blue-500\/10,
+.lp2-dark .bg-cyan-500\/8,
+.lp2-dark .bg-green-500\/8,
+.lp2-dark .bg-violet-500\/5 {
+  opacity: 0.5;
+}
+
+/* Navigation override */
+.lp2-dark nav {
+  background: rgba(3, 4, 8, 0.8) !important;
+  backdrop-filter: blur(20px);
+  border-bottom-color: var(--lp2-border) !important;
+}
+
+/* Footer keeps its dark style */
+.lp2-dark footer {
+  background: var(--lp2-surface) !important;
+  border-top-color: var(--lp2-border) !important;
+}
+
+/* Pricing cards */
+.lp2-dark [class*="rounded-2xl"][class*="border"] {
+  border-color: var(--lp2-border) !important;
+}
+
+/* Hover states */
+.lp2-dark .hover\:border-green-300:hover,
+.lp2-dark .hover\:border-red-300:hover,
+.lp2-dark .hover\:border-blue-300:hover {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Comparison section specific */
+.lp2-dark .bg-red-100 {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+.lp2-dark .bg-green-100 {
+  background: rgba(34, 197, 94, 0.15) !important;
+}
+
+/* FAQ section accordion */
+.lp2-dark [data-state] {
+  border-color: var(--lp2-border) !important;
+}
+
+/* Grid background patterns */
+.lp2-dark .opacity-\[0\.03\],
+.lp2-dark .opacity-\[0\.04\] {
+  opacity: 0.02 !important;
+}
+
+/* Button overrides - keep green CTAs visible */
+.lp2-dark .bg-gradient-to-r.from-green-500 {
+  background: linear-gradient(to right, #22c55e, #10b981) !important;
+}
+
+/* Input/Switch overrides */
+.lp2-dark .bg-slate-200 {
+  background: var(--lp2-panel) !important;
+}
