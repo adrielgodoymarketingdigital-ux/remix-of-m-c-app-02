@@ -40,10 +40,14 @@ const ResetPassword = () => {
       }
     );
 
-    // 2. Verifica se o hash da URL contém tokens de recovery
+    // 2. Verifica se a URL contém tokens de recovery (hash ou query param)
     const hash = window.location.hash;
+    const search = window.location.search;
     const hasRecoveryToken =
-      hash.includes("type=recovery") || hash.includes("type=magiclink");
+      hash.includes("type=recovery") || 
+      hash.includes("type=magiclink") ||
+      search.includes("code=") ||
+      search.includes("type=recovery");
 
     if (hasRecoveryToken) {
       // O Supabase client vai processar o hash automaticamente,
