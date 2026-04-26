@@ -29,7 +29,6 @@ const Auth = () => {
   const [nome, setNome] = useState("");
   const [celular, setCelular] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -38,27 +37,6 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || 'dashboard';
   const planKey = searchParams.get('plan') || 'intermediario_mensal';
-
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: 'https://www.appmec.in/auth/callback',
-        },
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível entrar com o Google. Tente novamente.",
-      });
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
