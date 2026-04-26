@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Phone, Eye, EyeOff } from "lucide-react";
+import { Loader2, Phone, Eye, EyeOff, Mail, KeyRound, CheckCircle2 } from "lucide-react";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import { trackCompleteRegistration } from "@/lib/tracking";
 import { useEventTracking } from "@/hooks/useEventTracking";
@@ -32,6 +32,7 @@ const Auth = () => {
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -210,10 +211,7 @@ const Auth = () => {
         }
       }
 
-      toast({
-        title: "Verifique seu email",
-        description: "Se este email estiver cadastrado, você receberá um link para redefinir sua senha. Verifique também a pasta de spam.",
-      });
+      setResetSuccess(true);
     } catch (error) {
       console.error("Reset password error:", error);
       toast({
@@ -222,8 +220,6 @@ const Auth = () => {
         description: "Ocorreu um erro ao processar sua solicitação. Tente novamente.",
       });
     } finally {
-      setResetDialogOpen(false);
-      setResetEmail("");
       setResetLoading(false);
     }
   };
@@ -341,7 +337,16 @@ const Auth = () => {
 
         <div className="text-center space-y-2">
           {isLogin && (
-            <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+            <Dialog
+              open={resetDialogOpen}
+              onOpenChange={(open) => {
+                setResetDialogOpen(open);
+                if (!open) {
+                  setResetEmail("");
+                  setResetSuccess(false);
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <button
                   type="button"
@@ -350,41 +355,93 @@ const Auth = () => {
                   Esqueceu a senha?
                 </button>
               </DialogTrigger>
-              <DialogContent className="bg-slate-900 border-white/10 text-white max-w-md mx-auto top-[30%] translate-y-0">
-                <DialogHeader>
-                  <DialogTitle className="text-white">Redefinir Senha</DialogTitle>
-                  <DialogDescription className="text-slate-400">
-                    Digite seu email para receber um link de redefinição de senha
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleResetPassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="reset-email" className="text-slate-300">Email</Label>
-                    <Input
-                      id="reset-email"
-                      type="email"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      required
-                      placeholder="seu@email.com"
-                      className="h-11 bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
-                    />
+              <DialogContent className="bg-slate-900 border-white/10 text-white sm:max-w-sm w-full gap-0 p-6">
+                {/* Títulos ocultos para acessibilidade */}
+                <DialogTitle className="sr-only">
+                  {resetSuccess ? "Email enviado" : "Redefinir senha"}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {resetSuccess ? "Link enviado para o email" : "Digite seu email para receber o link"}
+                </DialogDescription>
+
+                {resetSuccess ? (
+                  <div className="flex flex-col items-center text-center gap-4">
+                    <div className="flex items-center justify-center w-14 h-14 rounded-full bg-green-500/15 border border-green-500/30">
+                      <CheckCircle2 className="h-7 w-7 text-green-400" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold text-white">Email enviado!</p>
+                      <p className="text-slate-400 text-sm leading-relaxed">
+                        Se <span className="text-blue-400 font-medium">{resetEmail}</span> estiver cadastrado, você receberá o link em breve.
+                      </p>
+                      <p className="text-slate-500 text-xs">Verifique também a pasta de spam.</p>
+                    </div>
+                    <Button
+                      className="w-full h-10 bg-slate-800 hover:bg-slate-700 text-white border border-white/10"
+                      onClick={() => setResetDialogOpen(false)}
+                    >
+                      Fechar
+                    </Button>
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)]"
-                    disabled={resetLoading}
-                  >
-                    {resetLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      "Enviar Link"
-                    )}
-                  </Button>
-                </form>
+                ) : (
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col items-center text-center gap-3">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-600/15 border border-blue-500/25">
+                        <KeyRound className="h-5 w-5 text-blue-400" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-base font-semibold text-white">Redefinir senha</p>
+                        <p className="text-slate-400 text-sm leading-relaxed">
+                          Informe seu email e enviaremos um link para criar uma nova senha.
+                        </p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleResetPassword} className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="reset-email" className="text-slate-300 text-sm font-medium">
+                          Email cadastrado
+                        </Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                          <Input
+                            id="reset-email"
+                            type="email"
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                            required
+                            placeholder="seu@email.com"
+                            className="h-10 pl-10 bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full h-10 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)] font-medium"
+                        disabled={resetLoading}
+                      >
+                        {resetLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          "Enviar link de redefinição"
+                        )}
+                      </Button>
+                      <p className="text-center text-xs text-slate-500 pt-0.5">
+                        Lembrou a senha?{" "}
+                        <button
+                          type="button"
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                          onClick={() => setResetDialogOpen(false)}
+                        >
+                          Voltar ao login
+                        </button>
+                      </p>
+                    </form>
+                  </div>
+                )}
               </DialogContent>
             </Dialog>
           )}

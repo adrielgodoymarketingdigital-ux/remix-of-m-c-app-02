@@ -28,80 +28,43 @@ const ResetPassword = () => {
       }
     };
 
-    // 1. Escuta eventos de autenticação (PASSWORD_RECOVERY ou SIGNED_IN)
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (
-          (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") &&
-          session
-        ) {
-          markValid();
-        }
-      }
-    );
-
-    // 2. Verifica se a URL contém tokens de recovery (hash ou query param)
-    const hash = window.location.hash;
-    const search = window.location.search;
-    const hasRecoveryToken =
-      hash.includes("type=recovery") || 
-      hash.includes("type=magiclink") ||
-      search.includes("code=") ||
-      search.includes("type=recovery");
-
-    if (hasRecoveryToken) {
-      // O Supabase client vai processar o hash automaticamente,
-      // mas vamos dar um tempo extra para garantir
-      const interval = setInterval(async () => {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session) {
-          markValid();
-          clearInterval(interval);
-        }
-      }, 500);
-
-      // Timeout máximo de 10 segundos
-      const timeout = setTimeout(() => {
-        clearInterval(interval);
-        if (!validRef.current) {
-          setChecking(false);
-          toast({
-            variant: "destructive",
-            title: "Sessão inválida",
-            description:
-              "Link de recuperação expirado ou inválido. Solicite um novo link.",
-          });
-          navigate("/auth");
-        }
-      }, 10000);
-
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-        authListener.subscription.unsubscribe();
-      };
-    }
-
-    // 3. Se não tem token no hash, tenta pegar sessão existente
-    const timeout = setTimeout(async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        markValid();
-      } else if (!validRef.current) {
+    const markInvalid = () => {
+      if (!validRef.current) {
         setChecking(false);
         toast({
           variant: "destructive",
-          title: "Sessão inválida",
-          description:
-            "Link de recuperação expirado ou inválido. Solicite um novo link.",
+          title: "Link inválido ou expirado",
+          description: "Solicite um novo link de redefinição de senha.",
         });
         navigate("/auth");
       }
-    }, 3000);
+    };
+
+    // Tenta extrair tokens do hash (implicit flow: #access_token=...&type=recovery)
+    const hash = window.location.hash.slice(1);
+    const hashParams = new URLSearchParams(hash);
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    const type = hashParams.get("type");
+
+    if (accessToken && refreshToken && type === "recovery") {
+      supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ error }) => {
+          if (error) markInvalid();
+          else markValid();
+        });
+      return;
+    }
+
+    // Sem tokens no hash: escuta evento PASSWORD_RECOVERY (pode vir do cliente já autenticado)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session) {
+        markValid();
+      }
+    });
+
+    const timeout = setTimeout(markInvalid, 6000);
 
     return () => {
       clearTimeout(timeout);
