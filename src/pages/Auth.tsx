@@ -195,7 +195,7 @@ const Auth = () => {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-        redirectTo: 'https://www.appmec.in/auth/callback',
+        redirectTo: 'https://www.appmec.in/reset-password',
       });
 
       if (error) {
