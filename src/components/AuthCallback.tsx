@@ -7,19 +7,22 @@ const AuthCallback = () => {
 
   useEffect(() => {
     const handleCallback = async () => {
-      // Implicit flow: token vem no hash da URL (#access_token=...)
-      const hash = window.location.hash;
-      const params = new URLSearchParams(hash.replace('#', ''));
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      const accessToken = new URLSearchParams(window.location.hash.slice(1)).get('access_token');
+      const refreshToken = new URLSearchParams(window.location.hash.slice(1)).get('refresh_token');
 
+      console.log('[AuthCallback] code:', code);
+      console.log('[AuthCallback] access_token:', accessToken);
+
+      // Implicit flow
       if (accessToken && refreshToken) {
         const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
         if (error) {
-          console.error('Erro ao setar sessão:', error.message);
+          console.error('[AuthCallback] setSession error:', error.message);
           navigate('/auth?error=set_session_failed', { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
@@ -27,12 +30,27 @@ const AuthCallback = () => {
         return;
       }
 
-      // Fallback: verifica se já tem sessão ativa
+      // PKCE flow
+      if (code) {
+        console.log('[AuthCallback] Trocando code por sessão...');
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        console.log('[AuthCallback] exchangeCodeForSession result:', data, error);
+        if (error) {
+          console.error('[AuthCallback] exchange error:', error.message);
+          navigate('/auth?error=exchange_failed', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+        return;
+      }
+
+      // Sessão já existe?
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         navigate('/dashboard', { replace: true });
       } else {
-        navigate('/auth?error=no_session', { replace: true });
+        console.error('[AuthCallback] Nenhum code, token ou sessão encontrada');
+        navigate('/auth?error=no_token', { replace: true });
       }
     };
 
