@@ -82,6 +82,17 @@ export default function CadastroTrial() {
       if (error) throw error;
 
       if (data.user) {
+        // Email já cadastrado: Supabase retorna usuário sem identities
+        if (!data.user.identities || data.user.identities.length === 0) {
+          toast({
+            title: "Email já cadastrado",
+            description: "Este email já possui uma conta. Faça login ou redefina sua senha.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         // Track CompleteRegistration com deduplicação Pixel + CAPI
         setTimeout(() => {
           trackCompleteRegistration(data.user!.id, formData.email);

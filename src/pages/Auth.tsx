@@ -126,6 +126,17 @@ const Auth = () => {
         if (error) throw error;
 
         if (data?.user) {
+          // Email já cadastrado: Supabase retorna usuário sem identities
+          if (!data.user.identities || data.user.identities.length === 0) {
+            toast({
+              variant: "destructive",
+              title: "Email já cadastrado",
+              description: "Este email já possui uma conta. Faça login ou redefina sua senha.",
+            });
+            setLoading(false);
+            return;
+          }
+
           setTimeout(() => {
             trackCompleteRegistration(data.user.id, email);
           }, 1500);
