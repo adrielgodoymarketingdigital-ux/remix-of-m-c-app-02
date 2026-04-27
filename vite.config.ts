@@ -20,15 +20,17 @@ export default defineConfig(({ mode }) => ({
       filename: "sw.ts",
       includeAssets: ["favicon.ico", "logo-mec.png", "logo-mec.svg"],
       manifest: {
+        id: "/",
         name: "Méc - Sistema de Gestão para Assistência Técnica",
         short_name: "Méc",
         description: "Sistema completo de gestão para assistências técnicas. PDV, ordem de serviço, controle de estoque, relatórios financeiros.",
         theme_color: "#1a1a1a",
-        background_color: "#ffffff",
+        background_color: "#1a1a1a",
         display: "standalone",
+        display_override: ["standalone", "fullscreen", "minimal-ui"],
         orientation: "any",
         scope: "/",
-        start_url: "/auth",
+        start_url: "/",
         categories: ["business", "productivity"],
         icons: [
           {
