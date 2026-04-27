@@ -209,36 +209,37 @@ export function useClientes(options: UseClientesOptions = {}) {
       // Usar ID do dono se funcionário tem permissão de sincronizar clientes
       const targetUserId = (isFuncionario && podeSincronizarClientes && lojaUserId) ? lojaUserId : user.id;
 
-      // Verificar se existem ordens ou vendas associadas
-      const { data: ordens } = await supabase
-        .from("ordens_servico")
-        .select("id")
-        .eq("cliente_id", id)
-        .eq("user_id", targetUserId)
-        .is("deleted_at", null)
-        .limit(1);
+      // Verificar se existem ordens, vendas ou orçamentos associados
+      const [{ data: ordens }, { data: vendas }, { data: orcamentos }] = await Promise.all([
+        supabase
+          .from("ordens_servico")
+          .select("id")
+          .eq("cliente_id", id)
+          .eq("user_id", targetUserId)
+          .is("deleted_at", null)
+          .limit(1),
+        supabase
+          .from("vendas")
+          .select("id")
+          .eq("cliente_id", id)
+          .eq("user_id", targetUserId)
+          .limit(1),
+        supabase
+          .from("orcamentos")
+          .select("id")
+          .eq("cliente_id", id)
+          .eq("user_id", targetUserId)
+          .limit(1),
+      ]);
 
-      const { data: vendas } = await supabase
-        .from("vendas")
-        .select("id")
-        .eq("cliente_id", id)
-        .eq("user_id", targetUserId)
-        .limit(1);
+      if ((ordens && ordens.length > 0) || (vendas && vendas.length > 0) || (orcamentos && orcamentos.length > 0)) {
+        const partes: string[] = [];
+        if (ordens && ordens.length > 0) partes.push("ordens de serviço");
+        if (vendas && vendas.length > 0) partes.push("vendas");
+        if (orcamentos && orcamentos.length > 0) partes.push("orçamentos");
 
-      if ((ordens && ordens.length > 0) || (vendas && vendas.length > 0)) {
-        const temOrdens = ordens && ordens.length > 0;
-        const temVendas = vendas && vendas.length > 0;
-        
-        let mensagem = "Este cliente possui ";
-        if (temOrdens && temVendas) {
-          mensagem += "ordens de serviço e vendas";
-        } else if (temOrdens) {
-          mensagem += "ordens de serviço";
-        } else {
-          mensagem += "vendas";
-        }
-        mensagem += " associadas. Ao excluir, o vínculo com o cliente será removido mas os registros serão mantidos.";
-        
+        const mensagem = `Este cliente possui ${partes.join(", ")} associados. Ao excluir, o vínculo será removido mas os registros serão mantidos.`;
+
         toast({
           title: "Atenção",
           description: mensagem,
