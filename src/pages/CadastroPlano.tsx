@@ -79,6 +79,18 @@ export default function CadastroPlano() {
       }
 
       if (data.user) {
+        // Se não há sessão (confirmação de email habilitada), fazer login manual
+        if (!data.session) {
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email,
+            password: senha,
+          });
+          if (loginError) {
+            // Sessão não disponível ainda, mas conta foi criada — continua para checkout
+            console.warn('[CadastroPlano] Login automático falhou:', loginError.message);
+          }
+        }
+
         // Aguardar profile ser criado pelo trigger e disparar CompleteRegistration
         setTimeout(() => {
           trackCompleteRegistration(data.user.id, email);
