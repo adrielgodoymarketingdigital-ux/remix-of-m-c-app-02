@@ -166,21 +166,20 @@ export function PixCheckoutDialog({
     }
   };
 
-  // Verificar pagamento
+  // Verificar pagamento consultando Pagar.me diretamente via edge function
   const verificarPagamento = async () => {
     if (!pixData?.order_id) return;
     setChecking(true);
 
     try {
-      const { data, error: queryError } = await supabase
-        .from("pagamentos_pix")
-        .select("status, paid_at")
-        .eq("pagarme_order_id", pixData.order_id)
-        .maybeSingle();
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "check-pix-payment",
+        { body: { order_id: pixData.order_id } }
+      );
 
-      if (queryError) throw queryError;
+      if (fnError) throw new Error(fnError.message);
 
-      if (data?.status === "paid") {
+      if (data?.paid) {
         setPaymentConfirmed(true);
         toast({
           title: "Pagamento confirmado! 🎉",
