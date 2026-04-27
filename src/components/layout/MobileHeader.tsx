@@ -1,6 +1,9 @@
 import { useLocation } from "react-router-dom";
 import { useMemo } from "react";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useOcultarValores } from "@/contexts/OcultarValoresContext";
 
 // Mapeamento de rotas para títulos
 const routeTitles: Record<string, string> = {
@@ -38,7 +41,7 @@ const routeTitles: Record<string, string> = {
 
 export function MobileHeader() {
   const location = useLocation();
-  
+  const { valoresOcultos, toggleValores } = useOcultarValores();
 
   const pageTitle = useMemo(() => {
     // Tenta match exato primeiro
@@ -65,7 +68,17 @@ export function MobileHeader() {
         <h1 className="text-base font-semibold text-foreground truncate">
           {pageTitle}
         </h1>
-        <NotificationCenter />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleValores}
+            title={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
+          >
+            {valoresOcultos ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          </Button>
+          <NotificationCenter />
+        </div>
       </div>
     </header>
   );

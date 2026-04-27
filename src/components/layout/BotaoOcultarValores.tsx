@@ -9,7 +9,7 @@ export function BotaoOcultarValores() {
     <Button
       variant="outline"
       size="icon"
-      className="fixed top-3 right-3 z-50 h-9 w-9 rounded-full shadow-md bg-background/95 backdrop-blur-sm border-border hover:bg-accent lg:top-4 lg:right-4"
+      className="hidden lg:flex fixed top-4 right-4 z-50 h-9 w-9 rounded-full shadow-md bg-background/95 backdrop-blur-sm border-border hover:bg-accent"
       onClick={toggleValores}
       title={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
     >
