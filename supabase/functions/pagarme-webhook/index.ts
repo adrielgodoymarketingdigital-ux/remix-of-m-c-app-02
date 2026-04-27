@@ -142,11 +142,28 @@ serve(async (req) => {
     }
 
     if (pagamento.status === "paid") {
-      log("Pagamento já processado", { orderId });
-      return new Response(
-        JSON.stringify({ received: true, already_processed: true }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Verificar se a assinatura foi ativada — pode ter falhado numa retentativa anterior
+      const { data: assinaturaCheck } = await supabaseAdmin
+        .from("assinaturas")
+        .select("plano_tipo, status, payment_method")
+        .eq("user_id", pagamento.user_id)
+        .maybeSingle();
+
+      const jaAtivado =
+        assinaturaCheck?.status === "active" &&
+        assinaturaCheck?.payment_method === "pix" &&
+        assinaturaCheck?.plano_tipo === pagamento.plano_tipo;
+
+      if (jaAtivado) {
+        log("Pagamento e assinatura já processados", { orderId });
+        return new Response(
+          JSON.stringify({ received: true, already_processed: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Pagamento paid mas assinatura não ativada — reprocessar ativação
+      log("Pagamento já paid mas assinatura não ativada — reativando", { orderId, assinaturaCheck });
     }
 
     // ── 2. Atualizar pagamentos_pix → paid ───────────────────────────

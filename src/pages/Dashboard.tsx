@@ -38,6 +38,7 @@ const Dashboard = () => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [nomeUsuario, setNomeUsuario] = useState<string>("");
   const { assinatura, carregando: carregandoAssinatura, trialExpirado, migracaoNecessaria } = useAssinatura();
   const { isFuncionario, temAcessoModulo, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const dashboardBloqueado = isFuncionario && !temAcessoModulo('dashboard');
@@ -54,6 +55,22 @@ const Dashboard = () => {
   // Evita hydration mismatch
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const buscarNomeUsuario = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("id", user.id)
+        .single();
+      if (data?.nome) {
+        setNomeUsuario(data.nome.split(" ")[0]);
+      }
+    };
+    buscarNomeUsuario();
   }, []);
 
   const [metrics, setMetrics] = useState({
@@ -397,6 +414,43 @@ const Dashboard = () => {
     setProdutosMenosVendidos(menosVendidos);
   };
 
+  const getSaudacao = () => {
+    const hora = new Date().getHours();
+    if (hora >= 5 && hora < 12) return "Bom dia";
+    if (hora >= 12 && hora < 18) return "Boa tarde";
+    return "Boa noite";
+  };
+
+  const FRASES = [
+    "Cada cliente atendido é uma oportunidade de fazer a diferença.",
+    "O sucesso é a soma de pequenos esforços repetidos dia após dia.",
+    "Qualidade no serviço é o melhor marketing que existe.",
+    "Cada desafio superado é uma vitória que nos torna mais fortes.",
+    "Um cliente satisfeito vale mais do que mil propagandas.",
+    "A persistência é o caminho do êxito.",
+    "Faça o que você faz tão bem que eles vão querer voltar.",
+    "O trabalho duro vence o talento quando o talento não trabalha duro.",
+    "Pequenos progressos ainda são progressos.",
+    "A excelência não é um destino, é uma jornada contínua.",
+    "Cada reparo bem feito constrói uma reputação sólida.",
+    "Confie no processo e nos resultados que virão.",
+    "A dedicação de hoje é o sucesso de amanhã.",
+    "Quem trabalha com amor nunca trabalha em vão.",
+    "O diferencial está nos detalhes que os outros ignoram.",
+    "Grandes resultados vêm de pequenas ações consistentes.",
+    "Seu trabalho importa mais do que você imagina.",
+    "Cada dia é uma nova chance de ser melhor do que ontem.",
+    "A confiança dos seus clientes é o seu maior ativo.",
+    "Trabalhe com propósito e os resultados virão naturalmente.",
+  ];
+
+  const getFraseDiaria = () => {
+    const inicio = new Date(new Date().getFullYear(), 0, 0);
+    const diff = Number(new Date()) - Number(inicio);
+    const diaDoAno = Math.floor(diff / (1000 * 60 * 60 * 24));
+    return FRASES[diaDoAno % FRASES.length];
+  };
+
   if (loading || carregandoAssinatura) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -413,43 +467,53 @@ const Dashboard = () => {
       <TutorialAutoStart />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div data-tutorial="dashboard-title">
-          <h1 className="text-2xl sm:text-3xl font-semibold mb-1">Dashboard</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">
-            {mesSelecionado === "atual" 
-              ? format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })
-              : opçõesMeses.find(m => m.valor === mesSelecionado)?.label || ""}
+          <h1 className="text-2xl sm:text-3xl font-semibold mb-1">
+            {nomeUsuario
+              ? <>{getSaudacao()}, <span className="text-primary">{nomeUsuario}</span>!</>
+              : <>{getSaudacao()}, <span className="text-primary">Bem Vindo</span>!</>
+            }
+          </h1>
+          <p className="text-muted-foreground text-sm sm:text-base italic">
+            {getFraseDiaria()}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-            <SelectTrigger className="w-[200px]">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Selecione o mês" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="atual">Mês atual</SelectItem>
-              {opçõesMeses.map((mes) => (
-                <SelectItem key={mes.valor} value={mes.valor}>
-                  {mes.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {mounted && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              title={theme === "dark" ? "Modo claro" : "Modo escuro"}
-              data-tutorial="theme-toggle"
-            >
-              {theme === "dark" ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </Button>
-          )}
+        <div className="flex flex-col items-end gap-2">
+          <p className="text-muted-foreground text-sm font-medium">
+            {mesSelecionado === "atual"
+              ? format(new Date(), "MMMM 'de' yyyy", { locale: ptBR }).replace(/^\w/, c => c.toUpperCase())
+              : (opçõesMeses.find(m => m.valor === mesSelecionado)?.label || "").replace(/^\w/, c => c.toUpperCase())}
+          </p>
+          <div className="flex items-center gap-2">
+            <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+              <SelectTrigger className="w-[200px]">
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Selecione o mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="atual">Mês atual</SelectItem>
+                {opçõesMeses.map((mes) => (
+                  <SelectItem key={mes.valor} value={mes.valor}>
+                    {mes.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {mounted && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+                data-tutorial="theme-toggle"
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

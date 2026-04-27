@@ -93,13 +93,38 @@ async function findSubscriptionRecord(subscriptionId: string, customerId?: strin
   return null;
 }
 
+// Busca user_id pelo email usando listUsers com paginação completa
+async function findUserIdByEmail(email: string): Promise<string | null> {
+  // Tentar via profiles primeiro (mais eficiente)
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("user_id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (profile?.user_id) return profile.user_id;
+
+  // Fallback: listUsers com paginação para não perder usuários
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const { data } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    const found = data?.users?.find((u) => u.email === email);
+    if (found) return found.id;
+    if (!data?.users || data.users.length < perPage) break;
+    page++;
+  }
+
+  return null;
+}
+
 // Função para buscar assinatura por email do customer
 async function findSubscriptionByCustomerEmail(customerId: string) {
   logStep("🔍 Buscando assinatura por email do customer", { customerId });
 
   try {
     const customer = await stripe.customers.retrieve(customerId);
-    
+
     if (customer.deleted || !("email" in customer) || !customer.email) {
       logStep("⚠️ Customer não tem email válido");
       return null;
@@ -108,24 +133,20 @@ async function findSubscriptionByCustomerEmail(customerId: string) {
     const email = customer.email;
     logStep("📧 Email do customer encontrado", { email });
 
-    // Buscar usuário pelo email
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers();
-    const user = users.users.find((u) => u.email === email);
-
-    if (!user) {
+    const userId = await findUserIdByEmail(email);
+    if (!userId) {
       logStep("⚠️ Usuário não encontrado pelo email", { email });
       return null;
     }
 
-    // Buscar assinatura pelo user_id
     const { data: subscription } = await supabaseAdmin
       .from("assinaturas")
       .select("id, user_id")
-      .eq("user_id", user.id)
-      .single();
+      .eq("user_id", userId)
+      .maybeSingle();
 
     if (subscription) {
-      logStep("✅ Assinatura encontrada pelo email", { id: subscription.id, userId: user.id });
+      logStep("✅ Assinatura encontrada pelo email", { id: subscription.id, userId });
       return subscription;
     }
 
@@ -501,11 +522,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   logStep("📝 Plano identificado", { planoTipo, priceId, isTrialing, status: subscription.status });
 
-  const { data: users } = await supabaseAdmin.auth.admin.listUsers();
-  const user = users.users.find((u) => u.email === email);
-
-  if (!user) {
+  const userId = await findUserIdByEmail(email);
+  if (!userId) {
     logStep("❌ Usuário não encontrado", { email });
+    return;
+  }
+  const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (!user) {
+    logStep("❌ Usuário não encontrado pelo id", { userId });
     return;
   }
 
