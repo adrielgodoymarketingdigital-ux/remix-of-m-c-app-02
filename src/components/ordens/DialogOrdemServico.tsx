@@ -629,10 +629,10 @@ export const DialogOrdemServico = ({
       const subtotal = totalServicos + totalProdutos + totalCustosRepassados;
       const total = Math.max(0, subtotal - formData.desconto);
 
-      // Adicionar dados de pagamento ao avarias (somente se houver valor)
-      if (formData.formaPagamento && total > 0) {
+      // Adicionar dados de pagamento ao avarias
+      if (subtotal > 0 || formData.formaPagamento) {
         avariasData.dados_pagamento = {
-          forma: formData.formaPagamento as any,
+          forma: (formData.formaPagamento as any) || undefined,
           parcelas: formData.numeroParcelas,
           desconto: formData.desconto,
           subtotal,
@@ -644,7 +644,6 @@ export const DialogOrdemServico = ({
             : undefined,
         };
       } else {
-        // Sem serviços/produtos → limpar dados de pagamento
         avariasData.dados_pagamento = undefined;
       }
       

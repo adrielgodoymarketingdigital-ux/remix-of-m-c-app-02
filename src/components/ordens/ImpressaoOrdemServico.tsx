@@ -60,6 +60,8 @@ export const ImpressaoOrdemServico = ({
   }
   const produtosUtilizados = (avariasData?.produtos_utilizados || []) as ProdutoUtilizado[];
   const custosAdicionais = (avariasData?.custos_adicionais || []) as CustoAdicional[];
+  const desconto = avariasData?.dados_pagamento?.desconto || 0;
+  const subtotalPagamento = avariasData?.dados_pagamento?.subtotal;
 
   // Obter configurações de layout
   const layoutConfig: LayoutOSConfig = {
@@ -451,6 +453,18 @@ export const ImpressaoOrdemServico = ({
                 <h2 className="impressao-block-title">Valor do Serviço</h2>
               </div>
               <div className="impressao-block-content">
+                {desconto > 0 && subtotalPagamento !== undefined && (
+                  <div style={{ fontSize: "7pt", marginBottom: "1mm" }}>
+                    <div className="impressao-item-linha">
+                      <span>Subtotal</span>
+                      <span>{formatCurrency(subtotalPagamento)}</span>
+                    </div>
+                    <div className="impressao-item-linha" style={{ color: "#c00" }}>
+                      <span>Desconto</span>
+                      <span>- {formatCurrency(desconto)}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="impressao-valor-total">{formatCurrency(ordem.total || 0)}</div>
               </div>
             </div>

@@ -55,6 +55,8 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
   }
   const produtosUtilizados = (avariasData?.produtos_utilizados || []) as ProdutoUtilizado[];
   const custosAdicionais = (avariasData?.custos_adicionais || []) as CustoAdicional[];
+  const desconto = avariasData?.dados_pagamento?.desconto || 0;
+  const subtotal = avariasData?.dados_pagamento?.subtotal;
 
   const termoGarantia = obterTermoGarantia({
     tempoGarantia: ordem.tempo_garantia,
@@ -295,10 +297,24 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
         </div>
       )}
 
-      {/* Valor Total */}
+      {/* Desconto + Valor Total */}
       {c.mostrar_valor && (
-        <div className="cupom-section cupom-total">
-          TOTAL: {formatCurrency(ordem.total || 0)}
+        <div className="cupom-section">
+          {desconto > 0 && subtotal !== undefined && (
+            <>
+              <div className="cupom-line-between">
+                <span>Subtotal</span>
+                <span>{formatCurrency(subtotal)}</span>
+              </div>
+              <div className="cupom-line-between" style={{ color: "#c00" }}>
+                <span>Desconto</span>
+                <span>- {formatCurrency(desconto)}</span>
+              </div>
+            </>
+          )}
+          <div className="cupom-total">
+            TOTAL: {formatCurrency(ordem.total || 0)}
+          </div>
         </div>
       )}
 
