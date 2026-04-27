@@ -56,7 +56,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
   const produtosUtilizados = (avariasData?.produtos_utilizados || []) as ProdutoUtilizado[];
   const custosAdicionais = (avariasData?.custos_adicionais || []) as CustoAdicional[];
   const desconto = avariasData?.dados_pagamento?.desconto || 0;
-  const subtotal = avariasData?.dados_pagamento?.subtotal;
+  const subtotal = avariasData?.dados_pagamento?.subtotal ?? (desconto > 0 ? (ordem.total || 0) + desconto : undefined);
 
   const termoGarantia = obterTermoGarantia({
     tempoGarantia: ordem.tempo_garantia,

@@ -61,7 +61,7 @@ export const ImpressaoOrdemServico = ({
   const produtosUtilizados = (avariasData?.produtos_utilizados || []) as ProdutoUtilizado[];
   const custosAdicionais = (avariasData?.custos_adicionais || []) as CustoAdicional[];
   const desconto = avariasData?.dados_pagamento?.desconto || 0;
-  const subtotalPagamento = avariasData?.dados_pagamento?.subtotal;
+  const subtotalPagamento = avariasData?.dados_pagamento?.subtotal ?? (desconto > 0 ? (ordem.total || 0) + desconto : undefined);
 
   // Obter configurações de layout
   const layoutConfig: LayoutOSConfig = {
