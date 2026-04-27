@@ -465,6 +465,8 @@ const Dashboard = () => {
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
       <TutorialAutoStart />
+      {/* Mobile: saudação em cima, filtro + tema embaixo ocupando largura toda */}
+      {/* Desktop: saudação à esquerda, data + filtro + tema à direita na mesma linha */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div data-tutorial="dashboard-title">
           <h1 className="text-2xl sm:text-3xl font-semibold mb-1">
@@ -477,16 +479,16 @@ const Dashboard = () => {
             {getFraseDiaria()}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <p className="text-muted-foreground text-sm font-medium">
+        <div className="flex flex-col items-stretch sm:items-end gap-2">
+          <p className="text-muted-foreground text-sm font-medium sm:text-right">
             {mesSelecionado === "atual"
               ? format(new Date(), "MMMM 'de' yyyy", { locale: ptBR }).replace(/^\w/, c => c.toUpperCase())
               : (opçõesMeses.find(m => m.valor === mesSelecionado)?.label || "").replace(/^\w/, c => c.toUpperCase())}
           </p>
           <div className="flex items-center gap-2">
             <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-              <SelectTrigger className="w-[200px]">
-                <CalendarIcon className="h-4 w-4 mr-2" />
+              <SelectTrigger className="flex-1 sm:flex-none sm:w-[200px]">
+                <CalendarIcon className="h-4 w-4 mr-2 shrink-0" />
                 <SelectValue placeholder="Selecione o mês" />
               </SelectTrigger>
               <SelectContent>
@@ -506,11 +508,7 @@ const Dashboard = () => {
                 title={theme === "dark" ? "Modo claro" : "Modo escuro"}
                 data-tutorial="theme-toggle"
               >
-                {theme === "dark" ? (
-                  <Sun className="h-4 w-4" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )}
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
             )}
           </div>
