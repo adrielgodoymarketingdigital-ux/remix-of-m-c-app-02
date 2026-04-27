@@ -136,6 +136,8 @@ export default function OnboardingObrigatorio() {
       navigatingRef.current = false;
       return;
     }
+    // Limpar cache de verificação para forçar nova verificação com onboarding completo
+    try { sessionStorage.removeItem("mec_verificacao_cache"); } catch {}
     // Após onboarding, ir para o guia de instalação do app
     navigate("/instalar-app", { replace: true });
   };
@@ -491,6 +493,7 @@ export default function OnboardingObrigatorio() {
                   onClick={async () => {
                     navigatingRef.current = true;
                     await markOnboardingCompleted();
+                    try { sessionStorage.removeItem("mec_verificacao_cache"); } catch {}
                     navigate("/plano", { replace: true });
                   }}
                   className="w-full h-10 text-sm"
