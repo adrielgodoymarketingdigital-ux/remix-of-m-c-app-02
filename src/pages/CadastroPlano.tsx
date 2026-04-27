@@ -30,6 +30,7 @@ export default function CadastroPlano() {
   const [abrirCartao, setAbrirCartao] = useState(false);
   const [abrirPix, setAbrirPix] = useState(false);
   
+  const [isLogin, setIsLogin] = useState(false);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [celular, setCelular] = useState("");
@@ -79,15 +80,20 @@ export default function CadastroPlano() {
       }
 
       if (data.user) {
-        // Se não há sessão (confirmação de email habilitada), fazer login manual
+        // Se signUp não criou sessão (confirmação de email habilitada no Supabase),
+        // aguarda 1s para evitar rate limit e faz login com as credenciais informadas
         if (!data.session) {
+          await new Promise((r) => setTimeout(r, 1000));
           const { error: loginError } = await supabase.auth.signInWithPassword({
             email,
             password: senha,
           });
           if (loginError) {
-            // Sessão não disponível ainda, mas conta foi criada — continua para checkout
             console.warn('[CadastroPlano] Login automático falhou:', loginError.message);
+            toast.error("Conta criada! Faça login para continuar.");
+            setStep("cadastro");
+            setIsLogin(true);
+            return;
           }
         }
 
@@ -172,8 +178,6 @@ export default function CadastroPlano() {
     setAbrirPix(false);
     navigate("/plano");
   };
-
-  const [isLogin, setIsLogin] = useState(false);
 
   if (checkingSession) {
     return (
