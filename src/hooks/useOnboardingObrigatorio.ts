@@ -2,6 +2,24 @@ import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+const STEP_CACHE_KEY = "mec_onboarding_step";
+
+function getCachedStep(): number {
+  try {
+    const v = sessionStorage.getItem(STEP_CACHE_KEY);
+    if (v) return Math.max(1, parseInt(v, 10));
+  } catch {}
+  return 1;
+}
+
+function setCachedStep(step: number) {
+  try { sessionStorage.setItem(STEP_CACHE_KEY, String(step)); } catch {}
+}
+
+function clearCachedStep() {
+  try { sessionStorage.removeItem(STEP_CACHE_KEY); } catch {}
+}
+
 interface OnboardingData {
   nomeAssistencia: string;
   cidade: string;
@@ -32,25 +50,41 @@ interface OSTesteData {
   servicoCusto?: number;
 }
 
+const emptyData: OnboardingData = {
+  nomeAssistencia: "",
+  cidade: "",
+  estado: "",
+  tipoNegocio: null,
+  primeiroClienteId: null,
+  primeiraOSSimulada: false,
+  onboardingCompleted: false,
+  objetivoOnboarding: null,
+};
+
 export function useOnboardingObrigatorio() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [osTesteResumo, setOsTesteResumo] = useState<any>(null);
-  const [progress, setProgress] = useState<OnboardingProgress>({
-    currentStep: 1,
-    totalSteps: 6,
-    percentComplete: 0,
-    data: {
-      nomeAssistencia: "",
-      cidade: "",
-      estado: "",
-      tipoNegocio: null,
-      primeiroClienteId: null,
-      primeiraOSSimulada: false,
-      onboardingCompleted: false,
-      objetivoOnboarding: null,
-    },
+
+  // Inicializa já com o step cacheado no sessionStorage para evitar flash no passo 1
+  const [progress, setProgress] = useState<OnboardingProgress>(() => {
+    const cachedStep = getCachedStep();
+    return {
+      currentStep: cachedStep,
+      totalSteps: 6,
+      percentComplete: Math.min(100, ((Math.min(cachedStep, 6) - 1) / 6) * 100),
+      data: emptyData,
+    };
   });
+
+  const updateStep = useCallback((step: number) => {
+    setCachedStep(step);
+    setProgress(prev => ({
+      ...prev,
+      currentStep: step,
+      percentComplete: Math.min(100, ((Math.min(step, 6) - 1) / 6) * 100),
+    }));
+  }, []);
 
   const loadProgress = useCallback(async () => {
     try {
@@ -80,16 +114,21 @@ export function useOnboardingObrigatorio() {
           objetivoOnboarding: (data as any).objetivo_onboarding || null,
         };
 
-        let currentStep = 1;
-        if (onboardingData.objetivoOnboarding) currentStep = 2;
-        if (onboardingData.primeiroClienteId) currentStep = 5;
-        if (onboardingData.onboardingCompleted) currentStep = 7;
+        // Derivar o step mínimo baseado no banco
+        let dbStep = 1;
+        if (onboardingData.objetivoOnboarding) dbStep = 2;
+        if (onboardingData.primeiroClienteId) dbStep = 5;
+        if (onboardingData.onboardingCompleted) dbStep = 7;
 
-        // Nunca regredir o step — preserva navegação local (ex: step 3 aberto pelo usuário)
+        // Nunca regredir — o step real é o maior entre banco e cache local
+        const cachedStep = getCachedStep();
+        const finalStep = Math.max(dbStep, cachedStep);
+        setCachedStep(finalStep);
+
         setProgress(prev => ({
-          currentStep: Math.max(currentStep, prev.currentStep),
+          currentStep: finalStep,
           totalSteps: 6,
-          percentComplete: Math.min(100, ((Math.min(Math.max(currentStep, prev.currentStep), 6) - 1) / 6) * 100),
+          percentComplete: Math.min(100, ((Math.min(finalStep, 6) - 1) / 6) * 100),
           data: onboardingData,
         }));
       }
@@ -121,6 +160,7 @@ export function useOnboardingObrigatorio() {
 
       if (error) throw error;
 
+      setCachedStep(2);
       setProgress(prev => ({
         ...prev,
         currentStep: 2,
@@ -144,6 +184,7 @@ export function useOnboardingObrigatorio() {
 
   // Avançar para passo 3
   const advanceToStep3 = useCallback(() => {
+    setCachedStep(3);
     setProgress(prev => ({
       ...prev,
       currentStep: 3,
@@ -224,7 +265,6 @@ export function useOnboardingObrigatorio() {
 
       if (error) throw error;
 
-      // Guardar resumo para passo 4
       setOsTesteResumo({
         numero_os: osCreated.numero_os || osNumber,
         clienteNome: osData.clienteNome,
@@ -236,6 +276,7 @@ export function useOnboardingObrigatorio() {
         valor: osData.servicoValor || 0,
       });
 
+      setCachedStep(4);
       setProgress(prev => ({
         ...prev,
         currentStep: 4,
@@ -259,6 +300,7 @@ export function useOnboardingObrigatorio() {
 
   // Avançar para passo 5
   const advanceToStep5 = useCallback(() => {
+    setCachedStep(5);
     setProgress(prev => ({
       ...prev,
       currentStep: 5,
@@ -268,6 +310,7 @@ export function useOnboardingObrigatorio() {
 
   // Avançar para passo 6
   const advanceToStep6 = useCallback(() => {
+    setCachedStep(6);
     setProgress(prev => ({
       ...prev,
       currentStep: 6,
@@ -293,6 +336,7 @@ export function useOnboardingObrigatorio() {
 
       if (error) throw error;
 
+      clearCachedStep();
       setProgress(prev => ({
         ...prev,
         currentStep: 7,
