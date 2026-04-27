@@ -89,13 +89,36 @@ serve(async (req) => {
 
     logStep("Profiles fetched", { count: profiles?.length || 0 });
 
+    // Buscar usuários da auth para fallback de nome/email quando não há perfil
+    const userIdsComPerfilFaltando = assinaturas
+      ?.filter(ass => !profiles?.find(p => p.user_id === ass.user_id))
+      .map(ass => ass.user_id) || [];
+
+    const authUserMap: Record<string, { email: string | null; nome: string | null }> = {};
+
+    if (userIdsComPerfilFaltando.length > 0) {
+      logStep("Fetching auth users for missing profiles", { count: userIdsComPerfilFaltando.length });
+      const { data: { users: authUsers }, error: authError } = await supabaseClient.auth.admin.listUsers({ perPage: 1000 });
+      if (!authError && authUsers) {
+        for (const u of authUsers) {
+          if (userIdsComPerfilFaltando.includes(u.id)) {
+            authUserMap[u.id] = {
+              email: u.email || null,
+              nome: u.user_metadata?.nome || u.user_metadata?.full_name || u.user_metadata?.name || null,
+            };
+          }
+        }
+      }
+    }
+
     // Combinar dados - incluindo campos de trial com cartão
     const usuarios = assinaturas?.map(ass => {
       const profile = profiles?.find(p => p.user_id === ass.user_id);
+      const authFallback = authUserMap[ass.user_id];
       return {
         ...ass, // já inclui data_fim, trial_with_card, trial_end_at, trial_canceled
-        nome: profile?.nome || null,
-        email: profile?.email || null,
+        nome: profile?.nome || authFallback?.nome || null,
+        email: profile?.email || authFallback?.email || null,
         celular: profile?.celular || null,
         last_login_at: profile?.last_login_at || null,
         login_count: profile?.login_count || 0,
