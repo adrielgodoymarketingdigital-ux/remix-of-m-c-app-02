@@ -120,8 +120,8 @@ export function ComVerificacaoPlano({
   const isOnboardingRoute = () => {
     // Se trial expirou, NÃO permitir acesso via onboarding - forçar upgrade
     if (trialExpirado) return false;
-    
-    if (onboardingLoading) return true; // Aguardar carregamento
+
+    if (onboardingLoading) return false; // Não bloquear enquanto carrega; ProtectedAppRoute já verificou acesso
     
     // Verificar se onboarding principal está completo baseado no tipo
     if (progress.tipoNegocio === 'assistencia' && progress.stepOsCriada) return false;
@@ -182,7 +182,8 @@ export function ComVerificacaoPlano({
   // =============== LÓGICA PARA DONOS DE LOJA ===============
 
   // Estado de carregamento inicial ou durante tentativas de recarga
-  if (carregando || recarregando || onboardingLoading || verificandoSessao || (!assinatura && tentativasRecarga < 3 && !sessaoExpirada)) {
+  // onboardingLoading é excluído: ProtectedAppRoute já garantiu onboarding completo antes de entrar no app
+  if (carregando || recarregando || verificandoSessao || (!assinatura && tentativasRecarga < 3 && !sessaoExpirada)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-3">
