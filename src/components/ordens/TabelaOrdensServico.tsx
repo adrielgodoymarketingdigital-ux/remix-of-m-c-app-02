@@ -236,13 +236,11 @@ export const TabelaOrdensServico = ({
         <TableBody>
           {ordens.map((ordem) => (
             <TableRow key={ordem.id}>
-              <TableCell className="overflow-hidden truncate px-1.5 py-1.5 font-medium">
+              <TableCell className="px-1.5 py-1.5 font-medium">
                 {(ordem.avarias as any)?.is_avulso ? (
                   <Badge className="bg-violet-600 hover:bg-violet-700 text-white text-[10px]">Avulso</Badge>
                 ) : (
-                  <>
-                    {ordem.numero_os}
-                  </>
+                  <span className="block truncate">{ordem.numero_os}</span>
                 )}
                 {(ordem as any).is_teste && (
                   <Badge variant="outline" className="ml-2 text-[10px] bg-amber-100 text-amber-800 border-amber-300">Teste</Badge>

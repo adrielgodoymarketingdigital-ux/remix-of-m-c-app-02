@@ -85,12 +85,13 @@ export function useOnboardingObrigatorio() {
         if (onboardingData.primeiroClienteId) currentStep = 5;
         if (onboardingData.onboardingCompleted) currentStep = 7;
 
-        setProgress({
-          currentStep,
+        // Nunca regredir o step — preserva navegação local (ex: step 3 aberto pelo usuário)
+        setProgress(prev => ({
+          currentStep: Math.max(currentStep, prev.currentStep),
           totalSteps: 6,
-          percentComplete: Math.min(100, ((Math.min(currentStep, 6) - 1) / 6) * 100),
+          percentComplete: Math.min(100, ((Math.min(Math.max(currentStep, prev.currentStep), 6) - 1) / 6) * 100),
           data: onboardingData,
-        });
+        }));
       }
     } catch (error) {
       console.error("Error loading onboarding progress:", error);
@@ -112,11 +113,11 @@ export function useOnboardingObrigatorio() {
 
       const { error } = await supabase
         .from("user_onboarding")
-        .update({
+        .upsert({
+          user_id: session.user.id,
           objetivo_onboarding: objetivo,
           updated_at: new Date().toISOString(),
-        } as any)
-        .eq("user_id", session.user.id);
+        } as any, { onConflict: "user_id" });
 
       if (error) throw error;
 
@@ -209,7 +210,8 @@ export function useOnboardingObrigatorio() {
       // 5. Atualizar onboarding
       const { error } = await supabase
         .from("user_onboarding")
-        .update({
+        .upsert({
+          user_id: session.user.id,
           primeiro_cliente_id: cliente.id,
           step_cliente_cadastrado: true,
           step_cliente_cadastrado_at: new Date().toISOString(),
@@ -218,8 +220,7 @@ export function useOnboardingObrigatorio() {
           step_os_criada: true,
           step_os_criada_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        } as any)
-        .eq("user_id", session.user.id);
+        } as any, { onConflict: "user_id" });
 
       if (error) throw error;
 
@@ -283,12 +284,12 @@ export function useOnboardingObrigatorio() {
 
       const { error } = await supabase
         .from("user_onboarding")
-        .update({
+        .upsert({
+          user_id: session.user.id,
           onboarding_obrigatorio_completed: true,
           onboarding_obrigatorio_completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        } as any)
-        .eq("user_id", session.user.id);
+        } as any, { onConflict: "user_id" });
 
       if (error) throw error;
 
