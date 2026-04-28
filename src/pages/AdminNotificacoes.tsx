@@ -26,7 +26,6 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { PreferenciasNotificacaoPush } from "@/components/configuracoes/PreferenciasNotificacaoPush";
 
 const tipoIcone = {
   novo_trial: UserPlus,
@@ -223,8 +222,6 @@ export default function AdminNotificacoes() {
             <NotificacoesAdmin />
           </div>
 
-          {/* Preferências de Notificação Push */}
-          <PreferenciasNotificacaoPush />
 
             {/* Stats Cards */}
             <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">

@@ -7,7 +7,6 @@ import { SeletorTema } from "@/components/configuracoes/SeletorTema";
 import { PersonalizacaoCores } from "@/components/configuracoes/PersonalizacaoCores";
 import { NotificationSettings } from "@/components/pwa/NotificationSettings";
 import { ConfiguracaoNumeracaoOS } from "@/components/configuracoes/ConfiguracaoNumeracaoOS";
-import { PreferenciasNotificacaoPush } from "@/components/configuracoes/PreferenciasNotificacaoPush";
 
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useToast } from "@/hooks/use-toast";
@@ -151,7 +150,6 @@ export default function Configuracoes() {
 
             <TabsContent value="notificacoes" className="space-y-4 mt-4 sm:mt-6">
               <NotificationSettings />
-              <PreferenciasNotificacaoPush />
             </TabsContent>
 
             <TabsContent value="preview" className="space-y-4 mt-4 sm:mt-6">
