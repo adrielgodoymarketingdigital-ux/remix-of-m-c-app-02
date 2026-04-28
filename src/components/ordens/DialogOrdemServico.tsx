@@ -630,7 +630,7 @@ export const DialogOrdemServico = ({
       const total = Math.max(0, subtotal - formData.desconto);
 
       // Adicionar dados de pagamento ao avarias
-      if (subtotal > 0 || formData.formaPagamento) {
+      if (subtotal > 0 || formData.formaPagamento || formData.desconto > 0) {
         avariasData.dados_pagamento = {
           forma: (formData.formaPagamento as any) || undefined,
           parcelas: formData.numeroParcelas,
