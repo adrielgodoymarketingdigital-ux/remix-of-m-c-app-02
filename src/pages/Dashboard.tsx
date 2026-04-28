@@ -539,6 +539,13 @@ const Dashboard = () => {
 
       {!dashboardBloqueado && (
         <>
+          {/* Cotação do Dólar */}
+          <div className="mb-6">
+            <div className="w-full sm:max-w-sm">
+              <CardCotacaoDolar />
+            </div>
+          </div>
+
           {/* Card de Aniversariantes do Mês (Plano Profissional) */}
           {!loadingClientes && (
             <div className="mb-4">
@@ -604,7 +611,7 @@ const Dashboard = () => {
           </Card>
 
           {/* Cards Financeiros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
             <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-primary">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -681,7 +688,6 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <CardCotacaoDolar />
           </div>
 
           {/* Métricas */}
