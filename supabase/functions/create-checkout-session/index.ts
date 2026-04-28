@@ -166,12 +166,11 @@ serve(async (req) => {
       );
       if (samePriceSub) {
         logStep("ℹ️ Usuário já está neste plano");
-        return new Response(JSON.stringify({ 
-          error: "Você já está neste plano.",
-          alreadySubscribed: true 
+        return new Response(JSON.stringify({
+          alreadySubscribed: true
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
+          status: 200,
         });
       }
 

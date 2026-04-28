@@ -72,19 +72,18 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } =
-      await supabaseClient.auth.getClaims(token);
+    const { data: userData, error: userError } =
+      await supabaseClient.auth.getUser();
 
-    if (claimsError || !claimsData?.claims) {
+    if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub as string;
-    const userEmail = claimsData.claims.email as string;
+    const userId = userData.user.id as string;
+    const userEmail = userData.user.email as string;
     if (!userId || !userEmail) throw new Error("Usuário não autenticado.");
     log("Usuário autenticado", { userId });
 
