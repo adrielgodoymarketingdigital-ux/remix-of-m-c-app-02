@@ -28,7 +28,7 @@ async function enviarPushOneSignal(titulo: string, mensagem: string): Promise<vo
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Basic ${restApiKey}`,
+      "Authorization": `Key ${restApiKey}`,
     },
     body: JSON.stringify({
       app_id: appId,
