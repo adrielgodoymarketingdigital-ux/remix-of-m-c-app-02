@@ -20,15 +20,15 @@ async function enviarPushOneSignal(titulo: string, mensagem: string): Promise<vo
   const restApiKey = Deno.env.get("ONESIGNAL_REST_API_KEY");
 
   if (!appId || !restApiKey) {
-    log("⚠️ ONESIGNAL_APP_ID ou ONESIGNAL_REST_API_KEY não configurados");
+    log("⚠️ Credenciais não configuradas");
     return;
   }
 
-  const res = await fetch("https://onesignal.com/api/v1/notifications", {
+  const res = await fetch("https://api.onesignal.com/notifications", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${restApiKey}`,
+      "Authorization": `Key ${restApiKey}`,
     },
     body: JSON.stringify({
       app_id: appId,
