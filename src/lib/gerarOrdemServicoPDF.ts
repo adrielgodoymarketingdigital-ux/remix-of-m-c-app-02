@@ -619,7 +619,9 @@ export async function gerarOrdemServicoPDF(
     }));
   }
   const produtosUtilizados = avariasData?.produtos_utilizados || [];
-  
+  const desconto = avariasData?.dados_pagamento?.desconto || 0;
+  const subtotalPagamento = avariasData?.dados_pagamento?.subtotal ?? (desconto > 0 ? (ordem.total || 0) + desconto : undefined);
+
   if (servicosRealizados.length > 0 || produtosUtilizados.length > 0 || ordem.total) {
     verificarNovaPagina(40);
     doc.setFontSize(11);
@@ -662,8 +664,24 @@ export async function gerarOrdemServicoPDF(
       yPos += 2;
     }
 
-    // Total
+    // Desconto e Total
     yPos += 3;
+    doc.setFontSize(9);
+
+    if (desconto > 0 && subtotalPagamento !== undefined) {
+      doc.setFont('helvetica', 'normal');
+      doc.text('Subtotal:', margemEsquerda, yPos);
+      doc.text(formatarMoeda(subtotalPagamento), margemDireita, yPos, { align: 'right' });
+      yPos += 5;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(180, 0, 0);
+      doc.text('Desconto:', margemEsquerda, yPos);
+      doc.text(`- ${formatarMoeda(desconto)}`, margemDireita, yPos, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      yPos += 5;
+    }
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.text('TOTAL:', margemEsquerda, yPos);
