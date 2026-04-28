@@ -42,29 +42,33 @@ export function PagamentoDuplo({
   onPagamentoDuploChange,
 }: PagamentoDuploProps) {
   const [ativo, setAtivo] = useState(false);
-  const [valorPrimeira, setValorPrimeira] = useState(valorTotal);
+  const [valorPrimeiraStr, setValorPrimeiraStr] = useState<string>("");
   const [segundaForma, setSegundaForma] = useState("");
   const [dataPrevistaSegunda, setDataPrevistaSegunda] = useState("");
 
-  const valorSegunda = Math.max(0, valorTotal - valorPrimeira);
   const hoje = new Date().toISOString().split("T")[0];
 
+  // Inicializa o campo quando ativa ou quando o total muda (enquanto inativo)
+  useEffect(() => {
+    if (ativo) {
+      setValorPrimeiraStr(valorTotal.toFixed(2));
+    }
+  }, [ativo, valorTotal]);
+
+  // Reset ao desativar
   useEffect(() => {
     if (!ativo) {
-      setValorPrimeira(valorTotal);
+      setValorPrimeiraStr("");
       setSegundaForma("");
       setDataPrevistaSegunda("");
       onPagamentoDuploChange({ ativo: false, valorPrimeira: valorTotal, segundaForma: "", valorSegunda: 0, dataPrevistaSegunda: "" });
     }
-  }, [ativo, valorTotal]);
-
-  useEffect(() => {
-    if (ativo) {
-      onPagamentoDuploChange({ ativo, valorPrimeira, segundaForma, valorSegunda, dataPrevistaSegunda });
-    }
-  }, [ativo, valorPrimeira, segundaForma, valorSegunda, dataPrevistaSegunda]);
+  }, [ativo]);
 
   const formasDisponiveis = FORMAS_DISPONIVEIS.filter((f) => f !== formaPagamento);
+
+  const valorPrimeiraNum = parseFloat(valorPrimeiraStr) || 0;
+  const valorSegundaCalculado = Math.max(0, valorTotal - valorPrimeiraNum);
 
   return (
     <div className="space-y-3 pt-2 border-t">
@@ -93,19 +97,37 @@ export function PagamentoDuplo({
               <Input
                 id="valor-primeira"
                 type="number"
-                min={0.01}
+                min="0.01"
                 max={valorTotal}
-                step={0.01}
-                value={valorPrimeira}
+                step="0.01"
+                value={valorPrimeiraStr}
                 onChange={(e) => {
-                  const v = Math.min(valorTotal, Math.max(0, Number(e.target.value) || 0));
-                  setValorPrimeira(v);
+                  setValorPrimeiraStr(e.target.value);
+                  const num = parseFloat(e.target.value);
+                  if (!isNaN(num) && num > 0 && num < valorTotal) {
+                    const segunda = valorTotal - num;
+                    onPagamentoDuploChange({
+                      ativo: true,
+                      valorPrimeira: num,
+                      segundaForma,
+                      valorSegunda: segunda,
+                      dataPrevistaSegunda,
+                    });
+                  }
                 }}
-                className="h-8 text-right"
+                onBlur={(e) => {
+                  const num = parseFloat(e.target.value);
+                  if (isNaN(num) || num <= 0) {
+                    setValorPrimeiraStr("0.01");
+                  } else if (num >= valorTotal) {
+                    setValorPrimeiraStr((valorTotal - 0.01).toFixed(2));
+                  }
+                }}
+                className="w-32 h-8 text-right"
               />
             </div>
             <p className="text-xs text-muted-foreground text-right">
-              Restante: <span className="font-medium text-foreground">{formatCurrency(valorSegunda)}</span>
+              Restante: <span className="font-medium text-foreground">{formatCurrency(valorSegundaCalculado)}</span>
             </p>
           </div>
 
@@ -144,10 +166,10 @@ export function PagamentoDuplo({
 
           {segundaForma && (
             <p className="text-xs text-center bg-muted rounded px-2 py-1.5">
-              <span className="font-medium">{formatCurrency(valorPrimeira)}</span>
+              <span className="font-medium">{formatCurrency(valorPrimeiraNum)}</span>
               {" em "}{LABELS_FORMA[formaPagamento] ?? formaPagamento}
               {" + "}
-              <span className="font-medium">{formatCurrency(valorSegunda)}</span>
+              <span className="font-medium">{formatCurrency(valorSegundaCalculado)}</span>
               {" em "}{LABELS_FORMA[segundaForma]}
               {" = "}
               <span className="font-semibold">{formatCurrency(valorTotal)}</span>
