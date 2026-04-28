@@ -1,6 +1,14 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import OneSignal from "react-onesignal";
+
+OneSignal.init({
+  appId: "99d55b78-2fbb-4594-bfff-a5bfa5bf8e8f",
+  allowLocalhostAsSecureOrigin: true,
+  notifyButton: { enable: false },
+  serviceWorkerParam: { scope: "/push/onesignal/" },
+});
 
 // Tracking é inicializado no index.html para capturar parâmetros mais cedo
 // Apenas importamos para expor a função global

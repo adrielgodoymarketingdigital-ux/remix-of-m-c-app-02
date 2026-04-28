@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useNotificacoes } from "@/hooks/useNotificacoes";
 import { usePWA } from "@/hooks/usePWA";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,8 @@ const STORAGE_KEY = "mec_notif_banner_dismissed";
 export function BannerAtivarNotificacoes() {
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(STORAGE_KEY) === "true");
   const [hasSubscription, setHasSubscription] = useState<boolean | null>(null);
-  const { isSupported, permission, isSubscribed, isLoading, requestPermissionAndSubscribe } = usePushNotifications();
+  const { isSupported, permission, isSubscribed, isLoading } = usePushNotifications();
+  const { solicitarPermissao, notificacaoAtiva } = useNotificacoes();
   const { isIOS, isInstalled } = usePWA();
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function BannerAtivarNotificacoes() {
   };
 
   // Don't show if already subscribed, dismissed, or still loading
-  if (hasSubscription === null || hasSubscription || isSubscribed || dismissed) return null;
+  if (hasSubscription === null || hasSubscription || isSubscribed || notificacaoAtiva || dismissed) return null;
 
   // iOS not installed as PWA - show install instructions
   if (isIOS && !isInstalled) {
@@ -89,7 +91,7 @@ export function BannerAtivarNotificacoes() {
           size="sm"
           variant="default"
           disabled={isLoading}
-          onClick={() => requestPermissionAndSubscribe()}
+          onClick={() => solicitarPermissao()}
         >
           <Bell className="h-3 w-3 mr-1" />
           {isLoading ? "Ativando..." : "Ativar Notificações"}
