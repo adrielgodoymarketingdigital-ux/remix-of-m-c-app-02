@@ -28,18 +28,18 @@ async function enviarPushOneSignal(titulo: string, mensagem: string): Promise<vo
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Key ${restApiKey}`,
+      "Authorization": `Bearer ${restApiKey}`,
     },
     body: JSON.stringify({
       app_id: appId,
-      included_segments: ["Subscribed Users"],
+      included_segments: ["All"],
       headings: { en: titulo, pt: titulo },
       contents: { en: mensagem, pt: mensagem },
     }),
   });
 
   const body = await res.text();
-  log("OneSignal respondeu", { status: res.status, body: body.substring(0, 200) });
+  log("OneSignal respondeu", { status: res.status, body: body.substring(0, 500) });
 }
 
 serve(async (req) => {
