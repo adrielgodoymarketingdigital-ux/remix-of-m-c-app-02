@@ -41,7 +41,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         withRetry(async () => {
           const r = await supabase
             .from("vendas")
-            .select("id, data, total, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_id_fkey(nome), produtos(nome), dispositivos!vendas_dispositivo_id_fkey(marca, modelo), pecas(nome)")
+            .select("id, data, total, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_fkey(nome), produtos(nome), dispositivos(marca, modelo), pecas(nome)")
             .eq("user_id", user.id)
             .eq("forma_pagamento", "a_receber")
             .eq("cancelada", false);

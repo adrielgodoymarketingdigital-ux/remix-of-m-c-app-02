@@ -316,8 +316,8 @@ export function DialogReimpressaoRecibo({
   const descontoManual = Number((venda as any).valor_desconto_manual || 0);
   const descontoCupom = Number((venda as any).valor_desconto_cupom || 0);
   const totalDescontos = descontoManual + descontoCupom;
-  const totalLiquido = venda.total - totalDescontos;
-  const valorUnitario = venda.total / venda.quantidade;
+  const totalLiquido = Number(venda.total) - totalDescontos;
+  const valorUnitario = Number(venda.total) / venda.quantidade;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

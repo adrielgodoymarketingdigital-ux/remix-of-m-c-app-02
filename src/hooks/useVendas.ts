@@ -15,7 +15,7 @@ export const useVendas = () => {
   const carregarVendas = async (dataInicio?: string, dataFim?: string) => {
     try {
       setLoading(true);
-      console.log("🔍 Carregando vendas...", { dataInicio, dataFim });
+
 
       const {
         data: { session },
@@ -28,10 +28,10 @@ export const useVendas = () => {
         .from("vendas")
         .select(`
           *,
-          clientes!vendas_cliente_id_fkey (nome, telefone),
-          dispositivos!vendas_dispositivo_id_fkey (tipo, marca, modelo),
-          produtos!vendas_produto_id_fkey (nome, sku),
-          pecas!vendas_peca_id_fkey (nome)
+          clientes!vendas_cliente_fkey (nome, telefone),
+          dispositivos (tipo, marca, modelo),
+          produtos (nome, sku),
+          pecas (nome)
         `)
         .eq("user_id", user.id)
         .order("data", { ascending: false });
@@ -56,7 +56,7 @@ export const useVendas = () => {
         .from("ordens_servico")
         .select(`
           *,
-          clientes!ordens_servico_cliente_id_fkey (nome, telefone),
+          clientes!ordens_servico_cliente_fkey (nome, telefone),
           servicos (nome)
         `)
         .eq("user_id", user.id)
@@ -88,7 +88,17 @@ export const useVendas = () => {
       let ordensData: any[] = [];
 
       if (vendasResult.status === "fulfilled") {
-        vendasData = vendasResult.value.data || [];
+        const rawVendas = vendasResult.value.data || [];
+        vendasData = rawVendas.map((v: any) => ({
+          ...v,
+          total: Number(v.total || 0),
+          quantidade: Number(v.quantidade || 1),
+          custo_unitario: Number(v.custo_unitario || 0),
+          valor_desconto_manual: Number(v.valor_desconto_manual || 0),
+          valor_desconto_cupom: Number(v.valor_desconto_cupom || 0),
+          parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
+          total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
+        }));
       } else {
         console.error("[useVendas] Vendas query failed after retries:", vendasResult.reason);
       }
@@ -120,7 +130,7 @@ export const useVendas = () => {
           produto_id: null,
           peca_id: null,
           quantidade: 1,
-          total: ordem.total || 0,
+          total: Number(ordem.total || 0),
           custo_unitario: custoTotal,
           forma_pagamento: ordem.forma_pagamento || "dinheiro",
           user_id: ordem.user_id,
@@ -136,26 +146,23 @@ export const useVendas = () => {
         };
       });
 
-      console.log("🔄 Ordens convertidas para vendas:", ordensComoVendas.length);
-
       // Combinar vendas e ordens de serviço
       const todasAsVendas = [...vendasData, ...ordensComoVendas];
       todasAsVendas.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
-      console.log("📊 Total de vendas (vendas + serviços):", todasAsVendas.length);
       setVendas(todasAsVendas);
 
       // Se houve filtro de data, carregar também todas as vendas para o dashboard de recebíveis
       if (dataInicio || dataFim) {
         const { data: allVendasData } = await supabase
           .from("vendas")
-          .select(`*, clientes!vendas_cliente_id_fkey (nome, telefone), dispositivos!vendas_dispositivo_id_fkey (tipo, marca, modelo), produtos!vendas_produto_id_fkey (nome, sku), pecas!vendas_peca_id_fkey (nome)`)
+          .select(`*, clientes!vendas_cliente_fkey (nome, telefone), dispositivos (tipo, marca, modelo), produtos (nome, sku), pecas (nome)`)
           .eq("user_id", user.id)
           .order("data", { ascending: false });
 
         const { data: allOrdensData } = await supabase
           .from("ordens_servico")
-          .select(`*, clientes!ordens_servico_cliente_id_fkey (nome, telefone), servicos (nome)`)
+          .select(`*, clientes!ordens_servico_cliente_fkey (nome, telefone), servicos (nome)`)
           .eq("user_id", user.id)
           .is("deleted_at", null)
           .in("status", ["finalizado", "entregue"])
@@ -180,7 +187,7 @@ export const useVendas = () => {
             produto_id: null,
             peca_id: null,
             quantidade: 1,
-            total: ordem.total || 0,
+            total: Number(ordem.total || 0),
             custo_unitario: custoTotal,
             forma_pagamento: ordem.forma_pagamento || "dinheiro",
             user_id: ordem.user_id,
@@ -196,7 +203,17 @@ export const useVendas = () => {
           };
         });
 
-        const allCombined = [...(allVendasData || []), ...allOrdensComoVendas];
+        const allVendasNormalizadas = (allVendasData || []).map((v: any) => ({
+          ...v,
+          total: Number(v.total || 0),
+          quantidade: Number(v.quantidade || 1),
+          custo_unitario: Number(v.custo_unitario || 0),
+          valor_desconto_manual: Number(v.valor_desconto_manual || 0),
+          valor_desconto_cupom: Number(v.valor_desconto_cupom || 0),
+          parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
+          total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
+        }));
+        const allCombined = [...allVendasNormalizadas, ...allOrdensComoVendas];
         allCombined.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
         setTodasVendas(allCombined);
       } else {

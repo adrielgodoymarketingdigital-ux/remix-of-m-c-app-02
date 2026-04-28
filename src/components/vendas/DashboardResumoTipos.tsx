@@ -17,15 +17,16 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
   // Distribuir custo das parcelas e filtrar vendas ativas
   const vendasAtivas = useMemo(() => {
     const distribuidas = distribuirCustoParcelasGrupo(vendas as any[]) as unknown as Venda[];
-    return distribuidas.filter(v => {
+    const filtradas = distribuidas.filter(v => {
       if (v.cancelada) return false;
       const isAReceber = v.forma_pagamento === 'a_receber' || v.forma_pagamento === 'a_prazo';
       if (isAReceber) {
         return v.recebido === true;
       }
-      if (v.parcela_numero && v.parcela_numero > 1) return false;
+      if (v.parcela_numero && Number(v.parcela_numero) > 1) return false;
       return true;
     });
+    return filtradas;
   }, [vendas]);
 
   if (isFuncionario) return null;
@@ -35,8 +36,8 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
     const total = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
     const isAReceber = v.forma_pagamento === 'a_receber' || v.forma_pagamento === 'a_prazo';
     if (isAReceber) return total;
-    if (v.total_parcelas && v.total_parcelas > 1 && v.parcela_numero === 1) {
-      return total * v.total_parcelas;
+    if (v.total_parcelas && Number(v.total_parcelas) > 1 && Number(v.parcela_numero) === 1) {
+      return total * Number(v.total_parcelas);
     }
     return total;
   };

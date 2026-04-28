@@ -54,8 +54,8 @@ export const useRelatorios = () => {
         .select(
           `
           *,
-          dispositivos!vendas_dispositivo_id_fkey (marca, modelo, preco, custo),
-          produtos!vendas_produto_id_fkey (nome, preco, custo)
+          dispositivos (marca, modelo, preco, custo),
+          produtos (nome, preco, custo)
         `
         )
         .eq("user_id", user.id)
@@ -570,8 +570,8 @@ export const useRelatorios = () => {
         .select(
           `
           *,
-          dispositivos!vendas_dispositivo_id_fkey (custo),
-          produtos!vendas_produto_id_fkey (custo)
+          dispositivos (custo),
+          produtos (custo)
         `
         )
         .eq("user_id", user.id)
