@@ -17,9 +17,10 @@ const LABELS_FORMA: Record<string, string> = {
   debito: "Débito",
   credito: "Crédito",
   credito_parcelado: "Crédito Parcelado",
+  a_receber: "A Receber",
 };
 
-const FORMAS_DISPONIVEIS = ["dinheiro", "pix", "debito", "credito", "credito_parcelado"];
+const FORMAS_DISPONIVEIS = ["dinheiro", "pix", "debito", "credito", "credito_parcelado", "a_receber"];
 
 interface PagamentoDuploProps {
   valorTotal: number;
@@ -30,6 +31,7 @@ interface PagamentoDuploProps {
     valorPrimeira: number;
     segundaForma: string;
     valorSegunda: number;
+    dataPrevistaSegunda?: string;
   }) => void;
 }
 
@@ -42,29 +44,29 @@ export function PagamentoDuplo({
   const [ativo, setAtivo] = useState(false);
   const [valorPrimeira, setValorPrimeira] = useState(valorTotal);
   const [segundaForma, setSegundaForma] = useState("");
+  const [dataPrevistaSegunda, setDataPrevistaSegunda] = useState("");
 
   const valorSegunda = Math.max(0, valorTotal - valorPrimeira);
+  const hoje = new Date().toISOString().split("T")[0];
 
-  // Sincronizar valorPrimeira quando o total muda ou o modo é desativado
   useEffect(() => {
     setValorPrimeira(valorTotal);
   }, [valorTotal]);
 
-  // Resetar ao desativar
   useEffect(() => {
     if (!ativo) {
       setValorPrimeira(valorTotal);
       setSegundaForma("");
-      onPagamentoDuploChange({ ativo: false, valorPrimeira: valorTotal, segundaForma: "", valorSegunda: 0 });
+      setDataPrevistaSegunda("");
+      onPagamentoDuploChange({ ativo: false, valorPrimeira: valorTotal, segundaForma: "", valorSegunda: 0, dataPrevistaSegunda: "" });
     }
   }, [ativo]);
 
-  // Notificar mudanças
   useEffect(() => {
     if (ativo) {
-      onPagamentoDuploChange({ ativo, valorPrimeira, segundaForma, valorSegunda });
+      onPagamentoDuploChange({ ativo, valorPrimeira, segundaForma, valorSegunda, dataPrevistaSegunda });
     }
-  }, [ativo, valorPrimeira, segundaForma, valorSegunda]);
+  }, [ativo, valorPrimeira, segundaForma, valorSegunda, dataPrevistaSegunda]);
 
   const formasDisponiveis = FORMAS_DISPONIVEIS.filter((f) => f !== formaPagamento);
 
@@ -115,7 +117,7 @@ export function PagamentoDuplo({
             <Label htmlFor="segunda-forma" className="text-xs text-muted-foreground">
               2ª forma de pagamento
             </Label>
-            <Select value={segundaForma} onValueChange={setSegundaForma}>
+            <Select value={segundaForma} onValueChange={(v) => { setSegundaForma(v); setDataPrevistaSegunda(""); }}>
               <SelectTrigger id="segunda-forma" className="h-8">
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
@@ -128,6 +130,21 @@ export function PagamentoDuplo({
               </SelectContent>
             </Select>
           </div>
+
+          {segundaForma === "a_receber" && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">
+                Data Prevista de Recebimento *
+              </Label>
+              <Input
+                type="date"
+                value={dataPrevistaSegunda}
+                onChange={(e) => setDataPrevistaSegunda(e.target.value)}
+                min={hoje}
+                className="h-8"
+              />
+            </div>
+          )}
 
           {segundaForma && (
             <p className="text-xs text-center bg-muted rounded px-2 py-1.5">
