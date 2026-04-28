@@ -16,9 +16,16 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
-import { ShoppingCart, Plus, Layout, Settings, CreditCard } from "lucide-react";
+import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
+import { DialogAberturaCaixa } from "@/components/pdv/DialogAberturaCaixa";
+import { DialogFechamentoCaixa } from "@/components/pdv/DialogFechamentoCaixa";
+import { DialogHistoricoCaixas } from "@/components/pdv/DialogHistoricoCaixas";
+import { DialogStatusCaixa } from "@/components/pdv/DialogStatusCaixa";
+import { PagamentoDuplo } from "@/components/pdv/PagamentoDuplo";
+import { useCaixa } from "@/hooks/useCaixa";
+import { Caixa } from "@/types/caixa";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +66,15 @@ const PDV = () => {
   const [dialogReciboAberto, setDialogReciboAberto] = useState(false);
   const [dialogLayoutAberto, setDialogLayoutAberto] = useState(false);
   const [dialogTaxasCartaoAberto, setDialogTaxasCartaoAberto] = useState(false);
+  const [dialogAberturaCaixaAberto, setDialogAberturaCaixaAberto] = useState(false);
+  const [dialogFechamentoCaixaAberto, setDialogFechamentoCaixaAberto] = useState(false);
+  const [dialogHistoricoCaixasAberto, setDialogHistoricoCaixasAberto] = useState(false);
+  const [dialogStatusCaixaAberto, setDialogStatusCaixaAberto] = useState(false);
+  const { caixaAtual, caixaEstaAberto, carregarCaixaAtual } = useCaixa();
+  const [pagamentoDuploAtivo, setPagamentoDuploAtivo] = useState(false);
+  const [valorPrimeiraPagamento, setValorPrimeiraPagamento] = useState(0);
+  const [segundaFormaPagamento, setSegundaFormaPagamento] = useState("");
+  const [valorSegundaPagamento, setValorSegundaPagamento] = useState(0);
   const [dadosRecibo, setDadosRecibo] = useState<DadosReciboPDV | null>(null);
   const [bandeiraSelecionada, setBandeiraSelecionada] = useState("");
   const { taxasAtivas, calcularTaxa } = useTaxasCartao();
@@ -386,6 +402,49 @@ const PDV = () => {
         }
       }
 
+      // === REGISTRAR SEGUNDA FORMA DE PAGAMENTO ===
+      if (pagamentoDuploAtivo && segundaFormaPagamento && valorSegundaPagamento > 0) {
+        const proporcaoSegunda = valorSegundaPagamento / calcularTotal();
+
+        for (const item of itensCarrinho) {
+          const valorItemSegunda = item.preco * item.quantidade * proporcaoSegunda;
+          const tipoParaBanco = item.tipo === "dispositivo" ? "dispositivo" : "produto";
+          const dispositivoId = item.tipo === "dispositivo" ? (item.dispositivo_id || item.id) : null;
+          let produtoId: string | null = null;
+          let pecaId: string | null = null;
+          if (item.tipo === "produto") produtoId = item.produto_id || item.id;
+          if (item.tipo === "peca") pecaId = item.peca_id || item.id;
+
+          const vendaSegundaForma = {
+            tipo: tipoParaBanco as "produto" | "dispositivo",
+            cliente_id: clienteId,
+            dispositivo_id: dispositivoId,
+            produto_id: produtoId,
+            peca_id: pecaId,
+            quantidade: item.quantidade,
+            total: valorItemSegunda,
+            custo_unitario: 0,
+            forma_pagamento: segundaFormaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
+            user_id: userIdParaVenda,
+            data_prevista_recebimento: null,
+            recebido: true,
+            grupo_venda: grupoVendaId,
+            valor_desconto_manual: 0,
+            funcionario_id: funcionarioId || null,
+            parcela_numero: null,
+            total_parcelas: null,
+          };
+
+          const { error: errSegunda } = await supabase
+            .from("vendas")
+            .insert([vendaSegundaForma]);
+
+          if (errSegunda) {
+            console.error("[PDV] Erro ao registrar segunda forma de pagamento:", errSegunda);
+          }
+        }
+      }
+
       // === REGISTRAR TAXA DE CARTÃO NO FINANCEIRO ===
       if (bandeiraSelecionada && bandeiraSelecionada !== "nenhuma") {
         const taxaSel = taxasAtivas.find(t => t.id === bandeiraSelecionada);
@@ -440,8 +499,13 @@ const PDV = () => {
           numeroParcelas: formaPagamento === "credito_parcelado" ? numeroParcelas : undefined,
           data: new Date().toISOString(),
           grupoVendaId: grupoVendaId,
+          pagamentoDuplo: pagamentoDuploAtivo && segundaFormaPagamento ? {
+            valorPrimeira: valorPrimeiraPagamento,
+            segundaForma: segundaFormaPagamento,
+            valorSegunda: valorSegundaPagamento,
+          } : undefined,
         };
-        
+
         setDadosRecibo(dadosParaRecibo);
         setDialogReciboAberto(true);
       }
@@ -458,6 +522,10 @@ const PDV = () => {
       setNumParcelasReceber(2);
       setDatasParcelasReceber([]);
       setBandeiraSelecionada("");
+      setPagamentoDuploAtivo(false);
+      setValorPrimeiraPagamento(0);
+      setSegundaFormaPagamento("");
+      setValorSegundaPagamento(0);
     } catch (error: any) {
       console.error("Erro ao finalizar venda:", error);
       toast({
@@ -489,24 +557,64 @@ const PDV = () => {
             <h1 className="text-2xl sm:text-3xl font-semibold mb-1">PDV - Frente de Caixa</h1>
             <p className="text-muted-foreground text-sm sm:text-base">Sistema de ponto de venda</p>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Configurações</span>
+          <div className="flex items-center gap-2">
+            {!caixaEstaAberto ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-green-500 text-green-600 hover:bg-green-50"
+                onClick={() => setDialogAberturaCaixaAberto(true)}
+              >
+                <DollarSign className="h-4 w-4" />
+                <span className="hidden sm:inline">Abrir Caixa</span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setDialogLayoutAberto(true)}>
-                <Layout className="h-4 w-4 mr-2" />
-                Layout de Impressão
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setDialogTaxasCartaoAberto(true)}>
-                <CreditCard className="h-4 w-4 mr-2" />
-                Taxas de Cartão
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-red-500 text-red-600 hover:bg-red-50"
+                onClick={() => setDialogFechamentoCaixaAberto(true)}
+              >
+                <XCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Fechar Caixa</span>
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setDialogStatusCaixaAberto(true)}
+            >
+              <Info className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setDialogHistoricoCaixasAberto(true)}
+            >
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">Histórico</span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Configurações</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setDialogLayoutAberto(true)}>
+                  <Layout className="h-4 w-4 mr-2" />
+                  Layout de Impressão
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDialogTaxasCartaoAberto(true)}>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Taxas de Cartão
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -681,6 +789,20 @@ const PDV = () => {
                   );
                 })()}
                 
+                {formaPagamento && formaPagamento !== "a_receber" && formaPagamento !== "credito_parcelado" && (
+                  <PagamentoDuplo
+                    valorTotal={total}
+                    formaPagamento={formaPagamento}
+                    numeroParcelas={numeroParcelas}
+                    onPagamentoDuploChange={(dados) => {
+                      setPagamentoDuploAtivo(dados.ativo);
+                      setValorPrimeiraPagamento(dados.valorPrimeira);
+                      setSegundaFormaPagamento(dados.segundaForma);
+                      setValorSegundaPagamento(dados.valorSegunda);
+                    }}
+                  />
+                )}
+
                 {formaPagamento === "a_receber" && (
                   <div className="space-y-3">
                     <div className="space-y-2">
@@ -769,11 +891,16 @@ const PDV = () => {
                 )}
               </div>
 
+              {!caixaEstaAberto && (
+                <p className="text-xs text-center text-muted-foreground mb-2">
+                  Abra o caixa para finalizar vendas
+                </p>
+              )}
               <Button
                 className="w-full"
                 size="lg"
                 onClick={finalizarVenda}
-                disabled={finalizando || itensCarrinho.length === 0}
+                disabled={finalizando || itensCarrinho.length === 0 || !caixaEstaAberto}
               >
                 {finalizando ? "Finalizando..." : "Finalizar Venda"}
               </Button>
@@ -804,6 +931,41 @@ const PDV = () => {
           <ConfiguracaoTaxasCartao />
         </DialogContent>
       </Dialog>
+
+      <DialogAberturaCaixa
+        open={dialogAberturaCaixaAberto}
+        onOpenChange={setDialogAberturaCaixaAberto}
+        onCaixaAberto={(_caixa: Caixa) => { setDialogAberturaCaixaAberto(false); carregarCaixaAtual(); }}
+      />
+
+      {caixaAtual && (
+        <DialogFechamentoCaixa
+          open={dialogFechamentoCaixaAberto}
+          onOpenChange={setDialogFechamentoCaixaAberto}
+          caixa={caixaAtual}
+          onCaixaFechado={() => { setDialogFechamentoCaixaAberto(false); carregarCaixaAtual(); }}
+        />
+      )}
+
+      <DialogHistoricoCaixas
+        open={dialogHistoricoCaixasAberto}
+        onOpenChange={setDialogHistoricoCaixasAberto}
+      />
+
+      <DialogStatusCaixa
+        open={dialogStatusCaixaAberto}
+        onOpenChange={setDialogStatusCaixaAberto}
+        caixaAtual={caixaAtual}
+        caixaEstaAberto={caixaEstaAberto}
+        onAbrirCaixa={() => {
+          setDialogStatusCaixaAberto(false);
+          setDialogAberturaCaixaAberto(true);
+        }}
+        onFecharCaixa={() => {
+          setDialogStatusCaixaAberto(false);
+          setDialogFechamentoCaixaAberto(true);
+        }}
+      />
     </AppLayout>
   );
 };

@@ -49,6 +49,8 @@ export interface Venda {
   } | null;
   grupo_venda?: string | null;
   funcionario_id?: string | null;
+  segunda_forma_pagamento?: string | null;
+  valor_segunda_forma?: number | null;
 }
 
 export interface ResumoVendas {

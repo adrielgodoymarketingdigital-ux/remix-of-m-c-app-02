@@ -29,6 +29,11 @@ export interface DadosReciboPDV {
   numeroParcelas?: number;
   data: string;
   grupoVendaId: string;
+  pagamentoDuplo?: {
+    valorPrimeira: number;
+    segundaForma: string;
+    valorSegunda: number;
+  };
 }
 
 interface DialogReciboPDVProps {
@@ -380,7 +385,24 @@ export function DialogReciboPDV({
                 </div>
               )}
 
-              {showFormaPagamento && (
+              {showFormaPagamento && dados.pagamentoDuplo ? (
+                <>
+                  <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
+                    <span>1ª forma:</span>
+                    <span>
+                      {formatCurrency(dados.pagamentoDuplo.valorPrimeira)}{" "}
+                      em {labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
+                    </span>
+                  </div>
+                  <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
+                    <span>2ª forma:</span>
+                    <span>
+                      {formatCurrency(dados.pagamentoDuplo.valorSegunda)}{" "}
+                      em {labelFormaPagamento[dados.pagamentoDuplo.segundaForma] || dados.pagamentoDuplo.segundaForma}
+                    </span>
+                  </div>
+                </>
+              ) : showFormaPagamento && (
                 <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
                   <span>Forma de Pagamento:</span>
                   <span>
@@ -392,7 +414,7 @@ export function DialogReciboPDV({
                 </div>
               )}
 
-              {showFormaPagamento && dados.formaPagamento === "credito_parcelado" && dados.numeroParcelas && (
+              {showFormaPagamento && !dados.pagamentoDuplo && dados.formaPagamento === "credito_parcelado" && dados.numeroParcelas && (
                 <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
                   <span>Valor por Parcela:</span>
                   <span>{formatCurrency(dados.total / dados.numeroParcelas)}</span>
