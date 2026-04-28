@@ -32,7 +32,7 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
   
   // Helper para calcular receita considerando parcelamento
   const calcularReceita = (v: Venda) => {
-    const total = (v.total || 0) - (v.valor_desconto_manual || 0) - (v.valor_desconto_cupom || 0);
+    const total = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
     const isAReceber = v.forma_pagamento === 'a_receber' || v.forma_pagamento === 'a_prazo';
     if (isAReceber) return total;
     if (v.total_parcelas && v.total_parcelas > 1 && v.parcela_numero === 1) {

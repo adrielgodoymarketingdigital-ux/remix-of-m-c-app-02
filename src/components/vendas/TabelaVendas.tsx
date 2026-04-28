@@ -346,7 +346,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`font-semibold ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                        <ValorMonetario valor={venda.total - (venda.valor_desconto_manual || 0) - (venda.valor_desconto_cupom || 0)} tipo="preco" />
+                        <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
                       </span>
                       {renderAcoesVenda(venda)}
                     </div>
@@ -411,7 +411,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                             <span className="text-xs text-muted-foreground">Qtd: {venda.quantidade}</span>
                             <div className="flex items-center gap-2">
                               <span className={`font-medium text-sm ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                                <ValorMonetario valor={venda.total - (venda.valor_desconto_manual || 0) - (venda.valor_desconto_cupom || 0)} tipo="preco" />
+                                <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
                               </span>
                               {renderAcoesVenda(venda)}
                             </div>
@@ -496,7 +496,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     </div>
                   </TableCell>
                   <TableCell className={`text-right font-medium ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                    <ValorMonetario valor={venda.total - (venda.valor_desconto_manual || 0) - (venda.valor_desconto_cupom || 0)} tipo="preco" />
+                    <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
                   </TableCell>
                   <TableCell>{renderStatusBadge(venda)}</TableCell>
                   <TableCell className="text-center">{renderAcoesVenda(venda)}</TableCell>
@@ -572,7 +572,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                           </div>
                         </TableCell>
                         <TableCell className={`text-right font-medium text-sm ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                          <ValorMonetario valor={venda.total - (venda.valor_desconto_manual || 0) - (venda.valor_desconto_cupom || 0)} tipo="preco" />
+                          <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
                         </TableCell>
                         <TableCell>{renderStatusBadge(venda)}</TableCell>
                         <TableCell className="text-center">{renderAcoesVenda(venda)}</TableCell>
