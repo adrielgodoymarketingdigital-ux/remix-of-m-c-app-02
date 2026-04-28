@@ -50,17 +50,13 @@ export function PagamentoDuplo({
   const hoje = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    setValorPrimeira(valorTotal);
-  }, [valorTotal]);
-
-  useEffect(() => {
     if (!ativo) {
       setValorPrimeira(valorTotal);
       setSegundaForma("");
       setDataPrevistaSegunda("");
       onPagamentoDuploChange({ ativo: false, valorPrimeira: valorTotal, segundaForma: "", valorSegunda: 0, dataPrevistaSegunda: "" });
     }
-  }, [ativo]);
+  }, [ativo, valorTotal]);
 
   useEffect(() => {
     if (ativo) {
