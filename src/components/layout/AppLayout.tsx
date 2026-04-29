@@ -40,10 +40,10 @@ export function AppLayout({ children }: AppLayoutProps) {
       <TutorialProvider>
         <SidebarProvider>
           <div className="flex min-h-screen w-full overflow-x-hidden bg-background flex-col">
+            <BannerVencimentoPlano />
             <div className="flex flex-1 min-h-0 overflow-x-hidden">
               <AppSidebar />
               <div className="flex min-w-0 flex-1 flex-col min-h-screen overflow-x-hidden">
-                <BannerVencimentoPlano />
                 <MobileHeader />
                 <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-16 lg:pb-0">
                   <div className="px-4 sm:px-6 pt-3">

@@ -76,7 +76,15 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[hsl(222,47%,6%)]/95 backdrop-blur-lg border-t border-white/5 safe-area-bottom">
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/50"
+        style={{
+          background: "hsl(var(--background) / 0.97)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
         <div className="flex items-stretch justify-around h-16 max-w-lg mx-auto">
           {navItems.map((item) => {
             const active = isActive(item.path);
@@ -86,14 +94,14 @@ export function MobileBottomNav() {
                 to={item.path}
                 className={cn(
                   "flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 relative",
-                  "active:scale-95 touch-manipulation",
-                  active 
-                    ? "text-blue-400" 
-                    : "text-slate-500 hover:text-slate-300"
+                  "active:scale-95 touch-manipulation transition-transform",
+                  active
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-primary" />
                 )}
                 <item.icon className={cn(
                   "h-5 w-5 transition-transform",
