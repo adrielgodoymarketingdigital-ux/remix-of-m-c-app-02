@@ -99,7 +99,7 @@ export function BannerVencimentoPlano() {
   const isUrgente = bannerInfo.tipo === "urgente" || bannerInfo.tipo === "vencido";
 
   return (
-    <div className="sticky top-0 z-50 w-full">
+    <div className="w-full">
       <div className={`relative overflow-hidden border-b ${isUrgente ? "bg-gradient-to-r from-red-950 via-red-900 to-red-950 border-red-700/40" : "bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 border-blue-700/40"}`}>
 
         {/* Linha decorativa superior */}
