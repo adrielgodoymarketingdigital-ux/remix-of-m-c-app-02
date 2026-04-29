@@ -466,9 +466,16 @@ const Dashboard = () => {
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
       <TutorialAutoStart />
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xs font-medium text-muted-foreground">
+          Cotação do dólar em tempo real
+        </span>
+        <CardCotacaoDolar />
+      </div>
+
       {/* Mobile: saudação em cima, filtro + tema embaixo ocupando largura toda */}
       {/* Desktop: saudação à esquerda, data + filtro + tema à direita na mesma linha */}
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-6 sm:mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div data-tutorial="dashboard-title">
           <h1 className="text-2xl sm:text-3xl font-semibold mb-1">
             {nomeUsuario
@@ -479,13 +486,6 @@ const Dashboard = () => {
           <p className="text-muted-foreground text-sm sm:text-base italic">
             {getFraseDiaria()}
           </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            Cotação do dólar em tempo real
-          </span>
-          <CardCotacaoDolar />
         </div>
         <div className="flex flex-col items-stretch sm:items-end gap-2">
           <p className="text-muted-foreground text-sm font-medium sm:text-right">
