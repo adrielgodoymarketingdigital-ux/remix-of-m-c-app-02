@@ -41,6 +41,7 @@ export interface UsuarioAdmin {
   bloqueado_admin_motivo: string | null;
   bloqueado_admin_em: string | null;
   bloqueado_tipo: TipoBloqueio | null;
+  payment_method: string | null;
 }
 
 export interface EstatisticasUsuarios {
@@ -176,7 +177,9 @@ export function useAdminUsuarios() {
           "profissional_mensal", "profissional_anual",
         ];
         const hasPaidPlan = planosPagos.includes(item.plano_tipo);
-        const isPagante = (hasRealStripeSub || hasPaidPlan) && item.status === "active" && !isTrial;
+        const statusAtivo = item.status === "active";
+        const dataFimValida = !item.data_fim || new Date(item.data_fim) > new Date();
+        const isPagante = (hasRealStripeSub || hasPaidPlan) && statusAtivo && !isTrial && dataFimValida;
 
         let diasRestantesTrial: number | null = null;
         let horasRestantesTrial: number | null = null;
@@ -239,6 +242,7 @@ export function useAdminUsuarios() {
           bloqueado_admin_motivo: item.bloqueado_admin_motivo || null,
           bloqueado_admin_em: item.bloqueado_admin_em || null,
           bloqueado_tipo: item.bloqueado_tipo || null,
+          payment_method: item.payment_method || null,
         };
       });
 

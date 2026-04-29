@@ -11,7 +11,7 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[ADMIN-LIST-USERS] ${step}${detailsStr}`);
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -89,46 +89,56 @@ serve(async (req) => {
 
     logStep("Profiles fetched", { count: profiles?.length || 0 });
 
-    // Buscar usuários da auth para fallback de nome/email quando não há perfil
-    const userIdsComPerfilFaltando = assinaturas
-      ?.filter(ass => !profiles?.find(p => p.user_id === ass.user_id))
-      .map(ass => ass.user_id) || [];
+    // Buscar TODOS os usuários da auth
+    const { data: { users: authUsers }, error: authError } = await supabaseClient.auth.admin.listUsers({ perPage: 1000 });
 
-    const authUserMap: Record<string, { email: string | null; nome: string | null }> = {};
-
-    if (userIdsComPerfilFaltando.length > 0) {
-      logStep("Fetching auth users for missing profiles", { count: userIdsComPerfilFaltando.length });
-      const { data: { users: authUsers }, error: authError } = await supabaseClient.auth.admin.listUsers({ perPage: 1000 });
-      if (!authError && authUsers) {
-        for (const u of authUsers) {
-          if (userIdsComPerfilFaltando.includes(u.id)) {
-            authUserMap[u.id] = {
-              email: u.email || null,
-              nome: u.user_metadata?.nome || u.user_metadata?.full_name || u.user_metadata?.name || null,
-            };
-          }
-        }
-      }
+    if (authError) {
+      throw new Error("Erro ao buscar usuários auth: " + authError.message);
     }
 
-    // Combinar dados - incluindo campos de trial com cartão
-    const usuarios = assinaturas?.map(ass => {
-      const profile = profiles?.find(p => p.user_id === ass.user_id);
-      const authFallback = authUserMap[ass.user_id];
-      return {
-        ...ass, // já inclui data_fim, trial_with_card, trial_end_at, trial_canceled
-        nome: profile?.nome || authFallback?.nome || null,
-        email: profile?.email || authFallback?.email || null,
-        celular: profile?.celular || null,
-        last_login_at: profile?.last_login_at || null,
-        login_count: profile?.login_count || 0,
-      };
-    }) || [];
+    logStep("Auth users fetched", { count: authUsers?.length || 0 });
 
-    logStep("Combined data", { 
-      usuariosCount: usuarios.length,
-      sampleFields: usuarios[0] ? Object.keys(usuarios[0]) : []
+    // Combinar dados — todos os auth users, assinatura mais recente, sem duplicatas
+    const usuarios = authUsers.map((authUser: Record<string, unknown> & { id: string; email?: string; last_sign_in_at?: string; created_at?: string; user_metadata?: Record<string, unknown> }) => {
+      const profile = profiles?.find((p: Record<string, unknown>) => p.user_id === authUser.id);
+
+      const assinaturasDoUsuario = assinaturas?.filter((a: Record<string, unknown>) => a.user_id === authUser.id) || [];
+      const assinatura = assinaturasDoUsuario.sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
+        new Date(b.created_at as string).getTime() - new Date(a.created_at as string).getTime()
+      )[0] || null;
+
+      return {
+        id: assinatura?.id || authUser.id,
+        user_id: authUser.id,
+        email: profile?.email || authUser.email || null,
+        nome: profile?.nome ||
+              authUser.user_metadata?.nome ||
+              authUser.user_metadata?.full_name ||
+              authUser.user_metadata?.name || null,
+        celular: profile?.celular || null,
+        last_login_at: profile?.last_login_at || authUser.last_sign_in_at || null,
+        login_count: profile?.login_count || 0,
+        created_at: authUser.created_at || null,
+
+        plano_tipo: assinatura?.plano_tipo || "free",
+        status: assinatura?.status || "active",
+        data_inicio: assinatura?.data_inicio || null,
+        data_fim: assinatura?.data_fim || null,
+        stripe_customer_id: assinatura?.stripe_customer_id || null,
+        stripe_subscription_id: assinatura?.stripe_subscription_id || null,
+        trial_with_card: assinatura?.trial_with_card || false,
+        trial_end_at: assinatura?.trial_end_at || null,
+        trial_canceled: assinatura?.trial_canceled || false,
+        bloqueado_admin: assinatura?.bloqueado_admin || false,
+        bloqueado_admin_motivo: assinatura?.bloqueado_admin_motivo || null,
+        bloqueado_admin_em: assinatura?.bloqueado_admin_em || null,
+        bloqueado_tipo: assinatura?.bloqueado_tipo || null,
+      };
     });
+
+    usuarios.sort((a: { created_at?: string | null }, b: { created_at?: string | null }) =>
+      new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
 
     logStep("Combined data", { usuariosCount: usuarios.length });
 

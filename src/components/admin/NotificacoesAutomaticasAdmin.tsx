@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, ShoppingCart, ClipboardList, Package, CreditCard, ChevronDown, Save, Zap, Eye, Volume2, VolumeX, Smile, Play, UserPlus } from "lucide-react";
+import { Loader2, ShoppingCart, ClipboardList, Package, CreditCard, ChevronDown, Save, Zap, Eye, Volume2, VolumeX, Smile, Play, UserPlus, XCircle } from "lucide-react";
 import { useNotificationRules, type NotificationRule } from "@/hooks/useNotificationRules";
 import { NOTIFICATION_SOUNDS, playNotificationSound } from "@/lib/notification-sounds";
 
@@ -65,6 +65,12 @@ const EVENT_CONFIG: Record<string, {
     icon: <UserPlus className="h-4 w-4" />,
     variables: ["email"],
     mockData: { email: "usuario@exemplo.com" },
+  },
+  SUBSCRIPTION_CANCELED: {
+    label: "Assinatura cancelada automaticamente",
+    icon: <XCircle className="h-4 w-4" />,
+    variables: ["usuarios", "total"],
+    mockData: { usuarios: "João Silva, Maria Souza", total: "2" },
   },
 };
 

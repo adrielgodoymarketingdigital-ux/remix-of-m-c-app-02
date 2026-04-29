@@ -152,7 +152,23 @@ export default function AdminUsuarios() {
   };
 
   // MRR e Projeção
-  const mrrAtual = stripeBalance?.mrr_active_only ?? 0;
+  const TAXA_PIX = 0.0119;
+  const TAXA_CARTAO = 0.0439;
+  const TAXA_PROCESSAMENTO_CARTAO = 0.55;
+
+  const mrrAtual = assinantes.reduce((total, u) => {
+    const valorBruto = PRECOS_MENSAIS[u.plano_tipo] || 0;
+    const metodo = (u as unknown as Record<string, unknown>).payment_method as string || 'pix';
+
+    let valorLiquido: number;
+    if (metodo === 'cartao' || metodo === 'credit_card') {
+      valorLiquido = valorBruto * (1 - TAXA_CARTAO) - TAXA_PROCESSAMENTO_CARTAO;
+    } else {
+      valorLiquido = valorBruto * (1 - TAXA_PIX);
+    }
+
+    return total + Math.max(0, valorLiquido);
+  }, 0);
   const mesesProjecao = parseInt(periodoProjecao);
   const projecaoMRR = mrrAtual * mesesProjecao;
 
@@ -185,6 +201,47 @@ export default function AdminUsuarios() {
     : 0;
 
   const ticketMedio = assinantes.length > 0 ? mrrAtual / assinantes.length : 0;
+
+  // Breakdown por provedor de pagamento
+  const planosPagos = [
+    "basico_mensal", "basico_anual",
+    "intermediario_mensal", "intermediario_anual",
+    "profissional_mensal", "profissional_anual",
+  ];
+
+  const assinantesPagarme = usuariosFiltrados.filter(u =>
+    (u as unknown as Record<string, unknown>).payment_provider === 'pagarme' &&
+    u.status === 'active' &&
+    planosPagos.includes(u.plano_tipo) &&
+    (!u.data_fim || new Date(u.data_fim) > new Date())
+  );
+
+  const tictoVigentes = usuariosFiltrados.filter(u =>
+    (u as unknown as Record<string, unknown>).payment_provider === 'ticto' &&
+    u.status === 'active' &&
+    planosPagos.includes(u.plano_tipo) &&
+    u.data_fim !== null && u.data_fim !== undefined && new Date(u.data_fim) > new Date()
+  );
+
+  const tictoVencidos = usuariosFiltrados.filter(u =>
+    (u as unknown as Record<string, unknown>).payment_provider === 'ticto' &&
+    u.status === 'active' &&
+    planosPagos.includes(u.plano_tipo) &&
+    u.data_fim !== null && u.data_fim !== undefined && new Date(u.data_fim) <= new Date()
+  );
+
+  const assinantesStripe = usuariosFiltrados.filter(u =>
+    (u as unknown as Record<string, unknown>).payment_provider === 'stripe' &&
+    u.status === 'active' &&
+    planosPagos.includes(u.plano_tipo) &&
+    (!u.data_fim || new Date(u.data_fim) > new Date())
+  );
+
+  const totalAssinantesVigentes = assinantesPagarme.length + tictoVigentes.length + assinantesStripe.length;
+
+  const percentualMigrado = (tictoVigentes.length + assinantesPagarme.length) > 0
+    ? Math.round((assinantesPagarme.length / (tictoVigentes.length + assinantesPagarme.length)) * 100)
+    : 0;
 
   // Handlers
   const handleAbrirBloqueio = (usuario: UsuarioAdmin) => {
@@ -297,10 +354,15 @@ export default function AdminUsuarios() {
                     <CreditCard className="h-4 w-4 text-emerald-600" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{assinantes.length}</div>
-                <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>+{novosAssinantesEsteMes} este mês</span>
+                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{totalAssinantesVigentes}</div>
+                <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                  <div className="flex items-center gap-1 text-green-600">
+                    <TrendingUp className="h-3 w-3" />
+                    <span>+{novosAssinantesEsteMes} este mês</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {assinantesPagarme.length} Pagar.me · {tictoVigentes.length} Ticto · {assinantesStripe.length} Stripe
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -390,6 +452,66 @@ export default function AdminUsuarios() {
             </Card>
 
           </div>
+
+          {/* Card Migração Ticto → Pagar.me */}
+          <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20">
+            <CardContent className="p-5">
+
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                    <RefreshCw className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm">Migração Ticto → Pagar.me</h3>
+                    <p className="text-xs text-muted-foreground">{percentualMigrado}% concluída</p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-amber-600 border-amber-400">
+                  {assinantesPagarme.length}/{tictoVigentes.length + assinantesPagarme.length}
+                </Badge>
+              </div>
+
+              {/* Barra de progresso */}
+              <div className="w-full bg-muted rounded-full h-2 mb-4">
+                <div
+                  className="bg-gradient-to-r from-amber-400 to-green-500 h-2 rounded-full transition-all"
+                  style={{ width: `${percentualMigrado}%` }}
+                />
+              </div>
+
+              {/* Grid de provedores */}
+              <div className="grid grid-cols-3 gap-3">
+
+                <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                  <div className="text-xl font-bold text-green-600">{assinantesPagarme.length}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Pagar.me</div>
+                  <div className="text-[10px] text-green-600 font-medium">✓ Migrados</div>
+                </div>
+
+                <div className="text-center p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <div className="text-xl font-bold text-amber-600">{tictoVigentes.length}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Ticto</div>
+                  <div className="text-[10px] text-amber-600 font-medium">⏳ Pendentes</div>
+                </div>
+
+                <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                  <div className="text-xl font-bold text-red-600">{tictoVencidos.length}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Ticto</div>
+                  <div className="text-[10px] text-red-600 font-medium">⚠️ Vencidos</div>
+                </div>
+
+              </div>
+
+              {tictoVencidos.length > 0 && (
+                <p className="text-xs text-red-600 mt-3 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {tictoVencidos.length} assinante(s) do Ticto com plano vencido hoje — precisam renovar no Pagar.me
+                </p>
+              )}
+
+            </CardContent>
+          </Card>
 
           {/* LINHA 3 — Projeção MRR + Conversão */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
