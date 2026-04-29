@@ -10,6 +10,7 @@ import { CardLimitesFree } from "@/components/planos/CardLimitesFree";
 import { TrialBanner } from "@/components/trial/TrialBanner";
 import { FreeTrialTimer } from "@/components/trial/FreeTrialTimer";
 import { BannerVencimentoPlano } from "@/components/layout/BannerVencimentoPlano";
+import { BannerAtivarNotificacoes } from "@/components/layout/BannerAtivarNotificacoes";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { OcultarValoresProvider } from "@/contexts/OcultarValoresContext";
@@ -40,6 +41,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <TutorialProvider>
         <SidebarProvider>
           <div className="flex min-h-screen w-full overflow-x-hidden bg-background flex-col">
+            <BannerAtivarNotificacoes />
             <BannerVencimentoPlano />
             <div className="flex flex-1 min-h-0 overflow-x-hidden">
               <AppSidebar />

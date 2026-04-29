@@ -26,3 +26,11 @@ export function useNotificacoes() {
 
   return { solicitarPermissao, enviarNotificacao, notificacaoAtiva };
 }
+
+export async function inicializarOneSignal(userId: string): Promise<boolean> {
+  if (!OneSignal.Notifications.permission) {
+    await OneSignal.Notifications.requestPermission();
+  }
+  await OneSignal.login(userId);
+  return OneSignal.Notifications.permission;
+}
