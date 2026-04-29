@@ -183,6 +183,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    console.log(`[DISPATCH-EVENT] 🔑 Service key primeiros 20 chars: ${supabaseServiceKey?.substring(0, 20)}`);
     const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
     const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
 
@@ -199,8 +200,9 @@ Deno.serve(async (req) => {
     let userId: string;
 
     if (isSystemCall) {
-      // Chamada de sistema (webhook) — userId vem no payload
-      userId = (payload?.user_id as string) || "system";
+      // Para chamadas de sistema, usar o admin como alvo
+      // O target das regras (admin) determina quem recebe
+      userId = "system";
       console.log(`[DISPATCH-EVENT] 🔑 Chamada de sistema para user: ${userId}`);
     } else {
       // Chamada de usuário autenticado

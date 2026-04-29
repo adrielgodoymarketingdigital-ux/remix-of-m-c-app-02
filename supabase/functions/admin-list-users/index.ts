@@ -133,6 +133,8 @@ serve(async (req: Request) => {
         bloqueado_admin_motivo: assinatura?.bloqueado_admin_motivo || null,
         bloqueado_admin_em: assinatura?.bloqueado_admin_em || null,
         bloqueado_tipo: assinatura?.bloqueado_tipo || null,
+        payment_method: assinatura?.payment_method || null,
+        payment_provider: assinatura?.payment_provider || null,
       };
     });
 

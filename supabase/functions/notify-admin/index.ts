@@ -5,6 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function hydrateTemplate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] || "");
+}
+
 function safeMessageFromError(err: unknown): string {
   if (!err) return "unknown";
   if (typeof err === "string") return err;
@@ -137,31 +141,14 @@ async function sendWebPush(endpoint: string, p256dhKey: string, authKey: string,
   }
 }
 
-function hydrateTemplate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] || "");
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const body = await req.json();
-    console.log("[NOTIFICAR-NOVO-CADASTRO] Payload recebido:", { type: body?.type, table: body?.table });
-
-    if (body?.type !== "INSERT" || body?.table !== "users") {
-      console.log("[NOTIFICAR-NOVO-CADASTRO] Evento ignorado:", { type: body?.type, table: body?.table });
-      return new Response(JSON.stringify({ received: true, ignored: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const email: string = body?.record?.email ?? "";
-    const userId: string = body?.record?.id ?? "";
-
-    console.log("[NOTIFICAR-NOVO-CADASTRO] Novo cadastro:", { email, userId });
+    const { title, body: bodyText, url, event_key, template_vars = {} } = await req.json();
+    console.log("[NOTIFY-ADMIN] Recebido:", { title, event_key });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -170,85 +157,65 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
-    const agora = new Date();
-    const janela = new Date(agora.getTime() - 30000).toISOString();
-
-    const { data: jaEnviou } = await supabaseAdmin
-      .from("admin_notifications")
-      .select("id")
-      .eq("tipo", "novo_cadastro_notif")
-      .gte("created_at", janela)
-      .filter("dados->user_id", "eq", userId)
+    // Buscar preferências de notificação do admin
+    const { data: configAdmin } = await supabaseAdmin
+      .from("configuracoes_admin")
+      .select("preferencias_notificacao")
       .limit(1)
       .maybeSingle();
+    // deno-lint-ignore no-explicit-any
+    const prefs = (configAdmin?.preferencias_notificacao as Record<string, any>) || {};
 
-    if (jaEnviou) {
-      console.log("[NOTIFICAR-NOVO-CADASTRO] Duplicata bloqueada", { userId });
-      return new Response(
-        JSON.stringify({ received: true, ignored: true, reason: "duplicate" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    await supabaseAdmin.from("admin_notifications").insert({
-      tipo: "novo_cadastro_notif",
-      titulo: "Controle de deduplicação",
-      mensagem: `Notificação de cadastro para ${email}`,
-      dados: { user_id: userId, email },
-    });
-
-    const { data: regra } = await supabaseAdmin
-      .from("notification_rules")
-      .select("active, title_template, body_template, url_template")
-      .eq("event_type", "USER_REGISTERED")
-      .maybeSingle();
-
-    if (!regra || !regra.active) {
-      console.log("[NOTIFICAR-NOVO-CADASTRO] Regra USER_REGISTERED inativa ou não encontrada");
-      return new Response(JSON.stringify({ received: true, ignored: true }), {
-        status: 200,
+    // Verificar se evento está desabilitado pelo admin
+    if (event_key && prefs[event_key] === false) {
+      console.log(`[NOTIFY-ADMIN] ⏭️ Evento ${event_key} desabilitado pelo usuário`);
+      return new Response(JSON.stringify({ sent: 0, reason: "disabled_by_user" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const templateVars = { email };
-    const titulo = hydrateTemplate(regra.title_template, templateVars);
-    const corpo = hydrateTemplate(regra.body_template, templateVars);
-    const urlDestino = regra.url_template || "/admin/usuarios";
+    // Usar textos personalizados do banco se existirem
+    const tituloFinal = prefs[`${event_key}_titulo`]
+      ? hydrateTemplate(String(prefs[`${event_key}_titulo`]), template_vars)
+      : title;
+    const corpoFinal = prefs[`${event_key}_corpo`]
+      ? hydrateTemplate(String(prefs[`${event_key}_corpo`]), template_vars)
+      : bodyText;
 
+    // Buscar user_ids com role=admin
     const { data: admins } = await supabaseAdmin
       .from("user_roles")
       .select("user_id")
       .eq("role", "admin");
 
     const adminIds = (admins || []).map((a: { user_id: string }) => a.user_id);
-    console.log("[NOTIFICAR-NOVO-CADASTRO] Admins encontrados:", adminIds);
+    console.log("[NOTIFY-ADMIN] Admins encontrados:", adminIds);
 
     if (adminIds.length === 0) {
-      console.log("[NOTIFICAR-NOVO-CADASTRO] Nenhum admin encontrado");
-      return new Response(JSON.stringify({ received: true, sent: 0, failed: 0 }), {
+      console.log("[NOTIFY-ADMIN] Nenhum admin encontrado");
+      return new Response(JSON.stringify({ sent: 0, failed: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Buscar subscriptions ativas dos admins
     const { data: subscriptions } = await supabaseAdmin
       .from("push_subscriptions")
       .select("id, user_id, endpoint, p256dh_key, auth_key")
       .eq("is_active", true)
       .in("user_id", adminIds);
-
-    console.log("[NOTIFICAR-NOVO-CADASTRO] Subscriptions encontradas:", subscriptions?.length || 0);
+    console.log("[NOTIFY-ADMIN] Subscriptions encontradas:", subscriptions?.length || 0);
 
     let totalSent = 0;
     let totalFailed = 0;
 
     if (vapidPublicKey && vapidPrivateKey && subscriptions && subscriptions.length > 0) {
       const pushPayload = JSON.stringify({
-        title: titulo,
-        body: corpo,
+        title: tituloFinal,
+        body: corpoFinal,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
-        url: urlDestino,
+        url: url || "/",
         data: { notification_id: crypto.randomUUID() },
       });
 
@@ -264,10 +231,10 @@ Deno.serve(async (req) => {
 
         if (result.success) {
           totalSent++;
-          console.log(`[NOTIFICAR-NOVO-CADASTRO] ✅ Push enviado para ${sub.user_id}`);
+          console.log(`[NOTIFY-ADMIN] ✅ Push enviado para ${sub.user_id}`);
         } else {
           totalFailed++;
-          console.log(`[NOTIFICAR-NOVO-CADASTRO] ❌ Falha push ${sub.user_id}: ${result.statusCode} ${(result.error || "").substring(0, 100)}`);
+          console.log(`[NOTIFY-ADMIN] ❌ Falha push ${sub.user_id}: ${result.statusCode} ${(result.error || "").substring(0, 100)}`);
           if (result.statusCode === 410 || result.statusCode === 404) {
             await supabaseAdmin
               .from("push_subscriptions")
@@ -278,27 +245,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Salvar no histórico de notificações
     if (adminIds.length > 0) {
       await supabaseAdmin.from("notifications").insert(
         adminIds.map((uid: string) => ({
           user_id: uid,
-          title: titulo,
-          body: `${corpo} [uid:${userId}]`,
-          url: urlDestino,
-          type: "USER_REGISTERED",
+          title: tituloFinal,
+          body: corpoFinal,
+          url: url || "/",
+          type: "ADMIN_NOTIFICATION",
           sent_at: new Date().toISOString(),
         }))
       );
     }
 
-    console.log(`[NOTIFICAR-NOVO-CADASTRO] ✅ Concluído. Enviados: ${totalSent}, Falhas: ${totalFailed}`);
+    console.log(`[NOTIFY-ADMIN] ✅ Concluído. Enviados: ${totalSent}, Falhas: ${totalFailed}`);
 
     return new Response(
-      JSON.stringify({ received: true, sent: totalSent, failed: totalFailed }),
+      JSON.stringify({ sent: totalSent, failed: totalFailed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("[NOTIFICAR-NOVO-CADASTRO] 💥 Erro:", safeMessageFromError(error));
+    console.error("[NOTIFY-ADMIN] 💥 Erro:", safeMessageFromError(error));
     return new Response(
       JSON.stringify({ error: safeMessageFromError(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

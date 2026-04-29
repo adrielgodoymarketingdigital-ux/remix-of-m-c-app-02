@@ -288,24 +288,26 @@ serve(async (req) => {
     // IMPORTANTE: usar await — fire-and-forget no Deno edge runtime pode ser
     // cancelado quando o handler retorna, perdendo a notificação push.
     try {
-      const dispatchRes = await fetch(`${supabaseUrl}/functions/v1/dispatch-event`, {
+      const dispatchRes = await fetch(`${supabaseUrl}/functions/v1/notify-admin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${serviceKey}`,
         },
         body: JSON.stringify({
-          event_type: "SUBSCRIPTION_CREATED",
-          payload: {
-            user_id: userId,
-            valor: valorBRL,
+          title: "💰 Nova assinatura!",
+          body: `Plano ${planoNomes[planoTipo] || planoTipo} · R$ ${valorBRL} via PIX`,
+          url: "/admin/financeiro",
+          event_key: "nova_assinatura_pix",
+          template_vars: {
             plano_nome: planoNomes[planoTipo] || planoTipo,
-            payment_method: "pix",
+            valor: valorBRL,
+            payment_method: "PIX",
           },
         }),
       });
       const dispatchBody = await dispatchRes.text();
-      log("📣 dispatch-event respondeu", { status: dispatchRes.status, body: dispatchBody.substring(0, 200) });
+      log("📣 notify-admin respondeu (PIX)", { status: dispatchRes.status, body: dispatchBody.substring(0, 200) });
     } catch (err) {
       log("⚠️ Erro ao disparar push admin", { error: String(err) });
     }
@@ -436,26 +438,27 @@ async function handleSubscriptionCharged(
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const dispatchRes = await fetch(`${supabaseUrl}/functions/v1/dispatch-event`, {
+    const dispatchRes = await fetch(`${supabaseUrl}/functions/v1/notify-admin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({
-        event_type: eraNovaVenda ? "SUBSCRIPTION_CREATED" : "SUBSCRIPTION_RENEWED",
-        payload: {
-          user_id: assinatura.user_id,
-          valor: valorBRL,
+        title: "💰 Nova assinatura!",
+        body: `Plano ${planoNomes[assinatura.plano_tipo] || assinatura.plano_tipo} · R$ ${valorBRL} via cartão`,
+        url: "/admin/financeiro",
+        event_key: "nova_assinatura_cartao",
+        template_vars: {
           plano_nome: planoNomes[assinatura.plano_tipo] || assinatura.plano_tipo,
-          payment_method: "cartao",
+          valor: valorBRL,
+          payment_method: "cartão",
         },
       }),
     });
     const dispatchBody = await dispatchRes.text();
-    log("📣 dispatch-event respondeu (cartão)", {
+    log("📣 notify-admin respondeu (cartão)", {
       status: dispatchRes.status,
-      eventType: eraNovaVenda ? "SUBSCRIPTION_CREATED" : "SUBSCRIPTION_RENEWED",
       body: dispatchBody.substring(0, 200),
     });
   } catch (err) {
