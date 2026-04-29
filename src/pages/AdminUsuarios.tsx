@@ -169,6 +169,23 @@ export default function AdminUsuarios() {
   };
   const indicadorConversao = getIndicadorConversao(taxaConversaoSistema);
 
+  // Novos usuários este mês
+  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+  const novosEsteMes = usuariosFiltrados.filter(u =>
+    u.created_at && new Date(u.created_at) >= inicioMes
+  ).length;
+
+  const novosAssinantesEsteMes = assinantes.filter(u =>
+    u.created_at && new Date(u.created_at) >= inicioMes
+  ).length;
+
+  const totalAssinantesHistorico = assinantes.length + assinantesPerdidos.length;
+  const churnRate = totalAssinantesHistorico > 0
+    ? (assinantesPerdidos.length / totalAssinantesHistorico * 100)
+    : 0;
+
+  const ticketMedio = assinantes.length > 0 ? mrrAtual / assinantes.length : 0;
+
   // Handlers
   const handleAbrirBloqueio = (usuario: UsuarioAdmin) => {
     setUsuarioSelecionado(usuario);
@@ -198,190 +215,194 @@ export default function AdminUsuarios() {
   return (
     <AppLayout>
       <main className="flex-1 p-4 md:p-6 overflow-x-hidden overflow-y-auto">
-        <div className="mb-4 md:mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Shield className="h-5 w-5 text-primary" />
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold">Gestão de Usuários</h1>
+
+        {/* HEADER */}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Shield className="h-4 w-4 text-violet-500" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">Gestão de Usuários</h1>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Painel administrativo · {estatisticas.total} usuários cadastrados
+            </p>
           </div>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">Gerenciar usuários do sistema</p>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <NotificacoesAdmin />
+            <Button onClick={() => setDialogWhatsAppAberto(true)} variant="outline" size="sm">
+              <MessageCircle className="h-4 w-4 mr-2" />
+              <span className="hidden md:inline">WhatsApp</span>
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  toast.loading("Sincronizando com Stripe...");
+                  const { data, error } = await supabase.functions.invoke("sync-stripe-subscriptions");
+                  toast.dismiss();
+                  if (error) throw error;
+                  if (data?.error) throw new Error(data.error);
+                  toast.success(`Sincronização concluída: ${data.processed} assinaturas processadas`);
+                  recarregar();
+                  fetchBalance();
+                } catch (err: any) {
+                  toast.dismiss();
+                  toast.error(err.message || "Erro ao sincronizar");
+                }
+              }}
+              variant="outline" size="sm"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              <span className="hidden md:inline">Sync Stripe</span>
+            </Button>
+            <Button onClick={bloquearTrialsExpirados} variant="destructive" size="sm" disabled={bloqueandoUsuario || isLoading}>
+              <ShieldX className="h-4 w-4 mr-2" />
+              <span className="hidden md:inline">Bloquear Trials</span>
+            </Button>
+            <Button onClick={recarregar} variant="outline" size="icon" disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
         </div>
 
-        <div className="space-y-4 md:space-y-6">
-          {/* Action buttons */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <h2 className="text-lg md:text-2xl font-bold">Dashboard</h2>
-            <div className="flex gap-2 flex-wrap">
-              <Button onClick={() => setDialogWhatsAppAberto(true)} variant="outline" size="sm" className="text-xs md:text-sm">
-                <MessageCircle className="h-4 w-4 mr-1" />
-                <span className="hidden md:inline">Mensagens WhatsApp</span>
-                <span className="md:hidden">WhatsApp</span>
-              </Button>
-              <Button 
-                onClick={async () => {
-                  try {
-                    toast.loading("Sincronizando com Stripe...");
-                    const { data, error } = await supabase.functions.invoke("sync-stripe-subscriptions");
-                    toast.dismiss();
-                    if (error) throw error;
-                    if (data?.error) throw new Error(data.error);
-                    toast.success(`Sincronização concluída: ${data.processed} assinaturas processadas`);
-                    recarregar();
-                    fetchBalance();
-                  } catch (err: any) {
-                    toast.dismiss();
-                    toast.error(err.message || "Erro ao sincronizar");
-                  }
-                }}
-                variant="outline" size="sm" className="text-xs md:text-sm"
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                <span className="hidden md:inline">Sincronizar Stripe</span>
-                <span className="md:hidden">Sync</span>
-              </Button>
-              <Button 
-                onClick={bloquearTrialsExpirados} 
-                variant="destructive" size="sm" 
-                disabled={bloqueandoUsuario || isLoading}
-                className="flex-1 md:flex-none text-xs md:text-sm"
-              >
-                <ShieldX className="h-4 w-4 mr-1 md:mr-2" />
-                <span className="hidden md:inline">Bloquear Trials Expirados</span>
-                <span className="md:hidden">Bloquear</span>
-              </Button>
-              <Button onClick={recarregar} variant="outline" size="sm" disabled={isLoading}>
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
+        <div className="space-y-6">
+
+          {/* LINHA 1 — KPIs principais */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+            <Card className="relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-500/5 to-transparent" />
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Cadastrados</span>
+                  <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold">{estatisticas.total}</div>
+                <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>+{novosEsteMes} este mês</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden border-emerald-200 dark:border-emerald-800">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent" />
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Assinantes</span>
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                    <CreditCard className="h-4 w-4 text-emerald-600" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{assinantes.length}</div>
+                <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>+{novosAssinantesEsteMes} este mês</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden border-blue-200 dark:border-blue-800">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent" />
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-400 uppercase tracking-wider">MRR</span>
+                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{formatarMoeda(mrrAtual)}</div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Ticket médio: {formatarMoeda(ticketMedio)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden border-green-200 dark:border-green-800">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent" />
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-green-700 dark:text-green-400 uppercase tracking-wider">Online Agora</span>
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+                  </span>
+                </div>
+                <div className="text-3xl font-bold text-green-600 dark:text-green-400">{onlineCount}</div>
+                <div className="mt-2 text-xs text-muted-foreground">Usando o sistema agora</div>
+              </CardContent>
+            </Card>
+
           </div>
 
-          {/* 7 Cards Superiores */}
-          <div className="grid gap-3 md:gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
-            <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-medium text-green-700 dark:text-green-400">Online Agora</CardTitle>
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                </span>
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg sm:text-2xl font-bold text-green-700 dark:text-green-400 flex items-center gap-1">
-                  <Activity className="h-4 w-4" />
-                  {onlineCount}
+          {/* LINHA 2 — Métricas secundárias */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+            <Card className="border-cyan-200 dark:border-cyan-800 bg-cyan-50/30 dark:bg-cyan-950/10">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center flex-shrink-0">
+                  <UserCheck className="h-5 w-5 text-cyan-600" />
                 </div>
-                <p className="text-[10px] text-green-600/70 dark:text-green-400/70 mt-1">Usando o sistema</p>
+                <div>
+                  <div className="text-2xl font-bold text-cyan-600">{freeAtivos.length}</div>
+                  <div className="text-xs text-muted-foreground">Free Ativos</div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-medium">Cadastrados</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg sm:text-2xl font-bold">{estatisticas.total}</div>
-                <p className="text-[10px] text-muted-foreground mt-1">Todos os usuários</p>
+            <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/10">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center flex-shrink-0">
+                  <UserMinus className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-orange-600">{naoAssinaram.length}</div>
+                  <div className="text-xs text-muted-foreground">Sem Plano</div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Assinantes</CardTitle>
-                <CreditCard className="h-4 w-4 text-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg sm:text-2xl font-bold text-emerald-700 dark:text-emerald-400">{assinantes.length}</div>
-                <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-1">Pagamento em dia</p>
+            <Card className="border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-950/10">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center flex-shrink-0">
+                  <UserX className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-red-600">{assinantesPerdidos.length}</div>
+                  <div className="text-xs text-muted-foreground">Churn: {churnRate.toFixed(1)}%</div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-cyan-200 bg-cyan-50/50 dark:bg-cyan-950/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-medium text-cyan-700 dark:text-cyan-400">Free Ativos</CardTitle>
-                <UserCheck className="h-4 w-4 text-cyan-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg sm:text-2xl font-bold text-cyan-700 dark:text-cyan-400">{freeAtivos.length}</div>
-                <p className="text-[10px] text-cyan-600/70 dark:text-cyan-400/70 mt-1">Últimos 2 dias</p>
+            <Card className="border-violet-200 dark:border-violet-800 bg-violet-50/30 dark:bg-violet-950/10">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center flex-shrink-0">
+                  <Target className="h-5 w-5 text-violet-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-violet-600">{taxaConversaoSistema.toFixed(1)}%</div>
+                  <div className="text-xs text-muted-foreground">Conversão</div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 bg-gray-50/50 dark:bg-gray-950/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-medium text-gray-700 dark:text-gray-400">Free Inativos</CardTitle>
-                <Clock className="h-4 w-4 text-gray-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg sm:text-2xl font-bold text-gray-700 dark:text-gray-400">{freeInativos.length}</div>
-                <p className="text-[10px] text-muted-foreground mt-1">+3 dias sem uso</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-orange-200 bg-orange-50/50 dark:bg-orange-950/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-medium text-orange-700 dark:text-orange-400">Não Assinaram</CardTitle>
-                <UserMinus className="h-4 w-4 text-orange-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg sm:text-2xl font-bold text-orange-700 dark:text-orange-400">{naoAssinaram.length}</div>
-                <p className="text-[10px] text-orange-600/70 dark:text-orange-400/70 mt-1">Sem plano pago</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-medium text-red-700 dark:text-red-400">Perdidos</CardTitle>
-                <UserX className="h-4 w-4 text-red-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg sm:text-2xl font-bold text-red-700 dark:text-red-400">{assinantesPerdidos.length}</div>
-                <p className="text-[10px] text-red-600/70 dark:text-red-400/70 mt-1">Cancelaram plano</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xs font-medium text-amber-700 dark:text-amber-400">Sem Pagar</CardTitle>
-                <Ban className="h-4 w-4 text-amber-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-lg sm:text-2xl font-bold text-amber-700 dark:text-amber-400">{assinantesSemPagar}</div>
-                <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 mt-1">Renovação pendente</p>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Métricas de Receita (MRR) - 2 cards */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-green-50/50 dark:from-emerald-950/20 dark:to-green-950/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-base">
-                  <DollarSign className="h-5 w-5" />
-                  MRR Atual (Stripe)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatarMoeda(mrrAtual)}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {stripeBalance?.active_subscriptions_count ?? 0} assinantes ativos pagando
-                </p>
-              </CardContent>
-            </Card>
+          {/* LINHA 3 — Projeção MRR + Conversão */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-            <Card className="border-blue-200 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400 text-base">
-                    <TrendingUp className="h-5 w-5" />
-                    Projeção de MRR
-                  </CardTitle>
+            <Card className="md:col-span-2 bg-gradient-to-br from-blue-950/20 to-indigo-950/20 border-blue-800/30">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-blue-400" />
+                    <span className="font-medium text-blue-400 text-sm">Projeção de Receita</span>
+                  </div>
                   <Select value={periodoProjecao} onValueChange={setPeriodoProjecao}>
-                    <SelectTrigger className="w-[130px] h-8 text-xs">
+                    <SelectTrigger className="w-28 h-7 text-xs border-blue-800/50">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -392,108 +413,72 @@ export default function AdminUsuarios() {
                     </SelectContent>
                   </Select>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatarMoeda(projecaoMRR)}
+                <div className="flex items-end gap-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Projeção {periodoProjecao}m</div>
+                    <div className="text-3xl font-bold text-blue-400">{formatarMoeda(projecaoMRR)}</div>
+                  </div>
+                  <div className="pb-1 text-muted-foreground text-sm">
+                    = {formatarMoeda(mrrAtual)}/mês × {mesesProjecao}
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatarMoeda(mrrAtual)}/mês × {mesesProjecao} meses
-                </p>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Métricas de Conversão */}
-          <div className="grid gap-4 md:grid-cols-2">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Target className="h-5 w-5 text-primary" />
-                  Conversão do Sistema
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <div className="text-4xl font-bold text-primary">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">Taxa de Conversão</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className={`text-3xl font-bold ${indicadorConversao.cor}`}>
                     {taxaConversaoSistema.toFixed(1)}%
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${indicadorConversao.bg} ${indicadorConversao.cor}`}>
+                  <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${indicadorConversao.bg} ${indicadorConversao.cor}`}>
                     {indicadorConversao.label}
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {assinantes.length} assinantes de {estatisticas.total} cadastrados
-                </p>
-                <div className="mt-3 p-3 rounded-lg bg-muted/30 text-xs text-muted-foreground">
-                  <p className="font-medium mb-1">Benchmark SaaS Freemium:</p>
-                  <p>• Abaixo: &lt;2% | Dentro: 2-5% | Acima: &gt;5%</p>
+                <div className="mt-3 text-xs text-muted-foreground space-y-0.5">
+                  <p>{assinantes.length} assinantes de {estatisticas.total} cadastrados</p>
+                  <p>Benchmark: 2-5% (freemium SaaS)</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Conversão da Landing Page
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Cadastros</span>
-                    <span className="text-lg font-bold">{estatisticas.total}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Assinaram</span>
-                    <span className="text-lg font-bold text-emerald-600">{assinantes.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between border-t pt-2">
-                    <span className="text-sm font-medium">Taxa de assinatura</span>
-                    <span className="text-lg font-bold text-primary">{taxaConversaoSistema.toFixed(1)}%</span>
-                  </div>
-                </div>
-                <div className="mt-3 p-3 rounded-lg bg-muted/30 text-xs text-muted-foreground">
-                  <p className="font-medium mb-1">Benchmark Landing Pages SaaS:</p>
-                  <p>• Taxa cadastro: 2-5% dos visitantes</p>
-                  <p>• Taxa assinatura: 1-3% dos cadastrados</p>
-                  <p className="mt-1 text-[10px]">Conecte analytics para ver visitantes da LP</p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Filtros */}
+          {/* FILTROS */}
           <Card>
-            <CardContent className="pt-4 md:pt-6">
-              <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Buscar</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Nome ou email..." value={busca} onChange={(e) => setBusca(e.target.value)} className="pl-10" />
-                  </div>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou email..."
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Plano</label>
-                  <Select value={filtroPlano} onValueChange={setFiltroPlano}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os planos</SelectItem>
-                      {planosUnicos.map(plano => (
-                        <SelectItem key={plano} value={plano}>
-                          {plano.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={filtroPlano} onValueChange={setFiltroPlano}>
+                  <SelectTrigger className="sm:w-48">
+                    <SelectValue placeholder="Todos os planos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os planos</SelectItem>
+                    {planosUnicos.map(plano => (
+                      <SelectItem key={plano} value={plano}>
+                        {plano.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
 
-          {/* Tabs */}
+          {/* TABS */}
           <Tabs value={abaAtiva} onValueChange={setAbaAtiva}>
             <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
               <TabsList className="grid w-max md:w-full grid-cols-7 min-w-[600px]">
@@ -655,6 +640,7 @@ export default function AdminUsuarios() {
               </Card>
             </TabsContent>
           </Tabs>
+
         </div>
       </main>
 
