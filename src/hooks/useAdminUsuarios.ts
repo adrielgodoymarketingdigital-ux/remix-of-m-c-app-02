@@ -178,7 +178,13 @@ export function useAdminUsuarios() {
         ];
         const hasPaidPlan = planosPagos.includes(item.plano_tipo);
         const statusAtivo = item.status === "active";
-        const dataFimValida = !item.data_fim || new Date(item.data_fim) > new Date();
+        const dataFimValida = !item.data_fim || (() => {
+          try {
+            return new Date(item.data_fim) > new Date();
+          } catch {
+            return true; // Se não conseguir parsear, considerar válido
+          }
+        })();
         const isPagante = (hasRealStripeSub || hasPaidPlan) && statusAtivo && !isTrial && dataFimValida;
 
         let diasRestantesTrial: number | null = null;

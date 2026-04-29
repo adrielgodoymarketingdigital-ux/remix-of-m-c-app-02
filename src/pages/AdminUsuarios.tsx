@@ -105,7 +105,7 @@ export default function AdminUsuarios() {
   const tresDiasAtras = new Date(agora.getTime() - 3 * 24 * 60 * 60 * 1000);
 
   // 1. Assinantes - status active + stripe_subscription_id real
-  const assinantes = usuariosFiltrados.filter(u => u.is_pagante && u.status === "active");
+  const assinantes = usuariosFiltrados.filter(u => u.is_pagante);
   
   // 2. Free Ativos - plano free, logou nos últimos 2 dias
   const freeAtivos = usuariosFiltrados.filter(u => {
