@@ -32,6 +32,9 @@ interface PagamentoDuploProps {
     segundaForma: string;
     valorSegunda: number;
     dataPrevistaSegunda?: string;
+    tipoRecebimentoSegunda?: "a_vista" | "parcelado";
+    numParcelasSegunda?: number;
+    datasParcelasSegunda?: string[];
   }) => void;
 }
 
@@ -45,30 +48,74 @@ export function PagamentoDuplo({
   const [valorPrimeiraStr, setValorPrimeiraStr] = useState<string>("");
   const [segundaForma, setSegundaForma] = useState("");
   const [dataPrevistaSegunda, setDataPrevistaSegunda] = useState("");
+  const [tipoRecebimentoSegunda, setTipoRecebimentoSegunda] = useState<"a_vista" | "parcelado">("a_vista");
+  const [numParcelasSegunda, setNumParcelasSegunda] = useState(2);
+  const [datasParcelasSegunda, setDatasParcelasSegunda] = useState<string[]>([]);
 
   const hoje = new Date().toISOString().split("T")[0];
 
-  // Inicializa o campo quando ativa ou quando o total muda (enquanto inativo)
+  const valorPrimeiraNum = parseFloat(valorPrimeiraStr) || 0;
+  const valorSegundaCalculado = Math.max(0, valorTotal - valorPrimeiraNum);
+
+  const emitirMudanca = (overrides: Partial<{
+    ativoLocal: boolean;
+    valorPrimeira: number;
+    segundaFormaLocal: string;
+    valorSegunda: number;
+    dataPrevista: string;
+    tipoReceb: "a_vista" | "parcelado";
+    numParc: number;
+    datasParc: string[];
+  }> = {}) => {
+    const a = overrides.ativoLocal ?? ativo;
+    const vp = overrides.valorPrimeira ?? valorPrimeiraNum;
+    const sf = overrides.segundaFormaLocal ?? segundaForma;
+    const vs = overrides.valorSegunda ?? valorSegundaCalculado;
+    const dp = overrides.dataPrevista ?? dataPrevistaSegunda;
+    const tr = overrides.tipoReceb ?? tipoRecebimentoSegunda;
+    const np = overrides.numParc ?? numParcelasSegunda;
+    const dps = overrides.datasParc ?? datasParcelasSegunda;
+
+    onPagamentoDuploChange({
+      ativo: a,
+      valorPrimeira: vp,
+      segundaForma: sf,
+      valorSegunda: vs,
+      dataPrevistaSegunda: dp,
+      tipoRecebimentoSegunda: tr,
+      numParcelasSegunda: np,
+      datasParcelasSegunda: dps,
+    });
+  };
+
   useEffect(() => {
     if (ativo) {
       setValorPrimeiraStr(valorTotal.toFixed(2));
     }
   }, [ativo, valorTotal]);
 
-  // Reset ao desativar
   useEffect(() => {
     if (!ativo) {
       setValorPrimeiraStr("");
       setSegundaForma("");
       setDataPrevistaSegunda("");
-      onPagamentoDuploChange({ ativo: false, valorPrimeira: valorTotal, segundaForma: "", valorSegunda: 0, dataPrevistaSegunda: "" });
+      setTipoRecebimentoSegunda("a_vista");
+      setNumParcelasSegunda(2);
+      setDatasParcelasSegunda([]);
+      onPagamentoDuploChange({
+        ativo: false,
+        valorPrimeira: valorTotal,
+        segundaForma: "",
+        valorSegunda: 0,
+        dataPrevistaSegunda: "",
+        tipoRecebimentoSegunda: "a_vista",
+        numParcelasSegunda: 2,
+        datasParcelasSegunda: [],
+      });
     }
   }, [ativo]);
 
   const formasDisponiveis = FORMAS_DISPONIVEIS.filter((f) => f !== formaPagamento);
-
-  const valorPrimeiraNum = parseFloat(valorPrimeiraStr) || 0;
-  const valorSegundaCalculado = Math.max(0, valorTotal - valorPrimeiraNum);
 
   return (
     <div className="space-y-3 pt-2 border-t">
@@ -106,13 +153,7 @@ export function PagamentoDuplo({
                   const num = parseFloat(e.target.value);
                   if (!isNaN(num) && num > 0 && num < valorTotal) {
                     const segunda = valorTotal - num;
-                    onPagamentoDuploChange({
-                      ativo: true,
-                      valorPrimeira: num,
-                      segundaForma,
-                      valorSegunda: segunda,
-                      dataPrevistaSegunda,
-                    });
+                    emitirMudanca({ valorPrimeira: num, valorSegunda: segunda });
                   }
                 }}
                 onBlur={(e) => {
@@ -135,7 +176,23 @@ export function PagamentoDuplo({
             <Label htmlFor="segunda-forma" className="text-xs text-muted-foreground">
               2ª forma de pagamento
             </Label>
-            <Select value={segundaForma} onValueChange={(v) => { setSegundaForma(v); setDataPrevistaSegunda(""); }}>
+            <Select
+              value={segundaForma}
+              onValueChange={(v) => {
+                setSegundaForma(v);
+                setDataPrevistaSegunda("");
+                setTipoRecebimentoSegunda("a_vista");
+                setNumParcelasSegunda(2);
+                setDatasParcelasSegunda([]);
+                emitirMudanca({
+                  segundaFormaLocal: v,
+                  dataPrevista: "",
+                  tipoReceb: "a_vista",
+                  numParc: 2,
+                  datasParc: [],
+                });
+              }}
+            >
               <SelectTrigger id="segunda-forma" className="h-8">
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
@@ -150,17 +207,98 @@ export function PagamentoDuplo({
           </div>
 
           {segundaForma === "a_receber" && (
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">
-                Data Prevista de Recebimento *
-              </Label>
-              <Input
-                type="date"
-                value={dataPrevistaSegunda}
-                onChange={(e) => setDataPrevistaSegunda(e.target.value)}
-                min={hoje}
-                className="h-8"
-              />
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Tipo de Recebimento</Label>
+              <Select
+                value={tipoRecebimentoSegunda}
+                onValueChange={(v) => {
+                  const tipo = v as "a_vista" | "parcelado";
+                  setTipoRecebimentoSegunda(tipo);
+                  if (tipo === "a_vista") {
+                    setDatasParcelasSegunda([]);
+                    emitirMudanca({ tipoReceb: tipo, datasParc: [] });
+                  } else {
+                    const datas = Array.from({ length: numParcelasSegunda }, () => "");
+                    setDatasParcelasSegunda(datas);
+                    emitirMudanca({ tipoReceb: tipo, datasParc: datas });
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="a_vista">1x (À Vista)</SelectItem>
+                  <SelectItem value="parcelado">Parcelado</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {tipoRecebimentoSegunda === "a_vista" && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Data Prevista de Recebimento *
+                  </Label>
+                  <Input
+                    type="date"
+                    value={dataPrevistaSegunda}
+                    onChange={(e) => {
+                      setDataPrevistaSegunda(e.target.value);
+                      emitirMudanca({ dataPrevista: e.target.value });
+                    }}
+                    min={hoje}
+                    className="h-8"
+                  />
+                </div>
+              )}
+
+              {tipoRecebimentoSegunda === "parcelado" && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Número de Parcelas</Label>
+                  <Select
+                    value={String(numParcelasSegunda)}
+                    onValueChange={(v) => {
+                      const num = Number(v);
+                      setNumParcelasSegunda(num);
+                      const datas = Array.from({ length: num }, (_, i) => datasParcelasSegunda[i] || "");
+                      setDatasParcelasSegunda(datas);
+                      emitirMudanca({ numParc: num, datasParc: datas });
+                    }}
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}x de {formatCurrency(valorSegundaCalculado / n)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {Array.from({ length: numParcelasSegunda }).map((_, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-16 shrink-0">
+                          {idx + 1}ª parcela
+                        </span>
+                        <Input
+                          type="date"
+                          min={hoje}
+                          value={datasParcelasSegunda[idx] || ""}
+                          onChange={(e) => {
+                            const novasDatas = [...datasParcelasSegunda];
+                            novasDatas[idx] = e.target.value;
+                            setDatasParcelasSegunda(novasDatas);
+                            emitirMudanca({ datasParc: novasDatas });
+                          }}
+                          className="h-8 flex-1"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

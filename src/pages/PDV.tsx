@@ -76,6 +76,9 @@ const PDV = () => {
   const [segundaFormaPagamento, setSegundaFormaPagamento] = useState("");
   const [valorSegundaPagamento, setValorSegundaPagamento] = useState(0);
   const [dataPrevistaSegundaForma, setDataPrevistaSegundaForma] = useState("");
+  const [tipoRecebimentoSegunda, setTipoRecebimentoSegunda] = useState<"a_vista" | "parcelado">("a_vista");
+  const [numParcelasSegunda, setNumParcelasSegunda] = useState(2);
+  const [datasParcelasSegunda, setDatasParcelasSegunda] = useState<string[]>([]);
   const [dadosRecibo, setDadosRecibo] = useState<DadosReciboPDV | null>(null);
   const [bandeiraSelecionada, setBandeiraSelecionada] = useState("");
   const { taxasAtivas, calcularTaxa } = useTaxasCartao();
@@ -214,13 +217,25 @@ const PDV = () => {
       return false;
     }
 
-    if (pagamentoDuploAtivo && segundaFormaPagamento === "a_receber" && !dataPrevistaSegundaForma) {
-      toast({
-        title: "Erro",
-        description: "Informe a data prevista de recebimento da 2ª forma",
-        variant: "destructive",
-      });
-      return false;
+    if (pagamentoDuploAtivo && segundaFormaPagamento === "a_receber") {
+      if (tipoRecebimentoSegunda === "a_vista" && !dataPrevistaSegundaForma) {
+        toast({
+          title: "Erro",
+          description: "Informe a data de recebimento da 2ª forma",
+          variant: "destructive",
+        });
+        return false;
+      }
+      if (tipoRecebimentoSegunda === "parcelado") {
+        if (datasParcelasSegunda.some(d => !d) || datasParcelasSegunda.length < numParcelasSegunda) {
+          toast({
+            title: "Erro",
+            description: "Informe todas as datas das parcelas da 2ª forma",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
     }
 
     if (formaPagamento === "a_receber") {
@@ -415,9 +430,10 @@ const PDV = () => {
       // === REGISTRAR SEGUNDA FORMA DE PAGAMENTO ===
       if (pagamentoDuploAtivo && segundaFormaPagamento && valorSegundaPagamento > 0) {
         const proporcaoSegunda = valorSegundaPagamento / calcularTotal();
+        const isParceladoSegunda = segundaFormaPagamento === "a_receber" && tipoRecebimentoSegunda === "parcelado";
+        const totalParcelasSegunda = isParceladoSegunda ? numParcelasSegunda : 1;
 
         for (const item of itensCarrinho) {
-          const valorItemSegunda = item.preco * item.quantidade * proporcaoSegunda;
           const tipoParaBanco = item.tipo === "dispositivo" ? "dispositivo" : "produto";
           const dispositivoId = item.tipo === "dispositivo" ? (item.dispositivo_id || item.id) : null;
           let produtoId: string | null = null;
@@ -425,49 +441,63 @@ const PDV = () => {
           if (item.tipo === "produto") produtoId = item.produto_id || item.id;
           if (item.tipo === "peca") pecaId = item.peca_id || item.id;
 
-          const vendaSegundaForma = {
-            tipo: tipoParaBanco as "produto" | "dispositivo",
-            cliente_id: clienteId,
-            dispositivo_id: dispositivoId,
-            produto_id: produtoId,
-            peca_id: pecaId,
-            quantidade: item.quantidade,
-            total: valorItemSegunda,
-            custo_unitario: 0,
-            forma_pagamento: segundaFormaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
-            user_id: userIdParaVenda,
-            data_prevista_recebimento: segundaFormaPagamento === "a_receber" ? dataPrevistaSegundaForma || null : null,
-            recebido: segundaFormaPagamento !== "a_receber",
-            grupo_venda: grupoVendaId,
-            valor_desconto_manual: 0,
-            funcionario_id: funcionarioId || null,
-            parcela_numero: null,
-            total_parcelas: null,
-          };
+          for (let parcIdx = 0; parcIdx < totalParcelasSegunda; parcIdx++) {
+            const valorItemSegundaParcela = (item.preco * item.quantidade * proporcaoSegunda) / totalParcelasSegunda;
 
-          const { data: vendaSegunda, error: errSegunda } = await supabase
-            .from("vendas")
-            .insert([vendaSegundaForma])
-            .select()
-            .single();
+            let dataPrevisaoSegunda: string | null = null;
+            if (segundaFormaPagamento === "a_receber") {
+              if (isParceladoSegunda) {
+                dataPrevisaoSegunda = datasParcelasSegunda[parcIdx] || null;
+              } else {
+                dataPrevisaoSegunda = dataPrevistaSegundaForma || null;
+              }
+            }
 
-          if (errSegunda) {
-            console.error("[PDV] Erro ao registrar segunda forma de pagamento:", errSegunda);
-          }
-
-          if (vendaSegunda && segundaFormaPagamento === "a_receber") {
-            await supabase.from("contas").insert({
-              nome: `Venda - ${item.nome} - ${clienteSelecionado?.nome || "Cliente avulso"} (2ª forma)`,
-              tipo: "receber",
-              valor: valorItemSegunda,
-              data: dataPrevistaSegundaForma || new Date().toISOString().split("T")[0],
-              data_vencimento: dataPrevistaSegundaForma || null,
-              status: "pendente",
-              recorrente: false,
-              categoria: "Vendas",
-              descricao: `venda_id:${vendaSegunda.id}`,
+            const vendaSegundaForma = {
+              tipo: tipoParaBanco as "produto" | "dispositivo",
+              cliente_id: clienteId,
+              dispositivo_id: dispositivoId,
+              produto_id: produtoId,
+              peca_id: pecaId,
+              quantidade: item.quantidade,
+              total: valorItemSegundaParcela,
+              custo_unitario: 0,
+              forma_pagamento: segundaFormaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
               user_id: userIdParaVenda,
-            });
+              data_prevista_recebimento: dataPrevisaoSegunda,
+              recebido: segundaFormaPagamento !== "a_receber",
+              grupo_venda: grupoVendaId,
+              valor_desconto_manual: 0,
+              funcionario_id: funcionarioId || null,
+              parcela_numero: isParceladoSegunda ? parcIdx + 1 : null,
+              total_parcelas: isParceladoSegunda ? totalParcelasSegunda : null,
+            };
+
+            const { data: vendaSegunda, error: errSegunda } = await supabase
+              .from("vendas")
+              .insert([vendaSegundaForma])
+              .select()
+              .single();
+
+            if (errSegunda) {
+              console.error("[PDV] Erro ao registrar segunda forma:", errSegunda);
+            }
+
+            if (vendaSegunda && segundaFormaPagamento === "a_receber") {
+              const sufixoParcela = isParceladoSegunda ? ` (${parcIdx + 1}/${totalParcelasSegunda})` : "";
+              await supabase.from("contas").insert({
+                nome: `Venda - ${item.nome} - ${clienteSelecionado?.nome || "Cliente avulso"}${sufixoParcela} (2ª forma)`,
+                tipo: "receber",
+                valor: valorItemSegundaParcela,
+                data: dataPrevisaoSegunda || new Date().toISOString().split("T")[0],
+                data_vencimento: dataPrevisaoSegunda || null,
+                status: "pendente",
+                recorrente: false,
+                categoria: "Vendas",
+                descricao: `venda_id:${vendaSegunda.id}`,
+                user_id: userIdParaVenda,
+              });
+            }
           }
         }
       }
@@ -554,6 +584,9 @@ const PDV = () => {
       setSegundaFormaPagamento("");
       setValorSegundaPagamento(0);
       setDataPrevistaSegundaForma("");
+      setTipoRecebimentoSegunda("a_vista");
+      setNumParcelasSegunda(2);
+      setDatasParcelasSegunda([]);
     } catch (error: any) {
       console.error("Erro ao finalizar venda:", error);
       toast({
@@ -828,6 +861,9 @@ const PDV = () => {
                       setSegundaFormaPagamento(dados.segundaForma);
                       setValorSegundaPagamento(dados.valorSegunda);
                       setDataPrevistaSegundaForma(dados.dataPrevistaSegunda || "");
+                      setTipoRecebimentoSegunda(dados.tipoRecebimentoSegunda || "a_vista");
+                      setNumParcelasSegunda(dados.numParcelasSegunda || 2);
+                      setDatasParcelasSegunda(dados.datasParcelasSegunda || []);
                     }}
                   />
                 )}
