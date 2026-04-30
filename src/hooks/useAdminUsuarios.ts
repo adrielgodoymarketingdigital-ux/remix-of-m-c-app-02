@@ -165,27 +165,14 @@ export function useAdminUsuarios() {
         // CORRIGIDO: Considerar trial_with_card mesmo se plano_tipo não for "trial"
         const isTrial = item.plano_tipo === "trial" || isTrialWithCard;
         
-        // Pagante real (Stripe): tem subscription real
-        const hasRealStripeSub = item.stripe_subscription_id?.startsWith("sub_") &&
-          !item.stripe_subscription_id?.startsWith("sub_trial_") &&
-          !item.stripe_subscription_id?.startsWith("sub_demo_") &&
-          !item.stripe_subscription_id?.startsWith("sub_pending_");
-        // Pagante via Pagar.me ou Ticto (qualquer provedor): plano pago + status active
         const planosPagos = [
           "basico_mensal", "basico_anual",
           "intermediario_mensal", "intermediario_anual",
           "profissional_mensal", "profissional_anual",
         ];
         const hasPaidPlan = planosPagos.includes(item.plano_tipo);
-        const statusAtivo = item.status === "active";
-        const dataFimValida = !item.data_fim || (() => {
-          try {
-            return new Date(item.data_fim) > new Date();
-          } catch {
-            return true; // Se não conseguir parsear, considerar válido
-          }
-        })();
-        const isPagante = (hasRealStripeSub || hasPaidPlan) && statusAtivo && !isTrial && dataFimValida;
+        const dataFimValida = !item.data_fim || new Date(item.data_fim) > new Date();
+        const isPagante = hasPaidPlan && item.status === "active" && !isTrial && dataFimValida;
 
         let diasRestantesTrial: number | null = null;
         let horasRestantesTrial: number | null = null;
