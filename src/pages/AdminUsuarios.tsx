@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdminUsuarios, UsuarioAdmin, PRECOS_MENSAIS, TipoBloqueio, PlanoAcesso, UnidadeTempo } from "@/hooks/useAdminUsuarios";
+import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
 import { TabelaUsuariosAdmin } from "@/components/admin/TabelaUsuariosAdmin";
 import { NotificacoesAdmin } from "@/components/admin/NotificacoesAdmin";
 import { DialogBloquearUsuario } from "@/components/admin/DialogBloquearUsuario";
@@ -56,6 +57,7 @@ export default function AdminUsuarios() {
   } = useAdminUsuarios();
   
   const { balance: stripeBalance, fetchBalance, isLoading: stripeLoading } = useStripeBalance();
+  const { data: financeiroData } = useAdminFinanceiro();
   
   useEffect(() => {
     if (isAdmin) {
@@ -106,6 +108,7 @@ export default function AdminUsuarios() {
 
   // 1. Assinantes - status active + stripe_subscription_id real
   const assinantes = usuariosFiltrados.filter(u => u.is_pagante);
+  const totalAssinantesReais = financeiroData?.assinantes_db ?? assinantes.length;
   
   // 2. Free Ativos - plano free, logou nos últimos 2 dias
   const freeAtivos = usuariosFiltrados.filter(u => {
@@ -173,8 +176,8 @@ export default function AdminUsuarios() {
   const projecaoMRR = mrrAtual * mesesProjecao;
 
   // Conversão do sistema
-  const taxaConversaoSistema = estatisticas.total > 0 
-    ? ((assinantes.length / estatisticas.total) * 100) 
+  const taxaConversaoSistema = estatisticas.total > 0
+    ? ((totalAssinantesReais / estatisticas.total) * 100)
     : 0;
   
   // Benchmark SaaS freemium: 2-5%
@@ -200,7 +203,7 @@ export default function AdminUsuarios() {
     ? (assinantesPerdidos.length / totalAssinantesHistorico * 100)
     : 0;
 
-  const ticketMedio = assinantes.length > 0 ? mrrAtual / assinantes.length : 0;
+  const ticketMedio = totalAssinantesReais > 0 ? mrrAtual / totalAssinantesReais : 0;
 
   // Breakdown por provedor de pagamento
   const planosPagos = [
@@ -239,8 +242,9 @@ export default function AdminUsuarios() {
 
   const totalAssinantesVigentes = assinantesPagarme.length + tictoVigentes.length + assinantesStripe.length;
 
-  const percentualMigrado = (tictoVigentes.length + assinantesPagarme.length) > 0
-    ? Math.round((assinantesPagarme.length / (tictoVigentes.length + assinantesPagarme.length)) * 100)
+  const pagarmeCount = financeiroData?.assinantes_pagarme ?? 0;
+  const percentualMigrado = (tictoVigentes.length + pagarmeCount) > 0
+    ? Math.round((pagarmeCount / (tictoVigentes.length + pagarmeCount)) * 100)
     : 0;
 
   // Handlers
@@ -354,9 +358,9 @@ export default function AdminUsuarios() {
                     <CreditCard className="h-4 w-4 text-emerald-600" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{assinantes.length}</div>
+                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{totalAssinantesReais}</div>
                 <div className="mt-2 text-xs text-emerald-600">
-                  {assinantes.length} pagantes ativos
+                  {totalAssinantesReais} pagantes ativos
                 </div>
               </CardContent>
             </Card>
@@ -462,7 +466,7 @@ export default function AdminUsuarios() {
                   </div>
                 </div>
                 <Badge variant="outline" className="text-amber-600 border-amber-400">
-                  {assinantesPagarme.length}/{tictoVigentes.length + assinantesPagarme.length}
+                  {financeiroData?.assinantes_pagarme ?? 0}/{tictoVigentes.length + (financeiroData?.assinantes_pagarme ?? 0)}
                 </Badge>
               </div>
 
@@ -478,7 +482,7 @@ export default function AdminUsuarios() {
               <div className="grid grid-cols-3 gap-3">
 
                 <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
-                  <div className="text-xl font-bold text-green-600">{assinantesPagarme.length}</div>
+                  <div className="text-xl font-bold text-green-600">{pagarmeCount}</div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">Pagar.me</div>
                   <div className="text-[10px] text-green-600 font-medium">✓ Migrados</div>
                 </div>
