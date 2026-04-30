@@ -354,15 +354,9 @@ export default function AdminUsuarios() {
                     <CreditCard className="h-4 w-4 text-emerald-600" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{totalAssinantesVigentes}</div>
-                <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
-                  <div className="flex items-center gap-1 text-green-600">
-                    <TrendingUp className="h-3 w-3" />
-                    <span>+{novosAssinantesEsteMes} este mês</span>
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    {assinantesPagarme.length} Pagar.me · {tictoVigentes.length} Ticto · {assinantesStripe.length} Stripe
-                  </div>
+                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{assinantes.length}</div>
+                <div className="mt-2 text-xs text-emerald-600">
+                  {assinantes.length} pagantes ativos
                 </div>
               </CardContent>
             </Card>
