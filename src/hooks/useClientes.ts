@@ -42,6 +42,7 @@ export function useClientes(options: UseClientesOptions = {}) {
           .from("clientes")
           .select("*")
           .eq("user_id", targetUserId)
+          .is("deleted_at", null)
           .order("nome");
         if (error) throw error;
         return data;
@@ -223,12 +224,14 @@ export function useClientes(options: UseClientesOptions = {}) {
           .select("id")
           .eq("cliente_id", id)
           .eq("user_id", targetUserId)
+          .is("deleted_at", null)
           .limit(1),
         supabase
           .from("orcamentos")
           .select("id")
           .eq("cliente_id", id)
           .eq("user_id", targetUserId)
+          .is("deleted_at", null)
           .limit(1),
       ]);
 
@@ -248,7 +251,7 @@ export function useClientes(options: UseClientesOptions = {}) {
 
       const { error } = await supabase
         .from("clientes")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", id)
         .eq("user_id", targetUserId);
 

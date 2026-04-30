@@ -34,6 +34,7 @@ export const useVendas = () => {
           pecas (nome)
         `)
         .eq("user_id", user.id)
+        .is("deleted_at", null)
         .order("data", { ascending: false });
 
       // Usar offset de timezone local para garantir que o filtro respeite o dia do usuário
@@ -158,6 +159,7 @@ export const useVendas = () => {
           .from("vendas")
           .select(`*, clientes!vendas_cliente_fkey (nome, telefone), dispositivos (tipo, marca, modelo), produtos (nome, sku), pecas (nome)`)
           .eq("user_id", user.id)
+          .is("deleted_at", null)
           .order("data", { ascending: false });
 
         const { data: allOrdensData } = await supabase
@@ -600,7 +602,7 @@ export const useVendas = () => {
 
       const { error } = await supabase
         .from("vendas")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", vendaId)
         .eq("user_id", vendaOriginal.user_id);
 

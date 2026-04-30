@@ -19,6 +19,7 @@ export function useOrcamentos() {
         .from("orcamentos")
         .select("*")
         .eq("user_id", user.id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -127,10 +128,14 @@ export function useOrcamentos() {
 
   const excluirOrcamento = async (id: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
       const { error } = await supabase
         .from("orcamentos")
-        .delete()
-        .eq("id", id);
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
 

@@ -23,6 +23,7 @@ export function useFornecedores() {
           .from("fornecedores")
           .select("*")
           .eq("user_id", user.id)
+          .is("deleted_at", null)
           .order("nome");
         if (error) throw error;
         return data;
@@ -181,7 +182,7 @@ export function useFornecedores() {
 
       const { error } = await supabase
         .from("fornecedores")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("id", id)
         .eq("user_id", user.id);
 

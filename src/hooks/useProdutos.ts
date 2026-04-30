@@ -32,8 +32,8 @@ export const useProdutos = () => {
         { data: fornecedoresData },
         { data: categoriasData }
       ] = await Promise.all([
-        supabase.from('produtos').select('*').eq('user_id', userId).order('nome'),
-        supabase.from('pecas').select('*').eq('user_id', userId).order('nome'),
+        supabase.from('produtos').select('*').eq('user_id', userId).is('deleted_at', null).order('nome'),
+        supabase.from('pecas').select('*').eq('user_id', userId).is('deleted_at', null).order('nome'),
         supabase.from('fornecedores').select('id, nome').eq('user_id', userId),
         supabase.from('categorias_produtos').select('id, nome, cor').eq('user_id', userId)
       ]);
@@ -271,7 +271,7 @@ export const useProdutos = () => {
       const tabela = tipo === 'produto' ? 'produtos' : 'pecas';
       const { error } = await supabase
         .from(tabela)
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
         .eq('user_id', userId);
 
@@ -351,7 +351,7 @@ export const useProdutos = () => {
         for (const idsChunk of chunkArray(produtosSemVendas, CHUNK_SIZE)) {
           const { error } = await supabase
             .from('produtos')
-            .delete()
+            .update({ deleted_at: new Date().toISOString() })
             .in('id', idsChunk)
             .eq('user_id', userId);
 
@@ -395,7 +395,7 @@ export const useProdutos = () => {
         for (const idsChunk of chunkArray(pecasSemVinculos, CHUNK_SIZE)) {
           const { error } = await supabase
             .from('pecas')
-            .delete()
+            .update({ deleted_at: new Date().toISOString() })
             .in('id', idsChunk)
             .eq('user_id', userId);
 
