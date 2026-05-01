@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useFidelidade } from "@/hooks/useFidelidade";
 import { ClienteFidelidade, FidelidadeNivel } from "@/types/fidelidade";
@@ -361,6 +361,28 @@ export default function Fidelidade() {
   const [clienteResgate, setClienteResgate] = useState<ClienteFidelidade | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
 
+  useEffect(() => {
+    if (isLoading || config !== null) return;
+    const configPadrao = {
+      ativo: true,
+      pontos_por_real_venda: 1,
+      pontos_por_real_os: 2,
+      validade_pontos_dias: 365,
+      tipo_resgate: 'manual' as const,
+    };
+    salvarConfig(configPadrao);
+  }, [isLoading, config]);
+
+  useEffect(() => {
+    if (isLoading || niveis.length !== 0) return;
+    const niveisPadrao = [
+      { nome: "Bronze", pontos_minimos: 0, cor: "#CD7F32", beneficio: "Cliente fiel", ordem: 1 },
+      { nome: "Prata", pontos_minimos: 500, cor: "#C0C0C0", beneficio: "5% de desconto", ordem: 2 },
+      { nome: "Ouro", pontos_minimos: 1500, cor: "#FFD700", beneficio: "10% de desconto", ordem: 3 },
+    ];
+    niveisPadrao.forEach(n => salvarNivel(n));
+  }, [isLoading, niveis.length]);
+
   const clientesFiltrados = clientes.filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase())
   );
@@ -382,6 +404,11 @@ export default function Fidelidade() {
             <div>
               <h1 className="text-2xl font-bold">Fidelidade de Clientes</h1>
               <p className="text-sm text-muted-foreground">Gerencie pontos e recompensas</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                💡 O programa já vem configurado com um modelo de pontuação padrão.
+                Clique em <strong>Configurações</strong> para personalizar pontos,
+                níveis e tipo de resgate conforme sua loja.
+              </p>
             </div>
           </div>
           <Button variant="outline" onClick={() => setConfigOpen(true)}>
