@@ -24,7 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gift, Settings, Trophy, Star, Users, Search, Trash2, Plus, Award } from "lucide-react";
+import { Gift, Settings, Trophy, Star, Users, Search, Trash2, Plus, Award, Lock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAssinatura } from "@/hooks/useAssinatura";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -356,10 +358,34 @@ function DialogConfig({ open, onClose, config, niveis, onSalvarConfig, onSalvarN
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function Fidelidade() {
+  const { assinatura } = useAssinatura();
+  const navigate = useNavigate();
   const { config, niveis, clientes, isLoading, salvarConfig, salvarNivel, deletarNivel, resgatar } = useFidelidade();
   const [busca, setBusca] = useState("");
   const [clienteResgate, setClienteResgate] = useState<ClienteFidelidade | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+
+  const planosPermitidos = ['profissional_mensal', 'profissional_anual'];
+  if (assinatura && !planosPermitidos.includes(assinatura.plano_tipo)) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-8">
+          <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center">
+            <Lock className="h-8 w-8 text-amber-600" />
+          </div>
+          <h2 className="text-2xl font-bold">Funcionalidade Exclusiva</h2>
+          <p className="text-muted-foreground max-w-md">
+            O programa de Fidelidade de Clientes está disponível apenas
+            no plano <strong>Profissional</strong>. Faça upgrade para
+            desbloquear esta e outras funcionalidades avançadas.
+          </p>
+          <Button onClick={() => navigate('/plano')}>
+            Ver Planos
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   useEffect(() => {
     if (isLoading || config !== null) return;

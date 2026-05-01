@@ -70,8 +70,9 @@ const menuItems = [
   { title: "Catálogo", url: "/catalogo", icon: BookOpen, modulo: "catalogo" as keyof PermissoesModulos },
   { title: "Origem de Dispositivos", url: "/origem-dispositivos", icon: ShoppingBag, modulo: "origem_dispositivos" as keyof PermissoesModulos },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, modulo: "fornecedores" as keyof PermissoesModulos },
-  { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos },
-  { title: "Fidelidade", url: "/fidelidade", icon: Gift, modulo: "clientes" as keyof PermissoesModulos },
+  { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos, items: [
+    { title: "🏆 Fidelidade", url: "/fidelidade" },
+  ]},
   { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
   
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
@@ -241,6 +242,18 @@ export function AppSidebar() {
                           {!collapsed && <span>{item.title}</span>}
                         </NavLink>
                       </SidebarMenuButton>
+                      {!collapsed && item.items?.map(sub => (
+                        <SidebarMenuButton key={sub.url} asChild>
+                          <NavLink
+                            to={sub.url}
+                            end
+                            className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all pl-8 text-sm"
+                            activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+                          >
+                            {!collapsed && <span>{sub.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      ))}
                     </SidebarMenuItem>
                   );
                 })
