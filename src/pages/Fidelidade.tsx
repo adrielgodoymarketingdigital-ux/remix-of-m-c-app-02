@@ -358,34 +358,14 @@ function DialogConfig({ open, onClose, config, niveis, onSalvarConfig, onSalvarN
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function Fidelidade() {
-  const { assinatura } = useAssinatura();
+  const { assinatura, carregando: carregandoAssinatura } = useAssinatura();
   const navigate = useNavigate();
   const { config, niveis, clientes, isLoading, salvarConfig, salvarNivel, deletarNivel, resgatar } = useFidelidade();
   const [busca, setBusca] = useState("");
   const [clienteResgate, setClienteResgate] = useState<ClienteFidelidade | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
 
-  const planosPermitidos = ['profissional_mensal', 'profissional_anual'];
-  if (assinatura && !planosPermitidos.includes(assinatura.plano_tipo)) {
-    return (
-      <AppLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-8">
-          <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center">
-            <Lock className="h-8 w-8 text-amber-600" />
-          </div>
-          <h2 className="text-2xl font-bold">Funcionalidade Exclusiva</h2>
-          <p className="text-muted-foreground max-w-md">
-            O programa de Fidelidade de Clientes está disponível apenas
-            no plano <strong>Profissional</strong>. Faça upgrade para
-            desbloquear esta e outras funcionalidades avançadas.
-          </p>
-          <Button onClick={() => navigate('/plano')}>
-            Ver Planos
-          </Button>
-        </div>
-      </AppLayout>
-    );
-  }
+  console.log("Fidelidade page loaded", { config, niveis, clientes, isLoading });
 
   useEffect(() => {
     if (isLoading || config !== null) return;
@@ -408,6 +388,40 @@ export default function Fidelidade() {
     ];
     niveisPadrao.forEach(n => salvarNivel(n));
   }, [isLoading, niveis.length]);
+
+  const planosPermitidos = ['profissional_mensal', 'profissional_anual'];
+  const semAcesso = !carregandoAssinatura && assinatura !== null && !planosPermitidos.includes(assinatura.plano_tipo);
+
+  if (carregandoAssinatura) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Skeleton className="h-12 w-48" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (semAcesso) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-8">
+          <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center">
+            <Lock className="h-8 w-8 text-amber-600" />
+          </div>
+          <h2 className="text-2xl font-bold">Funcionalidade Exclusiva</h2>
+          <p className="text-muted-foreground max-w-md">
+            O programa de Fidelidade de Clientes está disponível apenas
+            no plano <strong>Profissional</strong>. Faça upgrade para
+            desbloquear esta e outras funcionalidades avançadas.
+          </p>
+          <Button onClick={() => navigate('/plano')}>
+            Ver Planos
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const clientesFiltrados = clientes.filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase())

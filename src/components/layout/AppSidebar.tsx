@@ -48,6 +48,7 @@ import {
   PanelLeft,
   Video,
   Gift,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +105,7 @@ export function AppSidebar() {
   const { toast } = useToast();
   const collapsed = state === "collapsed";
   const [isAdmin, setIsAdmin] = useState(false);
+  const [clientesExpandido, setClientesExpandido] = useState(false);
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
 
@@ -229,20 +231,37 @@ export function AppSidebar() {
                     "/configuracoes": "sidebar-configuracoes",
                   };
                   const tutorialAttr = tutorialMap[item.url];
+                  const temSubmenu = !!(item.items && item.items.length > 0);
+                  const expandido = temSubmenu && clientesExpandido;
                   return (
                     <SidebarMenuItem key={item.title} data-tutorial={tutorialAttr}>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          end
-                          className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all"
-                          activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                        >
-                          <item.icon className="h-5 w-5" />
-                          {!collapsed && <span>{item.title}</span>}
-                        </NavLink>
+                      <SidebarMenuButton asChild={!temSubmenu}>
+                        {temSubmenu ? (
+                          <button
+                            onClick={() => setClientesExpandido(v => !v)}
+                            className="flex w-full items-center gap-2 px-2 py-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all"
+                          >
+                            <item.icon className="h-5 w-5 shrink-0" />
+                            {!collapsed && (
+                              <>
+                                <span className="flex-1 text-left">{item.title}</span>
+                                <ChevronRight className={`h-4 w-4 transition-transform ${expandido ? "rotate-90" : ""}`} />
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <NavLink
+                            to={item.url}
+                            end
+                            className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all"
+                            activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+                          >
+                            <item.icon className="h-5 w-5" />
+                            {!collapsed && <span>{item.title}</span>}
+                          </NavLink>
+                        )}
                       </SidebarMenuButton>
-                      {!collapsed && item.items?.map(sub => (
+                      {!collapsed && expandido && item.items?.map(sub => (
                         <SidebarMenuButton key={sub.url} asChild>
                           <NavLink
                             to={sub.url}
@@ -250,7 +269,7 @@ export function AppSidebar() {
                             className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all pl-8 text-sm"
                             activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
                           >
-                            {!collapsed && <span>{sub.title}</span>}
+                            <span>{sub.title}</span>
                           </NavLink>
                         </SidebarMenuButton>
                       ))}
