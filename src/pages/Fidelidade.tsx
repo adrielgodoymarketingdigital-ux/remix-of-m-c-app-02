@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gift, Settings, Trophy, Star, Users, Search, Trash2, Plus, Award, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -364,6 +365,20 @@ export default function Fidelidade() {
   const [busca, setBusca] = useState("");
   const [clienteResgate, setClienteResgate] = useState<ClienteFidelidade | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .eq('role', 'admin')
+        .maybeSingle()
+        .then(({ data: roleData }) => setIsAdmin(!!roleData));
+    });
+  }, []);
 
   console.log("Fidelidade page loaded", { config, niveis, clientes, isLoading });
 
@@ -389,8 +404,8 @@ export default function Fidelidade() {
     niveisPadrao.forEach(n => salvarNivel(n));
   }, [isLoading, niveis.length]);
 
-  const planosPermitidos = ['profissional_mensal', 'profissional_anual'];
-  const semAcesso = !carregandoAssinatura && assinatura !== null && !planosPermitidos.includes(assinatura.plano_tipo);
+  const isProfissional = ['profissional_mensal', 'profissional_anual'].includes(assinatura?.plano_tipo ?? '');
+  const semAcesso = !carregandoAssinatura && assinatura !== null && !isAdmin && !isProfissional;
 
   if (carregandoAssinatura) {
     return (
