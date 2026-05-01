@@ -72,6 +72,7 @@ const menuItems = [
   { title: "Origem de Dispositivos", url: "/origem-dispositivos", icon: ShoppingBag, modulo: "origem_dispositivos" as keyof PermissoesModulos },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, modulo: "fornecedores" as keyof PermissoesModulos },
   { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos, items: [
+    { title: "👥 Clientes", url: "/clientes" },
     { title: "🏆 Fidelidade", url: "/fidelidade" },
   ]},
   { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
