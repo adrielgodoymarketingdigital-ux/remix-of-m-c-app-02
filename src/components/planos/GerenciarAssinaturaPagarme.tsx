@@ -57,6 +57,19 @@ export function GerenciarAssinaturaPagarme({
 }: GerenciarAssinaturaPagarmeProps) {
   const { toast } = useToast();
   const [cancelando, setCancelando] = useState(false);
+  const [motivoCancelamento, setMotivoCancelamento] = useState("");
+  const [motivoCustom, setMotivoCustom] = useState("");
+
+  const MOTIVOS_CANCELAMENTO = [
+    "Preço muito alto",
+    "Não uso o suficiente",
+    "Encontrei outra solução",
+    "Dificuldade de uso",
+    "Falta de funcionalidades",
+    "Problemas técnicos",
+    "Negócio encerrado",
+    "Outro motivo",
+  ];
 
   // Dialog de troca de cartão
   const [trocaOpen, setTrocaOpen] = useState(false);
@@ -166,6 +179,21 @@ export function GerenciarAssinaturaPagarme({
         const ctx = (error as { context?: { error?: string } }).context;
         throw new Error(ctx?.error || error.message || "Falha ao cancelar.");
       }
+
+      const motivo = motivoCancelamento === "Outro motivo" ? motivoCustom : motivoCancelamento;
+      if (motivo) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from("assinaturas")
+            .update({
+              motivo_cancelamento: motivo,
+              cancelado_em: new Date().toISOString(),
+            })
+            .eq("user_id", user.id);
+        }
+      }
+
       toast({
         title: "Assinatura cancelada",
         description:
@@ -248,6 +276,33 @@ export function GerenciarAssinaturaPagarme({
                 </span>
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="mt-4 space-y-2">
+              <label className="text-sm font-medium">
+                Nos ajude a melhorar: por que está cancelando?
+              </label>
+              <select
+                value={motivoCancelamento}
+                onChange={(e) => {
+                  setMotivoCancelamento(e.target.value);
+                  setMotivoCustom("");
+                }}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Selecione um motivo (opcional)</option>
+                {MOTIVOS_CANCELAMENTO.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              {motivoCancelamento === "Outro motivo" && (
+                <textarea
+                  placeholder="Descreva o motivo..."
+                  value={motivoCustom}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
+                  rows={3}
+                  onChange={(e) => setMotivoCustom(e.target.value)}
+                />
+              )}
+            </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Voltar</AlertDialogCancel>
               <AlertDialogAction

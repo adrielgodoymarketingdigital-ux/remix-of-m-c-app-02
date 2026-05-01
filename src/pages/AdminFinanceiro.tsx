@@ -5,12 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
-import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search } from "lucide-react";
+import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const COLORS = ["hsl(var(--primary))", "#10b981", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444"];
 
@@ -33,6 +36,70 @@ export default function AdminFinanceiro() {
 
   const [buscaAssinantes, setBuscaAssinantes] = useState("");
   const [buscaExpirados, setBuscaExpirados] = useState("");
+
+  const { data: cancelamentos } = useQuery({
+    queryKey: ["admin-cancelamentos"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("assinaturas")
+        .select("user_id, plano_tipo, status, motivo_cancelamento, cancelado_em, data_fim, payment_provider")
+        .eq("status", "canceled")
+        .order("cancelado_em", { ascending: false });
+
+      const userIds = data?.map((d) => d.user_id) ?? [];
+      const { data: profiles } = userIds.length
+        ? await supabase.from("profiles").select("user_id, nome, email, celular").in("user_id", userIds)
+        : { data: [] };
+
+      return (data ?? []).map((d) => ({
+        ...d,
+        profile: profiles?.find((p) => p.user_id === d.user_id),
+      }));
+    },
+  });
+
+  const { data: tictoVencidos } = useQuery({
+    queryKey: ["admin-ticto-vencidos"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("assinaturas")
+        .select("user_id, plano_tipo, data_fim, payment_provider")
+        .eq("status", "active")
+        .eq("payment_provider", "ticto")
+        .lt("data_fim", new Date().toISOString());
+
+      const userIds = data?.map((d) => d.user_id) ?? [];
+      const { data: profiles } = userIds.length
+        ? await supabase.from("profiles").select("user_id, nome, email, celular").in("user_id", userIds)
+        : { data: [] };
+
+      return (data ?? []).map((d) => ({
+        ...d,
+        profile: profiles?.find((p) => p.user_id === d.user_id),
+      }));
+    },
+  });
+
+  const { data: whatsappTemplate } = useQuery({
+    queryKey: ["admin-whatsapp-template-cancelamento"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("admin_whatsapp_templates")
+        .select("mensagem")
+        .eq("type", "cancelamento")
+        .maybeSingle();
+      return data?.mensagem ?? null;
+    },
+  });
+
+  const buildWhatsAppUrl = (celular: string | null | undefined, nome: string | null | undefined) => {
+    const numero = (celular ?? "").replace(/\D/g, "");
+    if (!numero) return null;
+    const mensagem = whatsappTemplate
+      ? whatsappTemplate.replace("{nome}", nome ?? "")
+      : `Olá ${nome ?? ""}! Vi que você cancelou seu plano no Méc App. Posso te ajudar com algo ou entender o motivo?`;
+    return `https://wa.me/55${numero}?text=${encodeURIComponent(mensagem)}`;
+  };
 
   const assinantesFiltrados = useMemo(() => {
     const lista = data?.assinantes_detalhes ?? [];
@@ -132,6 +199,141 @@ export default function AdminFinanceiro() {
             }
           />
         </div>
+
+        {/* Card cancelamentos */}
+        <Card className="border-red-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <UserX className="h-5 w-5 text-red-500" />
+              Cancelamentos e Ticto Vencidos
+            </CardTitle>
+            <CardDescription>
+              Assinaturas canceladas e assinaturas Ticto com período expirado
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="cancelados">
+              <TabsList>
+                <TabsTrigger value="cancelados">
+                  Cancelados ({cancelamentos?.length ?? 0})
+                </TabsTrigger>
+                <TabsTrigger value="ticto-vencidos">
+                  Ticto Vencidos ({tictoVencidos?.length ?? 0})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="cancelados">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Plano</TableHead>
+                        <TableHead>Motivo</TableHead>
+                        <TableHead>Cancelado em</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(cancelamentos ?? []).map((c, i) => {
+                        const waUrl = buildWhatsAppUrl(c.profile?.celular, c.profile?.nome);
+                        return (
+                          <TableRow key={`${c.user_id}-${i}`}>
+                            <TableCell>
+                              <div className="font-medium text-sm">{c.profile?.nome || "—"}</div>
+                              <div className="text-xs text-muted-foreground">{c.profile?.email || "—"}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">{c.plano_tipo || "—"}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              {c.motivo_cancelamento ? (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                  {c.motivo_cancelamento}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {c.cancelado_em ? formatDate(c.cancelado_em) : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {waUrl && (
+                                <Button asChild size="sm" variant="ghost" className="h-7 px-2">
+                                  <a href={waUrl} target="_blank" rel="noopener noreferrer">
+                                    <MessageCircle className="h-4 w-4 text-green-600" />
+                                  </a>
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {(cancelamentos ?? []).length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                            Nenhum cancelamento registrado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="ticto-vencidos">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Plano</TableHead>
+                        <TableHead>Venceu em</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(tictoVencidos ?? []).map((c, i) => {
+                        const waUrl = buildWhatsAppUrl(c.profile?.celular, c.profile?.nome);
+                        return (
+                          <TableRow key={`${c.user_id}-${i}`}>
+                            <TableCell>
+                              <div className="font-medium text-sm">{c.profile?.nome || "—"}</div>
+                              <div className="text-xs text-muted-foreground">{c.profile?.email || "—"}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">{c.plano_tipo || "—"}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {c.data_fim ? formatDate(c.data_fim) : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {waUrl && (
+                                <Button asChild size="sm" variant="ghost" className="h-7 px-2">
+                                  <a href={waUrl} target="_blank" rel="noopener noreferrer">
+                                    <MessageCircle className="h-4 w-4 text-green-600" />
+                                  </a>
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {(tictoVencidos ?? []).length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                            Nenhum Ticto vencido
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
         {/* Recebimentos do mês cartão */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
