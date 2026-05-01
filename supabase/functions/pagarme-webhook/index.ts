@@ -55,6 +55,16 @@ serve(async (req) => {
     const eventType = body?.type;
     const eventId = body?.id;
 
+    // Verifica que o webhook vem da conta Pagar.me correta
+    const pagarmeAccountId = Deno.env.get("PAGARME_ACCOUNT_ID");
+    if (pagarmeAccountId && body?.account?.id && body.account.id !== pagarmeAccountId) {
+      log("Account ID inválido", { received: body.account.id });
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     log("Evento recebido", { type: eventType, id: eventId });
 
     // ════════════════════════════════════════════════════════════════
