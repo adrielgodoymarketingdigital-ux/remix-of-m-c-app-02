@@ -40,6 +40,7 @@ import {
   ChevronRight,
   X,
   Video,
+  Gift,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
@@ -62,7 +63,10 @@ const menuItems = [
   { title: "Catálogo", url: "/catalogo", icon: BookOpen, modulo: "catalogo" as keyof PermissoesModulos },
   { title: "Origem de Dispositivos", url: "/origem-dispositivos", icon: ShoppingBag, modulo: "origem_dispositivos" as keyof PermissoesModulos },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, modulo: "fornecedores" as keyof PermissoesModulos },
-  { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos },
+  { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos, items: [
+    { title: "👥 Clientes", url: "/clientes", icon: Users },
+    { title: "🏆 Fidelidade", url: "/fidelidade", icon: Gift },
+  ]},
   { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
   { title: "Contas", url: "/contas", icon: Receipt, modulo: "contas" as keyof PermissoesModulos },
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
@@ -104,6 +108,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [clientesExpandido, setClientesExpandido] = useState(false);
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
 
@@ -184,6 +189,43 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
             ) : (
               menusVisiveis.map((item) => {
                 const tutorialId = tutorialTargetMap[item.url];
+                const temSubmenu = !!(item.items && item.items.length > 0);
+
+                if (temSubmenu) {
+                  return (
+                    <div key={item.title}>
+                      <button
+                        onClick={() => setClientesExpandido(v => !v)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
+                          "active:scale-[0.98] touch-manipulation",
+                          "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="flex-1 text-sm">{item.title}</span>
+                        <ChevronRight className={cn("h-4 w-4 text-slate-600 transition-transform", clientesExpandido && "rotate-90")} />
+                      </button>
+                      {clientesExpandido && item.items?.map(sub => (
+                        <button
+                          key={sub.url}
+                          onClick={() => handleNavigate(sub.url)}
+                          className={cn(
+                            "w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-lg transition-colors text-left",
+                            "active:scale-[0.98] touch-manipulation",
+                            isActive(sub.url)
+                              ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+                              : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                          )}
+                        >
+                          <sub.icon className="h-4 w-4 flex-shrink-0" />
+                          <span className="flex-1 text-sm">{sub.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                }
+
                 return (
                   <button
                     key={item.title}
