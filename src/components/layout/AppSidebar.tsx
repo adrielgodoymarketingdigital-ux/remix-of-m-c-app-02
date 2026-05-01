@@ -47,6 +47,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Video,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +71,7 @@ const menuItems = [
   { title: "Origem de Dispositivos", url: "/origem-dispositivos", icon: ShoppingBag, modulo: "origem_dispositivos" as keyof PermissoesModulos },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, modulo: "fornecedores" as keyof PermissoesModulos },
   { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos },
+  { title: "Fidelidade", url: "/fidelidade", icon: Gift, modulo: "clientes" as keyof PermissoesModulos },
   { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
   
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },

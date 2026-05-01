@@ -58,6 +58,7 @@ const InstalarApp = lazy(() => import("./pages/InstalarApp"));
 const Tutoriais = lazy(() => import("./pages/Tutoriais"));
 const Equipe = lazy(() => import("./pages/Equipe"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
+const Fidelidade = lazy(() => import("./pages/Fidelidade"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const RouteFallback = () => (
@@ -217,6 +218,11 @@ function AppRoutes() {
                   <Clientes />
                 </ComVerificacaoPlano>
               </ComVerificacaoFuncionario>
+            </ProtectedAppRoute>
+          } />
+          <Route path="/fidelidade" element={
+            <ProtectedAppRoute>
+              <Fidelidade />
             </ProtectedAppRoute>
           } />
           <Route path="/plano" element={
