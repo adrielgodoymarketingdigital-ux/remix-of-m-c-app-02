@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
-import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle } from "lucide-react";
+import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -100,6 +100,48 @@ export default function AdminFinanceiro() {
       : `Olá ${nome ?? ""}! Vi que você cancelou seu plano no Méc App. Posso te ajudar com algo ou entender o motivo?`;
     return `https://wa.me/55${numero}?text=${encodeURIComponent(mensagem)}`;
   };
+
+  const { data: breakdown } = useQuery({
+    queryKey: ["admin-breakdown-plataforma"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("assinaturas")
+        .select("payment_provider, status, data_fim, plano_tipo")
+        .in("plano_tipo", [
+          "basico_mensal", "basico_anual",
+          "intermediario_mensal", "intermediario_anual",
+          "profissional_mensal", "profissional_anual",
+        ]);
+
+      const agora = new Date();
+
+      const tictoAtivos = data?.filter((d) =>
+        d.payment_provider === "ticto" &&
+        d.status === "active" &&
+        (!d.data_fim || new Date(d.data_fim) > agora)
+      ).length || 0;
+
+      const tictoVencidos = data?.filter((d) =>
+        d.payment_provider === "ticto" &&
+        d.status === "active" &&
+        d.data_fim && new Date(d.data_fim) <= agora
+      ).length || 0;
+
+      const pagarmeAtivos = data?.filter((d) =>
+        d.payment_provider === "pagarme" &&
+        d.status === "active" &&
+        (!d.data_fim || new Date(d.data_fim) > agora)
+      ).length || 0;
+
+      const stripeAtivos = data?.filter((d) =>
+        d.payment_provider === "stripe" &&
+        d.status === "active" &&
+        (!d.data_fim || new Date(d.data_fim) > agora)
+      ).length || 0;
+
+      return { tictoAtivos, tictoVencidos, pagarmeAtivos, stripeAtivos };
+    },
+  });
 
   const assinantesFiltrados = useMemo(() => {
     const lista = data?.assinantes_detalhes ?? [];
@@ -198,6 +240,61 @@ export default function AdminFinanceiro() {
                 : "Após descontos da Pagar.me"
             }
           />
+        </div>
+
+        {/* Breakdown por plataforma */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="border-amber-200 bg-amber-50/30 dark:bg-amber-950/10">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-amber-700 uppercase tracking-wider">Ticto Ativos</span>
+                <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-amber-600" />
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-amber-600">{breakdown?.tictoAtivos || 0}</div>
+              <div className="text-xs text-muted-foreground mt-1">Vigentes no Ticto</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-red-200 bg-red-50/30 dark:bg-red-950/10">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-red-700 uppercase tracking-wider">Ticto Vencidos</span>
+                <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-red-600">{breakdown?.tictoVencidos || 0}</div>
+              <div className="text-xs text-muted-foreground mt-1">Não renovaram no Pagar.me</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-green-200 bg-green-50/30 dark:bg-green-950/10">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-green-700 uppercase tracking-wider">Pagar.me</span>
+                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                  <CreditCard className="h-4 w-4 text-green-600" />
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-green-600">{breakdown?.pagarmeAtivos || 0}</div>
+              <div className="text-xs text-muted-foreground mt-1">Migraram para Pagar.me</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 bg-slate-50/30 dark:bg-slate-950/10">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-slate-700 uppercase tracking-wider">Stripe</span>
+                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+                  <CreditCard className="h-4 w-4 text-slate-600" />
+                </div>
+              </div>
+              <div className="text-3xl font-bold text-slate-600">{breakdown?.stripeAtivos || 0}</div>
+              <div className="text-xs text-muted-foreground mt-1">Legado Stripe</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Card cancelamentos */}
