@@ -923,7 +923,7 @@ export default function OrdemServicoPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Share2 className="h-5 w-5 text-blue-500" />
+              <RadioTower className="h-5 w-5 text-blue-500" />
               Compartilhar Acompanhamento
             </DialogTitle>
             <DialogDescription>
