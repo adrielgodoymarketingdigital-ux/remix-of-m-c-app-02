@@ -4,9 +4,9 @@ import depoimentoWhatsapp3 from "@/assets/screenshots/depoimento-whatsapp-3.png"
 import depoimentoWhatsapp4 from "@/assets/screenshots/depoimento-whatsapp-4.png";
 import depoimentoWhatsapp5 from "@/assets/screenshots/depoimento-whatsapp-5.png";
 import depoimentoVideo from "@/assets/depoimento-video.mp4";
-import { MessageCircle, Quote, Play, Star, Shield, CheckCircle, Users } from "lucide-react";
+import { MessageCircle, Quote, Play, Star, Shield, CheckCircle, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { StatCard } from "./StatCard";
 
 // Estatísticas
@@ -15,8 +15,28 @@ const stats = [
   { value: 98, suffix: "%", label: "Taxa de satisfação", icon: Star },
 ];
 
+const slides = [
+  { type: "image" as const, src: depoimentoWhatsapp1, alt: "Depoimento de cliente via WhatsApp" },
+  { type: "image" as const, src: depoimentoWhatsapp2, alt: "Depoimento de cliente mostrando o sistema" },
+  { type: "image" as const, src: depoimentoWhatsapp3, alt: "Cliente recomendando o suporte do Méc" },
+  { type: "image" as const, src: depoimentoWhatsapp4, alt: "Cliente elogiando a facilidade do app" },
+  { type: "image" as const, src: depoimentoWhatsapp5, alt: "Cliente elogiando o atendimento e o programa" },
+  { type: "video" as const, src: depoimentoVideo, alt: "Vídeo depoimento" },
+];
+
 export function TestimonialsSection() {
+  const [current, setCurrent] = useState(0);
   const [videoPlaying, setVideoPlaying] = useState(false);
+
+  const prev = useCallback(() => {
+    setVideoPlaying(false);
+    setCurrent((c) => (c - 1 + slides.length) % slides.length);
+  }, []);
+
+  const next = useCallback(() => {
+    setVideoPlaying(false);
+    setCurrent((c) => (c + 1) % slides.length);
+  }, []);
 
   return (
     <section className="py-24 md:py-32 bg-white relative overflow-hidden">
@@ -58,7 +78,7 @@ export function TestimonialsSection() {
           ))}
         </div>
 
-        {/* Provas visuais */}
+        {/* Carrossel de depoimentos */}
         <div className="mb-12">
           <div className="text-center mb-8">
             <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
@@ -68,51 +88,30 @@ export function TestimonialsSection() {
             <p className="text-slate-600">Feedback espontâneo de clientes reais</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Depoimento WhatsApp 1 */}
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-              <div className="relative bg-white border border-slate-200 rounded-2xl p-3 shadow-sm hover:border-green-300 transition-colors hover:shadow-md">
-                <div className="flex items-center gap-2 mb-2 px-2">
-                  <MessageCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-xs text-green-600 font-medium">WhatsApp Verificado</span>
-                </div>
-                <img
-                  src={depoimentoWhatsapp1}
-                  alt="Depoimento de cliente via WhatsApp"
-                  className="rounded-xl w-full shadow-sm"
-                />
+          <div className="relative max-w-lg mx-auto">
+            {/* Card */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+              <div className="flex items-center gap-2 mb-2 px-2">
+                {slides[current].type === "video" ? (
+                  <>
+                    <Play className="h-4 w-4 text-blue-500" />
+                    <span className="text-xs text-blue-600 font-medium">Vídeo Depoimento</span>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="h-4 w-4 text-green-500" />
+                    <span className="text-xs text-green-600 font-medium">WhatsApp Verificado</span>
+                  </>
+                )}
+                <span className="ml-auto text-xs text-slate-400">{current + 1}/{slides.length}</span>
               </div>
-            </div>
 
-            {/* Depoimento WhatsApp 2 */}
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-              <div className="relative bg-white border border-slate-200 rounded-2xl p-3 shadow-sm hover:border-green-300 transition-colors hover:shadow-md">
-                <div className="flex items-center gap-2 mb-2 px-2">
-                  <MessageCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-xs text-green-600 font-medium">WhatsApp Verificado</span>
-                </div>
-                <img
-                  src={depoimentoWhatsapp2}
-                  alt="Depoimento de cliente mostrando o sistema"
-                  className="rounded-xl w-full shadow-sm object-cover"
-                />
-              </div>
-            </div>
-
-            {/* Depoimento em Vídeo */}
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-              <div className="relative bg-white border border-slate-200 rounded-2xl p-3 shadow-sm hover:border-blue-300 transition-colors hover:shadow-md">
-                <div className="flex items-center gap-2 mb-2 px-2">
-                  <Play className="h-4 w-4 text-blue-500" />
-                  <span className="text-xs text-blue-600 font-medium">Vídeo Depoimento</span>
-                </div>
+              {slides[current].type === "video" ? (
                 <div className="relative rounded-xl overflow-hidden">
                   <video
-                    src={depoimentoVideo}
-                    className="w-full h-full object-cover rounded-xl"
+                    key={current}
+                    src={slides[current].src}
+                    className="w-full rounded-xl"
                     controls={videoPlaying}
                     playsInline
                     muted
@@ -122,41 +121,52 @@ export function TestimonialsSection() {
                   />
                   {!videoPlaying && (
                     <button
-                      onClick={() => {
-                        setVideoPlaying(true);
-                        const video = document.querySelector('video');
-                        video?.play();
-                      }}
+                      onClick={() => { setVideoPlaying(true); (document.querySelector("video") as HTMLVideoElement)?.play(); }}
                       className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/30 transition-colors"
                     >
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                         <Play className="w-8 h-8 text-white fill-white ml-1" />
                       </div>
                     </button>
                   )}
                 </div>
-              </div>
+              ) : (
+                <img
+                  key={current}
+                  src={slides[current].src}
+                  alt={slides[current].alt}
+                  className="rounded-xl w-full shadow-sm"
+                />
+              )}
             </div>
-          </div>
 
-          {/* Conversas WhatsApp reais */}
-          <div className="grid md:grid-cols-3 gap-6 mt-6">
-            {[
-              { src: depoimentoWhatsapp3, alt: "Cliente recomendando o suporte do Méc" },
-              { src: depoimentoWhatsapp4, alt: "Cliente elogiando a facilidade do app" },
-              { src: depoimentoWhatsapp5, alt: "Cliente elogiando o atendimento e o programa" },
-            ].map(({ src, alt }, i) => (
-              <div key={i} className="relative group">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                <div className="relative bg-white border border-slate-200 rounded-2xl p-3 shadow-sm hover:border-green-300 transition-colors hover:shadow-md">
-                  <div className="flex items-center gap-2 mb-2 px-2">
-                    <MessageCircle className="h-4 w-4 text-green-500" />
-                    <span className="text-xs text-green-600 font-medium">WhatsApp Verificado</span>
-                  </div>
-                  <img src={src} alt={alt} className="rounded-xl w-full shadow-sm" />
-                </div>
-              </div>
-            ))}
+            {/* Botões de navegação */}
+            <button
+              onClick={prev}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center hover:border-green-400 hover:text-green-600 transition-colors"
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center hover:border-green-400 hover:text-green-600 transition-colors"
+              aria-label="Próximo"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            {/* Dots */}
+            <div className="flex justify-center gap-2 mt-4">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setVideoPlaying(false); setCurrent(i); }}
+                  className={`w-2 h-2 rounded-full transition-all ${i === current ? "bg-green-500 w-5" : "bg-slate-300 hover:bg-slate-400"}`}
+                  aria-label={`Ir para depoimento ${i + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
