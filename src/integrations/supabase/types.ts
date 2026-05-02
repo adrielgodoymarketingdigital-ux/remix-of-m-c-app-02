@@ -2127,6 +2127,7 @@ export type Database = {
           last_login_at: string | null
           login_count: number | null
           nome: string
+          preferencias_os: Json | null
           registration_tracked: boolean | null
           updated_at: string | null
           user_id: string
@@ -2148,6 +2149,7 @@ export type Database = {
           last_login_at?: string | null
           login_count?: number | null
           nome: string
+          preferencias_os?: import("@/hooks/useOSColunas").ConfiguracaoColunas | null
           registration_tracked?: boolean | null
           updated_at?: string | null
           user_id: string
@@ -2169,6 +2171,7 @@ export type Database = {
           last_login_at?: string | null
           login_count?: number | null
           nome?: string
+          preferencias_os?: import("@/hooks/useOSColunas").ConfiguracaoColunas | null
           registration_tracked?: boolean | null
           updated_at?: string | null
           user_id?: string

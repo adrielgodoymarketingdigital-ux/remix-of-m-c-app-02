@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface ConfiguracaoColunas {
   colunas: string[];
@@ -41,33 +42,42 @@ export function useOSColunas() {
 
   useEffect(() => {
     const carregar = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setIsLoading(false); return; }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setIsLoading(false); return; }
 
-      const { data } = await supabase
-        .from('profiles')
-        .select('preferencias_os')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        const { data } = await supabase
+          .from('profiles')
+          .select('preferencias_os')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (data?.preferencias_os) {
-        setConfig(data.preferencias_os as ConfiguracaoColunas);
+        if (data?.preferencias_os) {
+          setConfig(data.preferencias_os as unknown as ConfiguracaoColunas);
+        }
+      } catch {
+        // silently fall back to defaults
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     carregar();
   }, []);
 
   const salvar = async (novaConfig: ConfiguracaoColunas) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    await supabase
-      .from('profiles')
-      .update({ preferencias_os: novaConfig })
-      .eq('user_id', user.id);
+      await supabase
+        .from('profiles')
+        .update({ preferencias_os: novaConfig as unknown as Json })
+        .eq('user_id', user.id);
 
-    setConfig(novaConfig);
+      setConfig(novaConfig);
+    } catch {
+      // silently ignore save errors
+    }
   };
 
   return { config, isLoading, salvar, COLUNAS_DISPONIVEIS, ACOES_DISPONIVEIS };
