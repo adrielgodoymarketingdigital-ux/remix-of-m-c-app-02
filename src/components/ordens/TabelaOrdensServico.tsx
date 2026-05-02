@@ -52,6 +52,7 @@ interface TabelaOrdensServicoProps {
   onExcluir: (ordem: OrdemServico) => void;
   onAtualizarStatus?: (id: string, novoStatus: string) => void;
   onEnviarWhatsApp?: (ordem: OrdemServico) => void;
+  onCompartilhar?: (ordem: OrdemServico) => void;
   onImprimirTermo?: (ordem: OrdemServico) => void;
   onImprimirEtiqueta?: (ordem: OrdemServico) => void;
   termoAtivo?: boolean;
@@ -66,6 +67,7 @@ export const TabelaOrdensServico = ({
   onExcluir,
   onAtualizarStatus,
   onEnviarWhatsApp,
+  onCompartilhar,
   onImprimirTermo,
   onImprimirEtiqueta,
   termoAtivo,
@@ -205,6 +207,7 @@ export const TabelaOrdensServico = ({
                 onImprimir={() => onImprimir(ordem)}
                 onExcluir={() => onExcluir(ordem)}
                 onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
+                onCompartilhar={() => onCompartilhar?.(ordem)}
                 onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
                 onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
                 termoAtivo={termoAtivo}
@@ -330,6 +333,7 @@ export const TabelaOrdensServico = ({
                   onImprimir={() => onImprimir(ordem)}
                   onExcluir={() => onExcluir(ordem)}
                   onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
+                  onCompartilhar={() => onCompartilhar?.(ordem)}
                   onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
                   onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
                   termoAtivo={termoAtivo}

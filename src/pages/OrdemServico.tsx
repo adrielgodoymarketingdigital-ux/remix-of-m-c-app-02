@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag } from "lucide-react";
+import { toast } from "sonner";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -26,6 +27,7 @@ import {
 import { useOrdensServico, type OrdemServico } from "@/hooks/useOrdensServico";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSTracking } from "@/hooks/useOSTracking";
 import { BuscaOrdemServico } from "@/components/ordens/BuscaOrdemServico";
 import { TabelaOrdensServico } from "@/components/ordens/TabelaOrdensServico";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
@@ -94,10 +96,53 @@ export default function OrdemServicoPage() {
   const [dialogEtiqueta, setDialogEtiqueta] = useState(false);
   const [ordemParaEtiqueta, setOrdemParaEtiqueta] = useState<OrdemServico | null>(null);
   const etiquetaPrintWindowRef = useRef<Window | null>(null);
+  const [usoCompartilhamentos, setUsoCompartilhamentos] = useState({ usado: 0, limite: 0, plano: '' });
   const { config: configuracaoLoja, refetch: refetchConfig } = useConfiguracaoLoja();
   const { obterContagemOSMes, abrirPaginaPagamento, limites } = useAssinatura();
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
+  const { compartilharWhatsApp, gerarLink } = useOSTracking();
+
+  useEffect(() => {
+    const buscarUso = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const agora = new Date();
+      const [{ data: uso }, { data: assinatura }] = await Promise.all([
+        supabase
+          .from('os_tracking_uso')
+          .select('total_compartilhamentos')
+          .eq('user_id', user.id)
+          .eq('mes', agora.getMonth() + 1)
+          .eq('ano', agora.getFullYear())
+          .maybeSingle(),
+        supabase
+          .from('assinaturas')
+          .select('plano_tipo')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle(),
+      ]);
+
+      const LIMITES: Record<string, number> = {
+        basico_mensal: 0, basico_anual: 0,
+        intermediario_mensal: 10, intermediario_anual: 10,
+        profissional_mensal: 50, profissional_anual: 50,
+        profissional_ultra_mensal: -1, profissional_ultra_anual: -1,
+      };
+
+      const plano = assinatura?.plano_tipo || 'free';
+      const limite = LIMITES[plano] ?? 0;
+
+      setUsoCompartilhamentos({
+        usado: uso?.total_compartilhamentos || 0,
+        limite,
+        plano,
+      });
+    };
+    buscarUso();
+  }, []);
 
   const {
     ordens,
@@ -296,6 +341,25 @@ export default function OrdemServicoPage() {
     setDialogWhatsApp(true);
   };
 
+  const handleCompartilhar = async (ordem: OrdemServico) => {
+    const celular = ordem.cliente?.telefone || '';
+    if (celular) {
+      await compartilharWhatsApp(
+        ordem.id,
+        celular,
+        ordem.cliente?.nome || '',
+        ordem.numero_os,
+        ordem.status || ''
+      );
+    } else {
+      const link = await gerarLink(ordem.id);
+      if (link) {
+        navigator.clipboard.writeText(link);
+        toast.success("Link de acompanhamento copiado!");
+      }
+    }
+  };
+
   const handleImprimirEtiqueta = async (ordem: OrdemServico) => {
     const printWindow = window.open("", "_blank", "width=400,height=400");
     if (!printWindow) return;
@@ -399,6 +463,18 @@ export default function OrdemServicoPage() {
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Ordem
               </Button>
+              {usoCompartilhamentos.limite !== 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
+                  <Share2 className="h-3.5 w-3.5" />
+                  {usoCompartilhamentos.limite === -1 ? (
+                    <span>Compartilhamentos: Ilimitado</span>
+                  ) : (
+                    <span>
+                      {usoCompartilhamentos.usado}/{usoCompartilhamentos.limite} compartilhamentos este mês
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Filtro de data global */}
@@ -628,6 +704,7 @@ export default function OrdemServicoPage() {
                     }}
                     onAtualizarStatus={handleAtualizarStatus}
                     onEnviarWhatsApp={handleEnviarWhatsApp}
+                    onCompartilhar={handleCompartilhar}
                     onImprimirTermo={handleImprimirTermo}
                     onImprimirEtiqueta={handleImprimirEtiqueta}
                     termoAtivo={(configuracaoLoja?.termo_responsabilidade_config as TermoResponsabilidadeConfig)?.ativo}

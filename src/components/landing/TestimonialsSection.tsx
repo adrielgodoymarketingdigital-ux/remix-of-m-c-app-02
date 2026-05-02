@@ -16,12 +16,12 @@ const stats = [
 ];
 
 const slides = [
+  { type: "video" as const, src: depoimentoVideo, alt: "Vídeo depoimento" },
   { type: "image" as const, src: depoimentoWhatsapp2, alt: "Depoimento de cliente mostrando o sistema" },
   { type: "image" as const, src: depoimentoWhatsapp1, alt: "Depoimento de cliente via WhatsApp" },
   { type: "image" as const, src: depoimentoWhatsapp3, alt: "Cliente recomendando o suporte do Méc" },
   { type: "image" as const, src: depoimentoWhatsapp4, alt: "Cliente elogiando a facilidade do app" },
   { type: "image" as const, src: depoimentoWhatsapp5, alt: "Cliente elogiando o atendimento e o programa" },
-  { type: "video" as const, src: depoimentoVideo, alt: "Vídeo depoimento" },
 ];
 
 export function TestimonialsSection() {

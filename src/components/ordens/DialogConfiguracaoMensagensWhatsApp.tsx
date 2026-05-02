@@ -47,6 +47,15 @@ const VARIAVEIS_DISPONIVEIS = [
   { variavel: "{{status}}", descricao: "Status atual da OS" },
 ];
 
+const VARIAVEIS_TRACKING = [
+  { variavel: "{{cliente_nome}}", descricao: "Nome do cliente" },
+  { variavel: "{{numero_os}}", descricao: "Número da OS" },
+  { variavel: "{{status}}", descricao: "Status atual da OS" },
+  { variavel: "{{link}}", descricao: "Link de acompanhamento" },
+];
+
+const MENSAGEM_TRACKING_PADRAO = "Olá {{cliente_nome}}! Acompanhe sua OS #{{numero_os}} em tempo real:\n{{link}}";
+
 export const DialogConfiguracaoMensagensWhatsApp = ({
   open,
   onOpenChange,
@@ -55,6 +64,7 @@ export const DialogConfiguracaoMensagensWhatsApp = ({
   const { config, atualizarConfiguracao } = useConfiguracaoLoja();
   const { statusList } = useOSStatusConfig();
   const [mensagens, setMensagens] = useState<Record<string, string>>({});
+  const [mensagemTracking, setMensagemTracking] = useState(MENSAGEM_TRACKING_PADRAO);
   const [salvando, setSalvando] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("");
 
@@ -69,12 +79,13 @@ export const DialogConfiguracaoMensagensWhatsApp = ({
   useEffect(() => {
     if (open && config) {
       const mensagensSalvas = (config.mensagens_whatsapp_os as Record<string, string>) || {};
-      // Build full map: for each status, use saved or default
       const fullMap: Record<string, string> = {};
       statusList.forEach(s => {
         fullMap[s.slug] = mensagensSalvas[s.slug] || MENSAGENS_PADRAO_FIXAS[s.slug] || MENSAGEM_PADRAO_TEMPLATE;
       });
       setMensagens(fullMap);
+      const tracking = (config.mensagens_whatsapp as Record<string, string>)?.os_tracking;
+      setMensagemTracking(tracking || MENSAGEM_TRACKING_PADRAO);
       if (statusList.length > 0) {
         setActiveTab(statusList[0].slug);
       }
@@ -107,7 +118,11 @@ export const DialogConfiguracaoMensagensWhatsApp = ({
   const handleSalvar = async () => {
     setSalvando(true);
     try {
-      await atualizarConfiguracao({ mensagens_whatsapp_os: mensagens });
+      const mensagensWhatsappAtual = (config?.mensagens_whatsapp as Record<string, string>) || {};
+      await atualizarConfiguracao({
+        mensagens_whatsapp_os: mensagens,
+        mensagens_whatsapp: { ...mensagensWhatsappAtual, os_tracking: mensagemTracking },
+      });
       toast.success("Mensagens do WhatsApp salvas com sucesso!");
       onSave?.();
       onOpenChange(false);
@@ -157,6 +172,9 @@ export const DialogConfiguracaoMensagensWhatsApp = ({
                     {status.nome}
                   </TabsTrigger>
                 ))}
+                <TabsTrigger value="os_tracking" className="text-xs sm:text-sm whitespace-nowrap">
+                  🔗 Acompanhamento
+                </TabsTrigger>
               </TabsList>
             </ScrollArea>
 
@@ -205,6 +223,70 @@ export const DialogConfiguracaoMensagensWhatsApp = ({
                   </div>
                 </TabsContent>
               ))}
+
+              <TabsContent value="os_tracking" className="mt-0 space-y-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <Badge className="bg-blue-600 text-white">Acompanhamento de OS</Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enviada quando o link de acompanhamento é compartilhado via WhatsApp
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMensagemTracking(MENSAGEM_TRACKING_PADRAO)}
+                    className="flex-shrink-0"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Restaurar
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Mensagem</Label>
+                  <Textarea
+                    value={mensagemTracking}
+                    onChange={(e) => setMensagemTracking(e.target.value)}
+                    rows={4}
+                    className="resize-none"
+                    placeholder="Digite a mensagem..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Info className="h-3.5 w-3.5" />
+                    Variáveis disponíveis
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {VARIAVEIS_TRACKING.map((v) => (
+                      <Badge
+                        key={v.variavel}
+                        variant="outline"
+                        className="text-xs cursor-help"
+                        title={v.descricao}
+                      >
+                        {v.variavel}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Info className="h-3.5 w-3.5" />
+                    Preview
+                  </Label>
+                  <div className="bg-muted rounded-lg p-3 text-sm whitespace-pre-wrap">
+                    {mensagemTracking
+                      .replace(/{{cliente_nome}}/g, "João Silva")
+                      .replace(/{{numero_os}}/g, "000125")
+                      .replace(/{{status}}/g, "Em Andamento")
+                      .replace(/{{link}}/g, `${window.location.origin}/acompanhar/abc123`)}
+                  </div>
+                </div>
+              </TabsContent>
             </div>
           </Tabs>
         </div>

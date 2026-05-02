@@ -62,6 +62,7 @@ const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 const Fidelidade = lazy(() => import("./pages/Fidelidade"));
 const MultiEmpresas = lazy(() => import("./pages/MultiEmpresas"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const AcompanharOS = lazy(() => import("./pages/AcompanharOS"));
 
 const RouteFallback = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -118,6 +119,7 @@ function AppRoutes() {
           <Route path="/ativar-trial" element={<Auth />} />
           <Route path="/c/:slug" element={<CatalogoPublico />} />
           <Route path="/lp/:slug" element={<LandingPagePublica />} />
+          <Route path="/acompanhar/:token" element={<AcompanharOS />} />
           
           {/* Rotas protegidas - exigem autenticação + onboarding + trial/assinatura + permissão funcionário */}
           <Route path="/dashboard" element={

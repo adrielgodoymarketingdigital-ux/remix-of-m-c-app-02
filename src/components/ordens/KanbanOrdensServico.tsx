@@ -19,6 +19,7 @@ interface KanbanOrdensServicoProps {
   onExcluir: (ordem: OrdemServico) => void;
   onAtualizarStatus: (id: string, novoStatus: string) => void | Promise<void>;
   onEnviarWhatsApp?: (ordem: OrdemServico) => void;
+  onCompartilhar?: (ordem: OrdemServico) => void;
   onImprimirTermo?: (ordem: OrdemServico) => void;
   onImprimirEtiqueta?: (ordem: OrdemServico) => void;
   termoAtivo?: boolean;
@@ -31,6 +32,7 @@ interface KanbanCardProps {
   onImprimir: (ordem: OrdemServico) => void;
   onExcluir: (ordem: OrdemServico) => void;
   onEnviarWhatsApp?: (ordem: OrdemServico) => void;
+  onCompartilhar?: (ordem: OrdemServico) => void;
   onImprimirTermo?: (ordem: OrdemServico) => void;
   onImprimirEtiqueta?: (ordem: OrdemServico) => void;
   termoAtivo?: boolean;
@@ -43,6 +45,7 @@ function KanbanCard({
   onImprimir,
   onExcluir,
   onEnviarWhatsApp,
+  onCompartilhar,
   onImprimirTermo,
   onImprimirEtiqueta,
   termoAtivo,
@@ -97,6 +100,7 @@ function KanbanCard({
           onImprimir={() => onImprimir(ordem)}
           onExcluir={() => onExcluir(ordem)}
           onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
+          onCompartilhar={onCompartilhar ? () => onCompartilhar(ordem) : undefined}
           onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
           onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
           termoAtivo={termoAtivo}
@@ -115,6 +119,7 @@ export function KanbanOrdensServico({
   onExcluir,
   onAtualizarStatus,
   onEnviarWhatsApp,
+  onCompartilhar,
   onImprimirTermo,
   onImprimirEtiqueta,
   termoAtivo,
@@ -251,6 +256,7 @@ export function KanbanOrdensServico({
                         onImprimir={onImprimir}
                         onExcluir={onExcluir}
                         onEnviarWhatsApp={onEnviarWhatsApp}
+                        onCompartilhar={onCompartilhar}
                         onImprimirTermo={onImprimirTermo}
                         onImprimirEtiqueta={onImprimirEtiqueta}
                         termoAtivo={termoAtivo}
