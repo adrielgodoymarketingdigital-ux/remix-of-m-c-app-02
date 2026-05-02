@@ -657,6 +657,7 @@ export default function OrdemServicoPage() {
                     }}
                     onAtualizarStatus={handleAtualizarStatus}
                     onEnviarWhatsApp={handleEnviarWhatsApp}
+                    onCompartilhar={handleCompartilhar}
                     onImprimirTermo={handleImprimirTermo}
                     onImprimirEtiqueta={handleImprimirEtiqueta}
                     termoAtivo={(configuracaoLoja?.termo_responsabilidade_config as TermoResponsabilidadeConfig)?.ativo}
