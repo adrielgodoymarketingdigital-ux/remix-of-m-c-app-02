@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, Share2 } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, Share2, Copy, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -17,6 +17,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -97,6 +100,9 @@ export default function OrdemServicoPage() {
   const [ordemParaEtiqueta, setOrdemParaEtiqueta] = useState<OrdemServico | null>(null);
   const etiquetaPrintWindowRef = useRef<Window | null>(null);
   const [usoCompartilhamentos, setUsoCompartilhamentos] = useState({ usado: 0, limite: 0, plano: '' });
+  const [dialogCompartilharAberto, setDialogCompartilharAberto] = useState(false);
+  const [linkCompartilhamento, setLinkCompartilhamento] = useState('');
+  const [ordemCompartilhar, setOrdemCompartilhar] = useState<OrdemServico | null>(null);
   const { config: configuracaoLoja, refetch: refetchConfig } = useConfiguracaoLoja();
   const { obterContagemOSMes, abrirPaginaPagamento, limites } = useAssinatura();
   const { statusList, getStatusBySlug } = useOSStatusConfig();
@@ -342,22 +348,11 @@ export default function OrdemServicoPage() {
   };
 
   const handleCompartilhar = async (ordem: OrdemServico) => {
-    const celular = ordem.cliente?.telefone || ordem.cliente?.celular || '';
-    if (celular) {
-      await compartilharWhatsApp(
-        ordem.id,
-        celular,
-        ordem.cliente?.nome || '',
-        ordem.numero_os,
-        ordem.status || ''
-      );
-    } else {
-      const link = await gerarLink(ordem.id);
-      if (link) {
-        await navigator.clipboard.writeText(link);
-        toast.success("Link de acompanhamento copiado!");
-      }
-    }
+    const link = await gerarLink(ordem.id);
+    if (!link) return;
+    setLinkCompartilhamento(link);
+    setOrdemCompartilhar(ordem);
+    setDialogCompartilharAberto(true);
   };
 
   const handleImprimirEtiqueta = async (ordem: OrdemServico) => {
@@ -910,6 +905,80 @@ export default function OrdemServicoPage() {
         </div>
       </main>
       </Suspense>
+
+      {/* Dialog de Compartilhamento */}
+      <Dialog open={dialogCompartilharAberto} onOpenChange={setDialogCompartilharAberto}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5 text-blue-500" />
+              Compartilhar Acompanhamento
+            </DialogTitle>
+            <DialogDescription>
+              OS #{ordemCompartilhar?.numero_os} — {ordemCompartilhar?.cliente?.nome}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted border">
+            <p className="text-xs text-muted-foreground flex-1 truncate">{linkCompartilhamento}</p>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="shrink-0 h-7 px-2"
+              onClick={async () => {
+                await navigator.clipboard.writeText(linkCompartilhamento);
+                toast.success("Link copiado!");
+              }}
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 mt-2">
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => {
+                const celular = ordemCompartilhar?.cliente?.telefone ||
+                               (ordemCompartilhar?.cliente as any)?.celular || '';
+                if (!celular) {
+                  toast.error("Cliente sem telefone cadastrado");
+                  return;
+                }
+                const mensagem = encodeURIComponent(
+                  `Olá ${ordemCompartilhar?.cliente?.nome}! Acompanhe sua OS #${ordemCompartilhar?.numero_os} em tempo real:\n${linkCompartilhamento}`
+                );
+                const numero = celular.replace(/\D/g, '');
+                window.open(`https://wa.me/55${numero}?text=${mensagem}`, '_blank');
+              }}
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Enviar pelo WhatsApp
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => window.open(linkCompartilhamento, '_blank')}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Visualizar Página
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={async () => {
+                await navigator.clipboard.writeText(linkCompartilhamento);
+                toast.success("Link copiado!");
+                setDialogCompartilharAberto(false);
+              }}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copiar Link
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
