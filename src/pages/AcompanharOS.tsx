@@ -16,14 +16,13 @@ interface TrackingDados {
   os: {
     numero_os: string;
     status: string | null;
-    descricao_problema: string | null;
-    descricao_solucao: string | null;
-    valor_total: number | null;
+    defeito_relatado: string | null;
+    total: number | null;
     created_at: string;
     data_saida: string | null;
-    fotos: string[] | null;
-    cliente: { nome: string; celular: string } | null;
-    dispositivo: { marca: string; modelo: string } | null;
+    dispositivo_marca: string | null;
+    dispositivo_modelo: string | null;
+    cliente: { nome: string; telefone: string | null } | null;
   } | null;
   loja: {
     nome_loja: string | null;
@@ -65,10 +64,10 @@ export default function AcompanharOS() {
         const { data: osData } = await supabase
           .from('ordens_servico')
           .select(`
-            numero_os, status, descricao_problema, descricao_solucao,
-            valor_total, created_at, data_saida, fotos,
-            cliente:clientes(nome, celular),
-            dispositivo:dispositivos(marca, modelo)
+            numero_os, status, defeito_relatado,
+            total, created_at, data_saida,
+            dispositivo_marca, dispositivo_modelo,
+            cliente:clientes(nome, telefone)
           `)
           .eq('id', linkData.os_id)
           .maybeSingle();
@@ -199,64 +198,32 @@ export default function AcompanharOS() {
           </CardContent>
         </Card>
 
-        {(os?.dispositivo?.marca || os?.dispositivo?.modelo) && (
+        {(os?.dispositivo_marca || os?.dispositivo_modelo) && (
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Dispositivo</p>
-              <p className="font-semibold">{os?.dispositivo?.marca} {os?.dispositivo?.modelo}</p>
+              <p className="font-semibold">{os?.dispositivo_marca} {os?.dispositivo_modelo}</p>
             </CardContent>
           </Card>
         )}
 
-        {os?.fotos && os.fotos.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-                Fotos do Aparelho
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {os.fotos.slice(0, 6).map((foto: string, i: number) => (
-                  <img
-                    key={i}
-                    src={foto}
-                    alt={`Foto ${i + 1}`}
-                    className="w-full h-24 object-cover rounded-lg cursor-pointer"
-                    onClick={() => window.open(foto, '_blank')}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {os?.descricao_problema && (
+        {os?.defeito_relatado && (
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 Problema Relatado
               </p>
-              <p className="text-sm">{os.descricao_problema}</p>
+              <p className="text-sm">{os.defeito_relatado}</p>
             </CardContent>
           </Card>
         )}
 
-        {os?.descricao_solucao && (
-          <Card>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                Solução Aplicada
-              </p>
-              <p className="text-sm">{os.descricao_solucao}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {os?.valor_total != null && os.valor_total > 0 && (
+        {os?.total != null && os.total > 0 && (
           <Card>
             <CardContent className="p-4 flex items-center justify-between">
               <p className="text-sm text-muted-foreground">Valor do Serviço</p>
               <p className="text-xl font-bold" style={{ color: corPrimaria }}>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(os.valor_total)}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(os.total)}
               </p>
             </CardContent>
           </Card>
