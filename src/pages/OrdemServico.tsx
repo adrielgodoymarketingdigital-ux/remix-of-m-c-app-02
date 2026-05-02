@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, Share2, Copy, Eye } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -69,6 +69,7 @@ const DialogServicoAvulso = lazy(() => import("@/components/ordens/DialogServico
 const DialogImportarOS = lazy(() => import("@/components/ordens/DialogImportarOS").then((m) => ({ default: m.DialogImportarOS })));
 const DialogConfiguracaoEtiqueta = lazy(() => import("@/components/ordens/DialogConfiguracaoEtiqueta").then((m) => ({ default: m.DialogConfiguracaoEtiqueta })));
 const ImpressaoEtiqueta = lazy(() => import("@/components/ordens/ImpressaoEtiqueta").then((m) => ({ default: m.ImpressaoEtiqueta })));
+import { DialogPersonalizarColunas } from "@/components/ordens/DialogPersonalizarColunas";
 
 export default function OrdemServicoPage() {
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -98,6 +99,7 @@ export default function OrdemServicoPage() {
   const [visualizacao, setVisualizacao] = useState<"tabela" | "kanban">("tabela");
   const [dialogEtiqueta, setDialogEtiqueta] = useState(false);
   const [ordemParaEtiqueta, setOrdemParaEtiqueta] = useState<OrdemServico | null>(null);
+  const [dialogPersonalizarColunas, setDialogPersonalizarColunas] = useState(false);
   const etiquetaPrintWindowRef = useRef<Window | null>(null);
   const [usoCompartilhamentos, setUsoCompartilhamentos] = useState({ usado: 0, limite: 0, plano: '' });
   const [dialogCompartilharAberto, setDialogCompartilharAberto] = useState(false);
@@ -444,6 +446,10 @@ export default function OrdemServicoPage() {
                     <Tag className="h-4 w-4 mr-2" />
                     Etiqueta de Identificação
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDialogPersonalizarColunas(true)}>
+                    <Columns3 className="h-4 w-4 mr-2" />
+                    Personalizar Colunas
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button variant="outline" onClick={() => setDialogImportarOS(true)} className="flex-1 sm:flex-none">
@@ -460,7 +466,7 @@ export default function OrdemServicoPage() {
               </Button>
               {usoCompartilhamentos.limite !== 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
-                  <Share2 className="h-3.5 w-3.5" />
+                  <RadioTower className="h-3.5 w-3.5" />
                   {usoCompartilhamentos.limite === -1 ? (
                     <span>Compartilhamentos: Ilimitado</span>
                   ) : (
@@ -808,6 +814,12 @@ export default function OrdemServicoPage() {
             open={dialogEtiqueta}
             onOpenChange={setDialogEtiqueta}
             onSave={refetchConfig}
+          />
+
+          {/* Dialog de Personalização de Colunas */}
+          <DialogPersonalizarColunas
+            open={dialogPersonalizarColunas}
+            onOpenChange={setDialogPersonalizarColunas}
           />
 
           {/* Impressão de Etiqueta */}

@@ -19,6 +19,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useIsMobile, useIsMobileOrTablet } from "@/hooks/use-mobile";
 import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSColunas } from "@/hooks/useOSColunas";
 
 // Fallback colors/labels for when config hasn't loaded yet
 const fallbackColors: Record<string, string> = {
@@ -75,6 +76,9 @@ export const TabelaOrdensServico = ({
   const [popoverAberto, setPopoverAberto] = useState<string | null>(null);
   const isMobileOrTablet = useIsMobileOrTablet();
   const { statusList, activeStatusList } = useOSStatusConfig();
+  const { config } = useOSColunas();
+  const colunasAtivas = config.colunas;
+  const acoesAtivas = config.acoes_principais;
 
   // Build dynamic colors/labels from config, with fallback
   // Use full statusList for colors/labels (so existing OS with inactive status still display correctly)
@@ -130,12 +134,12 @@ export const TabelaOrdensServico = ({
                 <p className="text-sm text-muted-foreground">{(ordem.avarias as any)?.is_avulso ? ordem.defeito_relatado : (ordem.cliente?.nome || "N/A")}</p>
               </div>
               {onAtualizarStatus ? (
-                <Popover 
-                  open={popoverAberto === ordem.id} 
+                <Popover
+                  open={popoverAberto === ordem.id}
                   onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
                 >
                   <PopoverTrigger asChild>
-                    <button 
+                    <button
                       className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold text-white border-0 cursor-pointer"
                       style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
                     >
@@ -167,8 +171,8 @@ export const TabelaOrdensServico = ({
                   </PopoverContent>
                 </Popover>
               ) : (
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className="text-white border-0"
                   style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
                 >
@@ -176,13 +180,13 @@ export const TabelaOrdensServico = ({
                 </Badge>
               )}
             </div>
-            
+
             <div className="text-sm space-y-1 mb-3">
               <p className="font-medium">{ordem.dispositivo_marca} {ordem.dispositivo_modelo}</p>
               <p className="text-muted-foreground text-xs">{ordem.dispositivo_tipo}</p>
               <p className="text-muted-foreground truncate">{ordem.defeito_relatado}</p>
             </div>
-            
+
             <div className="flex items-center justify-between pt-3 border-t">
               <div className="text-sm space-y-0.5">
                 <div className="text-muted-foreground">
@@ -211,6 +215,7 @@ export const TabelaOrdensServico = ({
                 onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
                 onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
                 termoAtivo={termoAtivo}
+                acoesAtivas={acoesAtivas}
               />
             </div>
           </Card>
@@ -226,13 +231,25 @@ export const TabelaOrdensServico = ({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[6%] px-1.5">OS</TableHead>
-            <TableHead className="w-[13%] px-1.5">Cliente</TableHead>
-            <TableHead className="w-[15%] px-1.5">Dispositivo</TableHead>
+            {colunasAtivas.includes('cliente') && (
+              <TableHead className="w-[13%] px-1.5">Cliente</TableHead>
+            )}
+            {colunasAtivas.includes('dispositivo') && (
+              <TableHead className="w-[15%] px-1.5">Dispositivo</TableHead>
+            )}
             <TableHead className="w-[7%] px-1.5">Entrada</TableHead>
-            <TableHead className="w-[7%] px-1.5">Saída</TableHead>
-            <TableHead className="w-[18%] px-1.5">Serviço</TableHead>
-            <TableHead className="w-[12%] px-1.5">Status</TableHead>
-            <TableHead className="w-[7%] px-1.5 text-right">Valor</TableHead>
+            {colunasAtivas.includes('data_saida') && (
+              <TableHead className="w-[7%] px-1.5">Saída</TableHead>
+            )}
+            {colunasAtivas.includes('defeito') && (
+              <TableHead className="w-[18%] px-1.5">Serviço</TableHead>
+            )}
+            {colunasAtivas.includes('status') && (
+              <TableHead className="w-[12%] px-1.5">Status</TableHead>
+            )}
+            {colunasAtivas.includes('valor') && (
+              <TableHead className="w-[7%] px-1.5 text-right">Valor</TableHead>
+            )}
             <TableHead className="w-[15%] px-1.5 text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -249,83 +266,95 @@ export const TabelaOrdensServico = ({
                   <Badge variant="outline" className="ml-2 text-[10px] bg-amber-100 text-amber-800 border-amber-300">Teste</Badge>
                 )}
               </TableCell>
-              <TableCell className="overflow-hidden truncate px-1.5 py-1.5">{(ordem.avarias as any)?.is_avulso ? "—" : (ordem.cliente?.nome || "N/A")}</TableCell>
-              <TableCell className="overflow-hidden px-1.5 py-1.5">
-                <div className="flex flex-col min-w-0">
-                  <span className="font-medium truncate">
-                    {(ordem.avarias as any)?.is_avulso ? ordem.defeito_relatado : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {ordem.dispositivo_tipo}
-                  </span>
-                </div>
-              </TableCell>
+              {colunasAtivas.includes('cliente') && (
+                <TableCell className="overflow-hidden truncate px-1.5 py-1.5">{(ordem.avarias as any)?.is_avulso ? "—" : (ordem.cliente?.nome || "N/A")}</TableCell>
+              )}
+              {colunasAtivas.includes('dispositivo') && (
+                <TableCell className="overflow-hidden px-1.5 py-1.5">
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium truncate">
+                      {(ordem.avarias as any)?.is_avulso ? ordem.defeito_relatado : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      {ordem.dispositivo_tipo}
+                    </span>
+                  </div>
+                </TableCell>
+              )}
               <TableCell className="whitespace-nowrap px-1.5 py-1.5">{formatDate(ordem.created_at)}</TableCell>
-              <TableCell className="whitespace-nowrap px-1.5 py-1.5">
-                {ordem.data_saida ? formatDate(ordem.data_saida) : <span className="text-muted-foreground">—</span>}
-              </TableCell>
-              <TableCell className="max-w-0 truncate px-1.5 py-1.5">
-                {ordem.defeito_relatado}
-              </TableCell>
-              <TableCell className="overflow-hidden px-1.5 py-1.5">
-                {onAtualizarStatus ? (
-                  <Popover 
-                    open={popoverAberto === ordem.id} 
-                    onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
-                  >
-                    <PopoverTrigger asChild>
-                      <button 
-                        className="inline-flex max-w-full cursor-pointer items-center overflow-hidden rounded-md border-0 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-opacity hover:opacity-80"
-                        style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
-                      >
-                        <span className="truncate">{statusLabels[ordem.status as string] || "Aguardando Aprovação"}</span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-0" align="start">
-                      <Command>
-                        <CommandGroup>
-                          {opcoesStatus.map((opcao) => (
-                            <CommandItem
-                              key={opcao.value}
-                              value={opcao.value}
-                              onSelect={(value) => {
-                                onAtualizarStatus(ordem.id, value);
-                                setPopoverAberto(null);
-                              }}
-                              className="flex items-center gap-2 cursor-pointer"
-                            >
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[opcao.value] || '#3b82f6' }} />
-                              <span className="flex-1">{opcao.label}</span>
-                              {ordem.status === opcao.value && (
-                                <Check className="h-4 w-4" />
-                              )}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Badge 
-                    variant="outline" 
-                    className="text-white border-0"
-                    style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
-                  >
-                    {statusLabels[ordem.status as string] || "Aguardando Aprovação"}
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell className="whitespace-nowrap px-1.5 py-1.5 text-right">
-                <div>
-                  <ValorMonetario valor={ordem.total} tipo="preco" />
-                  {(() => {
-                    const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
-                    return entrada > 0 ? (
-                      <div className="text-[10px] text-green-600">Entrada: <ValorMonetario valor={entrada} tipo="preco" /></div>
-                    ) : null;
-                  })()}
-                </div>
-              </TableCell>
+              {colunasAtivas.includes('data_saida') && (
+                <TableCell className="whitespace-nowrap px-1.5 py-1.5">
+                  {ordem.data_saida ? formatDate(ordem.data_saida) : <span className="text-muted-foreground">—</span>}
+                </TableCell>
+              )}
+              {colunasAtivas.includes('defeito') && (
+                <TableCell className="max-w-0 truncate px-1.5 py-1.5">
+                  {ordem.defeito_relatado}
+                </TableCell>
+              )}
+              {colunasAtivas.includes('status') && (
+                <TableCell className="overflow-hidden px-1.5 py-1.5">
+                  {onAtualizarStatus ? (
+                    <Popover
+                      open={popoverAberto === ordem.id}
+                      onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
+                    >
+                      <PopoverTrigger asChild>
+                        <button
+                          className="inline-flex max-w-full cursor-pointer items-center overflow-hidden rounded-md border-0 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-opacity hover:opacity-80"
+                          style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
+                        >
+                          <span className="truncate">{statusLabels[ordem.status as string] || "Aguardando Aprovação"}</span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-0" align="start">
+                        <Command>
+                          <CommandGroup>
+                            {opcoesStatus.map((opcao) => (
+                              <CommandItem
+                                key={opcao.value}
+                                value={opcao.value}
+                                onSelect={(value) => {
+                                  onAtualizarStatus(ordem.id, value);
+                                  setPopoverAberto(null);
+                                }}
+                                className="flex items-center gap-2 cursor-pointer"
+                              >
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[opcao.value] || '#3b82f6' }} />
+                                <span className="flex-1">{opcao.label}</span>
+                                {ordem.status === opcao.value && (
+                                  <Check className="h-4 w-4" />
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="text-white border-0"
+                      style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
+                    >
+                      {statusLabels[ordem.status as string] || "Aguardando Aprovação"}
+                    </Badge>
+                  )}
+                </TableCell>
+              )}
+              {colunasAtivas.includes('valor') && (
+                <TableCell className="whitespace-nowrap px-1.5 py-1.5 text-right">
+                  <div>
+                    <ValorMonetario valor={ordem.total} tipo="preco" />
+                    {(() => {
+                      const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
+                      return entrada > 0 ? (
+                        <div className="text-[10px] text-green-600">Entrada: <ValorMonetario valor={entrada} tipo="preco" /></div>
+                      ) : null;
+                    })()}
+                  </div>
+                </TableCell>
+              )}
               <TableCell className="overflow-hidden px-1.5 py-1.5 text-right">
                 <BotoesAcaoOrdem
                   onVisualizar={() => onVisualizar(ordem)}
@@ -337,7 +366,8 @@ export const TabelaOrdensServico = ({
                   onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
                   onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
                   termoAtivo={termoAtivo}
-                   compacto
+                  acoesAtivas={acoesAtivas}
+                  compacto
                 />
               </TableCell>
             </TableRow>
