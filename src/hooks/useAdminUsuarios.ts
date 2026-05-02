@@ -172,7 +172,8 @@ export function useAdminUsuarios() {
         ];
         const hasPaidPlan = planosPagos.includes(item.plano_tipo);
         const dataFimValida = !item.data_fim || new Date(item.data_fim) > new Date();
-        const isPagante = hasPaidPlan && item.status === "active" && !isTrial && dataFimValida;
+        const naoEhStripe = item.payment_provider !== "stripe";
+        const isPagante = hasPaidPlan && item.status === "active" && !isTrial && dataFimValida && naoEhStripe;
 
         let diasRestantesTrial: number | null = null;
         let horasRestantesTrial: number | null = null;

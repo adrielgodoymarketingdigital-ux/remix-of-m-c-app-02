@@ -140,7 +140,7 @@ serve(async (req) => {
       return new Date(ref).getTime() > agora.getTime();
     };
 
-    const vigentes = assinaturas.filter(isVigente);
+    const vigentes = assinaturas.filter((a) => isVigente(a) && (a as any).payment_provider !== "stripe");
     const inadimplentes = assinaturas.filter((a) => !isVigente(a));
     const dbTotal = vigentes.length;
     const dbInadimplentes = inadimplentes.length;

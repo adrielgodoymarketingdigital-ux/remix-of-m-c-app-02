@@ -212,35 +212,25 @@ export default function AdminUsuarios() {
     "profissional_mensal", "profissional_anual",
   ];
 
-  const assinantesPagarme = usuariosFiltrados.filter(u =>
-    (u as unknown as Record<string, unknown>).payment_provider === 'pagarme' &&
-    u.status === 'active' &&
-    planosPagos.includes(u.plano_tipo) &&
-    (!u.data_fim || new Date(u.data_fim) > new Date())
+  const assinantesPagarme = assinantes.filter(u =>
+    (u as any).payment_provider === 'pagarme'
   );
 
-  const tictoVigentes = usuariosFiltrados.filter(u =>
-    (u as unknown as Record<string, unknown>).payment_provider === 'ticto' &&
-    u.status === 'active' &&
-    planosPagos.includes(u.plano_tipo) &&
-    u.data_fim !== null && u.data_fim !== undefined && new Date(u.data_fim) > new Date()
+  const tictoVigentes = assinantes.filter(u =>
+    (u as any).payment_provider === 'ticto' &&
+    (!u.data_fim || new Date(u.data_fim) > new Date())
   );
 
   const tictoVencidos = usuariosFiltrados.filter(u =>
-    (u as unknown as Record<string, unknown>).payment_provider === 'ticto' &&
+    (u as any).payment_provider === 'ticto' &&
     u.status === 'active' &&
     planosPagos.includes(u.plano_tipo) &&
-    u.data_fim !== null && u.data_fim !== undefined && new Date(u.data_fim) <= new Date()
+    u.data_fim && new Date(u.data_fim) <= new Date()
   );
 
-  const assinantesStripe = usuariosFiltrados.filter(u =>
-    (u as unknown as Record<string, unknown>).payment_provider === 'stripe' &&
-    u.status === 'active' &&
-    planosPagos.includes(u.plano_tipo) &&
-    (!u.data_fim || new Date(u.data_fim) > new Date())
+  const assinantesStripe = assinantes.filter(u =>
+    (u as any).payment_provider === 'stripe'
   );
-
-  const totalAssinantesVigentes = assinantesPagarme.length + tictoVigentes.length + assinantesStripe.length;
 
   const pagarmeCount = financeiroData?.assinantes_pagarme ?? 0;
   const percentualMigrado = (tictoVigentes.length + pagarmeCount) > 0
@@ -358,9 +348,9 @@ export default function AdminUsuarios() {
                     <CreditCard className="h-4 w-4 text-emerald-600" />
                   </div>
                 </div>
-                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{totalAssinantesReais}</div>
+                <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{assinantes.length}</div>
                 <div className="mt-2 text-xs text-emerald-600">
-                  {totalAssinantesReais} pagantes ativos
+                  {assinantes.length} pagantes ativos
                 </div>
               </CardContent>
             </Card>
