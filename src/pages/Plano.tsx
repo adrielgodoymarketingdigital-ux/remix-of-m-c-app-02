@@ -172,8 +172,10 @@ export default function Plano() {
     }
   };
 
+  const MOSTRAR_PLANO_ULTRA = true;
+
   const planosFiltrados = Object.entries(PLANOS).filter(([key]) =>
-    key.includes(periodoPlano)
+    key.includes(periodoPlano) && (MOSTRAR_PLANO_ULTRA || !key.includes("ultra"))
   );
 
   const calcularDescontoAnual = (keyAnual: string) => {

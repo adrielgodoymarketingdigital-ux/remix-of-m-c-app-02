@@ -165,7 +165,8 @@ export default function AdminFinanceiro() {
       const tictoVencidos = data?.filter((d) =>
         d.payment_provider === "ticto" &&
         d.status === "active" &&
-        d.data_fim && new Date(d.data_fim) <= agora
+        d.data_fim !== null &&
+        new Date(d.data_fim) <= agora
       ).length || 0;
 
       const pagarmeAtivos = data?.filter((d) =>

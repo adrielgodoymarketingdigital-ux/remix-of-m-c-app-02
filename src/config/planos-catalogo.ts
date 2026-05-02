@@ -13,7 +13,9 @@ export type PlanoTipoPago =
   | "profissional_mensal"
   | "basico_anual"
   | "intermediario_anual"
-  | "profissional_anual";
+  | "profissional_anual"
+  | "profissional_ultra_mensal"
+  | "profissional_ultra_anual";
 
 // ─── IDs de preço Stripe (conta atual) ───────────────────────────────
 export const STRIPE_PRICE_IDS: Record<PlanoTipoPago, string> = {
@@ -23,6 +25,8 @@ export const STRIPE_PRICE_IDS: Record<PlanoTipoPago, string> = {
   basico_anual: "price_1TCTszFu8jWFILvSLajvpW8A",
   intermediario_anual: "price_1TCTtTFu8jWFILvSwTuoRvm8",
   profissional_anual: "price_1TCTtxFu8jWFILvSZgjoxpX6",
+  profissional_ultra_mensal: "",
+  profissional_ultra_anual: "",
 };
 
 // ─── Mapeamento planoTipo → priceId ──────────────────────────────────
@@ -59,6 +63,8 @@ export const PRECOS: Record<PlanoTipoPago, number> = {
   basico_anual: 190.80,
   intermediario_anual: 382.80,
   profissional_anual: 898.80,
+  profissional_ultra_mensal: 129.90,
+  profissional_ultra_anual: 1318.80,
 };
 
 // ─── Valores em centavos para Pagar.me ───────────────────────────────
@@ -69,6 +75,8 @@ export const PRECOS_CENTAVOS: Record<PlanoTipoPago, number> = {
   basico_anual: 19080,
   intermediario_anual: 38280,
   profissional_anual: 89880,
+  profissional_ultra_mensal: 12990,
+  profissional_ultra_anual: 131880,
 };
 
 // ─── Nomes amigáveis ─────────────────────────────────────────────────
@@ -79,6 +87,8 @@ export const PLANO_NOMES: Record<PlanoTipoPago, string> = {
   basico_anual: "Básico Anual",
   intermediario_anual: "Intermediário Anual",
   profissional_anual: "Profissional Anual",
+  profissional_ultra_mensal: "Ultra Mensal",
+  profissional_ultra_anual: "Ultra Anual",
 };
 
 // ─── Helper: obter planoTipo a partir de qualquer priceId ────────────
@@ -99,6 +109,8 @@ export const PAGARME_PLAN_IDS: Record<PlanoTipoPago, string> = {
   basico_anual: "plan_QNKdqZays0u9rpO4",
   intermediario_anual: "plan_0J7BaJRCXiJaj4rp",
   profissional_anual: "plan_lQA4XEWfaPhevqb5",
+  profissional_ultra_mensal: "plan_6jJlbZC9mCoxlL71",
+  profissional_ultra_anual: "plan_2mLJ98I7Ohp7ROgN",
 };
 
 // ─── Helper: obter plan_id Pagar.me para um plano ───────────────────
