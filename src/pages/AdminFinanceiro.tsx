@@ -146,13 +146,8 @@ export default function AdminFinanceiro() {
     queryFn: async () => {
       const { data } = await supabase
         .from("assinaturas")
-        .select("payment_provider, status, data_fim, plano_tipo")
-        .in("plano_tipo", [
-          "basico_mensal", "basico_anual",
-          "intermediario_mensal", "intermediario_anual",
-          "profissional_mensal", "profissional_anual",
-          "profissional_ultra_mensal", "profissional_ultra_anual",
-        ]);
+        .select("payment_provider, status, data_fim")
+        .in("payment_provider", ["ticto", "pagarme", "stripe"]);
 
       const agora = new Date();
 
