@@ -342,7 +342,7 @@ export default function OrdemServicoPage() {
   };
 
   const handleCompartilhar = async (ordem: OrdemServico) => {
-    const celular = ordem.cliente?.telefone || '';
+    const celular = ordem.cliente?.telefone || ordem.cliente?.celular || '';
     if (celular) {
       await compartilharWhatsApp(
         ordem.id,
@@ -354,7 +354,7 @@ export default function OrdemServicoPage() {
     } else {
       const link = await gerarLink(ordem.id);
       if (link) {
-        navigator.clipboard.writeText(link);
+        await navigator.clipboard.writeText(link);
         toast.success("Link de acompanhamento copiado!");
       }
     }
