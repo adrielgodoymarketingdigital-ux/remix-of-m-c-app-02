@@ -1,67 +1,13 @@
 import depoimentoWhatsapp1 from "@/assets/depoimento-whatsapp-1.jpg";
 import depoimentoWhatsapp2 from "@/assets/depoimento-whatsapp-2.png";
+import depoimentoWhatsapp3 from "@/assets/screenshots/depoimento-whatsapp-3.png";
+import depoimentoWhatsapp4 from "@/assets/screenshots/depoimento-whatsapp-4.png";
+import depoimentoWhatsapp5 from "@/assets/screenshots/depoimento-whatsapp-5.png";
 import depoimentoVideo from "@/assets/depoimento-video.mp4";
 import { MessageCircle, Quote, Play, Star, Shield, CheckCircle, Users } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
 import { useState } from "react";
 import { StatCard } from "./StatCard";
-
-interface WppMessage {
-  text: string;
-  time: string;
-  sent: boolean;
-}
-
-function WhatsAppCard({ messages }: { messages: WppMessage[] }) {
-  return (
-    <div className="relative group">
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-      <div className="relative bg-white border border-slate-200 rounded-2xl p-3 shadow-sm hover:border-green-300 transition-colors hover:shadow-md">
-        <div className="flex items-center gap-2 mb-3 px-1">
-          <MessageCircle className="h-4 w-4 text-green-500" />
-          <span className="text-xs text-green-600 font-medium">WhatsApp Verificado</span>
-        </div>
-        <div className="bg-[#e5ddd5] rounded-xl p-3 space-y-1.5" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8b9a0' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }}>
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.sent ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] px-3 py-1.5 rounded-lg text-sm shadow-sm relative ${msg.sent ? "bg-[#dcf8c6] rounded-tr-none" : "bg-white rounded-tl-none"}`}>
-                <p className="text-[13px] text-slate-800 leading-snug">{msg.text}</p>
-                <span className="text-[10px] text-slate-400 float-right ml-2 mt-0.5">{msg.time}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const whatsappConversas: WppMessage[][] = [
-  [
-    { text: "Fala Mr! Adriel aqui 👋", time: "09:00", sent: true },
-    { text: "Você deve ter visto algum vídeo meu e tava procurando um sistema pra sua loja de celular, né?", time: "09:00", sent: true },
-    { text: "Você chegou a dar uma olhada no sistema ou ficou com alguma dúvida?", time: "09:00", sent: true },
-    { text: "Eu tenho já o de vcs e recomendo suporte top", time: "09:01", sent: false },
-  ],
-  [
-    { text: "Sim", time: "20:22", sent: false },
-    { text: "Gostei muito da aplicativo muito bom bem fácil de mecher", time: "20:22", sent: false },
-    { text: "Sim! Ele é bem fácil mesmo", time: "20:32", sent: true },
-  ],
-  [
-    { text: "valeu", time: "12:26", sent: false },
-    { text: "voces parace ser mil grau responde rapido e da maior atenção", time: "12:26", sent: false },
-    { text: "espero que seja uma parceria de longa duração", time: "12:27", sent: false },
-    { text: "valeu ai muito obrigado", time: "12:27", sent: false },
-    { text: "Tmj mano!!", time: "12:27", sent: true },
-    { text: "Com certeza sera", time: "12:27", sent: true },
-    { text: "Estamos aqui para te ajudar a crescer!!", time: "12:27", sent: true },
-    { text: "Boraa pra cima!!", time: "12:27", sent: true },
-    { text: "Top irmão", time: "12:38", sent: false },
-    { text: "Programa muito bom", time: "12:38", sent: false },
-    { text: "Obrigado!! Seu feedback ajuda muito!", time: "12:38", sent: true },
-  ],
-];
 
 // Estatísticas
 const stats = [
@@ -195,8 +141,21 @@ export function TestimonialsSection() {
 
           {/* Conversas WhatsApp reais */}
           <div className="grid md:grid-cols-3 gap-6 mt-6">
-            {whatsappConversas.map((msgs, i) => (
-              <WhatsAppCard key={i} messages={msgs} />
+            {[
+              { src: depoimentoWhatsapp3, alt: "Cliente recomendando o suporte do Méc" },
+              { src: depoimentoWhatsapp4, alt: "Cliente elogiando a facilidade do app" },
+              { src: depoimentoWhatsapp5, alt: "Cliente elogiando o atendimento e o programa" },
+            ].map(({ src, alt }, i) => (
+              <div key={i} className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                <div className="relative bg-white border border-slate-200 rounded-2xl p-3 shadow-sm hover:border-green-300 transition-colors hover:shadow-md">
+                  <div className="flex items-center gap-2 mb-2 px-2">
+                    <MessageCircle className="h-4 w-4 text-green-500" />
+                    <span className="text-xs text-green-600 font-medium">WhatsApp Verificado</span>
+                  </div>
+                  <img src={src} alt={alt} className="rounded-xl w-full shadow-sm" />
+                </div>
+              </div>
             ))}
           </div>
         </div>
