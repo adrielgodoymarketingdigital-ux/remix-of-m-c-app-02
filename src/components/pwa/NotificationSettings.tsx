@@ -46,7 +46,7 @@ export function NotificationSettings() {
 
   const temPlanoProfissional = useMemo(() => {
     if (!assinatura) return false;
-    const planosPermitidos = ['profissional_mensal', 'profissional_anual', 'admin', 'trial'];
+    const planosPermitidos = ['profissional_mensal', 'profissional_anual', 'profissional_ultra_mensal', 'profissional_ultra_anual', 'admin', 'trial'];
     return planosPermitidos.includes(assinatura.plano_tipo);
   }, [assinatura]);
 

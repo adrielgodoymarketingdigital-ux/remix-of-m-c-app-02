@@ -77,6 +77,8 @@ export const PRECOS_MENSAIS: Record<string, number> = {
   intermediario_anual: 31.90, // 382.80 / 12
   profissional_mensal: 79.90,
   profissional_anual: 74.90,  // 898.80 / 12
+  profissional_ultra_mensal: 129.90,
+  profissional_ultra_anual: 109.90, // 1318.80 / 12
 };
 
 // Preço base para cálculo de potencial (plano intermediário)
@@ -169,6 +171,7 @@ export function useAdminUsuarios() {
           "basico_mensal", "basico_anual",
           "intermediario_mensal", "intermediario_anual",
           "profissional_mensal", "profissional_anual",
+          "profissional_ultra_mensal", "profissional_ultra_anual",
         ];
         const hasPaidPlan = planosPagos.includes(item.plano_tipo);
         const dataFimValida = !item.data_fim || new Date(item.data_fim) > new Date();

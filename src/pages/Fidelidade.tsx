@@ -404,7 +404,7 @@ export default function Fidelidade() {
     niveisPadrao.forEach(n => salvarNivel(n));
   }, [isLoading, niveis.length]);
 
-  const isProfissional = ['profissional_mensal', 'profissional_anual'].includes(assinatura?.plano_tipo ?? '');
+  const isProfissional = ['profissional_mensal', 'profissional_anual', 'profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
   const semAcesso = !carregandoAssinatura && assinatura !== null && !isAdmin && !isProfissional;
 
   if (carregandoAssinatura) {

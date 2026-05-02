@@ -141,8 +141,9 @@ export function useVerificacaoAcesso() {
     // Planos pagos ativos nunca expiram
     const planosPagos = [
       'basico_mensal', 'basico_anual',
-      'intermediario_mensal', 'intermediario_anual', 
-      'profissional_mensal', 'profissional_anual'
+      'intermediario_mensal', 'intermediario_anual',
+      'profissional_mensal', 'profissional_anual',
+      'profissional_ultra_mensal', 'profissional_ultra_anual',
     ];
     if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active') {
       return false;

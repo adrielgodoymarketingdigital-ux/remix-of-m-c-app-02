@@ -49,7 +49,7 @@ const Dashboard = () => {
   // Verificar se tem plano profissional
   const temPlanoProfissional = useMemo(() => {
     if (!assinatura) return false;
-    const planosProfissionais = ['profissional_mensal', 'profissional_anual', 'admin', 'trial'];
+    const planosProfissionais = ['profissional_mensal', 'profissional_anual', 'profissional_ultra_mensal', 'profissional_ultra_anual', 'admin', 'trial'];
     return planosProfissionais.includes(assinatura.plano_tipo);
   }, [assinatura]);
 

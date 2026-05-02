@@ -3,6 +3,7 @@ export interface PlanoInfo {
   nome: string;
   preco: number;
   periodo: string;
+  descricao?: string;
   recursos: string[];
   limites: {
     dispositivos: number | string;
@@ -10,6 +11,7 @@ export interface PlanoInfo {
     armazenamento: string;
   };
   popular?: boolean;
+  novo?: boolean;
 }
 
 export const PLANOS: Record<string, PlanoInfo> = {
@@ -167,6 +169,42 @@ export const PLANOS: Record<string, PlanoInfo> = {
       "Verificação de garantia Apple",
       "50GB de armazenamento",
       "Suporte prioritário por WhatsApp",
+    ],
+    limites: {
+      dispositivos: "Ilimitado",
+      vendas_mes: "Ilimitado",
+      armazenamento: "50GB",
+    },
+  },
+  profissional_ultra_mensal: {
+    nome: "Plano Ultra",
+    preco: 129.90,
+    periodo: "/mês",
+    descricao: "Para redes e múltiplas filiais",
+    novo: true,
+    recursos: [
+      "✅ Tudo do plano Profissional",
+      "✅ Multi Empresas (até 3 filiais)",
+      "🔜 Acompanhamento de OS em Tempo Real (Em breve)",
+      "🔜 Avaliador de Preço de Dispositivo (Em breve)",
+    ],
+    limites: {
+      dispositivos: "Ilimitado",
+      vendas_mes: "Ilimitado",
+      armazenamento: "50GB",
+    },
+  },
+  profissional_ultra_anual: {
+    nome: "Plano Ultra",
+    preco: 1318.80,
+    periodo: "/ano",
+    descricao: "Para redes e múltiplas filiais",
+    novo: true,
+    recursos: [
+      "✅ Tudo do plano Profissional",
+      "✅ Multi Empresas (até 3 filiais)",
+      "🔜 Acompanhamento de OS em Tempo Real (Em breve)",
+      "🔜 Avaliador de Preço de Dispositivo (Em breve)",
     ],
     limites: {
       dispositivos: "Ilimitado",

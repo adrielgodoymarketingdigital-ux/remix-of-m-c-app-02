@@ -210,6 +210,7 @@ export default function AdminUsuarios() {
     "basico_mensal", "basico_anual",
     "intermediario_mensal", "intermediario_anual",
     "profissional_mensal", "profissional_anual",
+    "profissional_ultra_mensal", "profissional_ultra_anual",
   ];
 
   const assinantesPagarme = assinantes.filter(u =>

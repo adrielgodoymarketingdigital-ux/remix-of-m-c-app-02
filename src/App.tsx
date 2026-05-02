@@ -15,6 +15,7 @@ import { ComVerificacaoFuncionario } from "./components/auth/ComVerificacaoFunci
 import { ProtectedAppRoute } from "./components/auth/ProtectedAppRoute";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
 import AuthCallback from "@/components/AuthCallback";
+import { EmpresaProvider } from "@/contexts/EmpresaContext";
 
 // Lazy-loaded pages — split into per-route bundles so o app inicial fica leve no mobile
 const LandingLP1 = lazy(() => import("./pages/LandingLP1"));
@@ -59,6 +60,7 @@ const Tutoriais = lazy(() => import("./pages/Tutoriais"));
 const Equipe = lazy(() => import("./pages/Equipe"));
 const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 const Fidelidade = lazy(() => import("./pages/Fidelidade"));
+const MultiEmpresas = lazy(() => import("./pages/MultiEmpresas"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const RouteFallback = () => (
@@ -225,6 +227,11 @@ function AppRoutes() {
               <Fidelidade />
             </ProtectedAppRoute>
           } />
+          <Route path="/multi-empresas" element={
+            <ProtectedAppRoute>
+              <MultiEmpresas />
+            </ProtectedAppRoute>
+          } />
           <Route path="/plano" element={
             <ProtectedAppRoute>
               <Plano />
@@ -361,11 +368,13 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <EmpresaProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </EmpresaProvider>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>

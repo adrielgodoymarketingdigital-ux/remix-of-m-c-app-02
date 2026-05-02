@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useOcultarValores } from "@/contexts/OcultarValoresContext";
 import { supabase } from "@/integrations/supabase/client";
+import { SeletorFilial } from "@/components/layout/SeletorFilial";
 
 // Mapeamento de rotas para títulos
 const routeTitles: Record<string, string> = {
@@ -109,6 +110,7 @@ export function MobileHeader() {
 
           {/* Ações da direita */}
           <div className="flex items-center gap-1 flex-shrink-0">
+            <SeletorFilial />
 
             {/* Botão ocultar valores */}
             <Button

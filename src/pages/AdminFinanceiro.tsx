@@ -96,6 +96,7 @@ export default function AdminFinanceiro() {
           "basico_mensal", "basico_anual",
           "intermediario_mensal", "intermediario_anual",
           "profissional_mensal", "profissional_anual",
+          "profissional_ultra_mensal", "profissional_ultra_anual",
         ])
         .lt("data_fim", agora.toISOString())
         .gt("data_fim", tresDiasAtras.toISOString())
@@ -150,6 +151,7 @@ export default function AdminFinanceiro() {
           "basico_mensal", "basico_anual",
           "intermediario_mensal", "intermediario_anual",
           "profissional_mensal", "profissional_anual",
+          "profissional_ultra_mensal", "profissional_ultra_anual",
         ]);
 
       const agora = new Date();

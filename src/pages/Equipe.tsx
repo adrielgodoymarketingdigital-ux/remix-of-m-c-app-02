@@ -34,7 +34,7 @@ export default function Equipe() {
     if (!assinatura) return 0;
     const plano = assinatura.plano_tipo;
     if (plano === "intermediario_mensal" || plano === "intermediario_anual") return 1;
-    if (plano === "profissional_mensal" || plano === "profissional_anual") return 999; // Ilimitado
+    if (plano === "profissional_mensal" || plano === "profissional_anual" || plano === "profissional_ultra_mensal" || plano === "profissional_ultra_anual") return 999; // Ilimitado
     if (plano === "trial" || plano === "demonstracao") return 1; // Trial pode testar com 1
     if (plano === "admin") return 999;
     return 0; // Free e Básico não têm acesso

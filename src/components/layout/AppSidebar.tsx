@@ -49,6 +49,7 @@ import {
   Video,
   Gift,
   ChevronRight,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
+import { SeletorFilial } from "@/components/layout/SeletorFilial";
 
 // Menu destacado de Novidades
 const novidadesItem = { title: "Novidades", url: "/novidades", icon: Sparkles, modulo: "novidades" as keyof PermissoesModulos };
@@ -85,6 +87,7 @@ const menuItems = [
   { title: "Suporte", url: "/suporte", icon: HelpCircle, modulo: "suporte" as keyof PermissoesModulos },
   { title: "Plano", url: "/plano", icon: CreditCard, modulo: "plano" as keyof PermissoesModulos },
   { title: "Tutoriais", url: "/tutoriais", icon: Video, modulo: "tutoriais" as keyof PermissoesModulos },
+  { title: "Multi Empresas", url: "/multi-empresas", icon: Building2, modulo: "configuracoes" as keyof PermissoesModulos },
 ];
 
 const adminMenuItems = [
@@ -170,8 +173,8 @@ export function AppSidebar() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className={`flex items-center border-b border-white/5 ${collapsed ? 'p-2 justify-center flex-col gap-2' : 'p-4 justify-between'}`}>
-          <img 
-            src={logoMec} 
+          <img
+            src={logoMec}
             alt="Méc"
             className={`flex-shrink-0 object-contain transition-all ${collapsed ? 'h-10' : 'h-16'}`}
           />
@@ -179,6 +182,11 @@ export function AppSidebar() {
             {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </SidebarTrigger>
         </div>
+        {!collapsed && (
+          <div className="px-4 py-2 border-b border-white/5">
+            <SeletorFilial />
+          </div>
+        )}
 
         <SidebarGroup>
           <SidebarGroupContent>

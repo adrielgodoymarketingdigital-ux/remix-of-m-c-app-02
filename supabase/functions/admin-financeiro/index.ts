@@ -135,12 +135,12 @@ serve(async (req) => {
 
     // Separar assinantes vigentes (em dia) de inadimplentes (status=active mas data vencida)
     const isVigente = (a: any) => {
-      const ref = a.data_proxima_cobranca || a.data_fim;
-      if (!ref) return true; // sem data definida → considera vigente (não bloqueia)
-      return new Date(ref).getTime() > agora.getTime();
+      if (a.payment_provider === "stripe") return false;
+      if (!a.data_fim) return true;
+      return new Date(a.data_fim).getTime() > agora.getTime();
     };
 
-    const vigentes = assinaturas.filter((a) => isVigente(a) && (a as any).payment_provider !== "stripe");
+    const vigentes = assinaturas.filter((a) => isVigente(a));
     const inadimplentes = assinaturas.filter((a) => !isVigente(a));
     const dbTotal = vigentes.length;
     const dbInadimplentes = inadimplentes.length;

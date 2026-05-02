@@ -202,7 +202,8 @@ export default function Plano() {
       "trial",
       "basico_mensal", "basico_anual",
       "intermediario_mensal", "intermediario_anual",
-      "profissional_mensal", "profissional_anual"
+      "profissional_mensal", "profissional_anual",
+      "profissional_ultra_mensal", "profissional_ultra_anual",
     ];
 
     const nivelAtual = hierarquia.indexOf(assinatura.plano_tipo);
@@ -672,6 +673,12 @@ export default function Plano() {
                           Mais Popular
                         </div>
                       )}
+                      {/* Badge NOVO */}
+                      {plano.novo && (
+                        <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-500 to-amber-400 text-black px-4 py-1 text-sm font-bold rounded-bl-xl z-10">
+                          NOVO
+                        </div>
+                      )}
                       
                       {/* Badges de Status do Plano */}
                       <div className="absolute top-2 left-4 flex gap-2 z-10">
@@ -695,6 +702,9 @@ export default function Plano() {
                     <div className="space-y-4">
                       <div>
                         <h3 className="text-xl font-bold">{plano.nome}</h3>
+                        {plano.descricao && (
+                          <p className="text-sm text-muted-foreground mt-0.5">{plano.descricao}</p>
+                        )}
                         <p className="text-4xl font-bold mt-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                           {formatCurrency(plano.preco)}
                         </p>
