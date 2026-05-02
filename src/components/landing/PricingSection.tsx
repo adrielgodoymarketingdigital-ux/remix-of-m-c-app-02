@@ -19,7 +19,6 @@ export function PricingSection() {
       "50 Dispositivos",
       "20 Ordens de Serviço/mês",
       "Produtos ilimitados",
-      "❌ Acompanhamento de OS (indisponível)",
       "500MB de armazenamento",
     ],
     intermediario: [
@@ -27,7 +26,7 @@ export function PricingSection() {
       "60 Ordens de Serviço/mês",
       "10 Dispositivos no Catálogo",
       "1 Funcionário com Comissão",
-      "📡 Acompanhamento de OS (10/mês)",
+      "Acompanhamento de OS (10/mês)",
       "5GB de armazenamento",
     ],
     profissional: [
@@ -36,7 +35,7 @@ export function PricingSection() {
       "Catálogo ilimitado",
       "Funcionários ilimitados",
       "Notificações Automáticas",
-      "📡 Acompanhamento de OS (50/mês)",
+      "Acompanhamento de OS (50/mês)",
       "50GB de armazenamento",
     ],
   };
