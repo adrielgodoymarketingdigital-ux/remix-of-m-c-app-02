@@ -404,6 +404,14 @@ export default function OrdemServicoPage() {
             <div className="flex items-center gap-4">
               <SidebarTrigger className="hidden lg:flex" />
               <h1 className="text-xl md:text-2xl font-bold">Ordens de Serviço</h1>
+              <div className="ml-auto text-right hidden sm:block">
+                <p className="text-sm font-medium capitalize">
+                  {format(new Date(), "EEEE", { locale: ptBR })}
+                </p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                </p>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <DropdownMenu>

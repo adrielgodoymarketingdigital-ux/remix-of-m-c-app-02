@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth, endOfMonth, format } from "date-fns";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useEventDispatcher } from "./useEventDispatcher";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
@@ -49,9 +49,9 @@ export const useOrdensServico = () => {
   const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState("todos");
-  const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
-  const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
-  const [mesFiltro, setMesFiltro] = useState("todos");
+  const [dataInicio, setDataInicio] = useState<Date | undefined>(() => startOfMonth(new Date()));
+  const [dataFim, setDataFim] = useState<Date | undefined>(() => endOfMonth(new Date()));
+  const [mesFiltro, setMesFiltro] = useState(() => format(new Date(), "yyyy-MM"));
   const [contadorOSMes, setContadorOSMes] = useState<ContadorOSMes>({
     usadas: 0,
     limite: -1,
