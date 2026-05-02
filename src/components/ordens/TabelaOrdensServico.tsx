@@ -225,32 +225,59 @@ export const TabelaOrdensServico = ({
   }
 
   // Desktop: Table layout
+  // Base widths for each column (percentage points)
+  const baseWidths: Record<string, number> = {
+    numero_os: 6,
+    cliente: 13,
+    dispositivo: 15,
+    entrada: 7,   // always visible
+    data_saida: 7,
+    defeito: 18,
+    status: 12,
+    valor: 7,
+    acoes: 15,    // always visible
+  };
+
+  // Sum of always-visible columns
+  const fixedWidth = baseWidths.numero_os + baseWidths.entrada + baseWidths.acoes;
+  // Sum of optional columns that are currently active
+  const optionalCols = ['cliente', 'dispositivo', 'data_saida', 'defeito', 'status', 'valor'] as const;
+  const activeOptionalBaseWidth = optionalCols
+    .filter(c => colunasAtivas.includes(c))
+    .reduce((acc, c) => acc + baseWidths[c], 0);
+  const totalBaseWidth = fixedWidth + activeOptionalBaseWidth;
+
+  // Scale factor so all widths add up to 100%
+  const scale = 100 / totalBaseWidth;
+
+  const w = (col: string) => `${(baseWidths[col] * scale).toFixed(2)}%`;
+
   return (
     <div className="h-[calc(100vh-24rem)] min-h-[24rem] max-h-[36rem] w-full overflow-x-hidden overflow-y-auto rounded-md border [&_.overflow-auto]:overflow-hidden">
       <Table className="w-full table-fixed text-[11px]">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[6%] px-1.5">OS</TableHead>
+            <TableHead style={{ width: w('numero_os') }} className="px-1.5">OS</TableHead>
             {colunasAtivas.includes('cliente') && (
-              <TableHead className="w-[13%] px-1.5">Cliente</TableHead>
+              <TableHead style={{ width: w('cliente') }} className="px-1.5">Cliente</TableHead>
             )}
             {colunasAtivas.includes('dispositivo') && (
-              <TableHead className="w-[15%] px-1.5">Dispositivo</TableHead>
+              <TableHead style={{ width: w('dispositivo') }} className="px-1.5">Dispositivo</TableHead>
             )}
-            <TableHead className="w-[7%] px-1.5">Entrada</TableHead>
+            <TableHead style={{ width: w('entrada') }} className="px-1.5">Entrada</TableHead>
             {colunasAtivas.includes('data_saida') && (
-              <TableHead className="w-[7%] px-1.5">Saída</TableHead>
+              <TableHead style={{ width: w('data_saida') }} className="px-1.5">Saída</TableHead>
             )}
             {colunasAtivas.includes('defeito') && (
-              <TableHead className="w-[18%] px-1.5">Serviço</TableHead>
+              <TableHead style={{ width: w('defeito') }} className="px-1.5">Serviço</TableHead>
             )}
             {colunasAtivas.includes('status') && (
-              <TableHead className="w-[12%] px-1.5">Status</TableHead>
+              <TableHead style={{ width: w('status') }} className="px-1.5">Status</TableHead>
             )}
             {colunasAtivas.includes('valor') && (
-              <TableHead className="w-[7%] px-1.5 text-right">Valor</TableHead>
+              <TableHead style={{ width: w('valor') }} className="px-1.5 text-right">Valor</TableHead>
             )}
-            <TableHead className="w-[15%] px-1.5 text-right">Ações</TableHead>
+            <TableHead style={{ width: w('acoes') }} className="px-1.5 text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
