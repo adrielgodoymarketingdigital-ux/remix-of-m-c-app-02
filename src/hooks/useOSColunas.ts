@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
 
 export interface ConfiguracaoColunas {
   colunas: string[];
@@ -36,32 +35,39 @@ const CONFIG_PADRAO: ConfiguracaoColunas = {
 
 export { COLUNAS_DISPONIVEIS, ACOES_DISPONIVEIS, CONFIG_PADRAO };
 
+const OS_COLUNAS_UPDATED = 'os-colunas-updated';
+
 export function useOSColunas() {
   const [config, setConfig] = useState<ConfiguracaoColunas>(CONFIG_PADRAO);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const carregar = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setIsLoading(false); return; }
+  const carregar = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setIsLoading(false); return; }
 
-        const { data } = await supabase
-          .from('profiles')
-          .select('preferencias_os')
-          .eq('user_id', user.id)
-          .maybeSingle();
+      const { data } = await supabase
+        .from('profiles')
+        .select('preferencias_os')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-        if (data?.preferencias_os) {
-          setConfig(data.preferencias_os as unknown as ConfiguracaoColunas);
-        }
-      } catch {
-        // silently fall back to defaults
-      } finally {
-        setIsLoading(false);
+      if (data?.preferencias_os) {
+        setConfig(data.preferencias_os as unknown as ConfiguracaoColunas);
       }
-    };
+    } catch {
+      // silently fall back to defaults
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     carregar();
+
+    const handleUpdate = () => carregar();
+    window.addEventListener(OS_COLUNAS_UPDATED, handleUpdate);
+    return () => window.removeEventListener(OS_COLUNAS_UPDATED, handleUpdate);
   }, []);
 
   const salvar = async (novaConfig: ConfiguracaoColunas) => {
@@ -71,10 +77,11 @@ export function useOSColunas() {
 
       await supabase
         .from('profiles')
-        .update({ preferencias_os: novaConfig as unknown as Json })
+        .update({ preferencias_os: novaConfig as unknown as never })
         .eq('user_id', user.id);
 
       setConfig(novaConfig);
+      window.dispatchEvent(new Event(OS_COLUNAS_UPDATED));
     } catch {
       // silently ignore save errors
     }
