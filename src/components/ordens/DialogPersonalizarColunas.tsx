@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -16,6 +16,12 @@ export function DialogPersonalizarColunas({ open, onOpenChange }: Props) {
   const { config, salvar } = useOSColunas();
   const [colunasAtivas, setColunasAtivas] = useState<string[]>(config.colunas);
   const [acoesAtivas, setAcoesAtivas] = useState<string[]>(config.acoes_principais);
+
+  // Sincroniza quando config carregar do Supabase
+  useEffect(() => {
+    setColunasAtivas(config.colunas);
+    setAcoesAtivas(config.acoes_principais);
+  }, [config]);
 
   const toggleColuna = (key: string) => {
     setColunasAtivas(prev =>

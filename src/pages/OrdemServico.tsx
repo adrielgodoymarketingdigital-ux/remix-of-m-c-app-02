@@ -69,7 +69,7 @@ const DialogServicoAvulso = lazy(() => import("@/components/ordens/DialogServico
 const DialogImportarOS = lazy(() => import("@/components/ordens/DialogImportarOS").then((m) => ({ default: m.DialogImportarOS })));
 const DialogConfiguracaoEtiqueta = lazy(() => import("@/components/ordens/DialogConfiguracaoEtiqueta").then((m) => ({ default: m.DialogConfiguracaoEtiqueta })));
 const ImpressaoEtiqueta = lazy(() => import("@/components/ordens/ImpressaoEtiqueta").then((m) => ({ default: m.ImpressaoEtiqueta })));
-import { DialogPersonalizarColunas } from "@/components/ordens/DialogPersonalizarColunas";
+const DialogPersonalizarColunas = lazy(() => import("@/components/ordens/DialogPersonalizarColunas").then((m) => ({ default: m.DialogPersonalizarColunas })));
 
 export default function OrdemServicoPage() {
   const [dialogAberto, setDialogAberto] = useState(false);
