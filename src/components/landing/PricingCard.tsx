@@ -24,6 +24,10 @@ export const TODAS_FUNCIONALIDADES = [
   "Aniversariantes do Mês com WhatsApp",
   "Consulta de IMEI pela Anatel",
   "Verificação de garantia Apple",
+  "❌ Acompanhamento de OS (indisponível)",
+  "📡 Acompanhamento de OS (10/mês)",
+  "📡 Acompanhamento de OS (50/mês)",
+  "📡 Acompanhamento de OS (Ilimitado)",
   "Suporte por email",
   "Suporte via WhatsApp",
   "Suporte prioritário por WhatsApp",
@@ -36,22 +40,28 @@ export const FUNCIONALIDADES_POR_PLANO: Record<string, string[]> = {
   ],
   basico_mensal: [
     "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
-    "Ordem de Serviço", "Orçamentos", "Serviços", "Suporte por email",
+    "Ordem de Serviço", "Orçamentos", "Serviços",
+    "❌ Acompanhamento de OS (indisponível)",
+    "Suporte por email",
   ],
   basico_anual: [
     "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
-    "Ordem de Serviço", "Orçamentos", "Serviços", "Suporte por email",
+    "Ordem de Serviço", "Orçamentos", "Serviços",
+    "❌ Acompanhamento de OS (indisponível)",
+    "Suporte por email",
   ],
   intermediario_mensal: [
     "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
     "Ordem de Serviço", "Orçamentos", "Serviços", "Fornecedores", "Clientes",
     "Contas", "Financeiro", "Catálogo Online", "Assinatura Digital do Cliente na O.S",
+    "📡 Acompanhamento de OS (10/mês)",
     "Suporte por email", "Suporte via WhatsApp",
   ],
   intermediario_anual: [
     "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
     "Ordem de Serviço", "Orçamentos", "Serviços", "Fornecedores", "Clientes",
     "Contas", "Financeiro", "Catálogo Online", "Assinatura Digital do Cliente na O.S",
+    "📡 Acompanhamento de OS (10/mês)",
     "Suporte por email", "Suporte via WhatsApp",
   ],
   profissional_mensal: [
@@ -60,7 +70,9 @@ export const FUNCIONALIDADES_POR_PLANO: Record<string, string[]> = {
     "Contas", "Financeiro", "Catálogo Online", "Assinatura Digital do Cliente na O.S",
     "Funcionários e Comissões ilimitados", "Notificações Automáticas no Celular",
     "Aniversariantes do Mês com WhatsApp", "Consulta de IMEI pela Anatel",
-    "Verificação de garantia Apple", "Suporte por email", "Suporte via WhatsApp",
+    "Verificação de garantia Apple",
+    "📡 Acompanhamento de OS (50/mês)",
+    "Suporte por email", "Suporte via WhatsApp",
     "Suporte prioritário por WhatsApp",
   ],
   profissional_anual: [
@@ -69,7 +81,9 @@ export const FUNCIONALIDADES_POR_PLANO: Record<string, string[]> = {
     "Contas", "Financeiro", "Catálogo Online", "Assinatura Digital do Cliente na O.S",
     "Funcionários e Comissões ilimitados", "Notificações Automáticas no Celular",
     "Aniversariantes do Mês com WhatsApp", "Consulta de IMEI pela Anatel",
-    "Verificação de garantia Apple", "Suporte por email", "Suporte via WhatsApp",
+    "Verificação de garantia Apple",
+    "📡 Acompanhamento de OS (50/mês)",
+    "Suporte por email", "Suporte via WhatsApp",
     "Suporte prioritário por WhatsApp",
   ],
 };
@@ -246,16 +260,25 @@ export function PricingCard({
         </div>
 
         <ul className="space-y-2 flex-1 mb-6">
-          {funcionalidadesDisponiveis.map((funcionalidade, index) => (
-            <li key={index} className="flex items-start gap-2">
-              <div className={cn("p-0.5 rounded-full", theme.iconBg)}>
-                <Check className={cn("h-3 w-3", theme.iconColor)} />
-              </div>
-              <span className="text-xs leading-relaxed text-slate-700">
-                {funcionalidade}
-              </span>
-            </li>
-          ))}
+          {funcionalidadesDisponiveis.map((funcionalidade, index) => {
+            const indisponivel = funcionalidade.startsWith("❌");
+            return (
+              <li key={index} className="flex items-start gap-2">
+                {indisponivel ? (
+                  <div className="p-0.5 rounded-full bg-slate-100 shrink-0">
+                    <Check className="h-3 w-3 text-slate-300" />
+                  </div>
+                ) : (
+                  <div className={cn("p-0.5 rounded-full shrink-0", theme.iconBg)}>
+                    <Check className={cn("h-3 w-3", theme.iconColor)} />
+                  </div>
+                )}
+                <span className={cn("text-xs leading-relaxed", indisponivel ? "text-slate-400" : "text-slate-700")}>
+                  {funcionalidade}
+                </span>
+              </li>
+            );
+          })}
         </ul>
 
         <Button 
