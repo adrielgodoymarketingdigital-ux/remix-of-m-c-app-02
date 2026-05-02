@@ -92,12 +92,6 @@ export default function AdminFinanceiro() {
         .select("user_id, plano_tipo, data_fim, payment_provider")
         .eq("status", "active")
         .eq("payment_provider", "ticto")
-        .in("plano_tipo", [
-          "basico_mensal", "basico_anual",
-          "intermediario_mensal", "intermediario_anual",
-          "profissional_mensal", "profissional_anual",
-          "profissional_ultra_mensal", "profissional_ultra_anual",
-        ])
         .lt("data_fim", agora.toISOString())
         .gt("data_fim", tresDiasAtras.toISOString())
         .order("data_fim", { ascending: true });
