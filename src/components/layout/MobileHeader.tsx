@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useOcultarValores } from "@/contexts/OcultarValoresContext";
 import { supabase } from "@/integrations/supabase/client";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // Mapeamento de rotas para títulos
 const routeTitles: Record<string, string> = {
@@ -104,9 +106,16 @@ export function MobileHeader() {
         <div className="flex items-center justify-between h-14 px-4">
 
           {/* Título da página */}
-          <h1 className="text-[17px] font-semibold text-foreground tracking-tight truncate flex-1">
-            {pageTitle}
-          </h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[17px] font-semibold text-foreground tracking-tight truncate leading-tight">
+              {pageTitle}
+            </h1>
+            {location.pathname === "/os" && (
+              <p className="text-[11px] text-muted-foreground capitalize leading-tight">
+                {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </p>
+            )}
+          </div>
 
           {/* Ações da direita */}
           <div className="flex items-center gap-1 flex-shrink-0">

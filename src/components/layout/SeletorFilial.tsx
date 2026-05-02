@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 export function SeletorFilial() {
   const { empresaAtiva, setEmpresaAtiva, isProprietario, empresas } = useEmpresa();
 
-  if (!isProprietario || empresas.length === 0) return null;
+  if (!isProprietario) return null;
 
   const empresaAtual = empresas.find(e => e.id === empresaAtiva);
   const label = empresaAtual ? empresaAtual.nome : "Minha Empresa";
