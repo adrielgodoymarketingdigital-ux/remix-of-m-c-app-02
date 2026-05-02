@@ -1,19 +1,27 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Smartphone, Wrench, CalendarDays, DollarSign, AlertCircle, CheckCircle2, Clock, PackageSearch, XCircle, ClipboardList } from "lucide-react";
 
-const STATUS_CONFIG: Record<string, { label: string; cor: string; emoji: string }> = {
-  aberta: { label: "Aberta", cor: "bg-blue-500/20 text-blue-300 border border-blue-500/30", emoji: "📋" },
-  em_andamento: { label: "Em Andamento", cor: "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30", emoji: "🔧" },
-  aguardando_peca: { label: "Aguardando Peça", cor: "bg-orange-500/20 text-orange-300 border border-orange-500/30", emoji: "⏳" },
-  aguardando_retirada: { label: "Aguardando Retirada", cor: "bg-green-500/20 text-green-300 border border-green-500/30", emoji: "✅" },
-  entregue: { label: "Entregue", cor: "bg-slate-500/20 text-slate-300 border border-slate-500/30", emoji: "📦" },
-  cancelada: { label: "Cancelada", cor: "bg-red-500/20 text-red-300 border border-red-500/30", emoji: "❌" },
+const STATUS_CONFIG: Record<string, { label: string; cor: string; textCor: string; borderCor: string; bgGlow: string; emoji: string; icon: typeof CheckCircle2 }> = {
+  aberta:              { label: "Aberta",               cor: "from-blue-500/20 to-blue-600/10",    textCor: "text-blue-300",   borderCor: "border-blue-500/40",   bgGlow: "rgba(59,130,246,0.12)",  emoji: "📋", icon: ClipboardList },
+  em_andamento:        { label: "Em Andamento",          cor: "from-amber-500/20 to-amber-600/10",  textCor: "text-amber-300",  borderCor: "border-amber-500/40",  bgGlow: "rgba(245,158,11,0.12)", emoji: "🔧", icon: Wrench },
+  aguardando_peca:     { label: "Aguardando Peça",       cor: "from-orange-500/20 to-orange-600/10",textCor: "text-orange-300", borderCor: "border-orange-500/40", bgGlow: "rgba(249,115,22,0.12)", emoji: "⏳", icon: PackageSearch },
+  aguardando_retirada: { label: "Pronto p/ Retirada",    cor: "from-green-500/20 to-green-600/10",  textCor: "text-green-300",  borderCor: "border-green-500/40",  bgGlow: "rgba(34,197,94,0.12)",  emoji: "✅", icon: CheckCircle2 },
+  entregue:            { label: "Entregue",              cor: "from-slate-500/20 to-slate-600/10",  textCor: "text-slate-300",  borderCor: "border-slate-500/40",  bgGlow: "rgba(100,116,139,0.1)", emoji: "📦", icon: CheckCircle2 },
+  cancelada:           { label: "Cancelada",             cor: "from-red-500/20 to-red-600/10",      textCor: "text-red-300",    borderCor: "border-red-500/40",    bgGlow: "rgba(239,68,68,0.12)",  emoji: "❌", icon: XCircle },
 };
 
+const ETAPAS = [
+  { key: "aberta",              label: "Recebida" },
+  { key: "em_andamento",        label: "Em Reparo" },
+  { key: "aguardando_peca",     label: "Aguard. Peça" },
+  { key: "aguardando_retirada", label: "Pronto" },
+  { key: "entregue",            label: "Entregue" },
+];
+
 const PROGRESSO: Record<string, number> = {
-  aberta: 10, em_andamento: 40, aguardando_peca: 55,
-  aguardando_retirada: 80, entregue: 100, cancelada: 0,
+  aberta: 1, em_andamento: 2, aguardando_peca: 3, aguardando_retirada: 4, entregue: 5, cancelada: 0,
 };
 
 interface TrackingDados {
@@ -55,10 +63,7 @@ export default function AcompanharOS() {
           .eq('ativo', true)
           .maybeSingle();
 
-        if (linkError || !linkData) {
-          setErro(true);
-          return;
-        }
+        if (linkError || !linkData) { setErro(true); return; }
 
         await supabase
           .from('os_tracking_links')
@@ -94,11 +99,7 @@ export default function AcompanharOS() {
 
     const channel = supabase
       .channel(`os-tracking-${token}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'ordens_servico',
-      }, (payload) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ordens_servico' }, (payload) => {
         setDados((prev) => prev ? {
           ...prev,
           os: prev.os ? { ...prev.os, status: payload.new.status } : prev.os
@@ -110,164 +111,231 @@ export default function AcompanharOS() {
   }, [token]);
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400" />
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="relative h-10 w-10">
+          <div className="absolute inset-0 rounded-full border-2 border-blue-500/20 animate-ping" />
+          <div className="absolute inset-1 rounded-full border-2 border-t-blue-400 border-r-blue-400 border-b-transparent border-l-transparent animate-spin" />
+        </div>
+        <p className="text-slate-500 text-xs tracking-widest uppercase">Carregando</p>
+      </div>
     </div>
   );
 
   if (erro || !dados) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <div className="max-w-md w-full rounded-2xl border border-slate-700/50 bg-slate-800/50 backdrop-blur p-8 text-center">
-        <div className="text-4xl mb-4">🔍</div>
-        <h2 className="text-xl font-bold text-white mb-2">Link não encontrado</h2>
-        <p className="text-slate-400">
-          Este link de acompanhamento é inválido ou expirou.
-        </p>
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e] p-4">
+      <div className="max-w-sm w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-8 text-center">
+        <AlertCircle className="h-10 w-10 text-slate-500 mx-auto mb-4" />
+        <h2 className="text-lg font-bold text-white mb-2">Link não encontrado</h2>
+        <p className="text-slate-500 text-sm">Este link de acompanhamento é inválido ou expirou.</p>
       </div>
     </div>
   );
 
   const { os, loja } = dados;
-  const statusConfig = STATUS_CONFIG[os?.status ?? ''] ??
-    { label: os?.status ?? 'Desconhecido', cor: 'bg-slate-500/20 text-slate-300 border border-slate-500/30', emoji: '❓' };
+  const statusKey = os?.status ?? '';
+  const statusConfig = STATUS_CONFIG[statusKey] ??
+    { label: os?.status ?? 'Desconhecido', cor: 'from-slate-500/20 to-slate-600/10', textCor: 'text-slate-300', borderCor: 'border-slate-500/40', bgGlow: 'rgba(100,116,139,0.1)', emoji: '❓', icon: ClipboardList };
   const corPrimaria = loja?.cor_primaria || '#3b82f6';
-  const progressoPercent = PROGRESSO[os?.status || ''] || 0;
+  const etapaAtual = PROGRESSO[statusKey] || 0;
+  const cancelada = statusKey === 'cancelada';
+  const StatusIcon = statusConfig.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-4 py-10"
+      style={{ background: 'radial-gradient(ellipse at 50% 0%, #0d1a35 0%, #0a0f1e 60%)' }}
+    >
       {/* Badge tempo real */}
-      <div className="flex justify-center pt-6 pb-2">
-        <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-          </span>
-          <span className="text-green-400 text-xs font-medium">Atualização em tempo real</span>
-        </div>
+      <div className="mb-6 flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+        </span>
+        <span className="text-green-400 text-xs font-medium tracking-wide">Atualização em tempo real</span>
       </div>
 
-      {/* Header da loja */}
-      <div className="text-center px-4 pb-6">
-        {loja?.logo_url && (
-          <img
-            src={loja.logo_url}
-            alt={loja?.nome_loja ?? ''}
-            className="h-14 mx-auto mb-3 object-contain drop-shadow-lg"
-          />
-        )}
-        <h1 className="text-xl font-bold text-white">{loja?.nome_loja || 'Assistência Técnica'}</h1>
-        {loja?.telefone && (
-          <p className="text-slate-400 text-sm mt-1">{loja.telefone}</p>
-        )}
-      </div>
-
-      {/* Card principal de status */}
-      <div className="mx-4 mb-4 relative overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-800/50 backdrop-blur p-6">
+      {/* Card central */}
+      <div className="w-full max-w-md">
         <div
-          className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl"
-          style={{ background: `linear-gradient(90deg, ${corPrimaria}, ${corPrimaria}88)` }}
-        />
+          className="relative rounded-3xl border border-slate-700/60 overflow-hidden"
+          style={{ background: 'linear-gradient(160deg, #111827 0%, #0d1220 100%)', boxShadow: `0 0 60px ${statusConfig.bgGlow}, 0 25px 50px rgba(0,0,0,0.5)` }}
+        >
+          {/* Linha colorida topo */}
+          <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${corPrimaria}, ${corPrimaria}66)` }} />
 
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-1">
-              Ordem de Serviço
-            </p>
-            <h2 className="text-4xl font-black text-white">#{os?.numero_os}</h2>
-          </div>
-          <div className="text-right">
-            <div className="text-3xl mb-2">{statusConfig.emoji}</div>
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusConfig.cor}`}>
-              {statusConfig.label}
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-slate-400">
-            <span>Progresso do serviço</span>
-            <span>{progressoPercent}%</span>
-          </div>
-          <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-1000"
-              style={{
-                width: `${progressoPercent}%`,
-                background: `linear-gradient(90deg, ${corPrimaria}, ${corPrimaria}cc)`,
-              }}
-            />
-          </div>
-          <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-            <span>Aberta</span>
-            <span>Andamento</span>
-            <span>Pronto</span>
-            <span>Entregue</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Dispositivo */}
-      {(os?.dispositivo_marca || os?.dispositivo_modelo) && (
-        <div className="mx-4 mb-4 rounded-2xl border border-slate-700/50 bg-slate-800/50 backdrop-blur p-5">
-          <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-3">
-            📱 Dispositivo
-          </p>
-          <p className="text-white font-semibold">{os?.dispositivo_marca} {os?.dispositivo_modelo}</p>
-        </div>
-      )}
-
-      {/* Problema relatado */}
-      {os?.defeito_relatado && (
-        <div className="mx-4 mb-4 rounded-2xl border border-slate-700/50 bg-slate-800/50 backdrop-blur p-5">
-          <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-3">
-            🔍 Problema Relatado
-          </p>
-          <p className="text-slate-300 text-sm">{os.defeito_relatado}</p>
-        </div>
-      )}
-
-      {/* Valor */}
-      {os?.total != null && os.total > 0 && (
-        <div className="mx-4 mb-4 rounded-2xl border border-slate-700/50 bg-slate-800/50 backdrop-blur p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-slate-400 text-sm">Valor do Serviço</p>
-            <p className="text-white text-2xl font-bold">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(os.total)}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Datas */}
-      <div className="mx-4 mb-4 rounded-2xl border border-slate-700/50 bg-slate-800/50 backdrop-blur p-5">
-        <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-3">
-          📅 Datas
-        </p>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-400">Entrada</span>
-            <span className="text-slate-300">
-              {os?.created_at ? new Date(os.created_at).toLocaleDateString('pt-BR') : '-'}
-            </span>
-          </div>
-          {os?.data_saida && (
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-400">Entrega</span>
-              <span className="text-slate-300">
-                {new Date(os.data_saida).toLocaleDateString('pt-BR')}
-              </span>
+          <div className="p-6">
+            {/* Header loja */}
+            <div className="flex items-center gap-3 mb-6 pb-6 border-b border-slate-800">
+              {loja?.logo_url ? (
+                <img src={loja.logo_url} alt={loja?.nome_loja ?? ''} className="h-9 w-9 rounded-xl object-contain bg-slate-800 p-1" />
+              ) : (
+                <div className="h-9 w-9 rounded-xl flex items-center justify-center" style={{ background: `${corPrimaria}22`, border: `1px solid ${corPrimaria}44` }}>
+                  <Wrench className="h-4 w-4" style={{ color: corPrimaria }} />
+                </div>
+              )}
+              <div>
+                <p className="text-white font-semibold text-sm leading-tight">{loja?.nome_loja || 'Assistência Técnica'}</p>
+                {loja?.telefone && <p className="text-slate-500 text-xs">{loja.telefone}</p>}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Footer */}
-      <div className="text-center py-8 space-y-1">
-        <p className="text-slate-500 text-xs">Powered by</p>
-        <p className="text-slate-300 text-sm font-semibold">Méc App</p>
-        <p className="text-slate-600 text-[10px]">
-          Sistema de Gestão para Assistências Técnicas
+            {/* Número OS + Status */}
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <p className="text-slate-500 text-[10px] uppercase tracking-widest mb-1">Ordem de Serviço</p>
+                <h2 className="text-5xl font-black text-white leading-none">#{os?.numero_os}</h2>
+              </div>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl border bg-gradient-to-br ${statusConfig.cor} ${statusConfig.borderCor}`}>
+                <StatusIcon className={`h-4 w-4 ${statusConfig.textCor} shrink-0`} />
+                <span className={`text-xs font-semibold ${statusConfig.textCor} whitespace-nowrap`}>{statusConfig.label}</span>
+              </div>
+            </div>
+
+            {/* Timeline de etapas */}
+            {!cancelada && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between relative">
+                  {/* linha de fundo */}
+                  <div className="absolute left-0 right-0 top-3.5 h-px bg-slate-800 z-0" />
+                  {/* linha de progresso */}
+                  <div
+                    className="absolute left-0 top-3.5 h-px z-0 transition-all duration-700"
+                    style={{
+                      width: etapaAtual >= ETAPAS.length ? '100%' : `${((etapaAtual - 1) / (ETAPAS.length - 1)) * 100}%`,
+                      background: `linear-gradient(90deg, ${corPrimaria}, ${corPrimaria}88)`,
+                    }}
+                  />
+                  {ETAPAS.map((etapa, i) => {
+                    const concluida = etapaAtual > i + 1;
+                    const atual = etapaAtual === i + 1;
+                    return (
+                      <div key={etapa.key} className="flex flex-col items-center gap-1.5 z-10">
+                        <div
+                          className="h-7 w-7 rounded-full flex items-center justify-center transition-all duration-300"
+                          style={concluida || atual
+                            ? { background: corPrimaria, boxShadow: atual ? `0 0 10px ${corPrimaria}` : 'none' }
+                            : { background: '#1e293b', border: '1px solid #334155' }
+                          }
+                        >
+                          {concluida ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                          ) : atual ? (
+                            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                          ) : (
+                            <div className="h-2 w-2 rounded-full bg-slate-600" />
+                          )}
+                        </div>
+                        <span className={`text-[9px] text-center leading-tight max-w-[48px] ${atual ? 'text-white font-semibold' : concluida ? 'text-slate-400' : 'text-slate-600'}`}>
+                          {etapa.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {cancelada && (
+              <div className="mb-6 flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                <XCircle className="h-4 w-4 text-red-400 shrink-0" />
+                <p className="text-red-300 text-sm">Esta ordem de serviço foi cancelada.</p>
+              </div>
+            )}
+
+            {/* Separador */}
+            <div className="border-t border-slate-800 mb-5" />
+
+            {/* Infos em grid */}
+            <div className="space-y-3">
+              {(os?.dispositivo_marca || os?.dispositivo_modelo) && (
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-xl bg-slate-800 flex items-center justify-center shrink-0">
+                    <Smartphone className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Dispositivo</p>
+                    <p className="text-slate-200 text-sm font-medium">{os?.dispositivo_marca} {os?.dispositivo_modelo}</p>
+                  </div>
+                </div>
+              )}
+
+              {os?.defeito_relatado && (
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <AlertCircle className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Problema Relatado</p>
+                    <p className="text-slate-300 text-sm">{os.defeito_relatado}</p>
+                  </div>
+                </div>
+              )}
+
+              {os?.total != null && os.total > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-xl bg-slate-800 flex items-center justify-center shrink-0">
+                    <DollarSign className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Valor do Serviço</p>
+                    <p className="text-white text-lg font-bold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(os.total)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-start gap-3">
+                <div className="h-8 w-8 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
+                  <CalendarDays className="h-4 w-4 text-slate-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">Datas</p>
+                  <div className="flex items-center gap-4 mt-0.5">
+                    <div>
+                      <p className="text-[10px] text-slate-600">Entrada</p>
+                      <p className="text-slate-300 text-sm">
+                        {os?.created_at ? new Date(os.created_at).toLocaleDateString('pt-BR') : '-'}
+                      </p>
+                    </div>
+                    {os?.data_saida && (
+                      <>
+                        <div className="text-slate-700">→</div>
+                        <div>
+                          <p className="text-[10px] text-slate-600">Entrega prevista</p>
+                          <p className="text-slate-300 text-sm">{new Date(os.data_saida).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Separador */}
+            <div className="border-t border-slate-800 mt-5 mb-4" />
+
+            {/* Atualizado em */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-slate-600">
+                <Clock className="h-3 w-3" />
+                <span className="text-[10px]">Atualizado agora</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                </span>
+                <span className="text-[10px] text-green-500">Ao vivo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-slate-700 text-[10px] mt-6 tracking-wide">
+          Powered by <span className="text-slate-500 font-medium">Méc App</span>
         </p>
       </div>
     </div>

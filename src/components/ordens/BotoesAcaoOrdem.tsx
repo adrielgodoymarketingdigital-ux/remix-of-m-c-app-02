@@ -1,4 +1,4 @@
-import { Eye, Pencil, Printer, Trash2, MessageSquare, FileText, Tag, Share2 } from "lucide-react";
+import { Eye, Pencil, Printer, Trash2, MessageSquare, FileText, Tag, RadioTower } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -136,7 +136,7 @@ export const BotoesAcaoOrdem = ({
               onClick={onCompartilhar}
               className={`${tamanhoBotao} text-blue-600 hover:text-blue-700 hover:bg-blue-50`}
             >
-              <Share2 className={tamanhoIcone} />
+              <RadioTower className={tamanhoIcone} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Compartilhar Acompanhamento</TooltipContent>

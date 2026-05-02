@@ -74,7 +74,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
       "Clientes",
       "Contas",
       "Financeiro",
-      "📡 Acompanhamento de OS (10/mês)",
+      "Acompanhamento de OS (10/mês)",
       "5GB de armazenamento",
       "Suporte via WhatsApp",
     ],
@@ -99,7 +99,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
       "Aniversariantes do Mês com WhatsApp",
       "Consulta de IMEI pela Anatel",
       "Verificação de garantia Apple",
-      "📡 Acompanhamento de OS (50/mês)",
+      "Acompanhamento de OS (50/mês)",
       "50GB de armazenamento",
       "Suporte prioritário por WhatsApp",
     ],
@@ -145,7 +145,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
       "Clientes",
       "Contas",
       "Financeiro",
-      "📡 Acompanhamento de OS (10/mês)",
+      "Acompanhamento de OS (10/mês)",
       "5GB de armazenamento",
       "Suporte via WhatsApp",
     ],
@@ -170,7 +170,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
       "Aniversariantes do Mês com WhatsApp",
       "Consulta de IMEI pela Anatel",
       "Verificação de garantia Apple",
-      "📡 Acompanhamento de OS (50/mês)",
+      "Acompanhamento de OS (50/mês)",
       "50GB de armazenamento",
       "Suporte prioritário por WhatsApp",
     ],
@@ -189,7 +189,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
     recursos: [
       "✅ Tudo do plano Profissional",
       "✅ Multi Empresas (até 3 filiais)",
-      "📡 Acompanhamento de OS (Ilimitado)",
+      "Acompanhamento de OS (Ilimitado)",
       "🔜 Avaliador de Preço de Dispositivo (Em breve)",
     ],
     limites: {
@@ -207,7 +207,7 @@ export const PLANOS: Record<string, PlanoInfo> = {
     recursos: [
       "✅ Tudo do plano Profissional",
       "✅ Multi Empresas (até 3 filiais)",
-      "📡 Acompanhamento de OS (Ilimitado)",
+      "Acompanhamento de OS (Ilimitado)",
       "🔜 Avaliador de Preço de Dispositivo (Em breve)",
     ],
     limites: {
