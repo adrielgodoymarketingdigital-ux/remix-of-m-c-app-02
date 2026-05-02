@@ -24,7 +24,6 @@ export const TODAS_FUNCIONALIDADES = [
   "Aniversariantes do Mês com WhatsApp",
   "Consulta de IMEI pela Anatel",
   "Verificação de garantia Apple",
-  "❌ Acompanhamento de OS (indisponível)",
   "📡 Acompanhamento de OS (10/mês)",
   "📡 Acompanhamento de OS (50/mês)",
   "📡 Acompanhamento de OS (Ilimitado)",
@@ -41,13 +40,11 @@ export const FUNCIONALIDADES_POR_PLANO: Record<string, string[]> = {
   basico_mensal: [
     "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
     "Ordem de Serviço", "Orçamentos", "Serviços",
-    "❌ Acompanhamento de OS (indisponível)",
     "Suporte por email",
   ],
   basico_anual: [
     "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
     "Ordem de Serviço", "Orçamentos", "Serviços",
-    "❌ Acompanhamento de OS (indisponível)",
     "Suporte por email",
   ],
   intermediario_mensal: [
