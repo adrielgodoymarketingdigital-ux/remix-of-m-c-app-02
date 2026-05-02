@@ -86,6 +86,9 @@ export function TestimonialsSection() {
               <span className="text-green-500">WhatsApp</span>
             </h3>
             <p className="text-slate-600">Feedback espontâneo de clientes reais</p>
+            <p className="text-sm text-slate-400 mt-2 flex items-center justify-center gap-1">
+              <ChevronLeft className="h-4 w-4" /> Clique nas setas para ver mais depoimentos <ChevronRight className="h-4 w-4" />
+            </p>
           </div>
 
           <div className="relative max-w-lg mx-auto">
