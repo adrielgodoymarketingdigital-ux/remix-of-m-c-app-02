@@ -80,6 +80,45 @@ export default function AdminFinanceiro() {
     },
   });
 
+  const { data: emCarencia } = useQuery({
+    queryKey: ["admin-em-carencia"],
+    queryFn: async () => {
+      const agora = new Date();
+      const tresDiasAtras = new Date();
+      tresDiasAtras.setDate(tresDiasAtras.getDate() - 3);
+
+      const { data } = await supabase
+        .from("assinaturas")
+        .select("user_id, plano_tipo, data_fim, payment_provider")
+        .eq("status", "active")
+        .eq("payment_provider", "ticto")
+        .in("plano_tipo", [
+          "basico_mensal", "basico_anual",
+          "intermediario_mensal", "intermediario_anual",
+          "profissional_mensal", "profissional_anual",
+        ])
+        .lt("data_fim", agora.toISOString())
+        .gt("data_fim", tresDiasAtras.toISOString())
+        .order("data_fim", { ascending: true });
+
+      const userIds = data?.map((d) => d.user_id) ?? [];
+      if (userIds.length === 0) return [];
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, nome, email, celular")
+        .in("user_id", userIds);
+
+      return (data ?? []).map((d) => {
+        const profile = profiles?.find((p) => p.user_id === d.user_id);
+        const dataFim = new Date(d.data_fim);
+        const diasVencido = Math.floor((agora.getTime() - dataFim.getTime()) / (1000 * 60 * 60 * 24));
+        const diasParaCancelar = 3 - diasVencido;
+        return { ...d, profile, diasVencido, diasParaCancelar };
+      });
+    },
+  });
+
   const { data: whatsappTemplate } = useQuery({
     queryKey: ["admin-whatsapp-template-cancelamento"],
     queryFn: async () => {
@@ -317,6 +356,9 @@ export default function AdminFinanceiro() {
                 <TabsTrigger value="ticto-vencidos">
                   Ticto Vencidos ({tictoVencidos?.length ?? 0})
                 </TabsTrigger>
+                <TabsTrigger value="em-carencia" className="text-amber-600">
+                  ⏳ Em Carência ({emCarencia?.length ?? 0})
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="cancelados">
@@ -427,6 +469,52 @@ export default function AdminFinanceiro() {
                     </TableBody>
                   </Table>
                 </div>
+              </TabsContent>
+              <TabsContent value="em-carencia">
+                {(emCarencia?.length ?? 0) === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhum usuário em período de carência
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {emCarencia?.map((u) => (
+                      <div key={u.user_id} className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50/30 dark:bg-amber-950/10">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{u.profile?.nome || "Sem nome"}</span>
+                            <Badge variant="outline" className="text-amber-600 border-amber-400 text-[10px]">
+                              {u.plano_tipo.replace(/_/g, " ")}
+                            </Badge>
+                            <Badge variant="outline" className="text-red-600 border-red-400 text-[10px]">
+                              Venceu há {u.diasVencido}d
+                            </Badge>
+                            <Badge variant="outline" className={`text-[10px] ${u.diasParaCancelar <= 1 ? "text-red-600 border-red-400" : "text-amber-600 border-amber-400"}`}>
+                              Cancela em {u.diasParaCancelar}d
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{u.profile?.email}</p>
+                        </div>
+                        {u.profile?.celular && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="ml-2 shrink-0 text-green-600 border-green-400 hover:bg-green-50"
+                            onClick={() => {
+                              const mensagem = encodeURIComponent(
+                                `Olá ${u.profile?.nome}! Vimos que seu plano no Méc App venceu. Renove agora para continuar usando sem interrupções!`
+                              );
+                              const celular = u.profile?.celular?.replace(/\D/g, "");
+                              window.open(`https://wa.me/55${celular}?text=${mensagem}`, "_blank");
+                            }}
+                          >
+                            <MessageCircle className="h-4 w-4 mr-1" />
+                            WhatsApp
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>
