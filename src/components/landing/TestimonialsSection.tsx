@@ -11,7 +11,7 @@ import { StatCard } from "./StatCard";
 
 // Estatísticas
 const stats = [
-  { value: 350, suffix: "+", label: "Assistências cadastradas", icon: Users },
+  { value: 550, suffix: "+", label: "Assistências cadastradas", icon: Users },
   { value: 98, suffix: "%", label: "Taxa de satisfação", icon: Star },
 ];
 
