@@ -24,9 +24,9 @@ export const TODAS_FUNCIONALIDADES = [
   "Aniversariantes do Mês com WhatsApp",
   "Consulta de IMEI pela Anatel",
   "Verificação de garantia Apple",
-  "Acompanhamento de OS (10/mês)",
-  "Acompanhamento de OS (50/mês)",
-  "Acompanhamento de OS (Ilimitado)",
+  "Link de Acompanhamento de OS (10 links/mês)",
+  "Link de Acompanhamento de OS (50 links/mês)",
+  "Link de Acompanhamento de OS (Ilimitado)",
   "Suporte por email",
   "Suporte via WhatsApp",
   "Suporte prioritário por WhatsApp",
@@ -51,14 +51,14 @@ export const FUNCIONALIDADES_POR_PLANO: Record<string, string[]> = {
     "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
     "Ordem de Serviço", "Orçamentos", "Serviços", "Fornecedores", "Clientes",
     "Contas", "Financeiro", "Catálogo Online", "Assinatura Digital do Cliente na O.S",
-    "Acompanhamento de OS (10/mês)",
+    "Link de Acompanhamento de OS (10 links/mês)",
     "Suporte por email", "Suporte via WhatsApp",
   ],
   intermediario_anual: [
     "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
     "Ordem de Serviço", "Orçamentos", "Serviços", "Fornecedores", "Clientes",
     "Contas", "Financeiro", "Catálogo Online", "Assinatura Digital do Cliente na O.S",
-    "Acompanhamento de OS (10/mês)",
+    "Link de Acompanhamento de OS (10 links/mês)",
     "Suporte por email", "Suporte via WhatsApp",
   ],
   profissional_mensal: [
@@ -68,7 +68,7 @@ export const FUNCIONALIDADES_POR_PLANO: Record<string, string[]> = {
     "Funcionários e Comissões ilimitados", "Notificações Automáticas no Celular",
     "Aniversariantes do Mês com WhatsApp", "Consulta de IMEI pela Anatel",
     "Verificação de garantia Apple",
-    "Acompanhamento de OS (50/mês)",
+    "Link de Acompanhamento de OS (50 links/mês)",
     "Suporte por email", "Suporte via WhatsApp",
     "Suporte prioritário por WhatsApp",
   ],
@@ -79,7 +79,7 @@ export const FUNCIONALIDADES_POR_PLANO: Record<string, string[]> = {
     "Funcionários e Comissões ilimitados", "Notificações Automáticas no Celular",
     "Aniversariantes do Mês com WhatsApp", "Consulta de IMEI pela Anatel",
     "Verificação de garantia Apple",
-    "Acompanhamento de OS (50/mês)",
+    "Link de Acompanhamento de OS (50 links/mês)",
     "Suporte por email", "Suporte via WhatsApp",
     "Suporte prioritário por WhatsApp",
   ],
@@ -259,6 +259,7 @@ export function PricingCard({
         <ul className="space-y-2 flex-1 mb-6">
           {funcionalidadesDisponiveis.map((funcionalidade, index) => {
             const indisponivel = funcionalidade.startsWith("❌");
+            const isAcompanhamento = funcionalidade.startsWith("Link de Acompanhamento");
             return (
               <li key={index} className="flex items-start gap-2">
                 {indisponivel ? (
@@ -272,6 +273,11 @@ export function PricingCard({
                 )}
                 <span className={cn("text-xs leading-relaxed", indisponivel ? "text-slate-400" : "text-slate-700")}>
                   {funcionalidade}
+                  {isAcompanhamento && (
+                    <span className="block text-[10px] text-slate-400 leading-snug mt-0.5">
+                      Envie um link para o cliente acompanhar o status da OS em tempo real
+                    </span>
+                  )}
                 </span>
               </li>
             );
