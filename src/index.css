@@ -363,22 +363,142 @@ All colors MUST be HSL.
     max-width: 194mm !important;
     min-height: auto !important;
     height: auto !important;
-    overflow: visible !important;
+    max-height: 277mm !important;
+    overflow: hidden !important;
     padding: 0 !important;
     margin: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    font-size: 9pt !important;
+    font-size: 7.5pt !important;
     font-weight: 500 !important;
     color: #000 !important;
+    transform-origin: top left !important;
   }
 
-  /* Controle de paginação */
+  /* Compactar espaçamentos para caber em 1 página */
+  .impressao-ordem-container .impressao-header {
+    margin-bottom: 1.5mm !important;
+    padding-bottom: 1mm !important;
+  }
+
+  .impressao-ordem-container .impressao-grid-2,
+  .impressao-ordem-container .impressao-grid-defeito-valor,
+  .impressao-ordem-container .impressao-grid-adaptativo {
+    gap: 1.5mm !important;
+    margin-bottom: 1.5mm !important;
+  }
+
+  .impressao-ordem-container .impressao-block {
+    padding: 1mm !important;
+  }
+
+  .impressao-ordem-container .impressao-block-header {
+    padding: 0.5mm 1mm !important;
+    margin-bottom: 1mm !important;
+  }
+
+  .impressao-ordem-container .impressao-block-title {
+    font-size: 6.5pt !important;
+  }
+
+  .impressao-ordem-container .impressao-titulo {
+    font-size: 11pt !important;
+  }
+
+  .impressao-ordem-container .impressao-numero-os {
+    font-size: 8.5pt !important;
+  }
+
+  .impressao-ordem-container .impressao-field {
+    margin-bottom: 0.5mm !important;
+    font-size: 7pt !important;
+  }
+
+  .impressao-ordem-container .impressao-defeito {
+    font-size: 7pt !important;
+  }
+
+  .impressao-ordem-container .impressao-valor-total {
+    font-size: 11pt !important;
+  }
+
+  .impressao-ordem-container .impressao-item-linha {
+    font-size: 7pt !important;
+    padding: 0.3mm 0 !important;
+  }
+
+  .impressao-ordem-container .impressao-checklist-item {
+    font-size: 6.5pt !important;
+    padding: 0.3mm 0.5mm !important;
+  }
+
+  .impressao-ordem-container .impressao-checklist {
+    gap: 0.5mm 1mm !important;
+  }
+
+  .impressao-ordem-container .impressao-termo-garantia {
+    padding: 1mm !important;
+    margin-top: 1mm !important;
+  }
+
+  .impressao-ordem-container .impressao-termo-title {
+    font-size: 6.5pt !important;
+    margin-bottom: 0.5mm !important;
+  }
+
+  .impressao-ordem-container .impressao-termo-text {
+    font-size: 5.5pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .impressao-ordem-container .impressao-footer {
+    gap: 6mm !important;
+    margin-top: 1.5mm !important;
+    padding-top: 1.5mm !important;
+  }
+
+  .impressao-ordem-container .impressao-linha-assinatura {
+    margin-top: 6mm !important;
+    margin-bottom: 1mm !important;
+  }
+
+  .impressao-ordem-container .impressao-assinatura-label {
+    font-size: 6.5pt !important;
+  }
+
+  .impressao-ordem-container .impressao-loja-info {
+    padding: 1mm !important;
+    font-size: 6.5pt !important;
+  }
+
+  .impressao-ordem-container .impressao-loja-info .text-sm {
+    font-size: 7pt !important;
+  }
+
+  .impressao-ordem-container .impressao-loja-info .text-xs {
+    font-size: 5.5pt !important;
+  }
+
+  .impressao-ordem-container .impressao-logo {
+    width: 11mm !important;
+    height: 11mm !important;
+  }
+
+  .impressao-ordem-container .impressao-silhueta {
+    max-width: 28mm !important;
+  }
+
+  /* Impedir quebra de página */
   .impressao-header,
   .impressao-grid-2,
   .impressao-grid-defeito-valor,
   .impressao-termo-garantia,
   .impressao-footer {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .impressao-ordem-container * {
     page-break-inside: avoid;
     break-inside: avoid;
   }
