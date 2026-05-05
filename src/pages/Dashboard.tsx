@@ -147,6 +147,18 @@ const Dashboard = () => {
     loadProdutosVendidos(datas.inicio, datas.fim);
   }, [mesSelecionado, dashboardBloqueado]);
 
+  // Recarregar quando uma OS for criada ou editada
+  useEffect(() => {
+    if (dashboardBloqueado) return;
+    const handler = () => {
+      const datas = getDatasMesSelecionado(mesSelecionado);
+      loadMetrics(datas.inicio, datas.fim);
+      loadFinanceiroData(datas.inicio, datas.fim);
+    };
+    window.addEventListener("os-salva", handler);
+    return () => window.removeEventListener("os-salva", handler);
+  }, [mesSelecionado, dashboardBloqueado]);
+
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {

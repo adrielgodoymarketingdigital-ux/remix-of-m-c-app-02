@@ -842,6 +842,7 @@ export const DialogOrdemServico = ({
           title: "Ordem atualizada",
           description: "A ordem de serviço foi atualizada com sucesso.",
         });
+        window.dispatchEvent(new Event("os-salva"));
       } else {
         // Criar nova ordem
 
@@ -1080,6 +1081,8 @@ export const DialogOrdemServico = ({
           title: "Ordem criada",
           description: `Ordem de serviço ${numeroOS} criada com sucesso.`,
         });
+
+        window.dispatchEvent(new Event("os-salva"));
 
         // Disparar evento de notificação automática
         dispatchEvent("SERVICE_ORDER_CREATED", {
