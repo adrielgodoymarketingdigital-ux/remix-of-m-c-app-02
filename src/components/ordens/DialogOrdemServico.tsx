@@ -713,7 +713,9 @@ export const DialogOrdemServico = ({
             comissao_calculada_snapshot: comissaoCalculadaSnapshot,
             tipo_servico_nome_snapshot: tipoServicoNomeSnapshot,
             created_at: formData.dataEntrada.toISOString(),
-            data_saida: formData.dataSaida ? formData.dataSaida.toISOString() : null,
+            data_saida: formData.status === "entregue"
+              ? (formData.dataSaida ? formData.dataSaida.toISOString() : new Date().toISOString())
+              : null,
           })
           .eq("id", ordem.id)
           .eq("user_id", effectiveUserId);
@@ -883,7 +885,9 @@ export const DialogOrdemServico = ({
             comissao_calculada_snapshot: comissaoCalculadaSnapshot,
             tipo_servico_nome_snapshot: tipoServicoNomeSnapshot,
             created_at: formData.dataEntrada.toISOString(),
-            data_saida: formData.dataSaida ? formData.dataSaida.toISOString() : null,
+            data_saida: formData.status === "entregue"
+              ? (formData.dataSaida ? formData.dataSaida.toISOString() : new Date().toISOString())
+              : null,
           }]);
 
           // Se não houve erro, sair do loop
@@ -1673,31 +1677,19 @@ export const DialogOrdemServico = ({
                 </div>
                 <div>
                   <Label>Data de Saída</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formData.dataSaida && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.dataSaida
-                          ? format(formData.dataSaida, "dd/MM/yyyy", { locale: ptBR })
-                          : "Preenchida ao entregar"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formData.dataSaida}
-                        onSelect={(date) => setFormData({ ...formData, dataSaida: date || undefined })}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Button
+                    variant="outline"
+                    disabled
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.dataSaida && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.dataSaida
+                      ? format(formData.dataSaida, "dd/MM/yyyy", { locale: ptBR })
+                      : "Preenchida ao entregar"}
+                  </Button>
                 </div>
               </div>
             </CardContent>
