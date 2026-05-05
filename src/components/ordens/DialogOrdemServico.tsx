@@ -579,20 +579,25 @@ export const DialogOrdemServico = ({
         senha_desbloqueio: encryptSenhaDesbloqueio(formData.senhaDesbloqueio),
         checklist: formData.checklist,
         avarias_visuais: formData.avarias,
-        servicos_realizados: formData.servicos.map(s => ({
-          id: s.id,
-          nome: s.nome,
-          preco: Number(s.preco || 0),
-          custo: Number(s.custo || 0),
-          lucro: Number(s.preco || 0) - Number(s.custo || 0),
-          peca_id: (s as any).peca_id || undefined,
-          peca_nome: (s as any).peca_nome || undefined,
-          peca_fornecedor_id: (s as any).peca_fornecedor_id || undefined,
-          peca_fornecedor_nome: (s as any).peca_fornecedor_nome || undefined,
-          peca_status_pagamento: (s as any).peca_status_pagamento || undefined,
-          peca_data_pagamento: (s as any).peca_data_pagamento || undefined,
-          peca_valor: (s as any).peca_valor !== undefined ? (s as any).peca_valor : undefined,
-        })),
+        servicos_realizados: formData.servicos.map(s => {
+          const pecaValor = (s as any).peca_valor;
+          const custo = pecaValor !== undefined ? Number(pecaValor) : Number(s.custo || 0);
+          const preco = Number(s.preco || 0);
+          return {
+            id: s.id,
+            nome: s.nome,
+            preco,
+            custo,
+            lucro: preco - custo,
+            peca_id: (s as any).peca_id || undefined,
+            peca_nome: (s as any).peca_nome || undefined,
+            peca_fornecedor_id: (s as any).peca_fornecedor_id || undefined,
+            peca_fornecedor_nome: (s as any).peca_fornecedor_nome || undefined,
+            peca_status_pagamento: (s as any).peca_status_pagamento || undefined,
+            peca_data_pagamento: (s as any).peca_data_pagamento || undefined,
+            peca_valor: pecaValor !== undefined ? pecaValor : undefined,
+          };
+        }),
         produtos_utilizados: formData.produtos.map(p => ({
           id: p.id,
           nome: p.nome,
