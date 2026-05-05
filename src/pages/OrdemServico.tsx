@@ -759,7 +759,7 @@ export default function OrdemServicoPage() {
             open={dialogAberto}
             onOpenChange={setDialogAberto}
             ordem={ordemSelecionada}
-            onSuccess={carregarOrdens}
+            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); }}
           />
 
           <DialogVisualizacaoOrdem
