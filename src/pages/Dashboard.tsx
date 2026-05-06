@@ -385,9 +385,8 @@ const Dashboard = () => {
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .in("status", ["finalizado", "entregue"])
-        .or(
-          `and(data_saida.not.is.null,data_saida.gte.${hoje},data_saida.lte.${hoje}T23:59:59),and(data_saida.is.null,updated_at.gte.${hoje},updated_at.lte.${hoje}T23:59:59)`
-        ),
+        .gte("data_saida", hoje)
+        .lte("data_saida", `${hoje}T23:59:59`),
       supabase
         .from("vendas")
         .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id")
