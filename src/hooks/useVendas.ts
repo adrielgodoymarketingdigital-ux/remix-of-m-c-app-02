@@ -4,6 +4,7 @@ import { Venda, ResumoVendas, VendasPorPeriodo, ResumoAReceber } from "@/types/v
 import { useToast } from "@/hooks/use-toast";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
+import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -11,6 +12,7 @@ export const useVendas = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { dispatchEvent } = useEventDispatcher();
+  const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
 
   const carregarVendas = async (dataInicio?: string, dataFim?: string) => {
     try {
@@ -23,6 +25,8 @@ export const useVendas = () => {
       const user = session?.user;
       if (!user) { setLoading(false); return; }
 
+      const resolvedUserId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
+
       // Carregar vendas normais (somente do usuário logado)
       let queryVendas = supabase
         .from("vendas")
@@ -33,7 +37,7 @@ export const useVendas = () => {
           produtos (nome, sku),
           pecas (nome)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", resolvedUserId)
         .is("deleted_at", null)
         .order("data", { ascending: false });
 
@@ -60,7 +64,7 @@ export const useVendas = () => {
           clientes!ordens_servico_cliente_fkey (nome, telefone),
           servicos (nome)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", resolvedUserId)
         .is("deleted_at", null)
         .in("status", ["finalizado", "entregue"])
         .order("data_saida", { ascending: false, nullsFirst: false });
@@ -158,14 +162,14 @@ export const useVendas = () => {
         const { data: allVendasData } = await supabase
           .from("vendas")
           .select(`*, clientes!vendas_cliente_fkey (nome, telefone), dispositivos (tipo, marca, modelo), produtos (nome, sku), pecas (nome)`)
-          .eq("user_id", user.id)
+          .eq("user_id", resolvedUserId)
           .is("deleted_at", null)
           .order("data", { ascending: false });
 
         const { data: allOrdensData } = await supabase
           .from("ordens_servico")
           .select(`*, clientes!ordens_servico_cliente_fkey (nome, telefone), servicos (nome)`)
-          .eq("user_id", user.id)
+          .eq("user_id", resolvedUserId)
           .is("deleted_at", null)
           .in("status", ["finalizado", "entregue"])
           .order("updated_at", { ascending: false });
@@ -672,7 +676,7 @@ export const useVendas = () => {
 
   useEffect(() => {
     carregarVendas();
-  }, []);
+  }, [lojaUserId]);
 
   return {
     vendas,
