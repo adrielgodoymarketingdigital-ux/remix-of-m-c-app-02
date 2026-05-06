@@ -578,6 +578,185 @@ All colors MUST be HSL.
   print-color-adjust: exact;
 }
 
+/* ── LAYOUT PADRÃO ── */
+.impressao-a4-padrao.impressao-ordem-container {
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-header {
+  margin-bottom: 3mm;
+  padding-bottom: 2mm;
+  border-bottom: 1.5pt solid #000;
+}
+
+.impressao-a4-padrao .impressao-header-content {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  margin-bottom: 1.5mm;
+}
+
+.impressao-a4-padrao .impressao-logo {
+  width: 14mm;
+  height: 14mm;
+  object-fit: contain;
+}
+
+.impressao-a4-padrao .impressao-titulo {
+  font-size: 14pt;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  margin: 0;
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-numero-os {
+  font-size: 10pt;
+  font-weight: 800;
+  margin-top: 0.5mm;
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-data-status {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  margin-top: 0.5mm;
+  font-size: 8pt;
+  font-weight: 600;
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-badge {
+  display: inline-block;
+  padding: 0.3mm 1.5mm;
+  border-radius: 1px;
+  font-size: 7pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #eee;
+  color: #000;
+  border: 1pt solid #000;
+}
+
+.impressao-a4-padrao .impressao-loja-info {
+  padding: 1.5mm;
+  background: #f5f5f5;
+  border-radius: 1px;
+  font-size: 7.5pt;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-loja-info .text-sm { font-size: 8pt; }
+.impressao-a4-padrao .impressao-loja-info .text-xs { font-size: 6pt; }
+
+.impressao-a4-padrao .impressao-block {
+  border: 1pt solid #000;
+  border-left: unset;
+  border-radius: 1px;
+  padding: 2mm;
+}
+
+.impressao-a4-padrao .impressao-block-minimal { padding: 1.5mm; }
+
+.impressao-a4-padrao .impressao-block-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+  padding: 1mm 1.5mm;
+  margin-bottom: 1.5mm;
+  background: #eee;
+  border-bottom: 1pt solid #000;
+}
+
+.impressao-a4-padrao .impressao-block-header-minimal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5mm;
+}
+
+.impressao-a4-padrao .impressao-icon { color: #000; }
+
+.impressao-a4-padrao .impressao-block-title {
+  font-size: 8pt;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-block-content { padding: 0; }
+
+.impressao-a4-padrao .impressao-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1mm;
+  font-size: 8pt;
+}
+
+.impressao-a4-padrao .impressao-label {
+  font-weight: 700;
+  color: #000;
+  min-width: 18mm;
+}
+
+.impressao-a4-padrao .impressao-value {
+  font-weight: 600;
+  color: #000;
+  text-align: right;
+  flex: 1;
+}
+
+.impressao-a4-padrao .impressao-defeito {
+  font-size: 8.5pt;
+  font-weight: 600;
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-valor-total {
+  font-size: 13pt;
+  font-weight: 900;
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-itens-titulo {
+  font-weight: 700;
+  font-size: 7pt;
+  color: #000;
+  border-bottom: unset;
+}
+
+.impressao-a4-padrao .impressao-item-linha {
+  border-bottom: unset;
+  font-size: 7pt;
+}
+
+.impressao-a4-padrao .impressao-item-nome { color: #000; }
+.impressao-a4-padrao .impressao-item-valor { color: #000; }
+
+.impressao-a4-padrao .impressao-senha-valor {
+  font-family: "Courier New", monospace;
+  font-weight: 900;
+  font-size: 10pt;
+}
+
+.impressao-a4-padrao .impressao-termo-garantia {
+  border: 0.5pt solid #ccc;
+  border-left: unset;
+  background: #fafafa;
+  color: #444;
+}
+
+.impressao-a4-padrao .impressao-linha-assinatura {
+  border-bottom: 0.5pt solid #000;
+}
+
+.impressao-a4-padrao .impressao-assinatura-label { color: #555; }
+.impressao-a4-padrao .impressao-assinatura-data { color: #888; }
+
 /* ── HEADER TECNOLÓGICO ── */
 .impressao-header {
   margin-bottom: 3mm;
