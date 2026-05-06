@@ -108,7 +108,7 @@ export function BannerVencimentoPlano() {
         {/* Scanline animada sutil */}
         <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.03)_50%)] bg-[length:100%_4px] pointer-events-none opacity-30" />
 
-        <div className="flex items-center justify-between px-3 py-1.5 max-w-screen-xl mx-auto">
+        <div className="flex items-center justify-between px-3 py-1.5">
 
           <div className="flex items-center gap-2">
             {/* Ponto pulsante */}
