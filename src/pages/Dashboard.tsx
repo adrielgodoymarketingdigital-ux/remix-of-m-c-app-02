@@ -388,8 +388,7 @@ const Dashboard = () => {
         .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id")
         .eq("user_id", user.id)
         .eq("cancelada", false)
-        .or(`data.gte.${hoje},and(data_recebimento.not.is.null,data_recebimento.gte.${hoje})`)
-        .lte("data", `${hoje}T23:59:59`),
+        .or(`and(data.gte.${hoje},data.lte.${hoje}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${hoje},data_recebimento.lte.${hoje}T23:59:59)`),
       supabase
         .from("servicos_avulsos")
         .select("preco, custo")
