@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard } from "lucide-react";
+import { DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard, Activity, Zap } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -98,6 +98,11 @@ const Dashboard = () => {
     custoTotal: 0,
     lucroTotal: 0,
     taxasCartao: 0,
+  });
+  const [hojeData, setHojeData] = useState({
+    faturamento: 0,
+    lucro: 0,
+    carregando: true,
   });
   const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<ProdutoVendido[]>([]);
   const [produtosMenosVendidos, setProdutosMenosVendidos] = useState<ProdutoVendido[]>([]);
@@ -357,6 +362,13 @@ const Dashboard = () => {
       lucroTotal: resumo.lucroTotal,
       taxasCartao: resumo.taxasCartao,
     });
+
+    const resumoHoje = await calcularResumo({ dataInicio: hoje, dataFim: hoje });
+    setHojeData({
+      faturamento: resumoHoje.receitaTotal,
+      lucro: resumoHoje.lucroTotal,
+      carregando: false,
+    });
   };
 
   const loadProdutosVendidos = async (inicio: Date, fim: Date) => {
@@ -615,6 +627,70 @@ const Dashboard = () => {
               </div>
             </div>
           </Card>
+
+          {/* Card Duplo — Faturamento Hoje + Lucro Hoje */}
+          <div className="grid grid-cols-2 gap-0 mb-4 rounded-xl overflow-hidden border border-white/10 shadow-[0_0_40px_-10px_rgba(59,130,246,0.25)] relative">
+            {/* scanline sutil */}
+            <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
+
+            {/* Faturamento Hoje */}
+            <div className="relative bg-gradient-to-br from-slate-900 via-blue-950/60 to-slate-900 p-4 sm:p-5 flex flex-col gap-3 border-r border-white/10 overflow-hidden">
+              <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-60" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-400" />
+                  </span>
+                  <span className="text-[10px] font-mono text-blue-400/70 tracking-widest uppercase">LIVE</span>
+                </div>
+                <div className="h-8 w-8 rounded-lg bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
+                  <Activity className="h-4 w-4 text-blue-400" />
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-mono text-slate-500 tracking-wider uppercase mb-1">Faturamento Hoje</p>
+                {hojeData.carregando ? (
+                  <div className="h-7 w-32 bg-slate-800 rounded animate-pulse" />
+                ) : (
+                  <p className="text-xl sm:text-2xl font-bold text-white font-mono tracking-tight">
+                    <ValorMonetario valor={hojeData.faturamento} />
+                  </p>
+                )}
+              </div>
+              <div className="h-[1px] bg-gradient-to-r from-blue-500/30 via-blue-400/10 to-transparent" />
+              <p className="text-[10px] text-slate-600 font-mono">receita bruta do dia</p>
+            </div>
+
+            {/* Lucro Hoje */}
+            <div className="relative bg-gradient-to-br from-slate-900 via-emerald-950/40 to-slate-900 p-4 sm:p-5 flex flex-col gap-3 overflow-hidden">
+              <div className="absolute -top-6 -left-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400/70 tracking-widest uppercase">LIVE</span>
+                </div>
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+                  <Zap className="h-4 w-4 text-emerald-400" />
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] font-mono text-slate-500 tracking-wider uppercase mb-1">Lucro Hoje</p>
+                {hojeData.carregando ? (
+                  <div className="h-7 w-32 bg-slate-800 rounded animate-pulse" />
+                ) : (
+                  <p className={`text-xl sm:text-2xl font-bold font-mono tracking-tight ${hojeData.lucro >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <ValorMonetario valor={hojeData.lucro} />
+                  </p>
+                )}
+              </div>
+              <div className="h-[1px] bg-gradient-to-r from-emerald-500/30 via-emerald-400/10 to-transparent" />
+              <p className="text-[10px] text-slate-600 font-mono">receita − custo do dia</p>
+            </div>
+          </div>
 
           {/* Cards Financeiros */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
