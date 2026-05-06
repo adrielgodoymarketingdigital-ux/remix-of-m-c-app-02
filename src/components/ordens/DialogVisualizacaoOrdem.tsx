@@ -127,7 +127,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
               <div className="space-y-3 text-sm">
                 <div>
                   <span className="font-medium">Data de Abertura:</span>
-                  <p className="text-muted-foreground">{formatDate(ordem.created_at)}</p>
+                  <p className="text-muted-foreground">{formatDateTime(ordem.created_at)}</p>
                 </div>
                 <div>
                   <span className="font-medium">Defeito Relatado:</span>

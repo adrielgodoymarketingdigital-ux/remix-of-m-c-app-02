@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Smartphone } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDateTime } from "@/lib/formatters";
 import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
 import type { OrdemServico } from "@/hooks/useOrdensServico";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
@@ -84,7 +84,7 @@ function KanbanCard({
 
       <div className="flex items-center justify-between gap-2 pt-1 border-t">
         <span className="text-xs text-muted-foreground truncate">
-          {formatDate(ordem.created_at)}
+          {formatDateTime(ordem.created_at)}
         </span>
         {ordem.total != null && ordem.total > 0 && (
           <span className="text-xs font-semibold text-foreground shrink-0">
