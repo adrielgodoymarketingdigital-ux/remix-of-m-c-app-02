@@ -526,10 +526,17 @@ All colors MUST be HSL.
   }
 }
 
-/* Duas OS por folha A4 — base */
+/* Duas OS por folha A4 — base
+   Ambos os modos posicionam as OS lado a lado.
+   Vertical (portrait): folha em pé 210×297mm, área útil 194×277mm.
+     Cada OS escalada a 50% → 97mm × 138.5mm. As duas cabem lado a lado (194mm total).
+   Horizontal (landscape): folha deitada 297×210mm, área útil 277×194mm.
+     Cada OS escalada a 50% → 97mm × 138.5mm. As duas cabem lado a lado (194mm total).
+     Neste modo usamos @page landscape via classe no body.
+*/
 .impressao-duas-os-wrapper {
-  width: 194mm;
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   background: white;
   gap: 0;
@@ -548,28 +555,50 @@ All colors MUST be HSL.
   max-width: 194mm !important;
 }
 
-/* Horizontal: lado a lado — cada slot ocupa metade da largura */
+/* Vertical (portrait): folha em pé, OS lado a lado */
+.impressao-duas-os-vertical {
+  width: 194mm;
+}
+
+.impressao-duas-os-vertical .impressao-duas-os-slot {
+  width: 97mm;
+  height: 138.5mm;
+}
+
+/* Horizontal (landscape): folha deitada, OS lado a lado com mais altura disponível */
 .impressao-duas-os-horizontal {
-  flex-direction: row;
+  width: 277mm;
 }
 
 .impressao-duas-os-horizontal .impressao-duas-os-slot {
-  width: 97mm;
-  height: 277mm;
+  width: 138.5mm;
+  height: 194mm;
 }
 
-.impressao-duas-os-horizontal .impressao-duas-os-corte {
+.impressao-duas-os-horizontal .impressao-duas-os-slot > * {
+  transform: scale(0.713);
+}
+
+/* Linha de corte vertical (entre as duas OS) */
+.impressao-duas-os-corte {
   width: 0;
-  height: 277mm;
+  flex-shrink: 0;
   border-left: 1.5pt dashed #999;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  flex-shrink: 0;
 }
 
-.impressao-duas-os-horizontal .impressao-duas-os-corte-label {
+.impressao-duas-os-vertical .impressao-duas-os-corte {
+  height: 138.5mm;
+}
+
+.impressao-duas-os-horizontal .impressao-duas-os-corte {
+  height: 194mm;
+}
+
+.impressao-duas-os-corte-label {
   background: white;
   padding: 2mm 0;
   font-size: 6pt;
@@ -582,41 +611,8 @@ All colors MUST be HSL.
   transform: translateY(-50%) rotate(180deg);
 }
 
-/* Vertical: uma sobre a outra — cada slot ocupa metade da altura */
-.impressao-duas-os-vertical {
-  flex-direction: column;
-}
-
-.impressao-duas-os-vertical .impressao-duas-os-slot {
-  width: 194mm;
-  height: 138.5mm;
-}
-
-.impressao-duas-os-vertical .impressao-duas-os-corte {
-  width: 194mm;
-  height: 0;
-  border-top: 1.5pt dashed #999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.impressao-duas-os-vertical .impressao-duas-os-corte-label {
-  background: white;
-  padding: 0 4mm;
-  font-size: 6pt;
-  color: #999;
-  font-style: italic;
-  white-space: nowrap;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
 @media print {
   .impressao-duas-os-wrapper {
-    width: 194mm !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
@@ -625,28 +621,40 @@ All colors MUST be HSL.
     overflow: hidden !important;
   }
 
-  .impressao-duas-os-horizontal .impressao-duas-os-slot {
-    width: 97mm !important;
-    height: 277mm !important;
-  }
-
-  .impressao-duas-os-horizontal .impressao-duas-os-corte {
-    height: 277mm !important;
-    border-left: 1pt dashed #aaa !important;
+  .impressao-duas-os-vertical {
+    width: 194mm !important;
   }
 
   .impressao-duas-os-vertical .impressao-duas-os-slot {
-    width: 194mm !important;
+    width: 97mm !important;
     height: 138.5mm !important;
   }
 
   .impressao-duas-os-vertical .impressao-duas-os-corte {
-    width: 194mm !important;
-    border-top: 1pt dashed #aaa !important;
+    height: 138.5mm !important;
+    border-left: 1pt dashed #aaa !important;
+  }
+
+  .impressao-duas-os-horizontal {
+    width: 277mm !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot {
+    width: 138.5mm !important;
+    height: 194mm !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-corte {
+    height: 194mm !important;
+    border-left: 1pt dashed #aaa !important;
   }
 
   .impressao-duas-os-corte-label {
     color: #bbb !important;
+  }
+
+  body.print-duas-os-horizontal #print-root {
+    width: 277mm !important;
   }
 }
 

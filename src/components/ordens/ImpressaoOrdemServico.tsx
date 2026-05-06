@@ -76,17 +76,31 @@ export const ImpressaoOrdemServico = ({
     if (!portalEl) return;
     document.body.appendChild(portalEl);
 
-    // Add 80mm class to body for @page size override
     const is80mmFormat = layoutConfig.formato_papel === '80mm';
     if (is80mmFormat) {
       document.body.classList.add('print-80mm');
     }
 
+    const isHorizontal = !is80mmFormat && layoutConfig.duas_os_por_folha && layoutConfig.duas_os_orientacao === 'horizontal';
+    if (isHorizontal) {
+      document.body.classList.add('print-duas-os-horizontal');
+    }
+
+    let pageStyleEl: HTMLStyleElement | null = null;
+    if (isHorizontal) {
+      pageStyleEl = document.createElement('style');
+      pageStyleEl.id = 'print-page-landscape';
+      pageStyleEl.textContent = '@media print { @page { size: A4 landscape; margin: 8mm; } }';
+      document.head.appendChild(pageStyleEl);
+    }
+
     return () => {
       portalEl.remove();
       document.body.classList.remove('print-80mm');
+      document.body.classList.remove('print-duas-os-horizontal');
+      pageStyleEl?.remove();
     };
-  }, [portalEl, layoutConfig.formato_papel]);
+  }, [portalEl, layoutConfig.formato_papel, layoutConfig.duas_os_por_folha, layoutConfig.duas_os_orientacao]);
 
   // Detect Android
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -97,9 +111,10 @@ export const ImpressaoOrdemServico = ({
     if (!portalEl) return;
 
     // Get the print content
-    const contentEl = portalEl.querySelector('.impressao-ordem-container, .cupom-80mm-container');
+    const contentEl = portalEl.querySelector('.impressao-ordem-container, .cupom-80mm-container, .impressao-duas-os-wrapper');
     const contentHtml = contentEl ? contentEl.outerHTML : portalEl.innerHTML;
     const is80mmFormat = layoutConfig.formato_papel === '80mm';
+    const isHorizontalMode = !is80mmFormat && layoutConfig.duas_os_por_folha && layoutConfig.duas_os_orientacao === 'horizontal';
 
     // Extract CSS custom properties from :root (needed for hsl(var(--...)) references)
     let cssVars = '';
@@ -270,29 +285,32 @@ export const ImpressaoOrdemServico = ({
     .cupom-assinatura-bloco { text-align: center; margin-bottom: 2mm; }
     .cupom-linha-assinatura { border-bottom: 1.5px solid #000; width: 90%; margin: 3mm auto 1mm; }
     .cupom-assinatura-img { max-width: 30mm; max-height: 10mm; }
-    ${is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4; margin: 8mm; }'}
     /* Duas OS por folha */
-    .impressao-duas-os-wrapper { width: 194mm; display: flex; align-items: flex-start; background: white; gap: 0; }
+    .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; }
     .impressao-duas-os-slot { overflow: hidden; position: relative; flex-shrink: 0; }
     .impressao-duas-os-slot > * { transform-origin: top left; transform: scale(0.5); width: 194mm !important; max-width: 194mm !important; }
-    .impressao-duas-os-horizontal { flex-direction: row; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 97mm; height: 277mm; }
-    .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 0; height: 277mm; border-left: 1pt dashed #aaa; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
-    .impressao-duas-os-horizontal .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
-    .impressao-duas-os-vertical { flex-direction: column; }
-    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 194mm; height: 138.5mm; }
-    .impressao-duas-os-vertical .impressao-duas-os-corte { width: 194mm; height: 0; border-top: 1pt dashed #aaa; display: flex; align-items: center; justify-content: center; position: relative; }
-    .impressao-duas-os-vertical .impressao-duas-os-corte-label { background: white; padding: 0 4mm; font-size: 6pt; color: #bbb; font-style: italic; white-space: nowrap; position: absolute; left: 50%; transform: translateX(-50%); }
+    .impressao-duas-os-vertical { width: 194mm; }
+    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm; height: 138.5mm; }
+    .impressao-duas-os-horizontal { width: 277mm; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm; height: 194mm; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.713); }
+    .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; display: flex; align-items: center; justify-content: center; position: relative; }
+    .impressao-duas-os-vertical .impressao-duas-os-corte { height: 138.5mm; }
+    .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 194mm; }
+    .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
+    ${isHorizontalMode ? '@page { size: A4 landscape; margin: 8mm; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 8mm; }')}
     @media print {
       * { box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { overflow: visible !important; }
       img { max-width: 100% !important; }
-      .impressao-duas-os-wrapper { width: 194mm !important; page-break-inside: avoid !important; }
+      .impressao-duas-os-wrapper { page-break-inside: avoid !important; }
       .impressao-duas-os-slot { overflow: hidden !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 97mm !important; height: 277mm !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 277mm !important; border-left: 1pt dashed #aaa !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 194mm !important; height: 138.5mm !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-corte { width: 194mm !important; border-top: 1pt dashed #aaa !important; }
+      .impressao-duas-os-vertical { width: 194mm !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm !important; height: 138.5mm !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-corte { height: 138.5mm !important; }
+      .impressao-duas-os-horizontal { width: 277mm !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm !important; height: 194mm !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 194mm !important; }
     }
   </style>
 </head>

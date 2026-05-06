@@ -312,7 +312,7 @@ export function DialogConfiguracaoLayoutOS({
                             Orientação
                           </Label>
                           <p className="text-xs text-muted-foreground">
-                            Lado a lado ou uma em cima da outra
+                            Folha deitada ou em pé
                           </p>
                         </div>
                         <Select
@@ -325,8 +325,8 @@ export function DialogConfiguracaoLayoutOS({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="horizontal">Lado a lado</SelectItem>
-                            <SelectItem value="vertical">Uma sobre a outra</SelectItem>
+                            <SelectItem value="horizontal">Horizontal (folha deitada)</SelectItem>
+                            <SelectItem value="vertical">Vertical (folha em pé)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
