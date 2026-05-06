@@ -143,6 +143,11 @@ const Dashboard = () => {
     checkAuth();
   }, []);
 
+  // Carregar dados de hoje separadamente, sem depender de dashboardBloqueado
+  useEffect(() => {
+    loadHojeData();
+  }, []);
+
   // Recarregar dados quando o mês selecionado mudar (pular se dashboard bloqueado para funcionário)
   useEffect(() => {
     if (dashboardBloqueado) return;
