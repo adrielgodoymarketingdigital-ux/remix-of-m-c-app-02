@@ -526,25 +526,16 @@ All colors MUST be HSL.
   }
 }
 
-/* Duas OS por folha A4 — lado a lado
-   Cada OS é escalada a 50% (transform: scale(0.5), origin top left).
-   A OS original tem 194mm de largura → escalada ocupa 97mm.
-   A OS original tem até ~277mm de altura → escalada ocupa ~138.5mm.
-   O wrapper tem 194mm de largura e usa flexbox row para posicionar lado a lado.
-   Cada slot tem 97mm de largura e overflow:hidden para clipar a OS escalada.
-*/
+/* Duas OS por folha A4 — base */
 .impressao-duas-os-wrapper {
   width: 194mm;
   display: flex;
-  flex-direction: row;
   align-items: flex-start;
   background: white;
   gap: 0;
 }
 
 .impressao-duas-os-slot {
-  width: 97mm;
-  height: 277mm;
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
@@ -557,7 +548,17 @@ All colors MUST be HSL.
   max-width: 194mm !important;
 }
 
-.impressao-duas-os-corte {
+/* Horizontal: lado a lado — cada slot ocupa metade da largura */
+.impressao-duas-os-horizontal {
+  flex-direction: row;
+}
+
+.impressao-duas-os-horizontal .impressao-duas-os-slot {
+  width: 97mm;
+  height: 277mm;
+}
+
+.impressao-duas-os-horizontal .impressao-duas-os-corte {
   width: 0;
   height: 277mm;
   border-left: 1.5pt dashed #999;
@@ -568,7 +569,7 @@ All colors MUST be HSL.
   flex-shrink: 0;
 }
 
-.impressao-duas-os-corte-label {
+.impressao-duas-os-horizontal .impressao-duas-os-corte-label {
   background: white;
   padding: 2mm 0;
   font-size: 6pt;
@@ -581,6 +582,38 @@ All colors MUST be HSL.
   transform: translateY(-50%) rotate(180deg);
 }
 
+/* Vertical: uma sobre a outra — cada slot ocupa metade da altura */
+.impressao-duas-os-vertical {
+  flex-direction: column;
+}
+
+.impressao-duas-os-vertical .impressao-duas-os-slot {
+  width: 194mm;
+  height: 138.5mm;
+}
+
+.impressao-duas-os-vertical .impressao-duas-os-corte {
+  width: 194mm;
+  height: 0;
+  border-top: 1.5pt dashed #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.impressao-duas-os-vertical .impressao-duas-os-corte-label {
+  background: white;
+  padding: 0 4mm;
+  font-size: 6pt;
+  color: #999;
+  font-style: italic;
+  white-space: nowrap;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 @media print {
   .impressao-duas-os-wrapper {
     width: 194mm !important;
@@ -589,14 +622,27 @@ All colors MUST be HSL.
   }
 
   .impressao-duas-os-slot {
-    width: 97mm !important;
-    height: 277mm !important;
     overflow: hidden !important;
   }
 
-  .impressao-duas-os-corte {
+  .impressao-duas-os-horizontal .impressao-duas-os-slot {
+    width: 97mm !important;
+    height: 277mm !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-corte {
     height: 277mm !important;
     border-left: 1pt dashed #aaa !important;
+  }
+
+  .impressao-duas-os-vertical .impressao-duas-os-slot {
+    width: 194mm !important;
+    height: 138.5mm !important;
+  }
+
+  .impressao-duas-os-vertical .impressao-duas-os-corte {
+    width: 194mm !important;
+    border-top: 1pt dashed #aaa !important;
   }
 
   .impressao-duas-os-corte-label {

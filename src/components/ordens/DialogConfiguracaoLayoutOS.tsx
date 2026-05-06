@@ -60,6 +60,7 @@ const LAYOUT_PADRAO: LayoutOSConfig = {
   formato_papel: "a4",
   versao_layout_a4: "padrao",
   duas_os_por_folha: false,
+  duas_os_orientacao: 'horizontal',
   config_80mm: CONFIG_80MM_PADRAO,
 };
 
@@ -91,6 +92,7 @@ export function DialogConfiguracaoLayoutOS({
         formato_papel: config.layout_os_config.formato_papel || "a4",
         versao_layout_a4: config.layout_os_config.versao_layout_a4 || "padrao",
         duas_os_por_folha: config.layout_os_config.duas_os_por_folha ?? false,
+        duas_os_orientacao: config.layout_os_config.duas_os_orientacao ?? 'horizontal',
         config_80mm: {
           ...CONFIG_80MM_PADRAO,
           ...(config.layout_os_config as any).config_80mm,
@@ -286,20 +288,49 @@ export function DialogConfiguracaoLayoutOS({
                 )}
 
                 {!is80mm && (
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="duasOsPorFolha" className="text-sm">
-                        2 OS por folha A4
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Imprime duas cópias da OS lado a lado na mesma folha para cortar ao meio
-                      </p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="duasOsPorFolha" className="text-sm">
+                          2 OS por folha A4
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Imprime duas cópias da OS na mesma folha para cortar ao meio
+                        </p>
+                      </div>
+                      <Switch
+                        id="duasOsPorFolha"
+                        checked={layout.duas_os_por_folha ?? false}
+                        onCheckedChange={() => handleToggle("duas_os_por_folha")}
+                      />
                     </div>
-                    <Switch
-                      id="duasOsPorFolha"
-                      checked={layout.duas_os_por_folha ?? false}
-                      onCheckedChange={() => handleToggle("duas_os_por_folha")}
-                    />
+
+                    {(layout.duas_os_por_folha ?? false) && (
+                      <div className="flex items-center justify-between pl-4 border-l-2 border-muted">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="duasOsOrientacao" className="text-sm">
+                            Orientação
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Lado a lado ou uma em cima da outra
+                          </p>
+                        </div>
+                        <Select
+                          value={layout.duas_os_orientacao ?? 'horizontal'}
+                          onValueChange={(value: 'horizontal' | 'vertical') =>
+                            setLayout({ ...layout, duas_os_orientacao: value })
+                          }
+                        >
+                          <SelectTrigger className="w-40">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="horizontal">Lado a lado</SelectItem>
+                            <SelectItem value="vertical">Uma sobre a outra</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

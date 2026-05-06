@@ -85,6 +85,7 @@ export interface LayoutOSConfig {
   formato_papel?: 'a4' | '80mm';
   versao_layout_a4?: 'padrao' | 'tech';
   duas_os_por_folha?: boolean;
+  duas_os_orientacao?: 'horizontal' | 'vertical';
   config_80mm?: Layout80mmConfig;
   etiqueta_config?: EtiquetaOSConfig;
 }
