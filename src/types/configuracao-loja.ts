@@ -72,26 +72,6 @@ export interface EtiquetaOSConfig {
   tamanho_fonte?: 'pequeno' | 'normal' | 'grande';
 }
 
-export type SecaoOSId =
-  | 'cabecalho'
-  | 'dados_loja'
-  | 'cliente_dispositivo'
-  | 'defeito_valor'
-  | 'servicos'
-  | 'custos_adicionais'
-  | 'forma_pagamento'
-  | 'checklist_senha_avarias'
-  | 'termos'
-  | 'assinaturas';
-
-export interface SecaoOSConfig {
-  id: SecaoOSId;
-  visivel: boolean;
-  ordem: number;
-  tamanho_fonte?: number; // px relativo, ex: 100 = padrão, 110 = +10%, 90 = -10%
-  altura_extra?: number; // mm extras de espaçamento interno
-}
-
 export interface LayoutOSConfig {
   mostrar_logo_impressao?: boolean;
   mostrar_logo_whatsapp?: boolean;
@@ -101,14 +81,10 @@ export interface LayoutOSConfig {
   mostrar_assinaturas?: boolean;
   mostrar_termos_condicoes?: boolean;
   cor_primaria?: string;
-  cor_secundaria?: string;
   tamanho_fonte?: 'pequeno' | 'normal' | 'grande';
   formato_papel?: 'a4' | '80mm';
   config_80mm?: Layout80mmConfig;
   etiqueta_config?: EtiquetaOSConfig;
-  // Personalização avançada (drag-and-drop)
-  modo_layout?: 'padrao' | 'personalizado';
-  secoes_personalizadas?: SecaoOSConfig[];
 }
 
 // Layout config para PDV
