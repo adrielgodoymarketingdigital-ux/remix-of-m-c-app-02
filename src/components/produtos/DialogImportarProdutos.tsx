@@ -264,13 +264,13 @@ export const DialogImportarProdutos = ({
     setImportando(true);
 
     try {
-      const itensParaImportar: FormularioProduto[] = itensValidos.map(({
-        _linha, _avisos, _erro, ...item
-      }, idx) => {
-        const originalIdx = itensValidados.indexOf(itensValidados.filter(i => !i._erro)[idx]);
-        const categoriaId = resolverCategoriaItem(originalIdx);
-        return { ...item, categoria_id: categoriaId };
-      });
+      const itensParaImportar: FormularioProduto[] = itensValidados
+        .map((item, idx) => ({ item, idx }))
+        .filter(({ item }) => !item._erro)
+        .map(({ item: { _linha, _avisos, _erro, ...rest }, idx }) => ({
+          ...rest,
+          categoria_id: resolverCategoriaItem(idx),
+        }));
 
       const res = await onImportar(itensParaImportar);
       setResultado(res);
