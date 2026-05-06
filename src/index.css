@@ -526,6 +526,84 @@ All colors MUST be HSL.
   }
 }
 
+/* Duas OS por folha A4 — lado a lado
+   Cada OS é escalada a 50% (transform: scale(0.5), origin top left).
+   A OS original tem 194mm de largura → escalada ocupa 97mm.
+   A OS original tem até ~277mm de altura → escalada ocupa ~138.5mm.
+   O wrapper tem 194mm de largura e usa flexbox row para posicionar lado a lado.
+   Cada slot tem 97mm de largura e overflow:hidden para clipar a OS escalada.
+*/
+.impressao-duas-os-wrapper {
+  width: 194mm;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  background: white;
+  gap: 0;
+}
+
+.impressao-duas-os-slot {
+  width: 97mm;
+  height: 277mm;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.impressao-duas-os-slot > * {
+  transform-origin: top left;
+  transform: scale(0.5);
+  width: 194mm !important;
+  max-width: 194mm !important;
+}
+
+.impressao-duas-os-corte {
+  width: 0;
+  height: 277mm;
+  border-left: 1.5pt dashed #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.impressao-duas-os-corte-label {
+  background: white;
+  padding: 2mm 0;
+  font-size: 6pt;
+  color: #999;
+  font-style: italic;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+@media print {
+  .impressao-duas-os-wrapper {
+    width: 194mm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .impressao-duas-os-slot {
+    width: 97mm !important;
+    height: 277mm !important;
+    overflow: hidden !important;
+  }
+
+  .impressao-duas-os-corte {
+    height: 277mm !important;
+    border-left: 1pt dashed #aaa !important;
+  }
+
+  .impressao-duas-os-corte-label {
+    color: #bbb !important;
+  }
+}
+
 /* Screen Styles for Print Preview */
 .print-root {
   position: fixed;

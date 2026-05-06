@@ -84,6 +84,7 @@ export interface LayoutOSConfig {
   tamanho_fonte?: 'pequeno' | 'normal' | 'grande';
   formato_papel?: 'a4' | '80mm';
   versao_layout_a4?: 'padrao' | 'tech';
+  duas_os_por_folha?: boolean;
   config_80mm?: Layout80mmConfig;
   etiqueta_config?: EtiquetaOSConfig;
 }

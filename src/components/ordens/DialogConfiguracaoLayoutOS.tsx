@@ -59,6 +59,7 @@ const LAYOUT_PADRAO: LayoutOSConfig = {
   tamanho_fonte: "normal",
   formato_papel: "a4",
   versao_layout_a4: "padrao",
+  duas_os_por_folha: false,
   config_80mm: CONFIG_80MM_PADRAO,
 };
 
@@ -89,6 +90,7 @@ export function DialogConfiguracaoLayoutOS({
         tamanho_fonte: config.layout_os_config.tamanho_fonte || "normal",
         formato_papel: config.layout_os_config.formato_papel || "a4",
         versao_layout_a4: config.layout_os_config.versao_layout_a4 || "padrao",
+        duas_os_por_folha: config.layout_os_config.duas_os_por_folha ?? false,
         config_80mm: {
           ...CONFIG_80MM_PADRAO,
           ...(config.layout_os_config as any).config_80mm,
@@ -280,6 +282,24 @@ export function DialogConfiguracaoLayoutOS({
                         <SelectItem value="grande">Grande</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+
+                {!is80mm && (
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="duasOsPorFolha" className="text-sm">
+                        2 OS por folha A4
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Imprime duas cópias da OS lado a lado na mesma folha para cortar ao meio
+                      </p>
+                    </div>
+                    <Switch
+                      id="duasOsPorFolha"
+                      checked={layout.duas_os_por_folha ?? false}
+                      onCheckedChange={() => handleToggle("duas_os_por_folha")}
+                    />
                   </div>
                 )}
               </div>

@@ -271,10 +271,19 @@ export const ImpressaoOrdemServico = ({
     .cupom-linha-assinatura { border-bottom: 1.5px solid #000; width: 90%; margin: 3mm auto 1mm; }
     .cupom-assinatura-img { max-width: 30mm; max-height: 10mm; }
     ${is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4; margin: 8mm; }'}
+    /* Duas OS por folha — lado a lado */
+    .impressao-duas-os-wrapper { width: 194mm; display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; }
+    .impressao-duas-os-slot { width: 97mm; height: 277mm; overflow: hidden; position: relative; flex-shrink: 0; }
+    .impressao-duas-os-slot > * { transform-origin: top left; transform: scale(0.5); width: 194mm !important; max-width: 194mm !important; }
+    .impressao-duas-os-corte { width: 0; height: 277mm; border-left: 1pt dashed #aaa; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0; }
+    .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
     @media print {
       * { box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { overflow: visible !important; }
       img { max-width: 100% !important; }
+      .impressao-duas-os-wrapper { width: 194mm !important; page-break-inside: avoid !important; }
+      .impressao-duas-os-slot { width: 97mm !important; height: 277mm !important; overflow: hidden !important; }
+      .impressao-duas-os-corte { height: 277mm !important; border-left: 1pt dashed #aaa !important; }
     }
   </style>
 </head>
@@ -345,6 +354,29 @@ export const ImpressaoOrdemServico = ({
 
   if (!portalEl) return null;
 
+  const duasOsPorFolha = !is80mm && (layoutConfig.duas_os_por_folha ?? false);
+
+  const renderA4 = () => {
+    if (layoutConfig.versao_layout_a4 === 'tech') {
+      return (
+        <ImpressaoA4Tech
+          ordem={ordem}
+          configuracaoLoja={configuracaoLoja}
+          layoutConfig={layoutConfig}
+          termoGarantia={termoGarantia}
+        />
+      );
+    }
+    return (
+      <ImpressaoA4Padrao
+        ordem={ordem}
+        configuracaoLoja={configuracaoLoja}
+        layoutConfig={layoutConfig}
+        termoGarantia={termoGarantia}
+      />
+    );
+  };
+
   return createPortal(
     <>
       {/* Print buttons - visible only on screen */}
@@ -364,20 +396,20 @@ export const ImpressaoOrdemServico = ({
           configuracaoLoja={configuracaoLoja}
           config80mm={c80}
         />
-      ) : layoutConfig.versao_layout_a4 === 'tech' ? (
-        <ImpressaoA4Tech
-          ordem={ordem}
-          configuracaoLoja={configuracaoLoja}
-          layoutConfig={layoutConfig}
-          termoGarantia={termoGarantia}
-        />
+      ) : duasOsPorFolha ? (
+        <div className="impressao-duas-os-wrapper">
+          <div className="impressao-duas-os-slot">
+            {renderA4()}
+          </div>
+          <div className="impressao-duas-os-corte">
+            <span className="impressao-duas-os-corte-label">✂ cortar aqui</span>
+          </div>
+          <div className="impressao-duas-os-slot">
+            {renderA4()}
+          </div>
+        </div>
       ) : (
-        <ImpressaoA4Padrao
-          ordem={ordem}
-          configuracaoLoja={configuracaoLoja}
-          layoutConfig={layoutConfig}
-          termoGarantia={termoGarantia}
-        />
+        renderA4()
       )}
     </>,
     portalEl
