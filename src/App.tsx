@@ -63,6 +63,7 @@ const Fidelidade = lazy(() => import("./pages/Fidelidade"));
 const MultiEmpresas = lazy(() => import("./pages/MultiEmpresas"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AcompanharOS = lazy(() => import("./pages/AcompanharOS"));
+const BaixarApp = lazy(() => import("./pages/BaixarApp"));
 
 const RouteFallback = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -305,7 +306,12 @@ function AppRoutes() {
               </ComVerificacaoFuncionario>
             </ProtectedAppRoute>
           } />
-          
+          <Route path="/baixar-app" element={
+            <ProtectedAppRoute>
+              <BaixarApp />
+            </ProtectedAppRoute>
+          } />
+
           {/* Rotas admin - também protegidas */}
           <Route path="/admin/financeiro" element={
             <ProtectedAppRoute>
