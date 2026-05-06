@@ -6,9 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense } from "react";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
+const Landing = lazy(() => import("./pages/Landing"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
 import { TrialEndWarning } from "./components/trial/TrialEndWarning";
 import { ComVerificacaoPlano } from "./components/auth/ComVerificacaoPlano";
 import { ComVerificacaoFuncionario } from "./components/auth/ComVerificacaoFuncionario";
@@ -74,10 +74,11 @@ const RouteFallback = () => (
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutos — dados são "frescos" e não re-buscados ao navegar
-      gcTime: 1000 * 60 * 10,   // 10 minutos — cache permanece em memória
-      refetchOnWindowFocus: false, // Não re-buscar ao alternar janelas
-      retry: 1, // Apenas 1 retry em caso de erro
+      staleTime: 1000 * 60 * 5,  // 5 min — dados frescos, sem re-fetch ao navegar
+      gcTime: 1000 * 60 * 30,    // 30 min — cache em memória para retorno rápido na PWA
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,  // PWA pode reconectar frequentemente — evitar re-fetch automático
+      retry: 1,
     },
   },
 });

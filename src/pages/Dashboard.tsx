@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,7 @@ import { FreeTrialTimer } from "@/components/trial/FreeTrialTimer";
 import { BannerAtivarNotificacoes } from "@/components/dashboard/BannerAtivarNotificacoes";
 import { formatCurrency } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
-import { GraficosDashboard } from "@/components/dashboard/GraficosDashboard";
+const GraficosDashboard = lazy(() => import("@/components/dashboard/GraficosDashboard").then(m => ({ default: m.GraficosDashboard })));
 import { CardAvisosSistema } from "@/components/dashboard/CardAvisosSistema";
 import { CardFeedback } from "@/components/dashboard/CardFeedback";
 import { CardCotacaoDolar } from "@/components/dashboard/CardCotacaoDolar";
@@ -1229,19 +1229,21 @@ const Dashboard = () => {
 
           {/* Gráficos de Análise */}
           <div className="mb-6">
-            <GraficosDashboard
-              metricas={{
-                faturamentoServicos: metrics.faturamentoServicos,
-                faturamentoProdutos: metrics.faturamentoProdutos,
-                faturamentoDispositivos: metrics.faturamentoDispositivos,
-                custoServicos: metrics.custoServicos,
-                custoProdutos: metrics.custoProdutos,
-                custoDispositivos: metrics.custoDispositivos,
-              }}
-              produtosMaisVendidos={produtosMaisVendidos}
-              produtosMenosVendidos={produtosMenosVendidos}
-              isDemoMode={isTrialExpirado}
-            />
+            <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
+              <GraficosDashboard
+                metricas={{
+                  faturamentoServicos: metrics.faturamentoServicos,
+                  faturamentoProdutos: metrics.faturamentoProdutos,
+                  faturamentoDispositivos: metrics.faturamentoDispositivos,
+                  custoServicos: metrics.custoServicos,
+                  custoProdutos: metrics.custoProdutos,
+                  custoDispositivos: metrics.custoDispositivos,
+                }}
+                produtosMaisVendidos={produtosMaisVendidos}
+                produtosMenosVendidos={produtosMenosVendidos}
+                isDemoMode={isTrialExpirado}
+              />
+            </Suspense>
           </div>
 
           {/* Ações Rápidas */}

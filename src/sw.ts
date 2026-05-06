@@ -2,7 +2,7 @@
 
 import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
-import { CacheFirst, NetworkOnly } from "workbox-strategies";
+import { CacheFirst, NetworkOnly, StaleWhileRevalidate } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 
@@ -28,7 +28,20 @@ self.addEventListener('activate', (event) => {
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 
-// Navegações e scripts ficam sempre na rede para evitar PWA preso em código antigo.
+// Assets JS/CSS com hash imutável: serve do cache imediatamente, atualiza em background.
+// Como têm hash no nome, uma nova versão = novo arquivo = cache limpo automaticamente.
+registerRoute(
+  ({ request, url }) =>
+    url.origin === self.location.origin &&
+    (request.destination === "script" || request.destination === "style"),
+  new StaleWhileRevalidate({
+    cacheName: "app-assets-cache",
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 }),
+    ],
+  })
+);
 
 registerRoute(
   ({ url }) => url.origin === "https://fonts.googleapis.com",

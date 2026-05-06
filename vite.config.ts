@@ -69,10 +69,32 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       injectManifest: {
-        // iOS precisa que o Service Worker ative rápido para Web Push.
-        // Não pré-cachear bundles/rotas: isso atrasava a ativação e travava notificações.
-        globPatterns: ["manifest.webmanifest", "favicon.ico", "pwa-*.png"],
-        maximumFileSizeToCacheInBytes: 1024 * 1024,
+        // Pré-cachear o shell da app (JS/CSS do build + ícones).
+        // Arquivos de mídia pesados (mp4, mov, jpg grandes) ficam de fora para não
+        // travar a instalação do SW. O Vercel serve esses com Cache-Control imutável.
+        globPatterns: [
+          "index.html",
+          "manifest.webmanifest",
+          "favicon.ico",
+          "pwa-*.png",
+          "assets/*.js",
+          "assets/*.css",
+        ],
+        globIgnores: [
+          // Excluir vídeos, imagens pesadas e chunks raramente usados
+          "assets/*.mp4",
+          "assets/*.mov",
+          "assets/depoimento*",
+          "assets/adriel*",
+          "assets/demo*",
+          // Chunks grandes que só carregam em rotas específicas
+          "assets/AdminOnboarding*",
+          "assets/jspdf*",
+          "assets/html2canvas*",
+          "assets/templatePlanilha*",
+          "assets/LeitorCodigoBarras*",
+        ],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB por arquivo
       },
       devOptions: {
         enabled: false // Desabilitar em dev para evitar problemas
@@ -82,6 +104,29 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Frameworks core — raramente mudam, ficam em cache por muito tempo
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-supabase": ["@supabase/supabase-js"],
+          // Recharts fica num chunk próprio — lazy-loaded pelo GraficosDashboard
+          "vendor-recharts": ["recharts"],
+          // UI libs grandes
+          "vendor-radix": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-select",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-tooltip",
+          ],
+        },
+      },
     },
   },
 }));
