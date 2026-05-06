@@ -398,6 +398,11 @@ const Dashboard = () => {
         .lte("created_at", `${hoje}T23:59:59`),
     ]);
 
+    console.log('[HojeDebug] hoje =', hoje);
+    console.log('[HojeDebug] ordensHoje count =', ordensHoje?.length, ordensHoje);
+    console.log('[HojeDebug] vendasHoje count =', vendasHoje?.length, vendasHoje);
+    console.log('[HojeDebug] avulsosHoje count =', avulsosHoje?.length, avulsosHoje);
+
     const receitaOS = (ordensHoje || []).reduce((acc, o) => acc + Number(o.total || 0), 0);
     const custoOS = (ordensHoje || []).reduce((acc, o) => {
       const avarias = (o.avarias || {}) as Record<string, any>;
@@ -428,6 +433,9 @@ const Dashboard = () => {
 
     const faturamento = receitaOS + receitaVendas + receitaAvulsos;
     const lucro = (receitaOS - custoOS) + (receitaVendas - custoVendas) + (receitaAvulsos - custoAvulsos);
+
+    console.log('[HojeDebug] receitaOS =', receitaOS, '| receitaVendas =', receitaVendas, '| receitaAvulsos =', receitaAvulsos);
+    console.log('[HojeDebug] faturamento =', faturamento, '| lucro =', lucro);
 
     setHojeData({
       faturamento,
