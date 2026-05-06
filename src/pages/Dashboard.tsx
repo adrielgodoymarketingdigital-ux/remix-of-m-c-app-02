@@ -377,6 +377,15 @@ const Dashboard = () => {
     if (!user) return;
 
     const hoje = format(new Date(), "yyyy-MM-dd");
+    // data_saida é salvo em UTC via toISOString(). Para cobrir o dia local corretamente,
+    // usamos meia-noite e 23:59:59 no fuso local, convertidos para ISO UTC.
+    const agora = new Date();
+    const inicioDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 0, 0, 0, 0);
+    const fimDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 23, 59, 59, 999);
+    const inicioDiaISO = inicioDia.toISOString();
+    const fimDiaISO = fimDia.toISOString();
+
+    console.log('[HojeDebug] hoje =', hoje, '| inicioDiaISO =', inicioDiaISO, '| fimDiaISO =', fimDiaISO);
 
     const [{ data: ordensHoje }, { data: vendasHoje }, { data: avulsosHoje }] = await Promise.all([
       supabase
@@ -385,21 +394,21 @@ const Dashboard = () => {
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .in("status", ["finalizado", "entregue"])
-        .gte("data_saida", hoje)
-        .lte("data_saida", `${hoje}T23:59:59`),
+        .gte("data_saida", inicioDiaISO)
+        .lte("data_saida", fimDiaISO),
       supabase
         .from("vendas")
         .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id")
         .eq("user_id", user.id)
         .eq("cancelada", false)
-        .or(`and(data.gte.${hoje},data.lte.${hoje}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${hoje},data_recebimento.lte.${hoje}T23:59:59)`),
+        .or(`and(data.gte.${inicioDiaISO},data.lte.${fimDiaISO}),and(data_recebimento.not.is.null,data_recebimento.gte.${inicioDiaISO},data_recebimento.lte.${fimDiaISO})`),
       supabase
         .from("servicos_avulsos")
         .select("preco, custo")
         .eq("user_id", user.id)
         .in("status", ["entregue", "finalizado"])
-        .gte("created_at", hoje)
-        .lte("created_at", `${hoje}T23:59:59`),
+        .gte("created_at", inicioDiaISO)
+        .lte("created_at", fimDiaISO),
     ]);
 
     console.log('[HojeDebug] hoje =', hoje);
