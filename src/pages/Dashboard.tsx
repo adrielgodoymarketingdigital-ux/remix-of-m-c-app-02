@@ -27,6 +27,7 @@ import { useClientes } from "@/hooks/useClientes";
 import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { useRelatorios } from "@/hooks/useRelatorios";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod } from "@/lib/vendasFinanceiras";
+import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 
 interface ProdutoVendido {
   nome: string;
@@ -45,6 +46,7 @@ const Dashboard = () => {
   const dashboardBloqueado = isFuncionario && !temAcessoModulo('dashboard');
   const { clientes, loading: loadingClientes } = useClientes();
   const { calcularResumo } = useRelatorios();
+  const { cores } = useCoresPersonalizadas();
 
   // Verificar se tem plano profissional
   const temPlanoProfissional = useMemo(() => {
@@ -724,8 +726,11 @@ const Dashboard = () => {
 
           {/* Card de Resumo Total */}
           <div className="relative mb-6 rounded-2xl overflow-hidden border border-blue-500/30 dark:border-blue-400/20 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)] dark:shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
-            {/* fundo gradiente */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 dark:from-blue-700 dark:via-blue-800 dark:to-indigo-950" />
+            {/* fundo gradiente — usa cores personalizadas das configurações */}
+            <div
+              className="absolute inset-0"
+              style={{ background: `linear-gradient(135deg, ${cores.card_faturamento_from}, ${cores.card_faturamento_via}, ${cores.card_faturamento_to})` }}
+            />
             {/* grade decorativa */}
             <div className="absolute inset-0 opacity-10 [background-image:linear-gradient(rgba(255,255,255,.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.15)_1px,transparent_1px)] [background-size:32px_32px]" />
             {/* brilho no canto */}
