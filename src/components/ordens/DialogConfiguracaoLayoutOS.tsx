@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Layout, Save, Image, Eye } from "lucide-react";
+import { Layout, Save, Image, Eye, Sliders, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,10 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { LayoutOSConfig, Layout80mmConfig } from "@/types/configuracao-loja";
+import { LayoutOSConfig, Layout80mmConfig, SecaoOSConfig } from "@/types/configuracao-loja";
 import { Preview80mm } from "./Preview80mm";
+import { DialogPersonalizarLayoutOS, SECOES_PADRAO } from "./DialogPersonalizarLayoutOS";
 
 interface DialogConfiguracaoLayoutOSProps {
   open: boolean;
@@ -68,6 +70,7 @@ export function DialogConfiguracaoLayoutOS({
   const { config, atualizarConfiguracao } = useConfiguracaoLoja();
   const [layout, setLayout] = useState<LayoutOSConfig>(LAYOUT_PADRAO);
   const [salvando, setSalvando] = useState(false);
+  const [personalizarAberto, setPersonalizarAberto] = useState(false);
 
   const config80mm: Layout80mmConfig = layout.config_80mm || CONFIG_80MM_PADRAO;
   const is80mm = layout.formato_papel === "80mm";
@@ -148,7 +151,23 @@ export function DialogConfiguracaoLayoutOS({
     { id: "mostrar_assinaturas", label: "Assinaturas", desc: "Campos para assinatura cliente/loja" },
   ];
 
+  const handleSalvarPersonalizado = (secoes: SecaoOSConfig[], corSecundaria?: string) => {
+    setLayout((prev) => ({
+      ...prev,
+      modo_layout: "personalizado",
+      secoes_personalizadas: secoes,
+      cor_secundaria: corSecundaria,
+    }));
+  };
+
   return (
+    <>
+    <DialogPersonalizarLayoutOS
+      open={personalizarAberto}
+      onOpenChange={setPersonalizarAberto}
+      layoutConfig={layout}
+      onSalvar={handleSalvarPersonalizado}
+    />
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -223,6 +242,63 @@ export function DialogConfiguracaoLayoutOS({
             </div>
 
             <Separator />
+
+            {/* Modo de Layout (apenas A4) */}
+            {!is80mm && (
+              <>
+                <div className="space-y-3">
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    <Sliders className="h-4 w-4" />
+                    Modo de Layout
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Layout padrão</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Usa o layout fixo original da OS
+                      </p>
+                    </div>
+                    <Switch
+                      checked={layout.modo_layout !== "personalizado"}
+                      onCheckedChange={(checked) =>
+                        setLayout((prev) => ({
+                          ...prev,
+                          modo_layout: checked ? "padrao" : "personalizado",
+                        }))
+                      }
+                    />
+                  </div>
+
+                  {layout.modo_layout === "personalizado" && (
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium text-primary">Layout personalizado ativo</span>
+                        {layout.secoes_personalizadas && layout.secoes_personalizadas.length > 0 && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {layout.secoes_personalizadas.filter((s) => s.visivel).length} seções visíveis
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Você pode arrastar, reordenar e ajustar cada seção individualmente.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full gap-1.5"
+                        onClick={() => setPersonalizarAberto(true)}
+                      >
+                        <Sliders className="h-3.5 w-3.5" />
+                        Personalizar seções e layout
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <Separator />
+              </>
+            )}
 
             {/* Conditional sections based on format */}
             {is80mm ? (
@@ -367,5 +443,6 @@ export function DialogConfiguracaoLayoutOS({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

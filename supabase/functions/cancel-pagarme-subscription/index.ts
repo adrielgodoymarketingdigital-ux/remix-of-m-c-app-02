@@ -52,44 +52,50 @@ serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (!assinatura?.pagarme_subscription_id) {
+    if (!assinatura) {
       return new Response(
         JSON.stringify({ error: "Nenhuma assinatura Pagar.me encontrada." }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const pagarmeKey = Deno.env.get("PAGARME_SECRET_KEY");
-    if (!pagarmeKey) throw new Error("PAGARME_SECRET_KEY não configurada.");
-    const pagarmeAuth = `Basic ${btoa(`${pagarmeKey}:`)}`;
+    // Se tem subscription recorrente na Pagar.me, cancela via API
+    if (assinatura.pagarme_subscription_id) {
+      const pagarmeKey = Deno.env.get("PAGARME_SECRET_KEY");
+      if (!pagarmeKey) throw new Error("PAGARME_SECRET_KEY não configurada.");
+      const pagarmeAuth = `Basic ${btoa(`${pagarmeKey}:`)}`;
 
-    log("Cancelando subscription", {
-      subscriptionId: assinatura.pagarme_subscription_id,
-    });
+      log("Cancelando subscription recorrente na Pagar.me", {
+        subscriptionId: assinatura.pagarme_subscription_id,
+      });
 
-    const res = await fetch(
-      `${PAGARME_API}/subscriptions/${assinatura.pagarme_subscription_id}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: pagarmeAuth,
-        },
-      }
-    );
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      log("Erro Pagar.me", { status: res.status, data });
-      throw new Error(
-        (data as { message?: string })?.message ||
-          "Falha ao cancelar assinatura na Pagar.me."
+      const res = await fetch(
+        `${PAGARME_API}/subscriptions/${assinatura.pagarme_subscription_id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: pagarmeAuth,
+          },
+        }
       );
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        log("Erro Pagar.me", { status: res.status, data });
+        throw new Error(
+          (data as { message?: string })?.message ||
+            "Falha ao cancelar assinatura na Pagar.me."
+        );
+      }
+
+      log("Subscription cancelada na Pagar.me");
+    } else {
+      // PIX ou sem subscription recorrente: cancela apenas localmente
+      log("Sem subscription_id — cancelamento apenas local (PIX/manual)", { userId });
     }
 
-    // Marca local como canceled. Acesso continua até data_proxima_cobranca
-    // (já registrada). O webhook subscription.canceled também atualiza,
-    // mas atualizamos aqui para feedback imediato no frontend.
+    // Marca local como canceled. Acesso continua até data_proxima_cobranca.
     await supabaseAdmin
       .from("assinaturas")
       .update({

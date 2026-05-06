@@ -20,10 +20,6 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
-
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -32,7 +28,6 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
-    logStep("Authorization header found");
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
@@ -51,37 +46,51 @@ serve(async (req) => {
     if (assinaturaError || !assinatura) {
       throw new Error("Assinatura não encontrada");
     }
-    logStep("Subscription found", { 
-      plano_tipo: assinatura.plano_tipo, 
+    logStep("Subscription found", {
+      plano_tipo: assinatura.plano_tipo,
       status: assinatura.status,
+      payment_provider: assinatura.payment_provider,
       trial_with_card: assinatura.trial_with_card,
-      stripe_subscription_id: assinatura.stripe_subscription_id
+      stripe_subscription_id: assinatura.stripe_subscription_id,
     });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-
-    // Verificar se é um trial com cartão (status trialing)
     const isTrialWithCard = assinatura.trial_with_card === true || assinatura.status === "trialing";
+    const provider = assinatura.payment_provider;
 
-    // Se tem subscription no Stripe, cancelar
-    if (assinatura.stripe_subscription_id && 
-        assinatura.stripe_subscription_id.startsWith('sub_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_trial_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_demo_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_pending_')) {
+    // Cancelar no Stripe apenas se a assinatura for do Stripe com subscription real
+    const hasRealStripeSubscription = assinatura.stripe_subscription_id &&
+      assinatura.stripe_subscription_id.startsWith('sub_') &&
+      !assinatura.stripe_subscription_id.startsWith('sub_trial_') &&
+      !assinatura.stripe_subscription_id.startsWith('sub_demo_') &&
+      !assinatura.stripe_subscription_id.startsWith('sub_pending_');
+
+    if (hasRealStripeSubscription) {
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+
+      const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+
       try {
         logStep("Cancelling Stripe subscription", { subscriptionId: assinatura.stripe_subscription_id });
-        
-        // Cancelar imediatamente (não no final do período)
         await stripe.subscriptions.cancel(assinatura.stripe_subscription_id);
         logStep("Stripe subscription cancelled");
       } catch (stripeError: any) {
         logStep("Error cancelling Stripe subscription (may already be cancelled)", { error: stripeError.message });
-        // Continuar mesmo se der erro no Stripe (pode já estar cancelada)
       }
+    } else if (provider === "ticto") {
+      // Ticto: cancelamento é feito manualmente no painel da Ticto.
+      // Aqui apenas baixamos o plano no banco.
+      logStep("Ticto subscription — cancelling locally only (no Ticto API)");
+    } else if (provider === "pagarme") {
+      // Pagar.me: cancelamento é gerenciado pelo componente GerenciarAssinaturaPagarme.
+      // Este endpoint não deve ser chamado para assinaturas Pagar.me.
+      logStep("Pagarme subscription — should use pagarme cancel endpoint");
+      throw new Error("Use o painel de gerenciamento do Pagar.me para cancelar esta assinatura.");
+    } else {
+      logStep("No external subscription to cancel, updating DB only");
     }
 
-    // Atualizar assinatura no banco para demonstração/cancelada
+    // Baixar plano no banco
     const updateData: any = {
       plano_tipo: "free",
       status: "active",
@@ -93,7 +102,6 @@ serve(async (req) => {
       trial_with_card: false,
     };
 
-    // Se era trial com cartão, marcar como cancelado
     if (isTrialWithCard) {
       updateData.trial_canceled = true;
       updateData.trial_canceled_at = new Date().toISOString();
@@ -110,31 +118,29 @@ serve(async (req) => {
     }
     logStep("Subscription updated to free/active");
 
-    // Criar notificação para admin
-    await supabaseClient
-      .from("admin_notifications")
-      .insert({
-        tipo: isTrialWithCard ? "trial_cancelado" : "cancelamento",
-        titulo: isTrialWithCard ? "Trial cancelado pelo usuário" : "Assinatura cancelada",
-        mensagem: isTrialWithCard 
-          ? `Usuário ${user.email} cancelou o trial antes de converter`
-          : `Usuário ${user.email} cancelou a assinatura`,
-        dados: {
-          user_id: user.id,
-          email: user.email,
-          plano_anterior: assinatura.plano_tipo,
-          was_trial: isTrialWithCard,
-        }
-      });
+    await supabaseClient.from("admin_notifications").insert({
+      tipo: isTrialWithCard ? "trial_cancelado" : "cancelamento",
+      titulo: isTrialWithCard ? "Trial cancelado pelo usuário" : "Assinatura cancelada",
+      mensagem: isTrialWithCard
+        ? `Usuário ${user.email} cancelou o trial antes de converter`
+        : `Usuário ${user.email} cancelou a assinatura (${provider || 'sem provedor'})`,
+      dados: {
+        user_id: user.id,
+        email: user.email,
+        plano_anterior: assinatura.plano_tipo,
+        payment_provider: provider,
+        was_trial: isTrialWithCard,
+      },
+    });
 
     const message = isTrialWithCard
       ? "Trial cancelado com sucesso. Você pode assinar um plano quando quiser."
-      : "Plano cancelado com sucesso. Você foi movido para o plano de demonstração.";
+      : "Plano cancelado com sucesso. Você foi movido para o plano gratuito.";
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       message,
-      was_trial: isTrialWithCard
+      was_trial: isTrialWithCard,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

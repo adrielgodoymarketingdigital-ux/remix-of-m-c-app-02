@@ -323,11 +323,35 @@ async function processarCancelamento(
   planoTipo: string,
   orderHash: string
 ) {
-  log("Processando cancelamento", { email: customerEmail });
+  log("Processando cancelamento", { email: customerEmail, orderHash });
 
   const usuario = await buscarUsuarioPorEmail(supabaseAdmin, customerEmail);
   if (!usuario) {
     log("⚠️ Usuário não encontrado para cancelamento", { email: customerEmail });
+    return;
+  }
+
+  // Buscar assinatura atual para verificar se o orderHash bate
+  // Evita sobrescrever uma renovação quando a Ticto envia cancelamento do pedido anterior
+  const { data: assinaturaAtual } = await supabaseAdmin
+    .from("assinaturas")
+    .select("id, ticto_order_id, plano_tipo, status, data_proxima_cobranca")
+    .eq("user_id", usuario.user_id)
+    .maybeSingle();
+
+  if (assinaturaAtual && orderHash && assinaturaAtual.ticto_order_id !== orderHash) {
+    log("⚠️ Cancelamento ignorado: orderHash não corresponde à assinatura atual (possível renovação já processada)", {
+      orderHashCancelamento: orderHash,
+      tictoOrderIdAtual: assinaturaAtual.ticto_order_id,
+      planoAtual: assinaturaAtual.plano_tipo,
+    });
+    // Registrar na notificação admin para auditoria
+    await supabaseAdmin.from("admin_notifications").insert({
+      tipo: "cancelamento_ticto_ignorado",
+      titulo: "Cancelamento Ticto ignorado (renovação detectada)",
+      mensagem: `Cancelamento de ${customerEmail} (${planoTipo}) ignorado — usuário já renovou (pedido ${assinaturaAtual.ticto_order_id})`,
+      dados: { user_id: usuario.user_id, plano_tipo: planoTipo, order_hash_cancelamento: orderHash, order_hash_atual: assinaturaAtual.ticto_order_id },
+    });
     return;
   }
 
