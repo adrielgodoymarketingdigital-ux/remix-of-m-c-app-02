@@ -443,6 +443,7 @@ export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBu
               <TableHead className="text-center">Quantidade</TableHead>
               <TableHead className="text-right">Custo</TableHead>
               <TableHead className="text-right">Preço Venda</TableHead>
+              <TableHead className="text-right">Preço Atacado</TableHead>
               <TableHead className="text-right">Lucro</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -531,6 +532,12 @@ export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBu
                   </TableCell>
                   <TableCell className="text-right">
                     <ValorMonetario valor={item.preco} tipo="preco" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {item.preco_atacado != null
+                      ? <ValorMonetario valor={item.preco_atacado} tipo="preco" />
+                      : <span className="text-muted-foreground">-</span>
+                    }
                   </TableCell>
                   <TableCell className="text-right">
                     {podeVerLucros ? (

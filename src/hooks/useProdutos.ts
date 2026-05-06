@@ -44,11 +44,12 @@ export const useProdutos = () => {
       const fornecedoresMap = new Map((fornecedoresData || []).map(f => [f.id, f.nome]));
       const categoriasMap = new Map((categoriasData as any[] || []).map((c: any) => [c.id, { nome: c.nome, cor: c.cor }]));
 
-      const produtosComTipo: Produto[] = (produtos || []).map(p => ({ 
-        ...p, 
+      const produtosComTipo: Produto[] = (produtos || []).map(p => ({
+        ...p,
         tipo: 'produto' as const,
         custo: Number(p.custo || 0),
         preco: Number(p.preco || 0),
+        preco_atacado: (p as any).preco_atacado != null ? Number((p as any).preco_atacado) : null,
         lucro: Number(p.lucro || 0),
         quantidade: p.quantidade || 0,
         codigo_barras: (p as any).codigo_barras || undefined,
@@ -59,12 +60,13 @@ export const useProdutos = () => {
         categoria_nome: (p as any).categoria_id ? categoriasMap.get((p as any).categoria_id)?.nome || null : null,
         categoria_cor: (p as any).categoria_id ? categoriasMap.get((p as any).categoria_id)?.cor || null : null,
       }));
-      
-      const pecasComTipo: Peca[] = (pecas || []).map(p => ({ 
-        ...p, 
+
+      const pecasComTipo: Peca[] = (pecas || []).map(p => ({
+        ...p,
         tipo: 'peca' as const,
         custo: Number(p.custo || 0),
         preco: Number(p.preco || 0),
+        preco_atacado: (p as any).preco_atacado != null ? Number((p as any).preco_atacado) : null,
         quantidade: p.quantidade || 0,
         codigo_barras: (p as any).codigo_barras || undefined,
         fotos: Array.isArray((p as any).fotos) ? (p as any).fotos : [],
@@ -119,6 +121,7 @@ export const useProdutos = () => {
           quantidade: dados.quantidade,
           custo: dados.custo,
           preco: dados.preco,
+          preco_atacado: dados.preco_atacado ?? null,
           user_id: userId,
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
@@ -133,6 +136,7 @@ export const useProdutos = () => {
           quantidade: dados.quantidade,
           custo: dados.custo,
           preco: dados.preco,
+          preco_atacado: dados.preco_atacado ?? null,
           user_id: userId,
           codigo_barras: dados.codigo_barras || null,
           fotos: dados.fotos || [],
@@ -195,6 +199,7 @@ export const useProdutos = () => {
           quantidade: dados.quantidade,
           custo: dados.custo,
           preco: dados.preco,
+          preco_atacado: dados.preco_atacado ?? null,
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
           categoria_id: dados.categoria_id || null,
@@ -208,6 +213,7 @@ export const useProdutos = () => {
           quantidade: dados.quantidade,
           custo: dados.custo,
           preco: dados.preco,
+          preco_atacado: dados.preco_atacado ?? null,
           codigo_barras: dados.codigo_barras || null,
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
@@ -502,6 +508,7 @@ export const useProdutos = () => {
             quantidade: p.quantidade,
             custo: p.custo,
             preco: p.preco,
+            preco_atacado: p.preco_atacado ?? null,
             user_id: userId,
             fotos: p.fotos || [],
             categoria_id: p.categoria_id || null,
@@ -518,6 +525,7 @@ export const useProdutos = () => {
             quantidade: p.quantidade,
             custo: p.custo,
             preco: p.preco,
+            preco_atacado: p.preco_atacado ?? null,
             user_id: userId,
             codigo_barras: p.codigo_barras || null,
             fotos: p.fotos || [],

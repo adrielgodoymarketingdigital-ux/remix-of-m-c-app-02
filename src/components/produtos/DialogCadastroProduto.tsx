@@ -47,6 +47,7 @@ const formSchema = z.object({
   quantidade: z.coerce.number().int().min(0, 'Quantidade não pode ser negativa'),
   custo: z.coerce.number().min(0, 'Custo deve ser positivo'),
   preco: z.coerce.number().min(0, 'Preço deve ser positivo'),
+  preco_atacado: z.coerce.number().min(0, 'Preço de atacado deve ser positivo').nullable().optional(),
   codigo_barras: z.string().optional(),
   fornecedor_id: z.string().optional(),
   categoria_id: z.string().optional(),
@@ -84,6 +85,7 @@ export const DialogCadastroProduto = ({
       quantidade: 0,
       custo: 0,
       preco: 0,
+      preco_atacado: null,
       codigo_barras: '',
       fornecedor_id: undefined,
       categoria_id: undefined,
@@ -103,6 +105,7 @@ export const DialogCadastroProduto = ({
         quantidade: itemParaEditar.quantidade,
         custo: itemParaEditar.custo,
         preco: itemParaEditar.preco,
+        preco_atacado: itemParaEditar.preco_atacado ?? null,
         codigo_barras: (itemParaEditar as any).codigo_barras || '',
         fornecedor_id: itemParaEditar.fornecedor_id || undefined,
         categoria_id: itemParaEditar.categoria_id || undefined,
@@ -116,6 +119,7 @@ export const DialogCadastroProduto = ({
         quantidade: 0,
         custo: 0,
         preco: 0,
+        preco_atacado: null,
         codigo_barras: '',
         fornecedor_id: undefined,
         categoria_id: undefined,
@@ -356,7 +360,7 @@ export const DialogCadastroProduto = ({
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {podeVerCustos ? (
                   <FormField
                     control={form.control}
@@ -406,6 +410,28 @@ export const DialogCadastroProduto = ({
                           <Lock className="h-3 w-3" /> Edição bloqueada
                         </p>
                       )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="preco_atacado"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preço Atacado</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Opcional"
+                          disabled={isFuncionario && !podeEditarProdutos}
+                          value={field.value ?? ''}
+                          onChange={e => field.onChange(e.target.value === '' ? null : e.target.value)}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

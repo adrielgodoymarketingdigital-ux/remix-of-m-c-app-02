@@ -8,6 +8,7 @@ export interface Produto {
   quantidade: number;
   custo: number;
   preco: number;
+  preco_atacado?: number | null;
   lucro: number;
   created_at: string;
   tipo: 'produto';
@@ -24,6 +25,7 @@ export interface Peca {
   nome: string;
   custo: number;
   preco: number;
+  preco_atacado?: number | null;
   quantidade: number;
   created_at: string;
   tipo: 'peca';
@@ -45,6 +47,7 @@ export interface FormularioProduto {
   quantidade: number;
   custo: number;
   preco: number;
+  preco_atacado?: number | null;
   codigo_barras?: string;
   fotos?: string[];
   fornecedor_id?: string;
