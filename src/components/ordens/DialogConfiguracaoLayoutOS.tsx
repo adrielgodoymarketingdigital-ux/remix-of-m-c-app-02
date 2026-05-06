@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { LayoutOSConfig, Layout80mmConfig } from "@/types/configuracao-loja";
 import { Preview80mm } from "./Preview80mm";
+import { PreviewA4 } from "./PreviewA4";
 
 interface DialogConfiguracaoLayoutOSProps {
   open: boolean;
@@ -345,15 +346,20 @@ export function DialogConfiguracaoLayoutOS({
             )}
           </div>
 
-          {/* Right side - Preview (only for 80mm) */}
-          {is80mm && (
-            <div className="flex-shrink-0 pt-4 flex justify-center md:justify-start">
+          {/* Right side - Preview */}
+          <div className="flex-shrink-0 pt-4 flex justify-center md:justify-start">
+            {is80mm ? (
               <Preview80mm
                 config={config80mm}
                 nomeLoja={config?.nome_loja || "Minha Loja"}
               />
-            </div>
-          )}
+            ) : (
+              <PreviewA4
+                config={layout}
+                nomeLoja={config?.nome_loja || "Minha Loja"}
+              />
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t">

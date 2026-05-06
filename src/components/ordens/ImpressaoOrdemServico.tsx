@@ -187,50 +187,99 @@ export const ImpressaoOrdemServico = ({
       width: 100% !important; max-width: 194mm !important; margin: 0 auto !important;
       display: flex !important; flex-direction: column !important;
       overflow: visible !important; max-height: none !important; height: auto !important;
-      background: white; color: black; font-size: 8pt; line-height: 1.25;
+      background: white; color: #111; font-size: 8pt; line-height: 1.3;
       font-family: system-ui, -apple-system, sans-serif;
     }
-    .impressao-block { overflow: visible !important; border: 0.5pt solid #ddd; border-radius: 1px; padding: 2mm; margin-bottom: 2mm; }
-    .impressao-block-minimal { padding: 1.5mm; }
-    .impressao-header { margin-bottom: 3mm; padding-bottom: 2mm; border-bottom: 0.5pt solid #ddd; }
-    .impressao-header-content { display: flex; align-items: center; gap: 3mm; margin-bottom: 1.5mm; }
-    .impressao-logo { width: 14mm; height: 14mm; object-fit: contain; }
+    /* ── HEADER TECNOLÓGICO ── */
+    .impressao-header {
+      margin-bottom: 3mm;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .impressao-header-top {
+      display: flex; align-items: center; gap: 3mm;
+      padding: 3mm 4mm;
+      background: var(--accent-color, #1e293b);
+      color: white;
+    }
+    .impressao-logo { width: 14mm; height: 14mm; object-fit: contain; border-radius: 1px; background: rgba(255,255,255,0.12); }
     .impressao-header-info { flex: 1; }
-    .impressao-titulo { font-size: 13pt; font-weight: 700; margin: 0; color: #333; }
-    .impressao-numero-os { font-size: 9pt; font-weight: 600; margin-top: 0.5mm; }
-    .impressao-data-status { display: flex; align-items: center; gap: 2mm; margin-top: 0.5mm; font-size: 8pt; color: #666; }
-    .impressao-badge { display: inline-block; padding: 0.3mm 1.5mm; font-size: 6pt; font-weight: 600; text-transform: uppercase; background: #f0f0f0; }
-    .impressao-loja-info { padding: 1.5mm; background: #f8f8f8; font-size: 7pt; line-height: 1.25; color: #666; }
-    .impressao-loja-info .text-sm { font-size: 8pt; }
-    .impressao-loja-info .text-xs { font-size: 6pt; }
-    .impressao-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-bottom: 3mm; }
-    .impressao-grid-defeito-valor { display: grid; grid-template-columns: 7fr 3fr; gap: 3mm; margin-bottom: 3mm; }
-    .impressao-grid-adaptativo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-bottom: 3mm; }
-    .impressao-block-header { display: flex; align-items: center; gap: 1.5mm; padding: 1mm 1.5mm; margin-bottom: 1.5mm; background: #f5f5f5; border-bottom: 0.5pt solid #ddd; }
-    .impressao-block-header-minimal { display: flex; align-items: center; justify-content: center; margin-bottom: 0.5mm; }
-    .impressao-icon { width: 3mm; height: 3mm; color: #333; }
-    .impressao-block-title { font-size: 7pt; font-weight: 700; text-transform: uppercase; margin: 0; }
-    .impressao-block-content { font-size: 7.5pt; }
-    .impressao-field { display: flex; gap: 1mm; margin-bottom: 0.5mm; }
-    .impressao-label { font-weight: 600; white-space: nowrap; font-size: 7pt; color: #555; }
-    .impressao-value { font-size: 7.5pt; }
-    .impressao-defeito { font-size: 7.5pt; }
-    .impressao-valor-total { font-size: 14pt; font-weight: 700; text-align: center; color: #222; }
+    .impressao-titulo { font-size: 13pt; font-weight: 800; margin: 0; letter-spacing: 0.5px; color: white; }
+    .impressao-numero-os { font-size: 9pt; font-weight: 600; margin-top: 0.5mm; color: rgba(255,255,255,0.8); }
+    .impressao-data-status { display: flex; align-items: center; gap: 2mm; margin-top: 0.8mm; font-size: 7pt; color: rgba(255,255,255,0.65); }
+    .impressao-badge {
+      display: inline-block; padding: 0.4mm 2mm; font-size: 5.5pt; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.6px;
+      background: rgba(255,255,255,0.18); color: white; border-radius: 20px;
+      border: 0.5pt solid rgba(255,255,255,0.25);
+    }
+    .impressao-header-loja {
+      padding: 1.5mm 4mm;
+      background: #f1f5f9;
+      border-top: 0.5pt solid #e2e8f0;
+      font-size: 6.5pt; color: #475569; line-height: 1.4;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .impressao-header-loja strong { color: #1e293b; font-weight: 700; }
+    /* ── BLOCKS ── */
+    .impressao-block {
+      overflow: visible !important;
+      border: 0.5pt solid #e2e8f0;
+      border-left: 2pt solid var(--accent-color, #2563eb);
+      border-radius: 2px;
+      padding: 0;
+      margin-bottom: 2.5mm;
+    }
+    .impressao-block-minimal { padding: 0; }
+    .impressao-block-header {
+      display: flex; align-items: center; gap: 1.5mm;
+      padding: 1mm 2mm;
+      background: #f8fafc;
+      border-bottom: 0.5pt solid #e2e8f0;
+    }
+    .impressao-block-header-minimal { display: flex; align-items: center; justify-content: center; padding: 0.8mm; background: #f8fafc; border-bottom: 0.5pt solid #e2e8f0; }
+    .impressao-icon { width: 3mm; height: 3mm; color: var(--accent-color, #2563eb); }
+    .impressao-block-title { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin: 0; color: #334155; }
+    .impressao-block-content { font-size: 7.5pt; padding: 1.5mm 2mm; }
+    .impressao-field { display: flex; gap: 1mm; margin-bottom: 0.6mm; }
+    .impressao-label { font-weight: 600; white-space: nowrap; font-size: 6.5pt; color: #64748b; }
+    .impressao-value { font-size: 7.5pt; color: #1e293b; }
+    .impressao-defeito { font-size: 7.5pt; color: #1e293b; }
+    /* ── VALOR TOTAL ── */
+    .impressao-valor-block .impressao-block-content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2mm; }
+    .impressao-valor-total {
+      font-size: 15pt; font-weight: 800; text-align: center;
+      color: #16a34a;
+      letter-spacing: -0.3px;
+    }
+    .impressao-valor-subtotal { font-size: 6.5pt; color: #64748b; text-decoration: line-through; text-align: center; margin-bottom: 0.5mm; }
+    .impressao-valor-desconto { font-size: 6.5pt; color: #dc2626; text-align: center; margin-bottom: 1mm; }
+    /* ── GRIDS ── */
+    .impressao-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; margin-bottom: 2.5mm; }
+    .impressao-grid-defeito-valor { display: grid; grid-template-columns: 7fr 3fr; gap: 2.5mm; margin-bottom: 2.5mm; }
+    .impressao-grid-adaptativo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5mm; margin-bottom: 2.5mm; }
+    /* ── ITENS ── */
     .impressao-itens-lista { margin-bottom: 1mm; }
-    .impressao-itens-titulo { font-weight: 700; font-size: 7pt; margin-bottom: 0.5mm; }
-    .impressao-item-linha { display: flex; justify-content: space-between; font-size: 7pt; padding: 0.3mm 0; }
-    .impressao-item-nome { flex: 1; }
-    .impressao-item-valor { font-weight: 600; white-space: nowrap; }
+    .impressao-itens-titulo { font-weight: 700; font-size: 6.5pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 0.8mm; padding-bottom: 0.5mm; border-bottom: 0.3pt solid #e2e8f0; }
+    .impressao-item-linha { display: flex; justify-content: space-between; font-size: 7pt; padding: 0.4mm 0; border-bottom: 0.3pt solid #f1f5f9; }
+    .impressao-item-nome { flex: 1; color: #334155; }
+    .impressao-item-valor { font-weight: 700; white-space: nowrap; color: #1e293b; }
+    /* ── CHECKLIST ── */
     .impressao-checklist-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1mm; }
     .impressao-checklist-item { display: flex; align-items: center; gap: 0.5mm; font-size: 6.5pt; }
-    .impressao-termo-garantia { font-size: 6pt; color: #444; padding: 1.5mm; border: 0.5pt solid #ddd; background: #fafafa; white-space: pre-line; }
-    .impressao-footer { margin-top: auto; padding-top: 2mm; border-top: 0.5pt solid #ddd; }
+    /* ── TERMO ── */
+    .impressao-termo-garantia { font-size: 6pt; color: #475569; padding: 1.5mm 2mm; border: 0.5pt solid #e2e8f0; border-left: 2pt solid #94a3b8; background: #f8fafc; white-space: pre-line; margin-bottom: 2.5mm; border-radius: 2px; }
+    .impressao-termo-title { font-size: 7pt; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 1mm; }
+    /* ── FOOTER / ASSINATURAS ── */
+    .impressao-footer { margin-top: auto; padding-top: 2mm; border-top: 0.5pt solid #e2e8f0; }
     .impressao-assinaturas { display: flex; justify-content: space-around; gap: 4mm; }
     .impressao-assinatura { display: flex; flex-direction: column; align-items: center; min-width: 30mm; }
-    .impressao-assinatura-linha { width: 100%; border-bottom: 0.5pt solid #000; margin-bottom: 1mm; min-height: 8mm; }
-    .impressao-assinatura-label { font-size: 6pt; color: #666; text-align: center; }
-    .impressao-assinatura-img { max-width: 35mm; max-height: 12mm; }
-    .impressao-custos-resumo { margin-top: 1mm; padding-top: 1mm; border-top: 0.5pt dashed #ccc; font-size: 7pt; }
+    .impressao-linha-assinatura { width: 100%; border-bottom: 0.5pt solid #334155; margin-bottom: 1mm; min-height: 8mm; }
+    .impressao-assinatura-label { font-size: 6pt; color: #64748b; text-align: center; }
+    .impressao-assinatura-data { font-size: 5.5pt; color: #94a3b8; text-align: center; margin-top: 0.5mm; }
+    .impressao-assinatura-digital { display: flex; justify-content: center; margin-bottom: 1mm; }
+    .impressao-assinatura-imagem { max-width: 35mm; max-height: 12mm; }
+    .impressao-custos-resumo { margin-top: 1mm; padding-top: 1mm; border-top: 0.5pt dashed #cbd5e1; font-size: 7pt; }
     .impressao-custos-resumo > div { display: flex; justify-content: space-between; }
     svg { display: inline-block; vertical-align: middle; }
     .print-trigger-container { display: none !important; }
@@ -347,11 +396,14 @@ export const ImpressaoOrdemServico = ({
           config80mm={c80}
         />
       ) : (
-        /* A4: existing layout */
-        <div className="impressao-ordem-container">
-          {/* Header Block */}
+        /* A4: tech layout */
+        <div
+          className="impressao-ordem-container"
+          style={{ "--accent-color": layoutConfig.cor_primaria || "#1e293b" } as React.CSSProperties}
+        >
+          {/* Header */}
           <div className="impressao-header">
-            <div className="impressao-header-content">
+            <div className="impressao-header-top">
               {layoutConfig.mostrar_logo_impressao && configuracaoLoja?.logo_url && (
                 <img src={configuracaoLoja.logo_url} alt="Logo" className="impressao-logo" />
               )}
@@ -365,15 +417,15 @@ export const ImpressaoOrdemServico = ({
               </div>
             </div>
             {configuracaoLoja && (
-              <div className="impressao-loja-info">
-                <div className="text-sm">
+              <div className="impressao-header-loja">
+                <div>
                   <strong>{configuracaoLoja.nome_loja}</strong>
+                  {configuracaoLoja.cnpj && <span> · CNPJ: {configuracaoLoja.cnpj}</span>}
                 </div>
-                {configuracaoLoja.cnpj && <div className="text-xs">CNPJ: {configuracaoLoja.cnpj}</div>}
-                {configuracaoLoja.endereco && <div className="text-xs">{configuracaoLoja.endereco}</div>}
-                {configuracaoLoja.telefone && (
-                  <div className="text-xs">Tel: {formatPhone(configuracaoLoja.telefone)}</div>
-                )}
+                <div>
+                  {configuracaoLoja.endereco && <span>{configuracaoLoja.endereco}</span>}
+                  {configuracaoLoja.telefone && <span> · Tel: {formatPhone(configuracaoLoja.telefone)}</span>}
+                </div>
               </div>
             )}
           </div>
@@ -454,16 +506,10 @@ export const ImpressaoOrdemServico = ({
               </div>
               <div className="impressao-block-content">
                 {desconto > 0 && subtotalPagamento !== undefined && (
-                  <div style={{ fontSize: "7pt", marginBottom: "1mm" }}>
-                    <div className="impressao-item-linha">
-                      <span>Subtotal</span>
-                      <span>{formatCurrency(subtotalPagamento)}</span>
-                    </div>
-                    <div className="impressao-item-linha" style={{ color: "#c00" }}>
-                      <span>Desconto</span>
-                      <span>- {formatCurrency(desconto)}</span>
-                    </div>
-                  </div>
+                  <>
+                    <div className="impressao-valor-subtotal">{formatCurrency(subtotalPagamento)}</div>
+                    <div className="impressao-valor-desconto">- {formatCurrency(desconto)}</div>
+                  </>
                 )}
                 <div className="impressao-valor-total">{formatCurrency(ordem.total || 0)}</div>
               </div>
