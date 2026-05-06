@@ -186,11 +186,13 @@ export function DialogConfiguracaoLayoutOS({
                       <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-primary" />
                     )}
                     <div className="mb-2 text-xs font-semibold text-foreground">Padrão</div>
-                    <PreviewA4
-                      config={{ ...layout, versao_layout_a4: "padrao" }}
-                      nomeLoja={config?.nome_loja || "Minha Loja"}
-                      versao="padrao"
-                    />
+                    <div className="overflow-hidden rounded shadow-sm border border-border bg-white">
+                      <PreviewA4
+                        config={{ ...layout, versao_layout_a4: "padrao" }}
+                        nomeLoja={config?.nome_loja || "Minha Loja"}
+                        versao="padrao"
+                      />
+                    </div>
                   </button>
 
                   {/* Opção Tech */}
@@ -207,11 +209,13 @@ export function DialogConfiguracaoLayoutOS({
                       <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-primary" />
                     )}
                     <div className="mb-2 text-xs font-semibold text-foreground">Personalizado</div>
-                    <PreviewA4
-                      config={{ ...layout, versao_layout_a4: "tech" }}
-                      nomeLoja={config?.nome_loja || "Minha Loja"}
-                      versao="tech"
-                    />
+                    <div className="overflow-hidden rounded shadow-sm border border-border bg-white">
+                      <PreviewA4
+                        config={{ ...layout, versao_layout_a4: "tech" }}
+                        nomeLoja={config?.nome_loja || "Minha Loja"}
+                        versao="tech"
+                      />
+                    </div>
                   </button>
                 </div>
               </div>

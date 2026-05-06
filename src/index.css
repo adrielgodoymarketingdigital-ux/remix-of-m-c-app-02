@@ -496,6 +496,34 @@ All colors MUST be HSL.
     print-color-adjust: exact;
     color-adjust: exact;
   }
+
+  /* Garantir footer com assinaturas lado a lado */
+  .impressao-ordem-container .impressao-footer {
+    display: flex !important;
+    justify-content: space-around !important;
+    gap: 4mm !important;
+  }
+
+  /* Garantir grid adaptativo na impressão */
+  .impressao-ordem-container .impressao-grid-adaptativo {
+    grid-template-columns: repeat(auto-fill, minmax(50mm, 1fr)) !important;
+  }
+
+  /* Preservar bordas coloridas dos blocks na impressão */
+  .impressao-block {
+    border: 0.5pt solid #e2e8f0 !important;
+    border-left: 2pt solid var(--accent-color, #2563eb) !important;
+  }
+
+  .impressao-a4-padrao .impressao-block {
+    border: 1pt solid #000 !important;
+    border-left: 3pt solid #000 !important;
+  }
+
+  .impressao-a4-padrao .impressao-termo-garantia {
+    border: 0.5pt solid #ccc !important;
+    border-left: 3pt solid #666 !important;
+  }
 }
 
 /* Screen Styles for Print Preview */
@@ -654,7 +682,7 @@ All colors MUST be HSL.
 
 .impressao-a4-padrao .impressao-block {
   border: 1pt solid #000;
-  border-left: unset;
+  border-left: 3pt solid #000;
   border-radius: 1px;
   padding: 2mm;
 }
@@ -745,7 +773,7 @@ All colors MUST be HSL.
 
 .impressao-a4-padrao .impressao-termo-garantia {
   border: 0.5pt solid #ccc;
-  border-left: unset;
+  border-left: 3pt solid #666;
   background: #fafafa;
   color: #444;
 }
@@ -756,6 +784,18 @@ All colors MUST be HSL.
 
 .impressao-a4-padrao .impressao-assinatura-label { color: #555; }
 .impressao-a4-padrao .impressao-assinatura-data { color: #888; }
+
+.impressao-a4-padrao .impressao-footer {
+  border-top: 1pt solid #000;
+}
+
+.impressao-a4-padrao .impressao-valor-total {
+  color: #000;
+}
+
+.impressao-a4-padrao .impressao-block-content {
+  padding: 1mm 1.5mm;
+}
 
 /* ── HEADER TECNOLÓGICO ── */
 .impressao-header {
@@ -861,7 +901,7 @@ All colors MUST be HSL.
 
 .impressao-grid-adaptativo {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(55mm, 1fr));
   gap: 2.5mm;
   margin-bottom: 2.5mm;
 }
@@ -1137,6 +1177,9 @@ All colors MUST be HSL.
   margin-top: auto;
   padding-top: 2mm;
   border-top: 0.5pt solid #e2e8f0;
+  display: flex;
+  justify-content: space-around;
+  gap: 4mm;
 }
 
 .impressao-assinatura {
