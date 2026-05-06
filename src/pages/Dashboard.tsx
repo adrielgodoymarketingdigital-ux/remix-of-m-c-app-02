@@ -102,6 +102,12 @@ const Dashboard = () => {
   const [hojeData, setHojeData] = useState({
     faturamento: 0,
     lucro: 0,
+    faturamentoAssistencia: 0,
+    lucroAssistencia: 0,
+    faturamentoProdutosPecas: 0,
+    lucroProdutosPecas: 0,
+    faturamentoDispositivos: 0,
+    lucroDispositivos: 0,
     carregando: true,
   });
   const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<ProdutoVendido[]>([]);
@@ -398,7 +404,7 @@ const Dashboard = () => {
         .lte("data_saida", fimDiaISO),
       supabase
         .from("vendas")
-        .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id")
+        .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id, tipo")
         .eq("user_id", user.id)
         .eq("cancelada", false)
         .or(`and(data.gte.${inicioDiaISO},data.lte.${fimDiaISO}),and(data_recebimento.not.is.null,data_recebimento.gte.${inicioDiaISO},data_recebimento.lte.${fimDiaISO})`),
@@ -435,11 +441,20 @@ const Dashboard = () => {
       return dataKey === hoje;
     });
 
+    const vendasProdutosHoje = vendasFiltradas.filter(v => (v as any).tipo === "produto");
+    const vendasDispositivosHoje = vendasFiltradas.filter(v => (v as any).tipo === "dispositivo");
+
     const receitaVendas = vendasFiltradas.reduce((acc, v) => acc + getVendaReceitaLiquida(v as any), 0);
     const custoVendas = vendasFiltradas.reduce((acc, v) => {
       const custo = Number(v.custo_unitario || 0) * Number(v.quantidade || 1);
       return acc + custo;
     }, 0);
+
+    const receitaProdutosHoje = vendasProdutosHoje.reduce((acc, v) => acc + getVendaReceitaLiquida(v as any), 0);
+    const custoProdutosHoje = vendasProdutosHoje.reduce((acc, v) => Number(v.custo_unitario || 0) * Number(v.quantidade || 1) + acc, 0);
+
+    const receitaDispositivosHoje = vendasDispositivosHoje.reduce((acc, v) => acc + getVendaReceitaLiquida(v as any), 0);
+    const custoDispositivosHoje = vendasDispositivosHoje.reduce((acc, v) => Number(v.custo_unitario || 0) * Number(v.quantidade || 1) + acc, 0);
 
     const receitaAvulsos = (avulsosHoje || []).reduce((acc, a) => acc + Number(a.preco || 0), 0);
     const custoAvulsos = (avulsosHoje || []).reduce((acc, a) => acc + Number(a.custo || 0), 0);
@@ -453,6 +468,12 @@ const Dashboard = () => {
     setHojeData({
       faturamento,
       lucro,
+      faturamentoAssistencia: receitaOS + receitaAvulsos,
+      lucroAssistencia: (receitaOS - custoOS) + (receitaAvulsos - custoAvulsos),
+      faturamentoProdutosPecas: receitaProdutosHoje,
+      lucroProdutosPecas: receitaProdutosHoje - custoProdutosHoje,
+      faturamentoDispositivos: receitaDispositivosHoje,
+      lucroDispositivos: receitaDispositivosHoje - custoDispositivosHoje,
       carregando: false,
     });
   };
@@ -702,17 +723,96 @@ const Dashboard = () => {
           )}
 
           {/* Card de Resumo Total */}
-          <Card className="p-4 sm:p-6 mb-6 card-faturamento-gradient text-white shadow-lg shadow-blue-500/20 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90 mb-1">Faturamento Total do Mês</p>
-                <h2 className="text-2xl sm:text-4xl font-bold"><ValorMonetario valor={totalFaturamento} /></h2>
+          <div className="relative mb-6 rounded-2xl overflow-hidden border border-blue-500/30 dark:border-blue-400/20 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)] dark:shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
+            {/* fundo gradiente */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 dark:from-blue-700 dark:via-blue-800 dark:to-indigo-950" />
+            {/* grade decorativa */}
+            <div className="absolute inset-0 opacity-10 [background-image:linear-gradient(rgba(255,255,255,.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.15)_1px,transparent_1px)] [background-size:32px_32px]" />
+            {/* brilho no canto */}
+            <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none" />
+            {/* scanline sutil dark */}
+            <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
+
+            <div className="relative z-10 p-5 sm:p-7">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-mono text-blue-200/80 tracking-widest uppercase">Faturamento Total</span>
+                    <span className="h-px flex-1 bg-blue-400/30 hidden sm:block" />
+                  </div>
+                  <div className="flex items-baseline gap-3">
+                    <h2 className="text-3xl sm:text-5xl font-bold font-mono tracking-tight text-white">
+                      <ValorMonetario valor={totalFaturamento} />
+                    </h2>
+                  </div>
+                  <p className="text-[11px] text-blue-200/60 font-mono mt-2 uppercase tracking-wider">
+                    {mesSelecionado === "atual"
+                      ? format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })
+                      : (opçõesMeses.find(m => m.valor === mesSelecionado)?.label || "")}
+                  </p>
+                </div>
+
+                {/* mini breakdown por categoria */}
+                <div className="flex flex-col gap-2 sm:items-end">
+                  <div className="flex items-center gap-3 text-xs font-mono text-blue-100/80">
+                    <Wrench className="h-3.5 w-3.5 text-blue-300" />
+                    <span className="text-blue-200/60 uppercase tracking-wider">Assistência</span>
+                    <span className="font-semibold text-white"><ValorMonetario valor={metrics.faturamentoServicos + metrics.faturamentoAvulsos} /></span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs font-mono text-blue-100/80">
+                    <Package className="h-3.5 w-3.5 text-blue-300" />
+                    <span className="text-blue-200/60 uppercase tracking-wider">Produtos</span>
+                    <span className="font-semibold text-white"><ValorMonetario valor={metrics.faturamentoProdutos} /></span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs font-mono text-blue-100/80">
+                    <Smartphone className="h-3.5 w-3.5 text-blue-300" />
+                    <span className="text-blue-200/60 uppercase tracking-wider">Dispositivos</span>
+                    <span className="font-semibold text-white"><ValorMonetario valor={metrics.faturamentoDispositivos} /></span>
+                  </div>
+                  <div className="h-px w-full bg-blue-400/30 my-1" />
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-300" />
+                    <span className="text-xs font-mono text-blue-200/70 uppercase tracking-wider">Lucro do mês</span>
+                    <span className={`text-sm font-bold font-mono ${financeiroData.lucroTotal >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                      <ValorMonetario valor={financeiroData.lucroTotal} />
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-primary-foreground/20 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8" />
-              </div>
+
+              {/* barra de progresso por categoria */}
+              {totalFaturamento > 0 && (
+                <div className="mt-5">
+                  <div className="flex h-1.5 rounded-full overflow-hidden gap-0.5">
+                    <div
+                      className="bg-blue-300/80 rounded-full transition-all"
+                      style={{ width: `${((metrics.faturamentoServicos + metrics.faturamentoAvulsos) / totalFaturamento) * 100}%` }}
+                    />
+                    <div
+                      className="bg-violet-300/80 rounded-full transition-all"
+                      style={{ width: `${(metrics.faturamentoProdutos / totalFaturamento) * 100}%` }}
+                    />
+                    <div
+                      className="bg-cyan-300/80 rounded-full transition-all"
+                      style={{ width: `${(metrics.faturamentoDispositivos / totalFaturamento) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex gap-4 mt-2">
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-blue-200/50 uppercase tracking-wider">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-300/80 inline-block" />Assistência
+                    </span>
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-blue-200/50 uppercase tracking-wider">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-300/80 inline-block" />Produtos
+                    </span>
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-blue-200/50 uppercase tracking-wider">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-300/80 inline-block" />Dispositivos
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-          </Card>
+          </div>
 
           {/* Card Duplo — Faturamento Hoje + Lucro Hoje */}
           <div className="grid grid-cols-2 gap-0 mb-4 rounded-xl overflow-hidden border border-blue-100 dark:border-white/10 shadow-[0_0_40px_-10px_rgba(59,130,246,0.15)] dark:shadow-[0_0_40px_-10px_rgba(59,130,246,0.25)] relative">
@@ -775,6 +875,171 @@ const Dashboard = () => {
               </div>
               <div className="h-[1px] bg-gradient-to-r from-emerald-400/40 via-emerald-300/10 to-transparent dark:from-emerald-500/30 dark:via-emerald-400/10" />
               <p className="text-[10px] text-slate-400 dark:text-slate-600 font-mono">receita − custo do dia</p>
+            </div>
+          </div>
+
+          {/* Cards Hoje por Categoria */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            {/* Assistência */}
+            <div className="rounded-xl overflow-hidden border border-blue-100 dark:border-white/10 shadow-[0_0_30px_-10px_rgba(59,130,246,0.15)] dark:shadow-[0_0_30px_-10px_rgba(59,130,246,0.2)] relative">
+              <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
+              {/* header */}
+              <div className="relative bg-gradient-to-r from-blue-50 to-white dark:from-slate-800/80 dark:to-slate-900 px-4 py-2.5 flex items-center gap-2 border-b border-blue-100 dark:border-white/10">
+                <div className="h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+                  <Wrench className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="text-[11px] font-mono font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Assistência</span>
+              </div>
+              <div className="grid grid-cols-2 gap-0">
+                {/* Faturamento */}
+                <div className="relative bg-gradient-to-br from-white via-blue-50/50 to-white dark:from-slate-900 dark:via-blue-950/40 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 border-r border-blue-100 dark:border-white/10 overflow-hidden">
+                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-blue-400/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="flex items-center justify-between">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-60" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500" />
+                    </span>
+                    <Activity className="h-3.5 w-3.5 text-blue-500/60" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Fat. Hoje</p>
+                    {hojeData.carregando ? (
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    ) : (
+                      <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white font-mono">
+                        <ValorMonetario valor={hojeData.faturamentoAssistencia} />
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {/* Lucro */}
+                <div className="relative bg-gradient-to-br from-white via-emerald-50/50 to-white dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 overflow-hidden">
+                  <div className="absolute -top-4 -left-4 w-16 h-16 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="flex items-center justify-between">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                    </span>
+                    <Zap className="h-3.5 w-3.5 text-emerald-500/60" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Lucro Hoje</p>
+                    {hojeData.carregando ? (
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    ) : (
+                      <p className={`text-sm sm:text-base font-bold font-mono ${hojeData.lucroAssistencia >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                        <ValorMonetario valor={hojeData.lucroAssistencia} />
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Produtos e Peças */}
+            <div className="rounded-xl overflow-hidden border border-violet-100 dark:border-white/10 shadow-[0_0_30px_-10px_rgba(139,92,246,0.15)] dark:shadow-[0_0_30px_-10px_rgba(139,92,246,0.2)] relative">
+              <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
+              <div className="relative bg-gradient-to-r from-violet-50 to-white dark:from-slate-800/80 dark:to-slate-900 px-4 py-2.5 flex items-center gap-2 border-b border-violet-100 dark:border-white/10">
+                <div className="h-6 w-6 rounded-md bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
+                  <Package className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <span className="text-[11px] font-mono font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-widest">Produtos & Peças</span>
+              </div>
+              <div className="grid grid-cols-2 gap-0">
+                <div className="relative bg-gradient-to-br from-white via-violet-50/50 to-white dark:from-slate-900 dark:via-violet-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 border-r border-violet-100 dark:border-white/10 overflow-hidden">
+                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-violet-400/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="flex items-center justify-between">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-500 opacity-60" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-500" />
+                    </span>
+                    <Activity className="h-3.5 w-3.5 text-violet-500/60" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Fat. Hoje</p>
+                    {hojeData.carregando ? (
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    ) : (
+                      <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white font-mono">
+                        <ValorMonetario valor={hojeData.faturamentoProdutosPecas} />
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="relative bg-gradient-to-br from-white via-emerald-50/50 to-white dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 overflow-hidden">
+                  <div className="absolute -top-4 -left-4 w-16 h-16 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="flex items-center justify-between">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                    </span>
+                    <Zap className="h-3.5 w-3.5 text-emerald-500/60" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Lucro Hoje</p>
+                    {hojeData.carregando ? (
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    ) : (
+                      <p className={`text-sm sm:text-base font-bold font-mono ${hojeData.lucroProdutosPecas >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                        <ValorMonetario valor={hojeData.lucroProdutosPecas} />
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Dispositivos */}
+            <div className="rounded-xl overflow-hidden border border-cyan-100 dark:border-white/10 shadow-[0_0_30px_-10px_rgba(6,182,212,0.15)] dark:shadow-[0_0_30px_-10px_rgba(6,182,212,0.2)] relative">
+              <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
+              <div className="relative bg-gradient-to-r from-cyan-50 to-white dark:from-slate-800/80 dark:to-slate-900 px-4 py-2.5 flex items-center gap-2 border-b border-cyan-100 dark:border-white/10">
+                <div className="h-6 w-6 rounded-md bg-cyan-100 dark:bg-cyan-500/20 flex items-center justify-center">
+                  <Smartphone className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <span className="text-[11px] font-mono font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-widest">Dispositivos</span>
+              </div>
+              <div className="grid grid-cols-2 gap-0">
+                <div className="relative bg-gradient-to-br from-white via-cyan-50/50 to-white dark:from-slate-900 dark:via-cyan-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 border-r border-cyan-100 dark:border-white/10 overflow-hidden">
+                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-cyan-400/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="flex items-center justify-between">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-500 opacity-60" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500" />
+                    </span>
+                    <Activity className="h-3.5 w-3.5 text-cyan-500/60" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Fat. Hoje</p>
+                    {hojeData.carregando ? (
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    ) : (
+                      <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white font-mono">
+                        <ValorMonetario valor={hojeData.faturamentoDispositivos} />
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="relative bg-gradient-to-br from-white via-emerald-50/50 to-white dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 overflow-hidden">
+                  <div className="absolute -top-4 -left-4 w-16 h-16 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="flex items-center justify-between">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                    </span>
+                    <Zap className="h-3.5 w-3.5 text-emerald-500/60" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Lucro Hoje</p>
+                    {hojeData.carregando ? (
+                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    ) : (
+                      <p className={`text-sm sm:text-base font-bold font-mono ${hojeData.lucroDispositivos >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                        <ValorMonetario valor={hojeData.lucroDispositivos} />
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
