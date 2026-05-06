@@ -277,6 +277,7 @@ const Produtos = () => {
         open={dialogImportarAberto}
         onOpenChange={setDialogImportarAberto}
         onImportar={importarEmLote}
+        categorias={categorias}
       />
 
       {/* Dialog de Limite Atingido */}

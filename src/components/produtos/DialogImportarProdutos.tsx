@@ -27,22 +27,23 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Upload, 
-  FileSpreadsheet, 
-  Download, 
-  CheckCircle2, 
+import {
+  Upload,
+  FileSpreadsheet,
+  Download,
+  CheckCircle2,
   AlertTriangle,
   XCircle,
   Loader2,
   ArrowLeft,
+  Tag,
 } from 'lucide-react';
 import { FormularioProduto, TipoProduto } from '@/types/produto';
-import { 
-  lerPlanilha, 
-  detectarMapeamento, 
+import { CategoriaProduto } from '@/types/categoria-produto';
+import {
+  lerPlanilha,
+  detectarMapeamento,
   baixarTemplatePlanilha,
-  MAPEAMENTO_COLUNAS,
 } from '@/lib/templatePlanilhaProdutos';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -64,6 +65,7 @@ interface DialogImportarProdutosProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImportar: (itens: FormularioProduto[]) => Promise<ResultadoImportacao>;
+  categorias?: CategoriaProduto[];
 }
 
 const CAMPOS_SISTEMA = [
@@ -80,6 +82,7 @@ export const DialogImportarProdutos = ({
   open,
   onOpenChange,
   onImportar,
+  categorias = [],
 }: DialogImportarProdutosProps) => {
   const [etapa, setEtapa] = useState<Etapa>('upload');
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -91,6 +94,11 @@ export const DialogImportarProdutos = ({
   const [resultado, setResultado] = useState<ResultadoImportacao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Categoria global (aplicada a todos)
+  const [categoriaGlobal, setCategoriaGlobal] = useState<string>('__sem_categoria__');
+  // Categorias por linha: índice → categoria_id
+  const [categoriasPorItem, setCategoriasPorItem] = useState<Record<number, string>>({});
+
   const resetar = useCallback(() => {
     setEtapa('upload');
     setArquivo(null);
@@ -101,6 +109,8 @@ export const DialogImportarProdutos = ({
     setImportando(false);
     setResultado(null);
     setErro(null);
+    setCategoriaGlobal('__sem_categoria__');
+    setCategoriasPorItem({});
   }, []);
 
   const handleClose = (open: boolean) => {
@@ -113,29 +123,29 @@ export const DialogImportarProdutos = ({
   const handleArquivoSelecionado = async (file: File) => {
     setErro(null);
     setArquivo(file);
-    
+
     try {
       const { headers: h, dados: d } = await lerPlanilha(file);
-      
+
       if (d.length === 0) {
         setErro('Nenhum dado encontrado na planilha.');
         return;
       }
-      
+
       setHeaders(h);
       setDados(d);
-      
+
       // Auto-detectar mapeamento
       const mapeamentoDetectado = detectarMapeamento(h);
       const mapeamentoInicial: Record<string, number | null> = {};
-      
+
       CAMPOS_SISTEMA.forEach(campo => {
         mapeamentoInicial[campo.id] = mapeamentoDetectado[campo.id] ?? null;
       });
-      
+
       setMapeamento(mapeamentoInicial);
       setEtapa('mapeamento');
-      
+
       // Validar itens
       validarItens(d, mapeamentoInicial);
     } catch (err: any) {
@@ -147,7 +157,7 @@ export const DialogImportarProdutos = ({
     const itens: ItemValidado[] = dadosRaw.map((linha, index) => {
       const avisos: string[] = [];
       let erro: string | null = null;
-      
+
       const getValue = (campo: string, padrao: any = null) => {
         const colIndex = map[campo];
         if (colIndex === null || colIndex === undefined) return padrao;
@@ -199,7 +209,7 @@ export const DialogImportarProdutos = ({
       const codigo_barras = String(getValue('codigo_barras', '') || '').trim() || undefined;
 
       return {
-        _linha: index + 2, // +2 porque começa da linha 2 (após header)
+        _linha: index + 2,
         _avisos: avisos,
         _erro: erro,
         tipo,
@@ -225,22 +235,43 @@ export const DialogImportarProdutos = ({
     validarItens(dados, novoMapeamento);
   };
 
+  const handleCategoriaGlobalChange = (valor: string) => {
+    setCategoriaGlobal(valor);
+    // Limpa sobrescritas individuais ao trocar a global
+    setCategoriasPorItem({});
+  };
+
+  const handleCategoriaItemChange = (idx: number, valor: string) => {
+    setCategoriasPorItem(prev => ({ ...prev, [idx]: valor }));
+  };
+
+  const resolverCategoriaItem = (idx: number): string | undefined => {
+    const individual = categoriasPorItem[idx];
+    if (individual !== undefined) {
+      return individual === '__sem_categoria__' ? undefined : individual;
+    }
+    return categoriaGlobal === '__sem_categoria__' ? undefined : categoriaGlobal;
+  };
+
   const handleImportar = async () => {
     const itensValidos = itensValidados.filter(i => !i._erro);
-    
+
     if (itensValidos.length === 0) {
       setErro('Nenhum item válido para importar');
       return;
     }
 
     setImportando(true);
-    
+
     try {
-      // Remove campos internos antes de enviar
-      const itensParaImportar: FormularioProduto[] = itensValidos.map(({ 
-        _linha, _avisos, _erro, ...item 
-      }) => item);
-      
+      const itensParaImportar: FormularioProduto[] = itensValidos.map(({
+        _linha, _avisos, _erro, ...item
+      }, idx) => {
+        const originalIdx = itensValidados.indexOf(itensValidados.filter(i => !i._erro)[idx]);
+        const categoriaId = resolverCategoriaItem(originalIdx);
+        return { ...item, categoria_id: categoriaId };
+      });
+
       const res = await onImportar(itensParaImportar);
       setResultado(res);
       setEtapa('resultado');
@@ -255,9 +286,12 @@ export const DialogImportarProdutos = ({
   const itensComAviso = itensValidados.filter(i => !i._erro && i._avisos.length > 0);
   const itensOk = itensValidados.filter(i => !i._erro && i._avisos.length === 0);
 
+  const categoriaLabel = (id: string) =>
+    categorias.find(c => c.id === id)?.nome ?? '—';
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5" />
@@ -365,7 +399,7 @@ export const DialogImportarProdutos = ({
 
         {/* Etapa: Mapeamento */}
         {etapa === 'mapeamento' && (
-          <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+          <div className="flex-1 overflow-hidden flex flex-col space-y-3">
             <div className="flex items-center justify-between">
               <Button
                 variant="ghost"
@@ -413,6 +447,43 @@ export const DialogImportarProdutos = ({
               ))}
             </div>
 
+            {/* Seletor de categoria global */}
+            {categorias.length > 0 && (
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                <Tag className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Label className="text-sm font-medium shrink-0">Categoria para todos:</Label>
+                <Select value={categoriaGlobal} onValueChange={handleCategoriaGlobalChange}>
+                  <SelectTrigger className="h-8 flex-1">
+                    <SelectValue placeholder="Sem categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__sem_categoria__">Sem categoria</SelectItem>
+                    {categorias.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: cat.cor }}
+                          />
+                          {cat.nome}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {Object.keys(categoriasPorItem).length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-8 shrink-0"
+                    onClick={() => setCategoriasPorItem({})}
+                  >
+                    Limpar individuais
+                  </Button>
+                )}
+              </div>
+            )}
+
             {/* Status */}
             <div className="flex flex-wrap gap-2">
               {itensOk.length > 0 && (
@@ -446,12 +517,15 @@ export const DialogImportarProdutos = ({
                     <TableHead className="w-16 text-right">Qtd</TableHead>
                     <TableHead className="w-24 text-right">Custo</TableHead>
                     <TableHead className="w-24 text-right">Preço</TableHead>
+                    {categorias.length > 0 && (
+                      <TableHead className="w-36">Categoria</TableHead>
+                    )}
                     <TableHead className="w-28">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {itensValidados.slice(0, 50).map((item, idx) => (
-                    <TableRow 
+                    <TableRow
                       key={idx}
                       className={item._erro ? 'bg-red-50' : item._avisos.length > 0 ? 'bg-yellow-50' : ''}
                     >
@@ -467,6 +541,32 @@ export const DialogImportarProdutos = ({
                       <TableCell className="text-right">{item.quantidade}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.custo)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.preco)}</TableCell>
+                      {categorias.length > 0 && (
+                        <TableCell>
+                          <Select
+                            value={categoriasPorItem[idx] ?? categoriaGlobal}
+                            onValueChange={(v) => handleCategoriaItemChange(idx, v)}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-full">
+                              <SelectValue placeholder="Sem categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__sem_categoria__">Sem categoria</SelectItem>
+                              {categorias.map(cat => (
+                                <SelectItem key={cat.id} value={cat.id}>
+                                  <span className="flex items-center gap-1.5">
+                                    <span
+                                      className="inline-block w-2 h-2 rounded-full shrink-0"
+                                      style={{ backgroundColor: cat.cor }}
+                                    />
+                                    {cat.nome}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      )}
                       <TableCell>
                         {item._erro ? (
                           <span className="text-xs text-red-600">{item._erro}</span>

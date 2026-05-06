@@ -504,6 +504,7 @@ export const useProdutos = () => {
             preco: p.preco,
             user_id: userId,
             fotos: p.fotos || [],
+            categoria_id: p.categoria_id || null,
           }))
         );
         if (error) throw error;
@@ -520,6 +521,7 @@ export const useProdutos = () => {
             user_id: userId,
             codigo_barras: p.codigo_barras || null,
             fotos: p.fotos || [],
+            categoria_id: p.categoria_id || null,
           }))
         );
         if (error) throw error;
