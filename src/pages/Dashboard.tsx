@@ -45,7 +45,6 @@ const Dashboard = () => {
   const dashboardBloqueado = isFuncionario && !temAcessoModulo('dashboard');
   const { clientes, loading: loadingClientes } = useClientes();
   const { calcularResumo } = useRelatorios();
-  const { calcularResumo: calcularResumoHoje } = useRelatorios();
 
   // Verificar se tem plano profissional
   const temPlanoProfissional = useMemo(() => {
@@ -369,11 +368,71 @@ const Dashboard = () => {
   };
 
   const loadHojeData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const hoje = format(new Date(), "yyyy-MM-dd");
-    const resumo = await calcularResumoHoje({ dataInicio: hoje, dataFim: hoje });
+
+    const [{ data: ordensHoje }, { data: vendasHoje }, { data: avulsosHoje }] = await Promise.all([
+      supabase
+        .from("ordens_servico")
+        .select("total, avarias")
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .in("status", ["finalizado", "entregue"])
+        .or(
+          `and(data_saida.not.is.null,data_saida.gte.${hoje},data_saida.lte.${hoje}T23:59:59),and(data_saida.is.null,updated_at.gte.${hoje},updated_at.lte.${hoje}T23:59:59)`
+        ),
+      supabase
+        .from("vendas")
+        .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id")
+        .eq("user_id", user.id)
+        .eq("cancelada", false)
+        .or(`data.gte.${hoje},and(data_recebimento.not.is.null,data_recebimento.gte.${hoje})`)
+        .lte("data", `${hoje}T23:59:59`),
+      supabase
+        .from("servicos_avulsos")
+        .select("preco, custo")
+        .eq("user_id", user.id)
+        .in("status", ["entregue", "finalizado"])
+        .gte("created_at", hoje)
+        .lte("created_at", `${hoje}T23:59:59`),
+    ]);
+
+    const receitaOS = (ordensHoje || []).reduce((acc, o) => acc + Number(o.total || 0), 0);
+    const custoOS = (ordensHoje || []).reduce((acc, o) => {
+      const avarias = (o.avarias || {}) as Record<string, any>;
+      const servicosRealizados: any[] = avarias.servicos_realizados || [];
+      const custo = servicosRealizados.reduce((s: number, sv: any) => s + Number(sv.custo || 0), 0);
+      return acc + custo;
+    }, 0);
+
+    const vendasFiltradas = (vendasHoje || []).filter((v) => {
+      if (v.observacoes && typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return false;
+      if (v.peca_id) return false;
+      const dataRef = (v.forma_pagamento === "a_receber" || v.forma_pagamento === "a_prazo") && v.recebido
+        ? v.data_recebimento || v.data
+        : v.data;
+      if (!dataRef) return false;
+      const dataKey = dataRef.slice(0, 10);
+      return dataKey === hoje;
+    });
+
+    const receitaVendas = vendasFiltradas.reduce((acc, v) => acc + getVendaReceitaLiquida(v as any), 0);
+    const custoVendas = vendasFiltradas.reduce((acc, v) => {
+      const custo = Number(v.custo_unitario || 0) * Number(v.quantidade || 1);
+      return acc + custo;
+    }, 0);
+
+    const receitaAvulsos = (avulsosHoje || []).reduce((acc, a) => acc + Number(a.preco || 0), 0);
+    const custoAvulsos = (avulsosHoje || []).reduce((acc, a) => acc + Number(a.custo || 0), 0);
+
+    const faturamento = receitaOS + receitaVendas + receitaAvulsos;
+    const lucro = (receitaOS - custoOS) + (receitaVendas - custoVendas) + (receitaAvulsos - custoAvulsos);
+
     setHojeData({
-      faturamento: resumo.receitaTotal,
-      lucro: resumo.lucroTotal,
+      faturamento,
+      lucro,
       carregando: false,
     });
   };
