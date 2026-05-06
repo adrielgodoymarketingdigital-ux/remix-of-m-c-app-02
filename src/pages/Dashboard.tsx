@@ -150,6 +150,7 @@ const Dashboard = () => {
     loadMetrics(datas.inicio, datas.fim);
     loadFinanceiroData(datas.inicio, datas.fim);
     loadProdutosVendidos(datas.inicio, datas.fim);
+    loadHojeData();
   }, [mesSelecionado, dashboardBloqueado]);
 
   // Recarregar quando uma OS for criada ou editada
@@ -159,6 +160,7 @@ const Dashboard = () => {
       const datas = getDatasMesSelecionado(mesSelecionado);
       loadMetrics(datas.inicio, datas.fim);
       loadFinanceiroData(datas.inicio, datas.fim);
+      loadHojeData();
     };
     window.addEventListener("os-salva", handler);
     return () => window.removeEventListener("os-salva", handler);
@@ -363,10 +365,64 @@ const Dashboard = () => {
       taxasCartao: resumo.taxasCartao,
     });
 
-    const resumoHoje = await calcularResumo({ dataInicio: hoje, dataFim: hoje });
+  };
+
+  const loadHojeData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const hoje = format(new Date(), "yyyy-MM-dd");
+
+    // Faturamento hoje: OS finalizadas/entregues com data_saida = hoje
+    const { data: ordensHoje } = await supabase
+      .from("ordens_servico")
+      .select("total")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .in("status", ["finalizado", "entregue"])
+      .or(`and(data_saida.not.is.null,data_saida.gte.${hoje},data_saida.lte.${hoje}T23:59:59),and(data_saida.is.null,updated_at.gte.${hoje},updated_at.lte.${hoje}T23:59:59)`);
+
+    // Vendas de produtos hoje
+    const { data: vendasProdutosHoje } = await supabase
+      .from("vendas")
+      .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom")
+      .eq("user_id", user.id)
+      .eq("tipo", "produto")
+      .eq("cancelada", false)
+      .gte("data", hoje)
+      .lte("data", `${hoje}T23:59:59`);
+
+    // Vendas de dispositivos hoje
+    const { data: vendasDispositivosHoje } = await supabase
+      .from("vendas")
+      .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom")
+      .eq("user_id", user.id)
+      .eq("tipo", "dispositivo")
+      .eq("cancelada", false)
+      .gte("data", hoje)
+      .lte("data", `${hoje}T23:59:59`);
+
+    const faturamentoOS = ordensHoje?.reduce((acc, o) => acc + Number(o.total || 0), 0) ?? 0;
+
+    const faturamentoProdutos = vendasProdutosHoje?.reduce((acc, v) => {
+      const liquido = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
+      return acc + liquido;
+    }, 0) ?? 0;
+
+    const faturamentoDispositivos = vendasDispositivosHoje?.reduce((acc, v) => {
+      const liquido = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
+      return acc + liquido;
+    }, 0) ?? 0;
+
+    const custoProdutos = vendasProdutosHoje?.reduce((acc, v) => acc + Number(v.custo_unitario || 0) * Number(v.quantidade || 1), 0) ?? 0;
+    const custoDispositivos = vendasDispositivosHoje?.reduce((acc, v) => acc + Number(v.custo_unitario || 0) * Number(v.quantidade || 1), 0) ?? 0;
+
+    const faturamentoTotal = faturamentoOS + faturamentoProdutos + faturamentoDispositivos;
+    const custoTotal = custoProdutos + custoDispositivos;
+
     setHojeData({
-      faturamento: resumoHoje.receitaTotal,
-      lucro: resumoHoje.lucroTotal,
+      faturamento: faturamentoTotal,
+      lucro: faturamentoTotal - custoTotal,
       carregando: false,
     });
   };
