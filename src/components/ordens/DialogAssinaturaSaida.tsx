@@ -92,6 +92,7 @@ export const DialogAssinaturaSaida = ({
       const updateData: any = {
         avarias: novasAvarias as any,
         status: "entregue",
+        data_saida: new Date().toISOString(),
       };
 
       // Atualizar forma_pagamento na tabela principal também
