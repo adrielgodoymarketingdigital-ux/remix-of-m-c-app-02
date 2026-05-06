@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { formatDate, formatPhone, formatCPF, formatDateTime } from "@/lib/formatters";
+import { formatDate, formatPhone, formatCPF, formatDateTime, formatTime } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { AvariasOS, AvariaVisual } from "@/types/ordem-servico";
 import { SilhuetaComAvarias } from "./SilhuetaComAvarias";
@@ -127,7 +127,8 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
               <div className="space-y-3 text-sm">
                 <div>
                   <span className="font-medium">Data de Abertura:</span>
-                  <p className="text-muted-foreground">{formatDateTime(ordem.created_at)}</p>
+                  <p className="text-muted-foreground">{formatDate(ordem.created_at)}</p>
+                  <p className="text-muted-foreground text-xs">{formatTime(ordem.created_at)}</p>
                 </div>
                 <div>
                   <span className="font-medium">Defeito Relatado:</span>

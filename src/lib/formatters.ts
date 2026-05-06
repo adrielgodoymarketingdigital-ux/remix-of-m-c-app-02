@@ -16,6 +16,10 @@ export const formatDateTime = (date: string | Date): string => {
   return format(new Date(date), "dd/MM/yyyy HH:mm");
 };
 
+export const formatTime = (date: string | Date): string => {
+  return format(new Date(date), "HH:mm");
+};
+
 export const formatPhone = (phone: string | null): string => {
   if (!phone) return "";
   const cleaned = phone.replace(/\D/g, "");

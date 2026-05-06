@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
-import { formatCurrency, formatDateTime } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { Check } from "lucide-react";
@@ -190,11 +190,13 @@ export const TabelaOrdensServico = ({
             <div className="flex items-center justify-between pt-3 border-t">
               <div className="text-sm space-y-0.5">
                 <div className="text-muted-foreground">
-                  <span>Entrada: {formatDateTime(ordem.created_at)}</span>
+                  <span>Entrada: {formatDate(ordem.created_at)}</span>
+                  <span className="block text-xs">{formatTime(ordem.created_at)}</span>
                 </div>
                 {ordem.data_saida && (
                   <div className="text-muted-foreground">
-                    <span>Saída: {formatDateTime(ordem.data_saida)}</span>
+                    <span>Saída: {formatDate(ordem.data_saida)}</span>
+                    <span className="block text-xs">{formatTime(ordem.data_saida)}</span>
                   </div>
                 )}
                 <span className="font-semibold"><ValorMonetario valor={ordem.total} tipo="preco" /></span>
@@ -308,10 +310,20 @@ export const TabelaOrdensServico = ({
                   </div>
                 </TableCell>
               )}
-              <TableCell className="whitespace-nowrap px-1.5 py-1.5">{formatDateTime(ordem.created_at)}</TableCell>
+              <TableCell className="px-1.5 py-1.5">
+                <div className="text-xs leading-tight">{formatDate(ordem.created_at)}</div>
+                <div className="text-[10px] text-muted-foreground">{formatTime(ordem.created_at)}</div>
+              </TableCell>
               {colunasAtivas.includes('data_saida') && (
-                <TableCell className="whitespace-nowrap px-1.5 py-1.5">
-                  {ordem.data_saida ? formatDateTime(ordem.data_saida) : <span className="text-muted-foreground">—</span>}
+                <TableCell className="px-1.5 py-1.5">
+                  {ordem.data_saida ? (
+                    <>
+                      <div className="text-xs leading-tight">{formatDate(ordem.data_saida)}</div>
+                      <div className="text-[10px] text-muted-foreground">{formatTime(ordem.data_saida)}</div>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
               )}
               {colunasAtivas.includes('defeito') && (
