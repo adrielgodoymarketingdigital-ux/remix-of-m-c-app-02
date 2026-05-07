@@ -122,7 +122,7 @@ serve(async (req) => {
     if (assErr) throw new Error(`DB assinaturas: ${assErr.message}`);
 
     // ─── 1b. Histórico para cálculo de crescimento ──────────────────────
-    // Busca todas as assinaturas (incluindo canceladas) para reconstruir snapshots mensais
+    // Busca todas as assinaturas pagas (incluindo canceladas/expiradas)
     const { data: todasAssinaturas } = await supabaseAdmin
       .from("assinaturas")
       .select("user_id, status, data_inicio, data_fim, cancelado_em")
@@ -138,39 +138,55 @@ serve(async (req) => {
       crescimento_pct: number | null;
     };
     const snapshots: MesSnapshot[] = [];
+    const todas = todasAssinaturas ?? [];
+
+    // Mapa de user_id → data_inicio mais antiga (para identificar assinantes genuinamente novos)
+    const primeiraAssinatura = new Map<string, Date>();
+    for (const a of todas) {
+      if (!a.data_inicio) continue;
+      const di = new Date(a.data_inicio);
+      const atual = primeiraAssinatura.get(a.user_id);
+      if (!atual || di < atual) primeiraAssinatura.set(a.user_id, di);
+    }
 
     for (let i = historicoMeses - 1; i >= 0; i--) {
       const refDate = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
       const inicioMes = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
-      const fimMes = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0, 23, 59, 59);
+      // Fim do mês: primeiro instante do mês seguinte menos 1ms
+      const fimMes = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1);
       const mesStr = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
       const mesNomes = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
       const mesLabel = `${mesNomes[refDate.getMonth()]}/${String(refDate.getFullYear()).slice(2)}`;
 
-      const ativos = (todasAssinaturas ?? []).filter((a) => {
+      // Ativo no fim do mês:
+      //   - data_inicio < início do próximo mês (já havia começado)
+      //   - data_fim é null OU data_fim > fim do mês (ainda vigente)
+      //   - cancelado_em é null OU cancelado_em > fim do mês (não cancelado ainda)
+      const ativos = todas.filter((a) => {
         if (!a.data_inicio) return false;
         const di = new Date(a.data_inicio);
-        if (di > fimMes) return false;
-        if (a.cancelado_em && new Date(a.cancelado_em) <= fimMes) return false;
-        if (a.data_fim && new Date(a.data_fim) <= fimMes) return false;
+        if (di >= fimMes) return false; // ainda não havia começado
+        if (a.cancelado_em && new Date(a.cancelado_em) < fimMes) return false; // já cancelado
+        if (a.data_fim && new Date(a.data_fim) < fimMes) return false; // já expirado
         return true;
       }).length;
 
-      const novos = (todasAssinaturas ?? []).filter((a) => {
-        if (!a.data_inicio) return false;
-        const di = new Date(a.data_inicio);
-        return di >= inicioMes && di <= fimMes;
+      // Novo no mês: primeiro registro desse user_id com data_inicio dentro do mês
+      const novos = Array.from(primeiraAssinatura.entries()).filter(([, di]) => {
+        return di >= inicioMes && di < fimMes;
       }).length;
 
-      const cancelados = (todasAssinaturas ?? []).filter((a) => {
+      // Cancelados no mês
+      const cancelados = todas.filter((a) => {
         if (!a.cancelado_em) return false;
         const dc = new Date(a.cancelado_em);
-        return dc >= inicioMes && dc <= fimMes;
+        return dc >= inicioMes && dc < fimMes;
       }).length;
 
       snapshots.push({ mes: mesLabel, data: mesStr, ativos, novos, cancelados, crescimento_pct: null });
     }
 
+    // Crescimento % mês a mês baseado em assinantes ativos (não em novos)
     for (let i = 1; i < snapshots.length; i++) {
       const anterior = snapshots[i - 1].ativos;
       const atual = snapshots[i].ativos;
@@ -181,7 +197,13 @@ serve(async (req) => {
       }
     }
 
-    const pcts = snapshots.slice(1).map((s) => s.crescimento_pct ?? 0);
+    // Média apenas dos meses onde tanto o mês atual quanto o anterior têm assinantes
+    const pcts: number[] = [];
+    for (let i = 1; i < snapshots.length; i++) {
+      if (snapshots[i].ativos > 0 && snapshots[i - 1].ativos > 0) {
+        pcts.push(snapshots[i].crescimento_pct ?? 0);
+      }
+    }
     const crescimentoMedioMensal = pcts.length > 0 ? pcts.reduce((a, b) => a + b, 0) / pcts.length : 0;
     const crescimentoUltimoMes = snapshots.length >= 2 ? snapshots[snapshots.length - 1].crescimento_pct : null;
     const totalAtual = snapshots[snapshots.length - 1]?.ativos ?? 0;
