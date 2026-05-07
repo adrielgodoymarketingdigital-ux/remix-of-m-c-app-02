@@ -30,7 +30,8 @@ const formatDate = (iso: string) => {
 };
 
 export default function AdminFinanceiro() {
-  const { data, isLoading, error, refetch, isFetching } = useAdminFinanceiro();
+  const { data, isLoading: isLoadingRaw, error, refetch, isFetching } = useAdminFinanceiro();
+  const isLoading = isLoadingRaw || isFetching;
   const planRows = Object.entries(data?.plan_breakdown ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const totalDetalhamento = planRows.reduce((sum, [, plano]) => sum + plano.count, 0);
   const mrrDetalhamento = planRows.reduce((sum, [, plano]) => sum + plano.mrr, 0);

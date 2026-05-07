@@ -14,6 +14,9 @@ const log = (step: string, details?: unknown) => {
 
 const MES_NOMES_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
+// Meses excluídos do cálculo de crescimento/projeção por serem dados de migração
+const MESES_MIGRAÇÃO = ["2026-04"];
+
 function buildSnapshots(
   todasAss: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null }>,
   todosProf: Array<{ user_id: string; created_at: string | null }>,
@@ -32,26 +35,27 @@ function buildSnapshots(
   for (let i = historicoMeses - 1; i >= 0; i--) {
     const refDate = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
     const inicioMes = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
-    const fimMes = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1);
+    const fimMes = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0, 23, 59, 59, 999);
     const mesStr = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
     const mesLabel = `${MES_NOMES_PT[refDate.getMonth()]}/${String(refDate.getFullYear()).slice(2)}`;
 
-    const cadastros_acumulados = todosProf.filter((p) => p.created_at && new Date(p.created_at) < fimMes).length;
+    const cadastros_acumulados = todosProf.filter((p) => p.created_at && new Date(p.created_at) <= fimMes).length;
     const novos_cadastros = todosProf.filter((p) => {
       if (!p.created_at) return false;
       const d = new Date(p.created_at);
-      return d >= inicioMes && d < fimMes;
+      return d >= inicioMes && d <= fimMes;
     }).length;
 
     const pagantes_ativos = todasAss.filter((a) => {
       if (!a.data_inicio) return false;
-      if (new Date(a.data_inicio) >= fimMes) return false;
-      if (a.cancelado_em && new Date(a.cancelado_em) < fimMes) return false;
-      if (a.data_fim && new Date(a.data_fim) < fimMes) return false;
+      if (new Date(a.data_inicio) > fimMes) return false;
+      if (a.cancelado_em && new Date(a.cancelado_em) <= inicioMes) return false;
+      if (a.data_fim && new Date(a.data_fim) < inicioMes) return false;
       return true;
     }).length;
 
-    const novos_pagantes = Array.from(primeirasPorUser.values()).filter((di) => di >= inicioMes && di < fimMes).length;
+    const novos_pagantes = Array.from(primeirasPorUser.values()).filter((di) => di >= inicioMes && di <= fimMes).length;
+    const isMigracao = MESES_MIGRAÇÃO.includes(mesStr);
 
     snapshots.push({
       mes: mesLabel, data: mesStr,
@@ -59,10 +63,17 @@ function buildSnapshots(
       pagantes_ativos, novos_pagantes,
       crescimento_cadastros_pct: null as number | null,
       crescimento_pagantes_pct: null as number | null,
+      migracao: isMigracao,
     });
   }
 
   for (let i = 1; i < snapshots.length; i++) {
+    // Não calcular crescimento partindo de um mês de migração (o anterior)
+    if (snapshots[i - 1].migracao || snapshots[i].migracao) {
+      snapshots[i].crescimento_cadastros_pct = null;
+      snapshots[i].crescimento_pagantes_pct = null;
+      continue;
+    }
     const ac = snapshots[i - 1].cadastros_acumulados;
     snapshots[i].crescimento_cadastros_pct = ac > 0
       ? ((snapshots[i].cadastros_acumulados - ac) / ac) * 100
@@ -77,25 +88,66 @@ function buildSnapshots(
   return snapshots;
 }
 
-function calcMedia(snapshots: ReturnType<typeof buildSnapshots>, field: "crescimento_cadastros_pct" | "crescimento_pagantes_pct") {
-  const vals: number[] = [];
-  for (let i = 1; i < snapshots.length; i++) {
-    if (snapshots[i - 1].cadastros_acumulados > 0 || snapshots[i - 1].pagantes_ativos > 0) {
-      const v = snapshots[i][field];
-      if (v !== null) vals.push(v);
-    }
-  }
-  return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+// Retorna a média de novos por mês (absoluto), excluindo meses de migração e o mês atual incompleto
+function calcMediaNovos(snapshots: ReturnType<typeof buildSnapshots>, campo: "novos_cadastros" | "novos_pagantes", mesAtualStr: string) {
+  const vals = snapshots.filter((s) => !s.migracao && s.data !== mesAtualStr && s[campo] > 0);
+  if (vals.length === 0) return 0;
+  return Math.round(vals.reduce((acc, s) => acc + s[campo], 0) / vals.length);
 }
 
-function calcProj(total: number, taxaPct: number) {
-  const t = taxaPct / 100;
+// Projeção somando média de novos por mês ao total atual (crescimento linear/absoluto)
+function calcProj(totalAtual: number, mediaNovosPosMes: number) {
   return [1, 3, 6, 12].map((meses) => ({
     meses,
     label: meses === 1 ? "1 mês" : `${meses} meses`,
-    projetado: Math.round(total * Math.pow(1 + t, meses)),
-    crescimento_acumulado_pct: (Math.pow(1 + t, meses) - 1) * 100,
+    projetado: totalAtual + mediaNovosPosMes * meses,
+    novos_esperados: mediaNovosPosMes * meses,
   }));
+}
+
+function calcCrescimentoAbsoluto(
+  snapshots: ReturnType<typeof buildSnapshots>,
+  agora: Date
+) {
+  const mesAtualStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
+  const mesPassadoDate = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+  const mesPassadoStr = `${mesPassadoDate.getFullYear()}-${String(mesPassadoDate.getMonth() + 1).padStart(2, "0")}`;
+
+  const snapAtual = snapshots.find((s) => s.data === mesAtualStr);
+  const snapPassado = snapshots.find((s) => s.data === mesPassadoStr);
+
+  // Últimos 3 meses excluindo migração
+  const ultimos3 = snapshots
+    .filter((s) => !s.migracao)
+    .slice(-3);
+
+  const novos_cadastros_3m = ultimos3.reduce((acc, s) => acc + s.novos_cadastros, 0);
+  const novos_pagantes_3m = ultimos3.reduce((acc, s) => acc + s.novos_pagantes, 0);
+  const media_cadastros_3m = ultimos3.length > 0 ? Math.round(novos_cadastros_3m / ultimos3.length) : 0;
+  const media_pagantes_3m = ultimos3.length > 0 ? Math.round(novos_pagantes_3m / ultimos3.length) : 0;
+
+  return {
+    mes_atual: {
+      label: snapAtual?.mes ?? "",
+      novos_cadastros: snapAtual?.novos_cadastros ?? 0,
+      novos_pagantes: snapAtual?.novos_pagantes ?? 0,
+    },
+    mes_passado: {
+      label: snapPassado?.mes ?? "",
+      novos_cadastros: snapPassado && !snapPassado.migracao ? snapPassado.novos_cadastros : null,
+      novos_pagantes: snapPassado && !snapPassado.migracao ? snapPassado.novos_pagantes : null,
+    },
+    ultimos_3_meses: {
+      novos_cadastros: novos_cadastros_3m,
+      novos_pagantes: novos_pagantes_3m,
+      media_mensal_cadastros: media_cadastros_3m,
+      media_mensal_pagantes: media_pagantes_3m,
+    },
+    previsao_proximo_mes: {
+      cadastros: media_cadastros_3m,
+      pagantes: media_pagantes_3m,
+    },
+  };
 }
 
 // Preços mensalizados em reais (para cálculo de MRR)
@@ -210,33 +262,43 @@ serve(async (req) => {
     // ─── 1b. Histórico de crescimento (cadastros + pagantes) ────────────
     const { data: todasAssinaturas } = await supabaseAdmin
       .from("assinaturas")
-      .select("user_id, data_inicio, data_fim, cancelado_em")
-      .in("plano_tipo", Object.keys(PRECOS_MES)) as { data: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null }> };
+      .select("user_id, data_inicio, data_fim, cancelado_em, status")
+      .in("plano_tipo", Object.keys(PRECOS_MES))
+      .in("status", ["active", "past_due"]) as { data: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null; status: string }> };
 
     const { data: todosProfiles } = await supabaseAdmin
       .from("profiles")
       .select("user_id, created_at") as { data: Array<{ user_id: string; created_at: string | null }> };
 
+    // Total atual real: status active E dentro do prazo (data_fim no futuro ou nula)
+    const totalPagantesAgora = (assinaturasAtivas ?? []).filter((a) =>
+      !a.data_fim || new Date(a.data_fim) > agora
+    ).length;
+
+    const mesAtualStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
     const snapshots = buildSnapshots(todasAssinaturas ?? [], todosProfiles ?? [], agora, 12);
     const ultimoSnap = snapshots[snapshots.length - 1];
 
-    const mediaCadastros = calcMedia(snapshots, "crescimento_cadastros_pct");
-    const mediaPagantes = calcMedia(snapshots, "crescimento_pagantes_pct");
+    const mediaNovoCadastros = calcMediaNovos(snapshots, "novos_cadastros", mesAtualStr);
+    const mediaNovosPagantes = calcMediaNovos(snapshots, "novos_pagantes", mesAtualStr);
+
+    const crescimento_absoluto = calcCrescimentoAbsoluto(snapshots, agora);
 
     const historico_crescimento = {
       snapshots,
       cadastros: {
         total_atual: ultimoSnap?.cadastros_acumulados ?? 0,
-        crescimento_medio_mensal_pct: mediaCadastros,
+        media_novos_por_mes: mediaNovoCadastros,
         crescimento_ultimo_mes_pct: ultimoSnap?.crescimento_cadastros_pct ?? null,
-        projecoes: calcProj(ultimoSnap?.cadastros_acumulados ?? 0, mediaCadastros),
+        projecoes: calcProj(ultimoSnap?.cadastros_acumulados ?? 0, mediaNovoCadastros),
       },
       pagantes: {
-        total_atual: ultimoSnap?.pagantes_ativos ?? 0,
-        crescimento_medio_mensal_pct: mediaPagantes,
+        total_atual: totalPagantesAgora,
+        media_novos_por_mes: mediaNovosPagantes,
         crescimento_ultimo_mes_pct: ultimoSnap?.crescimento_pagantes_pct ?? null,
-        projecoes: calcProj(ultimoSnap?.pagantes_ativos ?? 0, mediaPagantes),
+        projecoes: calcProj(totalPagantesAgora, mediaNovosPagantes),
       },
+      crescimento_absoluto,
     };
 
     const assinaturas = assinaturasAtivas || [];
@@ -251,9 +313,16 @@ serve(async (req) => {
     if (expErr) log("⚠️ Erro buscando expiradas", { err: expErr.message });
     const expiradas = assinaturasExpiradas || [];
 
-    // Separar assinantes vigentes (em dia) de inadimplentes (status=active mas data vencida)
+    // Stripe gerencia vigência internamente — assinatura active no banco = vigente
+    // Para Pagar.me/manual, verificar se data_fim ainda não venceu
+    const isVigenteParaMRR = (a: any) => {
+      if (a.payment_provider === "stripe") return false; // MRR Stripe calculado separadamente
+      if (!a.data_fim) return true;
+      return new Date(a.data_fim).getTime() > agora.getTime();
+    };
+
     const isVigente = (a: any) => {
-      if (a.payment_provider === "stripe") return false;
+      if ((a.payment_provider || "").toLowerCase() === "stripe") return true; // Stripe: confiar no status
       if (!a.data_fim) return true;
       return new Date(a.data_fim).getTime() > agora.getTime();
     };
@@ -263,11 +332,13 @@ serve(async (req) => {
     const dbTotal = vigentes.length;
     const dbInadimplentes = inadimplentes.length;
 
-    // MRR banco e detalhamento por plano: APENAS vigentes (pagantes em dia).
+    const vigentesParaMRR = assinaturas.filter((a) => isVigenteParaMRR(a));
+
+    // MRR banco e detalhamento por plano: exclui Stripe (calculado separadamente).
     // Planos anuais já são mensalizados via PRECOS_MES.
     const planBreakdown: Record<string, { count: number; mrr: number; nome: string }> = {};
     let mrrBanco = 0;
-    for (const a of vigentes) {
+    for (const a of vigentesParaMRR) {
       const p = a.plano_tipo as string;
       const valor = PRECOS_MES[p] || 0;
       if (!planBreakdown[p]) {

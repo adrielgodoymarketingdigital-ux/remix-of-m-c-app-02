@@ -81,18 +81,25 @@ export interface AdminFinanceiroData {
       novos_pagantes: number;
       crescimento_cadastros_pct: number | null;
       crescimento_pagantes_pct: number | null;
+      migracao: boolean;
     }>;
     cadastros: {
       total_atual: number;
-      crescimento_medio_mensal_pct: number;
+      media_novos_por_mes: number;
       crescimento_ultimo_mes_pct: number | null;
-      projecoes: Array<{ meses: number; label: string; projetado: number; crescimento_acumulado_pct: number }>;
+      projecoes: Array<{ meses: number; label: string; projetado: number; novos_esperados: number }>;
     };
     pagantes: {
       total_atual: number;
-      crescimento_medio_mensal_pct: number;
+      media_novos_por_mes: number;
       crescimento_ultimo_mes_pct: number | null;
-      projecoes: Array<{ meses: number; label: string; projetado: number; crescimento_acumulado_pct: number }>;
+      projecoes: Array<{ meses: number; label: string; projetado: number; novos_esperados: number }>;
+    };
+    crescimento_absoluto: {
+      mes_atual: { label: string; novos_cadastros: number; novos_pagantes: number };
+      mes_passado: { label: string; novos_cadastros: number | null; novos_pagantes: number | null };
+      ultimos_3_meses: { novos_cadastros: number; novos_pagantes: number; media_mensal_cadastros: number; media_mensal_pagantes: number };
+      previsao_proximo_mes: { cadastros: number; pagantes: number };
     };
   } | null;
   last_update: string;
@@ -100,15 +107,16 @@ export interface AdminFinanceiroData {
 
 export function useAdminFinanceiro() {
   return useQuery({
-    queryKey: ["admin-financeiro", "subscribers-and-expired-v4"],
+    queryKey: ["admin-financeiro", "subscribers-and-expired-v8"],
     queryFn: async (): Promise<AdminFinanceiroData> => {
       const { data, error } = await supabase.functions.invoke("admin-financeiro");
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       return data as AdminFinanceiroData;
     },
-    staleTime: 0,
-    refetchOnMount: "always",
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
+    retry: 2,
   });
 }
