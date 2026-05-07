@@ -8,16 +8,23 @@ export const formatCurrency = (value: number | null | undefined): string => {
   }).format(value);
 };
 
+function parseDate(date: string | Date): Date {
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return new Date(`${date}T00:00:00`);
+  }
+  return new Date(date);
+}
+
 export const formatDate = (date: string | Date): string => {
-  return format(new Date(date), "dd/MM/yyyy");
+  return format(parseDate(date), "dd/MM/yyyy");
 };
 
 export const formatDateTime = (date: string | Date): string => {
-  return format(new Date(date), "dd/MM/yyyy HH:mm");
+  return format(parseDate(date), "dd/MM/yyyy HH:mm");
 };
 
 export const formatTime = (date: string | Date): string => {
-  return format(new Date(date), "HH:mm");
+  return format(parseDate(date), "HH:mm");
 };
 
 export const formatPhone = (phone: string | null): string => {
