@@ -398,7 +398,7 @@ export const useVendas = () => {
     em3Dias.setDate(hoje.getDate() + 3);
 
     const vendasAReceber = vendasFiltradas.filter(
-      (v) => v.forma_pagamento === "a_receber" && !v.recebido && !v.cancelada
+      (v) => (v.forma_pagamento === "a_receber" || v.forma_pagamento === "a_prazo") && !v.recebido && !v.cancelada
     );
 
     const vendasVencidas = vendasAReceber.filter((v) => {
@@ -503,8 +503,8 @@ export const useVendas = () => {
         total_parcelas: dados.total_parcelas || null,
       };
 
-      // Se mudou de a_receber para outra forma, resetar recebido
-      if (dados.forma_pagamento !== "a_receber") {
+      // Se mudou de a_receber/a_prazo para outra forma, resetar recebido
+      if (dados.forma_pagamento !== "a_receber" && dados.forma_pagamento !== "a_prazo") {
         updateData.recebido = false;
         updateData.data_recebimento = null;
       }
@@ -518,8 +518,8 @@ export const useVendas = () => {
       if (error) throw error;
 
       // Gerenciar lançamento em Contas a Receber
-      const eraAReceber = vendaOriginal.forma_pagamento === "a_receber";
-      const agoraAReceber = dados.forma_pagamento === "a_receber";
+      const eraAReceber = vendaOriginal.forma_pagamento === "a_receber" || vendaOriginal.forma_pagamento === "a_prazo";
+      const agoraAReceber = dados.forma_pagamento === "a_receber" || dados.forma_pagamento === "a_prazo";
 
       if (agoraAReceber && !eraAReceber) {
         // Mudou para a_receber: criar conta

@@ -262,14 +262,14 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   em3Dias.setDate(hoje.getDate() + 3);
 
   const renderStatusBadge = (venda: Venda) => {
-    const isAReceber = venda.forma_pagamento === "a_receber" && !venda.recebido && !venda.cancelada;
+    const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
     const dataVencimento = venda.data_prevista_recebimento ? new Date(venda.data_prevista_recebimento) : null;
     if (dataVencimento) dataVencimento.setHours(0, 0, 0, 0);
     const isVencida = dataVencimento && dataVencimento < hoje;
     const isVencendo = dataVencimento && dataVencimento >= hoje && dataVencimento <= em3Dias;
 
     if (venda.cancelada) return <Badge variant="destructive" className="text-xs">Cancelada</Badge>;
-    if (venda.forma_pagamento === "a_receber") {
+    if (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") {
       if (venda.recebido) return <Badge className="bg-green-500 text-xs text-white">Recebido</Badge>;
       if (isVencida) return <Badge variant="destructive" className="text-xs">A Receber - Vencida</Badge>;
       if (isVencendo) return <Badge className="bg-orange-500 text-xs text-white">A Receber</Badge>;
@@ -279,7 +279,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   };
 
   const renderAcoesVenda = (venda: Venda) => {
-    const isAReceber = venda.forma_pagamento === "a_receber" && !venda.recebido && !venda.cancelada;
+    const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
     return (
       <div className="flex items-center gap-1">
         {isAReceber && onMarcarRecebido && (
@@ -287,7 +287,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
             <CheckCircle className="h-4 w-4" />
           </Button>
         )}
-        {!venda.cancelada && venda.forma_pagamento === "a_receber" && venda.recebido && onMarcarPendente && (
+        {!venda.cancelada && (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && venda.recebido && onMarcarPendente && (
           <Button variant="ghost" size="sm" onClick={() => onMarcarPendente(venda.id)} className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700" title="Voltar para Pendente">
             <Undo2 className="h-4 w-4" />
           </Button>
@@ -475,7 +475,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
           {vendasAgrupadas.map((item, idx) => {
             if (item.tipo === "individual" && item.venda) {
               const venda = item.venda;
-              const isAReceber = venda.forma_pagamento === "a_receber" && !venda.recebido && !venda.cancelada;
+              const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
               return (
                 <TableRow key={venda.id} className={venda.cancelada ? 'opacity-60 bg-muted/30' : ''}>
                   <TableCell></TableCell>
@@ -553,7 +553,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     </TableCell>
                   </TableRow>
                   {expandido && vendasDoGrupo.map(venda => {
-                    const isAReceber = venda.forma_pagamento === "a_receber" && !venda.recebido && !venda.cancelada;
+                    const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
                     return (
                       <TableRow key={venda.id} className={`${venda.cancelada ? 'opacity-60 bg-muted/30' : 'bg-muted/20'}`}>
                         <TableCell className="w-8 pl-6">

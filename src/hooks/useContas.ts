@@ -43,7 +43,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
             .from("vendas")
             .select("id, data, total, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_fkey(nome), produtos(nome), dispositivos(marca, modelo), pecas(nome)")
             .eq("user_id", user.id)
-            .eq("forma_pagamento", "a_receber")
+            .in("forma_pagamento", ["a_receber", "a_prazo"])
             .eq("cancelada", false);
           if (r.error) throw r.error;
           return r;
@@ -99,7 +99,9 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           ? ` (${v.parcela_numero}/${v.total_parcelas})`
           : "";
 
-        const dataVenda = v.data_prevista_recebimento || (v.data ? v.data.split("T")[0] : new Date().toISOString().split("T")[0]);
+        const dataVenda = v.recebido && v.data_recebimento
+          ? v.data_recebimento.split("T")[0]
+          : v.data_prevista_recebimento || (v.data ? v.data.split("T")[0] : new Date().toISOString().split("T")[0]);
 
         return {
           id: `venda_${v.id}`,

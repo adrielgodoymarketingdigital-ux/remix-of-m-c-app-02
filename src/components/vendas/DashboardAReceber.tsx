@@ -28,7 +28,7 @@ export const DashboardAReceber = ({
   // Filtrar apenas vendas a receber não canceladas e não recebidas
   const vendasAReceber = vendas.filter(
     (v) =>
-      v.forma_pagamento === "a_receber" &&
+      (v.forma_pagamento === "a_receber" || v.forma_pagamento === "a_prazo") &&
       !v.recebido &&
       !v.cancelada
   );
