@@ -416,20 +416,49 @@ function ItensAgrupados({
   onAtualizarItem?: (id: string, tipoItem: string, dados: { fotos: string[]; preco: number | null; precoPromocional: number | null }) => Promise<void>;
 }) {
   const categoriasComItens = useMemo(() => {
-    if (!categorias || categorias.length === 0) return null;
+    // Se há categorias manuais configuradas no catálogo, usá-las
+    if (categorias && categorias.length > 0) {
+      const grupos = categorias
+        .map((cat) => ({
+          ...cat,
+          itens: itens.filter((item) => cat.itemIds.includes(item.id)),
+        }))
+        .filter((g) => g.itens.length > 0);
 
-    const grupos = categorias
-      .map((cat) => ({
-        ...cat,
-        itens: itens.filter((item) => cat.itemIds.includes(item.id)),
-      }))
-      .filter((g) => g.itens.length > 0);
+      const idsCategorizados = new Set(categorias.flatMap((c) => c.itemIds));
+      const semCategoria = itens.filter((item) => !idsCategorizados.has(item.id));
 
-    // Items not in any category
-    const idsCategorizados = new Set(categorias.flatMap((c) => c.itemIds));
-    const semCategoria = itens.filter((item) => !idsCategorizados.has(item.id));
+      if (grupos.length === 0) return null;
+      return { grupos, semCategoria };
+    }
 
-    if (grupos.length === 0) return null;
+    // Sem categorias manuais: agrupar automaticamente pelo categoria_id dos produtos/peças
+    const categoriasMap = new Map<string, { id: string; nome: string; cor?: string; itens: typeof itens }>();
+    const semCategoria: typeof itens = [];
+
+    for (const item of itens) {
+      if (item.categoria_id && item.categoria_nome) {
+        const existing = categoriasMap.get(item.categoria_id);
+        if (existing) {
+          existing.itens.push(item);
+        } else {
+          categoriasMap.set(item.categoria_id, {
+            id: item.categoria_id,
+            nome: item.categoria_nome,
+            cor: item.categoria_cor || undefined,
+            itens: [item],
+          });
+        }
+      } else {
+        semCategoria.push(item);
+      }
+    }
+
+    if (categoriasMap.size === 0) return null;
+
+    const grupos = Array.from(categoriasMap.values()).sort((a, b) =>
+      a.nome.localeCompare(b.nome, 'pt-BR')
+    );
 
     return { grupos, semCategoria };
   }, [itens, categorias]);

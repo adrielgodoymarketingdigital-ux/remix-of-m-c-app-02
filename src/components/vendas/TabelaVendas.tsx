@@ -391,9 +391,14 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         <p className="text-xs text-muted-foreground">{formatDateTime(primeiraVenda.data)}</p>
                         <span className="text-xs">{formaPagamentoLabels[primeiraVenda.forma_pagamento] || "-"}</span>
                       </div>
-                      <span className={`font-semibold ${todasCanceladas ? 'line-through text-muted-foreground' : ''}`}>
-                         <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-semibold ${todasCanceladas ? 'line-through text-muted-foreground' : ''}`}>
+                          <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
+                        </span>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </Card>
 
@@ -541,7 +546,11 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                       <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
                     </TableCell>
                     <TableCell>{renderStatusBadge(primeiraVenda)}</TableCell>
-                    <TableCell></TableCell>
+                    <TableCell className="text-center">
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                   {expandido && vendasDoGrupo.map(venda => {
                     const isAReceber = venda.forma_pagamento === "a_receber" && !venda.recebido && !venda.cancelada;

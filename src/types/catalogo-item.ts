@@ -29,6 +29,10 @@ export interface ItemCatalogo {
   // Product-specific
   sku?: string | null;
   codigo_barras?: string | null;
+  // Category (from categorias_produtos, applies to produtos and pecas)
+  categoria_id?: string | null;
+  categoria_nome?: string | null;
+  categoria_cor?: string | null;
 }
 
 // Helper to convert Dispositivo to ItemCatalogo
@@ -83,5 +87,8 @@ export function produtoParaItemCatalogo(item: ItemEstoque): ItemCatalogo {
     created_at: item.created_at,
     sku: item.tipo === 'produto' ? (item as any).sku : undefined,
     codigo_barras: item.codigo_barras,
+    categoria_id: item.categoria_id || null,
+    categoria_nome: item.categoria_nome || null,
+    categoria_cor: item.categoria_cor || null,
   };
 }
