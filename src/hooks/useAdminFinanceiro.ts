@@ -75,20 +75,25 @@ export interface AdminFinanceiroData {
     snapshots: Array<{
       mes: string;
       data: string;
-      ativos: number;
-      novos: number;
-      cancelados: number;
-      crescimento_pct: number | null;
+      cadastros_acumulados: number;
+      novos_cadastros: number;
+      pagantes_ativos: number;
+      novos_pagantes: number;
+      crescimento_cadastros_pct: number | null;
+      crescimento_pagantes_pct: number | null;
     }>;
-    crescimento_medio_mensal_pct: number;
-    crescimento_ultimo_mes_pct: number | null;
-    projecoes: Array<{
-      meses: number;
-      label: string;
-      assinantes_projetados: number;
-      crescimento_acumulado_pct: number;
-    }>;
-    total_atual: number;
+    cadastros: {
+      total_atual: number;
+      crescimento_medio_mensal_pct: number;
+      crescimento_ultimo_mes_pct: number | null;
+      projecoes: Array<{ meses: number; label: string; projetado: number; crescimento_acumulado_pct: number }>;
+    };
+    pagantes: {
+      total_atual: number;
+      crescimento_medio_mensal_pct: number;
+      crescimento_ultimo_mes_pct: number | null;
+      projecoes: Array<{ meses: number; label: string; projetado: number; crescimento_acumulado_pct: number }>;
+    };
   } | null;
   last_update: string;
 }
