@@ -65,13 +65,17 @@ export const useRelatoriosVendas = () => {
         }
 
         const item = dispositivosMap.get(key)!;
-        const quantidade = venda.quantidade || 1;
         const custo = Number(venda.dispositivos.custo || 0);
         const receita = Number(venda.total || 0);
 
-        item.quantidadeVendida += quantidade;
+        // Parcelas do mesmo dispositivo não representam unidades extras;
+        // conta a quantidade apenas na 1ª parcela (ou quando não é parcelado).
+        const isPrimeiraParcela = venda.parcela_numero === null || venda.parcela_numero === undefined || venda.parcela_numero === 1;
+        if (isPrimeiraParcela) {
+          item.quantidadeVendida += venda.quantidade || 1;
+          item.custoTotal += custo * (venda.quantidade || 1);
+        }
         item.receitaTotal += receita;
-        item.custoTotal += custo * quantidade;
       });
 
       const dispositivos = Array.from(dispositivosMap.values()).map((item) => ({
@@ -149,13 +153,15 @@ export const useRelatoriosVendas = () => {
         }
 
         const item = produtosMap.get(produtoId)!;
-        const quantidade = venda.quantidade || 1;
         const custo = Number(venda.produtos.custo || 0);
         const receita = Number(venda.total || 0);
 
-        item.quantidadeVendida += quantidade;
+        const isPrimeiraParcela = venda.parcela_numero === null || venda.parcela_numero === undefined || venda.parcela_numero === 1;
+        if (isPrimeiraParcela) {
+          item.quantidadeVendida += venda.quantidade || 1;
+          item.custoTotal += custo * (venda.quantidade || 1);
+        }
         item.receitaTotal += receita;
-        item.custoTotal += custo * quantidade;
       });
 
       const produtos = Array.from(produtosMap.values()).map((item) => ({
