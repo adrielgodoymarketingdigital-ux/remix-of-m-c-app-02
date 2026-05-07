@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
 import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle } from "lucide-react";
+import { SecaoDesempenhoSistema } from "@/components/admin/SecaoDesempenhoSistema";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -272,6 +273,9 @@ export default function AdminFinanceiro() {
             }
           />
         </div>
+
+        {/* Desempenho do Sistema */}
+        <SecaoDesempenhoSistema />
 
         {/* Breakdown por plataforma */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
