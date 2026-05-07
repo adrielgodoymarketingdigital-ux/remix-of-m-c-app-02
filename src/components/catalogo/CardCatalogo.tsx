@@ -4,7 +4,8 @@ import { ItemCatalogo } from "@/types/catalogo-item";
 import { formatCurrency } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Battery, HardDrive, Shield, Smartphone, Pencil, Package } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { MessageCircle, Battery, HardDrive, Shield, Smartphone, Pencil, Package, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { ConfiguracaoCatalogo, CONFIG_PADRAO } from "@/types/catalogo";
 import { DialogEditarDispositivoCatalogo } from "./DialogEditarDispositivoCatalogo";
 
@@ -36,14 +37,16 @@ function formatarGarantia(tempoMeses: number): string {
   return tempoMeses === 1 ? "1 mês" : `${tempoMeses} meses`;
 }
 
-function ImageGallery({ 
-  fotos, 
+function ImageGallery({
+  fotos,
   nome,
   isProduct,
-}: { 
-  fotos: string[]; 
+  onImageClick,
+}: {
+  fotos: string[];
   nome: string;
   isProduct?: boolean;
+  onImageClick?: (index: number) => void;
 }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -86,7 +89,8 @@ function ImageGallery({
       <img
         src={fotos[0]}
         alt={nome}
-        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        onClick={() => onImageClick?.(0)}
+        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-zoom-in"
       />
     );
   }
@@ -100,7 +104,8 @@ function ImageGallery({
               <img
                 src={foto}
                 alt={`${nome} - Foto ${index + 1}`}
-                className="w-full h-full object-cover"
+                onClick={() => onImageClick?.(index)}
+                className="w-full h-full object-cover cursor-zoom-in"
               />
             </div>
           ))}
@@ -127,9 +132,95 @@ function ImageGallery({
   );
 }
 
-export function CardCatalogo({ 
-  item, 
-  whatsapp, 
+function ImageLightbox({
+  fotos,
+  nome,
+  initialIndex,
+  open,
+  onClose,
+}: {
+  fotos: string[];
+  nome: string;
+  initialIndex: number;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [current, setCurrent] = useState(initialIndex);
+
+  useEffect(() => {
+    setCurrent(initialIndex);
+  }, [initialIndex, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") setCurrent((i) => Math.max(0, i - 1));
+      if (e.key === "ArrowRight") setCurrent((i) => Math.min(fotos.length - 1, i + 1));
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open, fotos.length, onClose]);
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-[95vw] max-h-[95vh] w-fit h-fit p-0 bg-black/95 border-0 flex items-center justify-center overflow-hidden">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 z-50 text-white/80 hover:text-white bg-black/40 rounded-full p-1.5"
+          aria-label="Fechar"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {fotos.length > 1 && current > 0 && (
+          <button
+            onClick={() => setCurrent((i) => i - 1)}
+            className="absolute left-2 z-50 text-white/80 hover:text-white bg-black/40 rounded-full p-1.5"
+            aria-label="Anterior"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+        )}
+
+        {fotos.length > 1 && current < fotos.length - 1 && (
+          <button
+            onClick={() => setCurrent((i) => i + 1)}
+            className="absolute right-2 z-50 text-white/80 hover:text-white bg-black/40 rounded-full p-1.5"
+            aria-label="Próxima"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        )}
+
+        <img
+          src={fotos[current]}
+          alt={`${nome} - Foto ${current + 1}`}
+          className="max-w-[90vw] max-h-[90vh] object-contain select-none"
+        />
+
+        {fotos.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {fotos.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  i === current ? "bg-white" : "bg-white/40 hover:bg-white/60"
+                }`}
+                aria-label={`Foto ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function CardCatalogo({
+  item,
+  whatsapp,
   config = CONFIG_PADRAO,
   cardClasses = '',
   cores,
@@ -137,6 +228,14 @@ export function CardCatalogo({
   onAtualizarItem,
 }: CardCatalogoProps) {
   const [dialogEditarAberto, setDialogEditarAberto] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const handleImageClick = (index: number) => {
+    if (modoEdicao) return;
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
   
   const isDevice = item.tipo_item === 'dispositivo';
   const isProduct = item.tipo_item === 'produto' || item.tipo_item === 'peca';
@@ -208,10 +307,11 @@ export function CardCatalogo({
         style={cardStyle}
       >
         <div className="relative aspect-square bg-gradient-to-br from-muted to-muted/50 overflow-hidden flex-shrink-0">
-          <ImageGallery 
-            fotos={item.fotos} 
+          <ImageGallery
+            fotos={item.fotos}
             nome={item.nome}
             isProduct={isProduct}
+            onImageClick={handleImageClick}
           />
           
           <div className="absolute top-0.5 left-0.5 z-10 flex flex-col gap-0.5">
@@ -361,6 +461,14 @@ export function CardCatalogo({
           </div>
         </div>
       </div>
+
+      <ImageLightbox
+        fotos={item.fotos}
+        nome={item.nome}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
 
       {/* Dialog de edição - para todos os tipos */}
       {modoEdicao && (

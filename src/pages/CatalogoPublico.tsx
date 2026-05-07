@@ -101,6 +101,9 @@ export default function CatalogoPublico() {
         tipo: 'produto',
         codigo_barras: p.codigo_barras,
         sku: p.sku,
+        categoria_id: p.categoria_id || null,
+        categoria_nome: p.categoria_nome || null,
+        categoria_cor: p.categoria_cor || null,
       } as any));
 
       // Mapear peças para ItemCatalogo
@@ -113,6 +116,9 @@ export default function CatalogoPublico() {
         created_at: p.created_at,
         tipo: 'peca',
         codigo_barras: p.codigo_barras,
+        categoria_id: p.categoria_id || null,
+        categoria_nome: p.categoria_nome || null,
+        categoria_cor: p.categoria_cor || null,
       } as any));
 
       const todosItens = [...dispositivosItens, ...produtosItens, ...pecasItens];
