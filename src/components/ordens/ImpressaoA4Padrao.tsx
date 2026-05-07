@@ -388,6 +388,19 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
         )}
       </div>
 
+      {/* Observações Internas (quando marcado para imprimir) */}
+      {avariasData?.observacoes_internas && avariasData?.mostrar_obs_internas_impressao && (
+        <div className="impressao-block" style={{ marginTop: "4mm" }}>
+          <div className="impressao-block-header">
+            <FileText className="impressao-icon" />
+            <h2 className="impressao-block-title">Observações Internas</h2>
+          </div>
+          <div className="impressao-block-content">
+            <p style={{ whiteSpace: "pre-wrap" }}>{avariasData.observacoes_internas}</p>
+          </div>
+        </div>
+      )}
+
       {/* Termo de Garantia */}
       {layoutConfig.mostrar_termos_condicoes && (
         <div className="impressao-termo-garantia">

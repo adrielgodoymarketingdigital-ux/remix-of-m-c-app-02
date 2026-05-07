@@ -34,6 +34,7 @@ import { buscarCEP } from "@/lib/buscarCEP";
 import { aplicarMascaraCEP, aplicarMascaraCPF, aplicarMascaraCNPJ, removerMascara } from "@/lib/mascaras";
 import { Cliente } from "@/types/cliente";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { SenhaDesbloqueio } from "./SenhaDesbloqueio";
 import { ChecklistDispositivo } from "./ChecklistDispositivo";
@@ -95,6 +96,7 @@ interface FormData {
   // Serviço
   defeitoRelatado: string;
   observacoesInternas: string;
+  mostrarObsInternasImpressao: boolean;
   senhaDesbloqueio: SenhaDesbloqueioType;
   checklist: Checklist;
   avarias: AvariaVisual[];
@@ -177,6 +179,7 @@ export const DialogOrdemServico = ({
     fotosDispositivo: [],
     defeitoRelatado: "",
     observacoesInternas: "",
+    mostrarObsInternasImpressao: false,
     senhaDesbloqueio: { tipo: 'numero', valor: '', padrao: undefined },
     checklist: { entrada: {}, saida: {} },
     avarias: [],
@@ -356,6 +359,7 @@ export const DialogOrdemServico = ({
         fotosDispositivo: avariasData.fotos_dispositivo || [],
         defeitoRelatado: ordem.defeito_relatado,
         observacoesInternas: (avariasData as any)?.observacoes_internas || "",
+        mostrarObsInternasImpressao: (avariasData as any)?.mostrar_obs_internas_impressao ?? false,
         senhaDesbloqueio: decryptSenhaDesbloqueio(avariasData.senha_desbloqueio) || { tipo: 'numero', valor: '', padrao: [] },
         checklist: avariasData.checklist || { entrada: {}, saida: {} },
         avarias: avariasData.avarias_visuais || [],
@@ -423,6 +427,7 @@ export const DialogOrdemServico = ({
         fotosDispositivo: [],
         defeitoRelatado: "",
         observacoesInternas: "",
+        mostrarObsInternasImpressao: false,
         senhaDesbloqueio: { tipo: 'numero', valor: '', padrao: [] },
         checklist: { entrada: {}, saida: {} },
         avarias: [],
@@ -623,6 +628,7 @@ export const DialogOrdemServico = ({
         },
         fotos_dispositivo: formData.fotosDispositivo,
         observacoes_internas: formData.observacoesInternas || undefined,
+        mostrar_obs_internas_impressao: formData.mostrarObsInternasImpressao,
       };
 
       // Calcular total dos serviços + produtos + custos repassados - desconto
@@ -1428,7 +1434,20 @@ export const DialogOrdemServico = ({
                 />
               </div>
               <div>
-                <Label htmlFor="observacoesInternas">Observações Internas</Label>
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="observacoesInternas">Observações Internas</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {formData.mostrarObsInternasImpressao ? "Aparece na impressão" : "Não aparece na impressão"}
+                    </span>
+                    <Switch
+                      checked={formData.mostrarObsInternasImpressao}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, mostrarObsInternasImpressao: checked })
+                      }
+                    />
+                  </div>
+                </div>
                 <Textarea
                   id="observacoesInternas"
                   value={formData.observacoesInternas}
@@ -1436,11 +1455,8 @@ export const DialogOrdemServico = ({
                     setFormData({ ...formData, observacoesInternas: e.target.value })
                   }
                   rows={2}
-                  placeholder="Anotações internas sobre o aparelho (não aparece na impressão)"
+                  placeholder="Anotações internas sobre o aparelho"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Visível apenas internamente, não será impresso.
-                </p>
               </div>
               <div>
                 <Label htmlFor="tempoGarantia">Tempo de Garantia (dias)</Label>

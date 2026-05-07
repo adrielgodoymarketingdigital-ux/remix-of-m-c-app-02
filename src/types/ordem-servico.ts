@@ -75,6 +75,7 @@ export interface AvariasOS {
   fotos_dispositivo?: string[];
   dados_pagamento?: DadosPagamento;
   observacoes_internas?: string;
+  mostrar_obs_internas_impressao?: boolean;
 }
 
 export interface DadosPagamento {

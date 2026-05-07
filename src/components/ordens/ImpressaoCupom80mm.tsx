@@ -318,6 +318,14 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
         </div>
       )}
 
+      {/* Observações Internas (quando marcado para imprimir) */}
+      {avariasData?.observacoes_internas && avariasData?.mostrar_obs_internas_impressao && (
+        <div className="cupom-section cupom-border-bottom">
+          <div className="cupom-section-title">OBSERVAÇÕES INTERNAS</div>
+          <div style={{ whiteSpace: "pre-wrap" }}>{avariasData.observacoes_internas}</div>
+        </div>
+      )}
+
       {/* Termo de Garantia */}
       {c.mostrar_termos_condicoes && (
         <div className="cupom-section cupom-termo">
