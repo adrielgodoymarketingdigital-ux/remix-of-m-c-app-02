@@ -12,6 +12,92 @@ const log = (step: string, details?: unknown) => {
   console.log(`[ADMIN-FINANCEIRO] ${step}${d}`);
 };
 
+const MES_NOMES_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+function buildSnapshots(
+  todasAss: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null }>,
+  todosProf: Array<{ user_id: string; created_at: string | null }>,
+  agora: Date,
+  historicoMeses: number
+) {
+  const primeirasPorUser = new Map<string, Date>();
+  for (const a of todasAss) {
+    if (!a.data_inicio) continue;
+    const di = new Date(a.data_inicio);
+    const atual = primeirasPorUser.get(a.user_id);
+    if (!atual || di < atual) primeirasPorUser.set(a.user_id, di);
+  }
+
+  const snapshots = [];
+  for (let i = historicoMeses - 1; i >= 0; i--) {
+    const refDate = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    const inicioMes = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+    const fimMes = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1);
+    const mesStr = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
+    const mesLabel = `${MES_NOMES_PT[refDate.getMonth()]}/${String(refDate.getFullYear()).slice(2)}`;
+
+    const cadastros_acumulados = todosProf.filter((p) => p.created_at && new Date(p.created_at) < fimMes).length;
+    const novos_cadastros = todosProf.filter((p) => {
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      return d >= inicioMes && d < fimMes;
+    }).length;
+
+    const pagantes_ativos = todasAss.filter((a) => {
+      if (!a.data_inicio) return false;
+      if (new Date(a.data_inicio) >= fimMes) return false;
+      if (a.cancelado_em && new Date(a.cancelado_em) < fimMes) return false;
+      if (a.data_fim && new Date(a.data_fim) < fimMes) return false;
+      return true;
+    }).length;
+
+    const novos_pagantes = Array.from(primeirasPorUser.values()).filter((di) => di >= inicioMes && di < fimMes).length;
+
+    snapshots.push({
+      mes: mesLabel, data: mesStr,
+      cadastros_acumulados, novos_cadastros,
+      pagantes_ativos, novos_pagantes,
+      crescimento_cadastros_pct: null as number | null,
+      crescimento_pagantes_pct: null as number | null,
+    });
+  }
+
+  for (let i = 1; i < snapshots.length; i++) {
+    const ac = snapshots[i - 1].cadastros_acumulados;
+    snapshots[i].crescimento_cadastros_pct = ac > 0
+      ? ((snapshots[i].cadastros_acumulados - ac) / ac) * 100
+      : snapshots[i].cadastros_acumulados > 0 ? 100 : 0;
+
+    const ap = snapshots[i - 1].pagantes_ativos;
+    snapshots[i].crescimento_pagantes_pct = ap > 0
+      ? ((snapshots[i].pagantes_ativos - ap) / ap) * 100
+      : snapshots[i].pagantes_ativos > 0 ? 100 : 0;
+  }
+
+  return snapshots;
+}
+
+function calcMedia(snapshots: ReturnType<typeof buildSnapshots>, field: "crescimento_cadastros_pct" | "crescimento_pagantes_pct") {
+  const vals: number[] = [];
+  for (let i = 1; i < snapshots.length; i++) {
+    if (snapshots[i - 1].cadastros_acumulados > 0 || snapshots[i - 1].pagantes_ativos > 0) {
+      const v = snapshots[i][field];
+      if (v !== null) vals.push(v);
+    }
+  }
+  return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+}
+
+function calcProj(total: number, taxaPct: number) {
+  const t = taxaPct / 100;
+  return [1, 3, 6, 12].map((meses) => ({
+    meses,
+    label: meses === 1 ? "1 mês" : `${meses} meses`,
+    projetado: Math.round(total * Math.pow(1 + t, meses)),
+    crescimento_acumulado_pct: (Math.pow(1 + t, meses) - 1) * 100,
+  }));
+}
+
 // Preços mensalizados em reais (para cálculo de MRR)
 const PRECOS_MES: Record<string, number> = {
   basico_mensal: 19.90,
@@ -125,143 +211,31 @@ serve(async (req) => {
     const { data: todasAssinaturas } = await supabaseAdmin
       .from("assinaturas")
       .select("user_id, data_inicio, data_fim, cancelado_em")
-      .in("plano_tipo", Object.keys(PRECOS_MES));
+      .in("plano_tipo", Object.keys(PRECOS_MES)) as { data: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null }> };
 
     const { data: todosProfiles } = await supabaseAdmin
       .from("profiles")
-      .select("user_id, created_at");
+      .select("user_id, created_at") as { data: Array<{ user_id: string; created_at: string | null }> };
 
-    const historicoMeses = 12;
-    const mesNomes = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    const snapshots = buildSnapshots(todasAssinaturas ?? [], todosProfiles ?? [], agora, 12);
+    const ultimoSnap = snapshots[snapshots.length - 1];
 
-    type MesSnapshot = {
-      mes: string;
-      data: string;
-      cadastros_acumulados: number;
-      novos_cadastros: number;
-      pagantes_ativos: number;
-      novos_pagantes: number;
-      crescimento_cadastros_pct: number | null;
-      crescimento_pagantes_pct: number | null;
-    };
-
-    const todas = todasAssinaturas ?? [];
-    const profiles = todosProfiles ?? [];
-
-    const snapshots: MesSnapshot[] = [];
-
-    for (let i = historicoMeses - 1; i >= 0; i--) {
-      const refDate = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
-      const inicioMes = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
-      const fimMes = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1); // exclusivo
-      const mesStr = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
-      const mesLabel = `${mesNomes[refDate.getMonth()]}/${String(refDate.getFullYear()).slice(2)}`;
-
-      // Cadastros acumulados até o fim deste mês
-      const cadastros_acumulados = profiles.filter((p) => {
-        if (!p.created_at) return false;
-        return new Date(p.created_at) < fimMes;
-      }).length;
-
-      // Novos cadastros neste mês
-      const novos_cadastros = profiles.filter((p) => {
-        if (!p.created_at) return false;
-        const d = new Date(p.created_at);
-        return d >= inicioMes && d < fimMes;
-      }).length;
-
-      // Pagantes ativos no fim do mês:
-      //   data_inicio < fimMes (já começou)
-      //   data_fim null OU data_fim >= fimMes (ainda vigente)
-      //   cancelado_em null OU cancelado_em >= fimMes (não cancelado ainda)
-      const pagantes_ativos = todas.filter((a) => {
-        if (!a.data_inicio) return false;
-        if (new Date(a.data_inicio) >= fimMes) return false;
-        if (a.cancelado_em && new Date(a.cancelado_em) < fimMes) return false;
-        if (a.data_fim && new Date(a.data_fim) < fimMes) return false;
-        return true;
-      }).length;
-
-      // Novos pagantes: primeira assinatura do user neste mês
-      const novos_pagantes = (() => {
-        const primeirasPorUser = new Map<string, Date>();
-        for (const a of todas) {
-          if (!a.data_inicio) continue;
-          const di = new Date(a.data_inicio);
-          const atual = primeirasPorUser.get(a.user_id);
-          if (!atual || di < atual) primeirasPorUser.set(a.user_id, di);
-        }
-        return Array.from(primeirasPorUser.values()).filter((di) => di >= inicioMes && di < fimMes).length;
-      })();
-
-      snapshots.push({
-        mes: mesLabel,
-        data: mesStr,
-        cadastros_acumulados,
-        novos_cadastros,
-        pagantes_ativos,
-        novos_pagantes,
-        crescimento_cadastros_pct: null,
-        crescimento_pagantes_pct: null,
-      });
-    }
-
-    // Calcular crescimento % mês a mês
-    for (let i = 1; i < snapshots.length; i++) {
-      const antCad = snapshots[i - 1].cadastros_acumulados;
-      const atualCad = snapshots[i].cadastros_acumulados;
-      snapshots[i].crescimento_cadastros_pct = antCad > 0
-        ? ((atualCad - antCad) / antCad) * 100
-        : atualCad > 0 ? 100 : 0;
-
-      const antPag = snapshots[i - 1].pagantes_ativos;
-      const atualPag = snapshots[i].pagantes_ativos;
-      snapshots[i].crescimento_pagantes_pct = antPag > 0
-        ? ((atualPag - antPag) / antPag) * 100
-        : atualPag > 0 ? 100 : 0;
-    }
-
-    // Médias excluindo meses zerados
-    function mediaGrowth(field: "crescimento_cadastros_pct" | "crescimento_pagantes_pct") {
-      const vals: number[] = [];
-      for (let i = 1; i < snapshots.length; i++) {
-        if (snapshots[i - 1].cadastros_acumulados > 0 || snapshots[i - 1].pagantes_ativos > 0) {
-          const v = snapshots[i][field];
-          if (v !== null) vals.push(v);
-        }
-      }
-      return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-    }
-
-    const crescimentoMedioCadastros = mediaGrowth("crescimento_cadastros_pct");
-    const crescimentoMedioPagantes = mediaGrowth("crescimento_pagantes_pct");
-    const ultimo = snapshots[snapshots.length - 1];
-    const totalCadastros = ultimo?.cadastros_acumulados ?? 0;
-    const totalPagantes = ultimo?.pagantes_ativos ?? 0;
-
-    function projetar(total: number, taxaMensalPct: number) {
-      const t = taxaMensalPct / 100;
-      return [1, 3, 6, 12].map((meses) => ({
-        meses,
-        label: meses === 1 ? "1 mês" : `${meses} meses`,
-        projetado: Math.round(total * Math.pow(1 + t, meses)),
-        crescimento_acumulado_pct: (Math.pow(1 + t, meses) - 1) * 100,
-      }));
-    }
+    const mediaCadastros = calcMedia(snapshots, "crescimento_cadastros_pct");
+    const mediaPagantes = calcMedia(snapshots, "crescimento_pagantes_pct");
 
     const historico_crescimento = {
       snapshots,
       cadastros: {
-        total_atual: totalCadastros,
-        crescimento_medio_mensal_pct: crescimentoMedioCadastros,
-        crescimento_ultimo_mes_pct: ultimo?.crescimento_cadastros_pct ?? null,
-        projecoes: projetar(totalCadastros, crescimentoMedioCadastros),
+        total_atual: ultimoSnap?.cadastros_acumulados ?? 0,
+        crescimento_medio_mensal_pct: mediaCadastros,
+        crescimento_ultimo_mes_pct: ultimoSnap?.crescimento_cadastros_pct ?? null,
+        projecoes: calcProj(ultimoSnap?.cadastros_acumulados ?? 0, mediaCadastros),
       },
       pagantes: {
-        total_atual: totalPagantes,
-        crescimento_medio_mensal_pct: crescimentoMedioPagantes,
-        crescimento_ultimo_mes_pct: ultimo?.crescimento_pagantes_pct ?? null,
-        projecoes: projetar(totalPagantes, crescimentoMedioPagantes),
+        total_atual: ultimoSnap?.pagantes_ativos ?? 0,
+        crescimento_medio_mensal_pct: mediaPagantes,
+        crescimento_ultimo_mes_pct: ultimoSnap?.crescimento_pagantes_pct ?? null,
+        projecoes: calcProj(ultimoSnap?.pagantes_ativos ?? 0, mediaPagantes),
       },
     };
 
