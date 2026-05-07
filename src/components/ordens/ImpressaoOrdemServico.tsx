@@ -357,22 +357,22 @@ export const ImpressaoOrdemServico = ({
 
   // Trigger print
   const handlePrint = () => {
-    // On ALL Android devices, use the new-window approach to avoid hang
-    if (isAndroid) {
+    // PWA (standalone) and Android: use new-window approach.
+    // Android avoids the "Preparing preview..." hang; iOS standalone doesn't
+    // support window.print() at all, so a new window is the only option.
+    if (isAndroid || isStandalone) {
       handlePrintAndroid();
       return;
     }
 
-    // On non-standalone contexts, auto-close after print
-    if (!isStandalone) {
-      const handleAfterPrint = () => {
-        window.removeEventListener('afterprint', handleAfterPrint);
-        setTimeout(() => {
-          onFecharImpressao();
-        }, 300);
-      };
-      window.addEventListener('afterprint', handleAfterPrint);
-    }
+    // Browser (non-standalone): auto-close after print
+    const handleAfterPrint = () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+      setTimeout(() => {
+        onFecharImpressao();
+      }, 300);
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
 
     setTimeout(() => {
       window.print();
