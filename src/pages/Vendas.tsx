@@ -21,7 +21,7 @@ import { TabelaVendas } from "@/components/vendas/TabelaVendas";
 import { DashboardAReceber } from "@/components/vendas/DashboardAReceber";
 import { DashboardResumoTipos } from "@/components/vendas/DashboardResumoTipos";
 import { useVendas } from "@/hooks/useVendas";
-import { Filter, Calendar, Layout, Settings } from "lucide-react";
+import { Filter, Calendar, Layout, Settings, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DialogConfiguracaoLayoutVendas } from "@/components/vendas/DialogConfiguracaoLayoutVendas";
 
@@ -50,6 +50,7 @@ export default function Vendas() {
   const [tipoFiltroData, setTipoFiltroData] = useState<"mes" | "periodo">("mes");
   const [mesSelecionado, setMesSelecionado] = useState<string>("");
   const [anoSelecionado, setAnoSelecionado] = useState<string>(new Date().getFullYear().toString());
+  const [busca, setBusca] = useState<string>("");
 
   const anos = Array.from({ length: 2035 - 2020 + 1 }, (_, i) => (2035 - i).toString());
 
@@ -75,16 +76,33 @@ export default function Vendas() {
     setPagamentoFiltro("todos");
     setMesSelecionado("");
     setAnoSelecionado(new Date().getFullYear().toString());
+    setBusca("");
     carregarVendas();
   };
 
   const vendasFiltradas = vendas.filter((venda) => {
     const tipoMatch = tipoFiltro === "todos" || venda.tipo === tipoFiltro;
     const pagamentoMatch =
-      pagamentoFiltro === "todos" || 
+      pagamentoFiltro === "todos" ||
       (venda.forma_pagamento && venda.forma_pagamento === pagamentoFiltro) ||
       (!venda.forma_pagamento && pagamentoFiltro === "todos");
-    return tipoMatch && pagamentoMatch;
+
+    const term = busca.toLowerCase().trim();
+    const buscaMatch = !term || [
+      venda.produtos?.nome,
+      venda.produtos?.sku,
+      venda.pecas?.nome,
+      venda.dispositivos?.modelo,
+      venda.dispositivos?.marca,
+      venda.dispositivos?.marca && venda.dispositivos?.modelo
+        ? `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`
+        : undefined,
+      venda.ordens_servico?.numero_os,
+      venda.ordens_servico?.servicos?.nome,
+      venda.clientes?.nome,
+    ].some((campo) => campo?.toLowerCase().includes(term));
+
+    return tipoMatch && pagamentoMatch && buscaMatch;
   });
 
   return (
@@ -327,10 +345,21 @@ export default function Vendas() {
           {/* Tabela de Vendas */}
           <Card>
             <CardHeader className="pb-3 sm:pb-6">
-              <CardTitle className="text-base sm:text-lg">Lista de Vendas</CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <CardTitle className="text-base sm:text-lg">Lista de Vendas</CardTitle>
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, modelo, código..."
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="p-0 sm:p-6 sm:pt-0">
-              <TabelaVendas 
+              <TabelaVendas
                 vendas={vendasFiltradas} 
                 loading={loading} 
                 onCancelarVenda={cancelarVenda}
