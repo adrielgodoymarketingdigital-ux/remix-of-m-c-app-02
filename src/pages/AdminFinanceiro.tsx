@@ -275,7 +275,7 @@ export default function AdminFinanceiro() {
         </div>
 
         {/* Desempenho do Sistema */}
-        <SecaoDesempenhoSistema />
+        <SecaoDesempenhoSistema data={data?.historico_crescimento} isLoading={isLoading} />
 
         {/* Breakdown por plataforma */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

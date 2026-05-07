@@ -71,6 +71,25 @@ export interface AdminFinanceiroData {
     pix_fixa: number;
   };
   pagarme_error: string | null;
+  historico_crescimento: {
+    snapshots: Array<{
+      mes: string;
+      data: string;
+      ativos: number;
+      novos: number;
+      cancelados: number;
+      crescimento_pct: number | null;
+    }>;
+    crescimento_medio_mensal_pct: number;
+    crescimento_ultimo_mes_pct: number | null;
+    projecoes: Array<{
+      meses: number;
+      label: string;
+      assinantes_projetados: number;
+      crescimento_acumulado_pct: number;
+    }>;
+    total_atual: number;
+  } | null;
   last_update: string;
 }
 

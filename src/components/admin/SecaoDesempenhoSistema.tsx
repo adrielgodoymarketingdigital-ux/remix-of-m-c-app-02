@@ -11,18 +11,20 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
-  Area,
   AreaChart,
+  Area,
 } from "recharts";
 import { TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
-import { useDesempenhoSistema } from "@/hooks/useDesempenhoSistema";
+import type { AdminFinanceiroData } from "@/hooks/useAdminFinanceiro";
+
+type HistoricoCrescimento = NonNullable<AdminFinanceiroData["historico_crescimento"]>;
+type Snapshot = HistoricoCrescimento["snapshots"][number];
 
 const PERIODOS = [
-  { label: "Mensal", value: "mensal", meses: 12 },
-  { label: "Trimestral", value: "trimestral", meses: 12 },
-  { label: "Semestral", value: "semestral", meses: 24 },
-  { label: "Anual", value: "anual", meses: 36 },
+  { label: "Mensal", value: "mensal" },
+  { label: "Trimestral", value: "trimestral" },
+  { label: "Semestral", value: "semestral" },
+  { label: "Anual", value: "anual" },
 ] as const;
 
 type Periodo = (typeof PERIODOS)[number]["value"];
@@ -62,35 +64,34 @@ function BadgeCrescimento({ pct }: { pct: number | null }) {
   );
 }
 
-function agruparTrimestral(snapshots: ReturnType<typeof useDesempenhoSistema>["data"] extends infer T ? T extends { snapshots: infer S } ? S : never : never) {
-  // Agrupa de 3 em 3 meses, pegando o último valor do grupo
-  const grupos: typeof snapshots = [];
+function agruparTrimestral(snapshots: Snapshot[]): Snapshot[] {
+  const grupos: Snapshot[] = [];
   for (let i = 2; i < snapshots.length; i += 3) {
     const slice = snapshots.slice(Math.max(0, i - 2), i + 1);
     const ultimo = slice[slice.length - 1];
     const primeiro = slice[0];
     const crescimento_pct =
       primeiro.ativos > 0 ? ((ultimo.ativos - primeiro.ativos) / primeiro.ativos) * 100 : null;
-    grupos.push({ ...ultimo, mes: `T${Math.floor(i / 3) + 1} ${ultimo.mes.slice(-2)}`, crescimento_pct });
+    grupos.push({ ...ultimo, mes: `T${Math.floor(grupos.length) + 1} ${ultimo.mes.slice(-2)}`, crescimento_pct });
   }
   return grupos;
 }
 
-function agruparSemestral(snapshots: ReturnType<typeof useDesempenhoSistema>["data"] extends infer T ? T extends { snapshots: infer S } ? S : never : never) {
-  const grupos: typeof snapshots = [];
+function agruparSemestral(snapshots: Snapshot[]): Snapshot[] {
+  const grupos: Snapshot[] = [];
   for (let i = 5; i < snapshots.length; i += 6) {
     const slice = snapshots.slice(Math.max(0, i - 5), i + 1);
     const ultimo = slice[slice.length - 1];
     const primeiro = slice[0];
     const crescimento_pct =
       primeiro.ativos > 0 ? ((ultimo.ativos - primeiro.ativos) / primeiro.ativos) * 100 : null;
-    grupos.push({ ...ultimo, mes: `S${Math.floor(i / 6) + 1}/${ultimo.mes.slice(-2)}`, crescimento_pct });
+    grupos.push({ ...ultimo, mes: `S${grupos.length + 1}/${ultimo.mes.slice(-2)}`, crescimento_pct });
   }
   return grupos;
 }
 
-function agruparAnual(snapshots: ReturnType<typeof useDesempenhoSistema>["data"] extends infer T ? T extends { snapshots: infer S } ? S : never : never) {
-  const porAno: Record<string, typeof snapshots> = {};
+function agruparAnual(snapshots: Snapshot[]): Snapshot[] {
+  const porAno: Record<string, Snapshot[]> = {};
   for (const s of snapshots) {
     const ano = s.data.slice(0, 4);
     if (!porAno[ano]) porAno[ano] = [];
@@ -105,11 +106,13 @@ function agruparAnual(snapshots: ReturnType<typeof useDesempenhoSistema>["data"]
   });
 }
 
-export function SecaoDesempenhoSistema() {
-  const [periodo, setPeriodo] = useState<Periodo>("mensal");
-  const periodoConfig = PERIODOS.find((p) => p.value === periodo)!;
+interface Props {
+  data: HistoricoCrescimento | null | undefined;
+  isLoading: boolean;
+}
 
-  const { data, isLoading } = useDesempenhoSistema(periodoConfig.meses);
+export function SecaoDesempenhoSistema({ data, isLoading }: Props) {
+  const [periodo, setPeriodo] = useState<Periodo>("mensal");
 
   const chartData = (() => {
     if (!data) return [];
@@ -119,7 +122,6 @@ export function SecaoDesempenhoSistema() {
     return agruparAnual(data.snapshots);
   })();
 
-  // Dados do gráfico de projeção: meses históricos + projeção
   const projecaoChart = (() => {
     if (!data) return [];
     const historico = data.snapshots.slice(-6).map((s) => ({
@@ -129,8 +131,7 @@ export function SecaoDesempenhoSistema() {
     }));
     const ultimo = historico[historico.length - 1];
     const taxaMensal = data.crescimento_medio_mensal_pct / 100;
-    const projecaoMeses = [1, 3, 6, 12];
-    const proj = projecaoMeses.map((m) => ({
+    const proj = [1, 3, 6, 12].map((m) => ({
       mes: `+${m}m`,
       ativos: undefined as number | undefined,
       projetado: Math.round((ultimo?.ativos ?? 0) * Math.pow(1 + taxaMensal, m)),
@@ -165,7 +166,7 @@ export function SecaoDesempenhoSistema() {
           </ToggleGroup>
         </div>
 
-        {/* KPIs de crescimento */}
+        {/* KPIs */}
         {isLoading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
@@ -178,42 +179,34 @@ export function SecaoDesempenhoSistema() {
             </div>
             <div className="bg-muted/30 rounded-lg p-3 space-y-1">
               <p className="text-xs text-muted-foreground">Crescimento médio/mês</p>
-              <div className="flex items-center gap-2">
-                <BadgeCrescimento pct={data.crescimento_medio_mensal_pct} />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {fmt(data.crescimento_medio_mensal_pct)}% ao mês (média)
-              </p>
+              <BadgeCrescimento pct={data.crescimento_medio_mensal_pct} />
+              <p className="text-xs text-muted-foreground">{fmt(data.crescimento_medio_mensal_pct)}% ao mês (média)</p>
             </div>
             <div className="bg-muted/30 rounded-lg p-3 space-y-1">
               <p className="text-xs text-muted-foreground">Crescimento último mês</p>
-              <div className="flex items-center gap-2">
-                <BadgeCrescimento pct={data.crescimento_ultimo_mes_pct} />
-              </div>
+              <BadgeCrescimento pct={data.crescimento_ultimo_mes_pct} />
               {data.crescimento_ultimo_mes_pct !== null && (
                 <p className="text-xs text-muted-foreground">
-                  {fmt(data.crescimento_ultimo_mes_pct)}% em relação ao mês anterior
+                  {fmt(data.crescimento_ultimo_mes_pct)}% vs mês anterior
                 </p>
               )}
             </div>
             <div className="bg-muted/30 rounded-lg p-3 space-y-1">
               <p className="text-xs text-muted-foreground">Tendência</p>
-              <div>
-                {sinalCrescimento(data.crescimento_medio_mensal_pct) === "up" ? (
-                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-0 gap-1">
-                    <TrendingUp className="h-3 w-3" /> Crescendo
-                  </Badge>
-                ) : sinalCrescimento(data.crescimento_medio_mensal_pct) === "down" ? (
-                  <Badge className="bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border-0 gap-1">
-                    <TrendingDown className="h-3 w-3" /> Declinando
-                  </Badge>
-                ) : (
-                  <Badge className="bg-muted text-muted-foreground border-0 gap-1">
-                    <Minus className="h-3 w-3" /> Estável
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">baseada nos últimos {periodoConfig.meses} meses</p>
+              {sinalCrescimento(data.crescimento_medio_mensal_pct) === "up" ? (
+                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-0 gap-1">
+                  <TrendingUp className="h-3 w-3" /> Crescendo
+                </Badge>
+              ) : sinalCrescimento(data.crescimento_medio_mensal_pct) === "down" ? (
+                <Badge className="bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border-0 gap-1">
+                  <TrendingDown className="h-3 w-3" /> Declinando
+                </Badge>
+              ) : (
+                <Badge className="bg-muted text-muted-foreground border-0 gap-1">
+                  <Minus className="h-3 w-3" /> Estável
+                </Badge>
+              )}
+              <p className="text-xs text-muted-foreground">baseada nos últimos 12 meses</p>
             </div>
           </div>
         ) : null}
@@ -239,15 +232,17 @@ export function SecaoDesempenhoSistema() {
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
-                      const d = payload[0].payload;
+                      const d = payload[0].payload as Snapshot;
                       return (
                         <div className="bg-background border rounded-lg px-3 py-2 text-xs shadow-md space-y-1">
                           <p className="font-semibold">{label}</p>
                           <p>Ativos: <strong>{d.ativos}</strong></p>
-                          {d.novos !== undefined && <p>Novos: <strong className="text-emerald-600">+{d.novos}</strong></p>}
-                          {d.cancelados !== undefined && <p>Cancelados: <strong className="text-red-500">-{d.cancelados}</strong></p>}
-                          {d.crescimento_pct !== null && d.crescimento_pct !== undefined && (
-                            <p>Crescimento: <strong className={d.crescimento_pct >= 0 ? "text-emerald-600" : "text-red-500"}>{d.crescimento_pct >= 0 ? "+" : ""}{fmt(d.crescimento_pct)}%</strong></p>
+                          <p>Novos: <strong className="text-emerald-600">+{d.novos}</strong></p>
+                          <p>Cancelados: <strong className="text-red-500">-{d.cancelados}</strong></p>
+                          {d.crescimento_pct !== null && (
+                            <p>Crescimento: <strong className={d.crescimento_pct >= 0 ? "text-emerald-600" : "text-red-500"}>
+                              {d.crescimento_pct >= 0 ? "+" : ""}{fmt(d.crescimento_pct)}%
+                            </strong></p>
                           )}
                         </div>
                       );
@@ -268,10 +263,10 @@ export function SecaoDesempenhoSistema() {
           )}
         </div>
 
-        {/* Projeções de tendência */}
+        {/* Projeções */}
         <div>
           <p className="text-sm font-medium mb-3 text-muted-foreground">
-            Projeção de tendência (mantendo volume atual de {data ? fmt(data.crescimento_medio_mensal_pct) : "—"}% ao mês)
+            Projeção mantendo {data ? fmt(data.crescimento_medio_mensal_pct) : "—"}% de crescimento ao mês
           </p>
           {isLoading ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -280,10 +275,7 @@ export function SecaoDesempenhoSistema() {
           ) : data ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {data.projecoes.map((p) => (
-                <div
-                  key={p.meses}
-                  className="rounded-lg border bg-muted/20 p-3 space-y-1 hover:bg-muted/40 transition-colors"
-                >
+                <div key={p.meses} className="rounded-lg border bg-muted/20 p-3 space-y-1 hover:bg-muted/40 transition-colors">
                   <p className="text-xs text-muted-foreground font-medium">Em {p.label}</p>
                   <p className="text-xl font-bold">{p.assinantes_projetados}</p>
                   <p className="text-xs text-muted-foreground">assinantes projetados</p>
@@ -297,9 +289,7 @@ export function SecaoDesempenhoSistema() {
 
         {/* Gráfico histórico + projeção */}
         <div>
-          <p className="text-sm font-medium mb-2 text-muted-foreground">
-            Histórico recente + projeção futura
-          </p>
+          <p className="text-sm font-medium mb-2 text-muted-foreground">Histórico recente + projeção futura</p>
           {isLoading ? (
             <Skeleton className="h-48 w-full" />
           ) : (
@@ -316,35 +306,16 @@ export function SecaoDesempenhoSistema() {
                         <div className="bg-background border rounded-lg px-3 py-2 text-xs shadow-md space-y-1">
                           <p className="font-semibold">{label}</p>
                           {payload.map((p) => (
-                            <p key={p.dataKey}>
-                              {p.dataKey === "ativos" ? "Histórico" : "Projeção"}:{" "}
-                              <strong>{p.value}</strong>
+                            <p key={String(p.dataKey)}>
+                              {p.dataKey === "ativos" ? "Histórico" : "Projeção"}: <strong>{p.value}</strong>
                             </p>
                           ))}
                         </div>
                       );
                     }}
                   />
-                  <ReferenceLine x="+1m" stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" label={{ value: "Hoje", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <Line
-                    type="monotone"
-                    dataKey="ativos"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    connectNulls={false}
-                    name="Histórico"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="projetado"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    strokeDasharray="6 3"
-                    dot={{ r: 4, fill: "#10b981" }}
-                    connectNulls={false}
-                    name="Projeção"
-                  />
+                  <Line type="monotone" dataKey="ativos" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} name="Histórico" />
+                  <Line type="monotone" dataKey="projetado" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" dot={{ r: 4, fill: "#10b981" }} connectNulls={false} name="Projeção" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
