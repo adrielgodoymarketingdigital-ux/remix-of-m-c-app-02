@@ -114,9 +114,10 @@ export function useAdminFinanceiro() {
       if ((data as any)?.error) throw new Error((data as any).error);
       return data as AdminFinanceiroData;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     refetchOnMount: true,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchInterval: 60 * 1000, // atualiza a cada 1 minuto em background
     retry: 2,
   });
 }

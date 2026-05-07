@@ -266,9 +266,9 @@ serve(async (req) => {
       .in("plano_tipo", Object.keys(PRECOS_MES))
       .in("status", ["active", "past_due"]) as { data: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null; status: string }> };
 
-    const { data: todosProfiles } = await supabaseAdmin
-      .from("profiles")
-      .select("user_id, created_at") as { data: Array<{ user_id: string; created_at: string | null }> };
+    // Usar auth.users para contar cadastros reais (profiles pode não ser criado por falha de trigger)
+    const { data: todosProfiles } = await supabaseAdmin.auth.admin.listUsers({ perPage: 10000 });
+    const todosUsers = (todosProfiles?.users ?? []).map((u) => ({ user_id: u.id, created_at: u.created_at }));
 
     // Total atual real: status active E dentro do prazo (data_fim no futuro ou nula)
     const totalPagantesAgora = (assinaturasAtivas ?? []).filter((a) =>
@@ -276,7 +276,7 @@ serve(async (req) => {
     ).length;
 
     const mesAtualStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
-    const snapshots = buildSnapshots(todasAssinaturas ?? [], todosProfiles ?? [], agora, 12);
+    const snapshots = buildSnapshots(todasAssinaturas ?? [], todosUsers, agora, 12);
     const ultimoSnap = snapshots[snapshots.length - 1];
 
     const mediaNovoCadastros = calcMediaNovos(snapshots, "novos_cadastros", mesAtualStr);
