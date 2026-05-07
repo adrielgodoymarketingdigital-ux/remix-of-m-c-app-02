@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Minus, BarChart3, Users, CreditCard } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3, Users, CreditCard, Info } from "lucide-react";
 import type { AdminFinanceiroData } from "@/hooks/useAdminFinanceiro";
 
 type HistoricoCrescimento = NonNullable<AdminFinanceiroData["historico_crescimento"]>;
@@ -53,55 +53,81 @@ function TendenciaBadge({ pct }: { pct: number }) {
   return <Badge className="bg-muted text-muted-foreground border-0 gap-1"><Minus className="h-3 w-3" /> Estável</Badge>;
 }
 
-function KpiGrid({ metrica, isLoading }: { metrica: MetricaBloco | undefined; isLoading: boolean }) {
+function KpiGrid({ metrica, isLoading, tipo }: { metrica: MetricaBloco | undefined; isLoading: boolean; tipo: "cadastros" | "pagantes" }) {
   if (isLoading) return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
     </div>
   );
   if (!metrica) return null;
+  const labelTotal = tipo === "cadastros" ? "usuários cadastrados no total" : "assinantes com plano pago ativo agora";
+  const labelMedio = tipo === "cadastros"
+    ? "Quantos % o total de cadastros cresceu em média a cada mês nos últimos 12 meses."
+    : "Quantos % o total de pagantes cresceu em média a cada mês nos últimos 12 meses.";
+  const labelUltimo = tipo === "cadastros"
+    ? `O total de cadastros no mês passado comparado ao mês anterior. Ex: se tinha 100 e chegou a 120, cresceu 20%.`
+    : `O total de pagantes ativos no mês passado comparado ao mês anterior.`;
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <div className="bg-muted/30 rounded-lg p-3 space-y-1">
         <p className="text-xs text-muted-foreground">Total atual</p>
         <p className="text-2xl font-bold">{metrica.total_atual.toLocaleString("pt-BR")}</p>
+        <p className="text-[10px] text-muted-foreground">{labelTotal}</p>
       </div>
       <div className="bg-muted/30 rounded-lg p-3 space-y-1">
         <p className="text-xs text-muted-foreground">Crescimento médio/mês</p>
         <BadgeCrescimento pct={metrica.crescimento_medio_mensal_pct} />
-        <p className="text-xs text-muted-foreground">média dos últimos 12 meses</p>
+        <p className="text-[10px] text-muted-foreground">{labelMedio}</p>
       </div>
       <div className="bg-muted/30 rounded-lg p-3 space-y-1">
         <p className="text-xs text-muted-foreground">Crescimento último mês</p>
         <BadgeCrescimento pct={metrica.crescimento_ultimo_mes_pct} />
-        <p className="text-xs text-muted-foreground">vs mês anterior</p>
+        <p className="text-[10px] text-muted-foreground">{labelUltimo}</p>
       </div>
       <div className="bg-muted/30 rounded-lg p-3 space-y-1">
-        <p className="text-xs text-muted-foreground">Tendência</p>
+        <p className="text-xs text-muted-foreground">Tendência geral</p>
         <TendenciaBadge pct={metrica.crescimento_medio_mensal_pct} />
-        <p className="text-xs text-muted-foreground">baseada na média mensal</p>
+        <p className="text-[10px] text-muted-foreground">
+          {metrica.crescimento_medio_mensal_pct > 0.5
+            ? "O sistema está crescendo de forma consistente."
+            : metrica.crescimento_medio_mensal_pct < -0.5
+            ? "O sistema está perdendo usuários mês a mês."
+            : "O volume está estável, sem crescimento ou queda expressivos."}
+        </p>
       </div>
     </div>
   );
 }
 
-function ProjecoesGrid({ metrica, isLoading }: { metrica: MetricaBloco | undefined; isLoading: boolean }) {
+function ProjecoesGrid({ metrica, isLoading, tipo }: { metrica: MetricaBloco | undefined; isLoading: boolean; tipo: "cadastros" | "pagantes" }) {
   if (isLoading) return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
     </div>
   );
   if (!metrica) return null;
+  const labelTipo = tipo === "cadastros" ? "cadastros" : "pagantes";
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {metrica.projecoes.map((p) => (
-        <div key={p.meses} className="rounded-lg border bg-muted/20 p-3 space-y-1.5 hover:bg-muted/40 transition-colors">
-          <p className="text-xs text-muted-foreground font-medium">Em {p.label}</p>
-          <p className="text-2xl font-bold">{p.projetado.toLocaleString("pt-BR")}</p>
-          <BadgeCrescimento pct={p.crescimento_acumulado_pct} />
-          <p className="text-[10px] text-muted-foreground">crescimento acumulado vs. hoje</p>
-        </div>
-      ))}
+    <div className="space-y-3">
+      <div className="flex items-start gap-2 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 px-3 py-2.5">
+        <Info className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+        <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+          <strong>Como funciona a projeção:</strong> pegamos a taxa média de crescimento mensal dos últimos 12 meses ({fmt(metrica.crescimento_medio_mensal_pct)}%/mês) e aplicamos de forma composta mês a mês.
+          Se hoje você tem <strong>{metrica.total_atual.toLocaleString("pt-BR")}</strong> {labelTipo} e o sistema cresce {fmt(metrica.crescimento_medio_mensal_pct)}% ao mês, o número projetado é o que você teria se esse ritmo se mantiver.
+          <span className="text-amber-700 dark:text-amber-400"> É uma estimativa de tendência — o número real pode variar.</span>
+        </p>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {metrica.projecoes.map((p) => (
+          <div key={p.meses} className="rounded-lg border bg-muted/20 p-3 space-y-1.5 hover:bg-muted/40 transition-colors">
+            <p className="text-xs text-muted-foreground font-medium">Em {p.label}</p>
+            <p className="text-2xl font-bold">{p.projetado.toLocaleString("pt-BR")}</p>
+            <p className="text-[10px] text-muted-foreground">{labelTipo} projetados</p>
+            <BadgeCrescimento pct={p.crescimento_acumulado_pct} />
+            <p className="text-[10px] text-muted-foreground">a mais do que hoje</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -152,10 +178,20 @@ export function SecaoDesempenhoSistema({ data, isLoading }: Props) {
 
           {/* ── ABA CADASTROS ── */}
           <TabsContent value="cadastros" className="space-y-6 mt-4">
-            <KpiGrid metrica={data?.cadastros} isLoading={isLoading} />
+            <KpiGrid metrica={data?.cadastros} isLoading={isLoading} tipo="cadastros" />
 
             <div>
-              <p className="text-sm font-medium mb-2 text-muted-foreground">Evolução de cadastros</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-muted-foreground">Evolução de cadastros</p>
+              </div>
+              <div className="flex items-start gap-2 rounded-lg bg-muted/30 px-3 py-2 mb-3">
+                <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong>Barras (azul):</strong> quantos usuários novos se cadastraram naquele mês. &nbsp;
+                  <strong>Linha verde:</strong> total acumulado de cadastros até o fim do mês. &nbsp;
+                  <strong>Linha amarela (eixo direito):</strong> o % de crescimento do total naquele mês vs o mês anterior.
+                </p>
+              </div>
               {isLoading ? <Skeleton className="h-52 w-full" /> : (
                 <div className="h-52">
                   <ResponsiveContainer width="100%" height="100%">
@@ -191,19 +227,27 @@ export function SecaoDesempenhoSistema({ data, isLoading }: Props) {
             </div>
 
             <div>
-              <p className="text-sm font-medium mb-3 text-muted-foreground">
-                Projeção mantendo {data ? fmt(data.cadastros.crescimento_medio_mensal_pct) : "—"}% de crescimento ao mês
-              </p>
-              <ProjecoesGrid metrica={data?.cadastros} isLoading={isLoading} />
+              <p className="text-sm font-medium mb-3 text-muted-foreground">Projeção de cadastros</p>
+              <ProjecoesGrid metrica={data?.cadastros} isLoading={isLoading} tipo="cadastros" />
             </div>
           </TabsContent>
 
           {/* ── ABA PAGANTES ── */}
           <TabsContent value="pagantes" className="space-y-6 mt-4">
-            <KpiGrid metrica={data?.pagantes} isLoading={isLoading} />
+            <KpiGrid metrica={data?.pagantes} isLoading={isLoading} tipo="pagantes" />
 
             <div>
-              <p className="text-sm font-medium mb-2 text-muted-foreground">Evolução de assinantes pagantes</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-muted-foreground">Evolução de assinantes pagantes</p>
+              </div>
+              <div className="flex items-start gap-2 rounded-lg bg-muted/30 px-3 py-2 mb-3">
+                <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong>Barras (azul):</strong> novos assinantes que ativaram um plano pago naquele mês pela primeira vez. &nbsp;
+                  <strong>Linha verde:</strong> total de assinantes com plano pago ativo no fim do mês. &nbsp;
+                  <strong>Linha amarela (eixo direito):</strong> o % de crescimento do total de pagantes naquele mês vs o mês anterior.
+                </p>
+              </div>
               {isLoading ? <Skeleton className="h-52 w-full" /> : (
                 <div className="h-52">
                   <ResponsiveContainer width="100%" height="100%">
@@ -239,10 +283,8 @@ export function SecaoDesempenhoSistema({ data, isLoading }: Props) {
             </div>
 
             <div>
-              <p className="text-sm font-medium mb-3 text-muted-foreground">
-                Projeção mantendo {data ? fmt(data.pagantes.crescimento_medio_mensal_pct) : "—"}% de crescimento ao mês
-              </p>
-              <ProjecoesGrid metrica={data?.pagantes} isLoading={isLoading} />
+              <p className="text-sm font-medium mb-3 text-muted-foreground">Projeção de pagantes</p>
+              <ProjecoesGrid metrica={data?.pagantes} isLoading={isLoading} tipo="pagantes" />
             </div>
           </TabsContent>
         </Tabs>
