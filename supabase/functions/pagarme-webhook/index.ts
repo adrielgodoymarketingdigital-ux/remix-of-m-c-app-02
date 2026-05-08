@@ -16,16 +16,31 @@ const log = (step: string, details?: unknown) => {
 // deno-lint-ignore no-explicit-any
 type AdminClient = any;
 
+type AssinaturaMin = { id: string; user_id: string; plano_tipo: string; pagarme_subscription_id: string | null };
+
 async function findAssinaturaBySubscription(
   supabaseAdmin: AdminClient,
   subscriptionId: string
 ) {
   const { data } = await supabaseAdmin
     .from("assinaturas")
-    .select("id, user_id, plano_tipo")
+    .select("id, user_id, plano_tipo, pagarme_subscription_id")
     .eq("pagarme_subscription_id", subscriptionId)
     .maybeSingle();
-  return data as { id: string; user_id: string; plano_tipo: string } | null;
+  return data as AssinaturaMin | null;
+}
+
+// Fallback: busca por customer.code (user_id) quando pagarme_subscription_id é nulo
+async function findAssinaturaByCustomerCode(
+  supabaseAdmin: AdminClient,
+  customerCode: string
+) {
+  const { data } = await supabaseAdmin
+    .from("assinaturas")
+    .select("id, user_id, plano_tipo, pagarme_subscription_id")
+    .eq("user_id", customerCode)
+    .maybeSingle();
+  return data as AssinaturaMin | null;
 }
 
 function calcularProximaCobranca(planoTipo: string): string {
@@ -357,17 +372,29 @@ async function handleSubscriptionCharged(
     ((data?.invoice as Record<string, unknown>)?.subscription_id as string) ??
     null;
 
-  if (!subscriptionId) {
-    log("subscription.charged sem subscription_id — ignorando", { data });
+  // customer.code = user_id (usado como fallback quando pagarme_subscription_id é nulo)
+  const customerCode =
+    ((data?.customer as Record<string, unknown>)?.code as string) ??
+    ((data?.subscription as Record<string, unknown>)?.customer as Record<string, unknown>)?.code as string ??
+    null;
+
+  if (!subscriptionId && !customerCode) {
+    log("subscription.charged sem subscription_id e sem customer.code — ignorando", { data });
     return ok({ ignored: true, reason: "no_subscription_id" });
   }
 
-  const assinatura = await findAssinaturaBySubscription(
-    supabaseAdmin,
-    subscriptionId
-  );
+  let assinatura = subscriptionId
+    ? await findAssinaturaBySubscription(supabaseAdmin, subscriptionId)
+    : null;
+
+  // Fallback: buscar por customer.code (user_id) para pagamentos Pix sem subscription_id
+  if (!assinatura && customerCode) {
+    log("Buscando assinatura por customer.code (fallback Pix)", { customerCode });
+    assinatura = await findAssinaturaByCustomerCode(supabaseAdmin, customerCode);
+  }
+
   if (!assinatura) {
-    log("Assinatura local não encontrada", { subscriptionId });
+    log("Assinatura local não encontrada", { subscriptionId, customerCode });
     return ok({ warning: "assinatura_nao_encontrada" });
   }
 
@@ -383,14 +410,21 @@ async function handleSubscriptionCharged(
 
   const proximaCobranca = calcularProximaCobranca(assinatura.plano_tipo);
 
+  const updatePayload: Record<string, unknown> = {
+    status: "active",
+    data_fim: proximaCobranca,
+    data_proxima_cobranca: proximaCobranca,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Salvar pagarme_subscription_id se vier no evento e ainda não estiver no banco
+  if (subscriptionId && !assinatura.pagarme_subscription_id) {
+    updatePayload.pagarme_subscription_id = subscriptionId;
+  }
+
   const { error } = await supabaseAdmin
     .from("assinaturas")
-    .update({
-      status: "active",
-      data_fim: proximaCobranca,
-      data_proxima_cobranca: proximaCobranca,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", assinatura.id);
 
   if (error) {
@@ -485,15 +519,24 @@ async function handleSubscriptionFailed(
     ((data?.invoice as Record<string, unknown>)?.subscription_id as string) ??
     null;
 
-  if (!subscriptionId) {
-    log("payment_failed sem subscription_id");
+  const customerCodeFailed =
+    ((data?.customer as Record<string, unknown>)?.code as string) ??
+    ((data?.subscription as Record<string, unknown>)?.customer as Record<string, unknown>)?.code as string ??
+    null;
+
+  if (!subscriptionId && !customerCodeFailed) {
+    log("payment_failed sem subscription_id e sem customer.code");
     return ok({ ignored: true });
   }
 
-  const assinatura = await findAssinaturaBySubscription(
-    supabaseAdmin,
-    subscriptionId
-  );
+  let assinatura = subscriptionId
+    ? await findAssinaturaBySubscription(supabaseAdmin, subscriptionId)
+    : null;
+
+  if (!assinatura && customerCodeFailed) {
+    assinatura = await findAssinaturaByCustomerCode(supabaseAdmin, customerCodeFailed);
+  }
+
   if (!assinatura) {
     return ok({ warning: "assinatura_nao_encontrada" });
   }
