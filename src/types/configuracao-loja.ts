@@ -133,6 +133,30 @@ export interface Layout80mmVendasConfig {
   mostrar_assinaturas?: boolean;
 }
 
+export interface TrackingPageConfig {
+  cor_fundo: string;        // hex — fundo da página
+  cor_card: string;         // hex — fundo do card central
+  cor_primaria: string;     // hex — cor de destaque (barra topo, timeline, botões)
+  cor_texto: string;        // hex — cor principal de texto
+  cor_texto_secundario: string; // hex — labels e meta-texto
+  mostrar_logo: boolean;
+  mostrar_valor: boolean;
+  mostrar_defeito: boolean;
+  mensagem_rodape?: string; // texto personalizado no footer
+}
+
+export const TRACKING_CONFIG_PADRAO: TrackingPageConfig = {
+  cor_fundo: "#0a0f1e",
+  cor_card: "#111827",
+  cor_primaria: "#3b82f6",
+  cor_texto: "#ffffff",
+  cor_texto_secundario: "#94a3b8",
+  mostrar_logo: true,
+  mostrar_valor: true,
+  mostrar_defeito: true,
+  mensagem_rodape: "",
+};
+
 export interface ConfiguracaoLoja {
   id: string;
   nome_loja: string;
@@ -164,6 +188,7 @@ export interface ConfiguracaoLoja {
   termo_responsabilidade_config?: TermoResponsabilidadeConfig;
   layout_dispositivos_config?: Record<string, any>;
   termo_garantia_dispositivo_config?: Record<string, any>;
+  tracking_config?: TrackingPageConfig;
   created_at: string;
   updated_at: string;
 }

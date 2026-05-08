@@ -144,7 +144,7 @@ export const BotoesAcaoOrdem = ({
                 <RadioTower className={tamanhoIcone} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Compartilhar Acompanhamento</TooltipContent>
+            <TooltipContent>Acompanhamento OS</TooltipContent>
           </Tooltip>
         )}
 
@@ -192,7 +192,7 @@ export const BotoesAcaoOrdem = ({
               {!acoesAtivas?.includes('compartilhar') && onCompartilhar && (
                 <DropdownMenuItem onClick={onCompartilhar}>
                   <RadioTower className="h-4 w-4 mr-2" />
-                  Compartilhar
+                  Acompanhamento OS
                 </DropdownMenuItem>
               )}
               {!acoesAtivas?.includes('excluir') && (

@@ -70,6 +70,7 @@ const DialogImportarOS = lazy(() => import("@/components/ordens/DialogImportarOS
 const DialogConfiguracaoEtiqueta = lazy(() => import("@/components/ordens/DialogConfiguracaoEtiqueta").then((m) => ({ default: m.DialogConfiguracaoEtiqueta })));
 const ImpressaoEtiqueta = lazy(() => import("@/components/ordens/ImpressaoEtiqueta").then((m) => ({ default: m.ImpressaoEtiqueta })));
 const DialogPersonalizarColunas = lazy(() => import("@/components/ordens/DialogPersonalizarColunas").then((m) => ({ default: m.DialogPersonalizarColunas })));
+const DialogConfiguracaoTracking = lazy(() => import("@/components/ordens/DialogConfiguracaoTracking").then((m) => ({ default: m.DialogConfiguracaoTracking })));
 
 export default function OrdemServicoPage() {
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -100,6 +101,7 @@ export default function OrdemServicoPage() {
   const [dialogEtiqueta, setDialogEtiqueta] = useState(false);
   const [ordemParaEtiqueta, setOrdemParaEtiqueta] = useState<OrdemServico | null>(null);
   const [dialogPersonalizarColunas, setDialogPersonalizarColunas] = useState(false);
+  const [dialogTracking, setDialogTracking] = useState(false);
   const etiquetaPrintWindowRef = useRef<Window | null>(null);
   const [usoCompartilhamentos, setUsoCompartilhamentos] = useState({ usado: 0, limite: 0, plano: '' });
   const [dialogCompartilharAberto, setDialogCompartilharAberto] = useState(false);
@@ -400,25 +402,57 @@ export default function OrdemServicoPage() {
       <Suspense fallback={null}>
        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto">
         <div className="min-w-0 p-4 md:p-6 max-w-full overflow-x-hidden">
-          <div className="mb-4 md:mb-6 flex min-w-0 flex-col gap-4">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="hidden lg:flex" />
-              <h1 className="text-xl md:text-2xl font-bold">Ordens de Serviço</h1>
-              <div className="ml-auto text-right hidden sm:block">
-                <p className="text-sm font-medium capitalize">
-                  {format(new Date(), "EEEE", { locale: ptBR })}
-                </p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                </p>
+          <div className="mb-5 md:mb-7 flex min-w-0 flex-col gap-4">
+
+            {/* Header futurista */}
+            <div className="relative flex items-center gap-3 rounded-xl border border-primary/10 bg-gradient-to-r from-primary/5 via-background to-background px-4 py-3 overflow-hidden">
+              {/* Linha brilhante no topo */}
+              <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
+              <SidebarTrigger className="hidden lg:flex shrink-0" />
+
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative shrink-0">
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                    <ClipboardList className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-lg md:text-xl font-bold tracking-tight leading-none">
+                    Ordens de Serviço
+                  </h1>
+                  <p className="text-[11px] text-muted-foreground capitalize mt-0.5 hidden sm:block font-mono">
+                    {format(new Date(), "EEE · dd/MM/yyyy", { locale: ptBR })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                {!contadorOS.ilimitado && (
+                  <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-2.5 py-1 font-mono text-xs text-muted-foreground">
+                    <span className="text-primary font-semibold">{contadorOS.usadas}</span>
+                    <span>/</span>
+                    <span>{contadorOS.limite}</span>
+                    <span className="text-[10px] hidden sm:inline">OS</span>
+                  </div>
+                )}
+                {usoCompartilhamentos.limite !== 0 && (
+                  <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-2.5 py-1 font-mono text-xs text-muted-foreground">
+                    <RadioTower className="h-3 w-3" />
+                    <span>{usoCompartilhamentos.limite === -1 ? "∞" : `${usoCompartilhamentos.usado}/${usoCompartilhamentos.limite}`}</span>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Barra de ações */}
             <div className="flex flex-wrap items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Settings className="h-4 w-4" />
-                    <span className="hidden sm:inline">Configurações</span>
+                  <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-border/60 hover:border-border">
+                    <Settings className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Config</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -458,69 +492,67 @@ export default function OrdemServicoPage() {
                     <Columns3 className="h-4 w-4 mr-2" />
                     Personalizar Colunas
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDialogTracking(true)}>
+                    <RadioTower className="h-4 w-4 mr-2" />
+                    Página de Acompanhamento
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button variant="outline" onClick={() => setDialogImportarOS(true)} className="flex-1 sm:flex-none">
-                <Upload className="mr-2 h-4 w-4" />
+
+              <Button variant="outline" size="sm" onClick={() => setDialogImportarOS(true)} className="h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 hover:border-border">
+                <Upload className="h-3.5 w-3.5" />
                 Importar
               </Button>
-              <Button variant="outline" onClick={() => setDialogServicoAvulso(true)} className="flex-1 sm:flex-none">
-                <Wrench className="mr-2 h-4 w-4" />
-                Serviço Avulso
+              <Button variant="outline" size="sm" onClick={() => setDialogServicoAvulso(true)} className="h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 hover:border-border">
+                <Wrench className="h-3.5 w-3.5" />
+                Avulso
               </Button>
-              <Button onClick={handleNovaOrdem} className="flex-1 sm:flex-none">
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Ordem
+
+              <Button
+                size="sm"
+                onClick={handleNovaOrdem}
+                className="os-nova-btn h-8 text-xs flex-1 sm:flex-none gap-1.5 ml-auto sm:ml-0 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Nova OS
               </Button>
-              {usoCompartilhamentos.limite !== 0 && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
-                  <RadioTower className="h-3.5 w-3.5" />
-                  {usoCompartilhamentos.limite === -1 ? (
-                    <span>Compartilhamentos: Ilimitado</span>
-                  ) : (
-                    <span>
-                      {usoCompartilhamentos.usado}/{usoCompartilhamentos.limite} compartilhamentos este mês
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
 
-            {/* Filtro de data global */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium text-muted-foreground">Período:</span>
-              
-              {/* Filtro por Mês */}
-              <Select value={mesFiltro} onValueChange={aplicarFiltroMes}>
-                <SelectTrigger className="h-8 w-[160px] text-xs">
-                  <SelectValue placeholder="Mês" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Meses</SelectItem>
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const data = subMonths(new Date(), i);
-                    const valor = format(data, "yyyy-MM");
-                    const label = format(data, "MMMM yyyy", { locale: ptBR });
-                    return (
-                      <SelectItem key={valor} value={valor}>
-                        {label.charAt(0).toUpperCase() + label.slice(1)}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+            {/* Filtro de período — linha compacta */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground font-mono">
+                <CalendarIcon className="h-3 w-3 shrink-0" />
+                <Select value={mesFiltro} onValueChange={aplicarFiltroMes}>
+                  <SelectTrigger className="h-5 w-[130px] border-0 bg-transparent shadow-none focus:ring-0 text-xs p-0">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os meses</SelectItem>
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const data = subMonths(new Date(), i);
+                      const valor = format(data, "yyyy-MM");
+                      const label = format(data, "MMMM yyyy", { locale: ptBR });
+                      return (
+                        <SelectItem key={valor} value={valor}>
+                          {label.charAt(0).toUpperCase() + label.slice(1)}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <span className="text-xs text-muted-foreground">ou</span>
+              <span className="text-xs text-muted-foreground/50 font-mono">|</span>
 
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={cn("text-xs gap-1.5", !dataInicio && "text-muted-foreground")}
+                    className={cn("h-7 text-xs gap-1 px-2.5 border-border/50 font-mono", !dataInicio && "text-muted-foreground")}
                   >
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
+                    <CalendarIcon className="h-3 w-3" />
+                    {dataInicio ? format(dataInicio, "dd/MM") : "início"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -534,17 +566,17 @@ export default function OrdemServicoPage() {
                 </PopoverContent>
               </Popover>
 
-              <span className="text-xs text-muted-foreground">até</span>
+              <span className="text-xs text-muted-foreground/40 font-mono">→</span>
 
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={cn("text-xs gap-1.5", !dataFim && "text-muted-foreground")}
+                    className={cn("h-7 text-xs gap-1 px-2.5 border-border/50 font-mono", !dataFim && "text-muted-foreground")}
                   >
-                    <CalendarIcon className="h-3.5 w-3.5" />
-                    {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
+                    <CalendarIcon className="h-3 w-3" />
+                    {dataFim ? format(dataFim, "dd/MM") : "fim"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -562,14 +594,10 @@ export default function OrdemServicoPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setDataInicio(undefined);
-                    setDataFim(undefined);
-                    aplicarFiltroMes("todos");
-                  }}
-                  className="text-xs gap-1 h-8 px-2"
+                  onClick={() => { setDataInicio(undefined); setDataFim(undefined); aplicarFiltroMes("todos"); }}
+                  className="h-7 text-xs gap-1 px-2 text-muted-foreground hover:text-destructive"
                 >
-                  <X className="h-3.5 w-3.5" /> Limpar
+                  <X className="h-3 w-3" />
                 </Button>
               )}
             </div>
@@ -577,35 +605,36 @@ export default function OrdemServicoPage() {
 
           <DashboardOrdensServico ordens={ordens} servicosAvulsos={servicosAvulsosFiltrados} lucroOrdensEntregues={lucroOrdensEntregues} />
 
-          <Card className="min-w-0 overflow-hidden">
-            <CardHeader className="p-4 sm:p-6">
+          <Card className="min-w-0 overflow-hidden border-border/40 shadow-sm">
+            <CardHeader className="p-4 sm:p-5 border-b border-border/30 bg-muted/10">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <CardTitle className="text-lg sm:text-xl">Gestão de Ordens de Serviço</CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
+                  <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Gestão de OS</CardTitle>
+                </div>
                 <ToggleGroup
                   type="single"
                   value={visualizacao}
-                onValueChange={(v) => {
-                  if (!v) return;
-                  const novaVis = v as "tabela" | "kanban";
-                  if (novaVis === "kanban" && statusFiltro !== "todos") {
-                    setStatusFiltro("todos");
-                  }
-                  setVisualizacao(novaVis);
-                }}
-                  className="border rounded-lg p-1"
+                  onValueChange={(v) => {
+                    if (!v) return;
+                    const novaVis = v as "tabela" | "kanban";
+                    if (novaVis === "kanban" && statusFiltro !== "todos") setStatusFiltro("todos");
+                    setVisualizacao(novaVis);
+                  }}
+                  className="rounded-lg bg-background border border-border/50 p-0.5 h-7"
                 >
-                  <ToggleGroupItem value="tabela" className="gap-1.5 text-xs px-3">
-                    <List className="h-3.5 w-3.5" />
+                  <ToggleGroupItem value="tabela" className="gap-1.5 text-xs px-3 h-6 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                    <List className="h-3 w-3" />
                     Tabela
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="kanban" className="gap-1.5 text-xs px-3">
-                    <Columns3 className="h-3.5 w-3.5" />
+                  <ToggleGroupItem value="kanban" className="gap-1.5 text-xs px-3 h-6 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                    <Columns3 className="h-3 w-3" />
                     Kanban
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
             </CardHeader>
-            <CardContent className="min-w-0 space-y-4 overflow-hidden p-4 sm:p-6 pt-0 sm:pt-0">
+            <CardContent className="min-w-0 space-y-4 overflow-hidden p-4 sm:p-5 pt-4 sm:pt-4">
               {visualizacao === "tabela" && (
                 <>
                   <BuscaOrdemServico 
@@ -828,6 +857,12 @@ export default function OrdemServicoPage() {
           <DialogPersonalizarColunas
             open={dialogPersonalizarColunas}
             onOpenChange={setDialogPersonalizarColunas}
+          />
+
+          {/* Dialog de Configuração da Página de Acompanhamento */}
+          <DialogConfiguracaoTracking
+            open={dialogTracking}
+            onOpenChange={setDialogTracking}
           />
 
           {/* Impressão de Etiqueta */}

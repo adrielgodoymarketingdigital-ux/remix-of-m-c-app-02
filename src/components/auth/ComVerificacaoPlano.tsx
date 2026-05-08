@@ -64,34 +64,6 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
 
   // Verificar acesso ao módulo
   if (!temAcessoModulo(modulo)) {
-    if (migracaoNecessaria) {
-      return (
-        <div className="container mx-auto py-12 px-4">
-          <Alert className="max-w-2xl mx-auto border-blue-500">
-            <CreditCard className="h-5 w-5 text-blue-600" />
-            <AlertTitle className="text-xl font-bold mb-2 text-blue-800 dark:text-blue-200">
-              Atualizamos nosso sistema de pagamentos
-            </AlertTitle>
-            <AlertDescription className="space-y-4">
-              <p>
-                Para melhorar sua experiência, migramos nossa plataforma de pagamentos.
-                Por isso, será necessário <strong>renovar sua assinatura</strong> para continuar
-                acessando todos os recursos do sistema.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                🔒 <strong>Seus dados estão totalmente seguros.</strong> Nenhuma informação foi perdida —
-                clientes, dispositivos, ordens de serviço e todo o histórico continuam intactos.
-              </p>
-              <Button onClick={() => navigate("/plano")} className="w-full sm:w-auto">
-                <CreditCard className="mr-2 h-4 w-4" />
-                Renovar Minha Assinatura
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </div>
-      );
-    }
-
     return (
       <div className="container mx-auto py-12 px-4">
         <Alert className="max-w-2xl mx-auto border-primary">

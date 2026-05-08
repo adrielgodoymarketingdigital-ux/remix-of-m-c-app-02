@@ -14,14 +14,12 @@ import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
 import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { OrdemServico } from "@/hooks/useOrdensServico";
-import { Check } from "lucide-react";
+import { Check, ClipboardList } from "lucide-react";
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { useIsMobile, useIsMobileOrTablet } from "@/hooks/use-mobile";
 import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
 import { useOSColunas } from "@/hooks/useOSColunas";
 
-// Fallback colors/labels for when config hasn't loaded yet
 const fallbackColors: Record<string, string> = {
   aguardando_aprovacao: "#eab308",
   em_andamento: "#3b82f6",
@@ -80,8 +78,6 @@ export const TabelaOrdensServico = ({
   const colunasAtivas = config.colunas;
   const acoesAtivas = config.acoes_principais;
 
-  // Build dynamic colors/labels from config, with fallback
-  // Use full statusList for colors/labels (so existing OS with inactive status still display correctly)
   const statusColors = statusList.length > 0
     ? Object.fromEntries(statusList.map(s => [s.slug, s.cor]))
     : fallbackColors;
@@ -89,7 +85,6 @@ export const TabelaOrdensServico = ({
     ? Object.fromEntries(statusList.map(s => [s.slug, s.nome]))
     : fallbackLabels;
 
-  // Only active statuses appear as selectable options
   const opcoesStatus = (statusList.length > 0 ? activeStatusList : []).map(s => ({
     value: s.slug,
     label: s.nome,
@@ -97,9 +92,14 @@ export const TabelaOrdensServico = ({
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-2">
         {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} className="h-16 w-full" />
+          <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border/30 bg-muted/20">
+            <Skeleton className="h-3 w-10 rounded" />
+            <Skeleton className="h-3 w-28 rounded" />
+            <Skeleton className="h-3 w-24 rounded" />
+            <Skeleton className="h-3 w-16 rounded ml-auto" />
+          </div>
         ))}
       </div>
     );
@@ -107,263 +107,68 @@ export const TabelaOrdensServico = ({
 
   if (ordens.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        Nenhuma ordem de serviço encontrada.
+      <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground/50">
+        <ClipboardList className="h-10 w-10 opacity-30" />
+        <p className="text-sm font-medium">Nenhuma ordem encontrada</p>
       </div>
     );
   }
 
-  // Mobile/Tablet: Card-based layout
+  // Mobile/Tablet
   if (isMobileOrTablet) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-        {ordens.map((ordem) => (
-          <Card key={ordem.id} className="p-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <p className="font-semibold text-base">
-                  {(ordem.avarias as any)?.is_avulso ? (
-                    <Badge className="bg-violet-600 hover:bg-violet-700 text-white text-[10px]">Avulso</Badge>
-                  ) : (
-                    <>OS {ordem.numero_os}</>
-                  )}
-                  {(ordem as any).is_teste && (
-                    <Badge variant="outline" className="ml-2 text-[10px] bg-amber-100 text-amber-800 border-amber-300">Teste</Badge>
-                  )}
-                </p>
-                <p className="text-sm text-muted-foreground">{(ordem.avarias as any)?.is_avulso ? ordem.defeito_relatado : (ordem.cliente?.nome || "N/A")}</p>
-              </div>
-              {onAtualizarStatus ? (
-                <Popover
-                  open={popoverAberto === ordem.id}
-                  onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
-                >
-                  <PopoverTrigger asChild>
-                    <button
-                      className="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold text-white border-0 cursor-pointer"
-                      style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
-                    >
-                      {statusLabels[ordem.status as string] || "Aguardando"}
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-56 p-0" align="end">
-                    <Command>
-                      <CommandGroup>
-                        {opcoesStatus.map((opcao) => (
-                          <CommandItem
-                            key={opcao.value}
-                            value={opcao.value}
-                            onSelect={(value) => {
-                              onAtualizarStatus(ordem.id, value);
-                              setPopoverAberto(null);
-                            }}
-                            className="flex items-center gap-2 cursor-pointer"
-                          >
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[opcao.value] || '#3b82f6' }} />
-                            <span className="flex-1">{opcao.label}</span>
-                            {ordem.status === opcao.value && (
-                              <Check className="h-4 w-4" />
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="text-white border-0"
-                  style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
-                >
-                  {statusLabels[ordem.status as string] || "Aguardando"}
-                </Badge>
-              )}
-            </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        {ordens.map((ordem) => {
+          const cor = statusColors[ordem.status as string] || "#eab308";
+          const label = statusLabels[ordem.status as string] || "Aguardando";
+          const isAvulso = (ordem.avarias as any)?.is_avulso;
 
-            <div className="text-sm space-y-1 mb-3">
-              <p className="font-medium">{ordem.dispositivo_marca} {ordem.dispositivo_modelo}</p>
-              <p className="text-muted-foreground text-xs">{ordem.dispositivo_tipo}</p>
-              <p className="text-muted-foreground truncate">{ordem.defeito_relatado}</p>
-            </div>
+          return (
+            <div
+              key={ordem.id}
+              className="relative rounded-xl border bg-card overflow-hidden transition-all duration-150 hover:border-border"
+              style={{ borderColor: `${cor}25` }}
+            >
+              {/* Linha de cor no topo */}
+              <div className="h-[2px] w-full" style={{ background: `linear-gradient(90deg, ${cor}90, ${cor}20)` }} />
 
-            <div className="flex items-center justify-between pt-3 border-t">
-              <div className="text-sm space-y-0.5">
-                <div className="text-muted-foreground">
-                  <span>Entrada: {formatDate(ordem.created_at)}</span>
-                  <span className="block text-xs">{formatTime(ordem.created_at)}</span>
-                </div>
-                {ordem.data_saida && (
-                  <div className="text-muted-foreground">
-                    <span>Saída: {formatDate(ordem.data_saida)}</span>
-                    <span className="block text-xs">{formatTime(ordem.data_saida)}</span>
+              <div className="p-3.5">
+                <div className="flex justify-between items-start mb-2.5">
+                  <div className="flex items-center gap-2">
+                    {isAvulso ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-500 font-mono">Avulso</span>
+                    ) : (
+                      <span className="text-xs font-bold font-mono text-foreground/80">#{ordem.numero_os}</span>
+                    )}
+                    {(ordem as any).is_teste && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 font-mono">Teste</span>
+                    )}
                   </div>
-                )}
-                <span className="font-semibold"><ValorMonetario valor={ordem.total} tipo="preco" /></span>
-                {(() => {
-                  const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
-                  return entrada > 0 ? (
-                    <span className="ml-1 text-xs text-green-600">(Entrada: <ValorMonetario valor={entrada} tipo="preco" />)</span>
-                  ) : null;
-                })()}
-              </div>
-              <BotoesAcaoOrdem
-                onVisualizar={() => onVisualizar(ordem)}
-                onEditar={() => onEditar(ordem)}
-                onImprimir={() => onImprimir(ordem)}
-                onExcluir={() => onExcluir(ordem)}
-                onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
-                onCompartilhar={() => onCompartilhar?.(ordem)}
-                onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
-                onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
-                termoAtivo={termoAtivo}
-                acoesAtivas={acoesAtivas}
-              />
-            </div>
-          </Card>
-        ))}
-      </div>
-    );
-  }
 
-  // Desktop: Table layout
-  // Base widths for each column (percentage points)
-  const baseWidths: Record<string, number> = {
-    numero_os: 6,
-    cliente: 13,
-    dispositivo: 15,
-    entrada: 7,   // always visible
-    data_saida: 7,
-    defeito: 18,
-    status: 12,
-    valor: 7,
-    acoes: 15,    // always visible
-  };
-
-  // Sum of always-visible columns
-  const fixedWidth = baseWidths.numero_os + baseWidths.entrada + baseWidths.acoes;
-  // Sum of optional columns that are currently active
-  const optionalCols = ['cliente', 'dispositivo', 'data_saida', 'defeito', 'status', 'valor'] as const;
-  const activeOptionalBaseWidth = optionalCols
-    .filter(c => colunasAtivas.includes(c))
-    .reduce((acc, c) => acc + baseWidths[c], 0);
-  const totalBaseWidth = fixedWidth + activeOptionalBaseWidth;
-
-  // Scale factor so all widths add up to 100%
-  const scale = 100 / totalBaseWidth;
-
-  const w = (col: string) => `${(baseWidths[col] * scale).toFixed(2)}%`;
-
-  return (
-    <div className="h-[calc(100vh-24rem)] min-h-[24rem] max-h-[36rem] w-full overflow-x-hidden overflow-y-auto rounded-md border [&_.overflow-auto]:overflow-hidden">
-      <Table className="w-full table-fixed text-[11px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead style={{ width: w('numero_os') }} className="px-1.5">OS</TableHead>
-            {colunasAtivas.includes('cliente') && (
-              <TableHead style={{ width: w('cliente') }} className="px-1.5">Cliente</TableHead>
-            )}
-            {colunasAtivas.includes('dispositivo') && (
-              <TableHead style={{ width: w('dispositivo') }} className="px-1.5">Dispositivo</TableHead>
-            )}
-            <TableHead style={{ width: w('entrada') }} className="px-1.5">Entrada</TableHead>
-            {colunasAtivas.includes('data_saida') && (
-              <TableHead style={{ width: w('data_saida') }} className="px-1.5">Saída</TableHead>
-            )}
-            {colunasAtivas.includes('defeito') && (
-              <TableHead style={{ width: w('defeito') }} className="px-1.5">Serviço</TableHead>
-            )}
-            {colunasAtivas.includes('status') && (
-              <TableHead style={{ width: w('status') }} className="px-1.5">Status</TableHead>
-            )}
-            {colunasAtivas.includes('valor') && (
-              <TableHead style={{ width: w('valor') }} className="px-1.5 text-right">Valor</TableHead>
-            )}
-            <TableHead style={{ width: w('acoes') }} className="px-1.5 text-right">Ações</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {ordens.map((ordem) => (
-            <TableRow key={ordem.id}>
-              <TableCell className="px-1.5 py-1.5 font-medium">
-                {(ordem.avarias as any)?.is_avulso ? (
-                  <Badge className="bg-violet-600 hover:bg-violet-700 text-white text-[10px]">Avulso</Badge>
-                ) : (
-                  <span className="block truncate">{ordem.numero_os}</span>
-                )}
-                {(ordem as any).is_teste && (
-                  <Badge variant="outline" className="ml-2 text-[10px] bg-amber-100 text-amber-800 border-amber-300">Teste</Badge>
-                )}
-              </TableCell>
-              {colunasAtivas.includes('cliente') && (
-                <TableCell className="overflow-hidden truncate px-1.5 py-1.5">{(ordem.avarias as any)?.is_avulso ? "—" : (ordem.cliente?.nome || "N/A")}</TableCell>
-              )}
-              {colunasAtivas.includes('dispositivo') && (
-                <TableCell className="overflow-hidden px-1.5 py-1.5">
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-medium truncate">
-                      {(ordem.avarias as any)?.is_avulso ? ordem.defeito_relatado : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground truncate">
-                      {ordem.dispositivo_tipo}
-                    </span>
-                  </div>
-                </TableCell>
-              )}
-              <TableCell className="px-1.5 py-1.5">
-                <div className="text-xs leading-tight">{formatDate(ordem.created_at)}</div>
-                <div className="text-[10px] text-muted-foreground">{formatTime(ordem.created_at)}</div>
-              </TableCell>
-              {colunasAtivas.includes('data_saida') && (
-                <TableCell className="px-1.5 py-1.5">
-                  {ordem.data_saida ? (
-                    <>
-                      <div className="text-xs leading-tight">{formatDate(ordem.data_saida)}</div>
-                      <div className="text-[10px] text-muted-foreground">{formatTime(ordem.data_saida)}</div>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-              )}
-              {colunasAtivas.includes('defeito') && (
-                <TableCell className="max-w-0 truncate px-1.5 py-1.5">
-                  {ordem.defeito_relatado}
-                </TableCell>
-              )}
-              {colunasAtivas.includes('status') && (
-                <TableCell className="overflow-hidden px-1.5 py-1.5">
                   {onAtualizarStatus ? (
                     <Popover
                       open={popoverAberto === ordem.id}
                       onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
                     >
                       <PopoverTrigger asChild>
-                        <button
-                          className="inline-flex max-w-full cursor-pointer items-center overflow-hidden rounded-md border-0 px-1.5 py-0.5 text-[10px] font-semibold text-white transition-opacity hover:opacity-80"
-                          style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
+                        <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold cursor-pointer transition-opacity hover:opacity-80 border"
+                          style={{ color: cor, borderColor: `${cor}40`, backgroundColor: `${cor}12` }}
                         >
-                          <span className="truncate">{statusLabels[ordem.status as string] || "Aguardando Aprovação"}</span>
+                          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+                          {label}
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-56 p-0" align="start">
+                      <PopoverContent className="w-56 p-0" align="end">
                         <Command>
                           <CommandGroup>
                             {opcoesStatus.map((opcao) => (
-                              <CommandItem
-                                key={opcao.value}
-                                value={opcao.value}
-                                onSelect={(value) => {
-                                  onAtualizarStatus(ordem.id, value);
-                                  setPopoverAberto(null);
-                                }}
+                              <CommandItem key={opcao.value} value={opcao.value}
+                                onSelect={(value) => { onAtualizarStatus(ordem.id, value); setPopoverAberto(null); }}
                                 className="flex items-center gap-2 cursor-pointer"
                               >
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: statusColors[opcao.value] || '#3b82f6' }} />
-                                <span className="flex-1">{opcao.label}</span>
-                                {ordem.status === opcao.value && (
-                                  <Check className="h-4 w-4" />
-                                )}
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusColors[opcao.value] || "#3b82f6" }} />
+                                <span className="flex-1 text-xs">{opcao.label}</span>
+                                {ordem.status === opcao.value && <Check className="h-3.5 w-3.5" />}
                               </CommandItem>
                             ))}
                           </CommandGroup>
@@ -371,46 +176,279 @@ export const TabelaOrdensServico = ({
                       </PopoverContent>
                     </Popover>
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="text-white border-0"
-                      style={{ backgroundColor: statusColors[ordem.status as string] || '#eab308' }}
+                    <span className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold border"
+                      style={{ color: cor, borderColor: `${cor}40`, backgroundColor: `${cor}12` }}
                     >
-                      {statusLabels[ordem.status as string] || "Aguardando Aprovação"}
-                    </Badge>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
+                      {label}
+                    </span>
                   )}
-                </TableCell>
-              )}
-              {colunasAtivas.includes('valor') && (
-                <TableCell className="whitespace-nowrap px-1.5 py-1.5 text-right">
-                  <div>
-                    <ValorMonetario valor={ordem.total} tipo="preco" />
+                </div>
+
+                <p className="text-sm font-medium leading-tight truncate mb-0.5">
+                  {isAvulso ? ordem.defeito_relatado : (ordem.cliente?.nome || "N/A")}
+                </p>
+                <p className="text-xs text-muted-foreground truncate mb-2.5">
+                  {isAvulso ? "Serviço Avulso" : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
+                </p>
+
+                <div className="flex items-center justify-between pt-2.5 border-t border-border/40">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-mono text-muted-foreground">
+                      {formatDate(ordem.created_at)} <span className="opacity-60">{formatTime(ordem.created_at)}</span>
+                    </p>
+                    <p className="text-sm font-bold font-mono">
+                      <ValorMonetario valor={ordem.total} tipo="preco" />
+                    </p>
                     {(() => {
                       const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
                       return entrada > 0 ? (
-                        <div className="text-[10px] text-green-600">Entrada: <ValorMonetario valor={entrada} tipo="preco" /></div>
+                        <p className="text-[10px] text-green-500 font-mono">+<ValorMonetario valor={entrada} tipo="preco" /> entrada</p>
                       ) : null;
                     })()}
                   </div>
+                  <BotoesAcaoOrdem
+                    onVisualizar={() => onVisualizar(ordem)}
+                    onEditar={() => onEditar(ordem)}
+                    onImprimir={() => onImprimir(ordem)}
+                    onExcluir={() => onExcluir(ordem)}
+                    onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
+                    onCompartilhar={() => onCompartilhar?.(ordem)}
+                    onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
+                    onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
+                    termoAtivo={termoAtivo}
+                    acoesAtivas={acoesAtivas}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Desktop
+  const baseWidths: Record<string, number> = {
+    numero_os: 6,
+    cliente: 13,
+    dispositivo: 15,
+    entrada: 7,
+    data_saida: 7,
+    defeito: 18,
+    status: 12,
+    valor: 7,
+    acoes: 15,
+  };
+
+  const fixedWidth = baseWidths.numero_os + baseWidths.entrada + baseWidths.acoes;
+  const optionalCols = ["cliente", "dispositivo", "data_saida", "defeito", "status", "valor"] as const;
+  const activeOptionalBaseWidth = optionalCols
+    .filter(c => colunasAtivas.includes(c))
+    .reduce((acc, c) => acc + baseWidths[c], 0);
+  const totalBaseWidth = fixedWidth + activeOptionalBaseWidth;
+  const scale = 100 / totalBaseWidth;
+  const w = (col: string) => `${(baseWidths[col] * scale).toFixed(2)}%`;
+
+  return (
+    <div className="h-[calc(100vh-24rem)] min-h-[24rem] max-h-[36rem] w-full overflow-x-hidden overflow-y-auto rounded-xl border border-border/40 bg-card">
+      <Table className="w-full table-fixed text-[11px]">
+        <TableHeader>
+          <TableRow className="border-b border-border/50 hover:bg-transparent">
+            <TableHead style={{ width: w("numero_os") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
+              OS
+            </TableHead>
+            {colunasAtivas.includes("cliente") && (
+              <TableHead style={{ width: w("cliente") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
+                Cliente
+              </TableHead>
+            )}
+            {colunasAtivas.includes("dispositivo") && (
+              <TableHead style={{ width: w("dispositivo") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
+                Dispositivo
+              </TableHead>
+            )}
+            <TableHead style={{ width: w("entrada") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
+              Entrada
+            </TableHead>
+            {colunasAtivas.includes("data_saida") && (
+              <TableHead style={{ width: w("data_saida") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
+                Saída
+              </TableHead>
+            )}
+            {colunasAtivas.includes("defeito") && (
+              <TableHead style={{ width: w("defeito") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
+                Serviço
+              </TableHead>
+            )}
+            {colunasAtivas.includes("status") && (
+              <TableHead style={{ width: w("status") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
+                Status
+              </TableHead>
+            )}
+            {colunasAtivas.includes("valor") && (
+              <TableHead style={{ width: w("valor") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30 text-right">
+                Valor
+              </TableHead>
+            )}
+            <TableHead style={{ width: w("acoes") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30 text-right">
+              Ações
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {ordens.map((ordem, idx) => {
+            const cor = statusColors[ordem.status as string] || "#eab308";
+            const label = statusLabels[ordem.status as string] || "Aguardando";
+            const isAvulso = (ordem.avarias as any)?.is_avulso;
+
+            return (
+              <TableRow
+                key={ordem.id}
+                className="group border-b border-border/20 transition-colors duration-100 hover:bg-muted/30 cursor-default"
+              >
+                {/* OS */}
+                <TableCell className="px-3 py-2 font-mono">
+                  {isAvulso ? (
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-500">Avulso</span>
+                  ) : (
+                    <span className="text-xs font-bold text-foreground/75">#{ordem.numero_os}</span>
+                  )}
+                  {(ordem as any).is_teste && (
+                    <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-600">T</span>
+                  )}
                 </TableCell>
-              )}
-              <TableCell className="overflow-hidden px-1.5 py-1.5 text-right">
-                <BotoesAcaoOrdem
-                  onVisualizar={() => onVisualizar(ordem)}
-                  onEditar={() => onEditar(ordem)}
-                  onImprimir={() => onImprimir(ordem)}
-                  onExcluir={() => onExcluir(ordem)}
-                  onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
-                  onCompartilhar={() => onCompartilhar?.(ordem)}
-                  onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
-                  onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
-                  termoAtivo={termoAtivo}
-                  acoesAtivas={acoesAtivas}
-                  compacto
-                />
-              </TableCell>
-            </TableRow>
-          ))}
+
+                {/* Cliente */}
+                {colunasAtivas.includes("cliente") && (
+                  <TableCell className="px-3 py-2 overflow-hidden">
+                    <span className="block truncate text-xs">
+                      {isAvulso ? <span className="text-muted-foreground/40">—</span> : (ordem.cliente?.nome || "N/A")}
+                    </span>
+                  </TableCell>
+                )}
+
+                {/* Dispositivo */}
+                {colunasAtivas.includes("dispositivo") && (
+                  <TableCell className="px-3 py-2 overflow-hidden">
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium truncate text-xs">
+                        {isAvulso ? ordem.defeito_relatado : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/60 truncate">{ordem.dispositivo_tipo}</span>
+                    </div>
+                  </TableCell>
+                )}
+
+                {/* Entrada */}
+                <TableCell className="px-3 py-2">
+                  <div className="font-mono text-[10px] leading-tight text-foreground/70">{formatDate(ordem.created_at)}</div>
+                  <div className="font-mono text-[9px] text-muted-foreground/50">{formatTime(ordem.created_at)}</div>
+                </TableCell>
+
+                {/* Saída */}
+                {colunasAtivas.includes("data_saida") && (
+                  <TableCell className="px-3 py-2">
+                    {ordem.data_saida ? (
+                      <>
+                        <div className="font-mono text-[10px] leading-tight text-foreground/70">{formatDate(ordem.data_saida)}</div>
+                        <div className="font-mono text-[9px] text-muted-foreground/50">{formatTime(ordem.data_saida)}</div>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground/30 font-mono text-[10px]">—</span>
+                    )}
+                  </TableCell>
+                )}
+
+                {/* Defeito/Serviço */}
+                {colunasAtivas.includes("defeito") && (
+                  <TableCell className="max-w-0 truncate px-3 py-2 text-xs text-muted-foreground">
+                    {ordem.defeito_relatado}
+                  </TableCell>
+                )}
+
+                {/* Status */}
+                {colunasAtivas.includes("status") && (
+                  <TableCell className="overflow-hidden px-3 py-2">
+                    {onAtualizarStatus ? (
+                      <Popover
+                        open={popoverAberto === ordem.id}
+                        onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
+                      >
+                        <PopoverTrigger asChild>
+                          <button
+                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold cursor-pointer transition-all hover:opacity-80 border max-w-full overflow-hidden"
+                            style={{ color: cor, borderColor: `${cor}35`, backgroundColor: `${cor}10` }}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+                            <span className="truncate">{label}</span>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-52 p-0" align="start">
+                          <Command>
+                            <CommandGroup>
+                              {opcoesStatus.map((opcao) => (
+                                <CommandItem
+                                  key={opcao.value}
+                                  value={opcao.value}
+                                  onSelect={(value) => { onAtualizarStatus(ordem.id, value); setPopoverAberto(null); }}
+                                  className="flex items-center gap-2 cursor-pointer"
+                                >
+                                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: statusColors[opcao.value] || "#3b82f6" }} />
+                                  <span className="flex-1 text-xs">{opcao.label}</span>
+                                  {ordem.status === opcao.value && <Check className="h-3.5 w-3.5 shrink-0" />}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold border"
+                        style={{ color: cor, borderColor: `${cor}35`, backgroundColor: `${cor}10` }}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
+                        {label}
+                      </span>
+                    )}
+                  </TableCell>
+                )}
+
+                {/* Valor */}
+                {colunasAtivas.includes("valor") && (
+                  <TableCell className="px-3 py-2 text-right">
+                    <div className="font-mono text-xs font-semibold">
+                      <ValorMonetario valor={ordem.total} tipo="preco" />
+                    </div>
+                    {(() => {
+                      const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
+                      return entrada > 0 ? (
+                        <div className="font-mono text-[9px] text-green-500/80">+<ValorMonetario valor={entrada} tipo="preco" /></div>
+                      ) : null;
+                    })()}
+                  </TableCell>
+                )}
+
+                {/* Ações */}
+                <TableCell className="overflow-hidden px-3 py-2 text-right">
+                  <BotoesAcaoOrdem
+                    onVisualizar={() => onVisualizar(ordem)}
+                    onEditar={() => onEditar(ordem)}
+                    onImprimir={() => onImprimir(ordem)}
+                    onExcluir={() => onExcluir(ordem)}
+                    onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
+                    onCompartilhar={() => onCompartilhar?.(ordem)}
+                    onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
+                    onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
+                    termoAtivo={termoAtivo}
+                    acoesAtivas={acoesAtivas}
+                    compacto
+                  />
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

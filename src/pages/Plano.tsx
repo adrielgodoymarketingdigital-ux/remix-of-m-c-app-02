@@ -229,20 +229,7 @@ export default function Plano() {
         </div>
 
         <div className="space-y-8">
-            {/* Banner de migração de conta Stripe */}
-            {(searchParams.get("migration") === "1" || migracaoNecessaria) && (
-              <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950/50">
-                <Info className="h-5 w-5 text-blue-600" />
-                <AlertDescription className="text-blue-800 dark:text-blue-200">
-                  <strong className="block mb-1 text-base">🔄 Atualizamos nosso sistema de pagamentos!</strong>
-                  Para melhorar sua experiência, migramos nossa plataforma de pagamentos. 
-                  Por isso, será necessário <strong>renovar sua assinatura</strong> escolhendo o seu plano abaixo e cadastrando sua forma de pagamento novamente.
-                  <br /><br />
-                  🔒 <strong>Seus dados estão totalmente seguros!</strong> Clientes, dispositivos, ordens de serviço 
-                  e todo o seu histórico continuam intactos — nenhuma informação foi perdida.
-                </AlertDescription>
-              </Alert>
-            )}
+
             {/* Card de Trial com Cartão Ativo */}
             {trialStatus.isTrialWithCard && trialStatus.isTrialing && !trialStatus.trialExpired && (
               <Card className="p-6 border-2 border-green-500 bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-950 dark:to-green-900/50">

@@ -111,9 +111,18 @@ export function PersonalizacaoCores() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      // Lê o valor atual para não apagar campos como tracking_config
+      const { data: atual } = await supabase
+        .from("configuracoes_loja")
+        .select("cores_personalizadas")
+        .eq("user_id", user.id)
+        .single();
+
+      const coresAtuais = (atual?.cores_personalizadas as Record<string, unknown>) || {};
+
       const { error } = await supabase
         .from("configuracoes_loja")
-        .update({ cores_personalizadas: cores as unknown as null })
+        .update({ cores_personalizadas: { ...coresAtuais, ...cores } })
         .eq("user_id", user.id);
 
       if (error) throw error;
@@ -143,9 +152,24 @@ export function PersonalizacaoCores() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      // Lê o valor atual para preservar campos não relacionados (ex: tracking_config)
+      const { data: atual } = await supabase
+        .from("configuracoes_loja")
+        .select("cores_personalizadas")
+        .eq("user_id", user.id)
+        .single();
+
+      const coresAtuais = (atual?.cores_personalizadas as Record<string, unknown>) || {};
+      // Remove apenas as chaves de cores do dashboard, mantém o resto
+      const { primary_from, primary_via, primary_to, card_faturamento_from, card_faturamento_via, card_faturamento_to, ...resto } = coresAtuais as Record<string, unknown>;
+      void primary_from; void primary_via; void primary_to;
+      void card_faturamento_from; void card_faturamento_via; void card_faturamento_to;
+
+      const novoValor = Object.keys(resto).length > 0 ? resto : null;
+
       const { error } = await supabase
         .from("configuracoes_loja")
-        .update({ cores_personalizadas: null })
+        .update({ cores_personalizadas: novoValor })
         .eq("user_id", user.id);
 
       if (error) throw error;

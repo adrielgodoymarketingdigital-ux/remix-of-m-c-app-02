@@ -125,7 +125,7 @@ export function BannerVencimentoPlano() {
 
         <div className="flex items-center justify-between px-3 py-1.5">
 
-          <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center justify-center gap-2">
             {/* Ponto pulsante */}
             <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isUrgente ? "bg-red-300" : "bg-blue-300"} opacity-60`} />

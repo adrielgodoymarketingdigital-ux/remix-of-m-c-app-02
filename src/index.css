@@ -7,6 +7,30 @@ html, body {
   max-width: 100vw;
 }
 
+/* OS Page — futuristic utilities */
+.os-card-glow {
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.os-card-glow:hover {
+  box-shadow: 0 0 0 1px rgba(var(--glow-rgb, 59 130 246) / 0.35),
+              0 4px 24px -4px rgba(var(--glow-rgb, 59 130 246) / 0.2);
+}
+.os-nova-btn {
+  position: relative;
+  overflow: hidden;
+}
+.os-nova-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.4s ease;
+}
+.os-nova-btn:hover::after {
+  transform: translateX(100%);
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */

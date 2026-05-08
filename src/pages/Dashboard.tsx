@@ -684,26 +684,6 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Banner de Migração de Pagamento */}
-          {migracaoNecessaria && (
-            <Alert className="mb-6 border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-950 dark:to-blue-900/50">
-              <CreditCard className="h-5 w-5 text-blue-600" />
-              <AlertTitle className="text-lg font-bold flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                Atualizamos nosso sistema de pagamentos!
-              </AlertTitle>
-              <AlertDescription className="space-y-3">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Para melhorar sua experiência, migramos nossa plataforma de pagamentos. 
-                  Por isso, será necessário renovar sua assinatura. <strong>Seus dados estão totalmente seguros</strong> — 
-                  nenhuma informação da sua conta foi perdida.
-                </p>
-                <Button onClick={() => navigate("/plano")} className="w-full sm:w-auto">
-                  <Crown className="mr-2 h-4 w-4" />
-                  Renovar Minha Assinatura
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
 
           {/* Banner de Trial Expirado */}
           {!migracaoNecessaria && isTrialExpirado && (
