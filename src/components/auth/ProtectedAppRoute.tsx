@@ -50,8 +50,8 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
       if (!isAllowed) {
         // Detectar se é um assinante pago que expirou (migração de conta Stripe)
         const planosPagos = ["basico_mensal", "basico_anual", "intermediario_mensal", "intermediario_anual", "profissional_mensal", "profissional_anual", "profissional_ultra_mensal", "profissional_ultra_anual"];
-        const isMigracao = assinatura?.plano_tipo && planosPagos.includes(assinatura.plano_tipo) && 
-          (assinatura.status === "canceled" || assinatura.status === "past_due");
+        const isMigracao = assinatura?.plano_tipo && planosPagos.includes(assinatura.plano_tipo) &&
+          (assinatura.status === "canceled" || assinatura.status === "past_due" || assinatura.status === "unpaid" || assinatura.status === "incomplete_expired");
         
         const params = isMigracao ? "?expired=1&migration=1" : "?expired=1";
         console.log(isMigracao 

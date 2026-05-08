@@ -499,9 +499,9 @@ export function useAssinatura() {
       return limiteTrialExpirado;
     }
 
-    // Se status é canceled, aplicar limites do plano Free (downgrade)
-    if (assinatura.status === 'canceled') {
-      console.log("📋 Assinatura cancelada, aplicando limites Free");
+    // Pagamento problemático ou cancelado: downgrade para limites Free
+    if (assinatura.status === 'canceled' || assinatura.status === 'past_due' || assinatura.status === 'unpaid' || assinatura.status === 'incomplete_expired') {
+      console.log("📋 Assinatura com status problemático, aplicando limites Free:", assinatura.status);
       return getLimitesFree(assinatura.created_at);
     }
     

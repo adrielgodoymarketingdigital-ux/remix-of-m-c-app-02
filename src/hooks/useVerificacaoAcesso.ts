@@ -148,7 +148,13 @@ export function useVerificacaoAcesso() {
     if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active') {
       return false;
     }
-    
+
+    // Pagamento problemático em plano pago = expirado (cobrança falhou)
+    if (planosPagos.includes(assinatura.plano_tipo) && (assinatura.status === 'past_due' || assinatura.status === 'unpaid' || assinatura.status === 'incomplete_expired')) {
+      console.log("⛔ [useVerificacaoAcesso] Plano pago com status problemático - acesso expirado", { status: assinatura.status });
+      return true;
+    }
+
     // TRIAL CANCELADO PELO USUÁRIO = EXPIRADO (bloquear acesso)
     if (assinatura.trial_canceled === true) {
       console.log("⛔ [useVerificacaoAcesso] Trial foi cancelado pelo usuário");
@@ -341,9 +347,9 @@ export function useVerificacaoAcesso() {
       return true;
     }
 
-    // 6. Status cancelado = NÃO liberado (mesmo com trial_with_card)
-    if (assinatura.status === 'canceled') {
-      console.log("⛔ [useVerificacaoAcesso] Status cancelado - acesso negado");
+    // 6. Status problemático = NÃO liberado
+    if (assinatura.status === 'canceled' || assinatura.status === 'past_due' || assinatura.status === 'unpaid' || assinatura.status === 'incomplete_expired') {
+      console.log("⛔ [useVerificacaoAcesso] Status problemático - acesso negado:", assinatura.status);
       return false;
     }
 

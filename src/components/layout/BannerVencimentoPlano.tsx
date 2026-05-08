@@ -38,18 +38,33 @@ export function BannerVencimentoPlano() {
     const diffMs = dataVencimento.getTime() - agora.getTime();
     const diasRestantes = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    // Plano ativo - mostrar data de vencimento
-    if (status === "active" || status === "trialing") {
-      // Admin sempre vê o banner para fins de teste
-      if (planoTipo !== "admin" && diasRestantes > 15) return null;
+    // Plano ativo ou com cobrança problemática - mostrar data de vencimento
+    if (status === "active" || status === "trialing" || status === "past_due" || status === "unpaid") {
+      const isProblem = status === "past_due" || status === "unpaid";
 
-      // Cartão ativo = renovação automática. Só mostra banner se já venceu
-      // (cobrança automática falhou e precisa de ação do usuário).
-      if (isCartaoAutomatico && planoTipo !== "admin" && diasRestantes > 0) {
-        return null;
+      // past_due/unpaid: sempre mostrar banner urgente, independente de dias restantes
+      if (!isProblem) {
+        // Admin sempre vê o banner para fins de teste
+        if (planoTipo !== "admin" && diasRestantes > 15) return null;
+
+        // Cartão ativo = renovação automática. Só mostra banner se já venceu
+        // (cobrança automática falhou e precisa de ação do usuário).
+        if (isCartaoAutomatico && planoTipo !== "admin" && diasRestantes > 0) {
+          return null;
+        }
       }
 
       const dataFormatada = format(dataVencimento, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+
+      // Cobrança falhou (past_due/unpaid): sempre urgente, pede atualização imediata
+      if (isProblem) {
+        return {
+          tipo: "vencido" as const,
+          mensagem: `Falha no pagamento da sua assinatura. Atualize seu método de pagamento para continuar usando o sistema.`,
+          cor: "bg-red-600",
+          botao: "Atualizar pagamento",
+        };
+      }
 
       // Carência de 1 dia após o vencimento (Ticto não libera renovação no mesmo dia)
       if (diasRestantes <= -1) {
