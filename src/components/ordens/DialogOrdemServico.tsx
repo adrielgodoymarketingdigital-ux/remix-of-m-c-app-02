@@ -353,9 +353,9 @@ export const DialogOrdemServico = ({
         dispositivoCor: ordem.dispositivo_cor || "",
         dispositivoNumeroSerie: ordem.dispositivo_numero_serie || "",
         dispositivoIMEI: ordem.dispositivo_imei || "",
-        dispositivoSistema: "",
-        dispositivoFabricante: "",
-        dispositivoSubtipo: "",
+        dispositivoSistema: avariasData.dispositivo_sistema || "",
+        dispositivoFabricante: avariasData.dispositivo_fabricante || "",
+        dispositivoSubtipo: avariasData.dispositivo_subtipo || "",
         fotosDispositivo: avariasData.fotos_dispositivo || [],
         defeitoRelatado: ordem.defeito_relatado,
         observacoesInternas: (avariasData as any)?.observacoes_internas || "",
@@ -629,6 +629,9 @@ export const DialogOrdemServico = ({
         fotos_dispositivo: formData.fotosDispositivo,
         observacoes_internas: formData.observacoesInternas || undefined,
         mostrar_obs_internas_impressao: formData.mostrarObsInternasImpressao,
+        dispositivo_sistema: formData.dispositivoSistema || undefined,
+        dispositivo_fabricante: formData.dispositivoFabricante || undefined,
+        dispositivo_subtipo: formData.dispositivoSubtipo || undefined,
       };
 
       // Calcular total dos serviços + produtos + custos repassados - desconto

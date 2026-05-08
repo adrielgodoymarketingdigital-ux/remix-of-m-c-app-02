@@ -76,6 +76,9 @@ export interface AvariasOS {
   dados_pagamento?: DadosPagamento;
   observacoes_internas?: string;
   mostrar_obs_internas_impressao?: boolean;
+  dispositivo_sistema?: string;
+  dispositivo_fabricante?: string;
+  dispositivo_subtipo?: string;
 }
 
 export interface DadosPagamento {
