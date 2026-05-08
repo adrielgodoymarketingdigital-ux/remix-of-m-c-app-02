@@ -205,17 +205,19 @@ export default function AdminFinanceiro() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-              <DollarSign className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 tracking-tight">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-primary" />
+              </div>
               Financeiro
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Visão consolidada de assinaturas e receitas (banco de dados + Pagar.me)
+            <p className="text-sm text-muted-foreground mt-1 ml-0.5">
+              Visão consolidada de assinaturas e receitas — atualiza automaticamente
             </p>
           </div>
-          <Button onClick={() => refetch()} disabled={isFetching} variant="outline" size="sm">
-            <RefreshCcw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
-            Atualizar
+          <Button onClick={() => refetch()} disabled={isFetching} variant="outline" size="sm" className="gap-2">
+            <RefreshCcw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            {isFetching ? "Atualizando…" : "Atualizar"}
           </Button>
         </div>
 
@@ -246,32 +248,32 @@ export default function AdminFinanceiro() {
         {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
-            icon={<Users className="h-5 w-5" />}
-            title="Assinantes pagantes (vigentes)"
+            icon={<Users className="h-4 w-4" />}
+            title="Assinantes Ativos"
             value={isLoading ? null : String(data?.assinantes_db ?? 0)}
             description="Pagaram e estão em dia"
+            accent="blue"
           />
           <KpiCard
-            icon={<UserX className="h-5 w-5" />}
+            icon={<UserX className="h-4 w-4" />}
             title="Inadimplentes"
             value={isLoading ? null : String(data?.assinantes_inadimplentes ?? 0)}
-            description="Status ativo, mas com cobrança vencida"
+            description="Plano ativo com cobrança vencida"
+            accent="red"
           />
           <KpiCard
-            icon={<TrendingUp className="h-5 w-5" />}
-            title="MRR Banco de Dados"
+            icon={<TrendingUp className="h-4 w-4" />}
+            title="MRR Total"
             value={isLoading ? null : formatBRL(data?.mrr_db ?? 0)}
-            description="Considera apenas assinantes vigentes"
+            description="Receita recorrente mensal"
+            accent="green"
           />
           <KpiCard
-            icon={<TrendingUp className="h-5 w-5" />}
-            title="MRR Pagar.me (líquido)"
+            icon={<CreditCard className="h-4 w-4" />}
+            title="MRR Líquido Pagar.me"
             value={isLoading ? null : formatBRL(data?.mrr_pagarme_liquido ?? 0)}
-            description={
-              data
-                ? `Bruto: ${formatBRL(data.mrr_pagarme_bruto)}`
-                : "Após descontos da Pagar.me"
-            }
+            description={data ? `Bruto: ${formatBRL(data.mrr_pagarme_bruto)}` : "Após taxas"}
+            accent="purple"
           />
         </div>
 
@@ -280,57 +282,26 @@ export default function AdminFinanceiro() {
 
         {/* Breakdown por plataforma */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border-amber-200 bg-amber-50/30 dark:bg-amber-950/10">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-amber-700 uppercase tracking-wider">Ticto Ativos</span>
-                <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-amber-600" />
+          {[
+            { label: "Ticto Ativos",   value: breakdown?.tictoAtivos   || 0, desc: "Vigentes no Ticto",         icon: <Users className="h-4 w-4" />,         bar: "from-amber-500 to-orange-400",  iconBg: "bg-amber-500/10 text-amber-400",   border: "border-amber-500/20"   },
+            { label: "Ticto Vencidos", value: breakdown?.tictoVencidos || 0, desc: "Aguardando renovação",      icon: <AlertTriangle className="h-4 w-4" />, bar: "from-red-500 to-rose-400",      iconBg: "bg-red-500/10 text-red-400",       border: "border-red-500/20"     },
+            { label: "Pagar.me",       value: breakdown?.pagarmeAtivos  || 0, desc: "Ativos no Pagar.me",       icon: <CreditCard className="h-4 w-4" />,    bar: "from-emerald-500 to-green-400", iconBg: "bg-emerald-500/10 text-emerald-400", border: "border-emerald-500/20" },
+            { label: "Stripe",         value: breakdown?.stripeAtivos   || 0, desc: "Legado Stripe",            icon: <CreditCard className="h-4 w-4" />,    bar: "from-slate-400 to-slate-500",   iconBg: "bg-slate-500/10 text-slate-400",   border: "border-slate-500/20"   },
+          ].map((item) => (
+            <div key={item.label} className={`relative rounded-xl border ${item.border} bg-card overflow-hidden hover:shadow-lg hover:shadow-black/20 transition-all duration-300`}>
+              <div className={`h-0.5 w-full bg-gradient-to-r ${item.bar}`} />
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{item.label}</span>
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${item.iconBg}`}>
+                    {item.icon}
+                  </div>
                 </div>
+                <div className="text-3xl font-bold tracking-tight">{item.value}</div>
+                <div className="text-xs text-muted-foreground mt-1">{item.desc}</div>
               </div>
-              <div className="text-3xl font-bold text-amber-600">{breakdown?.tictoAtivos || 0}</div>
-              <div className="text-xs text-muted-foreground mt-1">Vigentes no Ticto</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-red-200 bg-red-50/30 dark:bg-red-950/10">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-red-700 uppercase tracking-wider">Ticto Vencidos</span>
-                <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                </div>
-              </div>
-              <div className="text-3xl font-bold text-red-600">{breakdown?.tictoVencidos || 0}</div>
-              <div className="text-xs text-muted-foreground mt-1">Não renovaram no Pagar.me</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-green-200 bg-green-50/30 dark:bg-green-950/10">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-green-700 uppercase tracking-wider">Pagar.me</span>
-                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                  <CreditCard className="h-4 w-4 text-green-600" />
-                </div>
-              </div>
-              <div className="text-3xl font-bold text-green-600">{breakdown?.pagarmeAtivos || 0}</div>
-              <div className="text-xs text-muted-foreground mt-1">Migraram para Pagar.me</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200 bg-slate-50/30 dark:bg-slate-950/10">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-slate-700 uppercase tracking-wider">Stripe</span>
-                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-                  <CreditCard className="h-4 w-4 text-slate-600" />
-                </div>
-              </div>
-              <div className="text-3xl font-bold text-slate-600">{breakdown?.stripeAtivos || 0}</div>
-              <div className="text-xs text-muted-foreground mt-1">Legado Stripe</div>
-            </CardContent>
-          </Card>
+            </div>
+          ))}
         </div>
 
         {/* Card cancelamentos */}
@@ -938,29 +909,40 @@ function KpiCard({
   title,
   value,
   description,
+  accent = "blue",
 }: {
   icon: React.ReactNode;
   title: string;
   value: string | null;
   description?: string;
+  accent?: "blue" | "red" | "green" | "purple";
 }) {
+  const accents = {
+    blue:   { glow: "before:from-blue-500/20",   iconBg: "bg-blue-500/10 text-blue-400",   bar: "from-blue-500 to-blue-400",   border: "border-blue-500/20"   },
+    red:    { glow: "before:from-red-500/20",     iconBg: "bg-red-500/10 text-red-400",     bar: "from-red-500 to-red-400",     border: "border-red-500/20"    },
+    green:  { glow: "before:from-emerald-500/20", iconBg: "bg-emerald-500/10 text-emerald-400", bar: "from-emerald-500 to-emerald-400", border: "border-emerald-500/20" },
+    purple: { glow: "before:from-violet-500/20",  iconBg: "bg-violet-500/10 text-violet-400",  bar: "from-violet-500 to-violet-400",  border: "border-violet-500/20"  },
+  };
+  const a = accents[accent];
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground font-medium">{title}</p>
-          <div className="text-primary">{icon}</div>
+    <div className={`relative rounded-xl border ${a.border} bg-card overflow-hidden group hover:shadow-lg hover:shadow-black/20 transition-all duration-300`}>
+      {/* barra superior colorida */}
+      <div className={`h-0.5 w-full bg-gradient-to-r ${a.bar}`} />
+      <div className="p-5">
+        <div className="flex items-start justify-between mb-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest leading-tight">{title}</p>
+          <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${a.iconBg}`}>
+            {icon}
+          </div>
         </div>
-        <div className="mt-2">
-          {value === null ? (
-            <Skeleton className="h-8 w-24" />
-          ) : (
-            <p className="text-2xl font-bold">{value}</p>
-          )}
-          {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
-        </div>
-      </CardContent>
-    </Card>
+        {value === null ? (
+          <Skeleton className="h-9 w-28 mb-1" />
+        ) : (
+          <p className="text-3xl font-bold tracking-tight">{value}</p>
+        )}
+        {description && <p className="text-xs text-muted-foreground mt-1.5">{description}</p>}
+      </div>
+    </div>
   );
 }
 
