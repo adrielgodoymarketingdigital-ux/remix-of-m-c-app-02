@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
-import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle } from "lucide-react";
+import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { SecaoDesempenhoSistema } from "@/components/admin/SecaoDesempenhoSistema";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { format } from "date-fns";
@@ -276,6 +276,83 @@ export default function AdminFinanceiro() {
             accent="purple"
           />
         </div>
+
+        {/* Recorrência do mês */}
+        {(() => {
+          const entrou = data?.recorrencia_entrou_mes ?? 0;
+          const falta = data?.recorrencia_falta_mes ?? 0;
+          const total = entrou + falta;
+          const pctEntrou = total > 0 ? (entrou / total) * 100 : 0;
+          const mesNome = data?.mes
+            ? format(new Date(data.mes + "-01"), "MMMM 'de' yyyy", { locale: ptBR })
+            : format(new Date(), "MMMM 'de' yyyy", { locale: ptBR });
+          return (
+            <Card className="border-primary/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  Recorrência de Assinaturas — {mesNome.charAt(0).toUpperCase() + mesNome.slice(1)}
+                </CardTitle>
+                <CardDescription>Receita recorrente que já entrou e o que ainda falta receber dos assinantes vigentes</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div className="relative rounded-xl border border-emerald-500/20 bg-card overflow-hidden">
+                    <div className="h-0.5 w-full bg-gradient-to-r from-emerald-500 to-green-400" />
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Já entrou este mês</span>
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-400">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                      </div>
+                      {isLoading ? (
+                        <Skeleton className="h-8 w-32" />
+                      ) : (
+                        <div className="text-2xl font-bold tracking-tight text-emerald-500">{formatBRL(entrou)}</div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-1">Período pago — próxima cobrança além do mês</div>
+                    </div>
+                  </div>
+
+                  <div className="relative rounded-xl border border-amber-500/20 bg-card overflow-hidden">
+                    <div className="h-0.5 w-full bg-gradient-to-r from-amber-500 to-orange-400" />
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Falta entrar este mês</span>
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-amber-500/10 text-amber-400">
+                          <Clock className="h-4 w-4" />
+                        </div>
+                      </div>
+                      {isLoading ? (
+                        <Skeleton className="h-8 w-32" />
+                      ) : (
+                        <div className="text-2xl font-bold tracking-tight text-amber-500">{formatBRL(falta)}</div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-1">Renovação vence este mês — vigentes em dia</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Barra de progresso */}
+                {!isLoading && total > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{pctEntrou.toFixed(0)}% recebido</span>
+                      <span>Total esperado: {formatBRL(total)}</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-green-400 rounded-full transition-all duration-500"
+                        style={{ width: `${pctEntrou}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Desempenho do Sistema */}
         <SecaoDesempenhoSistema data={data?.historico_crescimento} isLoading={isLoading} />

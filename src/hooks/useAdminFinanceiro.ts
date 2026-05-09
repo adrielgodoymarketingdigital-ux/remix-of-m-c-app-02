@@ -71,6 +71,8 @@ export interface AdminFinanceiroData {
     pix_fixa: number;
   };
   pagarme_error: string | null;
+  recorrencia_entrou_mes: number;
+  recorrencia_falta_mes: number;
   historico_crescimento: {
     snapshots: Array<{
       mes: string;

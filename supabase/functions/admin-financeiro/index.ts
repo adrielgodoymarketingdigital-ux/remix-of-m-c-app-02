@@ -485,6 +485,32 @@ serve(async (req) => {
     const totalReceberMesBruto = recebimentosCartaoMes.reduce((s, r) => s + r.amount, 0);
     const totalReceberMesLiquido = recebimentosCartaoMes.reduce((s, r) => s + r.amount_liquido, 0);
 
+    // ─── Recorrência do mês: entrou vs. falta entrar ───────────────────
+    // "Entrou" = assinante vigente em dia cujo data_fim está além do mês atual
+    //   (período já foi pago, o próximo vence mês que vem ou mais)
+    // "Falta entrar" = assinante vigente em dia cujo data_fim cai dentro do
+    //   mês atual (renovação ainda pendente este mês) ou sem data_fim
+    let recorrenciaEntrouMes = 0;
+    let recorrenciaFaltaMes = 0;
+    for (const a of vigentes) {
+      const valor = PRECOS_MES[a.plano_tipo as string] || 0;
+      if (!valor) continue;
+      const ref = a.data_proxima_cobranca || a.data_fim;
+      if (!ref) {
+        // Sem data: considera já pago (ex: Stripe gerencia internamente)
+        recorrenciaEntrouMes += valor;
+        continue;
+      }
+      const dtRef = new Date(ref);
+      if (dtRef > mesFim) {
+        // Próxima cobrança/expiração está além do mês: já pagou este ciclo
+        recorrenciaEntrouMes += valor;
+      } else {
+        // Próxima cobrança/expiração cai neste mês ou está vencendo: ainda falta
+        recorrenciaFaltaMes += valor;
+      }
+    }
+
     const result = {
       // KPIs principais
       assinantes_db: dbTotal,
@@ -517,6 +543,8 @@ serve(async (req) => {
       pagarme_status_breakdown: pagarmeStatusBreakdown,
       pagarme_debug: pagarmeRawDebug,
       historico_crescimento,
+      recorrencia_entrou_mes: recorrenciaEntrouMes,
+      recorrencia_falta_mes: recorrenciaFaltaMes,
       last_update: agora.toISOString(),
     };
 
