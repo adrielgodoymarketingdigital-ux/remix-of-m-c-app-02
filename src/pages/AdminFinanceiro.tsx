@@ -335,7 +335,7 @@ export default function AdminFinanceiro() {
                       <div className="text-xs text-muted-foreground mt-1">
                         Renovação vence este mês — vigentes em dia
                         {!isLoading && faltaAte && (
-                          <span className="ml-1 font-medium text-amber-500">· até {faltaAte}</span>
+                          <span className="ml-1 font-medium text-amber-500">· última renovação em {faltaAte}</span>
                         )}
                       </div>
                     </div>
