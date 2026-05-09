@@ -284,7 +284,7 @@ export default function AdminFinanceiro() {
           const total = entrou + falta;
           const pctEntrou = total > 0 ? (entrou / total) * 100 : 0;
           const mesNome = data?.mes
-            ? format(new Date(data.mes + "-01"), "MMMM 'de' yyyy", { locale: ptBR })
+            ? format(new Date(data.mes.replace(/-/g, "/") + "/01"), "MMMM 'de' yyyy", { locale: ptBR })
             : format(new Date(), "MMMM 'de' yyyy", { locale: ptBR });
           return (
             <Card className="border-primary/20">
