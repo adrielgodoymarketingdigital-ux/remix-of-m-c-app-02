@@ -281,6 +281,9 @@ export default function AdminFinanceiro() {
         {(() => {
           const entrou = data?.recorrencia_entrou_mes ?? 0;
           const falta = data?.recorrencia_falta_mes ?? 0;
+          const faltaAte = data?.recorrencia_falta_ate
+            ? format(new Date(data.recorrencia_falta_ate), "dd/MM", { locale: ptBR })
+            : null;
           const total = entrou + falta;
           const pctEntrou = total > 0 ? (entrou / total) * 100 : 0;
           const mesNome = data?.mes
@@ -329,7 +332,12 @@ export default function AdminFinanceiro() {
                       ) : (
                         <div className="text-2xl font-bold tracking-tight text-amber-500">{formatBRL(falta)}</div>
                       )}
-                      <div className="text-xs text-muted-foreground mt-1">Renovação vence este mês — vigentes em dia</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Renovação vence este mês — vigentes em dia
+                        {!isLoading && faltaAte && (
+                          <span className="ml-1 font-medium text-amber-500">· até {faltaAte}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

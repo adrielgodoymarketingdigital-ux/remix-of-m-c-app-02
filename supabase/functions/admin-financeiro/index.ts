@@ -492,6 +492,7 @@ serve(async (req) => {
     //   mês atual (renovação ainda pendente este mês) ou sem data_fim
     let recorrenciaEntrouMes = 0;
     let recorrenciaFaltaMes = 0;
+    let recorrenciaFaltaUltimaData: string | null = null;
     for (const a of vigentes) {
       const valor = PRECOS_MES[a.plano_tipo as string] || 0;
       if (!valor) continue;
@@ -508,6 +509,9 @@ serve(async (req) => {
       } else {
         // Próxima cobrança/expiração cai neste mês ou está vencendo: ainda falta
         recorrenciaFaltaMes += valor;
+        if (!recorrenciaFaltaUltimaData || dtRef > new Date(recorrenciaFaltaUltimaData)) {
+          recorrenciaFaltaUltimaData = ref;
+        }
       }
     }
 
@@ -545,6 +549,7 @@ serve(async (req) => {
       historico_crescimento,
       recorrencia_entrou_mes: recorrenciaEntrouMes,
       recorrencia_falta_mes: recorrenciaFaltaMes,
+      recorrencia_falta_ate: recorrenciaFaltaUltimaData,
       last_update: agora.toISOString(),
     };
 
