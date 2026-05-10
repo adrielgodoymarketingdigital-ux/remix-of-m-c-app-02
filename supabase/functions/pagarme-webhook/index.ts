@@ -158,8 +158,57 @@ serve(async (req) => {
     }
 
     if (!pagamento) {
-      log("Pagamento não encontrado para order_id", { orderId });
-      // Retorna 200 para Pagar.me não retentar
+      // Fallback: pagamento não veio pelo fluxo do app (ex: link externo Pagar.me/Ticto).
+      // Tenta renovar pelo customer.code = user_id do pedido.
+      const customerCode = (order?.customer?.code as string) ?? null;
+      log("Pagamento não encontrado — tentando fallback por customer.code", { orderId, customerCode });
+
+      if (customerCode) {
+        const { data: assinaturaFallback } = await supabaseAdmin
+          .from("assinaturas")
+          .select("id, plano_tipo, user_id")
+          .eq("user_id", customerCode)
+          .maybeSingle();
+
+        if (assinaturaFallback) {
+          const isAnualFb = assinaturaFallback.plano_tipo.includes("anual");
+          const dataFimFb = new Date(
+            Date.now() + (isAnualFb ? 365 : 30) * 24 * 60 * 60 * 1000
+          ).toISOString();
+
+          await supabaseAdmin
+            .from("assinaturas")
+            .update({
+              status: "active",
+              data_inicio: new Date().toISOString(),
+              data_fim: dataFimFb,
+              data_proxima_cobranca: dataFimFb,
+              payment_provider: "pagarme",
+              payment_method: "pix",
+              updated_at: new Date().toISOString(),
+              bloqueado_admin: false,
+              bloqueado_admin_em: null,
+              bloqueado_admin_motivo: null,
+              bloqueado_tipo: null,
+            })
+            .eq("id", assinaturaFallback.id);
+
+          await supabaseAdmin.from("admin_notifications").insert({
+            tipo: "nova_assinatura_pix",
+            titulo: "Renovação via PIX (link externo)",
+            mensagem: `Pagamento PIX externo confirmado para plano ${assinaturaFallback.plano_tipo}`,
+            dados: { user_id: customerCode, plano_tipo: assinaturaFallback.plano_tipo, pagarme_order_id: orderId },
+          });
+
+          log("✅ Assinatura renovada via fallback customer.code", { userId: customerCode, orderId });
+          return new Response(
+            JSON.stringify({ received: true, processed: true, fallback: true, user_id: customerCode }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      log("Pagamento não encontrado e sem fallback", { orderId });
       return new Response(
         JSON.stringify({ received: true, warning: "Pagamento não encontrado" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

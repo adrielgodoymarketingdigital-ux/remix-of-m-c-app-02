@@ -242,6 +242,31 @@ serve(async (req) => {
 
     log("Admin autenticado", { userId: userData.user.id });
 
+    // ─── Diagnóstico de usuário por email ──────────────────────────────
+    const url = new URL(req.url);
+    const emailDiag = url.searchParams.get("email");
+    if (emailDiag) {
+      const { data: profDiag } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, nome, email, celular")
+        .eq("email", emailDiag)
+        .maybeSingle();
+
+      const userId = profDiag?.user_id;
+      const { data: assDiag } = userId
+        ? await supabaseAdmin
+            .from("assinaturas")
+            .select("id, plano_tipo, status, payment_provider, payment_method, data_inicio, data_fim, data_proxima_cobranca, stripe_subscription_id, pagarme_subscription_id, ticto_order_id, bloqueado_admin, bloqueado_admin_motivo, trial_with_card, trial_canceled, trial_converted")
+            .eq("user_id", userId)
+            .order("data_inicio", { ascending: false })
+        : { data: [] };
+
+      return new Response(JSON.stringify({ profile: profDiag, assinaturas: assDiag }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const agora = new Date();
 
     // Pagar.me neste projeto é usado APENAS para cobranças PIX avulsas
