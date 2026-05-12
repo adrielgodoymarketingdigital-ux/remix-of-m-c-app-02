@@ -52,6 +52,7 @@ export interface PermissoesModulos {
   suporte: boolean;
   novidades: boolean;
   tutoriais: boolean;
+  precificador: boolean;
 }
 
 export interface PermissoesRecursos {
@@ -138,6 +139,7 @@ export const PERMISSOES_DEFAULT: Permissoes = {
     suporte: true,
     novidades: true,
     tutoriais: true,
+    precificador: true,
   },
   recursos: {
     ver_custos: false,
@@ -179,6 +181,7 @@ export const MODULOS_LABELS: Record<keyof PermissoesModulos, string> = {
   suporte: "Suporte",
   novidades: "Novidades",
   tutoriais: "Tutoriais",
+  precificador: "Precificador",
 };
 
 export const RECURSOS_LABELS: Record<keyof PermissoesRecursos, string> = {
@@ -221,4 +224,5 @@ export const ROTA_PARA_MODULO: Record<string, keyof PermissoesModulos> = {
   "/suporte": "suporte",
   "/novidades": "novidades",
   "/tutoriais": "tutoriais",
+  "/precificador": "precificador",
 };

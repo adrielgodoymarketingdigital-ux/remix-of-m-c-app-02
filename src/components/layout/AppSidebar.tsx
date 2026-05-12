@@ -51,6 +51,7 @@ import {
   ChevronRight,
   Building2,
   Smartphone,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +91,7 @@ const menuItems = [
   { title: "Tutoriais", url: "/tutoriais", icon: Video, modulo: "tutoriais" as keyof PermissoesModulos },
   { title: "Baixar App", url: "/baixar-app", icon: Smartphone, modulo: "suporte" as keyof PermissoesModulos },
   { title: "Multi Empresas", url: "/multi-empresas", icon: Building2, modulo: "configuracoes" as keyof PermissoesModulos },
+  { title: "Precificador", url: "/precificador", icon: Calculator, modulo: "precificador" as keyof PermissoesModulos },
 ];
 
 const adminMenuItems = [
