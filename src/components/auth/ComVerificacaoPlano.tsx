@@ -62,24 +62,34 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
     return <>{children}</>;
   }
 
+  // Módulos com mensagem de bloqueio personalizada
+  const BLOQUEIOS_PERSONALIZADOS: Partial<Record<typeof modulo, { titulo: string; descricao: string }>> = {
+    precificador: {
+      titulo: "Funcionalidade exclusiva do Plano Ultra",
+      descricao: "O Precificador com cálculo de DIFAL e taxas de cartão está disponível apenas no Plano Ultra. Faça upgrade e tenha acesso completo a essa e outras ferramentas exclusivas.",
+    },
+  };
+
   // Verificar acesso ao módulo
   if (!temAcessoModulo(modulo)) {
+    const personalizado = BLOQUEIOS_PERSONALIZADOS[modulo];
     return (
       <div className="container mx-auto py-12 px-4">
         <Alert className="max-w-2xl mx-auto border-primary">
           <Crown className="h-5 w-5 text-primary" />
           <AlertTitle className="text-xl font-bold mb-2">
-            Recurso Premium
+            {personalizado?.titulo ?? "Recurso Premium"}
           </AlertTitle>
           <AlertDescription className="space-y-4">
             <p>
-              Este módulo não está disponível no seu plano atual:{" "}
-              <span className="font-semibold">
-                {assinatura.plano_tipo.replace(/_/g, " ").toUpperCase()}
-              </span>
-            </p>
-            <p>
-              Faça upgrade para um plano superior e desbloqueie todos os recursos avançados do sistema!
+              {personalizado?.descricao ?? (
+                <>
+                  Este módulo não está disponível no seu plano atual:{" "}
+                  <span className="font-semibold">
+                    {assinatura.plano_tipo.replace(/_/g, " ").toUpperCase()}
+                  </span>. Faça upgrade para um plano superior e desbloqueie todos os recursos avançados do sistema!
+                </>
+              )}
             </p>
             <Button onClick={() => navigate("/plano")} className="w-full sm:w-auto">
               <Crown className="mr-2 h-4 w-4" />
