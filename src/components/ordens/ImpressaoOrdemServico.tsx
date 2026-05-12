@@ -158,7 +158,7 @@ export const ImpressaoOrdemServico = ({
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>OS #${ordem.numero_os}</title>
   <style>
     ${cssVars}
@@ -285,34 +285,27 @@ export const ImpressaoOrdemServico = ({
     .cupom-assinatura-bloco { text-align: center; margin-bottom: 2mm; }
     .cupom-linha-assinatura { border-bottom: 1.5px solid #000; width: 90%; margin: 3mm auto 1mm; }
     .cupom-assinatura-img { max-width: 30mm; max-height: 10mm; }
-    /* Duas OS por folha — usa mm para garantir fidelidade na impressão mobile/Android */
-    .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; }
-    .impressao-duas-os-slot { overflow: hidden; position: relative; flex-shrink: 0; }
-    .impressao-duas-os-slot > * { transform-origin: top left; transform: scale(0.5); width: 194mm !important; max-width: 194mm !important; }
-    .impressao-duas-os-corte { flex-shrink: 0; width: 0; border-left: 1pt dashed #aaa; display: flex; align-items: center; justify-content: center; position: relative; }
+    /* Reset das regras de transform/scale vindas do index.css — substituídas por zoom abaixo */
+    .impressao-duas-os-slot > * { transform: none !important; }
+    /* Duas OS por folha — zoom em vez de transform para funcionar no Chrome Android */
+    .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; width: 100%; }
+    /* Vertical (retrato): 2 colunas lado a lado, cada slot ocupa metade da página */
+    .impressao-duas-os-vertical { width: 100%; }
+    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 50%; overflow: hidden; flex-shrink: 0; }
+    .impressao-duas-os-vertical .impressao-duas-os-slot > * { zoom: 0.5; width: 194mm !important; max-width: 194mm !important; display: block; }
+    .impressao-duas-os-vertical .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; align-self: stretch; display: flex; align-items: center; justify-content: center; position: relative; }
+    /* Horizontal (paisagem): 2 colunas lado a lado em folha deitada */
+    .impressao-duas-os-horizontal { width: 100%; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 50%; overflow: hidden; flex-shrink: 0; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { zoom: 0.713; width: 194mm !important; max-width: 194mm !important; display: block; }
+    .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; align-self: stretch; display: flex; align-items: center; justify-content: center; position: relative; }
     .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
-    /* Vertical (retrato): 2 OS lado a lado, cada slot = 97mm */
-    .impressao-duas-os-vertical { width: 194mm; }
-    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm; height: 138.5mm; }
-    .impressao-duas-os-vertical .impressao-duas-os-corte { height: 138.5mm; }
-    /* Horizontal (paisagem): 2 OS lado a lado, cada slot = 138.5mm */
-    .impressao-duas-os-horizontal { width: 277mm; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm; height: 194mm; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.713); width: 194mm !important; max-width: 194mm !important; }
-    .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 194mm; }
-    ${isHorizontalMode ? '@page { size: A4 landscape; margin: 8mm; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 8mm; }')}
+    ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 0; }')}
     @media print {
       * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { overflow: visible !important; margin: 0; padding: 0; }
-      img { max-width: 100% !important; }
-      .impressao-duas-os-wrapper { page-break-inside: avoid !important; break-inside: avoid !important; }
+      html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; }
+      .impressao-duas-os-wrapper { page-break-inside: avoid !important; break-inside: avoid !important; width: 100% !important; }
       .impressao-duas-os-slot { overflow: hidden !important; }
-      .impressao-duas-os-vertical { width: 194mm !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm !important; height: 138.5mm !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-corte { height: 138.5mm !important; }
-      .impressao-duas-os-horizontal { width: 277mm !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm !important; height: 194mm !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 194mm !important; }
     }
   </style>
 </head>
