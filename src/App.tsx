@@ -315,7 +315,9 @@ function AppRoutes() {
           <Route path="/precificador" element={
             <ProtectedAppRoute>
               <ComVerificacaoFuncionario modulo="precificador">
-                <Precificador />
+                <ComVerificacaoPlano modulo="precificador">
+                  <Precificador />
+                </ComVerificacaoPlano>
               </ComVerificacaoFuncionario>
             </ProtectedAppRoute>
           } />

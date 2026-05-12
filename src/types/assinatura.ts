@@ -9,7 +9,9 @@ export type PlanoTipo =
   | "profissional_mensal"
   | "basico_anual"
   | "intermediario_anual"
-  | "profissional_anual";
+  | "profissional_anual"
+  | "profissional_ultra_mensal"
+  | "profissional_ultra_anual";
 
 export type StatusAssinatura =
   | "active"
@@ -58,6 +60,7 @@ export interface LimitesPlano {
     orcamentos: boolean;
     catalogo: boolean;
     landing_page: boolean; // Função em desenvolvimento - apenas admin
+    precificador: boolean;
   };
   recursos_premium: {
     consulta_imei: boolean;
@@ -96,6 +99,7 @@ const LIMITES_FREE_LEGADO: LimitesPlano = {
     orcamentos: false,
     catalogo: false,
     landing_page: false,
+    precificador: false,
   },
   recursos_premium: {
     consulta_imei: false,
@@ -129,6 +133,7 @@ const LIMITES_FREE: LimitesPlano = {
     orcamentos: false,
     catalogo: false,
     landing_page: false,
+    precificador: false,
   },
   recursos_premium: {
     consulta_imei: false,
@@ -162,6 +167,7 @@ const LIMITES_TRIAL: LimitesPlano = {
     orcamentos: true,
     catalogo: true,
     landing_page: false, // Em desenvolvimento
+    precificador: false,
   },
   recursos_premium: {
     consulta_imei: true,
@@ -195,6 +201,7 @@ const LIMITES_ADMIN: LimitesPlano = {
     orcamentos: true,
     catalogo: true,
     landing_page: true, // Admin tem acesso para testar
+    precificador: true,
   },
   recursos_premium: {
     consulta_imei: true,
@@ -228,6 +235,7 @@ const LIMITES_BASICO: LimitesPlano = {
     orcamentos: true,
     catalogo: false,
     landing_page: false,
+    precificador: false,
   },
   recursos_premium: {
     consulta_imei: false,
@@ -261,6 +269,7 @@ const LIMITES_INTERMEDIARIO: LimitesPlano = {
     orcamentos: true,
     catalogo: true,
     landing_page: false,
+    precificador: false,
   },
   recursos_premium: {
     consulta_imei: false,
@@ -294,12 +303,22 @@ const LIMITES_PROFISSIONAL: LimitesPlano = {
     orcamentos: true,
     catalogo: true,
     landing_page: false,
+    precificador: false,
   },
   recursos_premium: {
     consulta_imei: true,
     verificacao_garantia_apple: true,
     suporte_prioritario: true,
     assinatura_digital: true,
+  },
+};
+
+// Limites do plano Ultra (profissional + Precificador)
+const LIMITES_ULTRA: LimitesPlano = {
+  ...LIMITES_PROFISSIONAL,
+  modulos: {
+    ...LIMITES_PROFISSIONAL.modulos,
+    precificador: true,
   },
 };
 
@@ -315,6 +334,8 @@ export const LIMITES_POR_PLANO: Record<PlanoTipo, LimitesPlano> = {
   intermediario_anual: LIMITES_INTERMEDIARIO,
   profissional_mensal: LIMITES_PROFISSIONAL,
   profissional_anual: LIMITES_PROFISSIONAL,
+  profissional_ultra_mensal: LIMITES_ULTRA,
+  profissional_ultra_anual: LIMITES_ULTRA,
 };
 
 /**

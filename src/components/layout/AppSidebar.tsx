@@ -59,6 +59,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useAssinatura } from "@/hooks/useAssinatura";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
 
@@ -116,6 +117,7 @@ export function AppSidebar() {
   const [clientesExpandido, setClientesExpandido] = useState(false);
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { temAcessoModulo: temAcessoPlano } = useAssinatura();
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -139,21 +141,33 @@ export function AppSidebar() {
       return [];
     }
     
-    // Dono da loja (não é funcionário) vê todos os menus
+    // Itens que exigem plano específico (verificados por módulo no LIMITES_POR_PLANO)
+    const ITENS_RESTRITOS_POR_PLANO = ['/precificador'];
+
+    // Dono da loja (não é funcionário) — mostrar tudo exceto itens sem acesso no plano
     if (!isFuncionario) {
-      return menuItems;
+      return menuItems.filter(item => {
+        if (ITENS_RESTRITOS_POR_PLANO.includes(item.url)) {
+          return temAcessoPlano(item.modulo as Parameters<typeof temAcessoPlano>[0]);
+        }
+        return true;
+      });
     }
-    
+
     // Para funcionários, filtrar baseado nas permissões configuradas
     return menuItems.filter(item => {
       // Funcionários NUNCA veem Plano nem Equipe (regra obrigatória)
       if (['/plano', '/equipe'].includes(item.url)) {
         return false;
       }
+      // Itens restritos por plano também precisam ter acesso
+      if (ITENS_RESTRITOS_POR_PLANO.includes(item.url)) {
+        return temAcessoPlano(item.modulo as Parameters<typeof temAcessoPlano>[0]);
+      }
       // Verificar permissão do módulo conforme configurado pelo dono
       return temAcessoModulo(item.modulo);
     });
-  }, [isFuncionario, temAcessoModulo, carregandoPermissoes]);
+  }, [isFuncionario, temAcessoModulo, temAcessoPlano, carregandoPermissoes]);
 
   // Verificar se novidades está visível (não mostrar durante loading)
   const novidadesVisivel = !carregandoPermissoes && (!isFuncionario || temAcessoModulo(novidadesItem.modulo));
