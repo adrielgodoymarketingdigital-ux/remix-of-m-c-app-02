@@ -89,11 +89,18 @@ serve(async (req) => {
 
     // ── 2. Validar body ──────────────────────────────────────────────
     const body = await req.json();
-    const { plan_code, card_token, cpf, holder_name } = body as {
+    const { plan_code, card_token, cpf, holder_name, billing_address } = body as {
       plan_code?: string;
       card_token?: string;
       cpf?: string;
       holder_name?: string;
+      billing_address?: {
+        line_1?: string;
+        zip_code?: string;
+        city?: string;
+        state?: string;
+        country?: string;
+      };
     };
 
     if (!plan_code || !VALID_PLANS.includes(plan_code as PlanoTipoPago)) {
@@ -119,6 +126,27 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const cepDigits = sanitizeDigits(billing_address?.zip_code);
+    if (
+      !billing_address?.line_1 ||
+      cepDigits.length !== 8 ||
+      !billing_address?.city ||
+      !billing_address?.state
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Endereço de cobrança incompleto." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const billingAddressPayload = {
+      line_1: billing_address.line_1,
+      zip_code: cepDigits,
+      city: billing_address.city,
+      state: billing_address.state,
+      country: billing_address.country ?? "BR",
+    };
 
     const plano = plan_code as PlanoTipoPago;
     const pagarmePlanId = PAGARME_PLAN_IDS[plano];
@@ -201,15 +229,18 @@ serve(async (req) => {
       customer_id: customerId,
       payment_method: "credit_card",
       card_token,
-      // Salva o cartão para próximas cobranças
-      // (o Pagar.me cria automaticamente o card a partir do token)
+      billing_address: billingAddressPayload,
       metadata: {
         user_id: userId,
         plano_tipo: plano,
       },
     };
 
-    log("Criando subscription na Pagar.me");
+    log("Criando subscription na Pagar.me", {
+      plan_id: pagarmePlanId,
+      customer_id: customerId,
+      billing_address: billingAddressPayload,
+    });
     const subRes = await fetch(`${PAGARME_API}/subscriptions`, {
       method: "POST",
       headers: {
@@ -223,7 +254,8 @@ serve(async (req) => {
     if (!subRes.ok) {
       log("Erro ao criar subscription", {
         status: subRes.status,
-        body: subData,
+        body: JSON.stringify(subData),
+        payload_sent: JSON.stringify(subscriptionPayload),
       });
       throw new Error(
         extractGatewayMessage(subData) ||

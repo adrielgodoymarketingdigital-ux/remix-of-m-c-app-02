@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   Lock,
   RefreshCw,
+  MapPin,
+  Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +37,21 @@ interface CartaoCheckoutDialogProps {
   planoPreco: number;
   onSuccess?: () => void;
 }
+
+interface BillingAddress {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+
+const ESTADOS_BR = [
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG",
+  "PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
+];
 
 const sanitizeDigits = (v: string) => v.replace(/\D/g, "");
 
@@ -89,9 +106,29 @@ export function CartaoCheckoutDialog({
   const [cvv, setCvv] = useState("");
   const [cpf, setCpf] = useState("");
 
+  const [billing, setBilling] = useState<BillingAddress>({
+    cep: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+  });
+  const [cepLoading, setCepLoading] = useState(false);
+
   const cardDigits = sanitizeDigits(cardNumber);
   const expiryDigits = sanitizeDigits(expiry);
   const cpfDigits = sanitizeDigits(cpf);
+  const cepDigits = sanitizeDigits(billing.cep);
+
+  const billingComplete =
+    cepDigits.length === 8 &&
+    billing.logradouro.trim().length > 0 &&
+    billing.numero.trim().length > 0 &&
+    billing.bairro.trim().length > 0 &&
+    billing.cidade.trim().length > 0 &&
+    ESTADOS_BR.includes(billing.estado);
 
   const canSubmit =
     cardDigits.length >= 13 &&
@@ -101,6 +138,7 @@ export function CartaoCheckoutDialog({
     cvv.length >= 3 &&
     cvv.length <= 4 &&
     isValidCPF(cpfDigits) &&
+    billingComplete &&
     !loading;
 
   const resetForm = () => {
@@ -109,8 +147,40 @@ export function CartaoCheckoutDialog({
     setExpiry("");
     setCvv("");
     setCpf("");
+    setBilling({ cep: "", logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", estado: "" });
     setError(null);
     setSuccess(false);
+  };
+
+  const fetchCep = async (rawCep: string) => {
+    const digits = sanitizeDigits(rawCep);
+    if (digits.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = await res.json();
+      if (data.erro) {
+        toast({ title: "CEP não encontrado", variant: "destructive" });
+        return;
+      }
+      setBilling((prev) => ({
+        ...prev,
+        logradouro: data.logradouro ?? prev.logradouro,
+        bairro: data.bairro ?? prev.bairro,
+        cidade: data.localidade ?? prev.cidade,
+        estado: data.uf ?? prev.estado,
+      }));
+    } catch {
+      toast({ title: "Erro ao buscar CEP", variant: "destructive" });
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const formatCep = (v: string) => {
+    const d = sanitizeDigits(v).slice(0, 8);
+    if (d.length > 5) return `${d.slice(0, 5)}-${d.slice(5)}`;
+    return d;
   };
 
   const handleClose = () => {
@@ -172,13 +242,33 @@ export function CartaoCheckoutDialog({
             card_token: cardToken,
             holder_name: holderName.trim(),
             cpf: cpfDigits,
+            billing_address: {
+              line_1: `${billing.numero}, ${billing.logradouro}, ${billing.bairro}`,
+              zip_code: cepDigits,
+              city: billing.cidade,
+              state: billing.estado,
+              country: "BR",
+            },
           },
         }
       );
 
       if (fnError) {
-        const ctx = (fnError as { context?: { error?: string } }).context;
-        throw new Error(ctx?.error || fnError.message || "Falha no pagamento.");
+        // supabase.functions.invoke coloca o body parseado em fnError.context
+        // quando a edge function retorna status não-2xx
+        let errMsg = fnError.message || "Falha no pagamento.";
+        try {
+          const ctx = fnError.context as unknown;
+          if (ctx && typeof ctx === "object") {
+            const body = ctx as Record<string, unknown>;
+            // tenta ler o body JSON da resposta
+            const rawBody = body["body"] ?? body;
+            const parsed =
+              typeof rawBody === "string" ? JSON.parse(rawBody) : rawBody;
+            if (typeof parsed?.error === "string") errMsg = parsed.error;
+          }
+        } catch { /* mantém fnError.message */ }
+        throw new Error(errMsg);
       }
 
       if (!data?.approved) {
@@ -355,6 +445,136 @@ export function CartaoCheckoutDialog({
                     disabled={loading}
                     className="h-11 font-mono"
                   />
+                </div>
+              </div>
+
+              {/* Seção: Endereço de cobrança */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-border" />
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">
+                    Endereço de cobrança
+                  </p>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+
+                {/* CEP */}
+                <div className="space-y-2">
+                  <Label htmlFor="cep" className="text-xs font-semibold">
+                    CEP
+                  </Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="cep"
+                      inputMode="numeric"
+                      placeholder="00000-000"
+                      value={billing.cep}
+                      onChange={(e) => {
+                        const formatted = formatCep(e.target.value);
+                        setBilling((prev) => ({ ...prev, cep: formatted }));
+                        if (sanitizeDigits(e.target.value).length === 8) {
+                          fetchCep(e.target.value);
+                        }
+                      }}
+                      disabled={loading}
+                      className="pl-9 pr-10 h-11 font-mono"
+                    />
+                    {cepLoading && (
+                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-pulse" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Logradouro + Número */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="logradouro" className="text-xs font-semibold">
+                      Rua / Avenida
+                    </Label>
+                    <Input
+                      id="logradouro"
+                      placeholder="Nome da rua"
+                      value={billing.logradouro}
+                      onChange={(e) => setBilling((prev) => ({ ...prev, logradouro: e.target.value }))}
+                      disabled={loading}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="numero" className="text-xs font-semibold">
+                      Número
+                    </Label>
+                    <Input
+                      id="numero"
+                      placeholder="123"
+                      value={billing.numero}
+                      onChange={(e) => setBilling((prev) => ({ ...prev, numero: e.target.value }))}
+                      disabled={loading}
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                {/* Complemento */}
+                <div className="space-y-2">
+                  <Label htmlFor="complemento" className="text-xs font-semibold">
+                    Complemento <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
+                  <Input
+                    id="complemento"
+                    placeholder="Apto 12, Bloco B..."
+                    value={billing.complemento}
+                    onChange={(e) => setBilling((prev) => ({ ...prev, complemento: e.target.value }))}
+                    disabled={loading}
+                    className="h-11"
+                  />
+                </div>
+
+                {/* Bairro */}
+                <div className="space-y-2">
+                  <Label htmlFor="bairro" className="text-xs font-semibold">
+                    Bairro
+                  </Label>
+                  <Input
+                    id="bairro"
+                    placeholder="Nome do bairro"
+                    value={billing.bairro}
+                    onChange={(e) => setBilling((prev) => ({ ...prev, bairro: e.target.value }))}
+                    disabled={loading}
+                    className="h-11"
+                  />
+                </div>
+
+                {/* Cidade + Estado */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="cidade" className="text-xs font-semibold">
+                      Cidade
+                    </Label>
+                    <Input
+                      id="cidade"
+                      placeholder="São Paulo"
+                      value={billing.cidade}
+                      onChange={(e) => setBilling((prev) => ({ ...prev, cidade: e.target.value }))}
+                      disabled={loading}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="estado" className="text-xs font-semibold">
+                      Estado
+                    </Label>
+                    <Input
+                      id="estado"
+                      placeholder="SP"
+                      maxLength={2}
+                      value={billing.estado}
+                      onChange={(e) => setBilling((prev) => ({ ...prev, estado: e.target.value.toUpperCase().slice(0, 2) }))}
+                      disabled={loading}
+                      className="h-11 uppercase font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 
