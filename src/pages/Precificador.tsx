@@ -28,7 +28,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import {
   Calculator,
@@ -63,10 +62,35 @@ interface Maquininha {
 
 const STORAGE_KEY = "mec_precificador_maquininhas";
 
-const ESTADOS_INTERESTADUAL: { label: string; aliquota: number; value: string }[] = [
-  { value: "norte_nordeste_co", label: "Norte / Nordeste / Centro-Oeste", aliquota: 7 },
-  { value: "sul_sudeste", label: "Sul / Sudeste (exceto SP)", aliquota: 12 },
-  { value: "importado", label: "Produto importado", aliquota: 4 },
+const ESTADOS_FORNECEDOR: { value: string; label: string; sigla: string; aliquota: number }[] = [
+  { value: "SP", sigla: "SP", label: "São Paulo",              aliquota: 0  },
+  { value: "AC", sigla: "AC", label: "Acre",                   aliquota: 7  },
+  { value: "AL", sigla: "AL", label: "Alagoas",                aliquota: 7  },
+  { value: "AM", sigla: "AM", label: "Amazonas",               aliquota: 7  },
+  { value: "AP", sigla: "AP", label: "Amapá",                  aliquota: 7  },
+  { value: "BA", sigla: "BA", label: "Bahia",                  aliquota: 7  },
+  { value: "CE", sigla: "CE", label: "Ceará",                  aliquota: 7  },
+  { value: "DF", sigla: "DF", label: "Distrito Federal",       aliquota: 7  },
+  { value: "ES", sigla: "ES", label: "Espírito Santo",         aliquota: 7  },
+  { value: "GO", sigla: "GO", label: "Goiás",                  aliquota: 7  },
+  { value: "MA", sigla: "MA", label: "Maranhão",               aliquota: 7  },
+  { value: "MG", sigla: "MG", label: "Minas Gerais",           aliquota: 12 },
+  { value: "MS", sigla: "MS", label: "Mato Grosso do Sul",     aliquota: 7  },
+  { value: "MT", sigla: "MT", label: "Mato Grosso",            aliquota: 7  },
+  { value: "PA", sigla: "PA", label: "Pará",                   aliquota: 7  },
+  { value: "PB", sigla: "PB", label: "Paraíba",                aliquota: 7  },
+  { value: "PE", sigla: "PE", label: "Pernambuco",             aliquota: 7  },
+  { value: "PI", sigla: "PI", label: "Piauí",                  aliquota: 7  },
+  { value: "PR", sigla: "PR", label: "Paraná",                 aliquota: 12 },
+  { value: "RJ", sigla: "RJ", label: "Rio de Janeiro",         aliquota: 12 },
+  { value: "RN", sigla: "RN", label: "Rio Grande do Norte",    aliquota: 7  },
+  { value: "RO", sigla: "RO", label: "Rondônia",               aliquota: 7  },
+  { value: "RR", sigla: "RR", label: "Roraima",                aliquota: 7  },
+  { value: "RS", sigla: "RS", label: "Rio Grande do Sul",      aliquota: 12 },
+  { value: "SC", sigla: "SC", label: "Santa Catarina",         aliquota: 12 },
+  { value: "SE", sigla: "SE", label: "Sergipe",                aliquota: 7  },
+  { value: "TO", sigla: "TO", label: "Tocantins",              aliquota: 7  },
+  { value: "importado", sigla: "", label: "Produto Importado", aliquota: 4  },
 ];
 
 const ALIQ_SP = 18; // alíquota interna SP
@@ -264,9 +288,8 @@ function ModalMaquininha({ open, onClose, onSalvar, inicial }: ModalMaquininhaPr
 export default function Precificador() {
   // ── Estado: calculadora ────────────────────────────────────────────────────
   const [valorNota, setValorNota] = useState("");
-  const [fornecedorForaSP, setFornecedorForaSP] = useState(false);
+  const [estadoFornecedor, setEstadoFornecedor] = useState("SP");
   const [frete, setFrete] = useState("");
-  const [estadoFornecedor, setEstadoFornecedor] = useState(ESTADOS_INTERESTADUAL[0].value);
   const [margem, setMargem] = useState("");
   const [maquininhaId, setMaquininhaId] = useState<string>("");
 
@@ -306,21 +329,21 @@ export default function Precificador() {
 
   // ── Cálculos ───────────────────────────────────────────────────────────────
   const vNota = parseNum(valorNota);
-  const vFrete = fornecedorForaSP ? parseNum(frete) : 0;
   const vMargem = parseNum(margem);
-  const estadoInfo = ESTADOS_INTERESTADUAL.find(e => e.value === estadoFornecedor)!;
-  const aliqInter = fornecedorForaSP ? estadoInfo.aliquota : 0;
+  const estadoInfo = ESTADOS_FORNECEDOR.find(e => e.value === estadoFornecedor)!;
+  const aliqInter = estadoInfo.aliquota;
+  const isSP = estadoFornecedor === "SP";
+  const vFrete = isSP ? 0 : parseNum(frete);
 
   const { aliqDifal, baseDifal, difal } = calcularDifal(vNota, vFrete, aliqInter);
-  const custo = fornecedorForaSP ? baseDifal + difal : vNota;
+  const custo = isSP ? vNota : baseDifal + difal;
   const precoVenda = vMargem > 0 && custo > 0 ? custo * (1 + vMargem / 100) : custo;
 
-  // Comparativo SP vs Fora
+  // Comparativo SP vs Fora (só exibe quando não é SP)
   const custoSP = vNota;
   const { baseDifal: baseFora, difal: difalFora } = calcularDifal(vNota, vFrete, aliqInter);
   const custoFora = baseFora + difalFora;
   const spMaisBarato = custoSP <= custoFora;
-  // Preço máximo que fornecedor de fora pode cobrar para compensar vs SP
   const aliqDifalNum = ALIQ_SP - aliqInter;
   const precoMaxFora = aliqDifalNum > 0
     ? (custoSP / (1 + aliqDifalNum / 100)) - vFrete
@@ -395,20 +418,33 @@ export default function Precificador() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 rounded-lg border border-white/10 p-3">
-                    <Switch
-                      checked={fornecedorForaSP}
-                      onCheckedChange={setFornecedorForaSP}
-                      id="fora-sp"
-                    />
-                    <Label htmlFor="fora-sp" className="cursor-pointer select-none">
-                      Fornecedor fora de SP
-                    </Label>
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Estado do fornecedor</Label>
+                      <Select value={estadoFornecedor} onValueChange={setEstadoFornecedor}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ESTADOS_FORNECEDOR.map(e => (
+                            <SelectItem key={e.value} value={e.value}>
+                              {e.sigla ? `${e.sigla} — ${e.label}` : e.label}
+                              {e.aliquota === 0
+                                ? " (sem DIFAL)"
+                                : ` (${e.aliquota}%)`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {isSP && (
+                        <p className="text-xs text-muted-foreground">
+                          Compra dentro do estado — sem DIFAL
+                        </p>
+                      )}
+                    </div>
 
-                  {fornecedorForaSP && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-200">
-                      <div className="space-y-1.5">
+                    {!isSP && (
+                      <div className="space-y-1.5 animate-in fade-in duration-200">
                         <Label>Frete (R$)</Label>
                         <Input
                           type="number"
@@ -419,23 +455,8 @@ export default function Precificador() {
                           onChange={e => setFrete(e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <Label>Estado do fornecedor</Label>
-                        <Select value={estadoFornecedor} onValueChange={setEstadoFornecedor}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ESTADOS_INTERESTADUAL.map(e => (
-                              <SelectItem key={e.value} value={e.value}>
-                                {e.label} — {e.aliquota}%
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Cards de resultado */}
                   {vNota > 0 && (
@@ -445,9 +466,9 @@ export default function Precificador() {
                           <p className="text-xs text-muted-foreground mb-1">DIFAL</p>
                           <p className="text-xl font-bold font-mono text-amber-400">{fmt(difal)}</p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {fornecedorForaSP
-                              ? `Alíquota: ${fmtPct(aliqDifal)} (${ALIQ_SP}% − ${aliqInter}%)`
-                              : "Fornecedor em SP — sem DIFAL"}
+                            {isSP
+                              ? "Fornecedor em SP — sem DIFAL"
+                              : `Alíquota: ${fmtPct(aliqDifal)} (${ALIQ_SP}% − ${aliqInter}%)`}
                           </p>
                         </CardContent>
                       </Card>
@@ -482,13 +503,13 @@ export default function Precificador() {
                         <span className="text-muted-foreground">Valor da nota</span>
                         <span className="font-mono">{fmt(vNota)}</span>
                       </div>
-                      {fornecedorForaSP && (
+                      {!isSP && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Frete</span>
                           <span className="font-mono">{fmt(vFrete)}</span>
                         </div>
                       )}
-                      {fornecedorForaSP && (
+                      {!isSP && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">
                             Base de cálculo DIFAL
@@ -496,7 +517,7 @@ export default function Precificador() {
                           <span className="font-mono">{fmt(baseDifal)}</span>
                         </div>
                       )}
-                      {fornecedorForaSP && (
+                      {!isSP && (
                         <div className="flex justify-between text-amber-400">
                           <span>DIFAL ({fmtPct(aliqDifal)})</span>
                           <span className="font-mono">+ {fmt(difal)}</span>
@@ -524,7 +545,7 @@ export default function Precificador() {
               </Card>
 
               {/* ── Seção B: Comparativo SP vs Fora ───────────────────── */}
-              {vNota > 0 && fornecedorForaSP && (
+              {vNota > 0 && !isSP && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Comparativo: SP vs Fora do estado</CardTitle>
