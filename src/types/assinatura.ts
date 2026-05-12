@@ -23,10 +23,8 @@ export type StatusAssinatura =
 export interface Assinatura {
   id: string;
   user_id: string;
-  stripe_customer_id?: string;
-  stripe_subscription_id?: string;
-  stripe_price_id?: string;
   payment_provider?: string | null;
+  pagarme_subscription_id?: string | null;
   ticto_order_id?: string | null;
   plano_tipo: PlanoTipo;
   status: StatusAssinatura;
@@ -36,19 +34,6 @@ export interface Assinatura {
   created_at: string;
   updated_at: string;
 }
-
-export const STRIPE_PRICE_IDS: Record<PlanoTipo, string> = {
-  demonstracao: "", // Deprecated - tratado como trial
-  trial: "",
-  free: "", // Plano gratuito, não tem price ID
-  basico_mensal: "price_1TCTqfFu8jWFILvSyfTI73ff",
-  intermediario_mensal: "price_1TCTrRFu8jWFILvSl50ZKqpy",
-  profissional_mensal: "price_1TCTrnFu8jWFILvS4hBfmUiz",
-  basico_anual: "price_1TCTszFu8jWFILvSLajvpW8A",
-  intermediario_anual: "price_1TCTtTFu8jWFILvSwTuoRvm8",
-  profissional_anual: "price_1TCTtxFu8jWFILvSZgjoxpX6",
-  admin: "",
-};
 
 export interface LimitesPlano {
   dispositivos: number; // -1 para ilimitado

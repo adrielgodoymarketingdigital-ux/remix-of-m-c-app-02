@@ -143,7 +143,7 @@ export default function AdminFinanceiro() {
       const { data } = await supabase
         .from("assinaturas")
         .select("payment_provider, status, data_fim")
-        .in("payment_provider", ["ticto", "pagarme", "stripe"]);
+        .in("payment_provider", ["ticto", "pagarme"]);
 
       const agora = new Date();
 
@@ -166,13 +166,7 @@ export default function AdminFinanceiro() {
         (!d.data_fim || new Date(d.data_fim) > agora)
       ).length || 0;
 
-      const stripeAtivos = data?.filter((d) =>
-        d.payment_provider === "stripe" &&
-        d.status === "active" &&
-        (!d.data_fim || new Date(d.data_fim) > agora)
-      ).length || 0;
-
-      return { tictoAtivos, tictoVencidos, pagarmeAtivos, stripeAtivos };
+      return { tictoAtivos, tictoVencidos, pagarmeAtivos };
     },
   });
 
@@ -368,10 +362,9 @@ export default function AdminFinanceiro() {
         {/* Breakdown por plataforma */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Ticto Ativos",   value: breakdown?.tictoAtivos   || 0, desc: "Vigentes no Ticto",         icon: <Users className="h-4 w-4" />,         bar: "from-amber-500 to-orange-400",  iconBg: "bg-amber-500/10 text-amber-400",   border: "border-amber-500/20"   },
-            { label: "Ticto Vencidos", value: breakdown?.tictoVencidos || 0, desc: "Aguardando renovação",      icon: <AlertTriangle className="h-4 w-4" />, bar: "from-red-500 to-rose-400",      iconBg: "bg-red-500/10 text-red-400",       border: "border-red-500/20"     },
-            { label: "Pagar.me",       value: breakdown?.pagarmeAtivos  || 0, desc: "Ativos no Pagar.me",       icon: <CreditCard className="h-4 w-4" />,    bar: "from-emerald-500 to-green-400", iconBg: "bg-emerald-500/10 text-emerald-400", border: "border-emerald-500/20" },
-            { label: "Stripe",         value: breakdown?.stripeAtivos   || 0, desc: "Legado Stripe",            icon: <CreditCard className="h-4 w-4" />,    bar: "from-slate-400 to-slate-500",   iconBg: "bg-slate-500/10 text-slate-400",   border: "border-slate-500/20"   },
+            { label: "Ticto Ativos",   value: breakdown?.tictoAtivos   || 0, desc: "Vigentes no Ticto",    icon: <Users className="h-4 w-4" />,         bar: "from-amber-500 to-orange-400",  iconBg: "bg-amber-500/10 text-amber-400",     border: "border-amber-500/20"   },
+            { label: "Ticto Vencidos", value: breakdown?.tictoVencidos || 0, desc: "Aguardando renovação", icon: <AlertTriangle className="h-4 w-4" />, bar: "from-red-500 to-rose-400",      iconBg: "bg-red-500/10 text-red-400",         border: "border-red-500/20"     },
+            { label: "Pagar.me",       value: breakdown?.pagarmeAtivos || 0, desc: "Ativos no Pagar.me",   icon: <CreditCard className="h-4 w-4" />,    bar: "from-emerald-500 to-green-400", iconBg: "bg-emerald-500/10 text-emerald-400", border: "border-emerald-500/20" },
           ].map((item) => (
             <div key={item.label} className={`relative rounded-xl border ${item.border} bg-card overflow-hidden hover:shadow-lg hover:shadow-black/20 transition-all duration-300`}>
               <div className={`h-0.5 w-full bg-gradient-to-r ${item.bar}`} />

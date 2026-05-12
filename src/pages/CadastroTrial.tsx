@@ -114,7 +114,7 @@ export default function CadastroTrial() {
         });
 
         // Redirecionar para pagamento
-        window.location.href = `/ativar-trial?plan=${planFromUrl}`;
+        window.location.href = `/cadastro-plano?plan=${planFromUrl}`;
       }
     } catch (error: any) {
       console.error("Registration error:", error);

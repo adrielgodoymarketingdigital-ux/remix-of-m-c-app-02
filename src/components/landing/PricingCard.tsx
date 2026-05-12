@@ -292,7 +292,7 @@ export function PricingCard({
         </Button>
 
         <p className="text-center text-[10px] text-slate-500 mt-3">
-          {isFree ? "⭐ 24h com acesso Premium completo · Sem cartão" : "🔒 Pagamento seguro via Stripe"}
+          {isFree ? "⭐ 24h com acesso Premium completo · Sem cartão" : "🔒 Pagamento seguro via Pagar.me"}
         </p>
       </div>
     </div>

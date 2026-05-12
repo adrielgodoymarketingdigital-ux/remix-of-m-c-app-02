@@ -37,7 +37,6 @@ import {
 import { DialogConfiguracaoMensagensWhatsAppAdmin } from "@/components/admin/DialogConfiguracaoMensagensWhatsAppAdmin";
 import { useAdminWhatsAppTemplates } from "@/hooks/useAdminWhatsAppTemplates";
 import { Navigate } from "react-router-dom";
-import { useStripeBalance } from "@/hooks/useStripeBalance";
 import { useOnlineUsersCount } from "@/hooks/useUserPresence";
 
 export default function AdminUsuarios() {
@@ -56,14 +55,7 @@ export default function AdminUsuarios() {
     bloquearTrialsExpirados,
   } = useAdminUsuarios();
   
-  const { balance: stripeBalance, fetchBalance, isLoading: stripeLoading } = useStripeBalance();
   const { data: financeiroData } = useAdminFinanceiro();
-  
-  useEffect(() => {
-    if (isAdmin) {
-      fetchBalance();
-    }
-  }, [isAdmin, fetchBalance]);
 
   const [busca, setBusca] = useState("");
   const [filtroPlano, setFiltroPlano] = useState<string>("todos");
@@ -106,7 +98,7 @@ export default function AdminUsuarios() {
   const doisDiasAtras = new Date(agora.getTime() - 2 * 24 * 60 * 60 * 1000);
   const tresDiasAtras = new Date(agora.getTime() - 3 * 24 * 60 * 60 * 1000);
 
-  // 1. Assinantes - status active + stripe_subscription_id real
+  // 1. Assinantes - status active com plano pago
   const assinantes = usuariosFiltrados.filter(u => u.is_pagante);
   const totalAssinantesReais = financeiroData?.assinantes_db ?? assinantes.length;
   
@@ -125,28 +117,14 @@ export default function AdminUsuarios() {
   });
   
   // 4. Não Assinaram - nunca tiveram plano pago (exclui quem já foi assinante)
-  const naoAssinaram = usuariosFiltrados.filter(u => {
-    const hasRealSubscription = u.stripe_subscription_id?.startsWith("sub_") && 
-      !u.stripe_subscription_id?.startsWith("sub_demo_") &&
-      !u.stripe_subscription_id?.startsWith("sub_trial_") &&
-      !u.stripe_subscription_id?.startsWith("sub_pending_");
-    // Nunca teve assinatura real, e não é pagante ativo
-    return !hasRealSubscription && !u.is_pagante && u.status !== "canceled";
-  });
-  
-  // 5. Assinantes Perdidos - tiveram subscription real + status canceled
-  const assinantesPerdidos = usuariosFiltrados.filter(u => {
-    if (u.status !== "canceled") return false;
-    const hasRealStripeCustomer = u.stripe_customer_id?.startsWith("cus_") ?? false;
-    const hasRealSubscription = u.stripe_subscription_id?.startsWith("sub_") && 
-      !u.stripe_subscription_id?.startsWith("sub_demo_") &&
-      !u.stripe_subscription_id?.startsWith("sub_trial_") &&
-      !u.stripe_subscription_id?.startsWith("sub_pending_");
-    return hasRealStripeCustomer || hasRealSubscription;
-  });
+  const naoAssinaram = usuariosFiltrados.filter(u =>
+    !u.is_pagante && u.status !== "canceled"
+  );
 
-  // 6. Assinantes Sem Pagar - dados da Stripe (past_due + incomplete)
-  const assinantesSemPagar = stripeBalance?.unpaid_count ?? 0;
+  // 5. Assinantes Perdidos - status canceled com plano pago anterior
+  const assinantesPerdidos = usuariosFiltrados.filter(u =>
+    u.status === "canceled" && planosPagos.includes(u.plano_tipo)
+  );
 
   const planosUnicos = Array.from(new Set(usuarios.map(u => u.plano_tipo)));
 
@@ -229,10 +207,6 @@ export default function AdminUsuarios() {
     u.data_fim && new Date(u.data_fim) <= new Date()
   );
 
-  const assinantesStripe = assinantes.filter(u =>
-    (u as any).payment_provider === 'stripe'
-  );
-
   const pagarmeCount = financeiroData?.assinantes_pagarme ?? 0;
   const percentualMigrado = (tictoVigentes.length + pagarmeCount) > 0
     ? Math.round((pagarmeCount / (tictoVigentes.length + pagarmeCount)) * 100)
@@ -286,27 +260,6 @@ export default function AdminUsuarios() {
             <Button onClick={() => setDialogWhatsAppAberto(true)} variant="outline" size="sm">
               <MessageCircle className="h-4 w-4 mr-2" />
               <span className="hidden md:inline">WhatsApp</span>
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  toast.loading("Sincronizando com Stripe...");
-                  const { data, error } = await supabase.functions.invoke("sync-stripe-subscriptions");
-                  toast.dismiss();
-                  if (error) throw error;
-                  if (data?.error) throw new Error(data.error);
-                  toast.success(`Sincronização concluída: ${data.processed} assinaturas processadas`);
-                  recarregar();
-                  fetchBalance();
-                } catch (err: any) {
-                  toast.dismiss();
-                  toast.error(err.message || "Erro ao sincronizar");
-                }
-              }}
-              variant="outline" size="sm"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              <span className="hidden md:inline">Sync Stripe</span>
             </Button>
             <Button onClick={bloquearTrialsExpirados} variant="destructive" size="sm" disabled={bloqueandoUsuario || isLoading}>
               <ShieldX className="h-4 w-4 mr-2" />
@@ -611,9 +564,6 @@ export default function AdminUsuarios() {
                 <TabsTrigger value="perdidos" className="text-[10px] md:text-xs text-red-600 px-2">
                   Perdidos ({assinantesPerdidos.length})
                 </TabsTrigger>
-                <TabsTrigger value="sem-pagar" className="text-[10px] md:text-xs text-amber-600 px-2">
-                  S/ Pagar ({assinantesSemPagar})
-                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -716,40 +666,6 @@ export default function AdminUsuarios() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="sem-pagar" className="mt-4">
-              <Card className="border-amber-200 dark:border-amber-800">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                      <Ban className="h-5 w-5" /> Assinantes Sem Pagar
-                    </CardTitle>
-                    <Badge variant="destructive">{assinantesSemPagar}</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Renovação pendente na Stripe (past_due ou incomplete)</p>
-                </CardHeader>
-                <CardContent>
-                  {stripeBalance?.past_due_subscriptions && stripeBalance.past_due_subscriptions.length > 0 ? (
-                    <div className="space-y-2">
-                      {[...(stripeBalance.past_due_subscriptions || []), ...(stripeBalance.incomplete_subscriptions || [])].map((u, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                          <div>
-                            <p className="font-medium text-sm">{u.name || "Sem nome"}</p>
-                            <p className="text-xs text-muted-foreground">{u.email || "Sem email"}</p>
-                          </div>
-                          <Badge variant={u.status === "past_due" ? "destructive" : "outline"}>
-                            {u.status === "past_due" ? "Atrasado" : "Incompleto"}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      {stripeLoading ? "Carregando dados da Stripe..." : "Nenhum assinante com pagamento pendente"}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
 
         </div>

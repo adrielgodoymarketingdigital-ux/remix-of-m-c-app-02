@@ -54,31 +54,14 @@ export function useTrialStatus(): TrialStatus {
       ? (!trialExpiredCalculated && !assinaturaAny?.trial_canceled)
       : (assinatura?.status === 'trialing' || (assinatura?.plano_tipo === 'trial' && !trialExpirado));
     
-    // Determine plan after trial (from stripe_price_id or plano_tipo)
+    // Determine plan after trial (from plano_tipo stored in assinaturas)
     let planAfterTrial = "intermediario_mensal"; // Default
     let planPriceAfterTrial = 39.90;
-    
-    if (assinatura?.stripe_price_id) {
-      // Map price ID to plan
-      const priceToPlano: Record<string, string> = {
-        // Novos IDs (nova conta Stripe)
-        "price_1TCTqfFu8jWFILvSyfTI73ff": "basico_mensal",
-        "price_1TCTrRFu8jWFILvSl50ZKqpy": "intermediario_mensal",
-        "price_1TCTrnFu8jWFILvS4hBfmUiz": "profissional_mensal",
-        "price_1TCTszFu8jWFILvSLajvpW8A": "basico_anual",
-        "price_1TCTtTFu8jWFILvSwTuoRvm8": "intermediario_anual",
-        "price_1TCTtxFu8jWFILvSZgjoxpX6": "profissional_anual",
-        // IDs legados (conta anterior)
-        "price_1SkxEACjA5c0MuV8VVfibyhD": "basico_mensal",
-        "price_1SkxLbCjA5c0MuV8M6rYpYd6": "intermediario_mensal",
-        "price_1SkxObCjA5c0MuV8G3OccySn": "profissional_mensal",
-        "price_1SkxQnCjA5c0MuV8J0F7vf5m": "basico_anual",
-        "price_1SkxRPCjA5c0MuV8cgcNtFsf": "intermediario_anual",
-        "price_1SkxSNCjA5c0MuV8yJ5ZLr7o": "profissional_anual",
-      };
-      planAfterTrial = priceToPlano[assinatura.stripe_price_id] || planAfterTrial;
+
+    if (assinaturaAny?.plano_tipo && !["trial", "demonstracao", "free"].includes(assinaturaAny.plano_tipo)) {
+      planAfterTrial = assinaturaAny.plano_tipo;
     }
-    
+
     // Get price for the plan
     const planoInfo = PLANOS[planAfterTrial as keyof typeof PLANOS];
     if (planoInfo) {

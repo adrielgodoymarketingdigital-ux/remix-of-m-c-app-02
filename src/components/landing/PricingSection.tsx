@@ -128,23 +128,23 @@ export function PricingSection() {
           />
           
           {planosExibidos.map((plano, index) => {
-            const precosStripe = [
+            const precos = [
               { mensal: 19.90, anual: 190.80 },
               { mensal: 39.90, anual: 382.80 },
               { mensal: 79.90, anual: 898.80 },
             ];
             const precosOriginais = [39.90, 69.90, 119.90];
-            
+
             return (
               <PricingCard
                 key={plano.planoKey}
                 nome={plano.nome}
-                preco={precosStripe[index].mensal}
+                preco={precos[index].mensal}
                 periodo={plano.periodo}
                 limites={plano.limites}
                 popular={plano.popular}
                 planoKey={plano.planoKey}
-                precoAnual={isAnual ? precosStripe[index].anual : undefined}
+                precoAnual={isAnual ? precos[index].anual : undefined}
                 isAnual={isAnual}
                 precoOriginal={precosOriginais[index]}
               />
@@ -157,7 +157,7 @@ export function PricingSection() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { icon: Shield, title: "24h Premium Grátis", desc: "Teste tudo" },
-              { icon: CreditCard, title: "Stripe", desc: "Pagamento seguro" },
+              { icon: CreditCard, title: "Pagar.me", desc: "Pagamento seguro" },
               { icon: Zap, title: "Ativação", desc: "Imediata" },
               { icon: Headphones, title: "Suporte", desc: "Em português" },
             ].map((item, index) => (

@@ -22,42 +22,23 @@ export default function CompletarCadastro() {
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const sessionId = searchParams.get('session_id');
   const plan = searchParams.get('plan');
 
   // Verificar se já está logado
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (session) {
-        // Usuário já logado, redirecionar para obrigado
         navigate(`/obrigado?plan=${plan || ''}`);
         return;
-      }
-
-      // Se temos session_id, buscar email do Stripe
-      if (sessionId) {
-        try {
-          const { data, error } = await supabase.functions.invoke('check-checkout-session', {
-            body: { sessionId }
-          });
-
-          if (error) throw error;
-
-          if (data?.email) {
-            setEmail(data.email);
-          }
-        } catch (err) {
-          console.error("Erro ao buscar sessão:", err);
-        }
       }
 
       setStatus('form');
     };
 
     checkAuth();
-  }, [sessionId, plan, navigate]);
+  }, [plan, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

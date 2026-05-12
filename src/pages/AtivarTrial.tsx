@@ -99,15 +99,14 @@ export default function AtivarTrial() {
             return;
           }
 
-          // Subscription Stripe REAL
-          const hasRealStripeSubscription = assinatura.stripe_subscription_id && 
-            assinatura.stripe_subscription_id.startsWith('sub_') &&
-            !assinatura.stripe_subscription_id.startsWith('sub_trial_') &&
-            !assinatura.stripe_subscription_id.startsWith('sub_demo_') &&
-            !assinatura.stripe_subscription_id.startsWith('sub_pending_');
-
-          if (hasRealStripeSubscription) {
-            console.log("✅ [AtivarTrial] Stripe real - redirecionando para dashboard");
+          // Plano pago ativo pela Pagar.me
+          const planosPagos = [
+            'basico_mensal', 'basico_anual',
+            'intermediario_mensal', 'intermediario_anual',
+            'profissional_mensal', 'profissional_anual',
+          ];
+          if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active') {
+            console.log("✅ [AtivarTrial] Plano pago ativo - redirecionando para dashboard");
             navigate('/dashboard', { replace: true });
             return;
           }
@@ -193,8 +192,7 @@ export default function AtivarTrial() {
       if (error) throw error;
 
       if (data?.url) {
-        // Redirect to Stripe checkout
-        console.log("Redirecting to Stripe checkout:", data.url);
+        console.log("Redirecting to checkout:", data.url);
         
         // Try window.location.assign first, fallback to window.open
         try {
@@ -346,7 +344,7 @@ export default function AtivarTrial() {
           <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-3 sm:mt-4 text-xs sm:text-sm text-gray-500">
             <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>Pagamento seguro via</span>
-            <span className="font-semibold text-gray-700">Stripe</span>
+            <span className="font-semibold text-gray-700">Pagar.me</span>
           </div>
         </div>
 

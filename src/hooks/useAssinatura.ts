@@ -1,16 +1,9 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Assinatura, LIMITES_POR_PLANO, STRIPE_PRICE_IDS, PlanoTipo, LimitesPlano, getLimitesFree } from "@/types/assinatura";
+import { Assinatura, LIMITES_POR_PLANO, PlanoTipo, LimitesPlano, getLimitesFree } from "@/types/assinatura";
 import { PLANOS } from "@/types/plano";
 
-interface VerificacaoStripeResult {
-  subscribed: boolean;
-  plano_tipo: string;
-  subscription_end?: string;
-  synced?: boolean;
-  error?: string;
-}
 
 export function useAssinatura() {
   const [assinatura, setAssinatura] = useState<Assinatura | null>(null);
@@ -109,37 +102,6 @@ export function useAssinatura() {
       setCarregando(false);
     }
   }, [obterSessaoComRetry]);
-
-  // Verifica assinatura diretamente no Stripe (fallback quando webhook falha)
-  const verificarAssinaturaStripe = useCallback(async (): Promise<VerificacaoStripeResult> => {
-    try {
-      console.log("🔍 Verificando assinatura diretamente no Stripe...");
-      
-      const { data, error } = await supabase.functions.invoke('check-subscription');
-      
-      if (error) {
-        console.error("❌ Erro ao verificar no Stripe:", error);
-        throw error;
-      }
-      
-      console.log("✅ Resposta do Stripe:", data);
-      
-      // Se sincronizou, recarregar do DB
-      if (data.synced) {
-        console.log("🔄 Recarregando assinatura do DB após sync...");
-        await carregarAssinatura();
-      }
-      
-      return data as VerificacaoStripeResult;
-    } catch (error: any) {
-      console.error("❌ Erro na verificação Stripe:", error);
-      return {
-        subscribed: false,
-        plano_tipo: "demonstracao",
-        error: error.message
-      };
-    }
-  }, [carregarAssinatura]);
 
   const recarregarComFeedback = useCallback(async (): Promise<Assinatura | null> => {
     setCarregando(true);
@@ -435,8 +397,7 @@ export function useAssinatura() {
     },
   };
 
-  // Detectar migração de conta Stripe: plano pago com status canceled/past_due
-  // Indica que a assinatura expirou e não renovou porque mudamos de conta Stripe
+  // Detectar plano pago com status problemático (assinatura expirada)
   const migracaoNecessaria = useMemo(() => {
     if (!assinatura) return false;
     if (assinatura.plano_tipo === 'admin' || assinatura.plano_tipo === 'free') return false;
@@ -820,96 +781,27 @@ export function useAssinatura() {
     }
   }, [limites.produtos_mes]);
 
-  const abrirPaginaPagamento = useCallback(async (planoKey: string, cupomCodigo?: string) => {
-    try {
-      // Verificar se o usuário já tem um customer real no Stripe
-      // Se sim, ir direto para create-checkout-session (que trata upgrade)
-      // Se não, redirecionar para /cadastro-plano (primeira assinatura)
-      const planoAtualTipo = assinatura?.plano_tipo;
-      const hasRealStripeCustomer = assinatura?.stripe_customer_id?.startsWith('cus_');
-      const planosPrimeiraAssinatura: PlanoTipo[] = ['trial', 'demonstracao', 'free'];
-      
-      if ((!planoAtualTipo || planosPrimeiraAssinatura.includes(planoAtualTipo)) && !hasRealStripeCustomer) {
-        window.location.href = `/cadastro-plano?plan=${planoKey}`;
-        return;
-      }
+  const abrirPaginaPagamento = useCallback(async (planoKey: string, _cupomCodigo?: string) => {
+    // Todo o fluxo de pagamento passa pela Pagar.me via /cadastro-plano
+    const planoAtualTipo = assinatura?.plano_tipo;
+    const planosPrimeiraAssinatura: PlanoTipo[] = ['trial', 'demonstracao', 'free'];
 
-      // SOMENTE para usuários com plano pago que vão direto ao Stripe:
-      // Disparar Meta Pixel aqui
-      const planoInfo = PLANOS[planoKey as keyof typeof PLANOS];
-      
-      if (window.fbq) {
-        window.fbq('track', 'InitiateCheckout', {
-          content_name: planoInfo?.nome || planoKey,
-          content_category: 'Subscription',
-          currency: 'BRL',
-          value: planoInfo?.preco || 0
-        });
-      }
-
-      const priceId = STRIPE_PRICE_IDS[planoKey as keyof typeof STRIPE_PRICE_IDS];
-      
-      if (!priceId) {
-        toast({
-          title: "Erro",
-          description: "Preço não encontrado para este plano.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Get tracking parameters for Meta CAPI
-      const trackingParams = (window as any).__getTrackingParams?.() || {};
-
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { 
-          priceId, 
-          planoTipo: planoKey,
-          cupomCodigo: cupomCodigo || null,
-          // Meta CAPI tracking params
-          fbp: trackingParams.fbp,
-          fbc: trackingParams.fbc,
-          fbclid: trackingParams.fbclid,
-          utm_source: trackingParams.utm_source,
-          utm_medium: trackingParams.utm_medium,
-          utm_campaign: trackingParams.utm_campaign,
-          utm_content: trackingParams.utm_content,
-          utm_term: trackingParams.utm_term,
-          client_user_agent: trackingParams.client_user_agent,
-        }
+    // Disparar Meta Pixel antes de redirecionar
+    const planoInfo = PLANOS[planoKey as keyof typeof PLANOS];
+    if (window.fbq) {
+      window.fbq('track', 'InitiateCheckout', {
+        content_name: planoInfo?.nome || planoKey,
+        content_category: 'Subscription',
+        currency: 'BRL',
+        value: planoInfo?.preco || 0,
       });
+    }
 
-      if (error) throw error;
-
-      // Se foi upgrade direto (sem checkout), recarregar assinatura
-      if (data?.upgraded) {
-        toast({
-          title: "✅ Plano atualizado!",
-          description: `Seu plano foi alterado para ${planoKey.replace(/_/g, ' ').toUpperCase()} com sucesso.`,
-        });
-        await verificarAssinaturaStripe();
-        await carregarAssinatura();
-        return;
-      }
-
-      if (data?.alreadySubscribed) {
-        toast({
-          title: "ℹ️ Plano atual",
-          description: "Você já está neste plano.",
-        });
-        return;
-      }
-
-      if (data?.url) {
-        window.location.href = data.url;
-      }
-    } catch (error: any) {
-      console.error("Erro ao abrir página de pagamento:", error);
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível iniciar o processo de pagamento.",
-        variant: "destructive",
-      });
+    if (!planoAtualTipo || planosPrimeiraAssinatura.includes(planoAtualTipo)) {
+      window.location.href = `/cadastro-plano?plan=${planoKey}`;
+    } else {
+      // Usuário já pagante: redirecionar para upgrade via Pagar.me
+      window.location.href = `/cadastro-plano?plan=${planoKey}&upgrade=1`;
     }
   }, [assinatura]);
 
@@ -965,6 +857,5 @@ export function useAssinatura() {
     horasRestantesTrial,
     migracaoNecessaria,
     recarregar: recarregarComFeedback,
-    verificarAssinaturaStripe,
   };
 }

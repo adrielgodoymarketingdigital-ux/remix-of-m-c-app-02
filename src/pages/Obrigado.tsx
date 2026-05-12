@@ -114,23 +114,7 @@ export default function Obrigado() {
     return true;
   }, []);
 
-  const sincronizarAssinaturaStripe = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("check-subscription");
-
-      if (error) return false;
-
-      if (data?.subscribed && data?.plano_tipo !== "demonstracao") {
-        return ativarPlano(data.plano_tipo);
-      }
-    } catch {
-      return false;
-    }
-
-    return false;
-  }, [ativarPlano]);
-
-  const verificarPlano = useCallback(async (options?: { forceProviderSync?: boolean }): Promise<boolean> => {
+  const verificarPlano = useCallback(async (_options?: { forceProviderSync?: boolean }): Promise<boolean> => {
     if (verificandoRef.current) return false;
     verificandoRef.current = true;
 
@@ -160,17 +144,13 @@ export default function Obrigado() {
         return ativarPlano(assinatura.plano_tipo);
       }
 
-      if (options?.forceProviderSync && (!assinatura || assinatura.payment_provider === "stripe")) {
-        return sincronizarAssinaturaStripe();
-      }
-
       return false;
     } catch {
       return false;
     } finally {
       verificandoRef.current = false;
     }
-  }, [ativarPlano, sincronizarAssinaturaStripe]);
+  }, [ativarPlano]);
 
   const handleVerificarAgora = async () => {
     setStatus("verificando");

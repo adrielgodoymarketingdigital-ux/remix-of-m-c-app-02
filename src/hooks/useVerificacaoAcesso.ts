@@ -33,7 +33,7 @@ interface VerificacaoState {
 /**
  * Hook robusto para verificar se o usuário pode acessar o app.
  * - Nunca redireciona durante "verificando" 
- * - Tenta sincronizar com Stripe se dados parecem inconsistentes
+ * - Tenta sincronizar assinatura se dados parecem inconsistentes
  * - Oferece retry em caso de erro
  */
 export function useVerificacaoAcesso() {
@@ -81,7 +81,7 @@ export function useVerificacaoAcesso() {
   );
 
   const verificandoRef = useRef(false);
-  const syncStripeAttemptedRef = useRef(false);
+  const syncAttemptedRef = useRef(false);
 
   // Salvar estado no sessionStorage para navegação instantânea
   const salvarCacheVerificacao = useCallback((newState: Partial<VerificacaoState>) => {
@@ -161,17 +161,17 @@ export function useVerificacaoAcesso() {
       return true;
     }
     
-    // STATUS CANCELADO = verificar se é assinante real que cancelou ou trial que expirou
+    // STATUS CANCELADO = verificar se ainda está dentro do período pago
     if (assinatura.status === "canceled") {
-      // Se tem subscription real do Stripe (sub_ não-fake), verificar se ainda está na data válida
-      const hasRealStripeSubscription = assinatura.stripe_subscription_id && 
-        assinatura.stripe_subscription_id.startsWith('sub_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_trial_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_demo_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_pending_');
-      
-      // Se cancelado mas tinha plano real, verificar data_fim (com 1 dia de carência)
-      if (hasRealStripeSubscription && assinatura.data_fim) {
+      // Se tinha assinatura real (Pagar.me subscription ou plano pago), verificar data_fim (com 1 dia de carência)
+      const hadPaidPlan = [
+        'basico_mensal', 'basico_anual',
+        'intermediario_mensal', 'intermediario_anual',
+        'profissional_mensal', 'profissional_anual',
+        'profissional_ultra_mensal', 'profissional_ultra_anual',
+      ].includes(assinatura.plano_tipo);
+
+      if (hadPaidPlan && assinatura.data_fim) {
         const dataFim = new Date(assinatura.data_fim);
         const dataFimComCarencia = new Date(dataFim.getTime() + 24 * 60 * 60 * 1000);
         if (!Number.isNaN(dataFim.getTime()) && dataFimComCarencia > new Date()) {
@@ -184,7 +184,6 @@ export function useVerificacaoAcesso() {
       console.log("⛔ [useVerificacaoAcesso] Status cancelado - acesso expirado", {
         plano: assinatura.plano_tipo,
         data_fim: assinatura.data_fim,
-        stripe_sub: assinatura.stripe_subscription_id
       });
       return true;
     }
@@ -257,7 +256,7 @@ export function useVerificacaoAcesso() {
     console.log("🔍 [useVerificacaoAcesso] Verificando assinatura:", {
       status: assinatura.status,
       plano_tipo: assinatura.plano_tipo,
-      stripe_subscription_id: assinatura.stripe_subscription_id,
+      pagarme_subscription_id: assinatura.pagarme_subscription_id,
       trial_with_card: assinatura.trial_with_card,
       bloqueado_admin: assinatura.bloqueado_admin,
       bloqueado_tipo: assinatura.bloqueado_tipo,
@@ -277,27 +276,29 @@ export function useVerificacaoAcesso() {
 
     // 1.5 BLOQUEIO ADMIN TEM PRIORIDADE MÁXIMA
     // Se bloqueio é "indeterminado", NUNCA libera (nem com assinatura)
-    // Se bloqueio é "ate_assinar", só libera se tiver assinatura ativa real
+    // Se bloqueio é "ate_assinar", só libera se tiver assinatura paga ativa
     const bloqueio = isBloqueadoAdmin(assinatura);
     if (bloqueio.bloqueado) {
       if (bloqueio.tipo === "indeterminado") {
         console.log("🚫 [useVerificacaoAcesso] Bloqueio INDETERMINADO - acesso negado");
         return false;
       }
-      
-      // Para bloqueio "ate_assinar", verificar se tem assinatura Stripe REAL ativa
-      const hasRealActiveSubscription = assinatura.stripe_subscription_id && 
-        assinatura.stripe_subscription_id.startsWith('sub_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_trial_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_demo_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_pending_') &&
-        assinatura.status === 'active';
-      
-      if (!hasRealActiveSubscription) {
+
+      // Para bloqueio "ate_assinar", verificar se tem plano pago ativo
+      const planosPagos = [
+        'basico_mensal', 'basico_anual',
+        'intermediario_mensal', 'intermediario_anual',
+        'profissional_mensal', 'profissional_anual',
+        'profissional_ultra_mensal', 'profissional_ultra_anual',
+        'admin',
+      ];
+      const hasActivePaidPlan = planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active';
+
+      if (!hasActivePaidPlan) {
         console.log("🚫 [useVerificacaoAcesso] Bloqueado até assinar - sem assinatura ativa");
         return false;
       }
-      
+
       console.log("✅ [useVerificacaoAcesso] Bloqueio 'até assinar' superado - tem assinatura ativa");
       // Continua verificação normal
     }
@@ -313,29 +314,24 @@ export function useVerificacaoAcesso() {
       return false;
     }
 
-    // 3. Verificar subscription Stripe REAL primeiro (mais confiável)
-    const hasRealStripeSubscription = assinatura.stripe_subscription_id && 
-      assinatura.stripe_subscription_id.startsWith('sub_') &&
-      !assinatura.stripe_subscription_id.startsWith('sub_trial_') &&
-      !assinatura.stripe_subscription_id.startsWith('sub_demo_') &&
-      !assinatura.stripe_subscription_id.startsWith('sub_pending_');
-
-    // Assinante real com status ativo = liberado
-    if (hasRealStripeSubscription && assinatura.status === 'active') {
-      console.log("✅ [useVerificacaoAcesso] Assinante Stripe ativo - liberado", {
-        subscription_id: assinatura.stripe_subscription_id,
-        status: assinatura.status,
+    // 3. Plano pago com status ativo = liberado
+    const planosPagos = [
+      'basico_mensal', 'basico_anual',
+      'intermediario_mensal', 'intermediario_anual',
+      'profissional_mensal', 'profissional_anual',
+      'profissional_ultra_mensal', 'profissional_ultra_anual',
+    ];
+    if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active') {
+      console.log("✅ [useVerificacaoAcesso] Plano pago ativo - liberado", {
         plano: assinatura.plano_tipo,
+        status: assinatura.status,
       });
       return true;
     }
 
-    // 4. Status trialing com subscription real = liberado (período de trial do Stripe)
-    if (hasRealStripeSubscription && assinatura.status === 'trialing') {
-      console.log("✅ [useVerificacaoAcesso] Em trial Stripe - liberado", {
-        subscription_id: assinatura.stripe_subscription_id,
-        trial_end_at: assinatura.trial_end_at,
-      });
+    // 4. Status trialing com plano pago = liberado
+    if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'trialing') {
+      console.log("✅ [useVerificacaoAcesso] Plano em trialing - liberado");
       return true;
     }
 
@@ -364,29 +360,29 @@ export function useVerificacaoAcesso() {
   };
 
   /**
-   * Tenta sincronizar com Stripe para curar DB desatualizado
+   * Tenta sincronizar assinatura via check-subscription (verifica status no banco)
    */
-  const tentarSincronizarStripe = useCallback(async (): Promise<boolean> => {
-    if (syncStripeAttemptedRef.current) {
-      console.log("⏭️ [useVerificacaoAcesso] Sync Stripe já tentado nesta sessão");
+  const tentarSincronizarAssinatura = useCallback(async (): Promise<boolean> => {
+    if (syncAttemptedRef.current) {
+      console.log("⏭️ [useVerificacaoAcesso] Sync já tentado nesta sessão");
       return false;
     }
 
-    syncStripeAttemptedRef.current = true;
+    syncAttemptedRef.current = true;
 
     try {
-      console.log("🔄 [useVerificacaoAcesso] Tentando sincronizar com Stripe...");
+      console.log("🔄 [useVerificacaoAcesso] Verificando assinatura via check-subscription...");
       const { data, error } = await supabase.functions.invoke('check-subscription');
-      
+
       if (error) {
-        console.error("❌ [useVerificacaoAcesso] Erro ao sincronizar com Stripe:", error);
+        console.error("❌ [useVerificacaoAcesso] Erro ao verificar assinatura:", error);
         return false;
       }
 
       console.log("✅ [useVerificacaoAcesso] Resposta do check-subscription:", data);
       return data?.synced === true || data?.subscribed === true;
     } catch (e) {
-      console.error("❌ [useVerificacaoAcesso] Exceção ao sincronizar:", e);
+      console.error("❌ [useVerificacaoAcesso] Exceção ao verificar:", e);
       return false;
     }
   }, []);
@@ -522,8 +518,8 @@ export function useVerificacaoAcesso() {
           }
         }
 
-        // Se não conseguiu dados, tentar sync com Stripe
-        const synced = await tentarSincronizarStripe();
+        // Se não conseguiu dados, tentar sincronizar assinatura
+        const synced = await tentarSincronizarAssinatura();
         if (synced) {
           // Após sync, tentar buscar de novo
           const { data: assinaturaRetry } = await supabase
@@ -577,7 +573,7 @@ export function useVerificacaoAcesso() {
         plano: assinatura?.plano_tipo,
         status: assinatura?.status,
         trial_with_card: assinatura?.trial_with_card,
-        stripe_sub: assinatura?.stripe_subscription_id,
+        pagarme_sub: assinatura?.pagarme_subscription_id,
         onboarding_completed: onboarding?.onboarding_obrigatorio_completed,
         bloqueado_admin: bloqueioInfo.bloqueado,
         isFuncionario,
@@ -702,9 +698,9 @@ export function useVerificacaoAcesso() {
         return;
       }
 
-      // 7. Se não tem assinatura E não é erro, tentar sync com Stripe
-      if (!assinatura && !syncStripeAttemptedRef.current) {
-        const synced = await tentarSincronizarStripe();
+      // 7. Se não tem assinatura E não é erro, tentar verificar via check-subscription
+      if (!assinatura && !syncAttemptedRef.current) {
+        const synced = await tentarSincronizarAssinatura();
         if (synced) {
           // Recarregar e verificar novamente
           const { data: assinaturaRetry } = await supabase
@@ -734,14 +730,9 @@ export function useVerificacaoAcesso() {
       // 7. NOVO USUÁRIO: Verificar etapas do funil
       // IMPORTANTE: Só entra aqui se NÃO for usuário ativo/pagante
       const isPaidOrTrialing = assinatura?.status === 'active' || assinatura?.status === 'trialing';
-      const hasRealSubscription = assinatura?.stripe_subscription_id && 
-        assinatura.stripe_subscription_id.startsWith('sub_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_trial_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_demo_') &&
-        !assinatura.stripe_subscription_id.startsWith('sub_pending_');
 
-      // Usuário com status ativo ou subscription real NUNCA deve ser redirecionado para onboarding
-      if (!isPaidOrTrialing && !hasRealSubscription) {
+      // Usuário com status ativo NUNCA deve ser redirecionado para onboarding
+      if (!isPaidOrTrialing) {
         // NOVO FLUXO: Primeiro pagamento, depois onboarding
         
         // Etapa 1: Onboarding obrigatório pendente
@@ -762,7 +753,7 @@ export function useVerificacaoAcesso() {
         // Usuário é pagante mas não foi pego pelo isUsuarioAtivo - liberar por segurança
         console.log("⚠️ [useVerificacaoAcesso] Usuário pagante detectado no fallback - liberando", {
           status: assinatura?.status,
-          subscription_id: assinatura?.stripe_subscription_id
+          plano: assinatura?.plano_tipo,
         });
         setState(prev => ({
           ...prev,
@@ -805,7 +796,7 @@ export function useVerificacaoAcesso() {
     } finally {
       verificandoRef.current = false;
     }
-  }, [tentarSincronizarStripe]);
+  }, [tentarSincronizarAssinatura]);
 
   // Auto-cachear estado quando liberado
   useEffect(() => {
@@ -837,7 +828,7 @@ export function useVerificacaoAcesso() {
 
   // Função de retry exposta
   const tentarNovamente = useCallback(() => {
-    syncStripeAttemptedRef.current = false; // Permitir nova tentativa de sync
+    syncAttemptedRef.current = false; // Permitir nova tentativa de sync
     verificar();
   }, [verificar]);
 

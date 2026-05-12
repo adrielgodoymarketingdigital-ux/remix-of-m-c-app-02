@@ -543,8 +543,9 @@ export const useProdutos = () => {
       await carregarTodos();
       return { produtosInseridos, pecasInseridas, erros: 0 };
     } catch (error: any) {
-      toast.error('Erro na importação', { description: error.message });
-      return { produtosInseridos: 0, pecasInseridas: 0, erros: itens.length };
+      const mensagem = error?.message || 'Erro desconhecido ao importar';
+      toast.error('Erro na importação', { description: mensagem });
+      return { produtosInseridos: 0, pecasInseridas: 0, erros: itens.length, mensagemErro: mensagem };
     }
   }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 

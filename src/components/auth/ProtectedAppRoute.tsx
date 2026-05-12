@@ -20,7 +20,7 @@ interface ProtectedAppRouteProps {
  * 
  * ROBUSTO:
  * - Nunca redireciona durante carregamento
- * - Tenta sincronizar com Stripe se dados parecem inconsistentes
+ * - Tenta sincronizar assinatura se dados parecem inconsistentes
  * - Mostra tela de retry em caso de erro
  * - Usuários ativos SEMPRE são liberados (exceto se bloqueados por admin)
  * - FUNCIONÁRIOS herdam acesso do dono e ignoram fluxo de trial/onboarding
@@ -48,7 +48,7 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
       const isAllowed = allowedWhenExpired.some((p) => location.pathname.startsWith(p));
 
       if (!isAllowed) {
-        // Detectar se é um assinante pago que expirou (migração de conta Stripe)
+        // Detectar se é um assinante pago que expirou
         const planosPagos = ["basico_mensal", "basico_anual", "intermediario_mensal", "intermediario_anual", "profissional_mensal", "profissional_anual", "profissional_ultra_mensal", "profissional_ultra_anual"];
         const isMigracao = assinatura?.plano_tipo && planosPagos.includes(assinatura.plano_tipo) &&
           (assinatura.status === "canceled" || assinatura.status === "past_due" || assinatura.status === "unpaid" || assinatura.status === "incomplete_expired");
@@ -77,16 +77,11 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
       
       if (!isFreeWithPendingOnboarding) {
         const isActiveStatus = assinatura?.status === 'active' || assinatura?.status === 'trialing';
-        const hasRealStripeSubscription = assinatura?.stripe_subscription_id && 
-          assinatura.stripe_subscription_id.startsWith('sub_') &&
-          !assinatura.stripe_subscription_id.startsWith('sub_trial_') &&
-          !assinatura.stripe_subscription_id.startsWith('sub_demo_') &&
-          !assinatura.stripe_subscription_id.startsWith('sub_pending_');
-        
-        if (isActiveStatus || hasRealStripeSubscription) {
+
+        if (isActiveStatus) {
           console.log("⚠️ [ProtectedAppRoute] FALLBACK: Usuário ativo detectado - NÃO redirecionando para onboarding", {
             status: assinatura?.status,
-            subscription_id: assinatura?.stripe_subscription_id
+            plano: assinatura?.plano_tipo,
           });
           return; // Não redireciona - deixa o usuário acessar
         }

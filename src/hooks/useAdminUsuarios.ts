@@ -25,8 +25,6 @@ export interface UsuarioAdmin {
   status: string;
   data_inicio: string | null;
   data_fim: string | null;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
   created_at: string | null;
   dias_restantes_trial: number | null;
   horas_restantes_trial: number | null;
@@ -175,8 +173,7 @@ export function useAdminUsuarios() {
         ];
         const hasPaidPlan = planosPagos.includes(item.plano_tipo);
         const dataFimValida = !item.data_fim || new Date(item.data_fim) > new Date();
-        const naoEhStripe = item.payment_provider !== "stripe";
-        const isPagante = hasPaidPlan && item.status === "active" && !isTrial && dataFimValida && naoEhStripe;
+        const isPagante = hasPaidPlan && item.status === "active" && !isTrial && dataFimValida;
 
         let diasRestantesTrial: number | null = null;
         let horasRestantesTrial: number | null = null;
@@ -223,8 +220,6 @@ export function useAdminUsuarios() {
           status: item.status,
           data_inicio: item.data_inicio,
           data_fim: item.data_fim,
-          stripe_customer_id: item.stripe_customer_id,
-          stripe_subscription_id: item.stripe_subscription_id,
           created_at: item.created_at,
           dias_restantes_trial: diasRestantesTrial,
           horas_restantes_trial: horasRestantesTrial,

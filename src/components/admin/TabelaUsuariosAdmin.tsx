@@ -308,7 +308,7 @@ export function TabelaUsuariosAdmin({
                 {mostrarDiasTrial && <TableHead>Tempo Restante</TableHead>}
                 {mostrarUsoIndevido && <TableHead>Uso Indevido</TableHead>}
                 <TableHead>Cadastro</TableHead>
-                <TableHead>Stripe</TableHead>
+                <TableHead>Pagamento</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -454,14 +454,19 @@ export function TabelaUsuariosAdmin({
                   )}
                   <TableCell className="text-sm">{formatarData(usuario.created_at)}</TableCell>
                   <TableCell>
-                    {usuario.stripe_customer_id?.startsWith("cus_") ? (
+                    {(usuario as any).payment_provider === "pagarme" ? (
                       <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
                         <CreditCard className="h-3 w-3" />
-                        Stripe
+                        Pagar.me
+                      </Badge>
+                    ) : (usuario as any).payment_provider === "ticto" ? (
+                      <Badge className="bg-amber-100 text-amber-800 flex items-center gap-1">
+                        <CreditCard className="h-3 w-3" />
+                        Ticto
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-muted-foreground">
-                        Não vinculado
+                        {(usuario as any).payment_provider || "—"}
                       </Badge>
                     )}
                   </TableCell>

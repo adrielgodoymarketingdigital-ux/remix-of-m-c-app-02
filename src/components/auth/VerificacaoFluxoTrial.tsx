@@ -15,7 +15,7 @@ interface VerificacaoFluxoTrialProps {
  * 
  * ROBUSTO:
  * - Nunca redireciona durante carregamento
- * - Tenta sincronizar com Stripe se dados parecem inconsistentes
+ * - Tenta sincronizar assinatura se dados parecem inconsistentes
  * - Mostra tela de retry em caso de erro (não manda pro trial por engano)
  * - Usuários ativos SEMPRE são liberados
  */

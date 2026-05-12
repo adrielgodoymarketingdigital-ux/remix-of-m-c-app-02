@@ -84,7 +84,7 @@ export function FinalCTA() {
 
               <div className="pt-4 text-xs text-slate-500">
                 <p>
-                  🔒 Pagamento seguro via Stripe • 
+                  🔒 Pagamento seguro via Pagar.me •
                   ⚡ Ativação imediata • 
                   🚫 Cancele quando quiser
                 </p>

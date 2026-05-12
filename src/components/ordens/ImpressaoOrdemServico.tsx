@@ -288,15 +288,15 @@ export const ImpressaoOrdemServico = ({
     /* Duas OS por folha */
     .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; }
     .impressao-duas-os-slot { overflow: hidden; position: relative; flex-shrink: 0; }
-    .impressao-duas-os-slot > * { transform-origin: top left; transform: scale(0.5); width: 194mm !important; max-width: 194mm !important; }
-    .impressao-duas-os-vertical { width: 194mm; }
-    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm; height: 138.5mm; }
-    .impressao-duas-os-horizontal { width: 277mm; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm; height: 194mm; }
+    .impressao-duas-os-slot > * { transform-origin: top left; transform: scale(0.5); width: 734px !important; max-width: 734px !important; }
+    .impressao-duas-os-vertical { width: 734px; }
+    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 367px; height: 523px; }
+    .impressao-duas-os-horizontal { width: 1048px; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 524px; height: 734px; }
     .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.713); }
     .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; display: flex; align-items: center; justify-content: center; position: relative; }
-    .impressao-duas-os-vertical .impressao-duas-os-corte { height: 138.5mm; }
-    .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 194mm; }
+    .impressao-duas-os-vertical .impressao-duas-os-corte { height: 523px; }
+    .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 734px; }
     .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
     ${isHorizontalMode ? '@page { size: A4 landscape; margin: 8mm; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 8mm; }')}
     @media print {
@@ -305,12 +305,12 @@ export const ImpressaoOrdemServico = ({
       img { max-width: 100% !important; }
       .impressao-duas-os-wrapper { page-break-inside: avoid !important; }
       .impressao-duas-os-slot { overflow: hidden !important; }
-      .impressao-duas-os-vertical { width: 194mm !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm !important; height: 138.5mm !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-corte { height: 138.5mm !important; }
-      .impressao-duas-os-horizontal { width: 277mm !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm !important; height: 194mm !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 194mm !important; }
+      .impressao-duas-os-vertical { width: 734px !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 367px !important; height: 523px !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-corte { height: 523px !important; }
+      .impressao-duas-os-horizontal { width: 1048px !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 524px !important; height: 734px !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 734px !important; }
     }
   </style>
 </head>

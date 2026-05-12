@@ -50,7 +50,6 @@ const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
 const AdminPushNotifications = lazy(() => import("./pages/AdminPushNotifications"));
 const AdminNovidades = lazy(() => import("./pages/AdminNovidades"));
 const AdminFinanceiro = lazy(() => import("./pages/AdminFinanceiro"));
-const TesteStripe = lazy(() => import("./pages/TesteStripe"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const CadastroPlano = lazy(() => import("./pages/CadastroPlano"));
 const Novidades = lazy(() => import("./pages/Novidades"));
@@ -357,11 +356,6 @@ function AppRoutes() {
           <Route path="/admin/novidades" element={
             <ProtectedAppRoute>
               <AdminNovidades />
-            </ProtectedAppRoute>
-          } />
-          <Route path="/admin/stripe/teste" element={
-            <ProtectedAppRoute>
-              <TesteStripe />
             </ProtectedAppRoute>
           } />
           

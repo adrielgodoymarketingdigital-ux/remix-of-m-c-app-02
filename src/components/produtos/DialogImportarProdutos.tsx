@@ -59,6 +59,7 @@ interface ResultadoImportacao {
   produtosInseridos: number;
   pecasInseridas: number;
   erros: number;
+  mensagemErro?: string;
 }
 
 interface DialogImportarProdutosProps {
@@ -624,8 +625,20 @@ export const DialogImportarProdutos = ({
         {etapa === 'resultado' && resultado && (
           <div className="space-y-6 py-4">
             <div className="text-center">
-              <CheckCircle2 className="w-16 h-16 mx-auto text-green-600 mb-4" />
-              <h3 className="text-xl font-semibold">Importação Concluída!</h3>
+              {resultado.erros > 0 && resultado.produtosInseridos === 0 && resultado.pecasInseridas === 0 ? (
+                <XCircle className="w-16 h-16 mx-auto text-red-600 mb-4" />
+              ) : resultado.erros > 0 ? (
+                <AlertTriangle className="w-16 h-16 mx-auto text-yellow-500 mb-4" />
+              ) : (
+                <CheckCircle2 className="w-16 h-16 mx-auto text-green-600 mb-4" />
+              )}
+              <h3 className="text-xl font-semibold">
+                {resultado.erros > 0 && resultado.produtosInseridos === 0 && resultado.pecasInseridas === 0
+                  ? 'Falha na Importação'
+                  : resultado.erros > 0
+                  ? 'Importação com Erros'
+                  : 'Importação Concluída!'}
+              </h3>
             </div>
 
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
@@ -646,11 +659,20 @@ export const DialogImportarProdutos = ({
                 {resultado.erros > 0 && (
                   <li className="flex items-center gap-2 text-red-600">
                     <XCircle className="w-4 h-4" />
-                    {resultado.erros} erro(s)
+                    {resultado.erros} item(ns) com erro
                   </li>
                 )}
               </ul>
             </div>
+
+            {resultado.mensagemErro && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription className="break-words">
+                  {resultado.mensagemErro}
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="flex justify-center">
               <Button onClick={() => handleClose(false)}>
