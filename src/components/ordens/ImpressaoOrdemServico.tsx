@@ -165,7 +165,7 @@ export const ImpressaoOrdemServico = ({
     ${printCSS}
     /* Essential resets */
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { margin: 0; padding: 4mm; background: white; color: black; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; padding: ${!is80mmFormat && layoutConfig.duas_os_por_folha ? '0' : '4mm'}; background: white; color: black; font-family: system-ui, -apple-system, sans-serif; }
     #print-root { position: static !important; overflow: visible !important; width: 100% !important; height: auto !important; display: block !important; }
     .impressao-ordem-container {
       width: 100% !important; max-width: 194mm !important; margin: 0 auto !important;
@@ -285,32 +285,34 @@ export const ImpressaoOrdemServico = ({
     .cupom-assinatura-bloco { text-align: center; margin-bottom: 2mm; }
     .cupom-linha-assinatura { border-bottom: 1.5px solid #000; width: 90%; margin: 3mm auto 1mm; }
     .cupom-assinatura-img { max-width: 30mm; max-height: 10mm; }
-    /* Duas OS por folha */
+    /* Duas OS por folha — usa mm para garantir fidelidade na impressão mobile/Android */
     .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; }
     .impressao-duas-os-slot { overflow: hidden; position: relative; flex-shrink: 0; }
-    .impressao-duas-os-slot > * { transform-origin: top left; transform: scale(0.5); width: 734px !important; max-width: 734px !important; }
-    .impressao-duas-os-vertical { width: 734px; }
-    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 367px; height: 523px; }
-    .impressao-duas-os-horizontal { width: 1048px; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 524px; height: 734px; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.713); }
-    .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; display: flex; align-items: center; justify-content: center; position: relative; }
-    .impressao-duas-os-vertical .impressao-duas-os-corte { height: 523px; }
-    .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 734px; }
+    .impressao-duas-os-slot > * { transform-origin: top left; transform: scale(0.5); width: 194mm !important; max-width: 194mm !important; }
+    .impressao-duas-os-corte { flex-shrink: 0; width: 0; border-left: 1pt dashed #aaa; display: flex; align-items: center; justify-content: center; position: relative; }
     .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
+    /* Vertical (retrato): 2 OS lado a lado, cada slot = 97mm */
+    .impressao-duas-os-vertical { width: 194mm; }
+    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm; height: 138.5mm; }
+    .impressao-duas-os-vertical .impressao-duas-os-corte { height: 138.5mm; }
+    /* Horizontal (paisagem): 2 OS lado a lado, cada slot = 138.5mm */
+    .impressao-duas-os-horizontal { width: 277mm; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm; height: 194mm; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.713); width: 194mm !important; max-width: 194mm !important; }
+    .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 194mm; }
     ${isHorizontalMode ? '@page { size: A4 landscape; margin: 8mm; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 8mm; }')}
     @media print {
-      * { box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body { overflow: visible !important; }
+      * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { overflow: visible !important; margin: 0; padding: 0; }
       img { max-width: 100% !important; }
-      .impressao-duas-os-wrapper { page-break-inside: avoid !important; }
+      .impressao-duas-os-wrapper { page-break-inside: avoid !important; break-inside: avoid !important; }
       .impressao-duas-os-slot { overflow: hidden !important; }
-      .impressao-duas-os-vertical { width: 734px !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 367px !important; height: 523px !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-corte { height: 523px !important; }
-      .impressao-duas-os-horizontal { width: 1048px !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 524px !important; height: 734px !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 734px !important; }
+      .impressao-duas-os-vertical { width: 194mm !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm !important; height: 138.5mm !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-corte { height: 138.5mm !important; }
+      .impressao-duas-os-horizontal { width: 277mm !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm !important; height: 194mm !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 194mm !important; }
     }
   </style>
 </head>
