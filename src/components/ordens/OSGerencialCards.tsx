@@ -1,17 +1,19 @@
 import { useState } from "react";
 import {
   Target, TrendingUp, Activity, Zap, BarChart2,
-  AlertTriangle, Pencil, Check, X, RefreshCw, Clock
+  AlertTriangle, Pencil, Check, X, RefreshCw, Clock, HelpCircle
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatCurrency } from "@/lib/formatters";
 import { useOSGerencial } from "@/hooks/useOSGerencial";
 
 interface Props {
   dataInicio?: Date;
   dataFim?: Date;
+  onAbrirOS?: (id: string) => void;
 }
 
 // ─── helpers visuais ────────────────────────────────────────────────────────
@@ -139,7 +141,7 @@ function labelStatus(status: string) {
 
 // ─── Componente principal ────────────────────────────────────────────────────
 
-export function OSGerencialCards({ dataInicio, dataFim }: Props) {
+export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
   const { data, diasUteis, meta, carregando, erro, carregar, salvarMeta } =
     useOSGerencial(dataInicio, dataFim);
 
@@ -344,6 +346,33 @@ export function OSGerencialCards({ dataInicio, dataFim }: Props) {
           label="Semáforo"
           icon={<TrendingUp className="h-3.5 w-3.5" style={{ color: corSemaforo }} />}
           iconBg="bg-muted/30 border-border/40"
+          action={
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors focus:outline-none"
+                  aria-label="Como funciona o Semáforo?"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-72 text-xs space-y-2">
+                <p className="font-semibold text-sm">Como funciona o Semáforo?</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Compara o que você já fez com o que era esperado para esse momento do mês.
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Se o mês tem 22 dias úteis e hoje é o dia 11, o esperado é que você já tenha feito 50% da sua meta.
+                </p>
+                <ul className="space-y-1 text-muted-foreground">
+                  <li>🟢 <span className="font-medium text-foreground">No ritmo</span> — você está igual ou acima do esperado</li>
+                  <li>🟡 <span className="font-medium text-foreground">Atenção</span> — você está um pouco abaixo do esperado</li>
+                  <li>🔴 <span className="font-medium text-foreground">Crítico</span> — você está muito abaixo do esperado</li>
+                </ul>
+                <p className="text-muted-foreground/70 italic">Defina uma meta mensal para ativar o semáforo.</p>
+              </PopoverContent>
+            </Popover>
+          }
         >
           {metaValor > 0 ? (
             <div className="space-y-1">
@@ -425,7 +454,8 @@ export function OSGerencialCards({ dataInicio, dataFim }: Props) {
             {data.osParadas.map((os) => (
               <div
                 key={os.id}
-                className={`relative overflow-hidden rounded-xl border-2 bg-card p-3 ${corBorda(os.diasParada)}`}
+                onClick={() => onAbrirOS?.(os.id)}
+                className={`relative overflow-hidden rounded-xl border-2 bg-card p-3 ${corBorda(os.diasParada)} ${onAbrirOS ? "cursor-pointer hover:brightness-110 transition-[filter]" : ""}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -466,9 +496,10 @@ export function OSGerencialCards({ dataInicio, dataFim }: Props) {
             {data.maioresOS.map((os, i) => (
               <div
                 key={os.id}
+                onClick={() => onAbrirOS?.(os.id)}
                 className={`flex items-center justify-between gap-3 px-4 py-2.5 ${
                   i < data.maioresOS.length - 1 ? "border-b border-border/30" : ""
-                }`}
+                } ${onAbrirOS ? "cursor-pointer hover:bg-muted/40 transition-colors" : ""}`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0 w-4 text-right">

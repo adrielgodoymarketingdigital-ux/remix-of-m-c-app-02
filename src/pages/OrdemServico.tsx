@@ -7,6 +7,7 @@ import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { useTinyIntegration } from "@/hooks/useTinyIntegration";
 import { checkTinyAccess } from "@/lib/checkTinyAccess";
 import { OSGerencialCards } from "@/components/ordens/OSGerencialCards";
+import { OSResumoBarra } from "@/components/ordens/OSResumoBarra";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -654,6 +655,18 @@ export default function OrdemServicoPage() {
             </div>
           </div>
 
+          {/* Resumo gerencial compacto — banner + 4 chips */}
+          <OSResumoBarra
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+            onAbrirOS={async (id) => {
+              const ordemCompleta = await buscarOrdemCompleta(id);
+              if (!ordemCompleta) return;
+              setOrdemSelecionada(ordemCompleta);
+              setDialogVisualizacao(true);
+            }}
+          />
+
           {/* Abas principais */}
           <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
             <TabsList className="mb-4 h-8 bg-muted/40 border border-border/40 p-0.5">
@@ -818,7 +831,16 @@ export default function OrdemServicoPage() {
             </CardContent>
           </Card>
 
-            <OSGerencialCards dataInicio={dataInicio} dataFim={dataFim} />
+            <OSGerencialCards
+              dataInicio={dataInicio}
+              dataFim={dataFim}
+              onAbrirOS={async (id) => {
+                const ordemCompleta = await buscarOrdemCompleta(id);
+                if (!ordemCompleta) return;
+                setOrdemSelecionada(ordemCompleta);
+                setDialogVisualizacao(true);
+              }}
+            />
             </TabsContent>
 
             {temAcessoTiny && (
