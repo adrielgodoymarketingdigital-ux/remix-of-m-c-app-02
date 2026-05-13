@@ -697,7 +697,7 @@ export default function OrdemServicoPage() {
           />
 
           {/* 4 cards gerenciais — grid 4 colunas largura total */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
             <OSChipsGerenciais snapshot={gerencialSnapshot} />
           </div>
 

@@ -39,7 +39,7 @@ function HelpButton({ title, children }: { title: string; children: React.ReactN
 
 function CardSkeleton() {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5 min-h-[120px] animate-pulse">
+    <div className="relative overflow-hidden rounded-xl border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 min-h-[160px] animate-pulse">
       <div className="h-2.5 w-20 rounded bg-white/10 mb-4" />
       <div className="h-7 w-32 rounded bg-white/10 mb-3" />
       <div className="h-2 w-full rounded-full bg-white/10 mb-2" />
@@ -69,7 +69,7 @@ function PremiumCard({
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5 min-h-[120px] transition-all duration-500 w-full"
+      className="relative overflow-hidden rounded-xl border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 min-h-[160px] transition-all duration-500 w-full"
       style={{
         boxShadow: `0 0 0 1px ${cor}22, 0 4px 20px ${cor}12`,
         opacity: visible ? 1 : 0,
@@ -88,14 +88,14 @@ function PremiumCard({
       />
 
       {/* label + ícone */}
-      <div className="flex items-center gap-2 mb-3 pr-7">
+      <div className="flex items-center gap-2 mb-0 pr-8">
         <div
           className="h-6 w-6 rounded-md flex items-center justify-center shrink-0"
           style={{ background: `${cor}22`, border: `1px solid ${cor}30` }}
         >
           {icon}
         </div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 leading-none">
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 leading-none">
           {label}
         </p>
       </div>
@@ -111,7 +111,7 @@ function PremiumCard({
 
 function ProgressBar({ pct, cor, visible }: { pct: number; cor: string; visible: boolean }) {
   return (
-    <div className="h-2 w-full rounded-full bg-white/8 overflow-hidden mt-3">
+    <div className="h-2.5 w-full rounded-full bg-white/8 overflow-hidden mt-3">
       <div
         className="h-full rounded-full transition-all duration-700 ease-out"
         style={{
@@ -319,7 +319,7 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
         >
           {metaValor > 0 ? (
             <>
-              <p className="text-2xl font-bold tabular-nums font-mono text-white leading-none">
+              <p className="text-3xl font-bold tabular-nums font-mono text-white leading-none mt-3">
                 {formatCurrency(valorRealizado)}
               </p>
               <ProgressBar pct={pctMeta} cor={corMeta} visible={visible} />
@@ -329,12 +329,12 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
             </>
           ) : (
             <>
-              <p className="text-2xl font-bold tabular-nums font-mono text-white/50 leading-none">
+              <p className="text-3xl font-bold tabular-nums font-mono text-white/50 leading-none mt-3">
                 {formatCurrency(valorRealizado)}
               </p>
               <button
                 onClick={abrirEdicao}
-                className="mt-3 flex items-center gap-1.5 text-sm text-white/35 hover:text-white/60 transition-colors"
+                className="mt-3 flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white/70 transition-colors"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 Definir meta do mês
@@ -377,17 +377,17 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
       >
         {metaValor > 0 ? (
           <>
-            <p className="text-2xl font-bold font-mono leading-none" style={{ color: corSemaforo }}>
+            <p className="text-3xl font-bold font-mono leading-none" style={{ color: corSemaforo }}>
               {labelSemaforo}
             </p>
-            <p className="text-sm mt-2 text-white/50">
+            <p className="text-sm mt-2 text-zinc-400">
               Real {pctReal.toFixed(0)}% — Esperado {pctEsperado.toFixed(0)}%
             </p>
           </>
         ) : (
           <>
-            <p className="text-2xl font-bold text-white/20 leading-none">—</p>
-            <p className="text-sm mt-2 text-white/35">Defina uma meta para ativar</p>
+            <p className="text-3xl font-bold text-white/20 leading-none">—</p>
+            <p className="text-sm mt-2 text-zinc-400">Defina uma meta para ativar</p>
           </>
         )}
       </PremiumCard>
@@ -408,10 +408,10 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
           </>
         }
       >
-        <p className="text-2xl font-bold tabular-nums font-mono text-white leading-none">
+        <p className="text-3xl font-bold tabular-nums font-mono text-white leading-none">
           {diasUteisPassados > 0 ? formatCurrency(ritmoDiario) : "—"}
         </p>
-        <p className="text-sm mt-2 text-white/50">
+        <p className="text-sm mt-2 text-zinc-400">
           Média por dia útil ({diasUteisPassados}/{diasUteisMes} dias)
         </p>
       </PremiumCard>
@@ -432,10 +432,10 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
           </>
         }
       >
-        <p className="text-2xl font-bold tabular-nums font-mono text-white leading-none">
+        <p className="text-3xl font-bold tabular-nums font-mono text-white leading-none">
           {diasUteisPassados > 0 ? formatCurrency(projecao) : "—"}
         </p>
-        <p className="text-sm mt-2 text-white/50">
+        <p className="text-sm mt-2 text-zinc-400">
           Projeção de fechamento do mês
         </p>
       </PremiumCard>
