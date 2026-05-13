@@ -713,7 +713,7 @@ export default function OrdemServicoPage() {
             <div className="flex justify-end">
               <button
                 onClick={toggleChipsExpandido}
-                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors px-2 py-1 rounded shrink-0"
+                className="flex items-center gap-1.5 text-xs font-medium text-blue-400 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400/60 transition-all px-3 py-1.5 rounded-lg shrink-0"
               >
                 {chipsExpandido ? (
                   <><ChevronUp className="h-3.5 w-3.5 shrink-0" /><span>Ocultar painel</span></>
