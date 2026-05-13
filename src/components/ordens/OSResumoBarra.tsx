@@ -22,7 +22,7 @@ function HelpButton({ title, children }: { title: string; children: React.ReactN
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="absolute top-3 right-3 flex items-center justify-center h-5 w-5 rounded-full bg-white/5 border border-white/10 text-white/25 hover:text-white/60 hover:bg-white/10 transition-colors focus:outline-none"
+          className="absolute top-3 right-3 flex items-center justify-center h-5 w-5 rounded-full bg-zinc-700 border border-zinc-500 text-zinc-300 hover:text-white hover:bg-zinc-600 transition-colors focus:outline-none"
           aria-label={title}
         >
           <HelpCircle className="h-3 w-3" />
@@ -39,7 +39,7 @@ function HelpButton({ title, children }: { title: string; children: React.ReactN
 
 function CardSkeleton() {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 min-h-[160px] animate-pulse">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-600 bg-zinc-800/80 p-6 min-h-[160px] animate-pulse">
       <div className="h-2.5 w-20 rounded bg-white/10 mb-4" />
       <div className="h-7 w-32 rounded bg-white/10 mb-3" />
       <div className="h-2 w-full rounded-full bg-white/10 mb-2" />
@@ -69,9 +69,9 @@ function PremiumCard({
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 min-h-[160px] transition-all duration-500 w-full"
+      className="relative overflow-hidden rounded-xl border border-zinc-600 bg-zinc-800/80 p-6 min-h-[160px] transition-all duration-500 w-full"
       style={{
-        boxShadow: `0 0 0 1px ${cor}22, 0 4px 20px ${cor}12`,
+        boxShadow: `0 0 0 1px ${cor}30, 0 4px 24px ${cor}25`,
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(8px)",
       }}
@@ -95,7 +95,7 @@ function PremiumCard({
         >
           {icon}
         </div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 leading-none">
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-300 leading-none">
           {label}
         </p>
       </div>
@@ -111,13 +111,13 @@ function PremiumCard({
 
 function ProgressBar({ pct, cor, visible }: { pct: number; cor: string; visible: boolean }) {
   return (
-    <div className="h-2.5 w-full rounded-full bg-white/8 overflow-hidden mt-3">
+    <div className="h-2.5 w-full rounded-full bg-zinc-600 overflow-hidden mt-3">
       <div
         className="h-full rounded-full transition-all duration-700 ease-out"
         style={{
           width: visible ? `${pct}%` : "0%",
-          background: `linear-gradient(90deg, ${cor}70, ${cor})`,
-          boxShadow: `0 0 6px ${cor}60`,
+          background: `linear-gradient(90deg, ${cor}90, ${cor})`,
+          boxShadow: `0 0 8px ${cor}`,
         }}
       />
     </div>
@@ -197,24 +197,24 @@ export function OSBannerParadas({
   if (snapshot.osParadasCount === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-amber-500/25 bg-zinc-900 px-4 py-2.5 shadow-[0_0_0_1px_rgba(245,158,11,0.15),0_2px_12px_rgba(245,158,11,0.08)]">
-      <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-amber-500/15 border border-amber-500/25 shrink-0">
+    <div className="flex items-center gap-3 rounded-xl border border-amber-600 bg-amber-950/80 px-4 py-2.5">
+      <div className="flex items-center justify-center h-7 w-7 rounded-lg bg-amber-500/20 border border-amber-600 shrink-0">
         <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-white/90 leading-snug">
+        <p className="text-xs text-amber-200 leading-snug">
           <span className="font-semibold text-amber-400">Atenção imediata</span>
           {" — "}
           {snapshot.osParadasCount === 1
             ? "1 OS com 3 dias ou mais parada."
             : `${snapshot.osParadasCount} OS com 3 dias ou mais paradas.`}
           {" "}
-          <span className="text-white/50">Elas precisam de ação agora.</span>
+          Elas precisam de ação agora.
         </p>
       </div>
       <button
         onClick={onVerOSParadas}
-        className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium text-amber-300 hover:bg-amber-500/20 hover:text-amber-200 transition-colors"
+        className="shrink-0 rounded-lg border border-amber-600 bg-amber-500/15 px-3 py-1.5 text-[11px] font-medium text-amber-200 hover:bg-amber-500/25 hover:text-white transition-colors"
       >
         Ver OS paradas
       </button>
@@ -273,8 +273,8 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
     <>
       {/* META OS */}
       {editandoMeta ? (
-        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5 min-h-[120px] flex flex-col justify-center gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Meta OS</p>
+        <div className="relative overflow-hidden rounded-xl border border-zinc-600 bg-zinc-800/80 p-6 min-h-[160px] flex flex-col justify-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-300">Meta OS</p>
           <Input
             autoFocus
             className="h-8 text-sm font-mono bg-white/5 border-white/15 text-white"
@@ -323,7 +323,7 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
                 {formatCurrency(valorRealizado)}
               </p>
               <ProgressBar pct={pctMeta} cor={corMeta} visible={visible} />
-              <p className="text-sm mt-2" style={{ color: `${corMeta}dd` }}>
+              <p className="text-sm mt-2 text-zinc-200">
                 {pctMeta.toFixed(0)}% da meta — faltam {formatCurrency(Math.max(0, metaValor - valorRealizado))}
               </p>
             </>
@@ -380,14 +380,14 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
             <p className="text-3xl font-bold font-mono leading-none" style={{ color: corSemaforo }}>
               {labelSemaforo}
             </p>
-            <p className="text-sm mt-2 text-zinc-400">
+            <p className="text-sm mt-2 text-zinc-300">
               Real {pctReal.toFixed(0)}% — Esperado {pctEsperado.toFixed(0)}%
             </p>
           </>
         ) : (
           <>
             <p className="text-3xl font-bold text-white/20 leading-none">—</p>
-            <p className="text-sm mt-2 text-zinc-400">Defina uma meta para ativar</p>
+            <p className="text-sm mt-2 text-zinc-300">Defina uma meta para ativar</p>
           </>
         )}
       </PremiumCard>
@@ -411,7 +411,7 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
         <p className="text-3xl font-bold tabular-nums font-mono text-white leading-none">
           {diasUteisPassados > 0 ? formatCurrency(ritmoDiario) : "—"}
         </p>
-        <p className="text-sm mt-2 text-zinc-400">
+        <p className="text-sm mt-2 text-zinc-300">
           Média por dia útil ({diasUteisPassados}/{diasUteisMes} dias)
         </p>
       </PremiumCard>
@@ -435,7 +435,7 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
         <p className="text-3xl font-bold tabular-nums font-mono text-white leading-none">
           {diasUteisPassados > 0 ? formatCurrency(projecao) : "—"}
         </p>
-        <p className="text-sm mt-2 text-zinc-400">
+        <p className="text-sm mt-2 text-zinc-300">
           Projeção de fechamento do mês
         </p>
       </PremiumCard>
