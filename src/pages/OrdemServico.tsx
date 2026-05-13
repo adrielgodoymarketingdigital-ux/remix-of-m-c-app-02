@@ -7,7 +7,8 @@ import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { useTinyIntegration } from "@/hooks/useTinyIntegration";
 import { checkTinyAccess } from "@/lib/checkTinyAccess";
 import { OSGerencialCards } from "@/components/ordens/OSGerencialCards";
-import { OSResumoBarra } from "@/components/ordens/OSResumoBarra";
+import { OSBannerParadas, OSChipsGerenciais, OSGerencialSnapshot } from "@/components/ordens/OSResumoBarra";
+import { useOSGerencial } from "@/hooks/useOSGerencial";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -165,6 +166,33 @@ export default function OrdemServicoPage() {
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
   const { compartilharWhatsApp, gerarLink } = useOSTracking();
+
+  // ── Dados gerenciais (uma única instância do hook para banner + chips) ──────
+  const { data: gerencialData, diasUteis: gerencialDiasUteis, meta: gerencialMeta, carregando: gerencialCarregando, salvarMeta: gerencialSalvarMeta } =
+    useOSGerencial(dataInicio, dataFim);
+  const gerencialSnapshot = useMemo((): OSGerencialSnapshot => {
+    const { diasUteisMes, diasUteisPassados } = gerencialDiasUteis;
+    const valorRealizado = gerencialData?.valorRealizado ?? 0;
+    const metaValor = gerencialMeta ?? 0;
+    const pctMeta = metaValor > 0 ? Math.min((valorRealizado / metaValor) * 100, 100) : 0;
+    const pctEsperado = diasUteisMes > 0 ? (diasUteisPassados / diasUteisMes) * 100 : 0;
+    const pctReal = metaValor > 0 ? (valorRealizado / metaValor) * 100 : 0;
+    const ritmoDiario = diasUteisPassados > 0 ? valorRealizado / diasUteisPassados : 0;
+    const projecao = ritmoDiario * diasUteisMes;
+    const corMeta = metaValor > 0 ? (pctMeta >= 80 ? "#22c55e" : pctMeta >= 50 ? "#eab308" : "#ef4444") : "#6b7280";
+    const ratioSemaforo = pctEsperado > 0 ? pctReal / pctEsperado : 0;
+    const corSemaforo = metaValor > 0 ? (ratioSemaforo >= 1 ? "#22c55e" : ratioSemaforo >= 0.7 ? "#eab308" : "#ef4444") : "#6b7280";
+    const labelSemaforo = ratioSemaforo >= 1 ? "No ritmo" : ratioSemaforo >= 0.7 ? "Atenção" : "Crítico";
+    const corRitmo = metaValor > 0 ? (ritmoDiario * diasUteisMes >= metaValor ? "#22c55e" : ritmoDiario * diasUteisMes >= metaValor * 0.8 ? "#eab308" : "#ef4444") : "#6b7280";
+    const corProjecao = metaValor > 0 ? (projecao >= metaValor ? "#22c55e" : projecao >= metaValor * 0.8 ? "#eab308" : "#ef4444") : "#6b7280";
+    return {
+      valorRealizado, metaValor, osParadasCount: gerencialData?.osParadasCount ?? 0,
+      osParadas: gerencialData?.osParadas ?? [], pctMeta, pctEsperado, pctReal,
+      ritmoDiario, projecao, diasUteisMes, diasUteisPassados,
+      corMeta, corSemaforo, corRitmo, corProjecao, labelSemaforo,
+      carregando: gerencialCarregando, salvarMeta: gerencialSalvarMeta,
+    };
+  }, [gerencialData, gerencialDiasUteis, gerencialMeta, gerencialCarregando, gerencialSalvarMeta]);
 
   useEffect(() => {
     const buscarUso = async () => {
@@ -499,7 +527,7 @@ export default function OrdemServicoPage() {
               </div>
             </div>
 
-            {/* Barra de ações */}
+            {/* Barra de ações + chips gerenciais na mesma linha */}
             <div className="flex flex-wrap items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -564,11 +592,33 @@ export default function OrdemServicoPage() {
               <Button
                 size="sm"
                 onClick={handleNovaOrdem}
-                className="os-nova-btn h-8 text-xs flex-1 sm:flex-none gap-1.5 ml-auto sm:ml-0 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide"
+                className="os-nova-btn h-8 text-xs flex-1 sm:flex-none gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Nova OS
               </Button>
+
+              {/* Separador + 4 chips gerenciais à direita dos botões */}
+              <div className="hidden lg:flex items-center gap-2 ml-auto">
+                <div className="h-6 w-px bg-border/40 mx-1" />
+                <OSChipsGerenciais snapshot={gerencialSnapshot} />
+              </div>
+            </div>
+
+            {/* Banner de OS paradas — condicional */}
+            <OSBannerParadas
+              snapshot={gerencialSnapshot}
+              onVerOSParadas={() => {
+                setAbaAtiva("minhas");
+                setTimeout(() => {
+                  osGerencialRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 100);
+              }}
+            />
+
+            {/* Chips gerenciais em tela pequena (abaixo dos botões) */}
+            <div className="flex lg:hidden flex-wrap items-center gap-2">
+              <OSChipsGerenciais snapshot={gerencialSnapshot} />
             </div>
 
             {/* Filtro de período — linha compacta */}
@@ -655,24 +705,6 @@ export default function OrdemServicoPage() {
               )}
             </div>
           </div>
-
-          {/* Resumo gerencial compacto — banner + 4 chips */}
-          <OSResumoBarra
-            dataInicio={dataInicio}
-            dataFim={dataFim}
-            onAbrirOS={async (id) => {
-              const ordemCompleta = await buscarOrdemCompleta(id);
-              if (!ordemCompleta) return;
-              setOrdemSelecionada(ordemCompleta);
-              setDialogVisualizacao(true);
-            }}
-            onVerOSParadas={() => {
-              setAbaAtiva("minhas");
-              setTimeout(() => {
-                osGerencialRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }, 100);
-            }}
-          />
 
           {/* Abas principais */}
           <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
