@@ -167,33 +167,6 @@ export default function OrdemServicoPage() {
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
   const { compartilharWhatsApp, gerarLink } = useOSTracking();
 
-  // ── Dados gerenciais (uma única instância do hook para banner + chips) ──────
-  const { data: gerencialData, diasUteis: gerencialDiasUteis, meta: gerencialMeta, carregando: gerencialCarregando, salvarMeta: gerencialSalvarMeta } =
-    useOSGerencial(dataInicio, dataFim);
-  const gerencialSnapshot = useMemo((): OSGerencialSnapshot => {
-    const { diasUteisMes, diasUteisPassados } = gerencialDiasUteis;
-    const valorRealizado = gerencialData?.valorRealizado ?? 0;
-    const metaValor = gerencialMeta ?? 0;
-    const pctMeta = metaValor > 0 ? Math.min((valorRealizado / metaValor) * 100, 100) : 0;
-    const pctEsperado = diasUteisMes > 0 ? (diasUteisPassados / diasUteisMes) * 100 : 0;
-    const pctReal = metaValor > 0 ? (valorRealizado / metaValor) * 100 : 0;
-    const ritmoDiario = diasUteisPassados > 0 ? valorRealizado / diasUteisPassados : 0;
-    const projecao = ritmoDiario * diasUteisMes;
-    const corMeta = metaValor > 0 ? (pctMeta >= 80 ? "#22c55e" : pctMeta >= 50 ? "#eab308" : "#ef4444") : "#6b7280";
-    const ratioSemaforo = pctEsperado > 0 ? pctReal / pctEsperado : 0;
-    const corSemaforo = metaValor > 0 ? (ratioSemaforo >= 1 ? "#22c55e" : ratioSemaforo >= 0.7 ? "#eab308" : "#ef4444") : "#6b7280";
-    const labelSemaforo = ratioSemaforo >= 1 ? "No ritmo" : ratioSemaforo >= 0.7 ? "Atenção" : "Crítico";
-    const corRitmo = metaValor > 0 ? (ritmoDiario * diasUteisMes >= metaValor ? "#22c55e" : ritmoDiario * diasUteisMes >= metaValor * 0.8 ? "#eab308" : "#ef4444") : "#6b7280";
-    const corProjecao = metaValor > 0 ? (projecao >= metaValor ? "#22c55e" : projecao >= metaValor * 0.8 ? "#eab308" : "#ef4444") : "#6b7280";
-    return {
-      valorRealizado, metaValor, osParadasCount: gerencialData?.osParadasCount ?? 0,
-      osParadas: gerencialData?.osParadas ?? [], pctMeta, pctEsperado, pctReal,
-      ritmoDiario, projecao, diasUteisMes, diasUteisPassados,
-      corMeta, corSemaforo, corRitmo, corProjecao, labelSemaforo,
-      carregando: gerencialCarregando, salvarMeta: gerencialSalvarMeta,
-    };
-  }, [gerencialData, gerencialDiasUteis, gerencialMeta, gerencialCarregando, gerencialSalvarMeta]);
-
   useEffect(() => {
     const buscarUso = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -256,6 +229,33 @@ export default function OrdemServicoPage() {
     carregarLucroOrdensEntregues,
     importarOSEmLote,
   } = useOrdensServico();
+
+  // ── Dados gerenciais (instanciado após useOrdensServico para ter dataInicio/dataFim) ──
+  const { data: gerencialData, diasUteis: gerencialDiasUteis, meta: gerencialMeta, carregando: gerencialCarregando, salvarMeta: gerencialSalvarMeta } =
+    useOSGerencial(dataInicio, dataFim);
+  const gerencialSnapshot = useMemo((): OSGerencialSnapshot => {
+    const { diasUteisMes, diasUteisPassados } = gerencialDiasUteis;
+    const valorRealizado = gerencialData?.valorRealizado ?? 0;
+    const metaValor = gerencialMeta ?? 0;
+    const pctMeta = metaValor > 0 ? Math.min((valorRealizado / metaValor) * 100, 100) : 0;
+    const pctEsperado = diasUteisMes > 0 ? (diasUteisPassados / diasUteisMes) * 100 : 0;
+    const pctReal = metaValor > 0 ? (valorRealizado / metaValor) * 100 : 0;
+    const ritmoDiario = diasUteisPassados > 0 ? valorRealizado / diasUteisPassados : 0;
+    const projecao = ritmoDiario * diasUteisMes;
+    const corMeta = metaValor > 0 ? (pctMeta >= 80 ? "#22c55e" : pctMeta >= 50 ? "#eab308" : "#ef4444") : "#6b7280";
+    const ratioSemaforo = pctEsperado > 0 ? pctReal / pctEsperado : 0;
+    const corSemaforo = metaValor > 0 ? (ratioSemaforo >= 1 ? "#22c55e" : ratioSemaforo >= 0.7 ? "#eab308" : "#ef4444") : "#6b7280";
+    const labelSemaforo = ratioSemaforo >= 1 ? "No ritmo" : ratioSemaforo >= 0.7 ? "Atenção" : "Crítico";
+    const corRitmo = metaValor > 0 ? (ritmoDiario * diasUteisMes >= metaValor ? "#22c55e" : ritmoDiario * diasUteisMes >= metaValor * 0.8 ? "#eab308" : "#ef4444") : "#6b7280";
+    const corProjecao = metaValor > 0 ? (projecao >= metaValor ? "#22c55e" : projecao >= metaValor * 0.8 ? "#eab308" : "#ef4444") : "#6b7280";
+    return {
+      valorRealizado, metaValor, osParadasCount: gerencialData?.osParadasCount ?? 0,
+      osParadas: gerencialData?.osParadas ?? [], pctMeta, pctEsperado, pctReal,
+      ritmoDiario, projecao, diasUteisMes, diasUteisPassados,
+      corMeta, corSemaforo, corRitmo, corProjecao, labelSemaforo,
+      carregando: gerencialCarregando, salvarMeta: gerencialSalvarMeta,
+    };
+  }, [gerencialData, gerencialDiasUteis, gerencialMeta, gerencialCarregando, gerencialSalvarMeta]);
 
   // Carregar contador de OS do mês
   const carregarContador = async () => {
