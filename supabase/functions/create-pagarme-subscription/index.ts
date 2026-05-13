@@ -229,7 +229,9 @@ serve(async (req) => {
       customer_id: customerId,
       payment_method: "credit_card",
       card_token,
-      billing_address: billingAddressPayload,
+      card: {
+        billing_address: billingAddressPayload,
+      },
       metadata: {
         user_id: userId,
         plano_tipo: plano,
@@ -263,11 +265,6 @@ serve(async (req) => {
       );
     }
 
-    log("Subscription criada", {
-      subscriptionId: subData.id,
-      status: subData.status,
-    });
-
     // ── 7. Verificar status da primeira cobrança ─────────────────────
     const currentCharge = subData.current_charge ?? subData.charges?.[0];
     const chargeStatus = currentCharge?.status;
@@ -277,10 +274,23 @@ serve(async (req) => {
       currentCharge?.card?.id ??
       null;
 
+    log("Subscription criada", {
+      subscriptionId: subData.id,
+      subscriptionStatus: subData.status,
+      chargeStatus,
+      lastTransactionStatus: lastTransaction?.status,
+      acquirerMessage: lastTransaction?.acquirer_message,
+      gatewayResponse: JSON.stringify(lastTransaction?.gateway_response),
+    });
+
+    // "pending" na primeira cobrança é normal na Pagar.me — significa processando
     const paymentApproved =
       subData.status === "active" ||
+      subData.status === "pending" ||
       chargeStatus === "paid" ||
-      chargeStatus === "captured";
+      chargeStatus === "captured" ||
+      chargeStatus === "pending" ||
+      chargeStatus === "processing";
 
     if (
       chargeStatus === "failed" ||

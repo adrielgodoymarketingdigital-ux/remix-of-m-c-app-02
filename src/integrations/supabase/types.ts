@@ -1602,6 +1602,36 @@ export type Database = {
           },
         ]
       }
+      os_metas: {
+        Row: {
+          id: string
+          user_id: string
+          mes: number
+          ano: number
+          meta: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          mes: number
+          ano: number
+          meta: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          mes?: number
+          ano?: number
+          meta?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       ordens_servico: {
         Row: {
           avarias: Json | null

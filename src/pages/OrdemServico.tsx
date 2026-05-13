@@ -1,6 +1,12 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
+import { useTinyIntegration } from "@/hooks/useTinyIntegration";
+import { checkTinyAccess } from "@/lib/checkTinyAccess";
+import { OSGerencialCards } from "@/components/ordens/OSGerencialCards";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -73,6 +79,51 @@ const DialogPersonalizarColunas = lazy(() => import("@/components/ordens/DialogP
 const DialogConfiguracaoTracking = lazy(() => import("@/components/ordens/DialogConfiguracaoTracking").then((m) => ({ default: m.DialogConfiguracaoTracking })));
 
 export default function OrdemServicoPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [temAcessoTiny, setTemAcessoTiny] = useState(false);
+  const [checandoAcessoTiny, setChecandoAcessoTiny] = useState(true);
+  const [abaAtiva, setAbaAtiva] = useState<"minhas" | "terceirizada">(
+    tabParam === "terceirizada" ? "terceirizada" : "minhas"
+  );
+
+  useEffect(() => {
+    checkTinyAccess().then((acesso) => {
+      setTemAcessoTiny(acesso);
+      setChecandoAcessoTiny(false);
+      if (!acesso && abaAtiva === "terceirizada") {
+        setAbaAtiva("minhas");
+        setSearchParams({});
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const {
+    integration,
+    loading: integrationLoading,
+    iniciarOAuth,
+    desconectar,
+    atualizarIntervalo,
+  } = useTinyIntegration();
+
+  const handleMudarAba = (aba: string) => {
+    setAbaAtiva(aba as "minhas" | "terceirizada");
+    if (aba === "terceirizada") {
+      setSearchParams({ tab: "terceirizada" });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  // Sync URL → aba quando conectar via OAuth callback (?connected=true)
+  useEffect(() => {
+    if (searchParams.get("connected") === "true") {
+      setAbaAtiva("terceirizada");
+      setSearchParams({ tab: "terceirizada" });
+    }
+  }, []);
+
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dialogVisualizacao, setDialogVisualizacao] = useState(false);
   const [ordemSelecionada, setOrdemSelecionada] = useState<OrdemServico | null>(null);
@@ -603,6 +654,20 @@ export default function OrdemServicoPage() {
             </div>
           </div>
 
+          {/* Abas principais */}
+          <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
+            <TabsList className="mb-4 h-8 bg-muted/40 border border-border/40 p-0.5">
+              <TabsTrigger value="minhas" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                Minhas OS
+              </TabsTrigger>
+              {!checandoAcessoTiny && temAcessoTiny && (
+                <TabsTrigger value="terceirizada" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  Terceirizada
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            <TabsContent value="minhas" className="mt-0">
           <DashboardOrdensServico ordens={ordens} servicosAvulsos={servicosAvulsosFiltrados} lucroOrdensEntregues={lucroOrdensEntregues} />
 
           <Card className="min-w-0 overflow-hidden border-border/40 shadow-sm">
@@ -752,6 +817,23 @@ export default function OrdemServicoPage() {
               )}
             </CardContent>
           </Card>
+
+            <OSGerencialCards dataInicio={dataInicio} dataFim={dataFim} />
+            </TabsContent>
+
+            {temAcessoTiny && (
+              <TabsContent value="terceirizada" className="mt-0">
+                <TerceirizadaTab
+                  integration={integration ?? null}
+                  integrationLoading={integrationLoading}
+                  onConectar={iniciarOAuth}
+                  onDesconectar={desconectar}
+                  onReconectar={iniciarOAuth}
+                  onAtualizarIntervalo={atualizarIntervalo}
+                />
+              </TabsContent>
+            )}
+          </Tabs>
 
           <DialogServicoAvulso
             open={dialogServicoAvulso}
