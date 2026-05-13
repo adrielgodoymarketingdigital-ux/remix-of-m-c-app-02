@@ -285,20 +285,24 @@ export const ImpressaoOrdemServico = ({
     .cupom-assinatura-bloco { text-align: center; margin-bottom: 2mm; }
     .cupom-linha-assinatura { border-bottom: 1.5px solid #000; width: 90%; margin: 3mm auto 1mm; }
     .cupom-assinatura-img { max-width: 30mm; max-height: 10mm; }
-    /* Reset das regras de transform/scale vindas do index.css — substituídas por zoom abaixo */
-    .impressao-duas-os-slot > * { transform: none !important; }
-    /* Duas OS por folha — zoom em vez de transform para funcionar no Chrome Android */
-    .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; width: 100%; }
-    /* Vertical (retrato): 2 colunas lado a lado, cada slot ocupa metade da página */
-    .impressao-duas-os-vertical { width: 100%; }
-    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 50%; overflow: hidden; flex-shrink: 0; }
-    .impressao-duas-os-vertical .impressao-duas-os-slot > * { zoom: 0.5; width: 194mm !important; max-width: 194mm !important; display: block; }
-    .impressao-duas-os-vertical .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; align-self: stretch; display: flex; align-items: center; justify-content: center; position: relative; }
-    /* Horizontal (paisagem): 2 colunas lado a lado em folha deitada */
-    .impressao-duas-os-horizontal { width: 100%; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 50%; overflow: hidden; flex-shrink: 0; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { zoom: 0.713; width: 194mm !important; max-width: 194mm !important; display: block; }
-    .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; align-self: stretch; display: flex; align-items: center; justify-content: center; position: relative; }
+    /* Duas OS por folha — dimensões físicas fixas em mm, sem zoom nem transform,
+       compatível com Epson Smart Panel e outros apps de impressão mobile */
+    .impressao-duas-os-slot > * { transform: none !important; zoom: unset !important; }
+    .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; overflow: hidden; }
+    /* Vertical (retrato): folha A4 = 210mm × 297mm, margem 0.
+       Cada slot = 97mm largura × 277mm altura (metade da área útil).
+       Conteúdo interno (194mm) escalado com transform: scale(0.5), origin top left */
+    .impressao-duas-os-vertical { width: 194mm; height: 277mm; }
+    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 97mm; height: 277mm; overflow: hidden; flex-shrink: 0; position: relative; }
+    .impressao-duas-os-vertical .impressao-duas-os-slot > * { transform: scale(0.5) !important; transform-origin: top left !important; width: 194mm !important; max-width: 194mm !important; display: block; position: absolute; top: 0; left: 0; }
+    .impressao-duas-os-vertical .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; height: 277mm; display: flex; align-items: center; justify-content: center; position: relative; }
+    /* Horizontal (paisagem): folha A4 landscape = 297mm × 210mm, margem 0.
+       Cada slot = 138.5mm largura × 194mm altura.
+       Conteúdo interno (194mm) escalado com transform: scale(0.713) */
+    .impressao-duas-os-horizontal { width: 277mm; height: 194mm; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 138.5mm; height: 194mm; overflow: hidden; flex-shrink: 0; position: relative; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.713) !important; transform-origin: top left !important; width: 194mm !important; max-width: 194mm !important; display: block; position: absolute; top: 0; left: 0; }
+    .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 0; flex-shrink: 0; border-left: 1pt dashed #aaa; height: 194mm; display: flex; align-items: center; justify-content: center; position: relative; }
     .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
     ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 0; }')}
     @media print {
