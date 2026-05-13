@@ -1,7 +1,8 @@
 import { useState } from "react";
 import {
   Target, TrendingUp, Activity, Zap, BarChart2,
-  AlertTriangle, Pencil, Check, X, RefreshCw, Clock, HelpCircle
+  AlertTriangle, Pencil, Check, X, RefreshCw, Clock, HelpCircle,
+  ChevronUp, ChevronDown
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -147,6 +148,18 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
 
   const [editandoMeta, setEditandoMeta] = useState(false);
   const [inputMeta, setInputMeta] = useState("");
+  const [expandido, setExpandido] = useState(() => {
+    const salvo = localStorage.getItem("os_cards_gerenciais_expandido");
+    return salvo === null ? true : salvo === "true";
+  });
+
+  function toggleExpandido() {
+    setExpandido((prev) => {
+      const proximo = !prev;
+      localStorage.setItem("os_cards_gerenciais_expandido", String(proximo));
+      return proximo;
+    });
+  }
 
   const { diasUteisMes, diasUteisPassados } = diasUteis;
 
@@ -231,11 +244,31 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
           Painel Gerencial
         </span>
         <div className="h-px flex-1 bg-border/40" />
+        <button
+          onClick={toggleExpandido}
+          className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-1.5 py-0.5 rounded"
+        >
+          {expandido ? (
+            <><ChevronUp className="h-3.5 w-3.5" /> Ocultar painel</>
+          ) : (
+            <><ChevronDown className="h-3.5 w-3.5" /> Ver painel gerencial</>
+          )}
+        </button>
       </div>
+
+      {/* ── Conteúdo colapsável ───────────────────────────────────────────── */}
+      <div
+        style={{
+          maxHeight: expandido ? "2000px" : "0px",
+          opacity: expandido ? 1 : 0,
+          overflow: "hidden",
+          transition: "max-height 300ms ease-in-out, opacity 300ms ease-in-out",
+        }}
+      >
 
       {/* ── Banner alerta ─────────────────────────────────────────────────── */}
       {data.osParadasCount > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-orange-500/40 bg-orange-500/8 p-3.5">
+        <div className="flex items-start gap-3 rounded-xl border border-orange-500/40 bg-orange-500/8 p-3.5 mb-4">
           <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">
@@ -538,6 +571,8 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
           </p>
         </div>
       )}
+
+      </div>{/* fim colapsável */}
     </div>
   );
 }
