@@ -9,42 +9,98 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw } from "lucide-react";
+import { Loader2, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 
 interface TermoGarantiaDispositivoConfig {
   termo_com_garantia: string;
   termo_sem_garantia: string;
 }
 
+const VARIAVEIS_DISPONIVEIS = [
+  { tag: "{{cliente}}", descricao: "Nome do cliente" },
+  { tag: "{{cpf}}", descricao: "CPF do cliente" },
+  { tag: "{{telefone}}", descricao: "Telefone do cliente" },
+  { tag: "{{dispositivo}}", descricao: "Marca e modelo" },
+  { tag: "{{imei}}", descricao: "IMEI do aparelho" },
+  { tag: "{{numero_serie}}", descricao: "Número de série" },
+  { tag: "{{cor}}", descricao: "Cor do aparelho" },
+  { tag: "{{capacidade}}", descricao: "Capacidade (GB)" },
+  { tag: "{{condicao}}", descricao: "Condição (Novo/Usado)" },
+  { tag: "{{garantia_meses}}", descricao: "Meses de garantia" },
+  { tag: "{{valor}}", descricao: "Valor da venda" },
+  { tag: "{{data_venda}}", descricao: "Data da venda" },
+  { tag: "{{loja}}", descricao: "Nome da loja" },
+  { tag: "{{loja_telefone}}", descricao: "Telefone da loja" },
+  { tag: "{{loja_cnpj}}", descricao: "CNPJ da loja" },
+  { tag: "{{loja_endereco}}", descricao: "Endereço da loja" },
+];
+
 const TERMOS_PADRAO: TermoGarantiaDispositivoConfig = {
-  termo_com_garantia: `TERMOS DE GARANTIA
+  termo_com_garantia: `TERMO DE GARANTIA
 
-1. GARANTIA LEGAL (Código de Defesa do Consumidor - Lei 8.078/90)
-   • Este produto possui garantia legal de 90 (noventa) dias, conforme Art. 26, II do CDC.
-   • A garantia legal é oferecida pelo fabricante e tem início na data da compra.
-   • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento do produto.
+Loja: {{loja}}
+CNPJ: {{loja_cnpj}}
+Endereço: {{loja_endereco}}
+Telefone: {{loja_telefone}}
 
-2. GARANTIA CONTRATUAL
-   • Este produto possui garantia contratual adicional conforme especificado acima.
-   • A garantia contratual é complementar à garantia legal, conforme Art. 50 do CDC.
-   • Cobre defeitos de fabricação, excluindo danos causados por mau uso, quedas ou oxidação.
+COMPRADOR
+Nome: {{cliente}}
+CPF: {{cpf}}
+Telefone: {{telefone}}
+
+PRODUTO
+Aparelho: {{dispositivo}}
+IMEI: {{imei}}
+Nº Série: {{numero_serie}}
+Cor: {{cor}}  |  Capacidade: {{capacidade}}
+Condição: {{condicao}}
+Data da venda: {{data_venda}}
+Valor pago: {{valor}}
+
+1. GARANTIA LEGAL (CDC - Lei 8.078/90)
+   • Garantia legal de 90 (noventa) dias, conforme Art. 26, II do CDC.
+   • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento.
+
+2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
+   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
+   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.
 
 3. DIREITOS DO CONSUMIDOR
-   • Em caso de vício do produto, o consumidor pode exigir: substituição, devolução do valor pago ou abatimento proporcional do preço (Art. 18 CDC).
-   • O prazo de garantia é suspenso durante o período de reparo (Art. 26, §2º CDC).
-   • Conserve este recibo como comprovante de compra.
+   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).
+   • Prazo suspenso durante reparo (Art. 26, §2º CDC).
+   • Conserve este documento como comprovante.
 
 4. EXCLUSÕES
-   • Danos causados por quedas, impactos, contato com líquidos, uso inadequado ou modificações não autorizadas.
-   • Violação de lacres ou tentativa de reparo por terceiros não autorizados.
-   • Desgaste natural decorrente do uso normal do produto.
+   • Quedas, impactos, contato com líquidos, uso inadequado.
+   • Violação de lacres ou reparo por terceiros não autorizados.
+   • Desgaste natural de uso.
 
-5. ATENDIMENTO
-   Para exercer seus direitos de garantia, entre em contato através dos dados desta loja.`,
-  termo_sem_garantia: `AVISO: Este produto é vendido sem garantia contratual adicional. A garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme as condições estabelecidas na legislação. O cliente declara estar ciente das condições do equipamento.`,
+Para acionamento da garantia, apresente este termo na loja.`,
+
+  termo_sem_garantia: `DECLARAÇÃO DE VENDA SEM GARANTIA CONTRATUAL
+
+Loja: {{loja}}
+CNPJ: {{loja_cnpj}}
+
+COMPRADOR
+Nome: {{cliente}}
+CPF: {{cpf}}
+
+PRODUTO
+Aparelho: {{dispositivo}}
+IMEI: {{imei}}
+Condição: {{condicao}}
+Data da venda: {{data_venda}}
+Valor pago: {{valor}}
+
+AVISO: Este produto é vendido sem garantia contratual adicional.
+A garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme a legislação.
+O cliente declara estar ciente das condições do equipamento.`,
 };
 
 interface Props {
@@ -57,6 +113,7 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
   const { config } = useConfiguracaoLoja();
   const [termos, setTermos] = useState<TermoGarantiaDispositivoConfig>(TERMOS_PADRAO);
   const [salvando, setSalvando] = useState(false);
+  const [mostrarVariaveis, setMostrarVariaveis] = useState(false);
 
   useEffect(() => {
     if (config?.termo_garantia_dispositivo_config) {
@@ -98,32 +155,65 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Termo de Garantia - Dispositivos Vendidos</DialogTitle>
+          <DialogTitle>Termo de Garantia — Dispositivos Vendidos</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {/* Painel de variáveis disponíveis */}
+          <div className="border rounded-lg overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 text-sm font-medium hover:bg-muted transition-colors"
+              onClick={() => setMostrarVariaveis((v) => !v)}
+            >
+              <span>Variáveis disponíveis — clique para inserir no texto</span>
+              {mostrarVariaveis ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+            {mostrarVariaveis && (
+              <div className="p-3 flex flex-wrap gap-2">
+                {VARIAVEIS_DISPONIVEIS.map(({ tag, descricao }) => (
+                  <Badge
+                    key={tag}
+                    variant="outline"
+                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors font-mono text-xs"
+                    title={descricao}
+                    onClick={() => {
+                      navigator.clipboard?.writeText(tag).catch(() => {});
+                      toast({ title: "Copiado!", description: `${tag} — ${descricao}` });
+                    }}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+                <p className="w-full text-xs text-muted-foreground mt-1">
+                  Clique em uma variável para copiá-la, depois cole no texto abaixo. Ela será substituída automaticamente pelos dados reais na impressão.
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Termo COM garantia</Label>
+            <Label className="text-sm font-medium">Termo COM garantia contratual</Label>
             <p className="text-xs text-muted-foreground">
-              Texto exibido no recibo quando o dispositivo possui garantia.
+              Usado quando o dispositivo possui garantia cadastrada (campo "Garantia" marcado).
             </p>
             <Textarea
               value={termos.termo_com_garantia}
               onChange={(e) => setTermos((prev) => ({ ...prev, termo_com_garantia: e.target.value }))}
-              rows={12}
+              rows={18}
               className="text-xs font-mono"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Termo SEM garantia</Label>
+            <Label className="text-sm font-medium">Termo SEM garantia contratual</Label>
             <p className="text-xs text-muted-foreground">
-              Texto exibido no recibo quando o dispositivo não possui garantia.
+              Usado quando o dispositivo não possui garantia contratual.
             </p>
             <Textarea
               value={termos.termo_sem_garantia}
               onChange={(e) => setTermos((prev) => ({ ...prev, termo_sem_garantia: e.target.value }))}
-              rows={5}
+              rows={10}
               className="text-xs font-mono"
             />
           </div>

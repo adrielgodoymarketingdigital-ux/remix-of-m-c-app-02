@@ -1,5 +1,44 @@
 import { TermoGarantiaConfig, LayoutOSConfig } from "@/types/configuracao-loja";
 
+export interface TermoDispositivoVars {
+  cliente?: string;
+  cpf?: string;
+  telefone?: string;
+  dispositivo?: string;
+  imei?: string;
+  numero_serie?: string;
+  cor?: string;
+  capacidade?: string;
+  condicao?: string;
+  garantia_meses?: string;
+  valor?: string;
+  data_venda?: string;
+  loja?: string;
+  loja_telefone?: string;
+  loja_cnpj?: string;
+  loja_endereco?: string;
+}
+
+export const formatarTermoDispositivo = (texto: string, vars: TermoDispositivoVars): string => {
+  return texto
+    .replace(/\{\{cliente\}\}/g, vars.cliente || 'Cliente')
+    .replace(/\{\{cpf\}\}/g, vars.cpf || '—')
+    .replace(/\{\{telefone\}\}/g, vars.telefone || '—')
+    .replace(/\{\{dispositivo\}\}/g, vars.dispositivo || 'Dispositivo')
+    .replace(/\{\{imei\}\}/g, vars.imei || '—')
+    .replace(/\{\{numero_serie\}\}/g, vars.numero_serie || '—')
+    .replace(/\{\{cor\}\}/g, vars.cor || '—')
+    .replace(/\{\{capacidade\}\}/g, vars.capacidade || '—')
+    .replace(/\{\{condicao\}\}/g, vars.condicao || '—')
+    .replace(/\{\{garantia_meses\}\}/g, vars.garantia_meses || '—')
+    .replace(/\{\{valor\}\}/g, vars.valor || '—')
+    .replace(/\{\{data_venda\}\}/g, vars.data_venda || '—')
+    .replace(/\{\{loja\}\}/g, vars.loja || 'Loja')
+    .replace(/\{\{loja_telefone\}\}/g, vars.loja_telefone || '—')
+    .replace(/\{\{loja_cnpj\}\}/g, vars.loja_cnpj || '—')
+    .replace(/\{\{loja_endereco\}\}/g, vars.loja_endereco || '—');
+};
+
 // Valores padrão para os termos de garantia
 export const TERMOS_PADRAO: TermoGarantiaConfig = {
   termo_90_dias:

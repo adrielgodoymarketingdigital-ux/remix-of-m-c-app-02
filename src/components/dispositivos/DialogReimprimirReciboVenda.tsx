@@ -13,6 +13,7 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { checklistLabels } from "@/lib/checklist-templates";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatarTermoDispositivo } from "@/lib/termo-garantia-utils";
 
 interface VendaDispositivo {
   id: string;
@@ -46,34 +47,75 @@ const FORMAS_PAGAMENTO_LABEL: Record<string, string> = {
   a_prazo: "A Prazo",
 };
 
-const TERMOS_GARANTIA_CDC = (tempoGarantia?: number) => `
-TERMOS DE GARANTIA
+const CONDICAO_LABEL: Record<string, string> = {
+  novo: "Novo",
+  semi_novo: "Semi Novo",
+  usado: "Usado",
+};
 
-1. GARANTIA LEGAL (Código de Defesa do Consumidor - Lei 8.078/90)
-   • Este produto possui garantia legal de 90 (noventa) dias, conforme Art. 26, II do CDC.
-   • A garantia legal é oferecida pelo fabricante e tem início na data da compra.
-   • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento do produto.
+const TERMOS_GARANTIA_PADRAO = {
+  termo_com_garantia: `TERMO DE GARANTIA
 
-2. GARANTIA CONTRATUAL${tempoGarantia ? ` (${tempoGarantia} meses)` : ''}
-   ${tempoGarantia
-     ? `• Este produto possui garantia contratual adicional de ${tempoGarantia} meses a partir da data desta venda.
-   • A garantia contratual é complementar à garantia legal, conforme Art. 50 do CDC.
-   • Cobre defeitos de fabricação, excluindo danos causados por mau uso, quedas ou oxidação.`
-     : '• Este produto não possui garantia contratual adicional.'}
+Loja: {{loja}}
+CNPJ: {{loja_cnpj}}
+Endereço: {{loja_endereco}}
+Telefone: {{loja_telefone}}
+
+COMPRADOR
+Nome: {{cliente}}
+CPF: {{cpf}}
+Telefone: {{telefone}}
+
+PRODUTO
+Aparelho: {{dispositivo}}
+IMEI: {{imei}}
+Nº Série: {{numero_serie}}
+Cor: {{cor}}  |  Capacidade: {{capacidade}}
+Condição: {{condicao}}
+Data da venda: {{data_venda}}
+Valor pago: {{valor}}
+
+1. GARANTIA LEGAL (CDC - Lei 8.078/90)
+   • Garantia legal de 90 (noventa) dias, conforme Art. 26, II do CDC.
+   • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento.
+
+2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
+   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
+   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.
 
 3. DIREITOS DO CONSUMIDOR
-   • Em caso de vício do produto, o consumidor pode exigir: substituição, devolução do valor pago ou abatimento proporcional do preço (Art. 18 CDC).
-   • O prazo de garantia é suspenso durante o período de reparo (Art. 26, §2º CDC).
-   • Conserve este recibo como comprovante de compra.
+   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).
+   • Prazo suspenso durante reparo (Art. 26, §2º CDC).
+   • Conserve este documento como comprovante.
 
 4. EXCLUSÕES
-   • Danos causados por quedas, impactos, contato com líquidos, uso inadequado ou modificações não autorizadas.
-   • Violação de lacres ou tentativa de reparo por terceiros não autorizados.
-   • Desgaste natural decorrente do uso normal do produto.
+   • Quedas, impactos, contato com líquidos, uso inadequado.
+   • Violação de lacres ou reparo por terceiros não autorizados.
+   • Desgaste natural de uso.
 
-5. ATENDIMENTO
-   Para exercer seus direitos de garantia, entre em contato através dos dados desta loja.
-`;
+Para acionamento da garantia, apresente este termo na loja.`,
+
+  termo_sem_garantia: `DECLARAÇÃO DE VENDA SEM GARANTIA CONTRATUAL
+
+Loja: {{loja}}
+CNPJ: {{loja_cnpj}}
+
+COMPRADOR
+Nome: {{cliente}}
+CPF: {{cpf}}
+
+PRODUTO
+Aparelho: {{dispositivo}}
+IMEI: {{imei}}
+Condição: {{condicao}}
+Data da venda: {{data_venda}}
+Valor pago: {{valor}}
+
+AVISO: Este produto é vendido sem garantia contratual adicional.
+A garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme a legislação.
+O cliente declara estar ciente das condições do equipamento.`,
+};
 
 interface DialogReimprimirReciboVendaProps {
   open: boolean;
@@ -106,8 +148,39 @@ export function DialogReimprimirReciboVenda({
   const showAssinaturas = dispConfig?.mostrar_assinaturas !== false;
   const showValor = dispConfig?.mostrar_valor !== false;
   const showFormaPagamento = dispConfig?.mostrar_forma_pagamento !== false;
+
   const dataVenda = format(new Date(venda.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  const dataVendaCurta = format(new Date(venda.data), "dd/MM/yyyy", { locale: ptBR });
   const valorUnitario = venda.quantidade > 0 ? venda.total / venda.quantidade : venda.total;
+
+  // Variáveis dinâmicas para substituição no termo
+  const varsTermos = {
+    cliente: venda.cliente_nome,
+    cpf: venda.cliente_cpf,
+    telefone: venda.cliente_telefone,
+    dispositivo: [venda.dispositivo_marca, venda.dispositivo_modelo].filter(Boolean).join(' '),
+    imei: venda.dispositivo_imei,
+    numero_serie: venda.dispositivo_numero_serie,
+    cor: venda.dispositivo_cor,
+    capacidade: venda.dispositivo_capacidade_gb ? `${venda.dispositivo_capacidade_gb} GB` : undefined,
+    condicao: CONDICAO_LABEL[venda.dispositivo_condicao || ''] || venda.dispositivo_condicao,
+    garantia_meses: venda.dispositivo_tempo_garantia?.toString(),
+    valor: formatCurrency(venda.total),
+    data_venda: dataVendaCurta,
+    loja: configLoja?.nome_loja,
+    loja_telefone: configLoja?.telefone,
+    loja_cnpj: configLoja?.cnpj,
+    loja_endereco: configLoja?.endereco,
+  };
+
+  const obterTextoTermo = (): string => {
+    const termoConfig = configLoja?.termo_garantia_dispositivo_config as any;
+    const config = termoConfig || TERMOS_GARANTIA_PADRAO;
+    const textoBase = venda.dispositivo_garantia
+      ? (config.termo_com_garantia || TERMOS_GARANTIA_PADRAO.termo_com_garantia)
+      : (config.termo_sem_garantia || TERMOS_GARANTIA_PADRAO.termo_sem_garantia);
+    return formatarTermoDispositivo(textoBase, varsTermos);
+  };
 
   const imprimirRecibo = () => {
     const ref = modo === "garantia" ? garantiaRef : reciboRef;
@@ -149,7 +222,7 @@ export function DialogReimprimirReciboVenda({
               }
               .termos-garantia {
                 font-size: ${is80mm ? '8px' : '11px'};
-                line-height: 1.6;
+                line-height: 1.7;
                 white-space: pre-line;
               }
               .logo-loja {
@@ -196,6 +269,20 @@ export function DialogReimprimirReciboVenda({
                 margin-top: 15px;
                 font-style: italic;
               }
+              .assinatura-bloco {
+                margin-top: 40px;
+                text-align: center;
+              }
+              .assinatura-linha {
+                border-bottom: 1px solid #333;
+                width: 70%;
+                margin: 0 auto 6px;
+                min-height: 30px;
+              }
+              .assinatura-label {
+                font-size: ${is80mm ? '9px' : '11px'};
+                color: #555;
+              }
               @media print {
                 body { margin: 0; }
                 .recibo-checklist { page-break-inside: avoid; }
@@ -237,6 +324,8 @@ export function DialogReimprimirReciboVenda({
     }
   };
 
+  const textoTermo = obterTextoTermo();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -272,13 +361,17 @@ export function DialogReimprimirReciboVenda({
               <p className="font-medium">{FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Quantidade:</span>
-              <p className="font-medium">{venda.quantidade}</p>
+              <span className="text-muted-foreground">Garantia:</span>
+              <p className="font-medium">
+                {venda.dispositivo_garantia
+                  ? `${venda.dispositivo_tempo_garantia || '—'} meses`
+                  : 'Sem garantia contratual'}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Recibo oculto para impressão */}
+        {/* Conteúdo oculto — Recibo */}
         <div ref={reciboRef} style={{ display: "none" }}>
           <div className="recibo-header">
             {showLogo && configLoja?.logo_url && (
@@ -320,14 +413,17 @@ export function DialogReimprimirReciboVenda({
               {venda.dispositivo_capacidade_gb && <div className="recibo-info"><span>Capacidade:</span><span>{venda.dispositivo_capacidade_gb} GB</span></div>}
               {venda.dispositivo_imei && <div className="recibo-info"><span>IMEI:</span><span>{venda.dispositivo_imei}</span></div>}
               {venda.dispositivo_numero_serie && <div className="recibo-info"><span>Nº Série:</span><span>{venda.dispositivo_numero_serie}</span></div>}
-              <div className="recibo-info"><span>Condição:</span><span>{venda.dispositivo_condicao === 'novo' ? 'Novo' : venda.dispositivo_condicao === 'semi_novo' ? 'Semi Novo' : 'Usado'}</span></div>
+              <div className="recibo-info"><span>Condição:</span><span>{CONDICAO_LABEL[venda.dispositivo_condicao || ''] || venda.dispositivo_condicao}</span></div>
               <div className="recibo-info"><span>Quantidade:</span><span>{venda.quantidade}</span></div>
               {showValor && <div className="recibo-info"><span>Valor Unitário:</span><span>{formatCurrency(valorUnitario)}</span></div>}
               {showFormaPagamento && <div className="recibo-info"><span>Forma de Pagamento:</span><span>{FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento}</span></div>}
+              {venda.dispositivo_garantia && venda.dispositivo_tempo_garantia && (
+                <div className="recibo-info"><span>Garantia:</span><span>{venda.dispositivo_tempo_garantia} meses</span></div>
+              )}
             </div>
           )}
 
-          {showChecklist && venda.dispositivo_checklist?.entrada && Object.entries(venda.dispositivo_checklist.entrada).filter(([_, funciona]) => funciona !== undefined).length > 0 && (
+          {showChecklist && venda.dispositivo_checklist?.entrada && Object.entries(venda.dispositivo_checklist.entrada).filter(([_, v]) => v !== undefined).length > 0 && (
             <div className="recibo-section">
               <h3>Estado do Aparelho na Venda</h3>
               <div className="recibo-checklist">
@@ -346,9 +442,7 @@ export function DialogReimprimirReciboVenda({
           {showGarantia && (
             <div className="recibo-section">
               <h3>Termos de Garantia e Direitos do Consumidor</h3>
-              <div className="termos-garantia">
-                {TERMOS_GARANTIA_CDC(venda.dispositivo_garantia ? venda.dispositivo_tempo_garantia : undefined)}
-              </div>
+              <div className="termos-garantia">{textoTermo}</div>
             </div>
           )}
 
@@ -360,23 +454,23 @@ export function DialogReimprimirReciboVenda({
 
           {showAssinaturas && (
             <>
-              <div style={{ marginTop: "40px", textAlign: "center" }}>
-                <p>_________________________________________</p>
-                <p>Assinatura do Vendedor</p>
+              <div className="assinatura-bloco">
+                <div className="assinatura-linha" />
+                <p className="assinatura-label">Assinatura do Vendedor</p>
               </div>
-              <div style={{ marginTop: "40px", textAlign: "center" }}>
-                <p>_________________________________________</p>
-                <p>Assinatura do Comprador</p>
+              <div className="assinatura-bloco">
+                <div className="assinatura-linha" />
+                <p className="assinatura-label">Assinatura do Comprador</p>
               </div>
             </>
           )}
 
           <div className="recibo-reimpressao">
-            2ª via - Reimpressão em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            2ª via — Reimpressão em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </div>
         </div>
 
-        {/* Garantia oculta para impressão */}
+        {/* Conteúdo oculto — Termo de Garantia */}
         <div ref={garantiaRef} style={{ display: "none" }}>
           <div className="recibo-header">
             {configLoja?.logo_url && (
@@ -389,7 +483,6 @@ export function DialogReimprimirReciboVenda({
               {configLoja?.cnpj && <p>CNPJ: {configLoja.cnpj}</p>}
               {configLoja?.endereco && <p>Endereço: {configLoja.endereco}</p>}
               {configLoja?.telefone && <p>Telefone: {configLoja.telefone}</p>}
-              {configLoja?.email && <p>E-mail: {configLoja.email}</p>}
             </div>
             <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '2px solid #000' }}>
               <h2>TERMO DE GARANTIA</h2>
@@ -398,45 +491,16 @@ export function DialogReimprimirReciboVenda({
           </div>
 
           <div className="recibo-section">
-            <h3>Dados do Comprador</h3>
-            <div className="recibo-info"><span>Nome:</span><span>{venda.cliente_nome || "—"}</span></div>
-            {venda.cliente_cpf && <div className="recibo-info"><span>CPF:</span><span>{venda.cliente_cpf}</span></div>}
-            {venda.cliente_telefone && <div className="recibo-info"><span>Telefone:</span><span>{venda.cliente_telefone}</span></div>}
+            <div className="termos-garantia">{textoTermo}</div>
           </div>
 
-          <div className="recibo-section">
-            <h3>Produto</h3>
-            <div className="recibo-info"><span>Produto:</span><span>{venda.dispositivo_marca} {venda.dispositivo_modelo}</span></div>
-            {venda.dispositivo_imei && <div className="recibo-info"><span>IMEI:</span><span>{venda.dispositivo_imei}</span></div>}
-            {venda.dispositivo_numero_serie && <div className="recibo-info"><span>Nº Série:</span><span>{venda.dispositivo_numero_serie}</span></div>}
-            <div className="recibo-info"><span>Condição:</span><span>{venda.dispositivo_condicao === 'novo' ? 'Novo' : venda.dispositivo_condicao === 'semi_novo' ? 'Semi Novo' : 'Usado'}</span></div>
-            {venda.dispositivo_garantia && venda.dispositivo_tempo_garantia && (
-              <div className="recibo-info"><span>Garantia:</span><span>{venda.dispositivo_tempo_garantia} meses</span></div>
-            )}
+          <div className="assinatura-bloco">
+            <div className="assinatura-linha" />
+            <p className="assinatura-label">Assinatura do Vendedor</p>
           </div>
-
-          <div className="recibo-section">
-            <h3>Termos de Garantia e Direitos do Consumidor</h3>
-            <div className="termos-garantia">
-              {(() => {
-                const termoConfig = configLoja?.termo_garantia_dispositivo_config as any;
-                if (termoConfig) {
-                  return venda.dispositivo_garantia
-                    ? termoConfig.termo_com_garantia
-                    : termoConfig.termo_sem_garantia;
-                }
-                return TERMOS_GARANTIA_CDC(venda.dispositivo_garantia ? venda.dispositivo_tempo_garantia : undefined);
-              })()}
-            </div>
-          </div>
-
-          <div style={{ marginTop: "40px", textAlign: "center" }}>
-            <p>_________________________________________</p>
-            <p>Assinatura do Vendedor</p>
-          </div>
-          <div style={{ marginTop: "40px", textAlign: "center" }}>
-            <p>_________________________________________</p>
-            <p>Assinatura do Comprador</p>
+          <div className="assinatura-bloco">
+            <div className="assinatura-linha" />
+            <p className="assinatura-label">Assinatura do Comprador — {venda.cliente_nome || ''}</p>
           </div>
         </div>
 
