@@ -98,24 +98,31 @@ export default function AdminUsuarios() {
   const doisDiasAtras = new Date(agora.getTime() - 2 * 24 * 60 * 60 * 1000);
   const tresDiasAtras = new Date(agora.getTime() - 3 * 24 * 60 * 60 * 1000);
 
+  const planosPagos = [
+    "basico_mensal", "basico_anual",
+    "intermediario_mensal", "intermediario_anual",
+    "profissional_mensal", "profissional_anual",
+    "profissional_ultra_mensal", "profissional_ultra_anual",
+  ];
+
   // 1. Assinantes - status active com plano pago
   const assinantes = usuariosFiltrados.filter(u => u.is_pagante);
   const totalAssinantesReais = financeiroData?.assinantes_db ?? assinantes.length;
-  
+
   // 2. Free Ativos - plano free, logou nos últimos 2 dias
   const freeAtivos = usuariosFiltrados.filter(u => {
     if (u.plano_tipo !== "free" || u.status !== "active") return false;
     if (!u.last_login_at) return false;
     return new Date(u.last_login_at) >= doisDiasAtras;
   });
-  
+
   // 3. Free Inativos - plano free, sem login ou >3 dias
   const freeInativos = usuariosFiltrados.filter(u => {
     if (u.plano_tipo !== "free" || u.status !== "active") return false;
     if (!u.last_login_at) return true;
     return new Date(u.last_login_at) < tresDiasAtras;
   });
-  
+
   // 4. Não Assinaram - nunca tiveram plano pago (exclui quem já foi assinante)
   const naoAssinaram = usuariosFiltrados.filter(u =>
     !u.is_pagante && u.status !== "canceled"
@@ -184,13 +191,6 @@ export default function AdminUsuarios() {
   const ticketMedio = totalAssinantesReais > 0 ? mrrAtual / totalAssinantesReais : 0;
 
   // Breakdown por provedor de pagamento
-  const planosPagos = [
-    "basico_mensal", "basico_anual",
-    "intermediario_mensal", "intermediario_anual",
-    "profissional_mensal", "profissional_anual",
-    "profissional_ultra_mensal", "profissional_ultra_anual",
-  ];
-
   const assinantesPagarme = assinantes.filter(u =>
     (u as any).payment_provider === 'pagarme'
   );
