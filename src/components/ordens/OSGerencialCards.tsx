@@ -246,12 +246,12 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
         <div className="h-px flex-1 bg-border/40" />
         <button
           onClick={toggleExpandido}
-          className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors px-1.5 py-0.5 rounded"
+          className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors px-2 py-1 rounded shrink-0"
         >
           {expandido ? (
-            <><ChevronUp className="h-3.5 w-3.5" /> Ocultar painel</>
+            <><ChevronUp className="h-3.5 w-3.5 shrink-0" /><span>Ocultar painel</span></>
           ) : (
-            <><ChevronDown className="h-3.5 w-3.5" /> Ver painel gerencial</>
+            <><ChevronDown className="h-3.5 w-3.5 shrink-0" /><span>Ver painel gerencial</span></>
           )}
         </button>
       </div>
