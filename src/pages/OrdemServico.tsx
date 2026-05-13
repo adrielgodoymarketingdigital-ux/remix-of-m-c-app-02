@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { useTinyIntegration } from "@/hooks/useTinyIntegration";
@@ -85,6 +85,18 @@ export default function OrdemServicoPage() {
   const tabParam = searchParams.get("tab");
   const [temAcessoTiny, setTemAcessoTiny] = useState(false);
   const [checandoAcessoTiny, setChecandoAcessoTiny] = useState(true);
+  const [chipsExpandido, setChipsExpandido] = useState(() => {
+    const salvo = localStorage.getItem("os_chips_gerenciais_expandido");
+    return salvo === null ? false : salvo === "true";
+  });
+
+  function toggleChipsExpandido() {
+    setChipsExpandido((prev) => {
+      const proximo = !prev;
+      localStorage.setItem("os_chips_gerenciais_expandido", String(proximo));
+      return proximo;
+    });
+  }
   const [abaAtiva, setAbaAtiva] = useState<"minhas" | "terceirizada">(
     tabParam === "terceirizada" ? "terceirizada" : "minhas"
   );
@@ -697,8 +709,31 @@ export default function OrdemServicoPage() {
           />
 
           {/* 4 cards gerenciais — grid 4 colunas largura total */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
-            <OSChipsGerenciais snapshot={gerencialSnapshot} />
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <button
+                onClick={toggleChipsExpandido}
+                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-colors px-2 py-1 rounded shrink-0"
+              >
+                {chipsExpandido ? (
+                  <><ChevronUp className="h-3.5 w-3.5 shrink-0" /><span>Ocultar painel</span></>
+                ) : (
+                  <><ChevronDown className="h-3.5 w-3.5 shrink-0" /><span>Ver painel gerencial</span></>
+                )}
+              </button>
+            </div>
+            <div
+              style={{
+                maxHeight: chipsExpandido ? "1000px" : "0px",
+                opacity: chipsExpandido ? 1 : 0,
+                overflow: "hidden",
+                transition: "max-height 300ms ease-in-out, opacity 300ms ease-in-out",
+              }}
+            >
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+                <OSChipsGerenciais snapshot={gerencialSnapshot} />
+              </div>
+            </div>
           </div>
 
           {/* Abas principais */}
