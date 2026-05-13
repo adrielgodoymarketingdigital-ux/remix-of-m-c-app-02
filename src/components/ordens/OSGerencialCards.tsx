@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Target, TrendingUp, Activity, Zap, BarChart2,
-  AlertTriangle, Pencil, Check, X, RefreshCw, Clock, HelpCircle,
+  Pencil, Check, X, RefreshCw, Clock, HelpCircle,
   ChevronUp, ChevronDown
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -265,23 +265,6 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
           transition: "max-height 300ms ease-in-out, opacity 300ms ease-in-out",
         }}
       >
-
-      {/* ── Banner alerta ─────────────────────────────────────────────────── */}
-      {data.osParadasCount > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-orange-500/40 bg-orange-500/8 p-3.5 mb-4">
-          <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-              Atenção imediata
-            </p>
-            <p className="text-xs text-orange-500/80 mt-0.5">
-              Existem <strong>{data.osParadasCount}</strong>{" "}
-              {data.osParadasCount === 1 ? "OS com 3 dias ou mais parada" : "OS com 3 dias ou mais paradas"}.{" "}
-              Elas precisam de ação agora.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* ── 5 cards gerenciais ────────────────────────────────────────────── */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">

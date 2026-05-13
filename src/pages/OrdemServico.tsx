@@ -7,7 +7,7 @@ import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { useTinyIntegration } from "@/hooks/useTinyIntegration";
 import { checkTinyAccess } from "@/lib/checkTinyAccess";
 import { OSGerencialCards } from "@/components/ordens/OSGerencialCards";
-import { OSBannerParadas, OSChipsGerenciais, OSGerencialSnapshot } from "@/components/ordens/OSResumoBarra";
+import { OSChipsGerenciais, OSGerencialSnapshot } from "@/components/ordens/OSResumoBarra";
 import { useOSGerencial } from "@/hooks/useOSGerencial";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -696,17 +696,6 @@ export default function OrdemServicoPage() {
               )}
             </div>
           </div>
-
-          {/* Banner de OS paradas — condicional */}
-          <OSBannerParadas
-            snapshot={gerencialSnapshot}
-            onVerOSParadas={() => {
-              setAbaAtiva("minhas");
-              setTimeout(() => {
-                osGerencialRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }, 100);
-            }}
-          />
 
           {/* 4 cards gerenciais — grid 4 colunas largura total */}
           <div className="space-y-2">
