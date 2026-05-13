@@ -4,7 +4,6 @@ import {
   AlertTriangle, Pencil, Check, X, HelpCircle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatCurrency } from "@/lib/formatters";
@@ -16,19 +15,40 @@ interface Props {
   onAbrirOS?: (id: string) => void;
 }
 
-// Chip compacto reutilizável
+function HelpButton({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="shrink-0 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors focus:outline-none"
+          aria-label={title}
+        >
+          <HelpCircle className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="bottom" align="end" className="w-72 text-xs space-y-2">
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function Chip({
-  label,
-  valor,
   cor,
   icon,
+  label,
+  valor,
   extra,
+  helpTitle,
+  helpContent,
 }: {
-  label: string;
-  valor: string;
   cor: string;
   icon: React.ReactNode;
+  label: string;
+  valor: string;
   extra?: string;
+  helpTitle: string;
+  helpContent: React.ReactNode;
 }) {
   return (
     <div
@@ -52,6 +72,7 @@ function Chip({
           <p className="text-[9px] text-muted-foreground/50 font-mono leading-none mt-0.5 truncate">{extra}</p>
         )}
       </div>
+      <HelpButton title={helpTitle}>{helpContent}</HelpButton>
     </div>
   );
 }
@@ -86,16 +107,24 @@ export function OSResumoBarra({ dataInicio, dataFim, onAbrirOS }: Props) {
   const ritmoDiario = diasUteisPassados > 0 ? valorRealizado / diasUteisPassados : 0;
   const projecao = ritmoDiario * diasUteisMes;
 
-  const corMeta = pctMeta >= 80 ? "#22c55e" : pctMeta >= 50 ? "#eab308" : "#ef4444";
+  const corMeta = metaValor > 0
+    ? pctMeta >= 80 ? "#22c55e" : pctMeta >= 50 ? "#eab308" : "#ef4444"
+    : "#6b7280";
   const ratioSemaforo = pctEsperado > 0 ? pctReal / pctEsperado : 0;
-  const corSemaforo = ratioSemaforo >= 1 ? "#22c55e" : ratioSemaforo >= 0.7 ? "#eab308" : "#ef4444";
+  const corSemaforo = metaValor > 0
+    ? ratioSemaforo >= 1 ? "#22c55e" : ratioSemaforo >= 0.7 ? "#eab308" : "#ef4444"
+    : "#6b7280";
   const labelSemaforo = ratioSemaforo >= 1 ? "No ritmo" : ratioSemaforo >= 0.7 ? "Atenção" : "Crítico";
-  const corProjecao =
-    metaValor > 0 && projecao >= metaValor
-      ? "#22c55e"
-      : metaValor > 0 && projecao >= metaValor * 0.8
-      ? "#eab308"
-      : "#ef4444";
+  const corRitmo = metaValor > 0
+    ? ritmoDiario * diasUteisMes >= metaValor ? "#22c55e"
+      : ritmoDiario * diasUteisMes >= metaValor * 0.8 ? "#eab308"
+      : "#ef4444"
+    : "#6b7280";
+  const corProjecao = metaValor > 0
+    ? projecao >= metaValor ? "#22c55e"
+      : projecao >= metaValor * 0.8 ? "#eab308"
+      : "#ef4444"
+    : "#6b7280";
 
   async function confirmarMeta() {
     const val = parseFloat(inputMeta.replace(",", "."));
@@ -205,27 +234,30 @@ export function OSResumoBarra({ dataInicio, dataFim, onAbrirOS }: Props) {
                 </div>
                 <button
                   onClick={abrirEdicao}
-                  className="ml-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-muted-foreground"
+                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-muted-foreground"
                   title="Definir meta"
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
+                <HelpButton title="O que é Meta OS?">
+                  <p className="font-semibold text-sm">Meta OS</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Soma em R$ das suas OS em andamento, finalizadas e entregues no período. Clique no lápis ✏️ para definir sua meta mensal e acompanhar o progresso.
+                  </p>
+                </HelpButton>
               </div>
             )}
 
             {/* SEMÁFORO */}
             <div
               className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 min-w-0"
-              style={{ borderColor: metaValor > 0 ? `${corSemaforo}40` : undefined }}
+              style={{ borderColor: `${corSemaforo}40` }}
             >
               <div
                 className="h-6 w-6 rounded-md flex items-center justify-center shrink-0"
-                style={{ background: metaValor > 0 ? `${corSemaforo}18` : undefined }}
+                style={{ background: `${corSemaforo}18` }}
               >
-                <TrendingUp
-                  className="h-3.5 w-3.5"
-                  style={{ color: metaValor > 0 ? corSemaforo : undefined }}
-                />
+                <TrendingUp className="h-3.5 w-3.5" style={{ color: corSemaforo }} />
               </div>
               <div className="min-w-0">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60 leading-none mb-0.5">
@@ -244,76 +276,53 @@ export function OSResumoBarra({ dataInicio, dataFim, onAbrirOS }: Props) {
                   <p className="text-[10px] text-muted-foreground/40 leading-none">Sem meta</p>
                 )}
               </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    className="ml-1 shrink-0 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors focus:outline-none"
-                    aria-label="Como funciona o Semáforo?"
-                  >
-                    <HelpCircle className="h-3 w-3" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="bottom" align="end" className="w-72 text-xs space-y-2">
-                  <p className="font-semibold text-sm">Como funciona o Semáforo?</p>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Compara o que você já fez com o que era esperado para esse momento do mês.
-                  </p>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Se o mês tem 22 dias úteis e hoje é o dia 11, o esperado é que você já tenha feito 50% da sua meta.
-                  </p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>🟢 <span className="font-medium text-foreground">No ritmo</span> — igual ou acima do esperado</li>
-                    <li>🟡 <span className="font-medium text-foreground">Atenção</span> — um pouco abaixo do esperado</li>
-                    <li>🔴 <span className="font-medium text-foreground">Crítico</span> — muito abaixo do esperado</li>
-                  </ul>
-                  <p className="text-muted-foreground/70 italic">Defina uma meta mensal para ativar o semáforo.</p>
-                </PopoverContent>
-              </Popover>
+              <HelpButton title="Como funciona o Semáforo?">
+                <p className="font-semibold text-sm">Semáforo</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Compara o que você já fez com o que era esperado para esse momento do mês. Se o mês tem 22 dias úteis e hoje é o dia 11, o esperado é que você já tenha feito 50% da sua meta.
+                </p>
+                <ul className="space-y-1 text-muted-foreground">
+                  <li>🟢 <span className="font-medium text-foreground">No ritmo</span> — igual ou acima do esperado</li>
+                  <li>🟡 <span className="font-medium text-foreground">Atenção</span> — um pouco abaixo do esperado</li>
+                  <li>🔴 <span className="font-medium text-foreground">Crítico</span> — muito abaixo do esperado</li>
+                </ul>
+              </HelpButton>
             </div>
 
             {/* RITMO DIÁRIO */}
             <Chip
+              cor={corRitmo}
+              icon={<Zap className="h-3.5 w-3.5" style={{ color: corRitmo }} />}
               label="Ritmo Diário"
               valor={diasUteisPassados > 0 ? formatCurrency(ritmoDiario) : "—"}
-              cor={
-                metaValor > 0
-                  ? ritmoDiario * diasUteisMes >= metaValor
-                    ? "#22c55e"
-                    : ritmoDiario * diasUteisMes >= metaValor * 0.8
-                    ? "#eab308"
-                    : "#ef4444"
-                  : "#6b7280"
-              }
-              icon={
-                <Zap
-                  className="h-3.5 w-3.5"
-                  style={{
-                    color:
-                      metaValor > 0
-                        ? ritmoDiario * diasUteisMes >= metaValor
-                          ? "#22c55e"
-                          : ritmoDiario * diasUteisMes >= metaValor * 0.8
-                          ? "#eab308"
-                          : "#ef4444"
-                        : "#6b7280",
-                  }}
-                />
-              }
               extra={`${diasUteisPassados}/${diasUteisMes} dias úteis`}
+              helpTitle="O que é Ritmo Diário?"
+              helpContent={
+                <>
+                  <p className="font-semibold text-sm">Ritmo Diário</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Quanto você está faturando em média por dia útil trabalhado no mês. Calculado com base no valor real das suas OS dividido pelos dias úteis já passados.
+                  </p>
+                </>
+              }
             />
 
             {/* PROJEÇÃO */}
             <Chip
+              cor={corProjecao}
+              icon={<BarChart2 className="h-3.5 w-3.5" style={{ color: corProjecao }} />}
               label="Projeção"
               valor={diasUteisPassados > 0 ? formatCurrency(projecao) : "—"}
-              cor={metaValor > 0 ? corProjecao : "#6b7280"}
-              icon={
-                <BarChart2
-                  className="h-3.5 w-3.5"
-                  style={{ color: metaValor > 0 ? corProjecao : "#6b7280" }}
-                />
-              }
               extra="Projeção de fechamento"
+              helpTitle="O que é Projeção?"
+              helpContent={
+                <>
+                  <p className="font-semibold text-sm">Projeção</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Se você mantiver o ritmo atual até o fim do mês, esse é o valor estimado de fechamento. Calculado multiplicando seu ritmo diário pelo total de dias úteis do mês.
+                  </p>
+                </>
+              }
             />
           </>
         )}
