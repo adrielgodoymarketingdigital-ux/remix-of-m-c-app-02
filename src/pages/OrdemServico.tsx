@@ -155,6 +155,7 @@ export default function OrdemServicoPage() {
   const [dialogPersonalizarColunas, setDialogPersonalizarColunas] = useState(false);
   const [dialogTracking, setDialogTracking] = useState(false);
   const etiquetaPrintWindowRef = useRef<Window | null>(null);
+  const osGerencialRef = useRef<HTMLDivElement | null>(null);
   const [usoCompartilhamentos, setUsoCompartilhamentos] = useState({ usado: 0, limite: 0, plano: '' });
   const [dialogCompartilharAberto, setDialogCompartilharAberto] = useState(false);
   const [linkCompartilhamento, setLinkCompartilhamento] = useState('');
@@ -665,6 +666,12 @@ export default function OrdemServicoPage() {
               setOrdemSelecionada(ordemCompleta);
               setDialogVisualizacao(true);
             }}
+            onVerOSParadas={() => {
+              setAbaAtiva("minhas");
+              setTimeout(() => {
+                osGerencialRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 100);
+            }}
           />
 
           {/* Abas principais */}
@@ -831,16 +838,18 @@ export default function OrdemServicoPage() {
             </CardContent>
           </Card>
 
-            <OSGerencialCards
-              dataInicio={dataInicio}
-              dataFim={dataFim}
-              onAbrirOS={async (id) => {
-                const ordemCompleta = await buscarOrdemCompleta(id);
-                if (!ordemCompleta) return;
-                setOrdemSelecionada(ordemCompleta);
-                setDialogVisualizacao(true);
-              }}
-            />
+            <div ref={osGerencialRef}>
+              <OSGerencialCards
+                dataInicio={dataInicio}
+                dataFim={dataFim}
+                onAbrirOS={async (id) => {
+                  const ordemCompleta = await buscarOrdemCompleta(id);
+                  if (!ordemCompleta) return;
+                  setOrdemSelecionada(ordemCompleta);
+                  setDialogVisualizacao(true);
+                }}
+              />
+            </div>
             </TabsContent>
 
             {temAcessoTiny && (
