@@ -285,9 +285,7 @@ export const ImpressaoOrdemServico = ({
     .cupom-assinatura-bloco { text-align: center; margin-bottom: 2mm; }
     .cupom-linha-assinatura { border-bottom: 1.5px solid #000; width: 90%; margin: 3mm auto 1mm; }
     .cupom-assinatura-img { max-width: 30mm; max-height: 10mm; }
-    /* Duas OS por folha — dimensões físicas fixas em mm, sem zoom nem transform,
-       compatível com Epson Smart Panel e outros apps de impressão mobile */
-    .impressao-duas-os-slot > * { transform: none !important; zoom: unset !important; }
+    /* Duas OS por folha */
     .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; overflow: hidden; }
     /* Vertical (retrato): folha A4 = 210mm × 297mm, margem 0.
        Cada slot = 97mm largura × 277mm altura (metade da área útil).

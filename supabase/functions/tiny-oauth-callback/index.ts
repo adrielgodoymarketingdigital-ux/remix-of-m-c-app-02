@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   const state = url.searchParams.get("state"); // user_id
 
   if (!code || !state) {
-    return Response.redirect("https://appmec.in/ordens-de-servico?error=missing_params");
+    return Response.redirect("https://appmec.in/os?error=missing_params");
   }
 
   try {
@@ -22,12 +22,12 @@ Deno.serve(async (req) => {
     // Validate state is a valid user_id
     const { data: userCheck, error: userError } = await supabase.auth.admin.getUserById(state);
     if (userError || !userCheck.user) {
-      return Response.redirect("https://appmec.in/ordens-de-servico?error=invalid_state");
+      return Response.redirect("https://appmec.in/os?error=invalid_state");
     }
 
     const temAcesso = await checkTinyAccessByUserId(state);
     if (!temAcesso) {
-      return Response.redirect("https://appmec.in/ordens-de-servico?error=acesso_negado");
+      return Response.redirect("https://appmec.in/os?error=acesso_negado");
     }
 
     // Exchange code for tokens
@@ -47,13 +47,15 @@ Deno.serve(async (req) => {
     if (!tokenResponse.ok) {
       const errText = await tokenResponse.text();
       console.error("Token exchange failed:", errText);
-      return Response.redirect("https://appmec.in/ordens-de-servico?error=token_exchange_failed");
+      return Response.redirect("https://appmec.in/os?error=token_exchange_failed");
     }
 
     const tokens = await tokenResponse.json();
+    console.log("Token recebido do Tiny, expires_in:", tokens.expires_in);
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
     // Upsert into tiny_integrations
+    console.log("Tentando salvar para user_id:", state);
     const { error: dbError } = await supabase.from("tiny_integrations").upsert(
       {
         user_id: state,
@@ -66,15 +68,16 @@ Deno.serve(async (req) => {
     );
 
     if (dbError) {
-      console.error("DB upsert error:", dbError);
-      return Response.redirect("https://appmec.in/ordens-de-servico?error=db_error");
+      console.error("Erro ao salvar no banco:", JSON.stringify(dbError));
+      const detail = encodeURIComponent(dbError.message ?? "unknown");
+      return Response.redirect(`https://appmec.in/os?error=db_error&detail=${detail}`);
     }
 
     return Response.redirect(
-      "https://appmec.in/ordens-de-servico?tab=terceirizada&connected=true"
+      "https://appmec.in/os?tab=terceirizada&connected=true"
     );
   } catch (err) {
     console.error("OAuth callback error:", err);
-    return Response.redirect("https://appmec.in/ordens-de-servico?error=unexpected");
+    return Response.redirect("https://appmec.in/os?error=unexpected");
   }
 });
