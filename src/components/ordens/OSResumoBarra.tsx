@@ -15,17 +15,17 @@ interface Props {
   onVerOSParadas?: () => void;
 }
 
-// ── Popover de ajuda ────────────────────────────────────────────────────────
+// ── Popover de ajuda ─────────────────────────────────────────────────────────
 
 function HelpButton({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="absolute top-1.5 right-1.5 flex items-center justify-center h-3.5 w-3.5 rounded-full bg-white/5 border border-white/10 text-white/25 hover:text-white/50 hover:bg-white/10 transition-colors focus:outline-none"
+          className="absolute top-3 right-3 flex items-center justify-center h-5 w-5 rounded-full bg-white/5 border border-white/10 text-white/25 hover:text-white/60 hover:bg-white/10 transition-colors focus:outline-none"
           aria-label={title}
         >
-          <HelpCircle className="h-2 w-2" />
+          <HelpCircle className="h-3 w-3" />
         </button>
       </PopoverTrigger>
       <PopoverContent side="bottom" align="end" className="w-72 text-xs space-y-2">
@@ -35,19 +35,20 @@ function HelpButton({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-// ── Skeleton compacto ────────────────────────────────────────────────────────
+// ── Skeleton ─────────────────────────────────────────────────────────────────
 
-function ChipSkeleton() {
+function CardSkeleton() {
   return (
-    <div className="relative overflow-hidden rounded-lg border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 px-3 py-2 w-36 animate-pulse">
-      <div className="h-1.5 w-12 rounded bg-white/10 mb-2" />
-      <div className="h-4 w-20 rounded bg-white/10 mb-1.5" />
-      <div className="h-1 w-16 rounded-full bg-white/10" />
+    <div className="relative overflow-hidden rounded-xl border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5 min-h-[120px] animate-pulse">
+      <div className="h-2.5 w-20 rounded bg-white/10 mb-4" />
+      <div className="h-7 w-32 rounded bg-white/10 mb-3" />
+      <div className="h-2 w-full rounded-full bg-white/10 mb-2" />
+      <div className="h-3 w-24 rounded bg-white/10" />
     </div>
   );
 }
 
-// ── Card premium compacto ─────────────────────────────────────────────────────
+// ── Card premium ─────────────────────────────────────────────────────────────
 
 function PremiumCard({
   cor,
@@ -68,32 +69,33 @@ function PremiumCard({
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-lg border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 px-3 py-2 min-w-[130px] transition-all duration-500"
+      className="relative overflow-hidden rounded-xl border border-white/8 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5 min-h-[120px] transition-all duration-500 w-full"
       style={{
-        boxShadow: `0 0 0 1px ${cor}20, 0 2px 12px ${cor}10`,
+        boxShadow: `0 0 0 1px ${cor}22, 0 4px 20px ${cor}12`,
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(6px)",
+        transform: visible ? "translateY(0)" : "translateY(8px)",
       }}
     >
       {/* glow de fundo */}
       <div
-        className="pointer-events-none absolute -top-4 -right-4 h-14 w-14 rounded-full opacity-15"
+        className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full opacity-15"
         style={{ background: `radial-gradient(circle, ${cor} 0%, transparent 70%)` }}
       />
       {/* linha superior */}
       <div
-        className="absolute top-0 left-4 right-4 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, ${cor}70, transparent)` }}
+        className="absolute top-0 left-6 right-6 h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${cor}80, transparent)` }}
       />
 
-      <div className="flex items-center gap-1.5 mb-1.5">
+      {/* label + ícone */}
+      <div className="flex items-center gap-2 mb-3 pr-7">
         <div
-          className="h-4 w-4 rounded flex items-center justify-center shrink-0"
-          style={{ background: `${cor}20` }}
+          className="h-6 w-6 rounded-md flex items-center justify-center shrink-0"
+          style={{ background: `${cor}22`, border: `1px solid ${cor}30` }}
         >
           {icon}
         </div>
-        <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-white/40 leading-none">
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/40 leading-none">
           {label}
         </p>
       </div>
@@ -109,22 +111,20 @@ function PremiumCard({
 
 function ProgressBar({ pct, cor, visible }: { pct: number; cor: string; visible: boolean }) {
   return (
-    <div className="h-1 w-full rounded-full bg-white/8 overflow-hidden mt-1">
+    <div className="h-2 w-full rounded-full bg-white/8 overflow-hidden mt-3">
       <div
         className="h-full rounded-full transition-all duration-700 ease-out"
         style={{
           width: visible ? `${pct}%` : "0%",
-          background: `linear-gradient(90deg, ${cor}80, ${cor})`,
-          boxShadow: `0 0 4px ${cor}60`,
+          background: `linear-gradient(90deg, ${cor}70, ${cor})`,
+          boxShadow: `0 0 6px ${cor}60`,
         }}
       />
     </div>
   );
 }
 
-// ── Hook compartilhado — exporta dados para quem precisar ───────────────────
-// Os dois componentes públicos (OSBannerParadas + OSChipsGerenciais) recebem
-// os dados via prop para não duplicar a query no banco.
+// ── Snapshot type ─────────────────────────────────────────────────────────────
 
 export interface OSGerencialSnapshot {
   valorRealizado: number;
@@ -147,44 +147,30 @@ export interface OSGerencialSnapshot {
   salvarMeta: (v: number) => Promise<unknown>;
 }
 
-// ── Componente orquestrador (mantém uma única instância do hook) ─────────────
+// ── Orquestrador (não renderiza nada, expõe snapshot via hook) ───────────────
 
 export function OSResumoBarra({ dataInicio, dataFim, onAbrirOS, onVerOSParadas }: Props) {
   const { data, diasUteis, meta, carregando, salvarMeta } = useOSGerencial(dataInicio, dataFim);
-
   const { diasUteisMes, diasUteisPassados } = diasUteis;
   const valorRealizado = data?.valorRealizado ?? 0;
   const metaValor = meta ?? 0;
   const osParadasCount = data?.osParadasCount ?? 0;
-
   const pctMeta = metaValor > 0 ? Math.min((valorRealizado / metaValor) * 100, 100) : 0;
   const pctEsperado = diasUteisMes > 0 ? (diasUteisPassados / diasUteisMes) * 100 : 0;
   const pctReal = metaValor > 0 ? (valorRealizado / metaValor) * 100 : 0;
   const ritmoDiario = diasUteisPassados > 0 ? valorRealizado / diasUteisPassados : 0;
   const projecao = ritmoDiario * diasUteisMes;
-
-  const corMeta = metaValor > 0
-    ? pctMeta >= 80 ? "#22c55e" : pctMeta >= 50 ? "#eab308" : "#ef4444"
-    : "#6b7280";
+  const corMeta = metaValor > 0 ? (pctMeta >= 80 ? "#22c55e" : pctMeta >= 50 ? "#eab308" : "#ef4444") : "#6b7280";
   const ratioSemaforo = pctEsperado > 0 ? pctReal / pctEsperado : 0;
-  const corSemaforo = metaValor > 0
-    ? ratioSemaforo >= 1 ? "#22c55e" : ratioSemaforo >= 0.7 ? "#eab308" : "#ef4444"
-    : "#6b7280";
+  const corSemaforo = metaValor > 0 ? (ratioSemaforo >= 1 ? "#22c55e" : ratioSemaforo >= 0.7 ? "#eab308" : "#ef4444") : "#6b7280";
   const labelSemaforo = ratioSemaforo >= 1 ? "No ritmo" : ratioSemaforo >= 0.7 ? "Atenção" : "Crítico";
-  const corRitmo = metaValor > 0
-    ? ritmoDiario * diasUteisMes >= metaValor ? "#22c55e"
-      : ritmoDiario * diasUteisMes >= metaValor * 0.8 ? "#eab308" : "#ef4444"
-    : "#6b7280";
-  const corProjecao = metaValor > 0
-    ? projecao >= metaValor ? "#22c55e"
-      : projecao >= metaValor * 0.8 ? "#eab308" : "#ef4444"
-    : "#6b7280";
+  const corRitmo = metaValor > 0 ? (ritmoDiario * diasUteisMes >= metaValor ? "#22c55e" : ritmoDiario * diasUteisMes >= metaValor * 0.8 ? "#eab308" : "#ef4444") : "#6b7280";
+  const corProjecao = metaValor > 0 ? (projecao >= metaValor ? "#22c55e" : projecao >= metaValor * 0.8 ? "#eab308" : "#ef4444") : "#6b7280";
 
   const snapshot: OSGerencialSnapshot = {
     valorRealizado, metaValor, osParadasCount,
-    osParadas: data?.osParadas ?? [],
-    pctMeta, pctEsperado, pctReal, ritmoDiario, projecao,
-    diasUteisMes, diasUteisPassados,
+    osParadas: data?.osParadas ?? [], pctMeta, pctEsperado, pctReal,
+    ritmoDiario, projecao, diasUteisMes, diasUteisPassados,
     corMeta, corSemaforo, corRitmo, corProjecao, labelSemaforo,
     carregando, salvarMeta,
   };
@@ -236,7 +222,8 @@ export function OSBannerParadas({
   );
 }
 
-// ── 4 chips gerenciais ───────────────────────────────────────────────────────
+// ── 4 cards gerenciais ────────────────────────────────────────────────────────
+// Renderiza os 4 filhos diretos — o pai deve envolvê-los em grid grid-cols-4
 
 export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot }) {
   const [editandoMeta, setEditandoMeta] = useState(false);
@@ -274,10 +261,10 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
   if (carregando) {
     return (
       <>
-        <ChipSkeleton />
-        <ChipSkeleton />
-        <ChipSkeleton />
-        <ChipSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
       </>
     );
   }
@@ -286,10 +273,11 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
     <>
       {/* META OS */}
       {editandoMeta ? (
-        <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-gradient-to-br from-zinc-900 to-zinc-800 px-2.5 py-1.5">
+        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5 min-h-[120px] flex flex-col justify-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Meta OS</p>
           <Input
             autoFocus
-            className="h-6 w-24 text-xs font-mono bg-white/5 border-white/15 text-white"
+            className="h-8 text-sm font-mono bg-white/5 border-white/15 text-white"
             placeholder="Ex: 15000"
             value={inputMeta}
             onChange={(e) => setInputMeta(e.target.value)}
@@ -298,17 +286,25 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
               if (e.key === "Escape") setEditandoMeta(false);
             }}
           />
-          <button onClick={confirmarMeta} className="text-green-400 hover:text-green-300 transition-colors p-0.5">
-            <Check className="h-3 w-3" />
-          </button>
-          <button onClick={() => setEditandoMeta(false)} className="text-white/30 hover:text-white/60 transition-colors p-0.5">
-            <X className="h-3 w-3" />
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={confirmarMeta}
+              className="flex items-center gap-1.5 rounded-lg bg-green-500/20 border border-green-500/30 px-3 py-1.5 text-xs text-green-400 hover:bg-green-500/30 transition-colors"
+            >
+              <Check className="h-3 w-3" /> Salvar
+            </button>
+            <button
+              onClick={() => setEditandoMeta(false)}
+              className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-white/40 hover:text-white/70 transition-colors"
+            >
+              <X className="h-3 w-3" /> Cancelar
+            </button>
+          </div>
         </div>
       ) : (
         <PremiumCard
           cor={corMeta}
-          icon={<Target className="h-2.5 w-2.5" style={{ color: corMeta }} />}
+          icon={<Target className="h-3.5 w-3.5" style={{ color: corMeta }} />}
           label="Meta OS"
           visible={visible}
           helpTitle="O que é Meta OS?"
@@ -323,35 +319,36 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
         >
           {metaValor > 0 ? (
             <>
-              <p className="text-sm font-bold tabular-nums font-mono text-white leading-none pr-4">
+              <p className="text-2xl font-bold tabular-nums font-mono text-white leading-none">
                 {formatCurrency(valorRealizado)}
               </p>
               <ProgressBar pct={pctMeta} cor={corMeta} visible={visible} />
-              <p className="text-[9px] font-mono mt-1" style={{ color: `${corMeta}cc` }}>
-                {pctMeta.toFixed(0)}% da meta
+              <p className="text-sm mt-2" style={{ color: `${corMeta}dd` }}>
+                {pctMeta.toFixed(0)}% da meta — faltam {formatCurrency(Math.max(0, metaValor - valorRealizado))}
               </p>
             </>
           ) : (
             <>
-              <p className="text-sm font-bold tabular-nums font-mono text-white/50 leading-none">
+              <p className="text-2xl font-bold tabular-nums font-mono text-white/50 leading-none">
                 {formatCurrency(valorRealizado)}
               </p>
               <button
                 onClick={abrirEdicao}
-                className="mt-1 flex items-center gap-1 text-[9px] text-white/35 hover:text-white/60 transition-colors"
+                className="mt-3 flex items-center gap-1.5 text-sm text-white/35 hover:text-white/60 transition-colors"
               >
-                <Pencil className="h-2 w-2" />
-                Definir meta
+                <Pencil className="h-3.5 w-3.5" />
+                Definir meta do mês
               </button>
             </>
           )}
+          {/* lápis de edição */}
           {metaValor > 0 && (
             <button
               onClick={abrirEdicao}
-              className="absolute bottom-1.5 right-5 text-white/15 hover:text-white/40 transition-colors"
+              className="absolute bottom-3 right-9 text-white/15 hover:text-white/50 transition-colors"
               title="Editar meta"
             >
-              <Pencil className="h-2 w-2" />
+              <Pencil className="h-3 w-3" />
             </button>
           )}
         </PremiumCard>
@@ -360,7 +357,7 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
       {/* SEMÁFORO */}
       <PremiumCard
         cor={corSemaforo}
-        icon={<TrendingUp className="h-2.5 w-2.5" style={{ color: corSemaforo }} />}
+        icon={<TrendingUp className="h-3.5 w-3.5" style={{ color: corSemaforo }} />}
         label="Semáforo"
         visible={visible}
         helpTitle="Como funciona o Semáforo?"
@@ -380,22 +377,25 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
       >
         {metaValor > 0 ? (
           <>
-            <p className="text-sm font-bold font-mono leading-none pr-4" style={{ color: corSemaforo }}>
+            <p className="text-2xl font-bold font-mono leading-none" style={{ color: corSemaforo }}>
               {labelSemaforo}
             </p>
-            <p className="text-[9px] font-mono mt-1 text-white/40">
-              {pctReal.toFixed(0)}% / {pctEsperado.toFixed(0)}%
+            <p className="text-sm mt-2 text-white/50">
+              Real {pctReal.toFixed(0)}% — Esperado {pctEsperado.toFixed(0)}%
             </p>
           </>
         ) : (
-          <p className="text-xs text-white/25 leading-none">Sem meta</p>
+          <>
+            <p className="text-2xl font-bold text-white/20 leading-none">—</p>
+            <p className="text-sm mt-2 text-white/35">Defina uma meta para ativar</p>
+          </>
         )}
       </PremiumCard>
 
       {/* RITMO DIÁRIO */}
       <PremiumCard
         cor={corRitmo}
-        icon={<Zap className="h-2.5 w-2.5" style={{ color: corRitmo }} />}
+        icon={<Zap className="h-3.5 w-3.5" style={{ color: corRitmo }} />}
         label="Ritmo Diário"
         visible={visible}
         helpTitle="O que é Ritmo Diário?"
@@ -408,18 +408,18 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
           </>
         }
       >
-        <p className="text-sm font-bold tabular-nums font-mono text-white leading-none pr-4">
+        <p className="text-2xl font-bold tabular-nums font-mono text-white leading-none">
           {diasUteisPassados > 0 ? formatCurrency(ritmoDiario) : "—"}
         </p>
-        <p className="text-[9px] font-mono mt-1 text-white/40">
-          {diasUteisPassados}/{diasUteisMes} dias úteis
+        <p className="text-sm mt-2 text-white/50">
+          Média por dia útil ({diasUteisPassados}/{diasUteisMes} dias)
         </p>
       </PremiumCard>
 
       {/* PROJEÇÃO */}
       <PremiumCard
         cor={corProjecao}
-        icon={<BarChart2 className="h-2.5 w-2.5" style={{ color: corProjecao }} />}
+        icon={<BarChart2 className="h-3.5 w-3.5" style={{ color: corProjecao }} />}
         label="Projeção"
         visible={visible}
         helpTitle="O que é Projeção?"
@@ -432,11 +432,11 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
           </>
         }
       >
-        <p className="text-sm font-bold tabular-nums font-mono text-white leading-none pr-4">
+        <p className="text-2xl font-bold tabular-nums font-mono text-white leading-none">
           {diasUteisPassados > 0 ? formatCurrency(projecao) : "—"}
         </p>
-        <p className="text-[9px] font-mono mt-1 text-white/40">
-          Projeção de fechamento
+        <p className="text-sm mt-2 text-white/50">
+          Projeção de fechamento do mês
         </p>
       </PremiumCard>
     </>

@@ -598,27 +598,6 @@ export default function OrdemServicoPage() {
                 Nova OS
               </Button>
 
-              {/* Separador + 4 chips gerenciais à direita dos botões */}
-              <div className="hidden lg:flex items-center gap-2 ml-auto">
-                <div className="h-6 w-px bg-border/40 mx-1" />
-                <OSChipsGerenciais snapshot={gerencialSnapshot} />
-              </div>
-            </div>
-
-            {/* Banner de OS paradas — condicional */}
-            <OSBannerParadas
-              snapshot={gerencialSnapshot}
-              onVerOSParadas={() => {
-                setAbaAtiva("minhas");
-                setTimeout(() => {
-                  osGerencialRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }, 100);
-              }}
-            />
-
-            {/* Chips gerenciais em tela pequena (abaixo dos botões) */}
-            <div className="flex lg:hidden flex-wrap items-center gap-2">
-              <OSChipsGerenciais snapshot={gerencialSnapshot} />
             </div>
 
             {/* Filtro de período — linha compacta */}
@@ -704,6 +683,22 @@ export default function OrdemServicoPage() {
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* Banner de OS paradas — condicional */}
+          <OSBannerParadas
+            snapshot={gerencialSnapshot}
+            onVerOSParadas={() => {
+              setAbaAtiva("minhas");
+              setTimeout(() => {
+                osGerencialRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 100);
+            }}
+          />
+
+          {/* 4 cards gerenciais — grid 4 colunas largura total */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+            <OSChipsGerenciais snapshot={gerencialSnapshot} />
           </div>
 
           {/* Abas principais */}
