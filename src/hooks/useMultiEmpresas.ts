@@ -7,13 +7,15 @@ export interface MatrizMetricas {
   faturamento_mes: number;
   os_mes: number;
   vendas_mes: number;
+  ultimas_vendas: import("@/types/multiempresas").VendaFilial[];
+  vendas_por_tipo: import("@/types/multiempresas").VendaPorTipo[];
 }
 
 export function useMultiEmpresas() {
   const [empresas, setEmpresas] = useState<EmpresaDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [empresaSelecionada, setEmpresaSelecionada] = useState<string | null>(null);
-  const [matrizMetricas, setMatrizMetricas] = useState<MatrizMetricas>({ faturamento_mes: 0, os_mes: 0, vendas_mes: 0 });
+  const [matrizMetricas, setMatrizMetricas] = useState<MatrizMetricas>({ faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [] });
 
   const carregarEmpresas = useCallback(async () => {
     setIsLoading(true);

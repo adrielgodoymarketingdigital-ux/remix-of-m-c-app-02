@@ -23,9 +23,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Lock, Plus, Building2, Home, TrendingUp, Target, Bell } from "lucide-react";
+import { Lock, Plus, Building2, Home, TrendingUp, Target, Bell, ChevronDown, ChevronUp, ExternalLink, ShoppingCart, Wrench, Package } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { VendaFilial, VendaPorTipo } from "@/types/multiempresas";
 
 const CORES = ['#3b82f6', '#10b981', '#8b5cf6'];
 
@@ -140,6 +141,97 @@ function DialogNovaFilial({ open, onClose, onCriar, salvando }: DialogNovaFilial
   );
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
+  dinheiro: "Dinheiro", pix: "Pix", cartao_credito: "Crédito",
+  cartao_debito: "Débito", a_receber: "A receber", a_prazo: "A prazo",
+};
+
+const TIPO_COR: Record<string, string> = {
+  produto: "text-violet-400", peca: "text-blue-400",
+  servico: "text-emerald-400", dispositivo: "text-amber-400", servico_avulso: "text-pink-400",
+};
+
+function PainelVendas({ ultimas, porTipo, onVerTodas }: {
+  ultimas: VendaFilial[];
+  porTipo: VendaPorTipo[];
+  onVerTodas: () => void;
+}) {
+  const [abaAtiva, setAbaAtiva] = useState<"recentes" | "tipo">("recentes");
+
+  return (
+    <div className="mt-3 border-t border-border/40 pt-3 space-y-3">
+      {/* Abas */}
+      <div className="flex gap-1">
+        <button
+          onClick={() => setAbaAtiva("recentes")}
+          className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${abaAtiva === "recentes" ? "bg-blue-500/20 text-blue-400 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Últimas vendas
+        </button>
+        <button
+          onClick={() => setAbaAtiva("tipo")}
+          className={`text-[11px] px-2.5 py-1 rounded-md transition-colors ${abaAtiva === "tipo" ? "bg-blue-500/20 text-blue-400 font-medium" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Por tipo
+        </button>
+      </div>
+
+      {abaAtiva === "recentes" && (
+        <div className="space-y-1.5">
+          {ultimas.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-2">Nenhuma venda este mês</p>
+          ) : (
+            ultimas.map(v => (
+              <div key={v.id} className="flex items-center justify-between text-xs gap-2 py-1 border-b border-border/20 last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-medium">{v.nome}</p>
+                  <p className="text-muted-foreground truncate">
+                    {v.cliente || "Sem cliente"} · {FORMA_PAGAMENTO_LABEL[v.forma_pagamento] || v.forma_pagamento}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`font-semibold ${TIPO_COR[v.tipo] || "text-foreground"}`}>
+                    {formatarMoeda(v.valor)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{v.label}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {abaAtiva === "tipo" && (
+        <div className="space-y-1.5">
+          {porTipo.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-2">Nenhuma venda este mês</p>
+          ) : (
+            porTipo.map(t => (
+              <div key={t.tipo} className="flex items-center justify-between text-xs py-1 border-b border-border/20 last:border-0">
+                <span className={`font-medium ${TIPO_COR[t.tipo] || "text-foreground"}`}>{t.label}</span>
+                <div className="text-right">
+                  <span className="font-semibold">{formatarMoeda(t.total)}</span>
+                  <span className="text-muted-foreground ml-1.5">{t.quantidade}x</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      <button
+        onClick={onVerTodas}
+        className="w-full flex items-center justify-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 transition-colors pt-1"
+      >
+        <ExternalLink className="h-3 w-3" />
+        Ver todas as vendas
+      </button>
+    </div>
+  );
+}
+
 // ─── Card de Empresa ─────────────────────────────────────────────────────────
 
 interface CardEmpresaProps {
@@ -147,9 +239,11 @@ interface CardEmpresaProps {
   onMetas: () => void;
   onPermissoes: () => void;
   onNotificacoes: () => void;
+  onVerVendas: () => void;
 }
 
-function CardEmpresa({ empresa, onMetas, onPermissoes, onNotificacoes }: CardEmpresaProps) {
+function CardEmpresa({ empresa, onMetas, onPermissoes, onNotificacoes, onVerVendas }: CardEmpresaProps) {
+  const [expandido, setExpandido] = useState(false);
   const metaFaturamento = empresa.metas.find(m => m.tipo === 'faturamento');
   const pctFaturamento = metaFaturamento && metaFaturamento.valor > 0
     ? Math.min(100, (empresa.metricas.faturamento_mes / metaFaturamento.valor) * 100)
@@ -170,24 +264,47 @@ function CardEmpresa({ empresa, onMetas, onPermissoes, onNotificacoes }: CardEmp
         )}
       </CardHeader>
       <CardContent className="flex-1 space-y-4">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-md bg-muted/40 p-2">
+        {/* Métricas clicáveis */}
+        <button
+          onClick={() => setExpandido(v => !v)}
+          className="w-full grid grid-cols-3 gap-2 text-center group"
+        >
+          <div className="rounded-md bg-muted/40 p-2 group-hover:bg-muted/60 transition-colors">
             <p className="text-[10px] text-muted-foreground">Faturamento</p>
             <p className="text-sm font-semibold text-emerald-400">
-              R$ {empresa.metricas.faturamento_mes.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+              {formatarMoeda(empresa.metricas.faturamento_mes)}
             </p>
           </div>
-          <div className="rounded-md bg-muted/40 p-2">
+          <div className="rounded-md bg-muted/40 p-2 group-hover:bg-muted/60 transition-colors">
             <p className="text-[10px] text-muted-foreground">OS</p>
             <p className="text-sm font-semibold text-blue-400">{empresa.metricas.os_mes}</p>
           </div>
-          <div className="rounded-md bg-muted/40 p-2">
+          <div className="rounded-md bg-muted/40 p-2 group-hover:bg-muted/60 transition-colors">
             <p className="text-[10px] text-muted-foreground">Vendas</p>
             <p className="text-sm font-semibold text-violet-400">{empresa.metricas.vendas_mes}</p>
           </div>
+        </button>
+
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => setExpandido(v => !v)}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {expandido ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {expandido ? "Ocultar vendas" : "Ver vendas"}
+          </button>
         </div>
 
-        {pctFaturamento !== null && (
+        {/* Painel expansível */}
+        {expandido && (
+          <PainelVendas
+            ultimas={empresa.metricas.ultimas_vendas || []}
+            porTipo={empresa.metricas.vendas_por_tipo || []}
+            onVerTodas={onVerVendas}
+          />
+        )}
+
+        {pctFaturamento !== null && !expandido && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Meta faturamento</span>
@@ -606,6 +723,7 @@ export default function MultiEmpresas() {
                 onMetas={() => abrirMetas(empresa)}
                 onPermissoes={() => abrirPermissoes(empresa)}
                 onNotificacoes={() => abrirNotificacoes(empresa)}
+                onVerVendas={() => navigate('/vendas')}
               />
             ))}
 

@@ -48,6 +48,25 @@ export interface EmpresaMeta {
   ano: number | null;
 }
 
+export interface VendaFilial {
+  id: string;
+  data: string;
+  tipo: string;
+  label: string;
+  nome: string;
+  cliente: string | null;
+  valor: number;
+  forma_pagamento: string;
+  quantidade: number;
+}
+
+export interface VendaPorTipo {
+  tipo: string;
+  label: string;
+  total: number;
+  quantidade: number;
+}
+
 export interface EmpresaDashboard extends Empresa {
   gerentes: EmpresaUsuario[];
   metas: EmpresaMeta[];
@@ -56,5 +75,7 @@ export interface EmpresaDashboard extends Empresa {
     os_mes: number;
     vendas_mes: number;
     clientes_ativos: number;
+    ultimas_vendas: VendaFilial[];
+    vendas_por_tipo: VendaPorTipo[];
   };
 }
