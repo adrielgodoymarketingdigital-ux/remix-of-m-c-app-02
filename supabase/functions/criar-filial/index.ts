@@ -37,7 +37,7 @@ serve(async (req) => {
       .eq('role', 'admin')
       .maybeSingle();
 
-    const planosUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'];
+    const planosUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual', 'admin'];
     if (!isAdmin.data && !planosUltra.includes(assinatura?.plano_tipo || '')) {
       return new Response(
         JSON.stringify({ error: "Funcionalidade exclusiva do Plano Ultra" }),

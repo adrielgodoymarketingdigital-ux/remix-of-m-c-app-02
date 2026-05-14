@@ -473,7 +473,11 @@ export default function MultiEmpresas() {
     setSalvando(true);
     try {
       const response = await supabase.functions.invoke("criar-filial", { body: dados });
-      if (response.error) { toast.error(response.error.message || "Erro ao criar filial"); return; }
+      if (response.error) {
+        const msg = response.data?.error || response.error.message || "Erro ao criar filial";
+        toast.error(msg);
+        return;
+      }
       if (response.data?.error) { toast.error(response.data.error); return; }
       toast.success(response.data.mensagem || "Filial criada com sucesso!");
       setDialogNova(false);
