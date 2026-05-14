@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { AvariasOS } from "@/types/ordem-servico";
@@ -7,6 +7,8 @@ import { obterTermoGarantia, LAYOUT_PADRAO } from "@/lib/termo-garantia-utils";
 import { ImpressaoCupom80mm } from "./ImpressaoCupom80mm";
 import { ImpressaoA4Padrao } from "./ImpressaoA4Padrao";
 import { ImpressaoA4Tech } from "./ImpressaoA4Tech";
+import { OSPrintLayout } from "./OSPrintLayout";
+import { imprimirDuasOSPDF, COLUNA_W_PX } from "@/lib/imprimirDuasOSPDF";
 
 const CONFIG_80MM_PADRAO: Layout80mmConfig = {
   mostrar_logo: true,
@@ -104,6 +106,9 @@ export const ImpressaoOrdemServico = ({
 
   // Detect Android
   const isAndroid = /android/i.test(navigator.userAgent);
+
+  // Ref para o container das duas OS — usado na geração de PDF
+  const duasOsContainerRef = useRef<HTMLDivElement>(null);
 
   // On Android, window.print() on the main SPA DOM causes "Preparing preview..." hang.
   // Always use a new window on Android to isolate the print content.
@@ -354,9 +359,18 @@ export const ImpressaoOrdemServico = ({
 
   // Trigger print
   const handlePrint = () => {
-    // PWA (standalone) and Android: use new-window approach.
-    // Android avoids the "Preparing preview..." hang; iOS standalone doesn't
-    // support window.print() at all, so a new window is the only option.
+    const isDuasOS = !is80mm && (layoutConfig.duas_os_por_folha ?? false);
+
+    // Android/PWA com modo 2 vias: gerar PDF via html2canvas para preservar layout lado a lado
+    if ((isAndroid || isStandalone) && isDuasOS && duasOsContainerRef.current) {
+      imprimirDuasOSPDF(duasOsContainerRef.current).catch(() => {
+        // Fallback: usa o fluxo existente de nova janela
+        handlePrintAndroid();
+      });
+      return;
+    }
+
+    // PWA (standalone) and Android sem modo 2 vias: use new-window approach.
     if (isAndroid || isStandalone) {
       handlePrintAndroid();
       return;
@@ -422,15 +436,35 @@ export const ImpressaoOrdemServico = ({
           config80mm={c80}
         />
       ) : duasOsPorFolha ? (
-        <div className={`impressao-duas-os-wrapper impressao-duas-os-${duasOsOrientacao}`}>
-          <div className="impressao-duas-os-slot">
-            {renderA4()}
+        <div
+          ref={duasOsContainerRef}
+          className={`impressao-duas-os-wrapper impressao-duas-os-${duasOsOrientacao}`}
+        >
+          {/* os-pdf-slot: marcador usado pela geração de PDF (Android/PWA) */}
+          <div className="impressao-duas-os-slot os-pdf-slot">
+            {(isAndroid || isStandalone) ? (
+              <OSPrintLayout
+                ordem={ordem}
+                configuracaoLoja={configuracaoLoja}
+                layoutConfig={layoutConfig}
+                termoGarantia={termoGarantia}
+                larguraPx={COLUNA_W_PX}
+              />
+            ) : renderA4()}
           </div>
           <div className="impressao-duas-os-corte">
             <span className="impressao-duas-os-corte-label">✂ cortar aqui</span>
           </div>
-          <div className="impressao-duas-os-slot">
-            {renderA4()}
+          <div className="impressao-duas-os-slot os-pdf-slot">
+            {(isAndroid || isStandalone) ? (
+              <OSPrintLayout
+                ordem={ordem}
+                configuracaoLoja={configuracaoLoja}
+                layoutConfig={layoutConfig}
+                termoGarantia={termoGarantia}
+                larguraPx={COLUNA_W_PX}
+              />
+            ) : renderA4()}
           </div>
         </div>
       ) : (
