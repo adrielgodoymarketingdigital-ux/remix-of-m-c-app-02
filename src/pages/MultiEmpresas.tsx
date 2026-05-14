@@ -368,7 +368,7 @@ export default function MultiEmpresas() {
           </div>
           <h2 className="text-2xl font-bold">Funcionalidade Exclusiva</h2>
           <p className="text-muted-foreground max-w-md">
-            O Multi Empresas está disponível apenas no plano <strong>Profissional Ultra</strong>.
+            O Multi Empresas está disponível apenas no <strong>Plano Ultra</strong>.
             Faça upgrade para gerenciar múltiplas filiais em um único lugar.
           </p>
           <Button onClick={() => navigate('/plano')}>Ver Planos</Button>

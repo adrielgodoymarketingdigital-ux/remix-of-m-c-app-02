@@ -65,6 +65,8 @@ export function TabelaUsuariosAdmin({
         intermediario_anual: "Intermediário Anual",
         profissional_mensal: "Profissional Mensal",
         profissional_anual: "Profissional Anual",
+        profissional_ultra_mensal: "Plano Ultra Mensal",
+        profissional_ultra_anual: "Plano Ultra Anual",
         admin: "Admin",
       };
       return planos[plano] || plano;
@@ -156,6 +158,8 @@ export function TabelaUsuariosAdmin({
       intermediario_anual: { label: "Intermediário Anual", variant: "default" },
       profissional_mensal: { label: "Profissional Mensal", variant: "default" },
       profissional_anual: { label: "Profissional Anual", variant: "default" },
+      profissional_ultra_mensal: { label: "Plano Ultra Mensal", variant: "default" },
+      profissional_ultra_anual: { label: "Plano Ultra Anual", variant: "default" },
       admin: { label: "Admin", variant: "destructive" },
     };
 
