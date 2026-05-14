@@ -61,6 +61,7 @@ import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
+import { useAssinatura } from "@/hooks/useAssinatura";
 
 // Menu destacado de Novidades
 const novidadesItem = { title: "Novidades", url: "/novidades", icon: Sparkles, modulo: "novidades" as keyof PermissoesModulos };
@@ -116,6 +117,8 @@ export function AppSidebar() {
   const [clientesExpandido, setClientesExpandido] = useState(false);
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { assinatura } = useAssinatura();
+  const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -139,21 +142,24 @@ export function AppSidebar() {
       return [];
     }
     
-    // Dono da loja (não é funcionário) vê todos os menus
+    // Dono da loja (não é funcionário) vê todos os menus exceto Multi Empresas sem Ultra
     if (!isFuncionario) {
-      return menuItems;
+      return menuItems.filter(item => {
+        if (item.url === '/multi-empresas' && !isUltra && !isAdmin) return false;
+        return true;
+      });
     }
 
     // Para funcionários, filtrar baseado nas permissões configuradas
     return menuItems.filter(item => {
-      // Funcionários NUNCA veem Plano nem Equipe (regra obrigatória)
-      if (['/plano', '/equipe'].includes(item.url)) {
+      // Funcionários NUNCA veem Plano, Equipe ou Multi Empresas
+      if (['/plano', '/equipe', '/multi-empresas'].includes(item.url)) {
         return false;
       }
       // Verificar permissão do módulo conforme configurado pelo dono
       return temAcessoModulo(item.modulo);
     });
-  }, [isFuncionario, temAcessoModulo, carregandoPermissoes]);
+  }, [isFuncionario, temAcessoModulo, carregandoPermissoes, isUltra, isAdmin]);
 
   // Verificar se novidades está visível (não mostrar durante loading)
   const novidadesVisivel = !carregandoPermissoes && (!isFuncionario || temAcessoModulo(novidadesItem.modulo));

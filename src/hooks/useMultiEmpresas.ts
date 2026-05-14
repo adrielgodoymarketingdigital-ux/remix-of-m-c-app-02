@@ -48,7 +48,7 @@ export function useMultiEmpresas() {
             .eq('empresa_id', empresa.id);
 
           // Buscar user_id do gerente desta filial para filtrar dados corretamente
-          const gerenteUserId = gerentesData?.[0]?.usuario_id ?? null;
+          const gerenteUserId = gerentesData?.[0]?.gerente_id ?? null;
           const userIdFilial = gerenteUserId || user.id;
 
           const [vendasRes, osRes] = await Promise.all([
