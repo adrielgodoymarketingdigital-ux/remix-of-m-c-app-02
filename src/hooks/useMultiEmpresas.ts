@@ -27,9 +27,9 @@ export function useMultiEmpresas() {
 
       setEmpresas(data.empresas || []);
       setMatrizMetricas(data.matrizMetricas || { faturamento_mes: 0, os_mes: 0, vendas_mes: 0 });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Erro ao carregar empresas");
+      toast.error("Erro ao carregar empresas: " + (error?.message || String(error)));
     } finally {
       setIsLoading(false);
     }

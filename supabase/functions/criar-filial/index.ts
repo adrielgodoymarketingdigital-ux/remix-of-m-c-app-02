@@ -111,6 +111,7 @@ serve(async (req) => {
         endereco: endereco || null,
         cidade: cidade || null,
         estado: estado || null,
+        ativa: true,
       })
       .select()
       .single();
