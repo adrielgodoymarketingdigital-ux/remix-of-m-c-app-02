@@ -119,7 +119,7 @@ serve(async (req) => {
 
     if (!empresas || empresas.length === 0) {
       const matrizDados = await buscarDadosUsuario(supabase, user.id, inicioMes);
-      return new Response(JSON.stringify({ empresas: [], matrizMetricas: matrizDados, _debug_user_id: user.id, _debug_email: user.email, _debug_todos_ids: todosIds }), {
+      return new Response(JSON.stringify({ empresas: [], matrizMetricas: matrizDados }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -163,7 +163,7 @@ serve(async (req) => {
     const matrizMetricas = await buscarDadosUsuario(supabase, user.id, inicioMes);
 
     return new Response(
-      JSON.stringify({ empresas: empresasComMetricas, matrizMetricas, _debug_email: user.email }),
+      JSON.stringify({ empresas: empresasComMetricas, matrizMetricas }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
