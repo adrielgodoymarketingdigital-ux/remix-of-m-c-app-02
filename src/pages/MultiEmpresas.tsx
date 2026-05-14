@@ -27,7 +27,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 interface MetricasEmpresa {
   faturamento_mes: number;
+  faturamento_os: number;
+  faturamento_vendas: number;
   os_mes: number;
+  os_em_aberto: number;
+  os_finalizadas: number;
   vendas_mes: number;
   ultimas_vendas: VendaItem[];
   vendas_por_tipo: VendaTipo[];
@@ -251,14 +255,18 @@ function PainelVendas({ ultimas, porTipo, onVerTodas }: {
 
 // ─── Card de Empresa ──────────────────────────────────────────────────────────
 
-function CardEmpresa({ empresa, isMatriz, cor, onMetas, onNotificacoes, onVerVendas }: {
-  empresa: EmpresaCard; isMatriz: boolean; cor: string;
-  onMetas: () => void; onNotificacoes: () => void; onVerVendas: () => void;
+function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar }: {
+  empresa: EmpresaCard; isMatriz: boolean; cor: string; fatTotal: number;
+  onMetas: () => void; onNotificacoes: () => void; onVerVendas: () => void; onAcessar: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
   const metaFat = empresa.metas.find(m => m.tipo === "faturamento");
   const pctFat = metaFat && metaFat.valor > 0
     ? Math.min(100, (empresa.metricas.faturamento_mes / metaFat.valor) * 100) : null;
+  const pctTotal = fatTotal > 0
+    ? Math.min(100, (empresa.metricas.faturamento_mes / fatTotal) * 100) : 0;
+  const ticketMedio = empresa.metricas.os_mes > 0
+    ? empresa.metricas.faturamento_mes / empresa.metricas.os_mes : 0;
 
   return (
     <Card className={`flex flex-col ${isMatriz ? "border-amber-200 dark:border-amber-800/50" : "border-border/60"}`}>
@@ -271,35 +279,87 @@ function CardEmpresa({ empresa, isMatriz, cor, onMetas, onNotificacoes, onVerVen
             }
             <span className="truncate">{empresa.nome}</span>
           </CardTitle>
-          <Badge variant="outline" className={`text-xs shrink-0 ${isMatriz ? "border-amber-500/30 text-amber-500" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}`}>
-            {isMatriz ? "Matriz" : "Filial"}
-          </Badge>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge variant="outline" className={`text-xs ${isMatriz ? "border-amber-500/30 text-amber-500" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}`}>
+              {isMatriz ? "Matriz" : "Filial"}
+            </Badge>
+            <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">Ativa</Badge>
+          </div>
         </div>
         {empresa.cidade && (
           <p className="text-xs text-muted-foreground">{empresa.cidade}{empresa.estado ? ` — ${empresa.estado}` : ""}</p>
         )}
       </CardHeader>
       <CardContent className="flex-1 space-y-4">
-        <button onClick={() => setExpandido(v => !v)} className="w-full grid grid-cols-3 gap-2 text-center group">
-          <div className="rounded-md bg-muted/40 p-2 group-hover:bg-muted/60 transition-colors">
-            <p className="text-[10px] text-muted-foreground">Faturamento</p>
-            <p className="text-sm font-semibold text-emerald-400">{formatarMoeda(empresa.metricas.faturamento_mes)}</p>
-          </div>
-          <div className="rounded-md bg-muted/40 p-2 group-hover:bg-muted/60 transition-colors">
-            <p className="text-[10px] text-muted-foreground">OS</p>
-            <p className="text-sm font-semibold text-blue-400">{empresa.metricas.os_mes}</p>
-          </div>
-          <div className="rounded-md bg-muted/40 p-2 group-hover:bg-muted/60 transition-colors">
-            <p className="text-[10px] text-muted-foreground">Vendas</p>
-            <p className="text-sm font-semibold text-violet-400">{empresa.metricas.vendas_mes}</p>
-          </div>
-        </button>
 
+        {/* Faturamento principal */}
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Faturamento total</p>
+          <p className="text-2xl font-bold text-emerald-400">{formatarMoeda(empresa.metricas.faturamento_mes)}</p>
+          <div className="flex gap-3 mt-1 text-[11px] text-muted-foreground">
+            <span>OS: {formatarMoeda(empresa.metricas.faturamento_os ?? 0)}</span>
+            <span>Vendas: {formatarMoeda(empresa.metricas.faturamento_vendas ?? 0)}</span>
+          </div>
+        </div>
+
+        {/* Métricas de OS */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-md bg-muted/40 p-2 text-center">
+            <p className="text-[10px] text-muted-foreground">Total OS</p>
+            <p className="text-lg font-semibold text-blue-400">{empresa.metricas.os_mes}</p>
+          </div>
+          <div className="rounded-md bg-muted/40 p-2 text-center">
+            <p className="text-[10px] text-muted-foreground">Em aberto</p>
+            <p className={`text-lg font-semibold ${(empresa.metricas.os_em_aberto ?? 0) > 0 ? "text-amber-400" : "text-foreground"}`}>
+              {empresa.metricas.os_em_aberto ?? 0}
+            </p>
+          </div>
+          <div className="rounded-md bg-muted/40 p-2 text-center">
+            <p className="text-[10px] text-muted-foreground">Finalizadas</p>
+            <p className="text-lg font-semibold text-emerald-400">{empresa.metricas.os_finalizadas ?? 0}</p>
+          </div>
+        </div>
+
+        {/* Vendas e ticket médio */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-md bg-muted/40 p-2">
+            <p className="text-[10px] text-muted-foreground">Vendas</p>
+            <p className="text-lg font-semibold text-violet-400">{empresa.metricas.vendas_mes}</p>
+          </div>
+          <div className="rounded-md bg-muted/40 p-2">
+            <p className="text-[10px] text-muted-foreground">Ticket médio</p>
+            <p className="text-sm font-semibold">{formatarMoeda(ticketMedio)}</p>
+          </div>
+        </div>
+
+        {/* Barra de participação no total */}
+        <div>
+          <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+            <span>Participação no faturamento total</span>
+            <span>{pctTotal.toFixed(1)}%</span>
+          </div>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pctTotal}%`, backgroundColor: cor }} />
+          </div>
+        </div>
+
+        {/* Meta de faturamento */}
+        {pctFat !== null && (
+          <div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Meta faturamento</span>
+              <span>{pctFat.toFixed(0)}%</span>
+            </div>
+            <Progress value={pctFat} className="h-1.5" />
+          </div>
+        )}
+
+        {/* Painel de vendas expansível */}
         <div className="flex items-center justify-center">
           <button onClick={() => setExpandido(v => !v)}
             className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
             {expandido ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            {expandido ? "Ocultar vendas" : "Ver vendas"}
+            {expandido ? "Ocultar vendas" : "Ver últimas vendas"}
           </button>
         </div>
 
@@ -311,18 +371,12 @@ function CardEmpresa({ empresa, isMatriz, cor, onMetas, onNotificacoes, onVerVen
           />
         )}
 
-        {pctFat !== null && !expandido && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Meta faturamento</span>
-              <span>{pctFat.toFixed(0)}%</span>
-            </div>
-            <Progress value={pctFat} className="h-1.5" />
-          </div>
-        )}
-
+        {/* Ações */}
         <div className="flex gap-2 pt-1">
-          <Button size="sm" className="flex-1 text-xs h-8" onClick={onMetas}>Metas</Button>
+          <Button size="sm" variant="outline" className="flex-1 text-xs h-8" onClick={onAcessar}>
+            Acessar empresa
+          </Button>
+          <Button size="sm" className="text-xs h-8 px-3" onClick={onMetas}>Metas</Button>
           <Button size="sm" variant="outline" className="text-xs h-8 px-2" onClick={onNotificacoes}>
             <Bell className="h-4 w-4" />
           </Button>
@@ -342,7 +396,7 @@ const PERMISSOES_PADRAO = {
 export default function MultiEmpresas() {
   const navigate = useNavigate();
   const { assinatura, carregando: carregandoAssinatura } = useAssinatura();
-  const { nomeMatriz } = useEmpresa();
+  const { nomeMatriz, setEmpresaAtiva } = useEmpresa();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -350,7 +404,9 @@ export default function MultiEmpresas() {
   // Dados
   const [todasEmpresas, setTodasEmpresas] = useState<EmpresaCard[]>([]);
   const [matrizMetricas, setMatrizMetricas] = useState<MetricasEmpresa>({
-    faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [],
+    faturamento_mes: 0, faturamento_os: 0, faturamento_vendas: 0,
+    os_mes: 0, os_em_aberto: 0, os_finalizadas: 0,
+    vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [],
   });
 
   // Dialogs
@@ -634,9 +690,11 @@ export default function MultiEmpresas() {
                 empresa={matriz}
                 isMatriz={true}
                 cor="#f59e0b"
+                fatTotal={fatTotal}
                 onMetas={() => abrirMetas(matriz)}
                 onNotificacoes={() => abrirNotificacoes(matriz)}
                 onVerVendas={() => navigate("/vendas")}
+                onAcessar={() => { setEmpresaAtiva(matriz.id); navigate("/os"); }}
               />
             )}
 
@@ -647,9 +705,11 @@ export default function MultiEmpresas() {
                 empresa={empresa}
                 isMatriz={false}
                 cor={CORES[i % CORES.length]}
+                fatTotal={fatTotal}
                 onMetas={() => abrirMetas(empresa)}
                 onNotificacoes={() => abrirNotificacoes(empresa)}
                 onVerVendas={() => navigate("/vendas")}
+                onAcessar={() => { setEmpresaAtiva(empresa.id); navigate("/os"); }}
               />
             ))}
 

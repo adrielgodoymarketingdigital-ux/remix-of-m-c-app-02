@@ -18,35 +18,41 @@ function calcularVendaLiquida(v: any): number {
   return (Number(v.total) || 0) - (Number(v.valor_desconto_manual) || 0) - (Number(v.valor_desconto_cupom) || 0);
 }
 
-async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: string, inicioMes: Date) {
+async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: string, inicioMes: Date, isMatriz: boolean) {
+  // Para a matriz: inclui registros com empresa_id = empresaId OU empresa_id = null (dados legados sem empresa vinculada)
+  const buildVendasQuery = (select: string) => {
+    const base = supabase.from("vendas").select(select).eq("user_id", userId).eq("cancelada", false);
+    if (isMatriz) return base.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+    return base.eq("empresa_id", empresaId);
+  };
+
+  const buildOsQuery = (select: string) => {
+    const base = supabase.from("ordens_servico").select(select).eq("user_id", userId);
+    if (isMatriz) return base.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+    return base.eq("empresa_id", empresaId);
+  };
+
   const [vendasRes, osRes, ultimasVendasRes] = await Promise.all([
-    supabase
-      .from("vendas")
-      .select("total, valor_desconto_manual, valor_desconto_cupom, tipo")
-      .eq("user_id", userId)
-      .eq("empresa_id", empresaId)
-      .eq("cancelada", false)
+    buildVendasQuery("total, valor_desconto_manual, valor_desconto_cupom, tipo")
       .gte("data", inicioMes.toISOString()),
-    supabase
-      .from("ordens_servico")
-      .select("valor_total")
-      .eq("user_id", userId)
-      .eq("empresa_id", empresaId)
+    buildOsQuery("valor_total, status")
       .gte("created_at", inicioMes.toISOString()),
-    supabase
-      .from("vendas")
-      .select("id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id")
-      .eq("user_id", userId)
-      .eq("empresa_id", empresaId)
-      .eq("cancelada", false)
+    buildVendasQuery("id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id")
       .order("data", { ascending: false })
       .limit(5),
   ]);
 
-  const faturamento = [
-    ...(vendasRes.data || []).map((v: any) => calcularVendaLiquida(v)),
-    ...(osRes.data || []).map((o: any) => Number(o.valor_total) || 0),
-  ].reduce((sum: number, v: number) => sum + v, 0);
+  // Status que indicam OS finalizada
+  const STATUS_FINAIS = ["finalizado", "entregue", "concluido", "pago", "concluída", "entregue ao cliente"];
+  const osData = osRes.data || [];
+  const isStatusFinal = (status: string) =>
+    STATUS_FINAIS.some(f => (status || "").toLowerCase().includes(f));
+
+  const faturamentoVendas = (vendasRes.data || []).reduce((sum: number, v: any) => sum + calcularVendaLiquida(v), 0);
+  const faturamentoOS = osData
+    .filter((o: any) => isStatusFinal(o.status))
+    .reduce((sum: number, o: any) => sum + (Number(o.valor_total) || 0), 0);
+  const faturamento = faturamentoVendas + faturamentoOS;
 
   const porTipo: Record<string, { tipo: string; label: string; total: number; quantidade: number }> = {};
   for (const v of vendasRes.data || []) {
@@ -85,7 +91,11 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
 
   return {
     faturamento_mes: faturamento,
-    os_mes: osRes.data?.length || 0,
+    faturamento_os: faturamentoOS,
+    faturamento_vendas: faturamentoVendas,
+    os_mes: osData.length,
+    os_em_aberto: osData.filter((o: any) => !isStatusFinal(o.status)).length,
+    os_finalizadas: osData.filter((o: any) => isStatusFinal(o.status)).length,
     vendas_mes: vendasRes.data?.length || 0,
     ultimas_vendas: ultimasVendas,
     vendas_por_tipo: Object.values(porTipo),
@@ -136,7 +146,7 @@ serve(async (req) => {
     // Busca métricas de cada empresa pelo empresa_id (correto)
     const empresasComMetricas = await Promise.all(
       empresas.map(async (empresa: any) => {
-        const metricas = await buscarMetricasEmpresa(supabase, user.id, empresa.id, inicioMes);
+        const metricas = await buscarMetricasEmpresa(supabase, user.id, empresa.id, inicioMes, empresa.tipo === "matriz");
         return {
           ...empresa,
           gerentes: [],
