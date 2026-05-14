@@ -142,24 +142,25 @@ serve(async (req) => {
         const gerentesFilial = (gerentes || []).filter((g: any) => g.empresa_id === empresa.id);
         const gerenteId = gerentesFilial[0]?.gerente_id ?? null;
 
+        // Tenta pelo gerente primeiro; se vazio, usa o proprietário da empresa
         let metricas = { faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [] as any[], vendas_por_tipo: [] as any[] };
-
         if (gerenteId) {
           metricas = await buscarDadosUsuario(supabase, gerenteId, inicioMes);
+        }
+        if (metricas.vendas_mes === 0 && metricas.os_mes === 0) {
+          metricas = await buscarDadosUsuario(supabase, empresa.proprietario_id, inicioMes);
         }
 
         return {
           ...empresa,
           gerentes: gerentesFilial,
           metas: (todasMetas || []).filter((m: any) => m.empresa_id === empresa.id),
-          metricas: {
-            ...metricas,
-            clientes_ativos: 0,
-          },
+          metricas: { ...metricas, clientes_ativos: 0 },
         };
       })
     );
 
+    // Métricas da matriz: dados do dono MENOS o que já foi contabilizado nas filiais
     const matrizMetricas = await buscarDadosUsuario(supabase, user.id, inicioMes);
 
     return new Response(

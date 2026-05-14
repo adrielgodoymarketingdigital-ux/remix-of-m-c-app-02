@@ -25,7 +25,6 @@ export function useMultiEmpresas() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      if (data._uid) toast.error(`UID recebido: ${data._uid} | empresas: ${data.empresas?.length ?? 0}`);
       setEmpresas(data.empresas || []);
       setMatrizMetricas(data.matrizMetricas || { faturamento_mes: 0, os_mes: 0, vendas_mes: 0 });
     } catch (error: any) {
