@@ -91,9 +91,17 @@ export function useClientes(options: UseClientesOptions = {}) {
       // Se é funcionário, usa o ID do dono da loja
       const targetUserId = (isFuncionario && podeSincronizarClientes && lojaUserId) ? lojaUserId : user.id;
 
+      const { data: empresaPrincipal } = await supabase
+        .from("empresas")
+        .select("id")
+        .eq("proprietario_id", targetUserId)
+        .eq("tipo", "matriz")
+        .maybeSingle();
+
       const dadosSanitizados = {
         ...dados,
         user_id: targetUserId,
+        empresa_id: empresaPrincipal?.id ?? null,
         cpf: dados.cpf?.trim() || null,
         cnpj: dados.cnpj?.trim() || null,
         telefone: dados.telefone?.trim() || null,

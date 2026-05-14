@@ -276,6 +276,15 @@ const PDV = () => {
       // User ID para registrar: dono da loja (se funcionário) ou próprio ID
       const userIdParaVenda = lojaUserId || user.id;
 
+      // Busca empresa_id da empresa principal do usuário
+      const { data: empresaPrincipalPDV } = await supabase
+        .from("empresas")
+        .select("id")
+        .eq("proprietario_id", userIdParaVenda)
+        .eq("tipo", "matriz")
+        .maybeSingle();
+      const empresaIdPDV = empresaPrincipalPDV?.id ?? null;
+
       // Usar cliente selecionado
       const clienteId = clienteSelecionado?.id || null;
 
@@ -339,6 +348,7 @@ const PDV = () => {
             custo_unitario: isParceladoReceber ? (item.custo || 0) / totalParcelas : item.custo,
             forma_pagamento: formaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
             user_id: userIdParaVenda,
+            empresa_id: empresaIdPDV,
             data_prevista_recebimento: dataPrevisao,
             recebido: formaPagamento !== "a_receber",
             grupo_venda: grupoVendaId,

@@ -527,6 +527,15 @@ export const DialogOrdemServico = ({
       // Usar ID do dono se funcionário tem permissão de sincronizar OS
       const effectiveUserId = (isFuncionario && podeSincronizarOS && lojaUserId) ? lojaUserId : user.id;
 
+      // Busca empresa_id da empresa principal do usuário
+      const { data: empresaPrincipal } = await supabase
+        .from("empresas")
+        .select("id")
+        .eq("proprietario_id", effectiveUserId)
+        .eq("tipo", "matriz")
+        .maybeSingle();
+      const empresaId = empresaPrincipal?.id ?? null;
+
       // Usar cliente existente selecionado ou criar/atualizar
       let clienteId = clienteSelecionadoId || ordem?.cliente_id;
 
@@ -903,6 +912,7 @@ export const DialogOrdemServico = ({
             data_saida: formData.status === "entregue"
               ? (formData.dataSaida ? formData.dataSaida.toISOString() : new Date().toISOString())
               : null,
+            empresa_id: empresaId,
           }]);
 
           // Se não houve erro, sair do loop

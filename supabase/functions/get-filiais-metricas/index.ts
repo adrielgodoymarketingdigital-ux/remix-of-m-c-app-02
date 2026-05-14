@@ -18,23 +18,26 @@ function calcularVendaLiquida(v: any): number {
   return (Number(v.total) || 0) - (Number(v.valor_desconto_manual) || 0) - (Number(v.valor_desconto_cupom) || 0);
 }
 
-async function buscarDadosUsuario(supabase: any, userId: string, inicioMes: Date) {
+async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: string, inicioMes: Date) {
   const [vendasRes, osRes, ultimasVendasRes] = await Promise.all([
     supabase
       .from("vendas")
       .select("total, valor_desconto_manual, valor_desconto_cupom, tipo")
       .eq("user_id", userId)
+      .eq("empresa_id", empresaId)
       .eq("cancelada", false)
       .gte("data", inicioMes.toISOString()),
     supabase
       .from("ordens_servico")
       .select("valor_total")
       .eq("user_id", userId)
+      .eq("empresa_id", empresaId)
       .gte("created_at", inicioMes.toISOString()),
     supabase
       .from("vendas")
       .select("id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id")
       .eq("user_id", userId)
+      .eq("empresa_id", empresaId)
       .eq("cancelada", false)
       .order("data", { ascending: false })
       .limit(5),
@@ -53,7 +56,6 @@ async function buscarDadosUsuario(supabase: any, userId: string, inicioMes: Date
     porTipo[tipo].quantidade += 1;
   }
 
-  // Busca nomes de clientes/produtos/pecas das ultimas vendas
   const ultimas = ultimasVendasRes.data || [];
   const clienteIds = [...new Set(ultimas.map((v: any) => v.cliente_id).filter(Boolean))];
   const produtoIds = [...new Set(ultimas.map((v: any) => v.produto_id).filter(Boolean))];
@@ -104,67 +106,56 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error("Token inválido");
 
-    const { data: empresas, error: empresasError } = await supabase
-      .from("empresas")
-      .select("id, nome, cidade, estado, cnpj, telefone, endereco, ativa, created_at, proprietario_id")
-      .eq("proprietario_id", user.id)
-      .eq("ativa", true)
-      .order("created_at", { ascending: true });
-
-    if (empresasError) throw new Error("Erro ao buscar filiais: " + empresasError.message);
-
     const inicioMes = new Date();
     inicioMes.setDate(1);
     inicioMes.setHours(0, 0, 0, 0);
 
+    // Busca todas as empresas do proprietário (matriz + filiais)
+    const { data: empresas, error: empresasError } = await supabase
+      .from("empresas")
+      .select("id, nome, cidade, estado, cnpj, telefone, endereco, ativa, tipo, created_at, proprietario_id")
+      .eq("proprietario_id", user.id)
+      .eq("ativa", true)
+      .order("created_at", { ascending: true });
+
+    if (empresasError) throw new Error("Erro ao buscar empresas: " + empresasError.message);
+
     if (!empresas || empresas.length === 0) {
-      const matrizDados = await buscarDadosUsuario(supabase, user.id, inicioMes);
-      return new Response(JSON.stringify({ empresas: [], matrizMetricas: matrizDados, _uid: user.id }), {
+      return new Response(JSON.stringify({ empresas: [], matrizMetricas: { faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [] } }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const empresaIds = empresas.map((e: any) => e.id);
 
-    const { data: gerentes } = await supabase
-      .from("empresa_usuarios")
-      .select("empresa_id, gerente_id, permissoes, ativa, id, proprietario_id, created_at")
-      .in("empresa_id", empresaIds)
-      .eq("ativa", true);
-
     const { data: todasMetas } = await supabase
       .from("empresa_metas")
       .select("*")
       .in("empresa_id", empresaIds);
 
+    // Busca métricas de cada empresa pelo empresa_id (correto)
     const empresasComMetricas = await Promise.all(
       empresas.map(async (empresa: any) => {
-        const gerentesFilial = (gerentes || []).filter((g: any) => g.empresa_id === empresa.id);
-        const gerenteId = gerentesFilial[0]?.gerente_id ?? null;
-
-        // Tenta pelo gerente primeiro; se vazio, usa o proprietário da empresa
-        let metricas = { faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [] as any[], vendas_por_tipo: [] as any[] };
-        if (gerenteId) {
-          metricas = await buscarDadosUsuario(supabase, gerenteId, inicioMes);
-        }
-        if (metricas.vendas_mes === 0 && metricas.os_mes === 0) {
-          metricas = await buscarDadosUsuario(supabase, empresa.proprietario_id, inicioMes);
-        }
-
+        const metricas = await buscarMetricasEmpresa(supabase, user.id, empresa.id, inicioMes);
         return {
           ...empresa,
-          gerentes: gerentesFilial,
+          gerentes: [],
           metas: (todasMetas || []).filter((m: any) => m.empresa_id === empresa.id),
           metricas: { ...metricas, clientes_ativos: 0 },
         };
       })
     );
 
-    // Métricas da matriz: dados do dono MENOS o que já foi contabilizado nas filiais
-    const matrizMetricas = await buscarDadosUsuario(supabase, user.id, inicioMes);
+    // Matriz = empresa com tipo 'matriz'
+    const matriz = empresasComMetricas.find((e: any) => e.tipo === "matriz");
+    const filiais = empresasComMetricas.filter((e: any) => e.tipo !== "matriz");
 
     return new Response(
-      JSON.stringify({ empresas: empresasComMetricas, matrizMetricas }),
+      JSON.stringify({
+        empresas: filiais,
+        matrizMetricas: matriz?.metricas ?? { faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [] },
+        todasEmpresas: empresasComMetricas,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
