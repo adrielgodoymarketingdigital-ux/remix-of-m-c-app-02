@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Lock, Plus, Building2, Home, TrendingUp, Target, Bell,
-  ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw,
+  ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw, Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -255,9 +255,10 @@ function PainelVendas({ ultimas, porTipo, onVerTodas }: {
 
 // ─── Card de Empresa ──────────────────────────────────────────────────────────
 
-function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar }: {
+function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar, onEditarNome }: {
   empresa: EmpresaCard; isMatriz: boolean; cor: string; fatTotal: number;
   onMetas: () => void; onNotificacoes: () => void; onVerVendas: () => void; onAcessar: () => void;
+  onEditarNome: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
   const metaFat = empresa.metas.find(m => m.tipo === "faturamento");
@@ -280,6 +281,9 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             <span className="truncate">{empresa.nome}</span>
           </CardTitle>
           <div className="flex items-center gap-1.5 shrink-0">
+            <button onClick={onEditarNome} title="Editar nome" className="text-muted-foreground hover:text-foreground transition-colors p-0.5">
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
             <Badge variant="outline" className={`text-xs ${isMatriz ? "border-amber-500/30 text-amber-500" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}`}>
               {isMatriz ? "Matriz" : "Filial"}
             </Badge>
@@ -418,6 +422,10 @@ export default function MultiEmpresas() {
   const [dialogNotifAberto, setDialogNotifAberto] = useState(false);
   const [empresaNotif, setEmpresaNotif] = useState<EmpresaCard | null>(null);
   const [notifForm, setNotifForm] = useState({ nova_os: true, os_entregue: true, nova_venda: true, meta_atingida: true, estoque_baixo: false });
+  const [dialogEditarNome, setDialogEditarNome] = useState(false);
+  const [empresaEditando, setEmpresaEditando] = useState<EmpresaCard | null>(null);
+  const [novoNome, setNovoNome] = useState("");
+  const [salvandoNome, setSalvandoNome] = useState(false);
 
   const filiais = todasEmpresas.filter(e => e.tipo !== "matriz");
   const matriz = todasEmpresas.find(e => e.tipo === "matriz");
@@ -519,6 +527,31 @@ export default function MultiEmpresas() {
     await supabase.from("user_notification_preferences").upsert({ user_id: user.id, empresa_id: empresaNotif.id, preferences: notifForm });
     toast.success("Preferências salvas!");
     setDialogNotifAberto(false);
+  };
+
+  const abrirEditarNome = (empresa: EmpresaCard) => {
+    setEmpresaEditando(empresa);
+    setNovoNome(empresa.nome);
+    setDialogEditarNome(true);
+  };
+
+  const salvarNome = async () => {
+    if (!empresaEditando || !novoNome.trim()) return;
+    setSalvandoNome(true);
+    try {
+      const { error } = await supabase
+        .from("empresas" as never)
+        .update({ nome: novoNome.trim() } as never)
+        .eq("id" as never, empresaEditando.id);
+      if (error) throw error;
+      toast.success("Nome atualizado com sucesso!");
+      setDialogEditarNome(false);
+      await carregarDados();
+    } catch (e: unknown) {
+      toast.error("Erro ao salvar nome: " + (e instanceof Error ? e.message : "Erro desconhecido"));
+    } finally {
+      setSalvandoNome(false);
+    }
   };
 
   // ─── Render: loading ───────────────────────────────────────────────────────
@@ -695,6 +728,7 @@ export default function MultiEmpresas() {
                 onNotificacoes={() => abrirNotificacoes(matriz)}
                 onVerVendas={() => navigate("/vendas")}
                 onAcessar={() => { setEmpresaAtiva(matriz.id); navigate("/os"); }}
+                onEditarNome={() => abrirEditarNome(matriz)}
               />
             )}
 
@@ -710,6 +744,7 @@ export default function MultiEmpresas() {
                 onNotificacoes={() => abrirNotificacoes(empresa)}
                 onVerVendas={() => navigate("/vendas")}
                 onAcessar={() => { setEmpresaAtiva(empresa.id); navigate("/os"); }}
+                onEditarNome={() => abrirEditarNome(empresa)}
               />
             ))}
 
@@ -729,6 +764,33 @@ export default function MultiEmpresas() {
 
       {/* Dialog Nova Filial */}
       <DialogNovaFilial open={dialogNova} onClose={() => setDialogNova(false)} onCriar={handleCriar} salvando={salvando} />
+
+      {/* Dialog Editar Nome */}
+      <Dialog open={dialogEditarNome} onOpenChange={setDialogEditarNome}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar nome — {empresaEditando?.tipo === "matriz" ? "Matriz" : "Filial"}</DialogTitle>
+            <DialogDescription>Altere o nome exibido para esta empresa</DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label htmlFor="novo-nome">Nome</Label>
+            <Input
+              id="novo-nome"
+              className="mt-1"
+              value={novoNome}
+              onChange={e => setNovoNome(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") salvarNome(); }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogEditarNome(false)} disabled={salvandoNome}>Cancelar</Button>
+            <Button onClick={salvarNome} disabled={salvandoNome || !novoNome.trim()}>
+              {salvandoNome ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Metas */}
       <Dialog open={dialogMetasAberto} onOpenChange={setDialogMetasAberto}>
