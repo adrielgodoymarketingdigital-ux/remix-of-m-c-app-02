@@ -121,10 +121,12 @@ export const useRelatorios = () => {
         .order("created_at", { ascending: false });
 
       if (filtros.dataInicio) {
-        queryAvulsos = queryAvulsos.gte("created_at", filtros.dataInicio);
+        const inicioAvulsosISO = parseFiltroDate(filtros.dataInicio).toISOString();
+        queryAvulsos = queryAvulsos.gte("created_at", inicioAvulsosISO);
       }
       if (filtros.dataFim) {
-        queryAvulsos = queryAvulsos.lte("created_at", filtros.dataFim + "T23:59:59");
+        const fimAvulsosISO = parseFiltroDate(filtros.dataFim, true).toISOString();
+        queryAvulsos = queryAvulsos.lte("created_at", fimAvulsosISO);
       }
 
       const [
@@ -629,10 +631,12 @@ export const useRelatorios = () => {
         .in("status", ["entregue", "finalizado"]);
 
       if (filtros.dataInicio) {
-        queryAvulsos2 = queryAvulsos2.gte("created_at", filtros.dataInicio);
+        const inicioAvulsos2ISO = parseFiltroDate(filtros.dataInicio).toISOString();
+        queryAvulsos2 = queryAvulsos2.gte("created_at", inicioAvulsos2ISO);
       }
       if (filtros.dataFim) {
-        queryAvulsos2 = queryAvulsos2.lte("created_at", filtros.dataFim + "T23:59:59");
+        const fimAvulsos2ISO = parseFiltroDate(filtros.dataFim, true).toISOString();
+        queryAvulsos2 = queryAvulsos2.lte("created_at", fimAvulsos2ISO);
       }
 
       const [

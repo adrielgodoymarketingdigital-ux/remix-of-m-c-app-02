@@ -191,11 +191,12 @@ const Dashboard = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Usar formato de data string (yyyy-MM-dd) consistente com calcularResumo
-    // para evitar discrepâncias de fuso horário entre os cards
     const inicioStr = format(inicio, "yyyy-MM-dd");
     const fimStr = format(fim, "yyyy-MM-dd");
     const { queryInicio, queryFim } = getFinancialQueryDateBounds(inicio, fim);
+    // ISO completo para filtros de created_at (timestamptz) — evita ambiguidade de fuso
+    const inicioISO = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), 0, 0, 0, 0).toISOString();
+    const fimISO = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate(), 23, 59, 59, 999).toISOString();
 
     // Buscar TODAS as ordens de serviço do mês do usuário logado (excluindo testes e deletadas)
     const { data: todasOrdens } = await supabase
@@ -204,8 +205,8 @@ const Dashboard = () => {
       .eq("user_id", user.id)
       .eq("is_teste", false)
       .is("deleted_at", null)
-      .gte("created_at", inicioStr)
-      .lte("created_at", `${fimStr}T23:59:59`);
+      .gte("created_at", inicioISO)
+      .lte("created_at", fimISO);
 
     // Buscar apenas finalizadas/entregues para cálculo de faturamento
     // Usar data_saida (com fallback para updated_at) para consistência com o menu Financeiro
@@ -310,13 +311,15 @@ const Dashboard = () => {
     const margemDispositivos = faturamentoDispositivos > 0 ? ((faturamentoDispositivos - custoDispositivos) / faturamentoDispositivos) * 100 : 0;
 
     // Buscar serviços avulsos do mês (apenas entregues ou finalizados)
+    const avulsosInicioISO = inicio.toISOString();
+    const avulsosFimISO = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate(), 23, 59, 59, 999).toISOString();
     const { data: avulsosMes } = await supabase
       .from("servicos_avulsos")
       .select("preco, custo, status")
       .eq("user_id", user.id)
       .in("status", ["entregue", "finalizado"])
-      .gte("created_at", inicioStr)
-      .lte("created_at", `${fimStr}T23:59:59`);
+      .gte("created_at", avulsosInicioISO)
+      .lte("created_at", avulsosFimISO);
 
     const faturamentoAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.preco || 0), 0) || 0;
     const custoAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.custo || 0), 0) || 0;
