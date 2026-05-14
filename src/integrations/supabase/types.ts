@@ -3259,6 +3259,8 @@ export type Database = {
         | "basico_anual"
         | "intermediario_anual"
         | "profissional_anual"
+        | "profissional_ultra_mensal"
+        | "profissional_ultra_anual"
         | "admin"
         | "free"
       status_assinatura:
@@ -3438,6 +3440,8 @@ export const Constants = {
         "basico_anual",
         "intermediario_anual",
         "profissional_anual",
+        "profissional_ultra_mensal",
+        "profissional_ultra_anual",
         "admin",
         "free",
       ],

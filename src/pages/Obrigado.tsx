@@ -17,6 +17,8 @@ const PLANOS_PAGOS = [
   "intermediario_anual",
   "profissional_mensal",
   "profissional_anual",
+  "profissional_ultra_mensal",
+  "profissional_ultra_anual",
 ];
 
 const getPendingCheckoutPlan = () => {

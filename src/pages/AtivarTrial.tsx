@@ -104,6 +104,7 @@ export default function AtivarTrial() {
             'basico_mensal', 'basico_anual',
             'intermediario_mensal', 'intermediario_anual',
             'profissional_mensal', 'profissional_anual',
+            'profissional_ultra_mensal', 'profissional_ultra_anual',
           ];
           if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active') {
             console.log("✅ [AtivarTrial] Plano pago ativo - redirecionando para dashboard");
