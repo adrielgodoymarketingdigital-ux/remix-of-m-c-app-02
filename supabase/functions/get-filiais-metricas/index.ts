@@ -119,7 +119,7 @@ serve(async (req) => {
 
     if (!empresas || empresas.length === 0) {
       const matrizDados = await buscarDadosUsuario(supabase, user.id, inicioMes);
-      return new Response(JSON.stringify({ empresas: [], matrizMetricas: matrizDados }), {
+      return new Response(JSON.stringify({ empresas: [], matrizMetricas: matrizDados, _uid: user.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
