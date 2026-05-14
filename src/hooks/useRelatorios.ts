@@ -80,7 +80,8 @@ export const useRelatorios = () => {
       }
 
       // Buscar ordens de serviço finalizadas/entregues (somente do usuário)
-      // Usar data_saida como data de referência, com fallback para updated_at
+      // data_saida preenchida apenas em "entregue". Fallback: created_at (nunca muda),
+      // jamais updated_at (muda a cada edição e traz OS antigas para o mês errado)
       let queryOrdens = supabase
         .from("ordens_servico")
         .select(`
@@ -94,15 +95,15 @@ export const useRelatorios = () => {
 
       if (filtros.dataInicio && filtros.dataFim) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio},data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,updated_at.gte.${filtros.dataInicio},updated_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio},data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.gte.${filtros.dataInicio},created_at.lte.${filtros.dataFim}T23:59:59)`
         );
       } else if (filtros.dataInicio) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio}),and(data_saida.is.null,updated_at.gte.${filtros.dataInicio})`
+          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio}),and(data_saida.is.null,created_at.gte.${filtros.dataInicio})`
         );
       } else if (filtros.dataFim) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,updated_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
         );
       }
 
@@ -605,15 +606,15 @@ export const useRelatorios = () => {
 
       if (filtros.dataInicio && filtros.dataFim) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio},data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,updated_at.gte.${filtros.dataInicio},updated_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio},data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.gte.${filtros.dataInicio},created_at.lte.${filtros.dataFim}T23:59:59)`
         );
       } else if (filtros.dataInicio) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio}),and(data_saida.is.null,updated_at.gte.${filtros.dataInicio})`
+          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio}),and(data_saida.is.null,created_at.gte.${filtros.dataInicio})`
         );
       } else if (filtros.dataFim) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,updated_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
         );
       }
 
@@ -773,7 +774,7 @@ export const useRelatorios = () => {
 
       // Processar ordens de serviço (usar data_saida como data de referência)
       ordens?.forEach((ordem: any) => {
-        const data = new Date(ordem.data_saida || ordem.updated_at || ordem.created_at);
+        const data = new Date(ordem.data_saida || ordem.created_at);
         const mes = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
 
         if (!evolucaoMap.has(mes)) {

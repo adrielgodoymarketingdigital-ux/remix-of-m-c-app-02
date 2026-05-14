@@ -209,7 +209,8 @@ const Dashboard = () => {
       .lte("created_at", fimISO);
 
     // Buscar apenas finalizadas/entregues para cálculo de faturamento
-    // Usar data_saida (com fallback para updated_at) para consistência com o menu Financeiro
+    // data_saida preenchida apenas em "entregue". Fallback: created_at (nunca muda),
+    // jamais updated_at (muda a cada edição e traz OS antigas para o mês errado)
     const { data: vendasServicos } = await supabase
       .from("ordens_servico")
       .select("total, servico_id, avarias")
@@ -217,7 +218,7 @@ const Dashboard = () => {
       .is("deleted_at", null)
       .in("status", ["finalizado", "entregue"])
       .or(
-        `and(data_saida.not.is.null,data_saida.gte.${inicioStr},data_saida.lte.${fimStr}T23:59:59),and(data_saida.is.null,updated_at.gte.${inicioStr},updated_at.lte.${fimStr}T23:59:59)`
+        `and(data_saida.not.is.null,data_saida.gte.${inicioStr},data_saida.lte.${fimStr}T23:59:59),and(data_saida.is.null,created_at.gte.${inicioISO},created_at.lte.${fimISO})`
       );
 
     // Buscar custos dos serviços (somente por vínculo servico_id)
@@ -312,37 +313,12 @@ const Dashboard = () => {
     const custoProdutos = vendasProdutosFiltradas.reduce((acc, v: any) => acc + getVendaCustoTotal(v), 0);
     const margemProdutos = faturamentoProdutos > 0 ? ((faturamentoProdutos - custoProdutos) / faturamentoProdutos) * 100 : 0;
 
-    console.log('[Dashboard DEBUG Produtos]', {
-      queryInicio, queryFim,
-      inicioStr, fimStr,
-      totalDosBanco: vendasProdutos?.length,
-      aposExcluirOS: (vendasProdutos || []).filter((v: any) => !excluirItemOS(v)).length,
-      aposDistribuir: vendasProdutosDistribuidas.length,
-      aposFilterPeriod: vendasProdutosFiltradas.length,
-      faturamentoProdutos,
-      detalhes: vendasProdutosFiltradas.map((v: any) => ({
-        data: v.data, forma: v.forma_pagamento, total: v.total,
-        parcela: v.parcela_numero, totalParcelas: v.total_parcelas,
-        recebido: v.recebido, receita: getVendaReceitaLiquida(v),
-      })),
-    });
-
     // Calcular dispositivos (valor líquido com desconto) - ignorar parcelas duplicadas
     const vendasDispositivosDistribuidas = distribuirCustoParcelasGrupo((vendasDispositivos || []).filter((v: any) => !excluirItemOS(v)));
     const vendasDispositivosFiltradas = vendasDispositivosDistribuidas.filter((v: any) => isVendaInFinancialPeriod(v, inicio, fim));
     const faturamentoDispositivos = vendasDispositivosFiltradas.reduce((acc, v: any) => acc + getVendaReceitaLiquida(v), 0);
     const custoDispositivos = vendasDispositivosFiltradas.reduce((acc, v: any) => acc + getVendaCustoTotal(v), 0);
 
-    console.log('[Dashboard DEBUG Dispositivos]', {
-      totalDosBanco: vendasDispositivos?.length,
-      aposFilterPeriod: vendasDispositivosFiltradas.length,
-      faturamentoDispositivos,
-      detalhes: vendasDispositivosFiltradas.map((v: any) => ({
-        data: v.data, forma: v.forma_pagamento, total: v.total,
-        parcela: v.parcela_numero, totalParcelas: v.total_parcelas,
-        recebido: v.recebido, receita: getVendaReceitaLiquida(v),
-      })),
-    });
     const margemDispositivos = faturamentoDispositivos > 0 ? ((faturamentoDispositivos - custoDispositivos) / faturamentoDispositivos) * 100 : 0;
 
     // Buscar serviços avulsos do mês (apenas entregues ou finalizados)

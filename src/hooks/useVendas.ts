@@ -57,7 +57,8 @@ export const useVendas = () => {
       }
 
       // Carregar ordens de serviço finalizadas (somente do usuário logado)
-      // Usar data_saida como referência temporal, com fallback para updated_at
+      // data_saida preenchida apenas em "entregue". Fallback: created_at (nunca muda),
+      // jamais updated_at (muda a cada edição e traz OS antigas para o mês errado)
       let queryOrdens = supabase
         .from("ordens_servico")
         .select(`
@@ -72,15 +73,15 @@ export const useVendas = () => {
 
       if (dataInicio && dataFim) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tzString},data_saida.lte.${dataFim}T23:59:59${tzString}),and(data_saida.is.null,updated_at.gte.${dataInicio}T00:00:00${tzString},updated_at.lte.${dataFim}T23:59:59${tzString})`
+          `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tzString},data_saida.lte.${dataFim}T23:59:59${tzString}),and(data_saida.is.null,created_at.gte.${dataInicio}T00:00:00${tzString},created_at.lte.${dataFim}T23:59:59${tzString})`
         );
       } else if (dataInicio) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tzString}),and(data_saida.is.null,updated_at.gte.${dataInicio}T00:00:00${tzString})`
+          `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tzString}),and(data_saida.is.null,created_at.gte.${dataInicio}T00:00:00${tzString})`
         );
       } else if (dataFim) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.lte.${dataFim}T23:59:59${tzString}),and(data_saida.is.null,updated_at.lte.${dataFim}T23:59:59${tzString})`
+          `and(data_saida.not.is.null,data_saida.lte.${dataFim}T23:59:59${tzString}),and(data_saida.is.null,created_at.lte.${dataFim}T23:59:59${tzString})`
         );
       }
 
