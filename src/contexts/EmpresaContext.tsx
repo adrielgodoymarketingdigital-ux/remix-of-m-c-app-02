@@ -7,6 +7,8 @@ interface EmpresaContextType {
   isProprietario: boolean;
   empresas: { id: string; nome: string }[];
   nomeMatriz: string;
+  // user_id efetivo para queries: gerente da filial selecionada ou o próprio proprietário
+  userIdAtivo: string | null;
   carregarEmpresas: () => Promise<void>;
 }
 
@@ -16,6 +18,7 @@ const EmpresaContext = createContext<EmpresaContextType>({
   isProprietario: false,
   empresas: [],
   nomeMatriz: "Minha Empresa",
+  userIdAtivo: null,
   carregarEmpresas: async () => {},
 });
 
@@ -24,7 +27,8 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     localStorage.getItem('empresa_ativa')
   );
   const [isProprietario, setIsProprietario] = useState(false);
-  const [empresas, setEmpresas] = useState<{ id: string; nome: string }[]>([]);
+  const [proprietarioId, setProprietarioId] = useState<string | null>(null);
+  const [empresas, setEmpresas] = useState<{ id: string; nome: string; gerente_id: string | null }[]>([]);
   const [nomeMatriz, setNomeMatriz] = useState("Minha Empresa");
 
   const setEmpresaAtiva = (id: string | null) => {
@@ -40,10 +44,13 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    setProprietarioId(user.id);
+
     const [filiais, configLoja] = await Promise.all([
+      // Busca filiais com o gerente_id de cada uma
       supabase
         .from('empresas')
-        .select('id, nome')
+        .select('id, nome, empresa_usuarios(gerente_id)')
         .eq('proprietario_id', user.id)
         .eq('ativa', true)
         .order('created_at', { ascending: true }),
@@ -56,7 +63,13 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
     if (filiais.data && filiais.data.length > 0) {
       setIsProprietario(true);
-      setEmpresas(filiais.data);
+      setEmpresas(
+        filiais.data.map((e: any) => ({
+          id: e.id,
+          nome: e.nome,
+          gerente_id: e.empresa_usuarios?.[0]?.gerente_id ?? null,
+        }))
+      );
     }
 
     if (configLoja.data?.nome_loja) {
@@ -66,6 +79,12 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { carregarEmpresas(); }, []);
 
+  // Resolve o user_id efetivo: gerente da filial ou o próprio proprietário
+  const empresaSelecionada = empresas.find(e => e.id === empresaAtiva);
+  const userIdAtivo = empresaAtiva
+    ? (empresaSelecionada?.gerente_id ?? proprietarioId)
+    : proprietarioId;
+
   return (
     <EmpresaContext.Provider value={{
       empresaAtiva,
@@ -73,6 +92,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       isProprietario,
       empresas,
       nomeMatriz,
+      userIdAtivo,
       carregarEmpresas,
     }}>
       {children}

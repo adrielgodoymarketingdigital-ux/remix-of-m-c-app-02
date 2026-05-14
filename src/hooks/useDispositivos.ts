@@ -8,6 +8,7 @@ import { useEventTracking } from "./useEventTracking";
 import { useConfetti } from "./useConfetti";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
+import { useResolvedUserId } from "./useResolvedUserId";
 
 export function useDispositivos() {
   const [dispositivos, setDispositivos] = useState<Dispositivo[]>([]);
@@ -16,6 +17,7 @@ export function useDispositivos() {
   const { trackDispositivoCadastrado } = useEventTracking();
   const { disparar: dispararConfetti } = useConfetti();
   const { lojaUserId, podeSincronizarDispositivos, isFuncionario } = useFuncionarioPermissoes();
+  const resolvedUserIdFromContext = useResolvedUserId();
   const navigate = useNavigate();
 
   const carregarDispositivos = useCallback(async () => {
@@ -30,8 +32,8 @@ export function useDispositivos() {
         return;
       }
 
-      // Usar ID do dono se funcionário tem permissão de sincronizar dispositivos
-      const userId = (isFuncionario && podeSincronizarDispositivos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserIdFromContext
+        ?? ((isFuncionario && podeSincronizarDispositivos && lojaUserId) ? lojaUserId : user.id);
 
       const data = await withRetry(async () => {
         const { data, error } = await supabase
@@ -62,7 +64,7 @@ export function useDispositivos() {
     } finally {
       setLoading(false);
     }
-  }, [lojaUserId, podeSincronizarDispositivos, isFuncionario]);
+  }, [lojaUserId, podeSincronizarDispositivos, isFuncionario, resolvedUserIdFromContext]);
 
   const criarDispositivo = async (dados: any): Promise<Dispositivo | null> => {
     try {

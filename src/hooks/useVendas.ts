@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
+import { useResolvedUserId } from "./useResolvedUserId";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -13,11 +14,11 @@ export const useVendas = () => {
   const { toast } = useToast();
   const { dispatchEvent } = useEventDispatcher();
   const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
+  const resolvedUserIdFromContext = useResolvedUserId();
 
   const carregarVendas = async (dataInicio?: string, dataFim?: string) => {
     try {
       setLoading(true);
-
 
       const {
         data: { session },
@@ -25,7 +26,7 @@ export const useVendas = () => {
       const user = session?.user;
       if (!user) { setLoading(false); return; }
 
-      const resolvedUserId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
+      const resolvedUserId = resolvedUserIdFromContext ?? ((isFuncionario && lojaUserId) ? lojaUserId : user.id);
 
       // Carregar vendas normais (somente do usuário logado)
       let queryVendas = supabase
@@ -676,7 +677,7 @@ export const useVendas = () => {
 
   useEffect(() => {
     carregarVendas();
-  }, [lojaUserId]);
+  }, [resolvedUserIdFromContext]);
 
   return {
     vendas,

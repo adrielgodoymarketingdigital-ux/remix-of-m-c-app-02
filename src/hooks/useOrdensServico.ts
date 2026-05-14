@@ -5,6 +5,7 @@ import { startOfMonth, endOfMonth, format } from "date-fns";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useEventDispatcher } from "./useEventDispatcher";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
+import { useResolvedUserId } from "./useResolvedUserId";
 
 export interface OrdemServico {
   id: string;
@@ -62,6 +63,7 @@ export const useOrdensServico = () => {
   const { toast } = useToast();
   const { lojaUserId, isFuncionario, funcionarioId, permissoes } = useFuncionarioPermissoes();
   const { dispatchEvent } = useEventDispatcher();
+  const resolvedUserIdFromContext = useResolvedUserId();
   const resolvedUserIdRef = useRef<string | null>(null);
   const detalhesCacheRef = useRef<Record<string, OrdemServico>>({});
 
@@ -91,6 +93,12 @@ export const useOrdensServico = () => {
   }, [busca, ordensBase]);
 
   const resolverUserId = useCallback(async (): Promise<string | null> => {
+    // Proprietário visualizando filial: usar o userIdAtivo do contexto diretamente
+    if (resolvedUserIdFromContext) {
+      resolvedUserIdRef.current = resolvedUserIdFromContext;
+      return resolvedUserIdFromContext;
+    }
+
     if (resolvedUserIdRef.current) {
       return resolvedUserIdRef.current;
     }
@@ -107,7 +115,7 @@ export const useOrdensServico = () => {
 
     resolvedUserIdRef.current = data;
     return data;
-  }, [isFuncionario, lojaUserId]);
+  }, [isFuncionario, lojaUserId, resolvedUserIdFromContext]);
 
   const aplicarFiltroMes = (mes: string) => {
     setMesFiltro(mes);
@@ -617,6 +625,11 @@ export const useOrdensServico = () => {
       });
     }
   };
+
+  // Invalidar cache e recarregar quando empresa ativa muda
+  useEffect(() => {
+    resolvedUserIdRef.current = null;
+  }, [resolvedUserIdFromContext]);
 
   useEffect(() => {
     carregarOrdens();

@@ -7,6 +7,7 @@ import { useEventTracking } from "./useEventTracking";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useConfetti } from "./useConfetti";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
+import { useResolvedUserId } from "./useResolvedUserId";
 
 interface UseClientesOptions {
   /** Se true, evita navegação automática e efeitos visuais após criar cliente (útil para PDV) */
@@ -22,6 +23,7 @@ export function useClientes(options: UseClientesOptions = {}) {
   const { disparar: dispararConfetti } = useConfetti();
   const navigate = useNavigate();
   const { isFuncionario, lojaUserId, podeSincronizarClientes } = useFuncionarioPermissoes();
+  const resolvedUserIdFromContext = useResolvedUserId();
 
   const carregarClientes = useCallback(async () => {
     try {
@@ -32,10 +34,8 @@ export function useClientes(options: UseClientesOptions = {}) {
         return;
       }
 
-      // Se é funcionário com permissão de sincronizar clientes, busca pelo ID do dono
-      const targetUserId = (isFuncionario && podeSincronizarClientes && lojaUserId) 
-        ? lojaUserId 
-        : user.id;
+      const targetUserId = resolvedUserIdFromContext
+        ?? ((isFuncionario && podeSincronizarClientes && lojaUserId) ? lojaUserId : user.id);
 
       const data = await withRetry(async () => {
         const { data, error } = await supabase
@@ -61,7 +61,7 @@ export function useClientes(options: UseClientesOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [toast, isFuncionario, lojaUserId, podeSincronizarClientes]);
+  }, [toast, isFuncionario, lojaUserId, podeSincronizarClientes, resolvedUserIdFromContext]);
 
   const criarCliente = async (dados: FormularioCliente): Promise<Cliente | null> => {
     try {
