@@ -20,14 +20,63 @@ export function useMultiEmpresas() {
   const carregarEmpresas = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('get-filiais-metricas');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Busca empresas diretamente
+      const { data: empresasData, error: empresasError } = await supabase
+        .from('empresas')
+        .select('*')
+        .eq('proprietario_id', user.id)
+        .eq('ativa', true)
+        .order('created_at', { ascending: true });
 
-      toast.info(`${data._debug_email} | ${data.empresas?.length ?? 0} filiais`);
-      setEmpresas(data.empresas || []);
-      setMatrizMetricas(data.matrizMetricas || { faturamento_mes: 0, os_mes: 0, vendas_mes: 0 });
+      if (empresasError) throw empresasError;
+
+      if (!empresasData || empresasData.length === 0) {
+        setEmpresas([]);
+        // Ainda busca métricas da matriz via Edge Function
+        const { data } = await supabase.functions.invoke('get-filiais-metricas');
+        if (data?.matrizMetricas) setMatrizMetricas(data.matrizMetricas);
+        return;
+      }
+
+      const empresaIds = empresasData.map(e => e.id);
+
+      // Busca gerentes, metas em paralelo
+      const [gerentesRes, metasRes] = await Promise.all([
+        supabase.from('empresa_usuarios').select('*').in('empresa_id', empresaIds).eq('ativa', true),
+        supabase.from('empresa_metas').select('*').in('empresa_id', empresaIds),
+      ]);
+
+      const gerentes = gerentesRes.data || [];
+      const metas = metasRes.data || [];
+
+      // Monta estrutura de EmpresaDashboard com métricas zeradas (carrega via Edge Function)
+      const empresasMontadas: EmpresaDashboard[] = empresasData.map(e => ({
+        ...e,
+        gerentes: gerentes.filter(g => g.empresa_id === e.id),
+        metas: metas.filter(m => m.empresa_id === e.id),
+        metricas: {
+          faturamento_mes: 0,
+          os_mes: 0,
+          vendas_mes: 0,
+          clientes_ativos: 0,
+          ultimas_vendas: [],
+          vendas_por_tipo: [],
+        },
+      }));
+
+      setEmpresas(empresasMontadas);
+
+      // Tenta enriquecer com métricas via Edge Function
+      try {
+        const { data } = await supabase.functions.invoke('get-filiais-metricas');
+        if (data?.empresas?.length) setEmpresas(data.empresas);
+        if (data?.matrizMetricas) setMatrizMetricas(data.matrizMetricas);
+      } catch {
+        // métricas ficam zeradas mas cards aparecem
+      }
     } catch (error: any) {
       console.error(error);
       toast.error("Erro ao carregar empresas: " + (error?.message || String(error)));
