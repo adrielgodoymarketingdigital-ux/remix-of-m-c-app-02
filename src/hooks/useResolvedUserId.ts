@@ -15,12 +15,20 @@ export function useResolvedUserId(): string | null {
   const [selfId, setSelfId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Usar getUser() é mais confiável que getSession() — verifica o token com o servidor
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setSelfId(user?.id ?? null);
+    });
+
+    // Também subscrever mudanças de auth para atualizar selfId em tempo real
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSelfId(session?.user?.id ?? null);
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Proprietário visualizando uma filial específica
+  // Proprietário visualizando uma filial específica — só redireciona se tiver userIdAtivo válido
   if (isProprietario && empresaAtiva && userIdAtivo) {
     return userIdAtivo;
   }

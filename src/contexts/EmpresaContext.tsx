@@ -63,13 +63,25 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
     if (filiais.data && filiais.data.length > 0) {
       setIsProprietario(true);
-      setEmpresas(
-        filiais.data.map((e: any) => ({
-          id: e.id,
-          nome: e.nome,
-          gerente_id: e.empresa_usuarios?.[0]?.gerente_id ?? null,
-        }))
-      );
+      const lista = filiais.data.map((e: any) => ({
+        id: e.id,
+        nome: e.nome,
+        gerente_id: e.empresa_usuarios?.[0]?.gerente_id ?? null,
+      }));
+      setEmpresas(lista);
+
+      // Limpar empresa ativa do localStorage se o ID não pertence mais a este usuário
+      const empresaAtivaLocal = localStorage.getItem('empresa_ativa');
+      if (empresaAtivaLocal && !lista.some(e => e.id === empresaAtivaLocal)) {
+        localStorage.removeItem('empresa_ativa');
+        setEmpresaAtivaState(null);
+      }
+    } else {
+      // Usuário sem empresas — limpar qualquer empresa_ativa residual no localStorage
+      setIsProprietario(false);
+      setEmpresas([]);
+      localStorage.removeItem('empresa_ativa');
+      setEmpresaAtivaState(null);
     }
 
     if (configLoja.data?.nome_loja) {
