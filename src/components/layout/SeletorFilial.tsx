@@ -12,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export function SeletorFilial() {
-  const { empresaAtiva, setEmpresaAtiva, isProprietario, empresas } = useEmpresa();
+  const { empresaAtiva, setEmpresaAtiva, isProprietario, empresas, nomeMatriz } = useEmpresa();
 
   if (!isProprietario) return null;
 
   const empresaAtual = empresas.find(e => e.id === empresaAtiva);
-  const label = empresaAtual ? empresaAtual.nome : "Minha Empresa";
+  const label = empresaAtual ? empresaAtual.nome : nomeMatriz;
 
   return (
     <DropdownMenu>
@@ -43,7 +43,7 @@ export function SeletorFilial() {
           className={!empresaAtiva ? "bg-blue-500/10 text-blue-400" : ""}
         >
           <Home className="h-4 w-4 mr-2" />
-          Minha Empresa
+          <span className="truncate">{nomeMatriz}</span>
           {!empresaAtiva && <Badge className="ml-auto text-[10px]">Ativa</Badge>}
         </DropdownMenuItem>
 

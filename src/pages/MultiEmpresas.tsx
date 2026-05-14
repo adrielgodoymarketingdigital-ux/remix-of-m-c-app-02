@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useMultiEmpresas } from "@/hooks/useMultiEmpresas";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { supabase } from "@/integrations/supabase/client";
 import { EmpresaDashboard, EmpresaUsuario } from "@/types/multiempresas";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Lock, Plus, Building2, TrendingUp, Target, Bell } from "lucide-react";
+import { Lock, Plus, Building2, Home, TrendingUp, Target, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -222,7 +223,8 @@ const PERMISSOES_PADRAO: EmpresaUsuario['permissoes'] = {
 export default function MultiEmpresas() {
   const navigate = useNavigate();
   const { assinatura, carregando: carregandoAssinatura } = useAssinatura();
-  const { empresas, isLoading, criarEmpresa, salvarMeta, atualizarPermissoes } = useMultiEmpresas();
+  const { empresas, isLoading, criarEmpresa, salvarMeta, atualizarPermissoes, matrizMetricas } = useMultiEmpresas();
+  const { nomeMatriz } = useEmpresa();
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Dialog Nova Filial
@@ -405,46 +407,91 @@ export default function MultiEmpresas() {
           </Button>
         </div>
 
-        {/* KPIs consolidados */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-blue-200 dark:border-blue-800">
-            <CardContent className="p-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Faturamento Total</div>
-              <div className="text-2xl font-bold text-blue-600">
-                {formatarMoeda(empresas.reduce((sum, e) => sum + e.metricas.faturamento_mes, 0))}
-              </div>
-              <div className="text-xs text-muted-foreground">Todas as filiais este mês</div>
-            </CardContent>
-          </Card>
+        {/* KPIs consolidados — matriz + todas as filiais */}
+        {(() => {
+          const fatFiliais = empresas.reduce((sum, e) => sum + e.metricas.faturamento_mes, 0);
+          const osFiliais = empresas.reduce((sum, e) => sum + e.metricas.os_mes, 0);
+          const vendasFiliais = empresas.reduce((sum, e) => sum + e.metricas.vendas_mes, 0);
+          const fatTotal = matrizMetricas.faturamento_mes + fatFiliais;
+          const osTotal = matrizMetricas.os_mes + osFiliais;
+          const vendasTotal = matrizMetricas.vendas_mes + vendasFiliais;
+          return (
+            <div className="space-y-3">
+              {/* Card faturamento total consolidado */}
+              <Card className="border-blue-500/40 bg-blue-500/5">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Faturamento Total Consolidado</div>
+                      <div className="text-3xl font-bold text-blue-500">{formatarMoeda(fatTotal)}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Matriz + {empresas.length} filial(is) — mês atual</div>
+                    </div>
+                    <div className="flex gap-4 text-center">
+                      <div>
+                        <div className="text-lg font-bold text-emerald-500">{osTotal}</div>
+                        <div className="text-[10px] text-muted-foreground">OS</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold text-violet-500">{vendasTotal}</div>
+                        <div className="text-[10px] text-muted-foreground">Vendas</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold text-amber-500">{empresas.length}/3</div>
+                        <div className="text-[10px] text-muted-foreground">Filiais</div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="border-emerald-200 dark:border-emerald-800">
-            <CardContent className="p-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">OS este mês</div>
-              <div className="text-2xl font-bold text-emerald-600">
-                {empresas.reduce((sum, e) => sum + e.metricas.os_mes, 0)}
-              </div>
-              <div className="text-xs text-muted-foreground">Ordens de serviço</div>
-            </CardContent>
-          </Card>
+              {/* Cards individuais: matriz + filiais */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Matriz */}
+                <Card className="border-amber-200 dark:border-amber-800/50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Home className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="text-xs font-medium text-amber-500 uppercase tracking-wide truncate">{nomeMatriz}</span>
+                      <Badge variant="outline" className="ml-auto text-[9px] border-amber-500/30 text-amber-500">Matriz</Badge>
+                    </div>
+                    <div className="text-xl font-bold">{formatarMoeda(matrizMetricas.faturamento_mes)}</div>
+                    <div className="flex gap-3 mt-1.5 text-xs text-muted-foreground">
+                      <span>{matrizMetricas.os_mes} OS</span>
+                      <span>{matrizMetricas.vendas_mes} vendas</span>
+                    </div>
+                  </CardContent>
+                </Card>
 
-          <Card className="border-violet-200 dark:border-violet-800">
-            <CardContent className="p-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Vendas este mês</div>
-              <div className="text-2xl font-bold text-violet-600">
-                {empresas.reduce((sum, e) => sum + e.metricas.vendas_mes, 0)}
-              </div>
-              <div className="text-xs text-muted-foreground">Produtos vendidos</div>
-            </CardContent>
-          </Card>
+                {/* Filiais */}
+                {empresas.map((empresa, i) => (
+                  <Card key={empresa.id} className="border-border/60">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: CORES[i % CORES.length] }} />
+                        <span className="text-xs font-medium truncate">{empresa.nome}</span>
+                        <Badge variant="outline" className="ml-auto text-[9px]">Filial</Badge>
+                      </div>
+                      <div className="text-xl font-bold">{formatarMoeda(empresa.metricas.faturamento_mes)}</div>
+                      <div className="flex gap-3 mt-1.5 text-xs text-muted-foreground">
+                        <span>{empresa.metricas.os_mes} OS</span>
+                        <span>{empresa.metricas.vendas_mes} vendas</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
 
-          <Card className="border-amber-200 dark:border-amber-800">
-            <CardContent className="p-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total de Filiais</div>
-              <div className="text-2xl font-bold text-amber-600">{empresas.length}/3</div>
-              <div className="text-xs text-muted-foreground">Filiais ativas</div>
-            </CardContent>
-          </Card>
-        </div>
+                {/* Placeholder filiais vazias */}
+                {Array.from({ length: Math.max(0, 3 - empresas.length) }).map((_, i) => (
+                  <Card key={`vazio-${i}`} className="border-dashed border-border/40 bg-transparent">
+                    <CardContent className="p-4 flex items-center justify-center h-full min-h-[90px]">
+                      <span className="text-xs text-muted-foreground/50">Filial {empresas.length + i + 1} — vaga</span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Gráfico comparativo */}
         <Card>
@@ -455,27 +502,34 @@ export default function MultiEmpresas() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {empresas.length === 0 ? (
-              <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">
-                Cadastre filiais para ver o comparativo
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={empresas.map(e => ({
-                  nome: e.nome.length > 12 ? e.nome.substring(0, 12) + '...' : e.nome,
+            {(() => {
+              const dadosGrafico = [
+                {
+                  nome: nomeMatriz.length > 12 ? nomeMatriz.substring(0, 12) + '…' : nomeMatriz,
+                  faturamento: matrizMetricas.faturamento_mes,
+                  cor: '#f59e0b',
+                },
+                ...empresas.map((e, i) => ({
+                  nome: e.nome.length > 12 ? e.nome.substring(0, 12) + '…' : e.nome,
                   faturamento: e.metricas.faturamento_mes,
-                }))}>
-                  <XAxis dataKey="nome" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `R$${v}`} />
-                  <Tooltip formatter={value => [formatarMoeda(Number(value)), 'Faturamento']} />
-                  <Bar dataKey="faturamento" radius={[4, 4, 0, 0]}>
-                    {empresas.map((_, index) => (
-                      <Cell key={index} fill={CORES[index % CORES.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+                  cor: CORES[i % CORES.length],
+                })),
+              ];
+              return (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={dadosGrafico}>
+                    <XAxis dataKey="nome" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `R$${v}`} />
+                    <Tooltip formatter={value => [formatarMoeda(Number(value)), 'Faturamento']} />
+                    <Bar dataKey="faturamento" radius={[4, 4, 0, 0]}>
+                      {dadosGrafico.map((item, index) => (
+                        <Cell key={index} fill={item.cor} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              );
+            })()}
           </CardContent>
         </Card>
 

@@ -12,6 +12,8 @@ export function CardCotacaoDolar() {
       {/* Linha decorativa superior */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
 
+      <p className="text-[9px] text-muted-foreground/60 mb-1">Cotação do dólar em tempo real</p>
+
       <div className="flex items-center gap-3">
 
         {/* Label USD com ponto pulsante */}

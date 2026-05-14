@@ -3,16 +3,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Empresa, EmpresaUsuario, EmpresaMeta, EmpresaDashboard } from "@/types/multiempresas";
 
+export interface MatrizMetricas {
+  faturamento_mes: number;
+  os_mes: number;
+  vendas_mes: number;
+}
+
 export function useMultiEmpresas() {
   const [empresas, setEmpresas] = useState<EmpresaDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [empresaSelecionada, setEmpresaSelecionada] = useState<string | null>(null);
+  const [matrizMetricas, setMatrizMetricas] = useState<MatrizMetricas>({ faturamento_mes: 0, os_mes: 0, vendas_mes: 0 });
 
   const carregarEmpresas = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      const inicioMes = new Date();
+      inicioMes.setDate(1);
+      inicioMes.setHours(0, 0, 0, 0);
 
       const { data: empresasData, error } = await supabase
         .from('empresas')
@@ -36,26 +47,27 @@ export function useMultiEmpresas() {
             .select('*')
             .eq('empresa_id', empresa.id);
 
-          const inicioMes = new Date();
-          inicioMes.setDate(1);
-          inicioMes.setHours(0, 0, 0, 0);
+          // Buscar user_id do gerente desta filial para filtrar dados corretamente
+          const gerenteUserId = gerentesData?.[0]?.usuario_id ?? null;
+          const userIdFilial = gerenteUserId || user.id;
 
-          const { data: vendasData } = await supabase
-            .from('vendas')
-            .select('total')
-            .eq('user_id', user.id)
-            .eq('cancelada', false)
-            .gte('data', inicioMes.toISOString());
-
-          const { data: osData } = await supabase
-            .from('ordens_servico')
-            .select('valor_total')
-            .eq('user_id', user.id)
-            .gte('created_at', inicioMes.toISOString());
+          const [vendasRes, osRes] = await Promise.all([
+            supabase
+              .from('vendas')
+              .select('total')
+              .eq('user_id', userIdFilial)
+              .eq('cancelada', false)
+              .gte('data', inicioMes.toISOString()),
+            supabase
+              .from('ordens_servico')
+              .select('valor_total')
+              .eq('user_id', userIdFilial)
+              .gte('created_at', inicioMes.toISOString()),
+          ]);
 
           const faturamento = [
-            ...(vendasData || []).map(v => v.total || 0),
-            ...(osData || []).map(o => o.valor_total || 0),
+            ...(vendasRes.data || []).map(v => v.total || 0),
+            ...(osRes.data || []).map(o => o.valor_total || 0),
           ].reduce((sum, v) => sum + v, 0);
 
           return {
@@ -64,13 +76,39 @@ export function useMultiEmpresas() {
             metas: metasData || [],
             metricas: {
               faturamento_mes: faturamento,
-              os_mes: osData?.length || 0,
-              vendas_mes: vendasData?.length || 0,
+              os_mes: osRes.data?.length || 0,
+              vendas_mes: vendasRes.data?.length || 0,
               clientes_ativos: 0,
             },
           };
         })
       );
+
+      // Métricas da matriz (proprietário)
+      const [vendasMatrizRes, osMatrizRes] = await Promise.all([
+        supabase
+          .from('vendas')
+          .select('total')
+          .eq('user_id', user.id)
+          .eq('cancelada', false)
+          .gte('data', inicioMes.toISOString()),
+        supabase
+          .from('ordens_servico')
+          .select('valor_total')
+          .eq('user_id', user.id)
+          .gte('created_at', inicioMes.toISOString()),
+      ]);
+
+      const faturamentoMatriz = [
+        ...(vendasMatrizRes.data || []).map(v => v.total || 0),
+        ...(osMatrizRes.data || []).map(o => o.valor_total || 0),
+      ].reduce((sum, v) => sum + v, 0);
+
+      setMatrizMetricas({
+        faturamento_mes: faturamentoMatriz,
+        os_mes: osMatrizRes.data?.length || 0,
+        vendas_mes: vendasMatrizRes.data?.length || 0,
+      });
 
       setEmpresas(empresasComDados);
     } catch (error) {
@@ -149,6 +187,7 @@ export function useMultiEmpresas() {
     isLoading,
     empresaSelecionada,
     setEmpresaSelecionada,
+    matrizMetricas,
     criarEmpresa,
     salvarMeta,
     atualizarPermissoes,
