@@ -68,7 +68,7 @@ serve(async (req) => {
           const [vendasRes, osRes] = await Promise.all([
             supabase
               .from("vendas")
-              .select("total")
+              .select("total, valor_desconto_manual, valor_desconto_cupom")
               .eq("user_id", gerenteId)
               .eq("cancelada", false)
               .gte("data", inicioMes.toISOString()),
@@ -80,8 +80,10 @@ serve(async (req) => {
           ]);
 
           faturamento = [
-            ...(vendasRes.data || []).map((v: any) => v.total || 0),
-            ...(osRes.data || []).map((o: any) => o.valor_total || 0),
+            ...(vendasRes.data || []).map((v: any) =>
+              (Number(v.total) || 0) - (Number(v.valor_desconto_manual) || 0) - (Number(v.valor_desconto_cupom) || 0)
+            ),
+            ...(osRes.data || []).map((o: any) => Number(o.valor_total) || 0),
           ].reduce((sum: number, v: number) => sum + v, 0);
 
           osCount = osRes.data?.length || 0;
@@ -106,7 +108,7 @@ serve(async (req) => {
     const [vendasMatriz, osMatriz] = await Promise.all([
       supabase
         .from("vendas")
-        .select("total")
+        .select("total, valor_desconto_manual, valor_desconto_cupom")
         .eq("user_id", user.id)
         .eq("cancelada", false)
         .gte("data", inicioMes.toISOString()),
@@ -118,8 +120,10 @@ serve(async (req) => {
     ]);
 
     const faturamentoMatriz = [
-      ...(vendasMatriz.data || []).map((v: any) => v.total || 0),
-      ...(osMatriz.data || []).map((o: any) => o.valor_total || 0),
+      ...(vendasMatriz.data || []).map((v: any) =>
+        (Number(v.total) || 0) - (Number(v.valor_desconto_manual) || 0) - (Number(v.valor_desconto_cupom) || 0)
+      ),
+      ...(osMatriz.data || []).map((o: any) => Number(o.valor_total) || 0),
     ].reduce((sum: number, v: number) => sum + v, 0);
 
     return new Response(
