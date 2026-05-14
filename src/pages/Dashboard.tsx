@@ -312,11 +312,37 @@ const Dashboard = () => {
     const custoProdutos = vendasProdutosFiltradas.reduce((acc, v: any) => acc + getVendaCustoTotal(v), 0);
     const margemProdutos = faturamentoProdutos > 0 ? ((faturamentoProdutos - custoProdutos) / faturamentoProdutos) * 100 : 0;
 
+    console.log('[Dashboard DEBUG Produtos]', {
+      queryInicio, queryFim,
+      inicioStr, fimStr,
+      totalDosBanco: vendasProdutos?.length,
+      aposExcluirOS: (vendasProdutos || []).filter((v: any) => !excluirItemOS(v)).length,
+      aposDistribuir: vendasProdutosDistribuidas.length,
+      aposFilterPeriod: vendasProdutosFiltradas.length,
+      faturamentoProdutos,
+      detalhes: vendasProdutosFiltradas.map((v: any) => ({
+        data: v.data, forma: v.forma_pagamento, total: v.total,
+        parcela: v.parcela_numero, totalParcelas: v.total_parcelas,
+        recebido: v.recebido, receita: getVendaReceitaLiquida(v),
+      })),
+    });
+
     // Calcular dispositivos (valor líquido com desconto) - ignorar parcelas duplicadas
     const vendasDispositivosDistribuidas = distribuirCustoParcelasGrupo((vendasDispositivos || []).filter((v: any) => !excluirItemOS(v)));
     const vendasDispositivosFiltradas = vendasDispositivosDistribuidas.filter((v: any) => isVendaInFinancialPeriod(v, inicio, fim));
     const faturamentoDispositivos = vendasDispositivosFiltradas.reduce((acc, v: any) => acc + getVendaReceitaLiquida(v), 0);
     const custoDispositivos = vendasDispositivosFiltradas.reduce((acc, v: any) => acc + getVendaCustoTotal(v), 0);
+
+    console.log('[Dashboard DEBUG Dispositivos]', {
+      totalDosBanco: vendasDispositivos?.length,
+      aposFilterPeriod: vendasDispositivosFiltradas.length,
+      faturamentoDispositivos,
+      detalhes: vendasDispositivosFiltradas.map((v: any) => ({
+        data: v.data, forma: v.forma_pagamento, total: v.total,
+        parcela: v.parcela_numero, totalParcelas: v.total_parcelas,
+        recebido: v.recebido, receita: getVendaReceitaLiquida(v),
+      })),
+    });
     const margemDispositivos = faturamentoDispositivos > 0 ? ((faturamentoDispositivos - custoDispositivos) / faturamentoDispositivos) * 100 : 0;
 
     // Buscar serviços avulsos do mês (apenas entregues ou finalizados)
