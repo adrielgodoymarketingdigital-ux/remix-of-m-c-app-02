@@ -46,11 +46,13 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
     setProprietarioId(user.id);
 
-    const [filiais, configLoja] = await Promise.all([
-      // Busca filiais com o gerente_id de cada uma
+    // Busca paralela: empresas do proprietário + config da loja
+    // A query de empresas filtra explicitamente por proprietario_id = user.id
+    // para evitar que gerentes de filiais vejam empresas alheias via RLS
+    const [filiaisRes, configLoja] = await Promise.all([
       supabase
         .from('empresas')
-        .select('id, nome, empresa_usuarios(gerente_id)')
+        .select('id, nome')
         .eq('proprietario_id', user.id)
         .eq('ativa', true)
         .order('created_at', { ascending: true }),
@@ -61,23 +63,40 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         .maybeSingle(),
     ]);
 
-    if (filiais.data && filiais.data.length > 0) {
+    const filiaisData = filiaisRes.data ?? [];
+
+    if (filiaisData.length > 0) {
       setIsProprietario(true);
-      const lista = filiais.data.map((e: any) => ({
+
+      // Busca gerentes somente das empresas deste proprietário
+      const ids = filiaisData.map((e: { id: string }) => e.id);
+      const { data: gerentesData } = await (supabase
+        .from('empresa_usuarios' as never)
+        .select('empresa_id, gerente_id')
+        .in('empresa_id' as never, ids as never) as any);
+
+      const gerentesMap: Record<string, string | null> = {};
+      if (gerentesData) {
+        for (const g of gerentesData as { empresa_id: string; gerente_id: string | null }[]) {
+          gerentesMap[g.empresa_id] = g.gerente_id;
+        }
+      }
+
+      const lista = filiaisData.map((e: { id: string; nome: string }) => ({
         id: e.id,
         nome: e.nome,
-        gerente_id: e.empresa_usuarios?.[0]?.gerente_id ?? null,
+        gerente_id: gerentesMap[e.id] ?? null,
       }));
       setEmpresas(lista);
 
-      // Limpar empresa ativa do localStorage se o ID não pertence mais a este usuário
+      // Limpar empresa ativa do localStorage se o ID não pertence a este proprietário
       const empresaAtivaLocal = localStorage.getItem('empresa_ativa');
       if (empresaAtivaLocal && !lista.some(e => e.id === empresaAtivaLocal)) {
         localStorage.removeItem('empresa_ativa');
         setEmpresaAtivaState(null);
       }
     } else {
-      // Usuário sem empresas — limpar qualquer empresa_ativa residual no localStorage
+      // Usuário sem empresas próprias — limpar qualquer empresa_ativa residual
       setIsProprietario(false);
       setEmpresas([]);
       localStorage.removeItem('empresa_ativa');
@@ -89,7 +108,26 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => { carregarEmpresas(); }, []);
+  useEffect(() => {
+    carregarEmpresas();
+
+    // Ao trocar de usuário ou fazer logout, limpar estado de empresa
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        localStorage.removeItem('empresa_ativa');
+        setEmpresaAtivaState(null);
+        setIsProprietario(false);
+        setEmpresas([]);
+        setProprietarioId(null);
+        setNomeMatriz("Minha Empresa");
+      }
+      if (event === 'SIGNED_IN') {
+        carregarEmpresas();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Resolve o user_id efetivo: gerente da filial ou o próprio proprietário
   const empresaSelecionada = empresas.find(e => e.id === empresaAtiva);
