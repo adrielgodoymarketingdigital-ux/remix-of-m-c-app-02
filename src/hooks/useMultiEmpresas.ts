@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Empresa, EmpresaUsuario, EmpresaMeta, EmpresaDashboard } from "@/types/multiempresas";
+import { EmpresaUsuario, EmpresaMeta, EmpresaDashboard } from "@/types/multiempresas";
 
 export interface MatrizMetricas {
   faturamento_mes: number;
@@ -18,108 +18,13 @@ export function useMultiEmpresas() {
   const carregarEmpresas = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const inicioMes = new Date();
-      inicioMes.setDate(1);
-      inicioMes.setHours(0, 0, 0, 0);
-
-      const { data: empresasData, error } = await supabase
-        .from('empresas')
-        .select('*')
-        .eq('proprietario_id', user.id)
-        .eq('ativa', true)
-        .order('created_at', { ascending: true });
+      const { data, error } = await supabase.functions.invoke('get-filiais-metricas');
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Buscar gerentes de todas as filiais de uma vez
-      const empresaIds = (empresasData || []).map(e => e.id);
-      const { data: todosGerentes } = empresaIds.length > 0
-        ? await supabase
-            .from('empresa_usuarios')
-            .select('empresa_id, gerente_id, permissoes, ativa, id, proprietario_id, created_at')
-            .in('empresa_id', empresaIds)
-            .eq('ativa', true)
-        : { data: [] };
-
-      console.log('[useMultiEmpresas] gerentes encontrados:', todosGerentes);
-
-      const empresasComDados = await Promise.all(
-        (empresasData || []).map(async (empresa) => {
-          const gerentesData = (todosGerentes || []).filter(g => g.empresa_id === empresa.id);
-
-          const { data: metasData } = await supabase
-            .from('empresa_metas')
-            .select('*')
-            .eq('empresa_id', empresa.id);
-
-          const gerenteUserId = gerentesData?.[0]?.gerente_id ?? null;
-          const userIdFilial = gerenteUserId ?? user.id;
-
-          console.log(`[useMultiEmpresas] filial "${empresa.nome}" → gerente_id: ${gerenteUserId}, userIdFilial: ${userIdFilial}`);
-
-          const [vendasRes, osRes] = await Promise.all([
-            supabase
-              .from('vendas')
-              .select('total')
-              .eq('user_id', userIdFilial)
-              .eq('cancelada', false)
-              .gte('data', inicioMes.toISOString()),
-            supabase
-              .from('ordens_servico')
-              .select('valor_total')
-              .eq('user_id', userIdFilial)
-              .gte('created_at', inicioMes.toISOString()),
-          ]);
-
-          const faturamento = [
-            ...(vendasRes.data || []).map(v => v.total || 0),
-            ...(osRes.data || []).map(o => o.valor_total || 0),
-          ].reduce((sum, v) => sum + v, 0);
-
-          return {
-            ...empresa,
-            gerentes: gerentesData || [],
-            metas: metasData || [],
-            metricas: {
-              faturamento_mes: faturamento,
-              os_mes: osRes.data?.length || 0,
-              vendas_mes: vendasRes.data?.length || 0,
-              clientes_ativos: 0,
-            },
-          };
-        })
-      );
-
-      // Métricas da matriz (proprietário)
-      const [vendasMatrizRes, osMatrizRes] = await Promise.all([
-        supabase
-          .from('vendas')
-          .select('total')
-          .eq('user_id', user.id)
-          .eq('cancelada', false)
-          .gte('data', inicioMes.toISOString()),
-        supabase
-          .from('ordens_servico')
-          .select('valor_total')
-          .eq('user_id', user.id)
-          .gte('created_at', inicioMes.toISOString()),
-      ]);
-
-      const faturamentoMatriz = [
-        ...(vendasMatrizRes.data || []).map(v => v.total || 0),
-        ...(osMatrizRes.data || []).map(o => o.valor_total || 0),
-      ].reduce((sum, v) => sum + v, 0);
-
-      setMatrizMetricas({
-        faturamento_mes: faturamentoMatriz,
-        os_mes: osMatrizRes.data?.length || 0,
-        vendas_mes: vendasMatrizRes.data?.length || 0,
-      });
-
-      setEmpresas(empresasComDados);
+      setEmpresas(data.empresas || []);
+      setMatrizMetricas(data.matrizMetricas || { faturamento_mes: 0, os_mes: 0, vendas_mes: 0 });
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar empresas");
