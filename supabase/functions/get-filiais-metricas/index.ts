@@ -130,11 +130,52 @@ serve(async (req) => {
 
     if (empresasError) throw new Error("Erro ao buscar empresas: " + empresasError.message);
 
+    // Se o usuário não tem empresa cadastrada, cria a matriz automaticamente
     if (!empresas || empresas.length === 0) {
-      return new Response(JSON.stringify({ empresas: [], matrizMetricas: { faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [] } }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const { data: perfil } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const nomeMatriz = perfil?.nome || user.email?.split("@")[0] || "Minha Empresa";
+
+      const { data: novaMatriz, error: erroMatriz } = await supabase
+        .from("empresas")
+        .insert({ nome: nomeMatriz, proprietario_id: user.id, tipo: "matriz", ativa: true })
+        .select()
+        .single();
+
+      if (erroMatriz || !novaMatriz) throw new Error("Erro ao criar empresa matriz: " + erroMatriz?.message);
+
+      // Vincula registros existentes sem empresa_id à nova matriz
+      await Promise.all([
+        supabase.from("ordens_servico").update({ empresa_id: novaMatriz.id }).eq("user_id", user.id).is("empresa_id", null),
+        supabase.from("vendas").update({ empresa_id: novaMatriz.id }).eq("user_id", user.id).is("empresa_id", null),
+      ]);
+
+      const metricas = await buscarMetricasEmpresa(supabase, user.id, novaMatriz.id, inicioMes, true);
+      const empresaCompleta = { ...novaMatriz, gerentes: [], metas: [], metricas: { ...metricas, clientes_ativos: 0 } };
+
+      return new Response(
+        JSON.stringify({ empresas: [], matrizMetricas: metricas, todasEmpresas: [empresaCompleta] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // Garante que exista exatamente uma empresa com tipo 'matriz'
+    const temMatriz = empresas.some((e: any) => e.tipo === "matriz");
+    if (!temMatriz) {
+      await supabase.from("empresas").update({ tipo: "matriz" }).eq("id", empresas[0].id);
+      empresas[0].tipo = "matriz";
+    }
+
+    // Vincula registros sem empresa_id à empresa matriz
+    const matrizExistente = empresas.find((e: any) => e.tipo === "matriz") || empresas[0];
+    await Promise.all([
+      supabase.from("ordens_servico").update({ empresa_id: matrizExistente.id }).eq("user_id", user.id).is("empresa_id", null),
+      supabase.from("vendas").update({ empresa_id: matrizExistente.id }).eq("user_id", user.id).is("empresa_id", null),
+    ]);
 
     const empresaIds = empresas.map((e: any) => e.id);
 
