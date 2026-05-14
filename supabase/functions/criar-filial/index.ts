@@ -45,12 +45,13 @@ serve(async (req) => {
       );
     }
 
-    // Verificar limite de 3 filiais
+    // Verificar limite de 3 filiais (não conta a matriz)
     const { count } = await supabase
       .from('empresas')
       .select('*', { count: 'exact', head: true })
       .eq('proprietario_id', user.id)
-      .eq('ativa', true);
+      .eq('ativa', true)
+      .eq('tipo', 'filial');
 
     if ((count || 0) >= 3) {
       return new Response(
@@ -92,20 +93,21 @@ serve(async (req) => {
       email: email_gerente,
     });
 
-    // Criar assinatura free para o gerente (acesso controlado pelo proprietário)
+    // Criar assinatura free para o gerente (acesso controlado pelo proprietário via empresa_usuarios)
     await supabase.from('assinaturas').insert({
       user_id: gerenteData.user.id,
-      plano_tipo: 'gerente_filial',
+      plano_tipo: 'free',
       status: 'active',
       payment_provider: 'multi_empresa',
     });
 
-    // Criar empresa
+    // Criar empresa filial
     const { data: empresa, error: empresaError } = await supabase
       .from('empresas')
       .insert({
         proprietario_id: user.id,
         nome,
+        tipo: 'filial',
         cnpj: cnpj || null,
         telefone: telefone || null,
         endereco: endereco || null,
