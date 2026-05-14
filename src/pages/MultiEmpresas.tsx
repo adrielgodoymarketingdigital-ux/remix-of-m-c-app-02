@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Lock, Plus, Building2, Home, TrendingUp, Target, Bell,
+  Lock, Plus, Building2, Home, TrendingUp, Target, Bell, Info, X,
   ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw, Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -427,6 +427,15 @@ export default function MultiEmpresas() {
   const [novoNome, setNovoNome] = useState("");
   const [salvandoNome, setSalvandoNome] = useState(false);
 
+  const [bannerFechado, setBannerFechado] = useState(() =>
+    localStorage.getItem("multiempresas_banner_fechado") === "1"
+  );
+
+  const fecharBanner = () => {
+    localStorage.setItem("multiempresas_banner_fechado", "1");
+    setBannerFechado(true);
+  };
+
   const filiais = todasEmpresas.filter(e => e.tipo !== "matriz");
   const matriz = todasEmpresas.find(e => e.tipo === "matriz");
 
@@ -625,6 +634,32 @@ export default function MultiEmpresas() {
             <Plus className="h-4 w-4 mr-2" /> Nova Filial
           </Button>
         </div>
+
+        {/* Banner informativo */}
+        {!bannerFechado && !isLoading && (
+          <div className="relative rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
+            <button
+              onClick={fecharBanner}
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Fechar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex gap-3 pr-6">
+              <Info className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
+              <div className="space-y-2 text-sm">
+                <p className="font-semibold text-blue-400">Como funciona o Multi Empresas</p>
+                <p className="text-muted-foreground">
+                  Cada empresa (matriz + filiais) tem seus próprios dados de OS, vendas e faturamento.
+                  Ao acessar uma empresa pelo botão <strong className="text-foreground">Acessar</strong>, o sistema muda o contexto e você opera dentro daquela empresa — as OS e vendas criadas ficam vinculadas a ela.
+                </p>
+                <p className="text-muted-foreground">
+                  <strong className="text-foreground">Primeira vez aqui?</strong> Sua empresa matriz foi criada automaticamente e todo o histórico de OS e vendas já existentes foi vinculado a ela. Os valores que você vê nos cards refletem os dados reais de cada empresa no mês atual.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* KPI consolidado */}
         <Card className="border-blue-500/40 bg-blue-500/5">
