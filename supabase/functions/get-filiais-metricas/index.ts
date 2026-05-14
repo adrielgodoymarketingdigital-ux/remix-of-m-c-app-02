@@ -19,17 +19,10 @@ function calcularVendaLiquida(v: any): number {
 }
 
 async function buscarDadosUsuario(supabase: any, userId: string, inicioMes: Date) {
-  const SELECT_VENDAS = `
-    id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom,
-    forma_pagamento, cancelada, quantidade,
-    clientes!vendas_cliente_fkey(nome),
-    produtos(nome), pecas(nome)
-  `;
-
   const [vendasRes, osRes, ultimasVendasRes] = await Promise.all([
     supabase
       .from("vendas")
-      .select("total, valor_desconto_manual, valor_desconto_cupom")
+      .select("total, valor_desconto_manual, valor_desconto_cupom, tipo")
       .eq("user_id", userId)
       .eq("cancelada", false)
       .gte("data", inicioMes.toISOString()),
@@ -40,7 +33,7 @@ async function buscarDadosUsuario(supabase: any, userId: string, inicioMes: Date
       .gte("created_at", inicioMes.toISOString()),
     supabase
       .from("vendas")
-      .select(SELECT_VENDAS)
+      .select("id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id")
       .eq("user_id", userId)
       .eq("cancelada", false)
       .order("data", { ascending: false })
@@ -52,7 +45,6 @@ async function buscarDadosUsuario(supabase: any, userId: string, inicioMes: Date
     ...(osRes.data || []).map((o: any) => Number(o.valor_total) || 0),
   ].reduce((sum: number, v: number) => sum + v, 0);
 
-  // Agrupa por tipo para "ver todas por tipo"
   const porTipo: Record<string, { tipo: string; label: string; total: number; quantidade: number }> = {};
   for (const v of vendasRes.data || []) {
     const tipo = v.tipo || "outros";
@@ -61,13 +53,29 @@ async function buscarDadosUsuario(supabase: any, userId: string, inicioMes: Date
     porTipo[tipo].quantidade += 1;
   }
 
-  const ultimasVendas = (ultimasVendasRes.data || []).map((v: any) => ({
+  // Busca nomes de clientes/produtos/pecas das ultimas vendas
+  const ultimas = ultimasVendasRes.data || [];
+  const clienteIds = [...new Set(ultimas.map((v: any) => v.cliente_id).filter(Boolean))];
+  const produtoIds = [...new Set(ultimas.map((v: any) => v.produto_id).filter(Boolean))];
+  const pecaIds = [...new Set(ultimas.map((v: any) => v.peca_id).filter(Boolean))];
+
+  const [clientesRes, produtosRes, pecasRes] = await Promise.all([
+    clienteIds.length ? supabase.from("clientes").select("id, nome").in("id", clienteIds) : { data: [] },
+    produtoIds.length ? supabase.from("produtos").select("id, nome").in("id", produtoIds) : { data: [] },
+    pecaIds.length ? supabase.from("pecas").select("id, nome").in("id", pecaIds) : { data: [] },
+  ]);
+
+  const clienteMap = Object.fromEntries((clientesRes.data || []).map((c: any) => [c.id, c.nome]));
+  const produtoMap = Object.fromEntries((produtosRes.data || []).map((p: any) => [p.id, p.nome]));
+  const pecaMap = Object.fromEntries((pecasRes.data || []).map((p: any) => [p.id, p.nome]));
+
+  const ultimasVendas = ultimas.map((v: any) => ({
     id: v.id,
     data: v.data,
     tipo: v.tipo,
     label: TIPOS_LABEL[v.tipo] || v.tipo,
-    nome: v.produtos?.nome || v.pecas?.nome || (v.tipo === "servico_avulso" ? "Serviço Avulso" : "Item"),
-    cliente: v.clientes?.nome || null,
+    nome: produtoMap[v.produto_id] || pecaMap[v.peca_id] || (v.tipo === "servico_avulso" ? "Serviço Avulso" : "Item"),
+    cliente: clienteMap[v.cliente_id] || null,
     valor: calcularVendaLiquida(v),
     forma_pagamento: v.forma_pagamento,
     quantidade: v.quantidade,
@@ -111,7 +119,7 @@ serve(async (req) => {
 
     if (!empresas || empresas.length === 0) {
       const matrizDados = await buscarDadosUsuario(supabase, user.id, inicioMes);
-      return new Response(JSON.stringify({ empresas: [], matrizMetricas: matrizDados }), {
+      return new Response(JSON.stringify({ empresas: [], matrizMetricas: matrizDados, _debug_user_id: user.id, _debug_email: user.email }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
