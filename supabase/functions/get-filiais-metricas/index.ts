@@ -35,8 +35,9 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
   const [vendasRes, osRes, ultimasVendasRes] = await Promise.all([
     buildVendasQuery("total, valor_desconto_manual, valor_desconto_cupom, tipo")
       .gte("data", inicioMes.toISOString()),
-    buildOsQuery("valor_total, status")
-      .gte("created_at", inicioMes.toISOString()),
+    buildOsQuery("total, status")
+      .gte("created_at", inicioMes.toISOString())
+      .is("deleted_at", null),
     buildVendasQuery("id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id")
       .order("data", { ascending: false })
       .limit(5),
@@ -51,7 +52,7 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
   const faturamentoVendas = (vendasRes.data || []).reduce((sum: number, v: any) => sum + calcularVendaLiquida(v), 0);
   const faturamentoOS = osData
     .filter((o: any) => isStatusFinal(o.status))
-    .reduce((sum: number, o: any) => sum + (Number(o.valor_total) || 0), 0);
+    .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
   const faturamento = faturamentoVendas + faturamentoOS;
 
   const porTipo: Record<string, { tipo: string; label: string; total: number; quantidade: number }> = {};
