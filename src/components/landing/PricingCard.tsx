@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Crown, Rocket } from "lucide-react";
+import { Check, Zap, Crown, Rocket, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const TODAS_FUNCIONALIDADES = [
@@ -83,6 +83,30 @@ export const FUNCIONALIDADES_POR_PLANO: Record<string, string[]> = {
     "Suporte por email", "Suporte via WhatsApp",
     "Suporte prioritário por WhatsApp",
   ],
+  profissional_ultra_mensal: [
+    "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
+    "Ordem de Serviço", "Orçamentos", "Serviços", "Fornecedores", "Clientes",
+    "Contas", "Financeiro", "Catálogo Online", "Assinatura Digital do Cliente na O.S",
+    "Funcionários e Comissões ilimitados", "Notificações Automáticas no Celular",
+    "Aniversariantes do Mês com WhatsApp", "Consulta de IMEI pela Anatel",
+    "Verificação de garantia Apple",
+    "Link de Acompanhamento de OS (Ilimitado)",
+    "Multi Empresas (até 3 filiais)",
+    "Suporte por email", "Suporte via WhatsApp",
+    "Suporte prioritário por WhatsApp",
+  ],
+  profissional_ultra_anual: [
+    "Dashboard", "PDV", "Vendas", "Dispositivos", "Produtos e Peças",
+    "Ordem de Serviço", "Orçamentos", "Serviços", "Fornecedores", "Clientes",
+    "Contas", "Financeiro", "Catálogo Online", "Assinatura Digital do Cliente na O.S",
+    "Funcionários e Comissões ilimitados", "Notificações Automáticas no Celular",
+    "Aniversariantes do Mês com WhatsApp", "Consulta de IMEI pela Anatel",
+    "Verificação de garantia Apple",
+    "Link de Acompanhamento de OS (Ilimitado)",
+    "Multi Empresas (até 3 filiais)",
+    "Suporte por email", "Suporte via WhatsApp",
+    "Suporte prioritário por WhatsApp",
+  ],
 };
 
 interface PricingCardProps {
@@ -144,6 +168,19 @@ export function PricingCard({
         Icon: Crown,
       };
     }
+    if (planoKey.includes("ultra")) {
+      return {
+        gradient: "from-amber-50 via-white to-yellow-50",
+        border: "border-amber-300",
+        accent: "text-amber-600",
+        glow: "shadow-xl shadow-amber-500/20",
+        iconBg: "bg-amber-100",
+        iconColor: "text-amber-600",
+        buttonClass: "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/30",
+        dividerBg: "from-amber-50 to-white",
+        Icon: Star,
+      };
+    }
     if (planoKey.includes("profissional")) {
       return {
         gradient: "from-violet-50 via-white to-violet-50",
@@ -192,6 +229,13 @@ export function PricingCard({
           <div className="absolute -top-px left-1/2 -translate-x-1/2">
             <div className="px-4 py-1 rounded-b-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold uppercase tracking-wider">
               ⚡ Mais Popular
+            </div>
+          </div>
+        )}
+        {planoKey.includes("ultra") && (
+          <div className="absolute -top-px left-1/2 -translate-x-1/2">
+            <div className="px-4 py-1 rounded-b-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold uppercase tracking-wider">
+              ⭐ Plano Topo
             </div>
           </div>
         )}

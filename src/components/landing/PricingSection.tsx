@@ -38,18 +38,26 @@ export function PricingSection() {
       "50 links de acompanhamento de OS/mês",
       "50GB de armazenamento",
     ],
+    ultra: [
+      "Tudo do Plano Profissional",
+      "Multi Empresas (até 3 filiais)",
+      "Links de acompanhamento de OS ilimitados",
+      "50GB de armazenamento",
+    ],
   };
 
-  const planosExibidos = isAnual 
+  const planosExibidos = isAnual
     ? [
         { ...PLANOS.basico_anual, planoKey: "basico_anual", limites: limitesPlanos.basico },
         { ...PLANOS.intermediario_anual, planoKey: "intermediario_anual", popular: true, limites: limitesPlanos.intermediario },
-        { ...PLANOS.profissional_anual, planoKey: "profissional_anual", limites: limitesPlanos.profissional }
+        { ...PLANOS.profissional_anual, planoKey: "profissional_anual", limites: limitesPlanos.profissional },
+        { ...PLANOS.profissional_ultra_anual, planoKey: "profissional_ultra_anual", limites: limitesPlanos.ultra },
       ]
     : [
         { ...PLANOS.basico_mensal, planoKey: "basico_mensal", limites: limitesPlanos.basico },
         { ...PLANOS.intermediario_mensal, planoKey: "intermediario_mensal", popular: true, limites: limitesPlanos.intermediario },
-        { ...PLANOS.profissional_mensal, planoKey: "profissional_mensal", limites: limitesPlanos.profissional }
+        { ...PLANOS.profissional_mensal, planoKey: "profissional_mensal", limites: limitesPlanos.profissional },
+        { ...PLANOS.profissional_ultra_mensal, planoKey: "profissional_ultra_mensal", limites: limitesPlanos.ultra },
       ];
 
   return (
@@ -115,7 +123,7 @@ export function PricingSection() {
         </div>
 
         {/* Pricing Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
           <PricingCard
             nome="Free"
             preco={0}
@@ -126,14 +134,15 @@ export function PricingSection() {
             isAnual={false}
             isFree={true}
           />
-          
+
           {planosExibidos.map((plano, index) => {
             const precos = [
               { mensal: 19.90, anual: 190.80 },
               { mensal: 39.90, anual: 382.80 },
               { mensal: 79.90, anual: 898.80 },
+              { mensal: 129.90, anual: 1318.80 },
             ];
-            const precosOriginais = [39.90, 69.90, 119.90];
+            const precosOriginais = [39.90, 69.90, 119.90, 179.90];
 
             return (
               <PricingCard
