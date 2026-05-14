@@ -25,7 +25,7 @@ export function useMultiEmpresas() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.info(`Logado como: ${data._debug_email}`);
+      toast.info(`${data._debug_email} | ${data.empresas?.length ?? 0} filiais`);
       setEmpresas(data.empresas || []);
       setMatrizMetricas(data.matrizMetricas || { faturamento_mes: 0, os_mes: 0, vendas_mes: 0 });
     } catch (error: any) {
