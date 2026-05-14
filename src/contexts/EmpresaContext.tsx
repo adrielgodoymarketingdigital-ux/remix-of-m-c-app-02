@@ -55,6 +55,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         .select('id, nome')
         .eq('proprietario_id', user.id)
         .eq('ativa', true)
+        .eq('tipo', 'filial')
         .order('created_at', { ascending: true }),
       supabase
         .from('configuracoes_loja')
@@ -65,20 +66,32 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
     const filiaisData = filiaisRes.data ?? [];
 
-    if (filiaisData.length > 0) {
+    // Verifica se o usuário tem uma empresa matriz (é proprietário de fato)
+    const { data: matrizData } = await supabase
+      .from('empresas')
+      .select('id')
+      .eq('proprietario_id', user.id)
+      .eq('tipo', 'matriz')
+      .eq('ativa', true)
+      .maybeSingle();
+
+    if (matrizData) {
       setIsProprietario(true);
 
-      // Busca gerentes somente das empresas deste proprietário
+      // Busca gerentes somente das filiais deste proprietário
       const ids = filiaisData.map((e: { id: string }) => e.id);
-      const { data: gerentesData } = await (supabase
-        .from('empresa_usuarios' as never)
-        .select('empresa_id, gerente_id')
-        .in('empresa_id' as never, ids as never) as any);
-
       const gerentesMap: Record<string, string | null> = {};
-      if (gerentesData) {
-        for (const g of gerentesData as { empresa_id: string; gerente_id: string | null }[]) {
-          gerentesMap[g.empresa_id] = g.gerente_id;
+
+      if (ids.length > 0) {
+        const { data: gerentesData } = await (supabase
+          .from('empresa_usuarios' as never)
+          .select('empresa_id, gerente_id')
+          .in('empresa_id' as never, ids as never) as any);
+
+        if (gerentesData) {
+          for (const g of gerentesData as { empresa_id: string; gerente_id: string | null }[]) {
+            gerentesMap[g.empresa_id] = g.gerente_id;
+          }
         }
       }
 
