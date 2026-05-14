@@ -242,19 +242,21 @@ const Dashboard = () => {
     // Buscar por data OU data_recebimento para capturar vendas "a_receber" recebidas no período
     const { data: vendasProdutos } = await supabase
       .from("vendas")
-      .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido")
+      .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes")
       .eq("user_id", user.id)
       .eq("tipo", "produto")
       .eq("cancelada", false)
+      .is("deleted_at", null)
       .or(`and(data.gte.${queryInicio},data.lte.${queryFim}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${queryInicio},data_recebimento.lte.${queryFim}T23:59:59)`);
 
     // Buscar vendas de dispositivos com custo
     const { data: vendasDispositivos } = await supabase
       .from("vendas")
-      .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido")
+      .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes")
       .eq("user_id", user.id)
       .eq("tipo", "dispositivo")
       .eq("cancelada", false)
+      .is("deleted_at", null)
       .or(`and(data.gte.${queryInicio},data.lte.${queryFim}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${queryInicio},data_recebimento.lte.${queryFim}T23:59:59)`);
 
     // Calcular serviços (custo pelo servico_id + custos adicionais assumidos pela loja)
@@ -296,15 +298,22 @@ const Dashboard = () => {
 
     // Margem de serviços será calculada após incluir avulsos
 
+    // Excluir peças/itens de OS (mesmo critério de useVendas e useRelatorios)
+    const excluirItemOS = (v: any) => {
+      if (v.peca_id) return true;
+      if (v.observacoes && typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return true;
+      return false;
+    };
+
     // Distribuir custo das parcelas antes de calcular totais
-    const vendasProdutosDistribuidas = distribuirCustoParcelasGrupo(vendasProdutos || []);
+    const vendasProdutosDistribuidas = distribuirCustoParcelasGrupo((vendasProdutos || []).filter((v: any) => !excluirItemOS(v)));
     const vendasProdutosFiltradas = vendasProdutosDistribuidas.filter((v: any) => isVendaInFinancialPeriod(v, inicio, fim));
     const faturamentoProdutos = vendasProdutosFiltradas.reduce((acc, v: any) => acc + getVendaReceitaLiquida(v), 0);
     const custoProdutos = vendasProdutosFiltradas.reduce((acc, v: any) => acc + getVendaCustoTotal(v), 0);
     const margemProdutos = faturamentoProdutos > 0 ? ((faturamentoProdutos - custoProdutos) / faturamentoProdutos) * 100 : 0;
 
     // Calcular dispositivos (valor líquido com desconto) - ignorar parcelas duplicadas
-    const vendasDispositivosDistribuidas = distribuirCustoParcelasGrupo(vendasDispositivos || []);
+    const vendasDispositivosDistribuidas = distribuirCustoParcelasGrupo((vendasDispositivos || []).filter((v: any) => !excluirItemOS(v)));
     const vendasDispositivosFiltradas = vendasDispositivosDistribuidas.filter((v: any) => isVendaInFinancialPeriod(v, inicio, fim));
     const faturamentoDispositivos = vendasDispositivosFiltradas.reduce((acc, v: any) => acc + getVendaReceitaLiquida(v), 0);
     const custoDispositivos = vendasDispositivosFiltradas.reduce((acc, v: any) => acc + getVendaCustoTotal(v), 0);
