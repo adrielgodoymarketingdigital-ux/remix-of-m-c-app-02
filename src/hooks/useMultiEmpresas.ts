@@ -34,22 +34,31 @@ export function useMultiEmpresas() {
 
       if (error) throw error;
 
+      // Buscar gerentes de todas as filiais de uma vez
+      const empresaIds = (empresasData || []).map(e => e.id);
+      const { data: todosGerentes } = empresaIds.length > 0
+        ? await supabase
+            .from('empresa_usuarios')
+            .select('empresa_id, gerente_id, permissoes, ativa, id, proprietario_id, created_at')
+            .in('empresa_id', empresaIds)
+            .eq('ativa', true)
+        : { data: [] };
+
+      console.log('[useMultiEmpresas] gerentes encontrados:', todosGerentes);
+
       const empresasComDados = await Promise.all(
         (empresasData || []).map(async (empresa) => {
-          const { data: gerentesData } = await supabase
-            .from('empresa_usuarios')
-            .select('*')
-            .eq('empresa_id', empresa.id)
-            .eq('ativa', true);
+          const gerentesData = (todosGerentes || []).filter(g => g.empresa_id === empresa.id);
 
           const { data: metasData } = await supabase
             .from('empresa_metas')
             .select('*')
             .eq('empresa_id', empresa.id);
 
-          // Buscar user_id do gerente desta filial para filtrar dados corretamente
           const gerenteUserId = gerentesData?.[0]?.gerente_id ?? null;
-          const userIdFilial = gerenteUserId || user.id;
+          const userIdFilial = gerenteUserId ?? user.id;
+
+          console.log(`[useMultiEmpresas] filial "${empresa.nome}" → gerente_id: ${gerenteUserId}, userIdFilial: ${userIdFilial}`);
 
           const [vendasRes, osRes] = await Promise.all([
             supabase
