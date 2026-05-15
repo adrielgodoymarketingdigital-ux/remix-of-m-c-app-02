@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export interface TipoServico {
   id: string;
@@ -15,6 +16,7 @@ export function useTiposServico() {
   const [tiposServico, setTiposServico] = useState<TipoServico[]>([]);
   const [loading, setLoading] = useState(false);
   const { lojaUserId, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregar = useCallback(async () => {
     if (carregandoPermissoes) return;
@@ -25,11 +27,13 @@ export function useTiposServico() {
 
       const userId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("tipos_servico")
         .select("*")
         .eq("user_id", userId)
         .order("nome");
+      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      const { data, error } = await query;
 
       if (error) throw error;
       setTiposServico((data || []) as TipoServico[]);
@@ -39,7 +43,7 @@ export function useTiposServico() {
     } finally {
       setLoading(false);
     }
-  }, [lojaUserId, isFuncionario, carregandoPermissoes]);
+  }, [lojaUserId, isFuncionario, carregandoPermissoes, empresaFiltro]);
 
   const criar = async (nome: string) => {
     try {

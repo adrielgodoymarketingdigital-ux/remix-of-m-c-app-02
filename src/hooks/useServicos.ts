@@ -4,11 +4,13 @@ import { toast } from "sonner";
 import { Servico } from "@/types/servico";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export const useServicos = () => {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [loading, setLoading] = useState(false);
   const { lojaUserId, podeSincronizarServicos, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregarServicos = useCallback(async () => {
     // Aguardar permissões carregarem para usar o user_id correto
@@ -26,7 +28,7 @@ export const useServicos = () => {
       const userId = (isFuncionario && podeSincronizarServicos && lojaUserId) ? lojaUserId : user.id;
 
       const data = await withRetry(async () => {
-        const { data, error } = await supabase
+        let query = supabase
           .from("servicos")
           .select(`
             *,
@@ -37,6 +39,8 @@ export const useServicos = () => {
           `)
           .eq("user_id", userId)
           .order("nome");
+        if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+        const { data, error } = await query;
         if (error) throw error;
         return data;
       }, 'useServicos.carregarServicos');
@@ -60,7 +64,7 @@ export const useServicos = () => {
     } finally {
       setLoading(false);
     }
-  }, [lojaUserId, podeSincronizarServicos, isFuncionario, carregandoPermissoes]);
+  }, [lojaUserId, podeSincronizarServicos, isFuncionario, carregandoPermissoes, empresaFiltro]);
 
   const criarServico = async (dados: Omit<Servico, "id" | "created_at">) => {
     try {

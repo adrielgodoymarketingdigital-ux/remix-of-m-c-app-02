@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   RelatorioDispositivo,
@@ -7,10 +7,14 @@ import {
   FiltrosRelatorioVendas,
 } from "@/types/relatorio-vendas";
 import { useToast } from "@/hooks/use-toast";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export const useRelatoriosVendas = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const empresaFiltro = useEmpresaFiltro();
+  const empresaFiltroRef = useRef(empresaFiltro);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
 
   const buscarRelatorioDispositivos = async (
     filtros: FiltrosRelatorioVendas
@@ -39,6 +43,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         query = query.lte("data", filtros.dataFim);
       }
+      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
 
       const { data: vendas, error } = await query;
       if (error) throw error;
@@ -127,6 +132,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         queryVendas = queryVendas.lte("data", filtros.dataFim);
       }
+      if (empresaFiltroRef.current) queryVendas = queryVendas.eq("empresa_id", empresaFiltroRef.current);
 
       const { data: vendas, error } = await queryVendas;
       if (error) throw error;
@@ -211,6 +217,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         query = query.lte("updated_at", filtros.dataFim);
       }
+      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
 
       const { data: ordens, error } = await query;
       if (error) throw error;

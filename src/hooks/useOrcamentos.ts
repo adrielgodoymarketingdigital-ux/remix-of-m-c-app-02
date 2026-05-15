@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Orcamento, ItemOrcamento, StatusOrcamento } from "@/types/orcamento";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export function useOrcamentos() {
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [carregando, setCarregando] = useState(true);
   const { toast } = useToast();
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregarOrcamentos = async () => {
     try {
@@ -15,12 +17,14 @@ export function useOrcamentos() {
       const user = session?.user;
       if (!user) return;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("orcamentos")
         .select("*")
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
+      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -158,7 +162,7 @@ export function useOrcamentos() {
 
   useEffect(() => {
     carregarOrcamentos();
-  }, []);
+  }, [empresaFiltro]);
 
   return {
     orcamentos,

@@ -3,11 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Fornecedor, FormularioFornecedor } from "@/types/fornecedor";
 import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export function useFornecedores() {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregarFornecedores = useCallback(async () => {
     try {
@@ -18,13 +20,16 @@ export function useFornecedores() {
         return;
       }
 
+      const ef = empresaFiltro;
       const data = await withRetry(async () => {
-        const { data, error } = await supabase
+        let query = supabase
           .from("fornecedores")
           .select("*")
           .eq("user_id", user.id)
           .is("deleted_at", null)
           .order("nome");
+        if (ef) query = query.eq("empresa_id", ef);
+        const { data, error } = await query;
         if (error) throw error;
         return data;
       }, 'useFornecedores.carregarFornecedores');
@@ -42,7 +47,7 @@ export function useFornecedores() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, empresaFiltro]);
 
   const criarFornecedor = async (dados: FormularioFornecedor) => {
     try {

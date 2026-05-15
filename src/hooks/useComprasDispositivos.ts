@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export function useComprasDispositivos() {
   const [compras, setCompras] = useState<CompraDispositivo[]>([]);
   const [loading, setLoading] = useState(true);
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregarCompras = useCallback(async () => {
     try {
@@ -16,7 +18,7 @@ export function useComprasDispositivos() {
         return;
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("compras_dispositivos")
         .select(`
           *,
@@ -37,6 +39,8 @@ export function useComprasDispositivos() {
         `)
         .eq("user_id", user.id)
         .order("data_compra", { ascending: false });
+      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      const { data, error } = await query;
 
       if (error) throw error;
       setCompras((data || []) as CompraDispositivo[]);
@@ -48,7 +52,7 @@ export function useComprasDispositivos() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [empresaFiltro]);
 
   const criarCompra = async (dados: FormularioCompraDispositivo) => {
     try {

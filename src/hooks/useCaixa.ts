@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
   const [loading, setLoading] = useState(true);
+  const empresaFiltro = useEmpresaFiltro();
 
   useEffect(() => {
     carregarCaixaAtual();
-  }, []);
+  }, [empresaFiltro]);
 
   const carregarCaixaAtual = async () => {
     setLoading(true);
@@ -17,14 +19,15 @@ export function useCaixa() {
       if (!user) return;
 
       // Tentar caixa aberto primeiro
-      const { data: aberto, error: erroAberto } = await supabase
+      let baseAberto = supabase
         .from("caixas")
         .select("*")
         .eq("user_id", user.id)
         .eq("status", "aberto")
         .order("data_abertura", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (empresaFiltro) baseAberto = baseAberto.eq("empresa_id", empresaFiltro);
+      const { data: aberto, error: erroAberto } = await baseAberto.maybeSingle();
 
       if (erroAberto) throw erroAberto;
 
@@ -34,14 +37,15 @@ export function useCaixa() {
       }
 
       // Se não houver aberto, buscar o mais recente fechado
-      const { data: fechado, error: erroFechado } = await supabase
+      let baseFechado = supabase
         .from("caixas")
         .select("*")
         .eq("user_id", user.id)
         .eq("status", "fechado")
         .order("data_abertura", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (empresaFiltro) baseFechado = baseFechado.eq("empresa_id", empresaFiltro);
+      const { data: fechado, error: erroFechado } = await baseFechado.maybeSingle();
 
       if (erroFechado) throw erroFechado;
       setCaixaAtual(fechado as Caixa | null);
@@ -76,6 +80,7 @@ export function useCaixa() {
         saldo_inicial: saldoInicial,
         observacoes: observacoes || null,
         status: "aberto",
+        ...(empresaFiltro ? { empresa_id: empresaFiltro } : {}),
       })
       .select()
       .single();

@@ -9,12 +9,17 @@ import {
   ResumoFinanceiro,
   FiltrosRelatorio,
 } from "@/types/relatorio";
+import { useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod } from "@/lib/vendasFinanceiras";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export const useRelatorios = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const empresaFiltro = useEmpresaFiltro();
+  const empresaFiltroRef = useRef(empresaFiltro);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
 
   const parseFiltroDate = (date: string, endOfDay = false) => {
     const [year, month, day] = date.split("-").map(Number);
@@ -78,6 +83,7 @@ export const useRelatorios = () => {
       if (filtros.tipo && filtros.tipo !== "todos") {
         queryVendas = queryVendas.eq("tipo", filtros.tipo);
       }
+      if (empresaFiltroRef.current) queryVendas = queryVendas.eq("empresa_id", empresaFiltroRef.current);
 
       // Buscar ordens de serviço finalizadas/entregues (somente do usuário)
       // data_saida preenchida apenas em "entregue". Fallback: created_at (nunca muda),
@@ -106,6 +112,7 @@ export const useRelatorios = () => {
           `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
         );
       }
+      if (empresaFiltroRef.current) queryOrdens = queryOrdens.eq("empresa_id", empresaFiltroRef.current);
 
       // Buscar todos os serviços (somente do usuário)
       const queryServicos = supabase
@@ -567,6 +574,8 @@ export const useRelatorios = () => {
       const fimPeriodo = filtros.dataFim ? parseFiltroDate(filtros.dataFim, true) : null;
       const { queryInicio, queryFim } = getFinancialQueryDateBounds(inicioPeriodo, fimPeriodo);
 
+      const ef = empresaFiltroRef.current;
+
       // Buscar vendas NÃO canceladas (somente do usuário)
       let queryVendas = supabase
         .from("vendas")
@@ -593,6 +602,7 @@ export const useRelatorios = () => {
           `data.lte.${queryFim}T23:59:59,and(data_recebimento.not.is.null,data_recebimento.lte.${queryFim}T23:59:59)`
         );
       }
+      if (ef) queryVendas = queryVendas.eq("empresa_id", ef);
 
       let queryOrdens = supabase
         .from("ordens_servico")
@@ -617,6 +627,7 @@ export const useRelatorios = () => {
           `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
         );
       }
+      if (ef) queryOrdens = queryOrdens.eq("empresa_id", ef);
 
       // Buscar todos os serviços (somente do usuário)
       const queryServicos = supabase
@@ -674,6 +685,7 @@ export const useRelatorios = () => {
       if (filtros.dataFim) {
         queryContasPagar = queryContasPagar.lte("data", filtros.dataFim);
       }
+      if (ef) queryContasPagar = queryContasPagar.eq("empresa_id", ef);
 
       // Buscar receitas manuais - contas "receber/recebido" (somente do usuário)
       let queryContasReceber = supabase
@@ -689,6 +701,7 @@ export const useRelatorios = () => {
       if (filtros.dataFim) {
         queryContasReceber = queryContasReceber.lte("data", filtros.dataFim);
       }
+      if (ef) queryContasReceber = queryContasReceber.eq("empresa_id", ef);
 
       // Buscar taxas de cartão separadamente
       let queryTaxasCartao = supabase
@@ -705,6 +718,7 @@ export const useRelatorios = () => {
       if (filtros.dataFim) {
         queryTaxasCartao = queryTaxasCartao.lte("data", filtros.dataFim);
       }
+      if (ef) queryTaxasCartao = queryTaxasCartao.eq("empresa_id", ef);
 
       const [
         { data: contasPagar, error: contaPagarError },

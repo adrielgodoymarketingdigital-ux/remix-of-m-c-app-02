@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OrigemPessoa, FormularioOrigemPessoa } from "@/types/origem";
+import { useEmpresaFiltro } from "./useResolvedUserId";
 
 export function useOrigemPessoas() {
   const [pessoas, setPessoas] = useState<OrigemPessoa[]>([]);
   const [loading, setLoading] = useState(true);
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregarPessoas = useCallback(async () => {
     try {
@@ -16,12 +18,14 @@ export function useOrigemPessoas() {
         return;
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("origem_pessoas")
         .select("*")
         .eq("user_id", user.id)
         .eq("ativo", true)
         .order("nome");
+      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      const { data, error } = await query;
 
       if (error) throw error;
       setPessoas((data || []) as OrigemPessoa[]);
@@ -33,7 +37,7 @@ export function useOrigemPessoas() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [empresaFiltro]);
 
   const criarPessoa = async (dados: FormularioOrigemPessoa) => {
     try {
