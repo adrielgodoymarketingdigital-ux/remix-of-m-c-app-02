@@ -356,6 +356,14 @@ export function TerceirizadaTab({
         </div>
       )}
 
+      {/* DEBUG — remover após identificar campos */}
+      {ordensRaw.length > 0 && (
+        <div className="mb-4 p-3 rounded border border-yellow-400 bg-yellow-50 dark:bg-yellow-950 text-xs font-mono break-all">
+          <p className="font-bold mb-1">DEBUG — campos da 1ª OS raw:</p>
+          <pre className="whitespace-pre-wrap">{JSON.stringify(ordensRaw[0], null, 2)}</pre>
+        </div>
+      )}
+
       {/* 5 cards gerenciais */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
         {/* Card META OS */}
