@@ -46,8 +46,9 @@ Deno.serve(async (req) => {
       redirect_uri:
         "https://qztuzcchknptrvkdmdph.supabase.co/functions/v1/tiny-oauth-callback",
       response_type: "code",
-      scope: "openid",
+      scope: "openid offline_access",
       state: user.id,
+      prompt: "consent",
     });
 
     const authUrl = `${TINY_AUTH_URL}?${params.toString()}`;

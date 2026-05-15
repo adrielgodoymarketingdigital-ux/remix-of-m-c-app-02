@@ -24,10 +24,13 @@ async function refreshTokens(
   });
 
   if (!resp.ok) {
-    throw new Error("Falha ao renovar token");
+    const errText = await resp.text();
+    console.error("Falha ao renovar token:", resp.status, errText);
+    throw new Error(`Falha ao renovar token: ${resp.status} ${errText}`);
   }
 
   const tokens = await resp.json();
+  console.log("Token renovado com sucesso, novo expires_in:", tokens.expires_in);
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
   await supabase.from("tiny_integrations").update({
@@ -50,7 +53,6 @@ async function fetchAllPages(
 
   while (true) {
     const body = new URLSearchParams({
-      token: accessToken,
       ...params,
       formato: "json",
       pagina: String(page),
@@ -58,7 +60,10 @@ async function fetchAllPages(
 
     const resp = await fetch(`${TINY_API_BASE}/${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": `Bearer ${accessToken}`,
+      },
       body,
     });
 
@@ -148,11 +153,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Refresh token if expired (with 60s buffer)
-    let accessToken = integration.access_token;
-    const expiresAt = new Date(integration.expires_at).getTime();
-    if (Date.now() > expiresAt - 60_000) {
+    // Always refresh — tokens stored may be expired after reconnect issues
+    let accessToken: string;
+    try {
+      console.log("Tentando renovar token para user:", user.id);
       accessToken = await refreshTokens(supabase, user.id, integration.refresh_token);
+    } catch (refreshErr) {
+      console.error("Refresh falhou, tentando access_token existente:", refreshErr);
+      accessToken = integration.access_token;
     }
 
     // For single-item endpoints (pedido.obter), don't paginate
@@ -160,10 +168,13 @@ Deno.serve(async (req) => {
     let result: unknown;
 
     if (singleEndpoints.some((e) => endpoint.includes(e))) {
-      const body = new URLSearchParams({ token: accessToken, ...params, formato: "json" });
+      const body = new URLSearchParams({ ...params, formato: "json" });
       const resp = await fetch(`${TINY_API_BASE}/${endpoint}`, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Bearer ${accessToken}`,
+        },
         body,
       });
       result = await resp.json();
