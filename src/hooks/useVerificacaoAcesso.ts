@@ -435,10 +435,10 @@ export function useVerificacaoAcesso() {
 
       // 2. Verificar se é funcionário primeiro (com tratamento de erro robusto)
       console.log("🔍 [useVerificacaoAcesso] Verificando se usuário é funcionário...", { userId });
-      
+
       let funcionarioData = null;
       let isFuncionario = false;
-      
+
       try {
         const { data, error: funcError } = await supabase
           .from("loja_funcionarios")
@@ -458,14 +458,32 @@ export function useVerificacaoAcesso() {
         console.warn("⚠️ [useVerificacaoAcesso] Exceção ao buscar funcionário, assumindo dono:", e);
       }
 
-      console.log("🔍 [useVerificacaoAcesso] Resultado da busca funcionário:", { 
-        funcionarioData, 
+      console.log("🔍 [useVerificacaoAcesso] Resultado da busca funcionário:", {
+        funcionarioData,
         isFuncionario,
-        userId 
+        userId
       });
 
-      // Se for funcionário ativo, usar a assinatura do dono da loja
-      const userIdParaAssinatura = funcionarioData?.loja_user_id || userId;
+      // Verificar se é gerente de filial — usa o plano do proprietário da matriz
+      let gerenteFilialProprietarioId: string | null = null;
+      if (!isFuncionario) {
+        try {
+          const { data: gerenteData } = await supabase
+            .from("empresa_usuarios")
+            .select("proprietario_id")
+            .eq("gerente_id", userId)
+            .maybeSingle();
+          if (gerenteData?.proprietario_id) {
+            gerenteFilialProprietarioId = gerenteData.proprietario_id;
+            console.log("🏢 [useVerificacaoAcesso] Usuário é GERENTE DE FILIAL - usando assinatura do proprietário:", gerenteFilialProprietarioId);
+          }
+        } catch (e) {
+          console.warn("⚠️ [useVerificacaoAcesso] Exceção ao buscar gerente de filial:", e);
+        }
+      }
+
+      // Prioridade: funcionário de loja > gerente de filial > próprio usuário
+      const userIdParaAssinatura = funcionarioData?.loja_user_id || gerenteFilialProprietarioId || userId;
       
       if (isFuncionario) {
         console.log("👷 [useVerificacaoAcesso] Usuário é FUNCIONÁRIO - usando assinatura do dono:", funcionarioData?.loja_user_id);
@@ -580,17 +598,17 @@ export function useVerificacaoAcesso() {
         lojaUserId: funcionarioData?.loja_user_id,
       });
 
-      // 3.5 PRIORIDADE FUNCIONÁRIO: Funcionários ativos com dono que tem assinatura ativa = LIBERADO
-      if (isFuncionario && funcionarioData?.ativo) {
-        // Verificar se o dono tem assinatura válida
+      // 3.5 PRIORIDADE FUNCIONÁRIO / GERENTE DE FILIAL: se o proprietário tem assinatura ativa = LIBERADO
+      const isSubconta = (isFuncionario && funcionarioData?.ativo) || !!gerenteFilialProprietarioId;
+      if (isSubconta) {
         const donoTemAssinatura = assinatura && (
-          assinatura.status === 'active' || 
+          assinatura.status === 'active' ||
           assinatura.status === 'trialing' ||
           (assinatura.trial_with_card && !assinatura.trial_canceled)
         );
-        
+
         if (donoTemAssinatura) {
-          console.log("✅ [useVerificacaoAcesso] FUNCIONÁRIO com dono ativo - LIBERADO");
+          console.log("✅ [useVerificacaoAcesso] SUBCONTA (funcionário/gerente) com proprietário ativo - LIBERADO");
           setState({
             status: "liberado",
             assinatura,
@@ -599,23 +617,23 @@ export function useVerificacaoAcesso() {
             error: null,
             tentativas: state.tentativas + 1,
             bloqueioAdmin: bloqueioInfo,
-            isFuncionario: true,
-            lojaUserId: funcionarioData.loja_user_id,
+            isFuncionario,
+            lojaUserId: funcionarioData?.loja_user_id || null,
           });
           verificandoRef.current = false;
           return;
         } else {
-          console.log("⛔ [useVerificacaoAcesso] FUNCIONÁRIO mas dono sem assinatura ativa - BLOQUEADO");
+          console.log("⛔ [useVerificacaoAcesso] SUBCONTA mas proprietário sem assinatura ativa - BLOQUEADO");
           setState({
             status: "trial_expirado",
             assinatura,
             onboarding,
             userId,
-            error: "O dono da loja não possui assinatura ativa.",
+            error: "O proprietário não possui assinatura ativa.",
             tentativas: state.tentativas + 1,
             bloqueioAdmin: bloqueioInfo,
-            isFuncionario: true,
-            lojaUserId: funcionarioData.loja_user_id,
+            isFuncionario,
+            lojaUserId: funcionarioData?.loja_user_id || null,
           });
           verificandoRef.current = false;
           return;
