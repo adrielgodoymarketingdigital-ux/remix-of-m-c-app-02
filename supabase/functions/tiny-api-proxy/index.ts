@@ -4,7 +4,7 @@ import { checkTinyAccessByUserId } from "../_shared/checkTinyAccess.ts";
 
 const TINY_TOKEN_URL =
   "https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect/token";
-const TINY_API_BASE = "https://api.tiny.com.br/api/v3";
+const TINY_API_BASE = "https://api.tiny.com.br/public-api/v3";
 
 async function refreshTokens(
   supabase: ReturnType<typeof createClient>,
@@ -42,7 +42,11 @@ async function refreshTokens(
   return tokens.access_token;
 }
 
-// API V3 usa GET com query params e paginação via offset/limit
+async function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// API V3 — GET com query params, paginação offset/limit, retry em 429
 async function fetchAllPagesV3(
   path: string,
   params: Record<string, string>,
@@ -55,24 +59,30 @@ async function fetchAllPagesV3(
   while (true) {
     const qs = new URLSearchParams({ ...params, limit: String(limit), offset: String(offset) });
     const url = `${TINY_API_BASE}/${path}?${qs.toString()}`;
-
     console.log(`Tiny V3 GET ${url}`);
 
-    const resp = await fetch(url, {
-      method: "GET",
-      headers: { "Authorization": `Bearer ${accessToken}` },
-    });
+    let resp: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      resp = await fetch(url, {
+        headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      });
+      if (resp.status === 429) {
+        console.warn(`429 rate limit, aguardando 5s (tentativa ${attempt + 1})`);
+        await sleep(5000);
+        continue;
+      }
+      break;
+    }
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      console.error(`Tiny V3 HTTP error: ${resp.status}`, errText);
+    if (!resp || !resp.ok) {
+      const errText = await resp?.text();
+      console.error(`Tiny V3 HTTP error: ${resp?.status}`, errText);
       break;
     }
 
     const data = await resp.json();
     console.log("Tiny V3 response:", JSON.stringify(data).slice(0, 500));
 
-    // V3 retorna { itens: [...] } ou array direto
     const items: unknown[] = Array.isArray(data)
       ? data
       : Array.isArray(data?.itens)
@@ -139,10 +149,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Refresh se expirado (com 60s de margem)
+    // Refresh se expirado (com 300s de margem conforme recomendação Tiny)
     let accessToken = integration.access_token;
     const expiresAt = new Date(integration.expires_at).getTime();
-    if (Date.now() > expiresAt - 60_000) {
+    if (Date.now() > expiresAt - 300_000) {
       try {
         accessToken = await refreshTokens(supabase, user.id, integration.refresh_token);
       } catch (refreshErr) {

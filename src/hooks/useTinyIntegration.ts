@@ -157,7 +157,7 @@ export function useTinyDados(
   const abortRef = useRef<AbortController | null>(null);
 
   const formataData = (d: Date) =>
-    `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
   const buscarDados = useCallback(async () => {
     if (!enabled) return;
