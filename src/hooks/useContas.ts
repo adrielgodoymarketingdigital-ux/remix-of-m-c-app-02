@@ -38,27 +38,30 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       }
 
       // Carregar contas, vendas a_receber e OS excluídas em paralelo com retry
+      // Vendas virtuais não são incluídas quando há filtro de empresa (tabela vendas não tem empresa_id)
       const [contasResult, vendasResult, osExcluidasResult] = await Promise.all([
         withRetry(async () => {
           const r = await Promise.resolve(query);
           if (r.error) throw r.error;
           return r;
         }, 'useContas.queryContas'),
-        withRetry(async () => {
-          const r = await supabase
-            .from("vendas")
-            .select("id, data, total, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_fkey(nome), produtos(nome), dispositivos(marca, modelo), pecas(nome)")
-            .eq("user_id", user.id)
-            .in("forma_pagamento", ["a_receber", "a_prazo"])
-            .eq("cancelada", false);
-          if (r.error) throw r.error;
-          return r;
-        }, 'useContas.queryVendasAReceber'),
+        empresaFiltro
+          ? Promise.resolve({ data: [] })
+          : withRetry(async () => {
+              const r = await supabase
+                .from("vendas")
+                .select("id, data, total, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_fkey(nome), produtos(nome), dispositivos(marca, modelo), pecas(nome)")
+                .eq("user_id", targetUserId)
+                .in("forma_pagamento", ["a_receber", "a_prazo"])
+                .eq("cancelada", false);
+              if (r.error) throw r.error;
+              return r;
+            }, 'useContas.queryVendasAReceber'),
         withRetry(async () => {
           const r = await supabase
             .from("ordens_servico")
             .select("numero_os")
-            .eq("user_id", user.id)
+            .eq("user_id", targetUserId)
             .not("deleted_at", "is", null);
           if (r.error) throw r.error;
           return r;
