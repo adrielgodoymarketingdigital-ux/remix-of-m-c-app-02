@@ -687,7 +687,7 @@ export const useVendas = () => {
 
   useEffect(() => {
     carregarVendas();
-  }, [resolvedUserIdFromContext]);
+  }, [resolvedUserIdFromContext, empresaFiltro]);
 
   return {
     vendas,

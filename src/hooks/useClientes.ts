@@ -64,7 +64,7 @@ export function useClientes(options: UseClientesOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [toast, isFuncionario, lojaUserId, podeSincronizarClientes, resolvedUserIdFromContext]);
+  }, [toast, isFuncionario, lojaUserId, podeSincronizarClientes, resolvedUserIdFromContext, empresaFiltro]);
 
   const criarCliente = async (dados: FormularioCliente): Promise<Cliente | null> => {
     try {

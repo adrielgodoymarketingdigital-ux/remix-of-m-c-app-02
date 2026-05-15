@@ -261,7 +261,7 @@ export const useOrdensServico = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId]);
+  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro]);
 
   const buscarOrdemCompleta = useCallback(async (id: string): Promise<OrdemServico | null> => {
     if (detalhesCacheRef.current[id]) {
