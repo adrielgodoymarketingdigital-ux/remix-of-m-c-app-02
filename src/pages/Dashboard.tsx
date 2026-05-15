@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,7 @@ import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { useRelatorios } from "@/hooks/useRelatorios";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod } from "@/lib/vendasFinanceiras";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
+import { useEmpresaFiltro } from "@/hooks/useResolvedUserId";
 
 interface ProdutoVendido {
   nome: string;
@@ -47,6 +48,9 @@ const Dashboard = () => {
   const { clientes, loading: loadingClientes } = useClientes();
   const { calcularResumo } = useRelatorios();
   const { cores } = useCoresPersonalizadas();
+  const empresaFiltro = useEmpresaFiltro();
+  const empresaFiltroRef = useRef(empresaFiltro);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
 
   // Verificar se tem plano profissional
   const temPlanoProfissional = useMemo(() => {
@@ -154,7 +158,7 @@ const Dashboard = () => {
   // Carregar dados de hoje separadamente, sem depender de dashboardBloqueado
   useEffect(() => {
     loadHojeData();
-  }, []);
+  }, [empresaFiltro]);
 
   // Recarregar dados quando o mês selecionado mudar (pular se dashboard bloqueado para funcionário)
   useEffect(() => {
@@ -164,7 +168,7 @@ const Dashboard = () => {
     loadFinanceiroData(datas.inicio, datas.fim);
     loadProdutosVendidos(datas.inicio, datas.fim);
     loadHojeData();
-  }, [mesSelecionado, dashboardBloqueado]);
+  }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
 
   // Recarregar quando uma OS for criada ou editada
   useEffect(() => {
@@ -198,8 +202,10 @@ const Dashboard = () => {
     const inicioISO = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), 0, 0, 0, 0).toISOString();
     const fimISO = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate(), 23, 59, 59, 999).toISOString();
 
+    const ef = empresaFiltroRef.current;
+
     // Buscar TODAS as ordens de serviço do mês do usuário logado (excluindo testes e deletadas)
-    const { data: todasOrdens } = await supabase
+    let qTodasOrdens = supabase
       .from("ordens_servico")
       .select("id")
       .eq("user_id", user.id)
@@ -207,11 +213,13 @@ const Dashboard = () => {
       .is("deleted_at", null)
       .gte("created_at", inicioISO)
       .lte("created_at", fimISO);
+    if (ef) qTodasOrdens = qTodasOrdens.eq("empresa_id", ef);
+    const { data: todasOrdens } = await qTodasOrdens;
 
     // Buscar apenas finalizadas/entregues para cálculo de faturamento
     // data_saida preenchida apenas em "entregue". Fallback: created_at (nunca muda),
     // jamais updated_at (muda a cada edição e traz OS antigas para o mês errado)
-    const { data: vendasServicos } = await supabase
+    let qVendasServicos = supabase
       .from("ordens_servico")
       .select("total, servico_id, avarias")
       .eq("user_id", user.id)
@@ -220,6 +228,8 @@ const Dashboard = () => {
       .or(
         `and(data_saida.not.is.null,data_saida.gte.${inicioStr},data_saida.lte.${fimStr}T23:59:59),and(data_saida.is.null,created_at.gte.${inicioISO},created_at.lte.${fimISO})`
       );
+    if (ef) qVendasServicos = qVendasServicos.eq("empresa_id", ef);
+    const { data: vendasServicos } = await qVendasServicos;
 
     // Buscar custos dos serviços (somente por vínculo servico_id)
     const servicoIds = Array.from(
@@ -241,7 +251,7 @@ const Dashboard = () => {
 
     // Buscar vendas de produtos com custo
     // Buscar por data OU data_recebimento para capturar vendas "a_receber" recebidas no período
-    const { data: vendasProdutos } = await supabase
+    let qVendasProdutos = supabase
       .from("vendas")
       .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes")
       .eq("user_id", user.id)
@@ -249,9 +259,11 @@ const Dashboard = () => {
       .eq("cancelada", false)
       .is("deleted_at", null)
       .or(`and(data.gte.${queryInicio},data.lte.${queryFim}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${queryInicio},data_recebimento.lte.${queryFim}T23:59:59)`);
+    if (ef) qVendasProdutos = qVendasProdutos.eq("empresa_id", ef);
+    const { data: vendasProdutos } = await qVendasProdutos;
 
     // Buscar vendas de dispositivos com custo
-    const { data: vendasDispositivos } = await supabase
+    let qVendasDispositivos = supabase
       .from("vendas")
       .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes")
       .eq("user_id", user.id)
@@ -259,6 +271,8 @@ const Dashboard = () => {
       .eq("cancelada", false)
       .is("deleted_at", null)
       .or(`and(data.gte.${queryInicio},data.lte.${queryFim}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${queryInicio},data_recebimento.lte.${queryFim}T23:59:59)`);
+    if (ef) qVendasDispositivos = qVendasDispositivos.eq("empresa_id", ef);
+    const { data: vendasDispositivos } = await qVendasDispositivos;
 
     // Calcular serviços (custo pelo servico_id + custos adicionais assumidos pela loja)
     const faturamentoServicos = vendasServicos?.reduce((acc, v) => acc + Number(v.total || 0), 0) || 0;
@@ -409,28 +423,39 @@ const Dashboard = () => {
 
     console.log('[HojeDebug] hoje =', hoje, '| inicioDiaISO =', inicioDiaISO, '| fimDiaISO =', fimDiaISO);
 
+    const ef = empresaFiltroRef.current;
+
+    let qOrdensHoje = supabase
+      .from("ordens_servico")
+      .select("total, avarias")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .in("status", ["finalizado", "entregue"])
+      .gte("data_saida", inicioDiaISO)
+      .lte("data_saida", fimDiaISO);
+    if (ef) qOrdensHoje = qOrdensHoje.eq("empresa_id", ef);
+
+    let qVendasHoje = supabase
+      .from("vendas")
+      .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id, tipo")
+      .eq("user_id", user.id)
+      .eq("cancelada", false)
+      .or(`and(data.gte.${inicioDiaISO},data.lte.${fimDiaISO}),and(data_recebimento.not.is.null,data_recebimento.gte.${inicioDiaISO},data_recebimento.lte.${fimDiaISO})`);
+    if (ef) qVendasHoje = qVendasHoje.eq("empresa_id", ef);
+
+    let qAvulsosHoje = supabase
+      .from("servicos_avulsos")
+      .select("preco, custo")
+      .eq("user_id", user.id)
+      .in("status", ["entregue", "finalizado"])
+      .gte("created_at", inicioDiaISO)
+      .lte("created_at", fimDiaISO);
+    if (ef) qAvulsosHoje = qAvulsosHoje.eq("empresa_id", ef);
+
     const [{ data: ordensHoje }, { data: vendasHoje }, { data: avulsosHoje }] = await Promise.all([
-      supabase
-        .from("ordens_servico")
-        .select("total, avarias")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .in("status", ["finalizado", "entregue"])
-        .gte("data_saida", inicioDiaISO)
-        .lte("data_saida", fimDiaISO),
-      supabase
-        .from("vendas")
-        .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id, tipo")
-        .eq("user_id", user.id)
-        .eq("cancelada", false)
-        .or(`and(data.gte.${inicioDiaISO},data.lte.${fimDiaISO}),and(data_recebimento.not.is.null,data_recebimento.gte.${inicioDiaISO},data_recebimento.lte.${fimDiaISO})`),
-      supabase
-        .from("servicos_avulsos")
-        .select("preco, custo")
-        .eq("user_id", user.id)
-        .in("status", ["entregue", "finalizado"])
-        .gte("created_at", inicioDiaISO)
-        .lte("created_at", fimDiaISO),
+      qOrdensHoje,
+      qVendasHoje,
+      qAvulsosHoje,
     ]);
 
     console.log('[HojeDebug] hoje =', hoje);

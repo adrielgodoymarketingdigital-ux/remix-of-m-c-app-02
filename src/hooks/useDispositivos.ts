@@ -8,7 +8,7 @@ import { useEventTracking } from "./useEventTracking";
 import { useConfetti } from "./useConfetti";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
-import { useResolvedUserId } from "./useResolvedUserId";
+import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
 
 export function useDispositivos() {
   const [dispositivos, setDispositivos] = useState<Dispositivo[]>([]);
@@ -18,6 +18,7 @@ export function useDispositivos() {
   const { disparar: dispararConfetti } = useConfetti();
   const { lojaUserId, podeSincronizarDispositivos, isFuncionario } = useFuncionarioPermissoes();
   const resolvedUserIdFromContext = useResolvedUserId();
+  const empresaFiltro = useEmpresaFiltro();
   const navigate = useNavigate();
 
   const carregarDispositivos = useCallback(async () => {
@@ -36,7 +37,7 @@ export function useDispositivos() {
         ?? ((isFuncionario && podeSincronizarDispositivos && lojaUserId) ? lojaUserId : user.id);
 
       const data = await withRetry(async () => {
-        const { data, error } = await supabase
+        let query = supabase
           .from("dispositivos")
           .select(`
             *,
@@ -47,6 +48,8 @@ export function useDispositivos() {
           .is("deleted_at", null)
           .order("marca", { ascending: true })
           .order("modelo", { ascending: true });
+        if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+        const { data, error } = await query;
         if (error) throw error;
         return data;
       }, 'useDispositivos.carregarDispositivos');
@@ -64,7 +67,7 @@ export function useDispositivos() {
     } finally {
       setLoading(false);
     }
-  }, [lojaUserId, podeSincronizarDispositivos, isFuncionario, resolvedUserIdFromContext]);
+  }, [lojaUserId, podeSincronizarDispositivos, isFuncionario, resolvedUserIdFromContext, empresaFiltro]);
 
   const criarDispositivo = async (dados: any): Promise<Dispositivo | null> => {
     try {

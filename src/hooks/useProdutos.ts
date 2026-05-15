@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 import { ItemEstoque, Produto, Peca, FormularioProduto } from '@/types/produto';
 import { useFuncionarioPermissoes } from './useFuncionarioPermissoes';
 import { useAssinatura } from './useAssinatura';
+import { useEmpresaFiltro } from './useResolvedUserId';
 
 export const useProdutos = () => {
   const [items, setItems] = useState<ItemEstoque[]>([]);
   const [loading, setLoading] = useState(false);
   const { lojaUserId, podeSincronizarProdutos, isFuncionario } = useFuncionarioPermissoes();
   const { podeCadastrarProduto, limites } = useAssinatura();
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregarTodos = useCallback(async () => {
     setLoading(true);
@@ -26,14 +28,21 @@ export const useProdutos = () => {
       // Usar ID do dono se funcionário tem permissão de sincronizar produtos
       const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
 
+      let qProdutos = supabase.from('produtos').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
+      let qPecas = supabase.from('pecas').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
+      if (empresaFiltro) {
+        qProdutos = qProdutos.eq('empresa_id', empresaFiltro);
+        qPecas = qPecas.eq('empresa_id', empresaFiltro);
+      }
+
       const [
         { data: produtos, error: erroProdutos },
         { data: pecas, error: erroPecas },
         { data: fornecedoresData },
         { data: categoriasData }
       ] = await Promise.all([
-        supabase.from('produtos').select('*').eq('user_id', userId).is('deleted_at', null).order('nome'),
-        supabase.from('pecas').select('*').eq('user_id', userId).is('deleted_at', null).order('nome'),
+        qProdutos,
+        qPecas,
         supabase.from('fornecedores').select('id, nome').eq('user_id', userId),
         supabase.from('categorias_produtos').select('id, nome, cor').eq('user_id', userId)
       ]);
@@ -92,7 +101,7 @@ export const useProdutos = () => {
     } finally {
       setLoading(false);
     }
-  }, [lojaUserId, podeSincronizarProdutos, isFuncionario]);
+  }, [lojaUserId, podeSincronizarProdutos, isFuncionario, empresaFiltro]);
 
   const criar = useCallback(async (dados: FormularioProduto) => {
     try {
