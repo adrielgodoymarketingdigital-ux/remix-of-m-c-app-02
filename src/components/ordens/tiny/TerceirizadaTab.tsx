@@ -70,6 +70,85 @@ function corBorda(dias: number) {
   return "border-l-4 border-l-green-500";
 }
 
+type OSComDias = TinyOS & { dias: number };
+
+interface KanbanPrazosProps {
+  colunas: { ate3: OSComDias[]; de4a7: OSComDias[]; mais7: OSComDias[] };
+  onAbrirDetalhe: (os: TinyOS) => void;
+  somaValores: (lista: TinyOS[]) => number;
+}
+
+function CardOSKanban({ o, onAbrirDetalhe }: { o: OSComDias; onAbrirDetalhe: (os: TinyOS) => void }) {
+  return (
+    <div
+      onClick={() => onAbrirDetalhe(o)}
+      className={cn(
+        "rounded-lg border bg-muted/10 p-3 text-sm cursor-pointer hover:bg-muted/20 transition-colors",
+        corBorda(o.dias)
+      )}
+    >
+      <div className="flex items-start justify-between gap-1 mb-1">
+        <span className="font-mono text-xs font-bold text-foreground">OS #{o.numero}</span>
+        <span className="font-semibold text-xs shrink-0">{BRL(o.valor)}</span>
+      </div>
+      <p className="text-xs text-muted-foreground truncate mb-1.5">{o.cliente}</p>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Badge variant="outline" className="text-[10px] h-4 px-1.5">{o.situacaoRaw}</Badge>
+        <span className="text-[10px] text-muted-foreground">
+          {o.dias === 0 ? "Hoje" : `${o.dias}d`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function KanbanPrazos({ colunas, onAbrirDetalhe, somaValores }: KanbanPrazosProps) {
+  const cols = [
+    {
+      label: "1 – 3 dias",
+      cor: "border-t-green-500",
+      corText: "text-green-600",
+      items: colunas.ate3,
+    },
+    {
+      label: "4 – 7 dias",
+      cor: "border-t-yellow-500",
+      corText: "text-yellow-600",
+      items: colunas.de4a7,
+    },
+    {
+      label: "+ 7 dias",
+      cor: "border-t-destructive",
+      corText: "text-destructive",
+      items: colunas.mais7,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {cols.map((col) => (
+        <div key={col.label} className={cn("rounded-lg border border-t-2 border-border/40 bg-muted/5", col.cor)}>
+          <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-border/30">
+            <span className={cn("text-xs font-semibold", col.corText)}>{col.label}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {col.items.length} OS · {BRL(somaValores(col.items))}
+            </span>
+          </div>
+          <div className="p-2 space-y-2 min-h-[60px]">
+            {col.items.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground text-center py-4">Nenhuma OS</p>
+            ) : (
+              col.items.map((o) => (
+                <CardOSKanban key={o.id} o={o} onAbrirDetalhe={onAbrirDetalhe} />
+              ))
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function TerceirizadaTab({
   integration,
   integrationLoading,
@@ -214,12 +293,18 @@ export function TerceirizadaTab({
     vermelho: "Crítico",
   };
 
-  // Kanban por tempo parado
+  // Kanban por tempo parado — colunas por prazo
   const kanban = useMemo(() => {
     return [...ordensEmAberto, ...ordensEmManutencao]
       .map((o) => ({ ...o, dias: diasParados(o.data_pedido) }))
       .sort((a, b) => b.dias - a.dias);
   }, [ordensEmAberto, ordensEmManutencao]);
+
+  const kanbanColunas = useMemo(() => ({
+    ate3: kanban.filter((o) => o.dias <= 3),
+    de4a7: kanban.filter((o) => o.dias >= 4 && o.dias <= 7),
+    mais7: kanban.filter((o) => o.dias > 7),
+  }), [kanban]);
 
   const osPausadas3dias = kanban.filter((o) => o.dias >= 3);
 
@@ -524,59 +609,25 @@ export function TerceirizadaTab({
         </CardContent>
       </Card>
 
-      {/* Kanban por tempo parado */}
-      <Card className="border-border/40 mb-4">
-        <CardHeader className="p-4 pb-2 border-b border-border/30">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Kanban por Tempo Parado</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Só entram aqui OS em aberto e em manutenção, usando a data real de abertura no Tiny.</p>
-            </div>
-            <div className="text-[11px] text-muted-foreground font-mono">
-              {kanban.length} OS · {BRL(somaValores(kanban))}
-            </div>
+      {/* Kanban por tempo parado — colunas por prazo */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div>
+            <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Kanban por Tempo Parado</p>
+            <p className="text-xs text-muted-foreground mt-0.5">OS em aberto e em manutenção distribuídas pelo tempo desde a abertura.</p>
           </div>
-        </CardHeader>
-        <CardContent className="p-4">
-          {loading ? (
-            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : kanban.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">Nenhum registro encontrado para o período selecionado</p>
-          ) : (
-            <div className="space-y-2">
-              {kanban.map((o) => (
-                <div
-                  key={o.id}
-                  onClick={() => abrirDetalhe(o)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg border bg-muted/10 p-3 text-sm cursor-pointer hover:bg-muted/20 transition-colors",
-                    corBorda(o.dias)
-                  )}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-foreground">OS #{o.numero}</span>
-                      <span className="text-xs text-muted-foreground truncate">{o.cliente}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="outline" className="text-[10px] h-4 px-1.5">
-                        {o.situacaoRaw}
-                      </Badge>
-                      <span className="text-[11px] text-muted-foreground">
-                        {o.dias === 0 ? "Hoje" : `${o.dias} dia${o.dias > 1 ? "s" : ""} parada`}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="font-semibold text-sm">{BRL(o.valor)}</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          <div className="text-[11px] text-muted-foreground font-mono">
+            {kanban.length} OS · {BRL(somaValores(kanban))}
+          </div>
+        </div>
+        {loading ? (
+          <div className="grid grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+          </div>
+        ) : (
+          <KanbanPrazos colunas={kanbanColunas} onAbrirDetalhe={abrirDetalhe} somaValores={somaValores} />
+        )}
+      </div>
 
       {/* Maiores OS abertas / em manutenção */}
       <Card className="border-border/40 mb-4">

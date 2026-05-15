@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
+import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
 import { useTinyIntegration } from "@/hooks/useTinyIntegration";
 import { checkTinyAccess } from "@/lib/checkTinyAccess";
 import { OSGerencialCards } from "@/components/ordens/OSGerencialCards";
@@ -97,15 +98,15 @@ export default function OrdemServicoPage() {
       return proximo;
     });
   }
-  const [abaAtiva, setAbaAtiva] = useState<"minhas" | "terceirizada">(
-    tabParam === "terceirizada" ? "terceirizada" : "minhas"
+  const [abaAtiva, setAbaAtiva] = useState<"minhas" | "terceirizada" | "microsolda">(
+    tabParam === "terceirizada" ? "terceirizada" : tabParam === "microsolda" ? "microsolda" : "minhas"
   );
 
   useEffect(() => {
     checkTinyAccess().then((acesso) => {
       setTemAcessoTiny(acesso);
       setChecandoAcessoTiny(false);
-      if (!acesso && abaAtiva === "terceirizada") {
+      if (!acesso && (abaAtiva === "terceirizada" || abaAtiva === "microsolda")) {
         setAbaAtiva("minhas");
         setSearchParams({});
       }
@@ -122,9 +123,9 @@ export default function OrdemServicoPage() {
   } = useTinyIntegration();
 
   const handleMudarAba = (aba: string) => {
-    setAbaAtiva(aba as "minhas" | "terceirizada");
-    if (aba === "terceirizada") {
-      setSearchParams({ tab: "terceirizada" });
+    setAbaAtiva(aba as "minhas" | "terceirizada" | "microsolda");
+    if (aba === "terceirizada" || aba === "microsolda") {
+      setSearchParams({ tab: aba });
     } else {
       setSearchParams({});
     }
@@ -737,6 +738,11 @@ export default function OrdemServicoPage() {
                   Terceirizada
                 </TabsTrigger>
               )}
+              {!checandoAcessoTiny && temAcessoTiny && (
+                <TabsTrigger value="microsolda" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  MicroSolda + UpStore
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="minhas" className="mt-0">
@@ -914,6 +920,18 @@ export default function OrdemServicoPage() {
                   onDesconectar={desconectar}
                   onReconectar={iniciarOAuth}
                   onAtualizarIntervalo={atualizarIntervalo}
+                />
+              </TabsContent>
+            )}
+
+            {temAcessoTiny && (
+              <TabsContent value="microsolda" className="mt-0">
+                <MicroSoldaUpStoreTab
+                  integration={integration ?? null}
+                  integrationLoading={integrationLoading}
+                  onConectar={iniciarOAuth}
+                  ordensLocal={ordens}
+                  loadingLocal={loading}
                 />
               </TabsContent>
             )}
