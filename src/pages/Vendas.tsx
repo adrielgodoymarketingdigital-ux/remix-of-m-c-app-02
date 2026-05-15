@@ -24,7 +24,6 @@ import { useVendas } from "@/hooks/useVendas";
 import { Filter, Calendar, Layout, Settings, Search } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DialogConfiguracaoLayoutVendas } from "@/components/vendas/DialogConfiguracaoLayoutVendas";
-import { useEmpresa } from "@/contexts/EmpresaContext";
 
 const MESES = [
   { value: "01", label: "Janeiro" },
@@ -43,8 +42,6 @@ const MESES = [
 
 export default function Vendas() {
   const { vendas, todasVendas, loading, carregarVendas, cancelarVenda, editarVenda, marcarComoRecebido, marcarComoPendente, excluirVenda } = useVendas();
-  const { isProprietario, empresaAtiva } = useEmpresa();
-  const isFilialAtiva = isProprietario && !!empresaAtiva;
   const [dialogLayoutAberto, setDialogLayoutAberto] = useState(false);
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
@@ -320,34 +317,30 @@ export default function Vendas() {
           </Card>
 
           {/* Resumo por Tipo */}
-          {!isFilialAtiva && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold">Resumo por Tipo</h2>
-                <p className="text-muted-foreground text-sm">
-                  Vendas separadas por categoria
-                </p>
-              </div>
-              <DashboardResumoTipos vendas={vendasFiltradas} loading={loading} />
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold">Resumo por Tipo</h2>
+              <p className="text-muted-foreground text-sm">
+                Vendas separadas por categoria
+              </p>
             </div>
-          )}
+            <DashboardResumoTipos vendas={vendasFiltradas} loading={loading} />
+          </div>
 
           {/* Dashboard A Receber */}
-          {!isFilialAtiva && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold">Vendas a Receber</h2>
-                <p className="text-muted-foreground text-sm">
-                  Valores pendentes de recebimento
-                </p>
-              </div>
-              <DashboardAReceber
-                vendas={todasVendas}
-                loading={loading}
-                onMarcarRecebido={marcarComoRecebido}
-              />
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold">Vendas a Receber</h2>
+              <p className="text-muted-foreground text-sm">
+                Valores pendentes de recebimento
+              </p>
             </div>
-          )}
+            <DashboardAReceber
+              vendas={todasVendas}
+              loading={loading}
+              onMarcarRecebido={marcarComoRecebido}
+            />
+          </div>
 
           {/* Tabela de Vendas */}
           <Card>
