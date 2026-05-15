@@ -108,13 +108,19 @@ export function useCaixa() {
     const caixa = caixaData as Caixa;
 
     // Buscar vendas do período (data_abertura até agora)
-    const { data: vendas, error: vendasError } = await supabase
+    let vendasQuery = supabase
       .from("vendas")
       .select("forma_pagamento, total")
-      .eq("user_id", user.id)
+      .eq("user_id", caixa.user_id)
       .gte("data", caixa.data_abertura)
       .lte("data", new Date().toISOString())
       .neq("cancelada", true);
+
+    if (caixa.empresa_id) {
+      vendasQuery = vendasQuery.eq("empresa_id", caixa.empresa_id);
+    }
+
+    const { data: vendas, error: vendasError } = await vendasQuery;
 
     if (vendasError) throw vendasError;
 

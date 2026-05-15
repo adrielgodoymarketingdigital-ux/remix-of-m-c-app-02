@@ -44,16 +44,19 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
   const calcularResumoPreview = async () => {
     setCarregandoResumo(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: vendas } = await supabase
+      let query = supabase
         .from("vendas")
         .select("forma_pagamento, total")
-        .eq("user_id", user.id)
+        .eq("user_id", caixa.user_id)
         .gte("data", caixa.data_abertura)
         .lte("data", new Date().toISOString())
         .neq("cancelada", true);
+
+      if (caixa.empresa_id) {
+        query = query.eq("empresa_id", caixa.empresa_id);
+      }
+
+      const { data: vendas } = await query;
 
       const formasCartao = ["debito", "credito", "credito_parcelado"];
       let total_dinheiro = 0;

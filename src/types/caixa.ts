@@ -13,4 +13,5 @@ export interface Caixa {
   observacoes: string | null;
   status: 'aberto' | 'fechado';
   created_at: string;
+  empresa_id: string | null;
 }
