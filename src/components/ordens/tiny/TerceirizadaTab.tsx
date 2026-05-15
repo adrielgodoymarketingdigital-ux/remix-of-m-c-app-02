@@ -153,6 +153,7 @@ export function TerceirizadaTab({
         dataPrevista: r.dataPrevista ? String(r.dataPrevista).split(" ")[0] : undefined,
         valor: Number(r.valor ?? 0),
         marcadores,
+        equipamento: r.equipamento ? String(r.equipamento) : undefined,
       } as TinyOS;
     });
   }, [ordensRaw]);
@@ -554,8 +555,8 @@ export function TerceirizadaTab({
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-muted-foreground">#{o.numero}</span>
-                      <span className="font-medium truncate">{o.cliente}</span>
+                      <span className="font-mono text-xs font-semibold text-foreground">OS #{o.numero}</span>
+                      <span className="font-medium truncate">{o.equipamento || o.cliente}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge variant="outline" className="text-[10px] h-4 px-1.5">
@@ -599,8 +600,8 @@ export function TerceirizadaTab({
                   <span className="text-xs font-mono text-muted-foreground w-5 shrink-0">{idx + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-muted-foreground">#{o.numero}</span>
-                      <span className="font-medium truncate">{o.cliente}</span>
+                      <span className="font-mono text-xs font-semibold text-foreground">OS #{o.numero}</span>
+                      <span className="font-medium truncate">{o.equipamento || o.cliente}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge variant="outline" className="text-[10px] h-4 px-1.5">{o.situacaoRaw}</Badge>
