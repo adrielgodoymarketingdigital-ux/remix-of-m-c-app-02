@@ -128,7 +128,6 @@ export function TerceirizadaTab({
 
   // Processar ordens — campos da API V3
   const ordens = useMemo(() => {
-    if (ordensRaw.length > 0) console.log("[Tiny] campos raw OS:", Object.keys(ordensRaw[0]), ordensRaw[0]);
     return ordensRaw.map((raw) => {
       const r = raw as Record<string, unknown>;
       const clienteObj = r.cliente as Record<string, unknown> | undefined;
@@ -356,14 +355,6 @@ export function TerceirizadaTab({
         </div>
       )}
 
-      {/* DEBUG — remover após identificar campos */}
-      {ordensRaw.length > 0 && (
-        <div className="mb-4 p-3 rounded border border-yellow-400 bg-yellow-50 dark:bg-yellow-950 text-xs font-mono break-all">
-          <p className="font-bold mb-1">DEBUG — campos da 1ª OS raw:</p>
-          <pre className="whitespace-pre-wrap">{JSON.stringify(ordensRaw[0], null, 2)}</pre>
-        </div>
-      )}
-
       {/* 5 cards gerenciais */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
         {/* Card META OS */}
@@ -564,8 +555,8 @@ export function TerceirizadaTab({
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-foreground">OS #{o.numero}</span>
-                      <span className="font-medium truncate">{o.equipamento || o.cliente}</span>
+                      <span className="font-mono text-sm font-bold text-foreground">OS #{o.numero}</span>
+                      <span className="text-xs text-muted-foreground truncate">{o.cliente}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge variant="outline" className="text-[10px] h-4 px-1.5">
@@ -609,8 +600,8 @@ export function TerceirizadaTab({
                   <span className="text-xs font-mono text-muted-foreground w-5 shrink-0">{idx + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-foreground">OS #{o.numero}</span>
-                      <span className="font-medium truncate">{o.equipamento || o.cliente}</span>
+                      <span className="font-mono text-sm font-bold text-foreground">OS #{o.numero}</span>
+                      <span className="text-xs text-muted-foreground truncate">{o.cliente}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge variant="outline" className="text-[10px] h-4 px-1.5">{o.situacaoRaw}</Badge>
