@@ -577,6 +577,9 @@ All colors MUST be HSL.
   transform: scale(0.5);
   width: 194mm !important;
   max-width: 194mm !important;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 /* Vertical (portrait): folha em pé, OS lado a lado */
@@ -643,6 +646,16 @@ All colors MUST be HSL.
 
   .impressao-duas-os-slot {
     overflow: hidden !important;
+    position: relative !important;
+  }
+
+  /* Com position:absolute no conteúdo, o slot faz o clip — remove max-height do container */
+  .impressao-duas-os-slot .impressao-ordem-container {
+    max-height: none !important;
+    overflow: visible !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
   }
 
   .impressao-duas-os-vertical {
