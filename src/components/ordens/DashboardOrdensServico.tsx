@@ -2,6 +2,7 @@ import { Package, DollarSign, TrendingUp, Wrench } from "lucide-react";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 interface OrdemServico {
   id: string;
@@ -31,6 +32,8 @@ export const DashboardOrdensServico = ({
 }: DashboardOrdensServicoProps) => {
   const { podeVerLucros, isFuncionario } = useFuncionarioPermissoes();
   const { statusList } = useOSStatusConfig();
+  const { isProprietario, empresaAtiva } = useEmpresa();
+  const isFilialAtiva = isProprietario && !!empresaAtiva;
 
   const statusCounts = statusList
     .filter((s) => s.ativo)
@@ -100,7 +103,7 @@ export const DashboardOrdensServico = ({
             </span>
           </FinanceCard>
 
-          {podeVerLucros && (
+          {podeVerLucros && !isFilialAtiva && (
             <FinanceCard
               cor="#10b981"
               label="Lucro Total"

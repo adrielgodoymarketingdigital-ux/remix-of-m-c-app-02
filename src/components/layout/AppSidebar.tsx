@@ -62,6 +62,7 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 // Menu destacado de Novidades
 const novidadesItem = { title: "Novidades", url: "/novidades", icon: Sparkles, modulo: "novidades" as keyof PermissoesModulos };
@@ -119,6 +120,8 @@ export function AppSidebar() {
   const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { assinatura } = useAssinatura();
   const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
+  const { isProprietario, empresaAtiva } = useEmpresa();
+  const isFilialAtiva = isProprietario && !!empresaAtiva;
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -146,6 +149,8 @@ export function AppSidebar() {
     if (!isFuncionario) {
       return menuItems.filter(item => {
         if (item.url === '/multi-empresas' && !isUltra && !isAdmin) return false;
+        // Quando visualizando filial, ocultar Equipe e Multi Empresas
+        if (isFilialAtiva && ['/equipe', '/multi-empresas'].includes(item.url)) return false;
         return true;
       });
     }
@@ -159,7 +164,7 @@ export function AppSidebar() {
       // Verificar permissão do módulo conforme configurado pelo dono
       return temAcessoModulo(item.modulo);
     });
-  }, [isFuncionario, temAcessoModulo, carregandoPermissoes, isUltra, isAdmin]);
+  }, [isFuncionario, temAcessoModulo, carregandoPermissoes, isUltra, isAdmin, isFilialAtiva]);
 
   // Verificar se novidades está visível (não mostrar durante loading)
   const novidadesVisivel = !carregandoPermissoes && (!isFuncionario || temAcessoModulo(novidadesItem.modulo));

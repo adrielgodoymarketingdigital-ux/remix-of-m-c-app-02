@@ -49,6 +49,7 @@ import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { cn } from "@/lib/utils";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 interface MobileMenuDrawerProps {
   open: boolean;
@@ -115,6 +116,8 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const [clientesExpandido, setClientesExpandido] = useState(false);
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { isProprietario, empresaAtiva } = useEmpresa();
+  const isFilialAtiva = isProprietario && !!empresaAtiva;
 
   // Verificar admin quando o drawer abrir
   useEffect(() => {
@@ -136,13 +139,18 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
 
   const menusVisiveis = useMemo(() => {
     if (carregandoPermissoes) return [];
-    if (!isFuncionario) return menuItems;
-    
+    if (!isFuncionario) {
+      return menuItems.filter(item => {
+        if (isFilialAtiva && ['/equipe', '/multi-empresas'].includes(item.url)) return false;
+        return true;
+      });
+    }
+
     return menuItems.filter(item => {
-      if (['/plano', '/equipe'].includes(item.url)) return false;
+      if (['/plano', '/equipe', '/multi-empresas'].includes(item.url)) return false;
       return temAcessoModulo(item.modulo);
     });
-  }, [isFuncionario, temAcessoModulo, carregandoPermissoes]);
+  }, [isFuncionario, temAcessoModulo, carregandoPermissoes, isFilialAtiva]);
 
   const handleLogout = async () => {
     clearSessionMeta();

@@ -21,9 +21,12 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useConfetti } from "@/hooks/useConfetti";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FiltrosPeriodo } from "@/components/financeiro/FiltroPeriodoAvancado";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 export default function Financeiro() {
   const { toast } = useToast();
+  const { isProprietario, empresaAtiva } = useEmpresa();
+  const isFilialAtiva = isProprietario && !!empresaAtiva;
   const { disparar: dispararConfetti, dispararLados } = useConfetti();
   const jaCompletouLucroRef = useRef(false);
   const {
@@ -219,13 +222,15 @@ export default function Financeiro() {
           />
 
           {/* Seção 2: Análise de Lucros e Custos */}
-          <SecaoAnaliseLucrosCustos
-            loading={loading}
-            calcularLucroPorItem={calcularLucroPorItem}
-            calcularEvolucaoMensal={calcularEvolucaoMensal}
-            calcularResumo={calcularResumo}
-            onFiltroChange={handleFiltroChange}
-          />
+          {!isFilialAtiva && (
+            <SecaoAnaliseLucrosCustos
+              loading={loading}
+              calcularLucroPorItem={calcularLucroPorItem}
+              calcularEvolucaoMensal={calcularEvolucaoMensal}
+              calcularResumo={calcularResumo}
+              onFiltroChange={handleFiltroChange}
+            />
+          )}
         </div>
       </main>
     </AppLayout>

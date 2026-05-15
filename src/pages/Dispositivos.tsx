@@ -34,6 +34,7 @@ import { BotaoScanner } from "@/components/scanner/LeitorCodigoBarras";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SecaoDispositivosVendidos } from "@/components/dispositivos/SecaoDispositivosVendidos";
 import { SecaoDispositivosExcluidos } from "@/components/dispositivos/SecaoDispositivosExcluidos";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 export default function Dispositivos() {
   const navigate = useNavigate();
@@ -60,6 +61,8 @@ export default function Dispositivos() {
 
   const { obterContagemDispositivos, assinatura, limites } = useAssinatura();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
+  const { isProprietario, empresaAtiva } = useEmpresa();
+  const isFilialAtiva = isProprietario && !!empresaAtiva;
 
   const resumoInventario = useMemo(() => {
     const naoVendidos = dispositivos.filter(d => !d.vendido);
@@ -234,10 +237,12 @@ export default function Dispositivos() {
                 <Smartphone className="h-4 w-4" />
                 <span>Estoque</span>
               </TabsTrigger>
-              <TabsTrigger value="vendidos" className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4" />
-                <span>Vendidos</span>
-              </TabsTrigger>
+              {!isFilialAtiva && (
+                <TabsTrigger value="vendidos" className="flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4" />
+                  <span>Vendidos</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="excluidos" className="flex items-center gap-2">
                 <Trash2 className="h-4 w-4" />
                 <span>Excluídos</span>
