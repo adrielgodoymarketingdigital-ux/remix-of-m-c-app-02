@@ -66,6 +66,8 @@ export const useOrdensServico = () => {
   const resolvedUserIdFromContext = useResolvedUserId();
   const empresaFiltro = useEmpresaFiltro();
   const resolvedUserIdRef = useRef<string | null>(null);
+  const empresaFiltroRef = useRef(empresaFiltro);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
   const detalhesCacheRef = useRef<Record<string, OrdemServico>>({});
 
   const ordens = useMemo(() => {
@@ -312,7 +314,7 @@ export const useOrdensServico = () => {
         .eq("is_teste", false)
         .is("deleted_at", null);
 
-      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
 
       if (dataInicio) {
         const inicioISO = dataInicio.toISOString().split('T')[0];
@@ -337,7 +339,7 @@ export const useOrdensServico = () => {
       console.error("Erro ao carregar lucro das ordens:", error);
       setLucroOrdensEntregues(null);
     }
-  }, [resolverUserId, dataInicio, dataFim, empresaFiltro]);
+  }, [resolverUserId, dataInicio, dataFim]);
 
   const excluirOrdem = async (id: string) => {
     try {
@@ -645,6 +647,11 @@ export const useOrdensServico = () => {
   useEffect(() => {
     carregarLucroOrdensEntregues();
   }, [carregarLucroOrdensEntregues]);
+
+  // Forçar re-fetch do lucro ao trocar empresa (empresaFiltro muda mas carregarLucroOrdensEntregues pode não mudar de referência)
+  useEffect(() => {
+    carregarLucroOrdensEntregues();
+  }, [empresaFiltro]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const importarOSEmLote = async (ordens: Array<{
     cliente_nome: string;
