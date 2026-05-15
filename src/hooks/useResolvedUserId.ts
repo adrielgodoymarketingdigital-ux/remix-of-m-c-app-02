@@ -50,6 +50,7 @@ export function useResolvedUserId(): string | null {
  */
 export function useEmpresaFiltro(): string | null {
   const { isProprietario, empresaAtiva } = useEmpresa();
-  if (isProprietario && empresaAtiva) return empresaAtiva;
-  return null;
+  const result = (isProprietario && empresaAtiva) ? empresaAtiva : null;
+  console.log('[useEmpresaFiltro] isProprietario:', isProprietario, '| empresaAtiva:', empresaAtiva, '| result:', result);
+  return result;
 }

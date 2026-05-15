@@ -686,6 +686,7 @@ export const useVendas = () => {
   };
 
   useEffect(() => {
+    console.log('[useVendas] empresaFiltro mudou:', empresaFiltro, '| resolvedUserId:', resolvedUserIdFromContext);
     carregarVendas();
   }, [resolvedUserIdFromContext, empresaFiltro]);
 
