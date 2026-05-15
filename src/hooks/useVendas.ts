@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
-import { useResolvedUserId } from "./useResolvedUserId";
+import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -15,6 +15,7 @@ export const useVendas = () => {
   const { dispatchEvent } = useEventDispatcher();
   const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
   const resolvedUserIdFromContext = useResolvedUserId();
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregarVendas = async (dataInicio?: string, dataFim?: string) => {
     try {
@@ -41,6 +42,10 @@ export const useVendas = () => {
         .eq("user_id", resolvedUserId)
         .is("deleted_at", null)
         .order("data", { ascending: false });
+
+      if (empresaFiltro) {
+        queryVendas = queryVendas.eq("empresa_id", empresaFiltro);
+      }
 
       // Usar offset de timezone local para garantir que o filtro respeite o dia do usuário
       const tzOffset = new Date().getTimezoneOffset();
@@ -70,6 +75,10 @@ export const useVendas = () => {
         .is("deleted_at", null)
         .in("status", ["finalizado", "entregue"])
         .order("data_saida", { ascending: false, nullsFirst: false });
+
+      if (empresaFiltro) {
+        queryOrdens = queryOrdens.eq("empresa_id", empresaFiltro);
+      }
 
       if (dataInicio && dataFim) {
         queryOrdens = queryOrdens.or(

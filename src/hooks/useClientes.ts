@@ -7,7 +7,7 @@ import { useEventTracking } from "./useEventTracking";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useConfetti } from "./useConfetti";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
-import { useResolvedUserId } from "./useResolvedUserId";
+import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
 
 interface UseClientesOptions {
   /** Se true, evita navegação automática e efeitos visuais após criar cliente (útil para PDV) */
@@ -24,6 +24,7 @@ export function useClientes(options: UseClientesOptions = {}) {
   const navigate = useNavigate();
   const { isFuncionario, lojaUserId, podeSincronizarClientes } = useFuncionarioPermissoes();
   const resolvedUserIdFromContext = useResolvedUserId();
+  const empresaFiltro = useEmpresaFiltro();
 
   const carregarClientes = useCallback(async () => {
     try {
@@ -38,12 +39,14 @@ export function useClientes(options: UseClientesOptions = {}) {
         ?? ((isFuncionario && podeSincronizarClientes && lojaUserId) ? lojaUserId : user.id);
 
       const data = await withRetry(async () => {
-        const { data, error } = await supabase
+        let query = supabase
           .from("clientes")
           .select("*")
           .eq("user_id", targetUserId)
           .is("deleted_at", null)
           .order("nome");
+        if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+        const { data, error } = await query;
         if (error) throw error;
         return data;
       }, 'useClientes.carregarClientes');

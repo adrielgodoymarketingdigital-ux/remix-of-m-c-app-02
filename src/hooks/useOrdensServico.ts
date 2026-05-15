@@ -5,7 +5,7 @@ import { startOfMonth, endOfMonth, format } from "date-fns";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useEventDispatcher } from "./useEventDispatcher";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
-import { useResolvedUserId } from "./useResolvedUserId";
+import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
 
 export interface OrdemServico {
   id: string;
@@ -64,6 +64,7 @@ export const useOrdensServico = () => {
   const { lojaUserId, isFuncionario, funcionarioId, permissoes } = useFuncionarioPermissoes();
   const { dispatchEvent } = useEventDispatcher();
   const resolvedUserIdFromContext = useResolvedUserId();
+  const empresaFiltro = useEmpresaFiltro();
   const resolvedUserIdRef = useRef<string | null>(null);
   const detalhesCacheRef = useRef<Record<string, OrdemServico>>({});
 
@@ -211,6 +212,10 @@ export const useOrdensServico = () => {
           .eq("user_id", userId)
           .eq("is_teste", false)
           .is("deleted_at", null);
+
+        if (empresaFiltro) {
+          query = query.eq("empresa_id", empresaFiltro);
+        }
 
         // Se é funcionário e NÃO tem permissão de ver todas as OS, filtrar apenas as dele
         if (isFuncionario && !permissoes?.recursos?.ver_todas_os && funcionarioId) {
