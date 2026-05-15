@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -102,7 +101,6 @@ function DialogNovaFilial({ open, onClose, onCriar, salvando }: {
 }) {
   const [form, setForm] = useState({
     nome: "", cnpj: "", telefone: "", endereco: "", cidade: "", estado: "",
-    email_gerente: "", senha_gerente: "", confirmar_senha: "",
   });
   const [erros, setErros] = useState<Record<string, string>>({});
   const set = (campo: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -111,10 +109,6 @@ function DialogNovaFilial({ open, onClose, onCriar, salvando }: {
   const validar = () => {
     const e: Record<string, string> = {};
     if (!form.nome.trim()) e.nome = "Nome obrigatório";
-    if (!form.email_gerente.trim()) e.email_gerente = "Email obrigatório";
-    if (!form.senha_gerente) e.senha_gerente = "Senha obrigatória";
-    if (form.senha_gerente.length < 6) e.senha_gerente = "Mínimo 6 caracteres";
-    if (form.senha_gerente !== form.confirmar_senha) e.confirmar_senha = "Senhas não conferem";
     setErros(e);
     return Object.keys(e).length === 0;
   };
@@ -122,9 +116,8 @@ function DialogNovaFilial({ open, onClose, onCriar, salvando }: {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validar()) return;
-    const { confirmar_senha, ...dados } = form;
-    await onCriar(dados);
-    setForm({ nome: "", cnpj: "", telefone: "", endereco: "", cidade: "", estado: "", email_gerente: "", senha_gerente: "", confirmar_senha: "" });
+    await onCriar(form);
+    setForm({ nome: "", cnpj: "", telefone: "", endereco: "", cidade: "", estado: "" });
   };
 
   return (
@@ -160,23 +153,6 @@ function DialogNovaFilial({ open, onClose, onCriar, salvando }: {
               <Label htmlFor="estado">Estado</Label>
               <Input id="estado" value={form.estado} onChange={set("estado")} placeholder="SP" maxLength={2} />
             </div>
-          </div>
-          <Separator />
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Acesso da Filial</p>
-          <div className="space-y-2">
-            <Label htmlFor="email_gerente">Email de login *</Label>
-            <Input id="email_gerente" type="email" value={form.email_gerente} onChange={set("email_gerente")} placeholder="gerente@filial.com" />
-            {erros.email_gerente && <p className="text-xs text-destructive">{erros.email_gerente}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="senha_gerente">Senha *</Label>
-            <Input id="senha_gerente" type="password" value={form.senha_gerente} onChange={set("senha_gerente")} placeholder="Mínimo 6 caracteres" />
-            {erros.senha_gerente && <p className="text-xs text-destructive">{erros.senha_gerente}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmar_senha">Confirmar senha *</Label>
-            <Input id="confirmar_senha" type="password" value={form.confirmar_senha} onChange={set("confirmar_senha")} />
-            {erros.confirmar_senha && <p className="text-xs text-destructive">{erros.confirmar_senha}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
