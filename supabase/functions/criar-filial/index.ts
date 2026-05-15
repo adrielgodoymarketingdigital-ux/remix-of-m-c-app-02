@@ -61,11 +61,65 @@ serve(async (req) => {
 
     // Validar body
     const body = await req.json();
-    const { nome, cnpj, telefone, endereco, cidade, estado } = body;
+    const { nome, cnpj, telefone, endereco, cidade, estado, email_gerente, senha_gerente } = body;
 
     if (!nome?.trim()) return json({ error: "Nome da filial é obrigatório" }, 400);
+    if (!email_gerente?.trim()) return json({ error: "Email do gerente é obrigatório" }, 400);
+    if (!senha_gerente || senha_gerente.length < 6) return json({ error: "Senha deve ter pelo menos 6 caracteres" }, 400);
 
-    // Criar empresa filial (sem criar usuário gerente)
+    // Criar usuário gerente via fetch direto (evita comportamentos do SDK com triggers)
+    const createUserResp = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+      method: "POST",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email_gerente,
+        password: senha_gerente,
+        email_confirm: true,
+        user_metadata: { nome: nome.trim(), tipo_usuario: "gerente_filial" },
+      }),
+    });
+
+    const gerenteData = await createUserResp.json();
+
+    if (!createUserResp.ok) {
+      const msg = gerenteData.msg || gerenteData.message || JSON.stringify(gerenteData);
+      if (msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("already been registered")) {
+        return json({ error: "Este email já está cadastrado no sistema" }, 400);
+      }
+      return json({ error: "Erro ao criar login do gerente: " + msg }, 400);
+    }
+
+    const gerenteId = gerenteData.id;
+
+    // Perfil do gerente
+    await fetch(`${supabaseUrl}/rest/v1/profiles?on_conflict=user_id`, {
+      method: "POST",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({ user_id: gerenteId, nome: nome.trim(), email: email_gerente }),
+    });
+
+    // Assinatura do gerente
+    await fetch(`${supabaseUrl}/rest/v1/assinaturas`, {
+      method: "POST",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify({ user_id: gerenteId, plano_tipo: "free", status: "active", payment_provider: "multi_empresa" }),
+    });
+
+    // Criar empresa filial
     const { data: empresa, error: empresaError } = await supabase
       .from("empresas")
       .insert({
@@ -82,12 +136,27 @@ serve(async (req) => {
       .select()
       .single();
 
-    if (empresaError) return json({ error: "Erro ao criar empresa: " + empresaError.message }, 500);
+    if (empresaError) {
+      await fetch(`${supabaseUrl}/auth/v1/admin/users/${gerenteId}`, {
+        method: "DELETE",
+        headers: { "apikey": serviceKey, "Authorization": `Bearer ${serviceKey}` },
+      });
+      return json({ error: "Erro ao criar empresa: " + empresaError.message }, 500);
+    }
+
+    // Vincular gerente à empresa
+    await supabase.from("empresa_usuarios").insert({
+      empresa_id: empresa.id,
+      proprietario_id: user.id,
+      gerente_id: gerenteId,
+      permissoes: { pdv: true, os: true, clientes: true, produtos: true, financeiro: false, relatorios: false, funcionarios: false, configuracoes: false, metas: false },
+    });
 
     return json({
       sucesso: true,
       empresa,
-      mensagem: `Filial "${nome}" criada com sucesso!`,
+      gerente_id: gerenteId,
+      mensagem: `Filial "${nome}" criada com sucesso! Login do gerente: ${email_gerente}`,
     });
 
   } catch (error) {
