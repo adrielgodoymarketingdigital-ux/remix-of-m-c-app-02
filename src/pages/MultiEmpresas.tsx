@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Lock, Plus, Building2, Home, TrendingUp, Target, Bell, Info, X,
-  ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw, Pencil,
+  ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw, Pencil, UserCog,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -255,10 +255,10 @@ function PainelVendas({ ultimas, porTipo, onVerTodas }: {
 
 // ─── Card de Empresa ──────────────────────────────────────────────────────────
 
-function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar, onEditarNome }: {
+function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar, onEditarNome, onEditarGerente }: {
   empresa: EmpresaCard; isMatriz: boolean; cor: string; fatTotal: number;
   onMetas: () => void; onNotificacoes: () => void; onVerVendas: () => void; onAcessar: () => void;
-  onEditarNome: () => void;
+  onEditarNome: () => void; onEditarGerente?: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
   const metaFat = empresa.metas.find(m => m.tipo === "faturamento");
@@ -384,6 +384,11 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
           <Button size="sm" variant="outline" className="text-xs h-8 px-2" onClick={onNotificacoes}>
             <Bell className="h-4 w-4" />
           </Button>
+          {!isMatriz && onEditarGerente && (
+            <Button size="sm" variant="outline" className="text-xs h-8 px-2" onClick={onEditarGerente} title="Dados de acesso do gerente">
+              <UserCog className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -426,6 +431,15 @@ export default function MultiEmpresas() {
   const [empresaEditando, setEmpresaEditando] = useState<EmpresaCard | null>(null);
   const [novoNome, setNovoNome] = useState("");
   const [salvandoNome, setSalvandoNome] = useState(false);
+
+  const [dialogGerente, setDialogGerente] = useState(false);
+  const [empresaGerente, setEmpresaGerente] = useState<EmpresaCard | null>(null);
+  const [gerenteEmail, setGerenteEmail] = useState("");
+  const [gerenteNome, setGerenteNome] = useState("");
+  const [gerenteSenha, setGerenteSenha] = useState("");
+  const [gerenteConfirmarSenha, setGerenteConfirmarSenha] = useState("");
+  const [carregandoGerente, setCarregandoGerente] = useState(false);
+  const [salvandoGerente, setSalvandoGerente] = useState(false);
 
   const [bannerFechado, setBannerFechado] = useState(() =>
     localStorage.getItem("multiempresas_banner_fechado") === "1"
@@ -540,6 +554,58 @@ export default function MultiEmpresas() {
     await supabase.from("user_notification_preferences").upsert({ user_id: user.id, empresa_id: empresaNotif.id, preferences: notifForm });
     toast.success("Preferências salvas!");
     setDialogNotifAberto(false);
+  };
+
+  const abrirGerente = async (empresa: EmpresaCard) => {
+    setEmpresaGerente(empresa);
+    setGerenteEmail("");
+    setGerenteNome("");
+    setGerenteSenha("");
+    setGerenteConfirmarSenha("");
+    setDialogGerente(true);
+    setCarregandoGerente(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gerente-filial", {
+        body: { empresa_id: empresa.id, acao: "buscar" },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      setGerenteEmail(data.email || "");
+      setGerenteNome(data.nome || "");
+    } catch (e: any) {
+      toast.error("Erro ao buscar dados do gerente: " + e.message);
+    } finally {
+      setCarregandoGerente(false);
+    }
+  };
+
+  const salvarGerente = async () => {
+    if (!empresaGerente) return;
+    if (gerenteSenha && gerenteSenha !== gerenteConfirmarSenha) {
+      toast.error("As senhas não conferem");
+      return;
+    }
+    if (gerenteSenha && gerenteSenha.length < 6) {
+      toast.error("Senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+    setSalvandoGerente(true);
+    try {
+      const body: Record<string, string> = {
+        empresa_id: empresaGerente.id,
+        acao: "atualizar",
+      };
+      if (gerenteEmail.trim()) body.email = gerenteEmail.trim();
+      if (gerenteSenha) body.senha = gerenteSenha;
+
+      const { data, error } = await supabase.functions.invoke("gerente-filial", { body });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      toast.success("Dados do gerente atualizados com sucesso!");
+      setDialogGerente(false);
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + e.message);
+    } finally {
+      setSalvandoGerente(false);
+    }
   };
 
   const abrirEditarNome = (empresa: EmpresaCard) => {
@@ -784,6 +850,7 @@ export default function MultiEmpresas() {
                 onVerVendas={() => navigate("/vendas")}
                 onAcessar={() => { setEmpresaAtiva(empresa.id); navigate("/os"); }}
                 onEditarNome={() => abrirEditarNome(empresa)}
+                onEditarGerente={() => abrirGerente(empresa)}
               />
             ))}
 
@@ -803,6 +870,78 @@ export default function MultiEmpresas() {
 
       {/* Dialog Nova Filial */}
       <DialogNovaFilial open={dialogNova} onClose={() => setDialogNova(false)} onCriar={handleCriar} salvando={salvando} />
+
+      {/* Dialog Dados do Gerente */}
+      <Dialog open={dialogGerente} onOpenChange={v => { setDialogGerente(v); if (!v) { setGerenteSenha(""); setGerenteConfirmarSenha(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCog className="h-4 w-4" />
+              Acesso do Gerente — {empresaGerente?.nome}
+            </DialogTitle>
+            <DialogDescription>
+              Visualize ou atualize o email e senha usados pelo gerente para fazer login.
+            </DialogDescription>
+          </DialogHeader>
+
+          {carregandoGerente ? (
+            <div className="space-y-3 py-2">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Nome</Label>
+                <Input value={gerenteNome} disabled className="bg-muted/40 text-muted-foreground" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="gerente-email">Email de login</Label>
+                <Input
+                  id="gerente-email"
+                  type="email"
+                  value={gerenteEmail}
+                  onChange={e => setGerenteEmail(e.target.value)}
+                  placeholder="email@gerente.com"
+                />
+              </div>
+              <Separator />
+              <p className="text-xs text-muted-foreground">
+                Preencha os campos abaixo somente se quiser alterar a senha.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="gerente-senha">Nova senha</Label>
+                <Input
+                  id="gerente-senha"
+                  type="password"
+                  value={gerenteSenha}
+                  onChange={e => setGerenteSenha(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="gerente-confirmar">Confirmar nova senha</Label>
+                <Input
+                  id="gerente-confirmar"
+                  type="password"
+                  value={gerenteConfirmarSenha}
+                  onChange={e => setGerenteConfirmarSenha(e.target.value)}
+                  placeholder="Repita a senha"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogGerente(false)} disabled={salvandoGerente}>
+              Cancelar
+            </Button>
+            <Button onClick={salvarGerente} disabled={salvandoGerente || carregandoGerente}>
+              {salvandoGerente ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Editar Nome */}
       <Dialog open={dialogEditarNome} onOpenChange={setDialogEditarNome}>
