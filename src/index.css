@@ -680,6 +680,112 @@ All colors MUST be HSL.
   body.print-duas-os-horizontal #print-root {
     width: 277mm !important;
   }
+
+  /* Fontes ampliadas para modo 2 OS por folha (compensa a escala 0.5 e melhora legibilidade) */
+  .impressao-duas-os-slot .impressao-ordem-container {
+    font-size: 13pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-titulo {
+    font-size: 19pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-numero-os {
+    font-size: 15pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-block-title {
+    font-size: 11pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-field {
+    font-size: 12pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-defeito {
+    font-size: 12pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-valor-total {
+    font-size: 19pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-item-linha {
+    font-size: 12pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-checklist-item {
+    font-size: 11pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-termo-title {
+    font-size: 11pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-termo-text {
+    font-size: 10pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-assinatura-label {
+    font-size: 11pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-header-loja {
+    font-size: 10pt !important;
+  }
+
+  /* Modo horizontal usa scale(0.713) — fontes ligeiramente menores que vertical */
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-ordem-container {
+    font-size: 10pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-titulo {
+    font-size: 15pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-numero-os {
+    font-size: 12pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-block-title {
+    font-size: 9pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-field {
+    font-size: 9.5pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-defeito {
+    font-size: 9.5pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-valor-total {
+    font-size: 15pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-item-linha {
+    font-size: 9.5pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-checklist-item {
+    font-size: 9pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-termo-title {
+    font-size: 9pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-termo-text {
+    font-size: 8pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-assinatura-label {
+    font-size: 9pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-header-loja {
+    font-size: 8pt !important;
+  }
 }
 
 /* Screen Styles for Print Preview */
