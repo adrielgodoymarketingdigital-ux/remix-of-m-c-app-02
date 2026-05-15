@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useEmpresaFiltro } from "@/hooks/useResolvedUserId";
 
 interface VendaDispositivo {
   id: string;
@@ -77,9 +78,13 @@ export function SecaoDispositivosVendidos() {
     return meses;
   }, []);
 
+  const empresaFiltro = useEmpresaFiltro();
+  const empresaFiltroRef = useRef(empresaFiltro);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
+
   useEffect(() => {
     carregarVendas();
-  }, []);
+  }, [empresaFiltro]);
 
   const carregarVendas = async () => {
     try {
@@ -91,9 +96,9 @@ export function SecaoDispositivosVendidos() {
       const user = session?.user;
       if (!user) { setLoading(false); return; }
       const userId = lojaOwnerId || user.id;
-      
+
       // First fetch vendas filtered by user
-      const { data: vendasData, error: vendasError } = await supabase
+      let queryVendas = supabase
         .from("vendas")
         .select("id, dispositivo_id, cliente_id, quantidade, total, forma_pagamento, data, grupo_venda")
         .eq("user_id", userId)
@@ -101,6 +106,8 @@ export function SecaoDispositivosVendidos() {
         .not("dispositivo_id", "is", null)
         .or("cancelada.eq.false,cancelada.is.null")
         .order("data", { ascending: false });
+      if (empresaFiltroRef.current) queryVendas = queryVendas.eq("empresa_id", empresaFiltroRef.current);
+      const { data: vendasData, error: vendasError } = await queryVendas;
 
       if (vendasError) {
         console.error("Erro ao buscar vendas:", vendasError);
