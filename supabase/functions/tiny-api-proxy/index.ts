@@ -4,7 +4,7 @@ import { checkTinyAccessByUserId } from "../_shared/checkTinyAccess.ts";
 
 const TINY_TOKEN_URL =
   "https://accounts.tiny.com.br/realms/tiny/protocol/openid-connect/token";
-const TINY_API_BASE = "https://api.tiny.com.br/api2";
+const TINY_API_BASE = "https://api.tiny.com.br/api/v3";
 
 async function refreshTokens(
   supabase: ReturnType<typeof createClient>,
@@ -19,7 +19,6 @@ async function refreshTokens(
       client_id: Deno.env.get("TINY_CLIENT_ID")!,
       client_secret: Deno.env.get("TINY_CLIENT_SECRET")!,
       refresh_token: refreshToken,
-      redirect_uri: "https://qztuzcchknptrvkdmdph.supabase.co/functions/v1/tiny-oauth-callback",
     }),
   });
 
@@ -30,7 +29,7 @@ async function refreshTokens(
   }
 
   const tokens = await resp.json();
-  console.log("Token renovado com sucesso, novo expires_in:", tokens.expires_in);
+  console.log("Token renovado, expires_in:", tokens.expires_in);
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
   await supabase.from("tiny_integrations").update({
@@ -43,60 +42,47 @@ async function refreshTokens(
   return tokens.access_token;
 }
 
-async function fetchAllPages(
-  endpoint: string,
+// API V3 usa GET com query params e paginação via offset/limit
+async function fetchAllPagesV3(
+  path: string,
   params: Record<string, string>,
   accessToken: string
 ): Promise<unknown[]> {
   const allItems: unknown[] = [];
-  let page = 1;
+  const limit = 100;
+  let offset = 0;
 
   while (true) {
-    const body = new URLSearchParams({
-      ...params,
-      formato: "json",
-      pagina: String(page),
-    });
+    const qs = new URLSearchParams({ ...params, limit: String(limit), offset: String(offset) });
+    const url = `${TINY_API_BASE}/${path}?${qs.toString()}`;
 
-    const resp = await fetch(`${TINY_API_BASE}/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": `Bearer ${accessToken}`,
-      },
-      body,
+    console.log(`Tiny V3 GET ${url}`);
+
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${accessToken}` },
     });
 
     if (!resp.ok) {
-      console.error(`Tiny API HTTP error: ${resp.status} ${await resp.text()}`);
+      const errText = await resp.text();
+      console.error(`Tiny V3 HTTP error: ${resp.status}`, errText);
       break;
     }
 
     const data = await resp.json();
-    console.log(`Tiny page ${page} response:`, JSON.stringify(data).slice(0, 500));
-    const retorno = data?.retorno;
-    if (!retorno || retorno.status_processamento === "3" || retorno.status === "Erro") break;
+    console.log("Tiny V3 response:", JSON.stringify(data).slice(0, 500));
 
-    // pedidos.pesquisa returns retorno.pedidos = [{pedido: {...}}, ...]
-    // Try known list keys; unwrap nested object if needed
-    const listKeys = ["pedidos", "contas_receber", "contas_pagar"];
-    let items: unknown[] = [];
-    for (const key of listKeys) {
-      if (Array.isArray(retorno[key])) {
-        // Each element may be { pedido: {...} } — unwrap one level
-        items = retorno[key].map((el: Record<string, unknown>) => {
-          const nested = Object.values(el);
-          return nested.length === 1 && typeof nested[0] === "object" ? nested[0] : el;
-        });
-        break;
-      }
-    }
+    // V3 retorna { itens: [...] } ou array direto
+    const items: unknown[] = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.itens)
+      ? data.itens
+      : [];
 
     allItems.push(...items);
 
-    // Tiny returns up to 100 per page; stop if less than 100
-    if (items.length < 100) break;
-    page++;
+    if (items.length < limit) break;
+    offset += limit;
   }
 
   return allItems;
@@ -153,37 +139,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Always refresh — tokens stored may be expired after reconnect issues
-    let accessToken: string;
-    try {
-      console.log("Tentando renovar token para user:", user.id);
-      accessToken = await refreshTokens(supabase, user.id, integration.refresh_token);
-    } catch (refreshErr) {
-      console.error("Refresh falhou, tentando access_token existente:", refreshErr);
-      accessToken = integration.access_token;
+    // Refresh se expirado (com 60s de margem)
+    let accessToken = integration.access_token;
+    const expiresAt = new Date(integration.expires_at).getTime();
+    if (Date.now() > expiresAt - 60_000) {
+      try {
+        accessToken = await refreshTokens(supabase, user.id, integration.refresh_token);
+      } catch (refreshErr) {
+        console.error("Refresh falhou, usando token existente:", refreshErr);
+      }
     }
 
-    // For single-item endpoints (pedido.obter), don't paginate
-    const singleEndpoints = ["pedido.obter.php"];
-    let result: unknown;
-
-    if (singleEndpoints.some((e) => endpoint.includes(e))) {
-      const body = new URLSearchParams({ ...params, formato: "json" });
-      const resp = await fetch(`${TINY_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Bearer ${accessToken}`,
-        },
-        body,
-      });
-      result = await resp.json();
-    } else {
-      const items = await fetchAllPages(endpoint, params, accessToken);
-      result = { items };
-    }
-
-    return new Response(JSON.stringify(result), {
+    const items = await fetchAllPagesV3(endpoint, params, accessToken);
+    return new Response(JSON.stringify({ items }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

@@ -22,9 +22,23 @@ export interface TinyOS {
 
 export type SituacaoTiny = "aberto" | "em_manutencao" | "concluido" | "finalizado";
 
-export function mapSituacaoTiny(raw: string): string {
-  const s = raw.toLowerCase().trim();
-  if (s === "aberto") return "em_aberto";
+// Situações V3: 0=Em Aberto, 1=Orçada, 2=Serv Concluído, 3=Finalizada,
+//               4=Não Aprovada, 5=Aprovada, 6=Em Andamento, 7=Cancelada
+export function mapSituacaoTiny(raw: string | number): string {
+  const n = Number(raw);
+  if (!isNaN(n)) {
+    if (n === 0) return "em_aberto";
+    if (n === 1) return "em_aberto";
+    if (n === 5) return "em_aberto";
+    if (n === 6) return "em_manutencao";
+    if (n === 2) return "concluido";
+    if (n === 3) return "finalizado";
+    if (n === 7) return "finalizado";
+    if (n === 4) return "finalizado";
+    return String(raw);
+  }
+  const s = String(raw).toLowerCase().trim();
+  if (s === "aberto" || s === "em aberto") return "em_aberto";
   if (s === "em andamento" || s === "em_andamento") return "em_manutencao";
   if (s === "aprovado") return "concluido";
   if (s === "faturado" || s === "concluido" || s === "finalizado") return "finalizado";
@@ -159,10 +173,10 @@ export function useTinyDados(
 
       const { data, error: fnError } = await supabase.functions.invoke("tiny-api-proxy", {
         body: {
-          endpoint: "pedidos.pesquisa.php",
+          endpoint: "ordem-servico",
           params: {
-            dataInicial: formataData(dataInicio),
-            dataFinal: formataData(dataFim),
+            dataInicialEmissao: formataData(dataInicio),
+            dataFinalEmissao: formataData(dataFim),
           },
         },
         headers: { Authorization: `Bearer ${session.access_token}` },
