@@ -400,7 +400,7 @@ const PERMISSOES_PADRAO = {
 export default function MultiEmpresas() {
   const navigate = useNavigate();
   const { assinatura, carregando: carregandoAssinatura } = useAssinatura();
-  const { nomeMatriz, setEmpresaAtiva } = useEmpresa();
+  const { nomeMatriz, setEmpresaAtiva, carregarEmpresas } = useEmpresa();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -481,7 +481,7 @@ export default function MultiEmpresas() {
       if (response.data?.error) { toast.error(response.data.error); return; }
       toast.success(response.data.mensagem || "Filial criada com sucesso!");
       setDialogNova(false);
-      await carregarDados();
+      await Promise.all([carregarDados(), carregarEmpresas()]);
     } catch (e: any) {
       toast.error("Erro ao criar filial: " + e.message);
     } finally {
