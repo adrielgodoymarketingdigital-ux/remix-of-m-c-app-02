@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
@@ -59,6 +60,7 @@ const PDV = () => {
   const { toast } = useToast();
   const { clientes, refetch: carregarClientes, criarCliente } = useClientes({ modoSilencioso: true });
   const { lojaUserId, funcionarioId } = useFuncionarioPermissoes();
+  const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const { dispatchEvent } = useEventDispatcher();
   const [loading, setLoading] = useState(true);
   const [finalizando, setFinalizando] = useState(false);
@@ -283,17 +285,21 @@ const PDV = () => {
       // User ID para registrar: proprietário da filial (se gerente) > dono da loja (se funcionário) > próprio ID
       const userIdParaVenda = gerenteFilialData?.proprietario_id || lojaUserId || user.id;
 
-      // Empresa ID: filial do gerente > busca empresa matriz do proprietário
+      // Empresa ID: filial do gerente > empresa ativa no contexto (proprietário trocou de empresa) > empresa matriz
       let empresaIdPDV: string | null = gerenteFilialData?.empresa_id ?? null;
 
       if (!empresaIdPDV) {
-        const { data: empresaPrincipalPDV } = await supabase
-          .from("empresas")
-          .select("id")
-          .eq("proprietario_id", userIdParaVenda)
-          .eq("tipo", "matriz")
-          .maybeSingle();
-        empresaIdPDV = empresaPrincipalPDV?.id ?? null;
+        if (isProprietario && empresaAtivaCtx) {
+          empresaIdPDV = empresaAtivaCtx;
+        } else {
+          const { data: empresaPrincipalPDV } = await supabase
+            .from("empresas")
+            .select("id")
+            .eq("proprietario_id", userIdParaVenda)
+            .eq("tipo", "matriz")
+            .maybeSingle();
+          empresaIdPDV = empresaPrincipalPDV?.id ?? null;
+        }
       }
 
       // Usar cliente selecionado

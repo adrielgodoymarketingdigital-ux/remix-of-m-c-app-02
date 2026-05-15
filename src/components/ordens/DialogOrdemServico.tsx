@@ -60,6 +60,7 @@ import { encryptSenhaDesbloqueio, decryptSenhaDesbloqueio, encryptValue } from "
 import { useEventTracking } from "@/hooks/useEventTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -135,6 +136,7 @@ export const DialogOrdemServico = ({
   const { disparar: dispararConfetti } = useConfetti();
   const { dispatchEvent } = useEventDispatcher();
   const { funcionarioId, lojaUserId, isFuncionario, podeSincronizarOS, permissoes, isDonoLoja } = useFuncionarioPermissoes();
+  const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const navigate = useNavigate();
   const podeVerTecnicos = isDonoLoja || (permissoes?.recursos?.ver_tecnicos_os ?? false);
   const { funcionarios } = useFuncionarios();
@@ -534,17 +536,22 @@ export const DialogOrdemServico = ({
       // Usar ID do dono: proprietário da filial (gerente) > dono da loja (funcionário) > próprio ID
       const effectiveUserId = gerenteFilialOS?.proprietario_id || ((isFuncionario && podeSincronizarOS && lojaUserId) ? lojaUserId : user.id);
 
-      // Empresa ID: filial do gerente > busca empresa matriz do proprietário
+      // Empresa ID: filial do gerente > empresa ativa no contexto (proprietário trocou de empresa) > empresa matriz
       let empresaId: string | null = gerenteFilialOS?.empresa_id ?? null;
 
       if (!empresaId) {
-        const { data: empresaPrincipal } = await supabase
-          .from("empresas")
-          .select("id")
-          .eq("proprietario_id", effectiveUserId)
-          .eq("tipo", "matriz")
-          .maybeSingle();
-        empresaId = empresaPrincipal?.id ?? null;
+        // Se o proprietário selecionou uma filial no contexto, usar ela
+        if (isProprietario && empresaAtivaCtx) {
+          empresaId = empresaAtivaCtx;
+        } else {
+          const { data: empresaPrincipal } = await supabase
+            .from("empresas")
+            .select("id")
+            .eq("proprietario_id", effectiveUserId)
+            .eq("tipo", "matriz")
+            .maybeSingle();
+          empresaId = empresaPrincipal?.id ?? null;
+        }
       }
 
       // Usar cliente existente selecionado ou criar/atualizar
