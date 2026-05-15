@@ -11,13 +11,38 @@ export interface TinyIntegration {
   auto_refresh_interval: number;
 }
 
+export interface TinyOSCliente {
+  id?: number;
+  nome: string;
+  cpfCnpj?: string;
+  celular?: string;
+  email?: string;
+  endereco?: {
+    endereco?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    municipio?: string;
+    cep?: string;
+    uf?: string;
+  };
+}
+
 export interface TinyOS {
   id: string;
   numero: string;
   cliente: string;
+  clienteObj?: TinyOSCliente;
   situacao: string;
+  situacaoRaw: string;
   data_pedido: string;
+  dataPrevista?: string;
   valor: number;
+  marcadores?: string[];
+  equipamento?: string;
+  descricaoProblema?: string;
+  observacoes?: string;
+  tecnico?: string;
 }
 
 export type SituacaoTiny = "aberto" | "em_manutencao" | "concluido" | "finalizado";
@@ -143,6 +168,19 @@ export function useTinyIntegration() {
     atualizarNome,
     atualizarIntervalo,
   };
+}
+
+export async function fetchTinyOSDetalhe(osId: string): Promise<Record<string, unknown> | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+
+  const { data, error } = await supabase.functions.invoke("tiny-api-proxy", {
+    body: { endpoint: `ordem-servico/${osId}`, params: {}, single: true },
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  if (error || !data) return null;
+  return data as Record<string, unknown>;
 }
 
 export function useTinyDados(

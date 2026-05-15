@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -14,13 +16,23 @@ import {
   RefreshCw,
   Settings,
   Plug,
+  ChevronRight,
+  Phone,
+  Mail,
+  MapPin,
+  User,
+  Wrench,
+  Tag,
+  Loader2,
 } from "lucide-react";
 import {
   TinyIntegration,
+  TinyOS,
   calcularDiasUteis,
   diasParados,
   mapSituacaoTiny,
   useTinyDados,
+  fetchTinyOSDetalhe,
 } from "@/hooks/useTinyIntegration";
 import { DialogBoasVindasTiny } from "./DialogBoasVindasTiny";
 import { DialogConfiguracoesTiny } from "./DialogConfiguracoesTiny";
@@ -68,6 +80,9 @@ export function TerceirizadaTab({
   const [dataFim, setDataFim] = useState<Date>(endOfMonth(hoje));
   const [modalBoasVindas, setModalBoasVindas] = useState(false);
   const [modalConfigs, setModalConfigs] = useState(false);
+  const [osSelecionada, setOsSelecionada] = useState<TinyOS | null>(null);
+  const [detalhe, setDetalhe] = useState<Record<string, unknown> | null>(null);
+  const [detalheLoading, setDetalheLoading] = useState(false);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const temIntegracao = !!integration;
@@ -91,20 +106,43 @@ export function TerceirizadaTab({
     if (!integrationLoading && !temIntegracao) setModalBoasVindas(true);
   }, [integrationLoading, temIntegracao]);
 
-  // Processar ordens
+  const abrirDetalhe = useCallback(async (os: TinyOS) => {
+    setOsSelecionada(os);
+    setDetalhe(null);
+    setDetalheLoading(true);
+    const data = await fetchTinyOSDetalhe(os.id);
+    setDetalhe(data);
+    setDetalheLoading(false);
+  }, []);
+
+  // Processar ordens — campos da API V3
   const ordens = useMemo(() => {
     return ordensRaw.map((raw) => {
-      const pedido = (raw as Record<string, unknown>).pedido as Record<string, unknown> ?? raw;
-      const situacaoRaw = String(pedido.situacao ?? pedido.status ?? "").toLowerCase();
+      const r = raw as Record<string, unknown>;
+      const clienteObj = r.cliente as Record<string, unknown> | undefined;
+      const situacaoRaw = String(r.situacao ?? "0");
+      const marcadores = Array.isArray(r.marcadores)
+        ? (r.marcadores as Record<string, unknown>[]).map((m) => String(m.descricao ?? ""))
+        : [];
       return {
-        id: String(pedido.id ?? ""),
-        numero: String(pedido.numero ?? pedido.id ?? ""),
-        cliente: String(pedido.nome_contato ?? pedido.cliente ?? "—"),
+        id: String(r.id ?? ""),
+        numero: String(r.numeroOrdemServico ?? r.id ?? ""),
+        cliente: String(clienteObj?.nome ?? "—"),
+        clienteObj: clienteObj ? {
+          id: clienteObj.id as number | undefined,
+          nome: String(clienteObj.nome ?? ""),
+          cpfCnpj: String(clienteObj.cpfCnpj ?? ""),
+          celular: String(clienteObj.celular ?? ""),
+          email: String(clienteObj.email ?? ""),
+          endereco: clienteObj.endereco as TinyOS["clienteObj"],
+        } : undefined,
         situacao: mapSituacaoTiny(situacaoRaw),
         situacaoRaw,
-        data_pedido: String(pedido.data_pedido ?? pedido.data ?? ""),
-        valor: Number(pedido.valor ?? pedido.total_pedido ?? 0),
-      };
+        data_pedido: String(r.data ?? ""),
+        dataPrevista: r.dataPrevista ? String(r.dataPrevista).split(" ")[0] : undefined,
+        valor: Number(r.valor ?? 0),
+        marcadores,
+      } as TinyOS;
     });
   }, [ordensRaw]);
 
@@ -467,8 +505,9 @@ export function TerceirizadaTab({
               {kanban.map((o) => (
                 <div
                   key={o.id}
+                  onClick={() => abrirDetalhe(o)}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg border bg-muted/10 p-3 text-sm",
+                    "flex items-center gap-3 rounded-lg border bg-muted/10 p-3 text-sm cursor-pointer hover:bg-muted/20 transition-colors",
                     corBorda(o.dias)
                   )}
                 >
@@ -486,7 +525,10 @@ export function TerceirizadaTab({
                       </span>
                     </div>
                   </div>
-                  <span className="font-semibold text-sm shrink-0">{BRL(o.valor)}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="font-semibold text-sm">{BRL(o.valor)}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -508,7 +550,11 @@ export function TerceirizadaTab({
           ) : (
             <div className="space-y-2">
               {maioresPendentes.map((o, idx) => (
-                <div key={o.id} className="flex items-center gap-3 rounded-lg border border-border/40 bg-muted/10 p-3 text-sm">
+                <div
+                  key={o.id}
+                  onClick={() => abrirDetalhe(o)}
+                  className="flex items-center gap-3 rounded-lg border border-border/40 bg-muted/10 p-3 text-sm cursor-pointer hover:bg-muted/20 transition-colors"
+                >
                   <span className="text-xs font-mono text-muted-foreground w-5 shrink-0">{idx + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -522,13 +568,173 @@ export function TerceirizadaTab({
                       </span>
                     </div>
                   </div>
-                  <span className="font-bold shrink-0">{BRL(o.valor)}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="font-bold">{BRL(o.valor)}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Sheet de detalhes da OS */}
+      <Sheet open={!!osSelecionada} onOpenChange={(open) => { if (!open) setOsSelecionada(null); }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {osSelecionada && (
+            <>
+              <SheetHeader className="pb-4">
+                <SheetTitle className="flex items-center gap-2">
+                  <span className="font-mono text-muted-foreground text-sm font-normal">OS #{osSelecionada.numero}</span>
+                </SheetTitle>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline">{osSelecionada.situacaoRaw}</Badge>
+                  {osSelecionada.marcadores?.map((m) => (
+                    <Badge key={m} variant="secondary" className="text-[10px]">
+                      <Tag className="h-2.5 w-2.5 mr-1" />{m}
+                    </Badge>
+                  ))}
+                </div>
+              </SheetHeader>
+
+              <div className="space-y-5">
+                {/* Valor e datas */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-muted/30 border border-border/40 p-3">
+                    <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide mb-1">Valor</p>
+                    <p className="text-lg font-bold">{BRL(osSelecionada.valor)}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/30 border border-border/40 p-3">
+                    <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide mb-1">Abertura</p>
+                    <p className="text-sm font-semibold">
+                      {osSelecionada.data_pedido
+                        ? format(new Date(osSelecionada.data_pedido), "dd/MM/yyyy")
+                        : "—"}
+                    </p>
+                  </div>
+                  {osSelecionada.dataPrevista && (
+                    <div className="rounded-lg bg-muted/30 border border-border/40 p-3 col-span-2">
+                      <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide mb-1">Previsão de entrega</p>
+                      <p className="text-sm font-semibold">
+                        {format(new Date(osSelecionada.dataPrevista), "dd/MM/yyyy")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Cliente */}
+                <div>
+                  <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Cliente</p>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <User className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium">{osSelecionada.cliente}</p>
+                        {osSelecionada.clienteObj?.cpfCnpj && (
+                          <p className="text-xs text-muted-foreground">{osSelecionada.clienteObj.cpfCnpj}</p>
+                        )}
+                      </div>
+                    </div>
+                    {osSelecionada.clienteObj?.celular && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <a href={`tel:${osSelecionada.clienteObj.celular}`} className="text-sm hover:underline">
+                          {osSelecionada.clienteObj.celular}
+                        </a>
+                      </div>
+                    )}
+                    {osSelecionada.clienteObj?.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <a href={`mailto:${osSelecionada.clienteObj.email}`} className="text-sm hover:underline truncate">
+                          {osSelecionada.clienteObj.email}
+                        </a>
+                      </div>
+                    )}
+                    {osSelecionada.clienteObj?.endereco && (osSelecionada.clienteObj.endereco as Record<string, unknown>)?.municipio && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                        <p className="text-sm text-muted-foreground">
+                          {[
+                            (osSelecionada.clienteObj.endereco as Record<string, unknown>).endereco,
+                            (osSelecionada.clienteObj.endereco as Record<string, unknown>).numero,
+                            (osSelecionada.clienteObj.endereco as Record<string, unknown>).bairro,
+                            (osSelecionada.clienteObj.endereco as Record<string, unknown>).municipio,
+                            (osSelecionada.clienteObj.endereco as Record<string, unknown>).uf,
+                          ].filter(Boolean).join(", ")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Detalhe completo carregado da API */}
+                {detalheLoading && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Carregando detalhes...
+                  </div>
+                )}
+
+                {!detalheLoading && detalhe && (
+                  <>
+                    {detalhe.equipamento && (
+                      <>
+                        <Separator />
+                        <div>
+                          <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Equipamento</p>
+                          <div className="flex items-start gap-2">
+                            <Wrench className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium">{String(detalhe.equipamento)}</p>
+                              {detalhe.equipamentoSerie && (
+                                <p className="text-xs text-muted-foreground">Série: {String(detalhe.equipamentoSerie)}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {detalhe.descricaoProblema && (
+                      <>
+                        <Separator />
+                        <div>
+                          <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Descrição do Problema</p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{String(detalhe.descricaoProblema)}</p>
+                        </div>
+                      </>
+                    )}
+
+                    {detalhe.observacoes && (
+                      <>
+                        <Separator />
+                        <div>
+                          <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Observações</p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{String(detalhe.observacoes)}</p>
+                        </div>
+                      </>
+                    )}
+
+                    {detalhe.tecnico && (
+                      <>
+                        <Separator />
+                        <div>
+                          <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Técnico</p>
+                          <p className="text-sm">{String(detalhe.tecnico)}</p>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Modais */}
       <DialogBoasVindasTiny

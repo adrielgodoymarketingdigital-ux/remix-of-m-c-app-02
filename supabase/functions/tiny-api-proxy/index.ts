@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { endpoint, params = {} } = await req.json();
+    const { endpoint, params = {}, single = false } = await req.json();
 
     const { data: integration, error: intError } = await supabase
       .from("tiny_integrations")
@@ -158,6 +158,17 @@ Deno.serve(async (req) => {
       } catch (refreshErr) {
         console.error("Refresh falhou, usando token existente:", refreshErr);
       }
+    }
+
+    if (single) {
+      const qs = Object.keys(params).length ? `?${new URLSearchParams(params)}` : "";
+      const resp = await fetch(`${TINY_API_BASE}/${endpoint}${qs}`, {
+        headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      });
+      const data = await resp.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const items = await fetchAllPagesV3(endpoint, params, accessToken);
