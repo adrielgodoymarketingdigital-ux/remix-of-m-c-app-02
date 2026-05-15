@@ -9,6 +9,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -24,6 +26,7 @@ import {
   Wrench,
   Tag,
   Loader2,
+  Target,
 } from "lucide-react";
 import {
   TinyIntegration,
@@ -84,6 +87,14 @@ export function TerceirizadaTab({
   const [detalhe, setDetalhe] = useState<Record<string, unknown> | null>(null);
   const [detalheLoading, setDetalheLoading] = useState(false);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const STORAGE_KEY = "tiny_meta_faturamento";
+  const [metaFaturamento, setMetaFaturamento] = useState<number>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? Number(saved) : 0;
+  });
+  const [modalMeta, setModalMeta] = useState(false);
+  const [metaInput, setMetaInput] = useState("");
 
   const temIntegracao = !!integration;
 
@@ -170,7 +181,7 @@ export function TerceirizadaTab({
 
   const valorRealizado = somaValores([...ordensEmManutencao, ...ordensConcluido, ...ordensFinalizado]);
   const valorEmFluxo = somaValores([...ordensEmAberto, ...ordensEmManutencao]);
-  const metaPeriodo = 0; // sem meta configurada via API, futuramente
+  const metaPeriodo = metaFaturamento;
 
   // Dias úteis
   const diasUteisTotal = calcularDiasUteis(startOfMonth(dataInicio), endOfMonth(dataFim));
@@ -180,10 +191,15 @@ export function TerceirizadaTab({
   const ritmoDiario = diasUteisPassados > 0 ? valorRealizado / diasUteisPassados : 0;
   const projecao = ritmoDiario * diasUteisTotal;
 
-  // Semáforo
+  // Semáforo: com meta compara percentReal vs percentEsperado.
+  // Sem meta, compara a proporção do realizado sobre a projeção vs o esperado do mês.
+  const percentEfetivo = metaPeriodo > 0
+    ? percentReal
+    : (projecao > 0 ? (valorRealizado / projecao) * 100 : 0);
+
   const semaforo =
-    percentReal >= percentEsperado ? "verde"
-    : percentReal >= percentEsperado * 0.7 ? "amarelo"
+    percentEfetivo >= percentEsperado ? "verde"
+    : percentEfetivo >= percentEsperado * 0.7 ? "amarelo"
     : "vermelho";
 
   const semaforoCor: Record<string, string> = {
@@ -345,7 +361,16 @@ export function TerceirizadaTab({
           <CardContent className="p-4">
             {loading ? <CardSkeleton /> : (
               <>
-                <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest mb-1">Meta OS</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">Meta OS</p>
+                  <button
+                    onClick={() => { setMetaInput(metaFaturamento > 0 ? String(metaFaturamento) : ""); setModalMeta(true); }}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Definir meta de faturamento"
+                  >
+                    <Target className="h-3.5 w-3.5" />
+                  </button>
+                </div>
                 <p className="text-xl font-bold">{BRL(valorRealizado)}</p>
                 {metaPeriodo > 0 ? (
                   <>
@@ -356,11 +381,16 @@ export function TerceirizadaTab({
                       />
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      {percentReal.toFixed(0)}% da meta — Faltam {BRL(metaPeriodo - valorRealizado)}
+                      {percentReal.toFixed(0)}% — Faltam {BRL(Math.max(metaPeriodo - valorRealizado, 0))}
                     </p>
                   </>
                 ) : (
-                  <p className="text-[11px] text-muted-foreground mt-1">Sem meta configurada</p>
+                  <button
+                    onClick={() => { setMetaInput(""); setModalMeta(true); }}
+                    className="text-[11px] text-primary hover:underline mt-1 block"
+                  >
+                    + Definir meta de faturamento
+                  </button>
                 )}
               </>
             )}
@@ -392,7 +422,7 @@ export function TerceirizadaTab({
                   {semaforoLabel[semaforo]}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Real {percentReal.toFixed(0)}% — Esperado {percentEsperado.toFixed(0)}%
+                  Real {percentEfetivo.toFixed(0)}% — Esperado {percentEsperado.toFixed(0)}%
                 </p>
               </>
             )}
@@ -733,6 +763,67 @@ export function TerceirizadaTab({
               </div>
             </>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Modal de meta de faturamento */}
+      <Sheet open={modalMeta} onOpenChange={setModalMeta}>
+        <SheetContent side="bottom" className="pb-8">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Meta de faturamento mensal
+            </SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 max-w-sm">
+            <div className="space-y-1.5">
+              <Label htmlFor="meta-input" className="text-xs text-muted-foreground font-mono uppercase tracking-wide">
+                Valor da meta (R$)
+              </Label>
+              <Input
+                id="meta-input"
+                type="number"
+                min="0"
+                step="100"
+                placeholder="Ex: 10000"
+                value={metaInput}
+                onChange={(e) => setMetaInput(e.target.value)}
+                className="text-base"
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground">
+                O semáforo vai comparar o realizado com a proporção esperada para hoje no mês.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  const val = Number(metaInput);
+                  if (!isNaN(val) && val >= 0) {
+                    setMetaFaturamento(val);
+                    localStorage.setItem(STORAGE_KEY, String(val));
+                  }
+                  setModalMeta(false);
+                }}
+              >
+                Salvar meta
+              </Button>
+              {metaFaturamento > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setMetaFaturamento(0);
+                    localStorage.removeItem(STORAGE_KEY);
+                    setModalMeta(false);
+                  }}
+                >
+                  Remover meta
+                </Button>
+              )}
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
 
