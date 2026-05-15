@@ -273,17 +273,28 @@ const PDV = () => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // User ID para registrar: dono da loja (se funcionário) ou próprio ID
-      const userIdParaVenda = lojaUserId || user.id;
-
-      // Busca empresa_id da empresa principal do usuário
-      const { data: empresaPrincipalPDV } = await supabase
-        .from("empresas")
-        .select("id")
-        .eq("proprietario_id", userIdParaVenda)
-        .eq("tipo", "matriz")
+      // Verificar se é gerente de filial
+      const { data: gerenteFilialData } = await supabase
+        .from("empresa_usuarios")
+        .select("proprietario_id, empresa_id")
+        .eq("gerente_id", user.id)
         .maybeSingle();
-      const empresaIdPDV = empresaPrincipalPDV?.id ?? null;
+
+      // User ID para registrar: proprietário da filial (se gerente) > dono da loja (se funcionário) > próprio ID
+      const userIdParaVenda = gerenteFilialData?.proprietario_id || lojaUserId || user.id;
+
+      // Empresa ID: filial do gerente > busca empresa matriz do proprietário
+      let empresaIdPDV: string | null = gerenteFilialData?.empresa_id ?? null;
+
+      if (!empresaIdPDV) {
+        const { data: empresaPrincipalPDV } = await supabase
+          .from("empresas")
+          .select("id")
+          .eq("proprietario_id", userIdParaVenda)
+          .eq("tipo", "matriz")
+          .maybeSingle();
+        empresaIdPDV = empresaPrincipalPDV?.id ?? null;
+      }
 
       // Usar cliente selecionado
       const clienteId = clienteSelecionado?.id || null;

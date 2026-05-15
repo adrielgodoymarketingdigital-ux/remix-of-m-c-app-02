@@ -524,17 +524,28 @@ export const DialogOrdemServico = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
       
-      // Usar ID do dono se funcionário tem permissão de sincronizar OS
-      const effectiveUserId = (isFuncionario && podeSincronizarOS && lojaUserId) ? lojaUserId : user.id;
-
-      // Busca empresa_id da empresa principal do usuário
-      const { data: empresaPrincipal } = await supabase
-        .from("empresas")
-        .select("id")
-        .eq("proprietario_id", effectiveUserId)
-        .eq("tipo", "matriz")
+      // Verificar se é gerente de filial
+      const { data: gerenteFilialOS } = await supabase
+        .from("empresa_usuarios")
+        .select("proprietario_id, empresa_id")
+        .eq("gerente_id", user.id)
         .maybeSingle();
-      const empresaId = empresaPrincipal?.id ?? null;
+
+      // Usar ID do dono: proprietário da filial (gerente) > dono da loja (funcionário) > próprio ID
+      const effectiveUserId = gerenteFilialOS?.proprietario_id || ((isFuncionario && podeSincronizarOS && lojaUserId) ? lojaUserId : user.id);
+
+      // Empresa ID: filial do gerente > busca empresa matriz do proprietário
+      let empresaId: string | null = gerenteFilialOS?.empresa_id ?? null;
+
+      if (!empresaId) {
+        const { data: empresaPrincipal } = await supabase
+          .from("empresas")
+          .select("id")
+          .eq("proprietario_id", effectiveUserId)
+          .eq("tipo", "matriz")
+          .maybeSingle();
+        empresaId = empresaPrincipal?.id ?? null;
+      }
 
       // Usar cliente existente selecionado ou criar/atualizar
       let clienteId = clienteSelecionadoId || ordem?.cliente_id;
