@@ -418,12 +418,23 @@ export function TerceirizadaTab({
             {loading ? <CardSkeleton /> : (
               <>
                 <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest mb-1">Semáforo</p>
-                <p className={cn("text-xl font-bold", semaforoCor[semaforo])}>
-                  {semaforoLabel[semaforo]}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Real {percentEfetivo.toFixed(0)}% — Esperado {percentEsperado.toFixed(0)}%
-                </p>
+                {metaPeriodo > 0 ? (
+                  <>
+                    <p className={cn("text-xl font-bold", semaforoCor[semaforo])}>
+                      {semaforoLabel[semaforo]}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Real {percentReal.toFixed(0)}% — Esperado {percentEsperado.toFixed(0)}%
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-muted-foreground">—</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Configure a meta para ativar
+                    </p>
+                  </>
+                )}
               </>
             )}
           </CardContent>
