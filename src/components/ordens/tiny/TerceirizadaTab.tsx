@@ -128,6 +128,7 @@ export function TerceirizadaTab({
 
   // Processar ordens — campos da API V3
   const ordens = useMemo(() => {
+    if (ordensRaw.length > 0) console.log("[Tiny] campos raw OS:", Object.keys(ordensRaw[0]), ordensRaw[0]);
     return ordensRaw.map((raw) => {
       const r = raw as Record<string, unknown>;
       const clienteObj = r.cliente as Record<string, unknown> | undefined;
