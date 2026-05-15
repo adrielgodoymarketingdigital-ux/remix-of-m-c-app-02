@@ -551,12 +551,11 @@ All colors MUST be HSL.
 }
 
 /* Duas OS por folha A4 — base
-   Ambos os modos posicionam as OS lado a lado.
-   Vertical (portrait): folha em pé 210×297mm, área útil 194×277mm.
-     Cada OS escalada a 50% → 97mm × 138.5mm. As duas cabem lado a lado (194mm total).
-   Horizontal (landscape): folha deitada 297×210mm, área útil 277×194mm.
-     Cada OS escalada a 50% → 97mm × 138.5mm. As duas cabem lado a lado (194mm total).
-     Neste modo usamos @page landscape via classe no body.
+   Sem margem na folha (@page margin: 0).
+   Vertical (portrait): 210×297mm. 2 slots + 1mm divider → cada slot 104.5mm × 297mm.
+     Scale = 104.5 / 194 ≈ 0.539 → conteúdo de 194mm cabe exatamente no slot.
+   Horizontal (landscape): 297×210mm. 2 slots + 1mm divider → cada slot 148mm × 210mm.
+     Scale = 148 / 194 ≈ 0.763 → conteúdo de 194mm cabe exatamente no slot.
 */
 .impressao-duas-os-wrapper {
   display: flex;
@@ -574,7 +573,7 @@ All colors MUST be HSL.
 
 .impressao-duas-os-slot > * {
   transform-origin: top left;
-  transform: scale(0.5);
+  transform: scale(0.539);
   width: 194mm !important;
   max-width: 194mm !important;
   position: absolute;
@@ -582,35 +581,35 @@ All colors MUST be HSL.
   left: 0;
 }
 
-/* Vertical (portrait): folha em pé, OS lado a lado */
+/* Vertical (portrait): folha em pé 210×297mm sem margem */
 .impressao-duas-os-vertical {
-  width: 194mm;
+  width: 210mm;
 }
 
 .impressao-duas-os-vertical .impressao-duas-os-slot {
-  width: 97mm;
-  height: 138.5mm;
+  width: 104.5mm;
+  height: 297mm;
 }
 
-/* Horizontal (landscape): folha deitada, OS lado a lado com mais altura disponível */
+/* Horizontal (landscape): folha deitada 297×210mm sem margem */
 .impressao-duas-os-horizontal {
-  width: 277mm;
+  width: 297mm;
 }
 
 .impressao-duas-os-horizontal .impressao-duas-os-slot {
-  width: 138.5mm;
-  height: 194mm;
+  width: 148mm;
+  height: 210mm;
 }
 
 .impressao-duas-os-horizontal .impressao-duas-os-slot > * {
-  transform: scale(0.713);
+  transform: scale(0.763);
 }
 
 /* Linha de corte vertical (entre as duas OS) */
 .impressao-duas-os-corte {
-  width: 0;
+  width: 1mm;
   flex-shrink: 0;
-  border-left: 1.5pt dashed #999;
+  border-left: 1pt dashed #999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -618,11 +617,11 @@ All colors MUST be HSL.
 }
 
 .impressao-duas-os-vertical .impressao-duas-os-corte {
-  height: 138.5mm;
+  height: 297mm;
 }
 
 .impressao-duas-os-horizontal .impressao-duas-os-corte {
-  height: 194mm;
+  height: 210mm;
 }
 
 .impressao-duas-os-corte-label {

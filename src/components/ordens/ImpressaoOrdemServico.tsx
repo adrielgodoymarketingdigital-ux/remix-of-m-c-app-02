@@ -83,16 +83,20 @@ export const ImpressaoOrdemServico = ({
       document.body.classList.add('print-80mm');
     }
 
-    const isHorizontal = !is80mmFormat && layoutConfig.duas_os_por_folha && layoutConfig.duas_os_orientacao === 'horizontal';
+    const isDuasOS = !is80mmFormat && layoutConfig.duas_os_por_folha;
+    const isHorizontal = isDuasOS && layoutConfig.duas_os_orientacao === 'horizontal';
     if (isHorizontal) {
       document.body.classList.add('print-duas-os-horizontal');
     }
 
+    // Injetar @page sem margem para duas OS (o conteúdo já é dimensionado para a folha inteira)
     let pageStyleEl: HTMLStyleElement | null = null;
-    if (isHorizontal) {
+    if (isDuasOS) {
       pageStyleEl = document.createElement('style');
-      pageStyleEl.id = 'print-page-landscape';
-      pageStyleEl.textContent = '@media print { @page { size: A4 landscape; margin: 8mm; } }';
+      pageStyleEl.id = 'print-page-duas-os';
+      pageStyleEl.textContent = isHorizontal
+        ? '@media print { @page { size: A4 landscape; margin: 0; } }'
+        : '@media print { @page { size: A4 portrait; margin: 0; } }';
       document.head.appendChild(pageStyleEl);
     }
 
@@ -102,7 +106,7 @@ export const ImpressaoOrdemServico = ({
       document.body.classList.remove('print-duas-os-horizontal');
       pageStyleEl?.remove();
     };
-  }, [portalEl, layoutConfig.formato_papel, layoutConfig.duas_os_por_folha, layoutConfig.duas_os_orientacao]);
+  }, [portalEl, layoutConfig.formato_papel, layoutConfig.duas_os_por_folha, layoutConfig.duas_os_orientacao, is80mm]);
 
   // Detect Android
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -291,20 +295,20 @@ export const ImpressaoOrdemServico = ({
     .cupom-assinatura-bloco { text-align: center; margin-bottom: 2mm; }
     .cupom-linha-assinatura { border-bottom: 1.5px solid #000; width: 90%; margin: 3mm auto 1mm; }
     .cupom-assinatura-img { max-width: 30mm; max-height: 10mm; }
-    /* Duas OS por folha — sem scale, conteúdo preenche o slot diretamente */
+    /* Duas OS por folha — scale para preencher o slot inteiro */
     .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; overflow: hidden; }
-    /* Vertical (retrato): folha A4 = 210mm × 297mm, margem 0.
-       Cada slot = 104mm × 297mm (metade da folha sem linha de corte). */
+    .impressao-duas-os-slot { overflow: hidden; position: relative; flex-shrink: 0; }
+    .impressao-duas-os-slot > * { transform-origin: top left; width: 194mm !important; max-width: 194mm !important; position: absolute; top: 0; left: 0; }
+    /* Vertical (retrato): 210×297mm, margem 0. Cada slot 104.5mm × 297mm. Scale = 104.5/194 ≈ 0.539 */
     .impressao-duas-os-vertical { width: 210mm; height: 297mm; }
-    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 104mm; height: 297mm; overflow: hidden; flex-shrink: 0; }
-    .impressao-duas-os-vertical .impressao-duas-os-slot > * { width: 104mm !important; max-width: 104mm !important; }
-    .impressao-duas-os-vertical .impressao-duas-os-corte { width: 2mm; flex-shrink: 0; border-left: 1pt dashed #aaa; height: 297mm; display: flex; align-items: center; justify-content: center; position: relative; }
-    /* Horizontal (paisagem): folha A4 landscape = 297mm × 210mm, margem 0.
-       Cada slot = 147mm × 210mm (metade da folha sem linha de corte). */
+    .impressao-duas-os-vertical .impressao-duas-os-slot { width: 104.5mm; height: 297mm; }
+    .impressao-duas-os-vertical .impressao-duas-os-slot > * { transform: scale(0.539); }
+    .impressao-duas-os-vertical .impressao-duas-os-corte { width: 1mm; flex-shrink: 0; border-left: 1pt dashed #aaa; height: 297mm; display: flex; align-items: center; justify-content: center; position: relative; }
+    /* Horizontal (paisagem): 297×210mm, margem 0. Cada slot 148mm × 210mm. Scale = 148/194 ≈ 0.763 */
     .impressao-duas-os-horizontal { width: 297mm; height: 210mm; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 147mm; height: 210mm; overflow: hidden; flex-shrink: 0; }
-    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { width: 147mm !important; max-width: 147mm !important; }
-    .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 3mm; flex-shrink: 0; border-left: 1pt dashed #aaa; height: 210mm; display: flex; align-items: center; justify-content: center; position: relative; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 148mm; height: 210mm; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.763); }
+    .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 1mm; flex-shrink: 0; border-left: 1pt dashed #aaa; height: 210mm; display: flex; align-items: center; justify-content: center; position: relative; }
     .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
     ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 0; }')}
     @media print {
