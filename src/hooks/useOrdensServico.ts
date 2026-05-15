@@ -312,6 +312,8 @@ export const useOrdensServico = () => {
         .eq("is_teste", false)
         .is("deleted_at", null);
 
+      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+
       if (dataInicio) {
         const inicioISO = dataInicio.toISOString().split('T')[0];
         query = query.gte("created_at", inicioISO);
@@ -335,7 +337,7 @@ export const useOrdensServico = () => {
       console.error("Erro ao carregar lucro das ordens:", error);
       setLucroOrdensEntregues(null);
     }
-  }, [resolverUserId, dataInicio, dataFim]);
+  }, [resolverUserId, dataInicio, dataFim, empresaFiltro]);
 
   const excluirOrdem = async (id: string) => {
     try {
