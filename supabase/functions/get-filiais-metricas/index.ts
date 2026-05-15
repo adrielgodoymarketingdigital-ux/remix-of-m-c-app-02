@@ -33,7 +33,7 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
   };
 
   const [vendasRes, osRes, ultimasVendasRes] = await Promise.all([
-    buildVendasQuery("total, valor_desconto_manual, valor_desconto_cupom, tipo")
+    buildVendasQuery("total, valor_desconto_manual, valor_desconto_cupom, tipo, peca_id, observacoes")
       .gte("data", inicioMes.toISOString()),
     buildOsQuery("total, status")
       .gte("created_at", inicioMes.toISOString())
@@ -49,14 +49,19 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
   const isStatusFinal = (status: string) =>
     STATUS_FINAIS.some(f => (status || "").toLowerCase().includes(f));
 
-  const faturamentoVendas = (vendasRes.data || []).reduce((sum: number, v: any) => sum + calcularVendaLiquida(v), 0);
+  // Excluir peças/itens internos de OS (mesmo critério do Dashboard)
+  const isItemOS = (v: any) =>
+    v.peca_id != null || (typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS"));
+
+  const vendasFaturamento = (vendasRes.data || []).filter((v: any) => !isItemOS(v));
+  const faturamentoVendas = vendasFaturamento.reduce((sum: number, v: any) => sum + calcularVendaLiquida(v), 0);
   const faturamentoOS = osData
     .filter((o: any) => isStatusFinal(o.status))
     .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
   const faturamento = faturamentoVendas + faturamentoOS;
 
   const porTipo: Record<string, { tipo: string; label: string; total: number; quantidade: number }> = {};
-  for (const v of vendasRes.data || []) {
+  for (const v of vendasFaturamento) {
     const tipo = v.tipo || "outros";
     if (!porTipo[tipo]) porTipo[tipo] = { tipo, label: TIPOS_LABEL[tipo] || tipo, total: 0, quantidade: 0 };
     porTipo[tipo].total += calcularVendaLiquida(v);

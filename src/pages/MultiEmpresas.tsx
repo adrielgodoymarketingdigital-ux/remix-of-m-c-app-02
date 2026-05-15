@@ -272,22 +272,22 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
   return (
     <Card className={`flex flex-col ${isMatriz ? "border-amber-200 dark:border-amber-800/50" : "border-border/60"}`}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <CardTitle className="text-base flex items-center gap-2 min-w-0 flex-1">
             {isMatriz
-              ? <Home className="h-4 w-4 text-amber-500" />
+              ? <Home className="h-4 w-4 text-amber-500 shrink-0" />
               : <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: cor }} />
             }
             <span className="truncate">{empresa.nome}</span>
           </CardTitle>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <button onClick={onEditarNome} title="Editar nome" className="text-muted-foreground hover:text-foreground transition-colors p-0.5">
               <Pencil className="h-3.5 w-3.5" />
             </button>
-            <Badge variant="outline" className={`text-xs ${isMatriz ? "border-amber-500/30 text-amber-500" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}`}>
+            <Badge variant="outline" className={`text-xs whitespace-nowrap ${isMatriz ? "border-amber-500/30 text-amber-500" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}`}>
               {isMatriz ? "Matriz" : "Filial"}
             </Badge>
-            <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">Ativa</Badge>
+            <Badge variant="outline" className="text-xs whitespace-nowrap text-green-500 border-green-500/30">Ativa</Badge>
           </div>
         </div>
         {empresa.cidade && (
