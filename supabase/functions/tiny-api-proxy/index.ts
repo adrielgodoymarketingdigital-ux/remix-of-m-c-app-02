@@ -19,6 +19,7 @@ async function refreshTokens(
       client_id: Deno.env.get("TINY_CLIENT_ID")!,
       client_secret: Deno.env.get("TINY_CLIENT_SECRET")!,
       refresh_token: refreshToken,
+      redirect_uri: "https://qztuzcchknptrvkdmdph.supabase.co/functions/v1/tiny-oauth-callback",
     }),
   });
 
@@ -49,6 +50,7 @@ async function fetchAllPages(
 
   while (true) {
     const body = new URLSearchParams({
+      token: accessToken,
       ...params,
       formato: "json",
       pagina: String(page),
@@ -56,25 +58,31 @@ async function fetchAllPages(
 
     const resp = await fetch(`${TINY_API_BASE}/${endpoint}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": `Bearer ${accessToken}`,
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
     });
 
-    if (!resp.ok) break;
+    if (!resp.ok) {
+      console.error(`Tiny API HTTP error: ${resp.status} ${await resp.text()}`);
+      break;
+    }
 
     const data = await resp.json();
+    console.log(`Tiny page ${page} response:`, JSON.stringify(data).slice(0, 500));
     const retorno = data?.retorno;
-    if (!retorno || retorno.status === "Erro") break;
+    if (!retorno || retorno.status_processamento === "3" || retorno.status === "Erro") break;
 
-    // Try known list keys
-    const listKeys = ["pedidos", "contas_receber", "contas_pagar", "pedido"];
+    // pedidos.pesquisa returns retorno.pedidos = [{pedido: {...}}, ...]
+    // Try known list keys; unwrap nested object if needed
+    const listKeys = ["pedidos", "contas_receber", "contas_pagar"];
     let items: unknown[] = [];
     for (const key of listKeys) {
       if (Array.isArray(retorno[key])) {
-        items = retorno[key];
+        // Each element may be { pedido: {...} } — unwrap one level
+        items = retorno[key].map((el: Record<string, unknown>) => {
+          const nested = Object.values(el);
+          return nested.length === 1 && typeof nested[0] === "object" ? nested[0] : el;
+        });
         break;
       }
     }
@@ -152,13 +160,10 @@ Deno.serve(async (req) => {
     let result: unknown;
 
     if (singleEndpoints.some((e) => endpoint.includes(e))) {
-      const body = new URLSearchParams({ ...params, formato: "json" });
+      const body = new URLSearchParams({ token: accessToken, ...params, formato: "json" });
       const resp = await fetch(`${TINY_API_BASE}/${endpoint}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body,
       });
       result = await resp.json();

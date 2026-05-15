@@ -5,4 +5,5 @@ export const PLANOS_TINY: string[] = [
 
 export const EMAILS_LIBERADOS_TINY: string[] = [
   "drappleararas@gmail.com",
+  "ifixproararasoficial@gmail.com",
 ];

@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const EMAILS_LIBERADOS_TINY = ["drappleararas@gmail.com"];
+const EMAILS_LIBERADOS_TINY = ["drappleararas@gmail.com", "ifixproararasoficial@gmail.com"];
 const PLANOS_TINY = ["profissional_ultra_mensal", "profissional_ultra_anual"];
 
 export async function checkTinyAccessByUserId(userId: string): Promise<boolean> {
