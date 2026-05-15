@@ -28,10 +28,10 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return json({ error: "Token inválido: " + authError?.message }, 401);
 
-    // Verificar plano
+    // Verificar plano do proprietário
     const { data: assinatura } = await supabase
       .from("assinaturas")
-      .select("plano_tipo")
+      .select("plano_tipo, status, payment_provider")
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
@@ -107,7 +107,15 @@ serve(async (req) => {
       body: JSON.stringify({ user_id: gerenteId, nome: nome.trim(), email: email_gerente }),
     });
 
-    // Assinatura do gerente
+    // Assinatura do gerente herda o plano do proprietário
+    // Primeiro remove qualquer assinatura criada pelo trigger automático
+    await fetch(`${supabaseUrl}/rest/v1/assinaturas?user_id=eq.${gerenteId}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+    });
     await fetch(`${supabaseUrl}/rest/v1/assinaturas`, {
       method: "POST",
       headers: {
@@ -116,7 +124,12 @@ serve(async (req) => {
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
       },
-      body: JSON.stringify({ user_id: gerenteId, plano_tipo: "free", status: "active", payment_provider: "multi_empresa" }),
+      body: JSON.stringify({
+        user_id: gerenteId,
+        plano_tipo: assinatura?.plano_tipo ?? "free",
+        status: "active",
+        payment_provider: "multi_empresa",
+      }),
     });
 
     // Criar empresa filial

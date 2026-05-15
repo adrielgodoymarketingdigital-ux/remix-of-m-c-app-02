@@ -76,10 +76,17 @@ export function useAssinatura() {
         .eq("ativo", true)
         .maybeSingle();
 
-      // Se for funcionário, usar o ID do dono da loja para buscar assinatura
-      const userIdParaAssinatura = funcionarioData?.loja_user_id || user.id;
-      
-      console.log("🔍 Buscando assinatura para:", funcionarioData ? "dono da loja" : "próprio usuário", userIdParaAssinatura);
+      // Verificar se é gerente de filial (usa o plano do proprietário da matriz)
+      const { data: gerenteFilial } = await supabase
+        .from("empresa_usuarios")
+        .select("proprietario_id")
+        .eq("gerente_id", user.id)
+        .maybeSingle();
+
+      // Prioridade: funcionário de loja > gerente de filial > próprio usuário
+      const userIdParaAssinatura = funcionarioData?.loja_user_id || gerenteFilial?.proprietario_id || user.id;
+
+      console.log("🔍 Buscando assinatura para:", funcionarioData ? "dono da loja" : gerenteFilial ? "proprietário da matriz" : "próprio usuário", userIdParaAssinatura);
 
       const { data, error } = await supabase
         .from("assinaturas")
