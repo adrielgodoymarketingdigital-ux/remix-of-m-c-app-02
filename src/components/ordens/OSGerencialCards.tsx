@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Target, TrendingUp, Activity, Zap, BarChart2,
   Pencil, Check, X, RefreshCw, Clock, HelpCircle,
-  ChevronUp, ChevronDown
+  ChevronUp, ChevronDown, Trash2
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ interface Props {
   dataInicio?: Date;
   dataFim?: Date;
   onAbrirOS?: (id: string) => void;
+  onExcluirOS?: (id: string, numero_os: string) => void;
 }
 
 // ─── helpers visuais ────────────────────────────────────────────────────────
@@ -142,7 +143,7 @@ function labelStatus(status: string) {
 
 // ─── Componente principal ────────────────────────────────────────────────────
 
-export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
+export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS, onExcluirOS }: Props) {
   const { data, diasUteis, meta, carregando, erro, carregar, salvarMeta } =
     useOSGerencial(dataInicio, dataFim);
 
@@ -496,6 +497,15 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
                     </div>
                   </div>
                 </div>
+                {onExcluirOS && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onExcluirOS(os.id, os.numero_os); }}
+                    className="absolute bottom-2 right-2 p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    aria-label="Excluir OS"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -530,14 +540,25 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS }: Props) {
                     </p>
                   </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-xs font-black font-mono text-foreground/80">
-                    {formatCurrency(os.total)}
-                  </p>
-                  {os.diasParada > 0 && (
-                    <p className="text-[10px] text-muted-foreground/50">
-                      {os.diasParada}d parada
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right">
+                    <p className="text-xs font-black font-mono text-foreground/80">
+                      {formatCurrency(os.total)}
                     </p>
+                    {os.diasParada > 0 && (
+                      <p className="text-[10px] text-muted-foreground/50">
+                        {os.diasParada}d parada
+                      </p>
+                    )}
+                  </div>
+                  {onExcluirOS && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onExcluirOS(os.id, os.numero_os); }}
+                      className="p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      aria-label="Excluir OS"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   )}
                 </div>
               </div>

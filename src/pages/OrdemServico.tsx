@@ -142,6 +142,7 @@ export default function OrdemServicoPage() {
   const [dialogVisualizacao, setDialogVisualizacao] = useState(false);
   const [ordemSelecionada, setOrdemSelecionada] = useState<OrdemServico | null>(null);
   const [ordemParaExcluir, setOrdemParaExcluir] = useState<OrdemServico | null>(null);
+  const [gerencialExcluir, setGerencialExcluir] = useState<{ id: string; numero_os: string } | null>(null);
   const [ordemParaImprimir, setOrdemParaImprimir] = useState<OrdemServico | null>(null);
   const [ordemParaImprimirTermo, setOrdemParaImprimirTermo] = useState<OrdemServico | null>(null);
   const [dialogAssinaturaSaida, setDialogAssinaturaSaida] = useState(false);
@@ -899,6 +900,7 @@ export default function OrdemServicoPage() {
                   setOrdemSelecionada(ordemCompleta);
                   setDialogVisualizacao(true);
                 }}
+                onExcluirOS={(id, numero_os) => setGerencialExcluir({ id, numero_os })}
               />
             </div>
             </TabsContent>
@@ -1064,6 +1066,36 @@ export default function OrdemServicoPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction onClick={handleConfirmarExclusao}>
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Excluir OS via Painel Gerencial */}
+          <AlertDialog
+            open={!!gerencialExcluir}
+            onOpenChange={() => setGerencialExcluir(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir a ordem de serviço{" "}
+                  <strong>{gerencialExcluir?.numero_os}</strong>? Esta ação não
+                  pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    if (gerencialExcluir) {
+                      await excluirOrdem(gerencialExcluir.id);
+                      setGerencialExcluir(null);
+                    }
+                  }}
+                >
                   Excluir
                 </AlertDialogAction>
               </AlertDialogFooter>
