@@ -5,7 +5,7 @@ interface EmpresaContextType {
   empresaAtiva: string | null;
   setEmpresaAtiva: (id: string | null) => void;
   isProprietario: boolean;
-  empresas: { id: string; nome: string }[];
+  empresas: { id: string; nome: string; gerente_id: string | null }[];
   nomeMatriz: string;
   // user_id efetivo para queries: gerente da filial selecionada ou o próprio proprietário
   userIdAtivo: string | null;
@@ -16,7 +16,7 @@ const EmpresaContext = createContext<EmpresaContextType>({
   empresaAtiva: null,
   setEmpresaAtiva: () => {},
   isProprietario: false,
-  empresas: [],
+  empresas: [] as { id: string; nome: string; gerente_id: string | null }[],
   nomeMatriz: "Minha Empresa",
   userIdAtivo: null,
   carregarEmpresas: async () => {},

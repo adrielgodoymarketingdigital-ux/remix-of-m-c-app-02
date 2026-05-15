@@ -4,30 +4,41 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Funcionario, FuncionarioFormData, Permissoes } from "@/types/funcionario";
 import type { Json } from "@/integrations/supabase/types";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 export function useFuncionarios(lojaUserIdOverride?: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const { empresas, empresaAtiva } = useEmpresa();
+  const empresaSelecionada = empresas.find(e => e.id === empresaAtiva);
 
   const { data: funcionarios = [], isLoading: carregando, refetch } = useQuery({
-    queryKey: ["funcionarios", lojaUserIdOverride],
+    queryKey: ["funcionarios", lojaUserIdOverride, empresaAtiva],
     queryFn: async () => {
       let lojaUserId = lojaUserIdOverride;
-      
+
       if (!lojaUserId) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return [];
-        
-        // Check if the current user is a staff member
-        const { data: funcionarioData } = await supabase
-          .from("loja_funcionarios")
-          .select("loja_user_id")
-          .eq("funcionario_user_id", user.id)
-          .eq("ativo", true)
-          .maybeSingle();
-        
-        lojaUserId = funcionarioData?.loja_user_id || user.id;
+
+        if (empresaAtiva) {
+          // Filial selecionada: mostrar apenas funcionários do gerente da filial.
+          // Se a filial não tem gerente, retorna vazio (sem equipe própria).
+          const gerenteId = empresaSelecionada?.gerente_id ?? null;
+          if (!gerenteId) return [];
+          lojaUserId = gerenteId;
+        } else {
+          // Check if the current user is a staff member
+          const { data: funcionarioData } = await supabase
+            .from("loja_funcionarios")
+            .select("loja_user_id")
+            .eq("funcionario_user_id", user.id)
+            .eq("ativo", true)
+            .maybeSingle();
+
+          lojaUserId = funcionarioData?.loja_user_id || user.id;
+        }
       }
 
       const { data, error } = await supabase
