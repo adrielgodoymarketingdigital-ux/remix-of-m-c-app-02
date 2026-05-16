@@ -84,12 +84,10 @@ export const DialogAssinaturaSaida = ({
       if (gerenteFilial?.proprietario_id) {
         effectiveUserId = gerenteFilial.proprietario_id;
         empresaIdParaUpdate = gerenteFilial.empresa_id;
-        console.log('[DialogAssinatura] gerente de filial → proprietario_id:', effectiveUserId, 'empresa_id:', empresaIdParaUpdate);
       } else {
         const { data: rpcId, error: rpcError } = await supabase.rpc('get_loja_owner_id');
         if (rpcError || !rpcId) throw new Error("Não foi possível identificar o usuário");
         effectiveUserId = rpcId;
-        console.log('[DialogAssinatura] get_loja_owner_id:', effectiveUserId);
       }
 
       // Atualizar o campo avarias com a assinatura de saída e forma de pagamento
@@ -126,7 +124,6 @@ export const DialogAssinaturaSaida = ({
       if (empresaIdParaUpdate) qUpdate = (qUpdate as any).eq("empresa_id", empresaIdParaUpdate);
       const { error, data: updatedRows } = await (qUpdate as any).select("id");
 
-      console.log('[DialogAssinatura] update result:', { error, updatedRows, empresaIdParaUpdate });
       if (error) throw error;
       if (!updatedRows || updatedRows.length === 0) throw new Error("Nenhuma OS atualizada — verifique RLS ou empresa_id");
 
