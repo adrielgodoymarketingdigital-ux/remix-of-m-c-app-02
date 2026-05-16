@@ -4,18 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useCaixa } from "@/hooks/useCaixa";
 import { Caixa } from "@/types/caixa";
 
 interface DialogAberturaCaixaProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCaixaAberto: (caixa: Caixa) => void;
+  abrirCaixa: (saldoInicial: number, observacoes?: string) => Promise<Caixa | null>;
 }
 
-export function DialogAberturaCaixa({ open, onOpenChange, onCaixaAberto }: DialogAberturaCaixaProps) {
+export function DialogAberturaCaixa({ open, onOpenChange, onCaixaAberto, abrirCaixa }: DialogAberturaCaixaProps) {
   const { toast } = useToast();
-  const { abrirCaixa } = useCaixa();
   const [saldoInicial, setSaldoInicial] = useState(0);
   const [observacoes, setObservacoes] = useState("");
   const [salvando, setSalvando] = useState(false);
