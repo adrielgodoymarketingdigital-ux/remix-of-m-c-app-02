@@ -72,7 +72,7 @@ const PDV = () => {
   const [dialogFechamentoCaixaAberto, setDialogFechamentoCaixaAberto] = useState(false);
   const [dialogHistoricoCaixasAberto, setDialogHistoricoCaixasAberto] = useState(false);
   const [dialogStatusCaixaAberto, setDialogStatusCaixaAberto] = useState(false);
-  const { caixaAtual, caixaEstaAberto, carregarCaixaAtual } = useCaixa();
+  const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa } = useCaixa();
   const [pagamentoDuploAtivo, setPagamentoDuploAtivo] = useState(false);
   const [valorPrimeiraPagamento, setValorPrimeiraPagamento] = useState(0);
   const [segundaFormaPagamento, setSegundaFormaPagamento] = useState("");
