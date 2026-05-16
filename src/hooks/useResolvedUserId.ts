@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
  * O filtro por empresa_id é feito separadamente via useEmpresaFiltro().
  */
 export function useResolvedUserId(): string | null {
-  const { isProprietario, empresaAtiva, userIdAtivo } = useEmpresa();
+  const { isProprietario, empresaAtiva } = useEmpresa();
   const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
   const [selfId, setSelfId] = useState<string | null>(null);
 
@@ -44,13 +44,43 @@ export function useResolvedUserId(): string | null {
 }
 
 /**
- * Retorna o empresa_id para filtrar nas queries quando o proprietário
- * estiver visualizando uma filial específica. Retorna null quando está
- * na matriz (sem filtro por empresa) ou quando não é proprietário.
+ * Retorna o empresa_id para filtrar nas queries.
+ * - Proprietário com filial selecionada → empresaAtiva
+ * - Gerente de filial logado → empresa_id da filial que gerencia (via empresa_usuarios)
+ * - Demais casos → null (sem filtro por empresa)
  */
 export function useEmpresaFiltro(): string | null {
   const { isProprietario, empresaAtiva } = useEmpresa();
-  const result = (isProprietario && empresaAtiva) ? empresaAtiva : null;
-  console.log('[useEmpresaFiltro] isProprietario:', isProprietario, '| empresaAtiva:', empresaAtiva, '| result:', result);
-  return result;
+  const [gerenteEmpresaId, setGerenteEmpresaId] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (isProprietario) {
+      setGerenteEmpresaId(null);
+      return;
+    }
+
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) { setGerenteEmpresaId(null); return; }
+
+      const { data } = await supabase
+        .from("empresa_usuarios")
+        .select("empresa_id")
+        .eq("gerente_id", user.id)
+        .maybeSingle();
+
+      setGerenteEmpresaId(data?.empresa_id ?? null);
+    });
+  }, [isProprietario]);
+
+  if (isProprietario) {
+    const result = empresaAtiva ?? null;
+    console.log('[useEmpresaFiltro] proprietario | empresaAtiva:', empresaAtiva, '| result:', result);
+    return result;
+  }
+
+  // Ainda carregando
+  if (gerenteEmpresaId === undefined) return null;
+
+  console.log('[useEmpresaFiltro] gerente | empresa_id:', gerenteEmpresaId);
+  return gerenteEmpresaId;
 }
