@@ -394,15 +394,17 @@ export const useOrdensServico = () => {
       console.log("atualizarStatus - userId resolvido via RPC:", userId, "isFuncionario:", isFuncionario, "lojaUserId:", lojaUserId);
 
       // 2. Buscar a ordem completa (somente do usuário atual)
-      const { data: ordem, error: ordemError } = await supabase
+      const empresaId = empresaFiltroRef.current;
+      let qSelect = supabase
         .from("ordens_servico")
         .select(`
           *,
           cliente:clientes!ordens_servico_cliente_fkey(nome)
         `)
         .eq("id", id)
-        .eq("user_id", userId)
-        .single();
+        .eq("user_id", userId);
+      if (empresaId) qSelect = (qSelect as any).eq("empresa_id", empresaId);
+      const { data: ordem, error: ordemError } = await (qSelect as any).single();
 
       if (ordemError) throw ordemError;
       if (!ordem) throw new Error("Ordem não encontrada");
@@ -412,7 +414,7 @@ export const useOrdensServico = () => {
 
       // 3. Atualizar o status da ordem (somente do usuário atual)
       const updateData: any = { status: novoStatus as any };
-      
+
       // Preencher data_saida quando status muda para "entregue"
       if (novoStatus === "entregue") {
         updateData.data_saida = new Date().toISOString();
@@ -422,12 +424,13 @@ export const useOrdensServico = () => {
         updateData.data_saida = null;
       }
 
-      const { error: updateError, data: updateResult } = await supabase
+      let qUpdate = supabase
         .from("ordens_servico")
         .update(updateData)
         .eq("id", id)
-        .eq("user_id", userId)
-        .select("id");
+        .eq("user_id", userId);
+      if (empresaId) qUpdate = (qUpdate as any).eq("empresa_id", empresaId);
+      const { error: updateError, data: updateResult } = await (qUpdate as any).select("id");
 
       if (updateError) throw updateError;
       if (!updateResult || updateResult.length === 0) {
