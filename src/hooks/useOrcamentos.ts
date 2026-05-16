@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Orcamento, ItemOrcamento, StatusOrcamento } from "@/types/orcamento";
-import { useEmpresaFiltro } from "./useResolvedUserId";
+import { Orcamento, StatusOrcamento } from "@/types/orcamento";
+import { useEmpresaFiltro, useResolvedUserId } from "./useResolvedUserId";
 
 export function useOrcamentos() {
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [carregando, setCarregando] = useState(true);
   const { toast } = useToast();
   const empresaFiltro = useEmpresaFiltro();
+  const resolvedUserId = useResolvedUserId();
 
   const carregarOrcamentos = async () => {
     try {
@@ -17,10 +18,12 @@ export function useOrcamentos() {
       const user = session?.user;
       if (!user) return;
 
+      const userId = resolvedUserId ?? user.id;
+
       let query = supabase
         .from("orcamentos")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
@@ -53,14 +56,17 @@ export function useOrcamentos() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      const userId = resolvedUserId ?? user.id;
+
       const dataValidade = new Date();
       dataValidade.setDate(dataValidade.getDate() + dados.validade_dias);
 
       const { data, error } = await supabase
         .from("orcamentos")
         .insert([{
-          user_id: user.id,
+          user_id: userId,
           numero_orcamento: "",
+          empresa_id: empresaFiltro ?? null,
           cliente_id: dados.cliente_id,
           cliente_nome: dados.cliente_nome,
           cliente_telefone: dados.cliente_telefone,
