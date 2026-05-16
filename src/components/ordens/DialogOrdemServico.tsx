@@ -558,7 +558,7 @@ export const DialogOrdemServico = ({
       let clienteId = clienteSelecionadoId || ordem?.cliente_id;
 
       if (clienteSelecionadoId && !ordem) {
-        // Cliente existente foi selecionado - apenas atualizar dados se necessário
+        // Cliente existente foi selecionado - atualizar dados do cliente com isolamento por user_id
         const { error: clienteError } = await supabase
           .from("clientes")
           .update({
@@ -568,12 +568,13 @@ export const DialogOrdemServico = ({
             endereco: formData.clienteEndereco,
             data_nascimento: formData.clienteDataNascimento || null,
           })
-          .eq("id", clienteSelecionadoId);
+          .eq("id", clienteSelecionadoId)
+          .eq("user_id", effectiveUserId);
 
         if (clienteError) throw clienteError;
         clienteId = clienteSelecionadoId;
       } else if (ordem?.cliente_id) {
-        // Editando ordem existente - atualizar cliente
+        // Editando ordem existente - atualizar cliente com isolamento por user_id
         const { error: clienteError } = await supabase
           .from("clientes")
           .update({
@@ -583,7 +584,8 @@ export const DialogOrdemServico = ({
             endereco: formData.clienteEndereco,
             data_nascimento: formData.clienteDataNascimento || null,
           })
-          .eq("id", ordem.cliente_id);
+          .eq("id", ordem.cliente_id)
+          .eq("user_id", effectiveUserId);
 
         if (clienteError) throw clienteError;
       } else {
