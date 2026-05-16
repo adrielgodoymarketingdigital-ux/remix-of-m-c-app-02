@@ -94,10 +94,10 @@ export function useOrcamentos() {
       await carregarOrcamentos();
       return data;
     } catch (error: any) {
-      console.error("Erro ao criar orçamento:", error?.message, error?.code, error?.details, error);
+      console.error("Erro ao criar orçamento:", error);
       toast({
         title: "Erro",
-        description: error?.message || "Não foi possível criar o orçamento.",
+        description: "Não foi possível criar o orçamento.",
         variant: "destructive",
       });
       throw error;
