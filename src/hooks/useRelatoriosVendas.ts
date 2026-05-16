@@ -290,6 +290,7 @@ export const useRelatoriosVendas = () => {
 
   return {
     loading,
+    resolvedUserId,
     buscarRelatorioDispositivos,
     buscarRelatorioProdutos,
     buscarRelatorioServicos,

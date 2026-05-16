@@ -48,6 +48,7 @@ const MESES = [
 export default function Relatorios() {
   const {
     loading,
+    resolvedUserId,
     buscarRelatorioDispositivos,
     buscarRelatorioProdutos,
     buscarRelatorioServicos,
@@ -69,8 +70,9 @@ export default function Relatorios() {
   const anos = Array.from({ length: 2035 - 2020 + 1 }, (_, i) => (2035 - i).toString());
 
   useEffect(() => {
+    if (resolvedUserId === null) return;
     carregarDados(tipoFiltroData, mesSelecionado, anoSelecionado, dataInicio, dataFim);
-  }, []);
+  }, [resolvedUserId]);
 
   const calcularDatas = (
     _tipoFiltroData: string,
