@@ -49,6 +49,7 @@ const tipoLabels: Record<string, string> = {
   dispositivo: "Dispositivo",
   produto: "Produto",
   servico: "Serviço",
+  avulsa: "Venda Avulsa",
 };
 
 const formaPagamentoLabels: Record<string, string> = {
@@ -64,6 +65,7 @@ const tipoColors: Record<string, string> = {
   dispositivo: "bg-blue-500",
   produto: "bg-green-500",
   servico: "bg-purple-500",
+  avulsa: "bg-violet-500",
 };
 
 // Represents either a single sale or a group of sales
@@ -140,6 +142,9 @@ function getNomeItem(venda: Venda): string {
   }
   if (venda.tipo === "servico" && venda.ordens_servico) {
     return `OS ${venda.ordens_servico.numero_os}`;
+  }
+  if (venda.tipo === "avulsa") {
+    return venda.produtos?.nome || "Venda Avulsa";
   }
   return venda.produtos?.nome || venda.pecas?.nome || "-";
 }

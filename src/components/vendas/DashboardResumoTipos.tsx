@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Venda } from "@/types/venda";
-import { Smartphone, Package, Wrench, Loader2 } from "lucide-react";
+import { Smartphone, Package, Wrench, Loader2, ShoppingBag } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useMemo } from "react";
@@ -72,6 +72,14 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
       lucro: acc.lucro + (calcularReceita(v) - calcularCusto(v))
     }), { quantidade: 0, faturado: 0, lucro: 0 });
 
+  const resumoAvulsas = vendasAtivas
+    .filter(v => v.tipo === 'avulsa')
+    .reduce((acc, v) => ({
+      quantidade: acc.quantidade + 1,
+      faturado: acc.faturado + Number(v.total || 0),
+      lucro: acc.lucro + Number(v.total || 0),
+    }), { quantidade: 0, faturado: 0, lucro: 0 });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -81,7 +89,7 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Card Dispositivos */}
       <Card className="p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -159,6 +167,34 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
           </div>
         </div>
       </Card>
+
+      {/* Card Vendas Avulsas */}
+      {resumoAvulsas.quantidade > 0 && (
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+              <ShoppingBag className="h-5 w-5 text-violet-500" />
+            </div>
+            <h3 className="font-semibold text-lg">Venda Avulsa</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground text-sm">Quantidade</span>
+              <span className="font-medium">{resumoAvulsas.quantidade}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground text-sm">Faturado</span>
+              <span className="font-medium"><ValorMonetario valor={resumoAvulsas.faturado} /></span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t">
+              <span className="text-muted-foreground text-sm">Receita</span>
+              <span className="font-semibold text-green-600">
+                <ValorMonetario valor={resumoAvulsas.lucro} />
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

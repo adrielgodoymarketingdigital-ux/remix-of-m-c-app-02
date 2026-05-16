@@ -94,10 +94,21 @@ export const useVendas = () => {
         );
       }
 
-      // Executar ambas as queries em paralelo com retry individual
-      const [vendasResult, ordensResult] = await Promise.allSettled([
+      // Query vendas avulsas com o mesmo filtro de data
+      let queryVendasAvulsas = supabase
+        .from("vendas_avulsas" as any)
+        .select("id, descricao, valor, forma_pagamento, observacao, created_at, user_id")
+        .eq("user_id", resolvedUserId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (dataInicio) queryVendasAvulsas = queryVendasAvulsas.gte("created_at", `${dataInicio}T00:00:00${tzString}`);
+      if (dataFim) queryVendasAvulsas = queryVendasAvulsas.lte("created_at", `${dataFim}T23:59:59${tzString}`);
+
+      // Executar queries em paralelo com retry individual
+      const [vendasResult, ordensResult, avulsasResult] = await Promise.allSettled([
         withRetry(async () => { const r = await Promise.resolve(queryVendas); if (r.error) throw r.error; return r; }, 'useVendas.queryVendas'),
         withRetry(async () => { const r = await Promise.resolve(queryOrdens); if (r.error) throw r.error; return r; }, 'useVendas.queryOrdens'),
+        Promise.resolve(queryVendasAvulsas),
       ]);
 
       let vendasData: any[] = [];
@@ -124,6 +135,32 @@ export const useVendas = () => {
       } else {
         console.error("[useVendas] Ordens query failed after retries:", ordensResult.reason);
       }
+
+      let avulsasData: any[] = [];
+      if (avulsasResult.status === "fulfilled") {
+        avulsasData = (avulsasResult.value as any).data || [];
+      }
+
+      const avulsasComoVendas: Venda[] = avulsasData.map((va: any) => ({
+        id: va.id,
+        data: va.created_at,
+        tipo: "avulsa" as const,
+        cliente_id: null,
+        dispositivo_id: null,
+        produto_id: null,
+        peca_id: null,
+        quantidade: 1,
+        total: Number(va.valor || 0),
+        custo_unitario: 0,
+        forma_pagamento: va.forma_pagamento as Venda["forma_pagamento"],
+        user_id: va.user_id,
+        clientes: null,
+        dispositivos: null,
+        produtos: { nome: va.descricao, sku: null },
+        pecas: null,
+        ordens_servico: null,
+        grupo_venda: null,
+      }));
 
       // Converter ordens de serviço para o formato de vendas
       const ordensComoVendas: Venda[] = ordensData.map((ordem) => {
@@ -162,8 +199,8 @@ export const useVendas = () => {
         };
       });
 
-      // Combinar vendas e ordens de serviço
-      const todasAsVendas = [...vendasData, ...ordensComoVendas];
+      // Combinar vendas, ordens de serviço e vendas avulsas
+      const todasAsVendas = [...vendasData, ...ordensComoVendas, ...avulsasComoVendas];
       todasAsVendas.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
       setVendas(todasAsVendas);
@@ -230,7 +267,36 @@ export const useVendas = () => {
           parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
           total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
         }));
-        const allCombined = [...allVendasNormalizadas, ...allOrdensComoVendas];
+
+        const { data: allAvulsasData } = await supabase
+          .from("vendas_avulsas" as any)
+          .select("id, descricao, valor, forma_pagamento, created_at, user_id")
+          .eq("user_id", resolvedUserId)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false });
+
+        const allAvulsasComoVendas: Venda[] = ((allAvulsasData ?? []) as any[]).map((va: any) => ({
+          id: va.id,
+          data: va.created_at,
+          tipo: "avulsa" as const,
+          cliente_id: null,
+          dispositivo_id: null,
+          produto_id: null,
+          peca_id: null,
+          quantidade: 1,
+          total: Number(va.valor || 0),
+          custo_unitario: 0,
+          forma_pagamento: va.forma_pagamento as Venda["forma_pagamento"],
+          user_id: va.user_id,
+          clientes: null,
+          dispositivos: null,
+          produtos: { nome: va.descricao, sku: null },
+          pecas: null,
+          ordens_servico: null,
+          grupo_venda: null,
+        }));
+
+        const allCombined = [...allVendasNormalizadas, ...allOrdensComoVendas, ...allAvulsasComoVendas];
         allCombined.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
         setTodasVendas(allCombined);
       } else {
@@ -270,6 +336,18 @@ export const useVendas = () => {
           variant: "destructive",
         });
         return false;
+      }
+
+      // Vendas avulsas usam soft delete direto na tabela vendas_avulsas
+      if (vendaOriginal.tipo === "avulsa") {
+        const { error } = await supabase
+          .from("vendas_avulsas" as any)
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", vendaId);
+        if (error) throw error;
+        toast({ title: "Venda avulsa cancelada com sucesso." });
+        await carregarVendas();
+        return true;
       }
 
       // Estornar estoque se solicitado

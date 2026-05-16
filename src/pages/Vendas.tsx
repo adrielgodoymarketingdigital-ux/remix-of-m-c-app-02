@@ -279,6 +279,7 @@ export default function Vendas() {
                       <SelectItem value="dispositivo">Dispositivos</SelectItem>
                       <SelectItem value="produto">Produtos</SelectItem>
                       <SelectItem value="servico">Serviços</SelectItem>
+                      <SelectItem value="avulsa">Venda Avulsa</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

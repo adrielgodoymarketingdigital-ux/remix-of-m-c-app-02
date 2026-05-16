@@ -1,4 +1,4 @@
-export type TipoVenda = "dispositivo" | "produto" | "servico";
+export type TipoVenda = "dispositivo" | "produto" | "servico" | "avulsa";
 
 export interface Venda {
   id: string;
