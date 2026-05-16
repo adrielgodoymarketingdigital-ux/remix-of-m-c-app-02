@@ -172,6 +172,9 @@ export const useOrdensServico = () => {
 
   const carregarOrdens = useCallback(async () => {
     try {
+      // Aguardar identidade resolver antes de carregar (evita busca sem empresa_id para gerente de filial)
+      if (identidadeCarregando) return;
+
       setLoading(true);
 
       const userId = await resolverUserId();
@@ -256,7 +259,7 @@ export const useOrdensServico = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro]);
+  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando]);
 
   const buscarOrdemCompleta = useCallback(async (id: string): Promise<OrdemServico | null> => {
     if (detalhesCacheRef.current[id]) {
