@@ -108,7 +108,7 @@ export const useVendas = () => {
       const [vendasResult, ordensResult, avulsasResult] = await Promise.allSettled([
         withRetry(async () => { const r = await Promise.resolve(queryVendas); if (r.error) throw r.error; return r; }, 'useVendas.queryVendas'),
         withRetry(async () => { const r = await Promise.resolve(queryOrdens); if (r.error) throw r.error; return r; }, 'useVendas.queryOrdens'),
-        Promise.resolve(queryVendasAvulsas),
+        (async () => { const r = await queryVendasAvulsas; return r; })(),
       ]);
 
       let vendasData: any[] = [];
