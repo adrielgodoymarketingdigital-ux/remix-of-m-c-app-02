@@ -1028,7 +1028,7 @@ const PDV = () => {
         open={dialogAberturaCaixaAberto}
         onOpenChange={setDialogAberturaCaixaAberto}
         abrirCaixa={abrirCaixa}
-        onCaixaAberto={(_caixa: Caixa) => { setDialogAberturaCaixaAberto(false); carregarCaixaAtual(); }}
+        onCaixaAberto={(_caixa: Caixa) => { setDialogAberturaCaixaAberto(false); }}
       />
 
       {caixaAtual && (

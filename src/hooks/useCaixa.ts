@@ -58,14 +58,15 @@ export function useCaixa() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // Verificar se já existe caixa aberto
-    const { data: existente } = await supabase
+    // Verificar se já existe caixa aberto (com mesmo filtro de empresa)
+    let queryExistente = supabase
       .from("caixas")
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "aberto")
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    if (empresaFiltro) queryExistente = queryExistente.eq("empresa_id", empresaFiltro);
+    const { data: existente } = await queryExistente.maybeSingle();
 
     if (existente) {
       const caixa = existente as Caixa;
@@ -80,7 +81,7 @@ export function useCaixa() {
         saldo_inicial: saldoInicial,
         observacoes: observacoes || null,
         status: "aberto",
-        ...(empresaFiltro ? { empresa_id: empresaFiltro } : {}),
+        empresa_id: empresaFiltro ?? null,
       })
       .select()
       .single();
