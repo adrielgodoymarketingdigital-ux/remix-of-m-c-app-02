@@ -70,9 +70,27 @@ export const DialogAssinaturaSaida = ({
 
     setLoading(true);
     try {
-      // Resolver userId efetivo via função do banco (funcionário usa ID do dono)
-      const { data: effectiveUserId, error: rpcError } = await supabase.rpc('get_loja_owner_id');
-      if (rpcError || !effectiveUserId) throw new Error("Não foi possível identificar o usuário");
+      // Resolver userId efetivo: gerente de filial usa proprietario_id
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: gerenteFilial } = await supabase
+        .from('empresa_usuarios' as any)
+        .select('proprietario_id, empresa_id')
+        .eq('gerente_id' as any, authUser?.id)
+        .maybeSingle() as any;
+
+      let effectiveUserId: string;
+      let empresaIdParaUpdate: string | null = null;
+
+      if (gerenteFilial?.proprietario_id) {
+        effectiveUserId = gerenteFilial.proprietario_id;
+        empresaIdParaUpdate = gerenteFilial.empresa_id;
+        console.log('[DialogAssinatura] gerente de filial → proprietario_id:', effectiveUserId, 'empresa_id:', empresaIdParaUpdate);
+      } else {
+        const { data: rpcId, error: rpcError } = await supabase.rpc('get_loja_owner_id');
+        if (rpcError || !rpcId) throw new Error("Não foi possível identificar o usuário");
+        effectiveUserId = rpcId;
+        console.log('[DialogAssinatura] get_loja_owner_id:', effectiveUserId);
+      }
 
       // Atualizar o campo avarias com a assinatura de saída e forma de pagamento
       const novasAvarias: AvariasOS = {
@@ -100,13 +118,17 @@ export const DialogAssinaturaSaida = ({
         updateData.forma_pagamento = formaSelecionada;
       }
 
-      const { error } = await supabase
+      let qUpdate = supabase
         .from("ordens_servico")
         .update(updateData)
         .eq("id", ordem.id)
         .eq("user_id", effectiveUserId);
+      if (empresaIdParaUpdate) qUpdate = (qUpdate as any).eq("empresa_id", empresaIdParaUpdate);
+      const { error, data: updatedRows } = await (qUpdate as any).select("id");
 
+      console.log('[DialogAssinatura] update result:', { error, updatedRows, empresaIdParaUpdate });
       if (error) throw error;
+      if (!updatedRows || updatedRows.length === 0) throw new Error("Nenhuma OS atualizada — verifique RLS ou empresa_id");
 
       // Marcar conta vinculada como recebida (exceto se for a_prazo)
       const deveMarcarRecebido = formaSelecionada !== 'a_prazo';
