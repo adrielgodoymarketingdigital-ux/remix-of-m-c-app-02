@@ -9,6 +9,8 @@ interface EmpresaContextType {
   nomeMatriz: string;
   // user_id efetivo para queries: gerente da filial selecionada ou o próprio proprietário
   userIdAtivo: string | null;
+  // ID da empresa matriz do proprietário logado (nunca é null quando isProprietario=true)
+  matrizId: string | null;
   carregarEmpresas: () => Promise<void>;
 }
 
@@ -19,6 +21,7 @@ const EmpresaContext = createContext<EmpresaContextType>({
   empresas: [] as { id: string; nome: string; gerente_id: string | null }[],
   nomeMatriz: "Minha Empresa",
   userIdAtivo: null,
+  matrizId: null,
   carregarEmpresas: async () => {},
 });
 
@@ -28,6 +31,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
   );
   const [isProprietario, setIsProprietario] = useState(false);
   const [proprietarioId, setProprietarioId] = useState<string | null>(null);
+  const [matrizId, setMatrizId] = useState<string | null>(null);
   const [empresas, setEmpresas] = useState<{ id: string; nome: string; gerente_id: string | null }[]>([]);
   const [nomeMatriz, setNomeMatriz] = useState("Minha Empresa");
 
@@ -77,6 +81,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
     if (matrizData) {
       setIsProprietario(true);
+      setMatrizId(matrizData.id);
 
       // Busca gerentes somente das filiais deste proprietário
       const ids = filiaisData.map((e: { id: string }) => e.id);
@@ -111,6 +116,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     } else {
       // Usuário sem empresas próprias — limpar qualquer empresa_ativa residual
       setIsProprietario(false);
+      setMatrizId(null);
       setEmpresas([]);
       localStorage.removeItem('empresa_ativa');
       setEmpresaAtivaState(null);
@@ -130,6 +136,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('empresa_ativa');
         setEmpresaAtivaState(null);
         setIsProprietario(false);
+        setMatrizId(null);
         setEmpresas([]);
         setProprietarioId(null);
         setNomeMatriz("Minha Empresa");
@@ -156,6 +163,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       empresas,
       nomeMatriz,
       userIdAtivo,
+      matrizId,
       carregarEmpresas,
     }}>
       {children}

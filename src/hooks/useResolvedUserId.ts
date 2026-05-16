@@ -92,16 +92,17 @@ export function useResolvedUserId(): string | null {
 
 /**
  * Retorna o empresa_id para filtrar nas queries.
- * - Proprietário com filial selecionada → empresaAtiva
+ * - Proprietário com filial selecionada → empresaAtiva (filial)
+ * - Proprietário sem filial selecionada → matrizId (evita ver dados das filiais)
  * - Gerente de filial logado → empresa_id da filial que gerencia
  * - Demais casos → null (sem filtro por empresa)
  */
 export function useEmpresaFiltro(): string | null {
-  const { isProprietario, empresaAtiva } = useEmpresa();
+  const { isProprietario, empresaAtiva, matrizId } = useEmpresa();
   const gerenteData = useGerenteFilialData();
 
   if (isProprietario) {
-    return empresaAtiva ?? null;
+    return empresaAtiva ?? matrizId ?? null;
   }
 
   // undefined = ainda carregando, retorna null provisoriamente
@@ -114,7 +115,7 @@ export function useEmpresaFiltro(): string | null {
  * Use para evitar disparar queries com userId/empresaId provisórios.
  */
 export function useIdentidade(): { userId: string | null; empresaId: string | null; carregando: boolean } {
-  const { isProprietario, empresaAtiva } = useEmpresa();
+  const { isProprietario, empresaAtiva, matrizId } = useEmpresa();
   const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
   const gerenteData = useGerenteFilialData();
   const [selfId, setSelfId] = useState<string | null>(null);
@@ -139,7 +140,8 @@ export function useIdentidade(): { userId: string | null; empresaId: string | nu
   } else if (isFuncionario && lojaUserId) {
     userId = lojaUserId;
   } else if (isProprietario) {
-    empresaId = empresaAtiva ?? null;
+    // filial selecionada → usa a filial; sem seleção → usa a matriz (evita ver dados das filiais)
+    empresaId = empresaAtiva ?? matrizId ?? null;
   }
 
   return { userId, empresaId, carregando };
