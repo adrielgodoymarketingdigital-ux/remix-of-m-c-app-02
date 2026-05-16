@@ -28,7 +28,7 @@ import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { useRelatorios } from "@/hooks/useRelatorios";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod } from "@/lib/vendasFinanceiras";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
-import { useEmpresaFiltro } from "@/hooks/useResolvedUserId";
+import { useIdentidade } from "@/hooks/useResolvedUserId";
 
 interface ProdutoVendido {
   nome: string;
@@ -48,9 +48,11 @@ const Dashboard = () => {
   const { clientes, loading: loadingClientes } = useClientes();
   const { calcularResumo } = useRelatorios();
   const { cores } = useCoresPersonalizadas();
-  const empresaFiltro = useEmpresaFiltro();
+  const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
   const empresaFiltroRef = useRef(empresaFiltro);
+  const resolvedUserIdRef = useRef(resolvedUserId);
   useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
+  useEffect(() => { resolvedUserIdRef.current = resolvedUserId; }, [resolvedUserId]);
 
   // Verificar se tem plano profissional
   const temPlanoProfissional = useMemo(() => {
@@ -194,6 +196,7 @@ const Dashboard = () => {
   const loadMetrics = async (inicio: Date, fim: Date) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    const userId = resolvedUserIdRef.current ?? user.id;
 
     const inicioStr = format(inicio, "yyyy-MM-dd");
     const fimStr = format(fim, "yyyy-MM-dd");
@@ -208,7 +211,7 @@ const Dashboard = () => {
     let qTodasOrdens = supabase
       .from("ordens_servico")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("is_teste", false)
       .is("deleted_at", null)
       .gte("created_at", inicioISO)
@@ -222,7 +225,7 @@ const Dashboard = () => {
     let qVendasServicos = supabase
       .from("ordens_servico")
       .select("total, servico_id, avarias")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .in("status", ["finalizado", "entregue"])
       .or(
@@ -241,7 +244,7 @@ const Dashboard = () => {
       const { data: servicos } = await supabase
         .from("servicos")
         .select("id, custo")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .in("id", servicoIds);
 
       servicos?.forEach(s => {
@@ -254,7 +257,7 @@ const Dashboard = () => {
     let qVendasProdutos = supabase
       .from("vendas")
       .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("tipo", "produto")
       .eq("cancelada", false)
       .is("deleted_at", null)
@@ -266,7 +269,7 @@ const Dashboard = () => {
     let qVendasDispositivos = supabase
       .from("vendas")
       .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("tipo", "dispositivo")
       .eq("cancelada", false)
       .is("deleted_at", null)
@@ -341,7 +344,7 @@ const Dashboard = () => {
     const { data: avulsosMes } = await supabase
       .from("servicos_avulsos")
       .select("preco, custo, status")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .in("status", ["entregue", "finalizado"])
       .gte("created_at", avulsosInicioISO)
       .lte("created_at", avulsosFimISO);
@@ -376,14 +379,15 @@ const Dashboard = () => {
   const loadFinanceiroData = async (inicio: Date, fim: Date) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    
+    const userId = resolvedUserIdRef.current ?? user.id;
+
     const hoje = format(new Date(), "yyyy-MM-dd");
 
     // Buscar contas a pagar do dia do usuário logado
     const { data: contasHoje } = await supabase
       .from("contas")
       .select("valor")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("tipo", "pagar")
       .eq("status", "pendente")
       .eq("data", hoje);
@@ -411,6 +415,7 @@ const Dashboard = () => {
   const loadHojeData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    const userId = resolvedUserIdRef.current ?? user.id;
 
     const hoje = format(new Date(), "yyyy-MM-dd");
     // data_saida é salvo em UTC via toISOString(). Para cobrir o dia local corretamente,
@@ -428,7 +433,7 @@ const Dashboard = () => {
     let qOrdensHoje = supabase
       .from("ordens_servico")
       .select("total, avarias")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .is("deleted_at", null)
       .in("status", ["finalizado", "entregue"])
       .gte("data_saida", inicioDiaISO)
@@ -438,7 +443,7 @@ const Dashboard = () => {
     let qVendasHoje = supabase
       .from("vendas")
       .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id, tipo")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("cancelada", false)
       .or(`and(data.gte.${inicioDiaISO},data.lte.${fimDiaISO}),and(data_recebimento.not.is.null,data_recebimento.gte.${inicioDiaISO},data_recebimento.lte.${fimDiaISO})`);
     if (ef) qVendasHoje = qVendasHoje.eq("empresa_id", ef);
@@ -446,7 +451,7 @@ const Dashboard = () => {
     let qAvulsosHoje = supabase
       .from("servicos_avulsos")
       .select("preco, custo")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .in("status", ["entregue", "finalizado"])
       .gte("created_at", inicioDiaISO)
       .lte("created_at", fimDiaISO);
@@ -522,6 +527,7 @@ const Dashboard = () => {
   const loadProdutosVendidos = async (inicio: Date, fim: Date) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    const userId = resolvedUserIdRef.current ?? user.id;
 
     const inicioStr = format(inicio, "yyyy-MM-dd");
     const fimStr = format(fim, "yyyy-MM-dd");
@@ -530,7 +536,7 @@ const Dashboard = () => {
     const { data: vendasProdutos } = await supabase
       .from("vendas")
       .select("produto_id, quantidade, total")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("tipo", "produto")
       .eq("cancelada", false)
       .gte("data", inicioStr)

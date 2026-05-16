@@ -12,14 +12,16 @@ import {
 import { useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod } from "@/lib/vendasFinanceiras";
-import { useEmpresaFiltro } from "./useResolvedUserId";
+import { useIdentidade } from "./useResolvedUserId";
 
 export const useRelatorios = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const empresaFiltro = useEmpresaFiltro();
+  const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
   const empresaFiltroRef = useRef(empresaFiltro);
+  const resolvedUserIdRef = useRef(resolvedUserId);
   useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
+  useEffect(() => { resolvedUserIdRef.current = resolvedUserId; }, [resolvedUserId]);
 
   const parseFiltroDate = (date: string, endOfDay = false) => {
     const [year, month, day] = date.split("-").map(Number);
@@ -47,6 +49,7 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return [];
+      const userId = resolvedUserIdRef.current ?? user.id;
 
       const inicioPeriodo = filtros.dataInicio ? parseFiltroDate(filtros.dataInicio) : null;
       const fimPeriodo = filtros.dataFim ? parseFiltroDate(filtros.dataFim, true) : null;
@@ -63,7 +66,7 @@ export const useRelatorios = () => {
           produtos (nome, preco, custo)
         `
         )
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .neq("cancelada", true)
         .order("data", { ascending: false });
 
@@ -94,7 +97,7 @@ export const useRelatorios = () => {
           *,
           servico:servicos!ordens_servico_servico_id_fkey(id, nome, preco, custo)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .is("deleted_at", null)
         .in("status", ["finalizado", "entregue"])
         .order("data_saida", { ascending: false, nullsFirst: false });
@@ -118,13 +121,13 @@ export const useRelatorios = () => {
       const queryServicos = supabase
         .from("servicos")
         .select("id, nome, preco, custo")
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       // Buscar serviços avulsos (apenas entregues ou finalizados)
       let queryAvulsos = supabase
         .from("servicos_avulsos")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .in("status", ["entregue", "finalizado"])
         .order("created_at", { ascending: false });
 
@@ -428,11 +431,12 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return { agrupados: [], detalhes: [] };
+      const userId = resolvedUserIdRef.current ?? user.id;
 
       let query = supabase
         .from("contas")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tipo", "pagar")
         .eq("status", "pago")
         .neq("categoria", "Taxa de Cartão")
@@ -516,11 +520,12 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return { total: 0, detalhes: [] };
+      const userId = resolvedUserIdRef.current ?? user.id;
 
       let query = supabase
         .from("contas")
         .select("id, valor, nome, descricao, data")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tipo", "pagar")
         .eq("status", "pago")
         .eq("categoria", "Taxa de Cartão");
@@ -569,6 +574,7 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return [];
+      const userId = resolvedUserIdRef.current ?? user.id;
 
       const inicioPeriodo = filtros.dataInicio ? parseFiltroDate(filtros.dataInicio) : null;
       const fimPeriodo = filtros.dataFim ? parseFiltroDate(filtros.dataFim, true) : null;
@@ -586,7 +592,7 @@ export const useRelatorios = () => {
           produtos (custo)
         `
         )
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .neq("cancelada", true);
 
       if (queryInicio && queryFim) {
@@ -610,7 +616,7 @@ export const useRelatorios = () => {
           *,
           servico:servicos!ordens_servico_servico_id_fkey(id, nome, preco, custo)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .is("deleted_at", null)
         .in("status", ["finalizado", "entregue"]);
 
@@ -633,13 +639,13 @@ export const useRelatorios = () => {
       const queryServicos = supabase
         .from("servicos")
         .select("id, nome, preco, custo")
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       // Buscar serviços avulsos (apenas entregues ou finalizados)
       let queryAvulsos2 = supabase
         .from("servicos_avulsos")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .in("status", ["entregue", "finalizado"]);
 
       if (filtros.dataInicio) {
@@ -673,7 +679,7 @@ export const useRelatorios = () => {
       let queryContasPagar = supabase
         .from("contas")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tipo", "pagar")
         .eq("status", "pago")
         .neq("categoria", "Taxa de Cartão")
@@ -691,7 +697,7 @@ export const useRelatorios = () => {
       let queryContasReceber = supabase
         .from("contas")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tipo", "receber")
         .eq("status", "recebido");
 
@@ -707,7 +713,7 @@ export const useRelatorios = () => {
       let queryTaxasCartao = supabase
         .from("contas")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tipo", "pagar")
         .eq("status", "pago")
         .eq("categoria", "Taxa de Cartão");
@@ -931,11 +937,12 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return 0;
+      const userId = resolvedUserIdRef.current ?? user.id;
 
       let query = supabase
         .from("contas")
         .select("valor, descricao, os_numero")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tipo", "receber")
         .eq("status", "recebido");
 

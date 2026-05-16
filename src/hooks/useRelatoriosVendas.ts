@@ -7,14 +7,16 @@ import {
   FiltrosRelatorioVendas,
 } from "@/types/relatorio-vendas";
 import { useToast } from "@/hooks/use-toast";
-import { useEmpresaFiltro } from "./useResolvedUserId";
+import { useIdentidade } from "./useResolvedUserId";
 
 export const useRelatoriosVendas = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const empresaFiltro = useEmpresaFiltro();
+  const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
   const empresaFiltroRef = useRef(empresaFiltro);
+  const resolvedUserIdRef = useRef(resolvedUserId);
   useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
+  useEffect(() => { resolvedUserIdRef.current = resolvedUserId; }, [resolvedUserId]);
 
   const buscarRelatorioDispositivos = async (
     filtros: FiltrosRelatorioVendas
@@ -25,6 +27,7 @@ export const useRelatoriosVendas = () => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
+      const userId = resolvedUserIdRef.current ?? user.id;
 
       let query = supabase
         .from("vendas")
@@ -34,7 +37,7 @@ export const useRelatoriosVendas = () => {
           dispositivos (tipo, marca, modelo, custo, preco)
         `
         )
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tipo", "dispositivo");
 
       if (filtros.dataInicio) {
@@ -113,6 +116,7 @@ export const useRelatoriosVendas = () => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
+      const userId = resolvedUserIdRef.current ?? user.id;
 
       // Buscar vendas de produtos (somente do usuário)
       let queryVendas = supabase
@@ -123,7 +127,7 @@ export const useRelatoriosVendas = () => {
           produtos (nome, sku, custo, preco, quantidade)
         `
         )
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("tipo", "produto");
 
       if (filtros.dataInicio) {
@@ -199,6 +203,7 @@ export const useRelatoriosVendas = () => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
+      const userId = resolvedUserIdRef.current ?? user.id;
 
       let query = supabase
         .from("ordens_servico")
@@ -208,7 +213,7 @@ export const useRelatoriosVendas = () => {
           servicos (nome, preco)
         `
         )
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .in("status", ["finalizado", "entregue", "concluida"]);
 
       if (filtros.dataInicio) {

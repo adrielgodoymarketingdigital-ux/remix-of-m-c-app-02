@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
-import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
+import { useIdentidade } from "./useResolvedUserId";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -14,10 +14,10 @@ export const useVendas = () => {
   const { toast } = useToast();
   const { dispatchEvent } = useEventDispatcher();
   const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
-  const resolvedUserIdFromContext = useResolvedUserId();
-  const empresaFiltro = useEmpresaFiltro();
+  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando } = useIdentidade();
 
   const carregarVendas = async (dataInicio?: string, dataFim?: string) => {
+    if (identidadeCarregando) return;
     try {
       setLoading(true);
 
@@ -686,9 +686,8 @@ export const useVendas = () => {
   };
 
   useEffect(() => {
-    console.log('[useVendas] empresaFiltro mudou:', empresaFiltro, '| resolvedUserId:', resolvedUserIdFromContext);
     carregarVendas();
-  }, [resolvedUserIdFromContext, empresaFiltro]);
+  }, [resolvedUserIdFromContext, empresaFiltro, identidadeCarregando]);
 
   return {
     vendas,
