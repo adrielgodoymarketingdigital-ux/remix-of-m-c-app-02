@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { ItemOrcamento, Orcamento } from "@/types/orcamento";
 import { useClientes } from "@/hooks/useClientes";
 import {
@@ -218,79 +218,86 @@ export function DialogCadastroOrcamento({
               </p>
             ) : (
               <div className="space-y-3">
-                {itens.map((item, index) => (
+                {itens.map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-12 gap-2 items-end p-3 border rounded-lg"
+                    className="border rounded-lg p-3 space-y-3"
                   >
-                    <div className="col-span-12 md:col-span-2">
-                      <Label className="text-xs">Tipo</Label>
-                      <Select
-                        value={item.tipo}
-                        onValueChange={(v) => atualizarItem(item.id, "tipo", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="produto">Produto</SelectItem>
-                          <SelectItem value="servico">Serviço</SelectItem>
-                          <SelectItem value="dispositivo">Dispositivo</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    {/* Linha 1: Tipo + Descrição */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Tipo</Label>
+                        <Select
+                          value={item.tipo}
+                          onValueChange={(v) => atualizarItem(item.id, "tipo", v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="produto">Produto</SelectItem>
+                            <SelectItem value="servico">Serviço</SelectItem>
+                            <SelectItem value="dispositivo">Dispositivo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="sm:col-span-2 space-y-1">
+                        <Label className="text-xs text-muted-foreground">Descrição</Label>
+                        <Input
+                          value={item.descricao}
+                          onChange={(e) =>
+                            atualizarItem(item.id, "descricao", e.target.value)
+                          }
+                          placeholder="Descrição do item"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="col-span-12 md:col-span-4">
-                      <Label className="text-xs">Descrição</Label>
-                      <Input
-                        value={item.descricao}
-                        onChange={(e) =>
-                          atualizarItem(item.id, "descricao", e.target.value)
-                        }
-                        placeholder="Descrição do item"
-                        required
-                      />
-                    </div>
-                    <div className="col-span-4 md:col-span-1">
-                      <Label className="text-xs">Qtd</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={item.quantidade}
-                        onChange={(e) =>
-                          atualizarItem(item.id, "quantidade", parseInt(e.target.value) || 1)
-                        }
-                      />
-                    </div>
-                    <div className="col-span-4 md:col-span-2">
-                      <Label className="text-xs">Valor Unit.</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.valor_unitario}
-                        onChange={(e) =>
-                          atualizarItem(item.id, "valor_unitario", parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </div>
-                    <div className="col-span-3 md:col-span-2">
-                      <Label className="text-xs">Total</Label>
-                      <Input
-                        value={formatCurrency(item.valor_total)}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removerItem(item.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+
+                    {/* Linha 2: Qtd + Valor Unit. + Total + Excluir */}
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 items-end">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Quantidade</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantidade}
+                          onChange={(e) =>
+                            atualizarItem(item.id, "quantidade", parseInt(e.target.value) || 1)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Valor Unit. (R$)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.valor_unitario}
+                          onChange={(e) =>
+                            atualizarItem(item.id, "valor_unitario", parseFloat(e.target.value) || 0)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Total</Label>
+                        <Input
+                          value={formatCurrency(item.valor_total)}
+                          disabled
+                          className="bg-muted font-medium"
+                        />
+                      </div>
+                      <div className="flex items-end justify-end sm:justify-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removerItem(item.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
