@@ -107,3 +107,40 @@ export function useEmpresaFiltro(): string | null {
   // undefined = ainda carregando, retorna null provisoriamente
   return gerenteData?.empresa_id ?? null;
 }
+
+/**
+ * Retorna { userId, empresaId, carregando } de forma consolidada.
+ * carregando = true enquanto o perfil de gerente de filial ainda não foi resolvido.
+ * Use para evitar disparar queries com userId/empresaId provisórios.
+ */
+export function useIdentidade(): { userId: string | null; empresaId: string | null; carregando: boolean } {
+  const { isProprietario, empresaAtiva } = useEmpresa();
+  const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
+  const gerenteData = useGerenteFilialData();
+  const [selfId, setSelfId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setSelfId(user?.id ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSelfId(session?.user?.id ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Ainda aguardando resposta da query de gerente de filial
+  const carregando = !isProprietario && gerenteData === undefined;
+
+  let userId: string | null = selfId;
+  let empresaId: string | null = null;
+
+  if (!isProprietario && gerenteData?.proprietario_id) {
+    userId = gerenteData.proprietario_id;
+    empresaId = gerenteData.empresa_id;
+  } else if (isFuncionario && lojaUserId) {
+    userId = lojaUserId;
+  } else if (isProprietario) {
+    empresaId = empresaAtiva ?? null;
+  }
+
+  return { userId, empresaId, carregando };
+}

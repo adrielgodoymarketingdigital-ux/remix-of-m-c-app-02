@@ -4,17 +4,17 @@ import { toast } from 'sonner';
 import { ItemEstoque, Produto, Peca, FormularioProduto } from '@/types/produto';
 import { useFuncionarioPermissoes } from './useFuncionarioPermissoes';
 import { useAssinatura } from './useAssinatura';
-import { useEmpresaFiltro, useResolvedUserId } from './useResolvedUserId';
+import { useIdentidade } from './useResolvedUserId';
 
 export const useProdutos = () => {
   const [items, setItems] = useState<ItemEstoque[]>([]);
   const [loading, setLoading] = useState(false);
   const { lojaUserId, podeSincronizarProdutos, isFuncionario } = useFuncionarioPermissoes();
   const { podeCadastrarProduto, limites } = useAssinatura();
-  const empresaFiltro = useEmpresaFiltro();
-  const resolvedUserId = useResolvedUserId();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: identidadeCarregando } = useIdentidade();
 
   const carregarTodos = useCallback(async () => {
+    if (identidadeCarregando) return;
     setLoading(true);
     try {
       const {
@@ -101,7 +101,7 @@ export const useProdutos = () => {
     } finally {
       setLoading(false);
     }
-  }, [resolvedUserId, lojaUserId, podeSincronizarProdutos, isFuncionario, empresaFiltro]);
+  }, [resolvedUserId, empresaFiltro, identidadeCarregando, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
   const criar = useCallback(async (dados: FormularioProduto) => {
     try {
@@ -316,7 +316,7 @@ export const useProdutos = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
       const CHUNK_SIZE = 80;
 
       const chunkArray = <T,>(arr: T[], size: number) => {
@@ -451,7 +451,7 @@ export const useProdutos = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
 
       const produtoIds = itensParaCategorizar.filter(i => i.tipo === 'produto').map(i => i.id);
       const pecaIds = itensParaCategorizar.filter(i => i.tipo === 'peca').map(i => i.id);
@@ -563,7 +563,7 @@ export const useProdutos = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
 
       // Separar itens que precisam mudar de tipo dos que já são do tipo correto
       const itensParaMover = itensParaAlterar.filter(i => i.tipo !== novoTipo);
@@ -659,7 +659,7 @@ export const useProdutos = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
       const tabela = tipo === 'produto' ? 'produtos' : 'pecas';
 
       const { data: atual, error: erroSelect } = await supabase
