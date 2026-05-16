@@ -5,7 +5,7 @@ import { startOfMonth, endOfMonth, format } from "date-fns";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useEventDispatcher } from "./useEventDispatcher";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
-import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
+import { useIdentidade } from "./useResolvedUserId";
 
 export interface OrdemServico {
   id: string;
@@ -63,8 +63,7 @@ export const useOrdensServico = () => {
   const { toast } = useToast();
   const { lojaUserId, isFuncionario, funcionarioId, permissoes } = useFuncionarioPermissoes();
   const { dispatchEvent } = useEventDispatcher();
-  const resolvedUserIdFromContext = useResolvedUserId();
-  const empresaFiltro = useEmpresaFiltro();
+  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando } = useIdentidade();
   const resolvedUserIdRef = useRef<string | null>(null);
   const empresaFiltroRef = useRef(empresaFiltro);
   useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
@@ -95,30 +94,24 @@ export const useOrdensServico = () => {
     });
   }, [busca, ordensBase]);
 
+  useEffect(() => { resolvedUserIdRef.current = resolvedUserIdFromContext; }, [resolvedUserIdFromContext]);
+
   const resolverUserId = useCallback(async (): Promise<string | null> => {
-    // Proprietário visualizando filial: usar o userIdAtivo do contexto diretamente
+    // Prioridade 1: userId já resolvido pelo useIdentidade (cobre gerente de filial, funcionário e proprietário)
     if (resolvedUserIdFromContext) {
       resolvedUserIdRef.current = resolvedUserIdFromContext;
       return resolvedUserIdFromContext;
     }
+    // Prioridade 2: cache do ref (pode ter sido preenchido antes do estado React atualizar)
+    if (resolvedUserIdRef.current) return resolvedUserIdRef.current;
 
-    if (resolvedUserIdRef.current) {
-      return resolvedUserIdRef.current;
-    }
-
-    const { data, error } = await supabase.rpc('get_loja_owner_id');
-    if (error) {
-      console.error("Erro ao resolver userId via RPC:", error);
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) return null;
-      resolvedUserIdRef.current = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
-      return resolvedUserIdRef.current;
-    }
-
-    resolvedUserIdRef.current = data;
-    return data;
-  }, [isFuncionario, lojaUserId, resolvedUserIdFromContext]);
+    // Fallback síncrono para casos onde o contexto ainda não carregou
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const fallback = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
+    resolvedUserIdRef.current = fallback;
+    return fallback;
+  }, [resolvedUserIdFromContext, isFuncionario, lojaUserId]);
 
   const aplicarFiltroMes = (mes: string) => {
     setMesFiltro(mes);
@@ -314,7 +307,7 @@ export const useOrdensServico = () => {
         .eq("is_teste", false)
         .is("deleted_at", null);
 
-      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) query = (query as any).eq("empresa_id", empresaFiltroRef.current);
 
       if (dataInicio) {
         const inicioISO = dataInicio.toISOString().split('T')[0];
@@ -634,11 +627,6 @@ export const useOrdensServico = () => {
       });
     }
   };
-
-  // Invalidar cache e recarregar quando empresa ativa muda
-  useEffect(() => {
-    resolvedUserIdRef.current = null;
-  }, [resolvedUserIdFromContext]);
 
   useEffect(() => {
     carregarOrdens();
