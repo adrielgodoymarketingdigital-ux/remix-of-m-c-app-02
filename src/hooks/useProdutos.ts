@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { ItemEstoque, Produto, Peca, FormularioProduto } from '@/types/produto';
 import { useFuncionarioPermissoes } from './useFuncionarioPermissoes';
 import { useAssinatura } from './useAssinatura';
-import { useEmpresaFiltro } from './useResolvedUserId';
+import { useEmpresaFiltro, useResolvedUserId } from './useResolvedUserId';
 
 export const useProdutos = () => {
   const [items, setItems] = useState<ItemEstoque[]>([]);
@@ -12,6 +12,7 @@ export const useProdutos = () => {
   const { lojaUserId, podeSincronizarProdutos, isFuncionario } = useFuncionarioPermissoes();
   const { podeCadastrarProduto, limites } = useAssinatura();
   const empresaFiltro = useEmpresaFiltro();
+  const resolvedUserId = useResolvedUserId();
 
   const carregarTodos = useCallback(async () => {
     setLoading(true);
@@ -25,8 +26,7 @@ export const useProdutos = () => {
         return;
       }
 
-      // Usar ID do dono se funcionário tem permissão de sincronizar produtos
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
 
       let qProdutos = supabase.from('produtos').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
       let qPecas = supabase.from('pecas').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
@@ -101,7 +101,7 @@ export const useProdutos = () => {
     } finally {
       setLoading(false);
     }
-  }, [lojaUserId, podeSincronizarProdutos, isFuncionario, empresaFiltro]);
+  }, [resolvedUserId, lojaUserId, podeSincronizarProdutos, isFuncionario, empresaFiltro]);
 
   const criar = useCallback(async (dados: FormularioProduto) => {
     try {
@@ -119,8 +119,7 @@ export const useProdutos = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Usar ID do dono se funcionário tem permissão
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
 
       if (dados.tipo === 'produto') {
         const { error } = await supabase.from('produtos').insert({
@@ -132,6 +131,7 @@ export const useProdutos = () => {
           preco: dados.preco,
           preco_atacado: dados.preco_atacado ?? null,
           user_id: userId,
+          empresa_id: empresaFiltro ?? null,
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
           categoria_id: dados.categoria_id || null,
@@ -147,6 +147,7 @@ export const useProdutos = () => {
           preco: dados.preco,
           preco_atacado: dados.preco_atacado ?? null,
           user_id: userId,
+          empresa_id: empresaFiltro ?? null,
           codigo_barras: dados.codigo_barras || null,
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
@@ -190,15 +191,14 @@ export const useProdutos = () => {
       });
       return false;
     }
-  }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario, podeCadastrarProduto, limites.produtos_mes]);
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario, podeCadastrarProduto, limites.produtos_mes]);
 
   const atualizar = useCallback(async (id: string, dados: FormularioProduto) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Usar ID do dono se funcionário tem permissão
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
 
       if (dados.tipo === 'produto') {
         const { error } = await supabase.from('produtos').update({
@@ -241,15 +241,14 @@ export const useProdutos = () => {
       });
       return false;
     }
-  }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
   const excluir = useCallback(async (id: string, tipo: 'produto' | 'peca') => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Usar ID do dono se funcionário tem permissão
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
 
       // Verificar se o item tem vendas ou serviços associados antes de excluir
       if (tipo === 'produto') {
@@ -310,7 +309,7 @@ export const useProdutos = () => {
       });
       return false;
     }
-  }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
   const excluirEmMassa = useCallback(async (itens: { id: string; tipo: 'produto' | 'peca' }[]) => {
     try {
@@ -445,7 +444,7 @@ export const useProdutos = () => {
       toast.error('Erro ao excluir em massa', { description });
       return { excluidos: 0, erros: itens.length };
     }
-  }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
   const categorizarEmMassa = useCallback(async (itensParaCategorizar: { id: string; tipo: 'produto' | 'peca' }[], categoriaId: string | null) => {
     try {
@@ -492,15 +491,14 @@ export const useProdutos = () => {
       toast.error('Erro ao categorizar itens', { description: error.message });
       return false;
     }
-  }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
   const importarEmLote = useCallback(async (itens: FormularioProduto[]) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Usar ID do dono se funcionário tem permissão
-      const userId = (isFuncionario && podeSincronizarProdutos && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserId ?? user.id;
 
       const produtos = itens.filter(i => i.tipo === 'produto');
       const pecas = itens.filter(i => i.tipo === 'peca');
@@ -519,6 +517,7 @@ export const useProdutos = () => {
             preco: p.preco,
             preco_atacado: p.preco_atacado ?? null,
             user_id: userId,
+            empresa_id: empresaFiltro ?? null,
             fotos: p.fotos || [],
             categoria_id: p.categoria_id || null,
           }))
@@ -536,6 +535,7 @@ export const useProdutos = () => {
             preco: p.preco,
             preco_atacado: p.preco_atacado ?? null,
             user_id: userId,
+            empresa_id: empresaFiltro ?? null,
             codigo_barras: p.codigo_barras || null,
             fotos: p.fotos || [],
             categoria_id: p.categoria_id || null,
@@ -556,7 +556,7 @@ export const useProdutos = () => {
       toast.error('Erro na importação', { description: mensagem });
       return { produtosInseridos: 0, pecasInseridas: 0, erros: itens.length, mensagemErro: mensagem };
     }
-  }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
   const alterarTipoEmMassa = useCallback(async (itensParaAlterar: { id: string; tipo: 'produto' | 'peca' }[], novoTipo: 'produto' | 'peca') => {
     try {
@@ -603,6 +603,7 @@ export const useProdutos = () => {
         custo: item.custo || 0,
         preco: item.preco || 0,
         user_id: userId,
+        empresa_id: item.empresa_id ?? empresaFiltro ?? null,
         created_at: item.created_at,
         codigo_barras: item.codigo_barras || null,
         fotos: item.fotos || [],
@@ -651,7 +652,7 @@ export const useProdutos = () => {
       toast.error('Erro ao alterar tipo', { description: error.message });
       return false;
     }
-  }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
   const reporEstoque = useCallback(async (id: string, tipo: 'produto' | 'peca', quantidadeAdicional: number) => {
     try {
@@ -687,7 +688,7 @@ export const useProdutos = () => {
       toast.error('Erro ao repor estoque', { description: error.message });
       return false;
     }
-  }, [carregarTodos, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
   return {
     items,
