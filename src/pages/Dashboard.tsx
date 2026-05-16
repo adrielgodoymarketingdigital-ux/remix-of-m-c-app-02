@@ -341,13 +341,15 @@ const Dashboard = () => {
     // Buscar serviços avulsos do mês (apenas entregues ou finalizados)
     const avulsosInicioISO = inicio.toISOString();
     const avulsosFimISO = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate(), 23, 59, 59, 999).toISOString();
-    const { data: avulsosMes } = await supabase
+    let qAvulsosMes = supabase
       .from("servicos_avulsos")
       .select("preco, custo, status")
       .eq("user_id", userId)
       .in("status", ["entregue", "finalizado"])
       .gte("created_at", avulsosInicioISO)
       .lte("created_at", avulsosFimISO);
+    if (ef) qAvulsosMes = qAvulsosMes.eq("empresa_id", ef);
+    const { data: avulsosMes } = await qAvulsosMes;
 
     const faturamentoAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.preco || 0), 0) || 0;
     const custoAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.custo || 0), 0) || 0;
@@ -384,13 +386,16 @@ const Dashboard = () => {
     const hoje = format(new Date(), "yyyy-MM-dd");
 
     // Buscar contas a pagar do dia do usuário logado
-    const { data: contasHoje } = await supabase
+    const ef = empresaFiltroRef.current;
+    let qContasHoje = supabase
       .from("contas")
       .select("valor")
       .eq("user_id", userId)
       .eq("tipo", "pagar")
       .eq("status", "pendente")
       .eq("data", hoje);
+    if (ef) qContasHoje = qContasHoje.eq("empresa_id", ef);
+    const { data: contasHoje } = await qContasHoje;
 
     // Calcular totais
     const totalContasHoje = contasHoje?.reduce((acc, c) => acc + Number(c.valor || 0), 0) || 0;

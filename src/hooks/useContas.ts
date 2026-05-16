@@ -159,10 +159,9 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         return false;
       }
 
-      const { error } = await supabase.from("contas").insert({
-        ...dados,
-        user_id: user.id,
-      });
+      const insertData: Record<string, unknown> = { ...dados, user_id: user.id };
+      if (empresaFiltro) insertData.empresa_id = empresaFiltro;
+      const { error } = await supabase.from("contas").insert(insertData);
 
       if (error) throw error;
 

@@ -442,6 +442,8 @@ export const useRelatorios = () => {
         .neq("categoria", "Taxa de Cartão")
         .is("os_numero", null);
 
+      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+
       if (filtros.dataInicio) {
         query = query.gte("data", filtros.dataInicio);
       }
@@ -529,6 +531,8 @@ export const useRelatorios = () => {
         .eq("tipo", "pagar")
         .eq("status", "pago")
         .eq("categoria", "Taxa de Cartão");
+
+      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
 
       if (filtros.dataInicio) {
         query = query.gte("data", filtros.dataInicio);
@@ -945,6 +949,8 @@ export const useRelatorios = () => {
         .eq("user_id", userId)
         .eq("tipo", "receber")
         .eq("status", "recebido");
+
+      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
 
       if (filtros.dataInicio) {
         query = query.gte("data", filtros.dataInicio);
