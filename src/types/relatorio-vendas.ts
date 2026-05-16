@@ -35,6 +35,14 @@ export interface RelatorioServico {
   };
 }
 
+export interface RelatorioVendaAvulsa {
+  id: string;
+  descricao: string;
+  valor: number;
+  formaPagamento: string;
+  data: string;
+}
+
 export interface FiltrosRelatorioVendas {
   dataInicio?: string;
   dataFim?: string;

@@ -4,6 +4,7 @@ import {
   RelatorioDispositivo,
   RelatorioProduto,
   RelatorioServico,
+  RelatorioVendaAvulsa,
   FiltrosRelatorioVendas,
 } from "@/types/relatorio-vendas";
 import { useToast } from "@/hooks/use-toast";
@@ -288,11 +289,61 @@ export const useRelatoriosVendas = () => {
     }
   };
 
+  const buscarRelatorioVendasAvulsas = async (
+    filtros: FiltrosRelatorioVendas
+  ): Promise<RelatorioVendaAvulsa[]> => {
+    try {
+      setLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+      const userId = resolvedUserIdRef.current ?? user.id;
+
+      let query = supabase
+        .from("vendas_avulsas" as any)
+        .select("id, descricao, valor, forma_pagamento, created_at")
+        .eq("user_id", userId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+
+      if (filtros.dataInicio) {
+        query = query.gte("created_at", `${filtros.dataInicio}T00:00:00`);
+      }
+      if (filtros.dataFim) {
+        query = query.lte("created_at", `${filtros.dataFim}T23:59:59`);
+      }
+      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return ((data ?? []) as any[]).map((va) => ({
+        id: va.id,
+        descricao: va.descricao,
+        valor: Number(va.valor || 0),
+        formaPagamento: va.forma_pagamento,
+        data: va.created_at,
+      }));
+    } catch (error: any) {
+      console.error("Erro ao buscar relatório de vendas avulsas:", error);
+      toast({
+        title: "Erro ao buscar relatório",
+        description: error.message,
+        variant: "destructive",
+      });
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     resolvedUserId,
     buscarRelatorioDispositivos,
     buscarRelatorioProdutos,
     buscarRelatorioServicos,
+    buscarRelatorioVendasAvulsas,
   };
 };

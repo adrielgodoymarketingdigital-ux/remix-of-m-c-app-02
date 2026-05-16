@@ -83,8 +83,10 @@ const menuItems = [
   { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
   
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
-  { title: "Relatórios", url: "/relatorios", icon: FileText, modulo: "relatorios" as keyof PermissoesModulos },
-  { title: "Financeiro", url: "/financeiro", icon: FileText, modulo: "financeiro" as keyof PermissoesModulos },
+  { title: "Financeiro", url: "/financeiro", icon: FileText, modulo: "financeiro" as keyof PermissoesModulos, items: [
+    { title: "💰 Financeiro", url: "/financeiro" },
+    { title: "📊 Relatórios", url: "/relatorios" },
+  ]},
   { title: "Equipe", url: "/equipe", icon: Users, modulo: "equipe" as keyof PermissoesModulos },
   { title: "Configurações", url: "/configuracoes", icon: Settings, modulo: "configuracoes" as keyof PermissoesModulos },
   { title: "Suporte", url: "/suporte", icon: HelpCircle, modulo: "suporte" as keyof PermissoesModulos },
@@ -114,7 +116,7 @@ export function AppSidebar() {
   const { toast } = useToast();
   const collapsed = state === "collapsed";
   const [isAdmin, setIsAdmin] = useState(false);
-  const [clientesExpandido, setClientesExpandido] = useState(false);
+  const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { assinatura } = useAssinatura();
@@ -251,12 +253,14 @@ export function AppSidebar() {
                   };
                   const tutorialAttr = tutorialMap[item.url];
                   const temSubmenu = !!(item.items && item.items.length > 0);
-                  const expandido = temSubmenu && clientesExpandido;
+                  const subRotaAtiva = temSubmenu && item.items!.some(sub => location.pathname === sub.url);
+                  const expandido = temSubmenu && (!!expandidos[item.url] || subRotaAtiva);
                   return (
                     <SidebarMenuItem key={item.title} data-tutorial={tutorialAttr}>
                       <SidebarMenuButton
-                        onClick={temSubmenu ? () => setClientesExpandido(v => !v) : undefined}
+                        onClick={temSubmenu ? () => setExpandidos(prev => ({ ...prev, [item.url]: !expandido })) : undefined}
                         asChild={!temSubmenu}
+                        className={temSubmenu && subRotaAtiva && !expandido ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500" : ""}
                       >
                         {temSubmenu ? (
                           <>
