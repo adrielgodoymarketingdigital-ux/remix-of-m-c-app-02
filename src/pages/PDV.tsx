@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info } from "lucide-react";
+import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
 import { DialogAberturaCaixa } from "@/components/pdv/DialogAberturaCaixa";
@@ -46,6 +46,7 @@ import { ConfiguracaoTaxasCartao } from "@/components/configuracoes/Configuracao
 import { SeletorBandeiraCartao } from "@/components/pdv/SeletorBandeiraCartao";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { DialogVendaAvulsa } from "@/components/pdv/DialogVendaAvulsa";
 
 const clienteSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -72,6 +73,7 @@ const PDV = () => {
   const [dialogFechamentoCaixaAberto, setDialogFechamentoCaixaAberto] = useState(false);
   const [dialogHistoricoCaixasAberto, setDialogHistoricoCaixasAberto] = useState(false);
   const [dialogStatusCaixaAberto, setDialogStatusCaixaAberto] = useState(false);
+  const [dialogVendaAvulsaAberto, setDialogVendaAvulsaAberto] = useState(false);
   const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa } = useCaixa();
   const [pagamentoDuploAtivo, setPagamentoDuploAtivo] = useState(false);
   const [valorPrimeiraPagamento, setValorPrimeiraPagamento] = useState(0);
@@ -646,6 +648,15 @@ const PDV = () => {
             <p className="text-muted-foreground text-sm sm:text-base">Sistema de ponto de venda</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-violet-500 text-violet-600 hover:bg-violet-50"
+              onClick={() => setDialogVendaAvulsaAberto(true)}
+            >
+              <ShoppingBag className="h-4 w-4" />
+              <span className="hidden sm:inline">Venda Avulsa</span>
+            </Button>
             {!caixaEstaAberto ? (
               <Button
                 variant="outline"
@@ -1005,6 +1016,11 @@ const PDV = () => {
         open={dialogItemAberto}
         onOpenChange={setDialogItemAberto}
         onAdicionarItem={adicionarItem}
+      />
+
+      <DialogVendaAvulsa
+        open={dialogVendaAvulsaAberto}
+        onOpenChange={setDialogVendaAvulsaAberto}
       />
 
       <DialogReciboPDV

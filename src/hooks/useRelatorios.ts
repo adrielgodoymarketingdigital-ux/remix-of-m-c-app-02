@@ -140,16 +140,33 @@ export const useRelatorios = () => {
         queryAvulsos = queryAvulsos.lte("created_at", fimAvulsosISO);
       }
 
+      // Buscar vendas avulsas do período
+      let queryVendasAvulsas = supabase
+        .from("vendas_avulsas" as any)
+        .select("id, descricao, valor, forma_pagamento, created_at")
+        .eq("user_id", userId)
+        .is("deleted_at", null);
+      if (filtros.dataInicio) {
+        const inicioVA = parseFiltroDate(filtros.dataInicio).toISOString();
+        queryVendasAvulsas = queryVendasAvulsas.gte("created_at", inicioVA);
+      }
+      if (filtros.dataFim) {
+        const fimVA = parseFiltroDate(filtros.dataFim, true).toISOString();
+        queryVendasAvulsas = queryVendasAvulsas.lte("created_at", fimVA);
+      }
+
       const [
-        { data: vendas, error: vendaError }, 
+        { data: vendas, error: vendaError },
         { data: ordens, error: ordemError },
         { data: todosServicos, error: servicosError },
-        { data: servicosAvulsos, error: avulsosError }
+        { data: servicosAvulsos, error: avulsosError },
+        { data: vendasAvulsas }
       ] = await Promise.all([
         queryVendas,
         queryOrdens,
         queryServicos,
-        queryAvulsos
+        queryAvulsos,
+        queryVendasAvulsas,
       ]);
 
       if (vendaError) throw vendaError;
@@ -394,6 +411,21 @@ export const useRelatorios = () => {
             margemLucro: 0,
           });
         }
+      });
+
+      // Processar vendas avulsas (PDV rápido)
+      ((vendasAvulsas ?? []) as any[]).forEach((va: any) => {
+        const itemId = `venda_avulsa_${va.id}`;
+        itensMap.set(itemId, {
+          id: itemId,
+          nome: `${va.descricao} (Venda Avulsa)`,
+          tipo: "produto" as const,
+          quantidadeVendida: 1,
+          custoTotal: 0,
+          receitaTotal: Number(va.valor || 0),
+          lucroTotal: 0,
+          margemLucro: 0,
+        });
       });
 
       // Calcular lucro e margem
@@ -661,16 +693,30 @@ export const useRelatorios = () => {
         queryAvulsos2 = queryAvulsos2.lte("created_at", fimAvulsos2ISO);
       }
 
+      let queryVendasAvulsasEvolucao = supabase
+        .from("vendas_avulsas" as any)
+        .select("valor, created_at")
+        .eq("user_id", userId)
+        .is("deleted_at", null);
+      if (filtros.dataInicio) {
+        queryVendasAvulsasEvolucao = queryVendasAvulsasEvolucao.gte("created_at", parseFiltroDate(filtros.dataInicio).toISOString());
+      }
+      if (filtros.dataFim) {
+        queryVendasAvulsasEvolucao = queryVendasAvulsasEvolucao.lte("created_at", parseFiltroDate(filtros.dataFim, true).toISOString());
+      }
+
       const [
-        { data: vendas, error: vendaError }, 
+        { data: vendas, error: vendaError },
         { data: ordens, error: ordemError },
         { data: todosServicos, error: servicosError },
-        { data: avulsosEvolucao, error: avulsosError2 }
+        { data: avulsosEvolucao, error: avulsosError2 },
+        { data: vendasAvulsasEvolucao },
       ] = await Promise.all([
         queryVendas,
         queryOrdens,
         queryServicos,
-        queryAvulsos2
+        queryAvulsos2,
+        queryVendasAvulsasEvolucao,
       ]);
 
       if (vendaError) throw vendaError;
@@ -864,6 +910,18 @@ export const useRelatorios = () => {
         const evolucao = evolucaoMap.get(mes)!;
         evolucao.receita += Number(sa.preco || 0);
         evolucao.custo += Number(sa.custo || 0);
+      });
+
+      // Processar vendas avulsas na evolução mensal
+      ((vendasAvulsasEvolucao ?? []) as any[]).forEach((va: any) => {
+        const data = new Date(va.created_at);
+        const mes = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
+
+        if (!evolucaoMap.has(mes)) {
+          evolucaoMap.set(mes, { mes, receita: 0, custo: 0, lucro: 0 });
+        }
+
+        evolucaoMap.get(mes)!.receita += Number(va.valor || 0);
       });
 
       // Adicionar custos operacionais (contas filtradas, sem duplicidade)

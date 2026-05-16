@@ -117,7 +117,7 @@ export function useOSGerencial(dataInicio?: Date, dataFim?: Date) {
       const tresAtras = new Date(hoje);
       tresAtras.setDate(tresAtras.getDate() - 3);
 
-      const [ordensRes, metaRes] = await Promise.all([
+      const [ordensRes, metaRes, vendasAvulsasRes] = await Promise.all([
         supabase
           .from("ordens_servico")
           .select("id, numero_os, created_at, status, total, cliente:clientes(nome)")
@@ -132,6 +132,13 @@ export function useOSGerencial(dataInicio?: Date, dataFim?: Date) {
           .eq("mes", mes)
           .eq("ano", ano)
           .maybeSingle(),
+        supabase
+          .from("vendas_avulsas" as any)
+          .select("valor")
+          .eq("user_id", userId)
+          .is("deleted_at", null)
+          .gte("created_at", inicio)
+          .lte("created_at", fim),
       ]);
 
       if (ordensRes.error) throw ordensRes.error;
@@ -227,7 +234,10 @@ export function useOSGerencial(dataInicio?: Date, dataFim?: Date) {
         };
       });
 
-      const valorRealizado = soma(STATUS_REALIZADOS);
+      const faturamentoVendasAvulsas = ((vendasAvulsasRes.data ?? []) as { valor: number }[])
+        .reduce((acc, a) => acc + Number(a.valor || 0), 0);
+
+      const valorRealizado = soma(STATUS_REALIZADOS) + faturamentoVendasAvulsas;
       const valorEmFluxo = soma(STATUS_EM_FLUXO);
       const countEmFluxo = conta(STATUS_EM_FLUXO);
 

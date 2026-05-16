@@ -351,8 +351,23 @@ const Dashboard = () => {
     if (ef) qAvulsosMes = qAvulsosMes.eq("empresa_id", ef);
     const { data: avulsosMes } = await qAvulsosMes;
 
-    const faturamentoAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.preco || 0), 0) || 0;
-    const custoAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.custo || 0), 0) || 0;
+    const faturamentoServicosAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.preco || 0), 0) || 0;
+    const custoServicosAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.custo || 0), 0) || 0;
+
+    // Buscar vendas avulsas do mês (tabela vendas_avulsas)
+    const { data: vendasAvulsasMes } = await supabase
+      .from("vendas_avulsas" as any)
+      .select("valor")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .gte("created_at", avulsosInicioISO)
+      .lte("created_at", avulsosFimISO);
+
+    const faturamentoVendasAvulsas = ((vendasAvulsasMes ?? []) as { valor: number }[])
+      .reduce((acc, a) => acc + Number(a.valor || 0), 0);
+
+    const faturamentoAvulsos = faturamentoServicosAvulsos + faturamentoVendasAvulsas;
+    const custoAvulsos = custoServicosAvulsos;
 
     // Calcular margem de serviços incluindo avulsos
     const faturamentoServicosTotal = faturamentoServicos + faturamentoAvulsos;
@@ -462,10 +477,19 @@ const Dashboard = () => {
       .lte("created_at", fimDiaISO);
     if (ef) qAvulsosHoje = qAvulsosHoje.eq("empresa_id", ef);
 
-    const [{ data: ordensHoje }, { data: vendasHoje }, { data: avulsosHoje }] = await Promise.all([
+    const qVendasAvulsasHoje = supabase
+      .from("vendas_avulsas" as any)
+      .select("valor")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .gte("created_at", inicioDiaISO)
+      .lte("created_at", fimDiaISO);
+
+    const [{ data: ordensHoje }, { data: vendasHoje }, { data: avulsosHoje }, { data: vendasAvulsasHoje }] = await Promise.all([
       qOrdensHoje,
       qVendasHoje,
       qAvulsosHoje,
+      qVendasAvulsasHoje,
     ]);
 
     console.log('[HojeDebug] hoje =', hoje);
@@ -507,7 +531,10 @@ const Dashboard = () => {
     const receitaDispositivosHoje = vendasDispositivosHoje.reduce((acc, v) => acc + getVendaReceitaLiquida(v as any), 0);
     const custoDispositivosHoje = vendasDispositivosHoje.reduce((acc, v) => Number(v.custo_unitario || 0) * Number(v.quantidade || 1) + acc, 0);
 
-    const receitaAvulsos = (avulsosHoje || []).reduce((acc, a) => acc + Number(a.preco || 0), 0);
+    const receitaServicosAvulsosHoje = (avulsosHoje || []).reduce((acc, a) => acc + Number(a.preco || 0), 0);
+    const receitaVendasAvulsasHoje = ((vendasAvulsasHoje ?? []) as { valor: number }[])
+      .reduce((acc, a) => acc + Number(a.valor || 0), 0);
+    const receitaAvulsos = receitaServicosAvulsosHoje + receitaVendasAvulsasHoje;
     const custoAvulsos = (avulsosHoje || []).reduce((acc, a) => acc + Number(a.custo || 0), 0);
 
     const faturamento = receitaOS + receitaVendas + receitaAvulsos;
