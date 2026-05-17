@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Loader2, Shield, Check, ArrowRight, Phone, CreditCard, QrCode, ChevronRight, ShieldCheck, Lock, CheckCircle2, Zap, Sparkles } from "lucide-react";
 import { PLANOS } from "@/types/plano";
 import { trackCompleteRegistration } from "@/lib/tracking";
-import { trackPageView } from "@/lib/pixel";
+import { trackPageView, trackCompleteRegistration } from "@/lib/pixel";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import { CartaoCheckoutDialog } from "@/components/planos/CartaoCheckoutDialog";
@@ -118,6 +118,7 @@ export default function CadastroPlano() {
         });
 
         toast.success("Conta criada com sucesso!");
+        trackCompleteRegistration();
         setStep("checkout");
       }
     } catch (error: any) {

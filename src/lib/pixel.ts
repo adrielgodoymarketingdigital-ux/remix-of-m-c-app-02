@@ -16,6 +16,36 @@ export async function trackPageView() {
   ReactPixel.pageView()
 }
 
+export async function trackCompleteRegistration() {
+  if (typeof window === 'undefined' || !PIXEL_ID) return
+  const { default: ReactPixel } = await import('react-facebook-pixel')
+  ReactPixel.track('CompleteRegistration', {
+    currency: 'BRL',
+    status: true,
+  })
+  if (import.meta.env.DEV) {
+    console.log('🎯 Pixel CompleteRegistration disparado')
+  }
+}
+
+export async function trackInitiateCheckout(dados: {
+  value?: number
+  planName?: string
+}) {
+  if (typeof window === 'undefined' || !PIXEL_ID) return
+  const { default: ReactPixel } = await import('react-facebook-pixel')
+  ReactPixel.track('InitiateCheckout', {
+    value: dados.value,
+    currency: 'BRL',
+    content_name: dados.planName ?? 'Assinatura',
+    content_type: 'product',
+    num_items: 1,
+  })
+  if (import.meta.env.DEV) {
+    console.log('🎯 Pixel InitiateCheckout disparado:', dados)
+  }
+}
+
 export async function trackPurchase(dados: {
   value: number
   currency?: string

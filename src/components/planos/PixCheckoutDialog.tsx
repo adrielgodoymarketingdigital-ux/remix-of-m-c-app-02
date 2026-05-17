@@ -24,6 +24,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { trackInitiateCheckout } from "@/lib/pixel";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
@@ -117,7 +118,9 @@ export function PixCheckoutDialog({
 
   // Reset ao abrir/fechar
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      trackInitiateCheckout({ value: planoPreco, planName: planoNome });
+    } else {
       setPixData(null);
       setError(null);
       setPaymentConfirmed(false);

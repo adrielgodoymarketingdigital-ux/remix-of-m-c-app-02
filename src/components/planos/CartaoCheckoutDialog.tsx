@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
-import { trackPurchase } from "@/lib/pixel";
+import { trackPurchase, trackInitiateCheckout } from "@/lib/pixel";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -97,6 +97,11 @@ export function CartaoCheckoutDialog({
   onSuccess,
 }: CartaoCheckoutDialogProps) {
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) trackInitiateCheckout({ value: planoPreco, planName: planoNome })
+  }, [open])
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
