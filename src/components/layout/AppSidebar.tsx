@@ -254,7 +254,8 @@ export function AppSidebar() {
                   const tutorialAttr = tutorialMap[item.url];
                   const temSubmenu = !!(item.items && item.items.length > 0);
                   const subRotaAtiva = temSubmenu && item.items!.some(sub => location.pathname === sub.url);
-                  const expandido = temSubmenu && (!!expandidos[item.url] || subRotaAtiva);
+                  const estadoManual = expandidos[item.url];
+                  const expandido = temSubmenu && (estadoManual !== undefined ? estadoManual : subRotaAtiva);
                   return (
                     <SidebarMenuItem key={item.title} data-tutorial={tutorialAttr}>
                       <SidebarMenuButton
