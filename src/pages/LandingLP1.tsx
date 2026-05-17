@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { trackPageView } from "@/lib/pixel";
 import { useNavigate } from "react-router-dom";
 import { 
   CheckCircle2, ArrowRight, Smartphone, Wrench, BarChart3, 
@@ -527,6 +528,10 @@ function LP1Footer() {
 
 // ─── PÁGINA COMPLETA ────────────────────────────────────────
 export default function LandingLP1() {
+  useEffect(() => {
+    trackPageView()
+  }, [])
+
   return (
     <div className="min-h-screen" style={{ background: BLUE[50] }}>
       <LP1Nav />

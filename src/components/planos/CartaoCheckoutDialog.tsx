@@ -23,6 +23,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
+import { trackPurchase } from "@/lib/pixel";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -276,6 +277,11 @@ export function CartaoCheckoutDialog({
       }
 
       setSuccess(true);
+      trackPurchase({
+        value: planoPreco,
+        orderId: data?.subscription_id,
+        planName: planoNome,
+      });
       toast({
         title: "Assinatura ativada!",
         description: `Seu plano ${planoNome} já está ativo.`,

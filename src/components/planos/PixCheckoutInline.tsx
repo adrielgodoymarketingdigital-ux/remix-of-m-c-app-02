@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Loader2, Copy, CheckCircle2, RefreshCw, Clock, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { trackPurchase } from "@/lib/pixel";
 import { toast } from "sonner";
 
 interface PixCheckoutInlineProps {
@@ -134,6 +135,11 @@ export function PixCheckoutInline({ planoKey, onSuccess }: PixCheckoutInlineProp
       if (queryError) throw queryError;
       if (data?.status === "paid") {
         setPaymentConfirmed(true);
+        trackPurchase({
+          value: pixData.plan.amount_cents / 100,
+          orderId: pixData.order_id,
+          planName: pixData.plan.name,
+        });
         toast.success("Pagamento confirmado! 🎉 Sua assinatura foi ativada.");
         onSuccess?.();
       } else {
