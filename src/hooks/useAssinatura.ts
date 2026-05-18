@@ -732,7 +732,8 @@ export function useAssinatura() {
       };
     } catch (error) {
       console.error("Erro ao verificar limite de produtos:", error);
-      return { permitido: false, usados: 0, limite: 0 };
+      // Em caso de erro na verificação, permitir o cadastro para não bloquear o usuário
+      return { permitido: true, usados: 0, limite: limites.produtos_mes };
     }
   }, [limites.produtos_mes]);
 

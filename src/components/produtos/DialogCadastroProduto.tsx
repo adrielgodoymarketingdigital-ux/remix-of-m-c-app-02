@@ -97,6 +97,7 @@ export const DialogCadastroProduto = ({
   const lucro = preco - custo;
 
   useEffect(() => {
+    if (!open) return;
     if (itemParaEditar) {
       form.reset({
         tipo: itemParaEditar.tipo,
@@ -126,7 +127,8 @@ export const DialogCadastroProduto = ({
       });
       setFotos([]);
     }
-  }, [itemParaEditar, open, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemParaEditar, open]);
 
   const handleSubmit = async (dados: FormularioProduto) => {
     const sucesso = await onSubmit({ ...dados, fotos });
