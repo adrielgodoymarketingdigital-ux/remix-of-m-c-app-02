@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Servico } from "@/types/servico";
@@ -9,6 +9,7 @@ import { useEmpresaFiltro } from "./useResolvedUserId";
 export const useServicos = () => {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [loading, setLoading] = useState(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const { lojaUserId, podeSincronizarServicos, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const empresaFiltro = useEmpresaFiltro();
 
@@ -168,6 +169,36 @@ export const useServicos = () => {
   useEffect(() => {
     carregarServicos();
   }, [carregarServicos]);
+
+  // Realtime: recarrega quando outro usuário (ex: funcionário) alterar serviços
+  useEffect(() => {
+    if (carregandoPermissoes) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+
+      // Dono assiste o próprio ID; funcionário assiste o ID do dono (lojaUserId)
+      const watchedUserId = (isFuncionario && podeSincronizarServicos && lojaUserId)
+        ? lojaUserId
+        : session.user.id;
+
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+
+      channelRef.current = supabase
+        .channel(`servicos_changes_${watchedUserId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'servicos', filter: `user_id=eq.${watchedUserId}` }, () => { carregarServicos(); })
+        .subscribe();
+    });
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [lojaUserId, isFuncionario, podeSincronizarServicos, carregandoPermissoes, carregarServicos]);
 
   return {
     servicos,

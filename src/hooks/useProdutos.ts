@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ItemEstoque, Produto, Peca, FormularioProduto } from '@/types/produto';
@@ -689,6 +689,20 @@ export const useProdutos = () => {
       return false;
     }
   }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+
+  // Realtime: recarrega quando outro usuário (ex: funcionário) inserir/atualizar/excluir
+  useEffect(() => {
+    if (identidadeCarregando) return;
+    if (!resolvedUserId) return;
+
+    const channel = supabase
+      .channel(`produtos_pecas_changes_${resolvedUserId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'produtos', filter: `user_id=eq.${resolvedUserId}` }, () => { carregarTodos(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pecas',    filter: `user_id=eq.${resolvedUserId}` }, () => { carregarTodos(); })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [resolvedUserId, identidadeCarregando, carregarTodos]);
 
   return {
     items,
