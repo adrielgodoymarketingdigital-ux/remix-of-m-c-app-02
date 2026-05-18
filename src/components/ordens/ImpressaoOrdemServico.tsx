@@ -314,8 +314,17 @@ export const ImpressaoOrdemServico = ({
     @media print {
       * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; }
-      .impressao-duas-os-wrapper { page-break-inside: avoid !important; break-inside: avoid !important; width: 100% !important; }
-      .impressao-duas-os-slot { overflow: hidden !important; }
+      .impressao-duas-os-wrapper { page-break-inside: avoid !important; break-inside: avoid !important; }
+      .impressao-duas-os-slot { overflow: hidden !important; position: relative !important; }
+      .impressao-duas-os-slot > * { transform-origin: top left; width: 194mm !important; max-width: 194mm !important; position: absolute !important; top: 0 !important; left: 0 !important; }
+      .impressao-duas-os-vertical { width: 210mm !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 104.5mm !important; height: 297mm !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-slot > * { transform: scale(0.539) !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-corte { height: 297mm !important; }
+      .impressao-duas-os-horizontal { width: 297mm !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 148mm !important; height: 210mm !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.763) !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-corte { height: 210mm !important; }
     }
   </style>
 </head>

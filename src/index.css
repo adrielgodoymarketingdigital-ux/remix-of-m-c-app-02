@@ -657,31 +657,47 @@ All colors MUST be HSL.
     left: 0 !important;
   }
 
+  /* Vertical (portrait) A4: 210×297mm — cada slot ocupa metade da largura */
   .impressao-duas-os-vertical {
-    width: 194mm !important;
+    width: 210mm !important;
   }
 
   .impressao-duas-os-vertical .impressao-duas-os-slot {
-    width: 97mm !important;
-    height: 138.5mm !important;
+    width: 104.5mm !important;
+    height: 297mm !important;
+  }
+
+  /* Scale = 104.5 / 194 ≈ 0.539 — já definido fora do @media, mas garantimos aqui */
+  .impressao-duas-os-vertical .impressao-duas-os-slot > * {
+    transform: scale(0.539) !important;
+    width: 194mm !important;
+    max-width: 194mm !important;
   }
 
   .impressao-duas-os-vertical .impressao-duas-os-corte {
-    height: 138.5mm !important;
+    height: 297mm !important;
     border-left: 1pt dashed #aaa !important;
   }
 
+  /* Horizontal (landscape) A4: 297×210mm — cada slot ocupa metade da largura */
   .impressao-duas-os-horizontal {
-    width: 277mm !important;
+    width: 297mm !important;
   }
 
   .impressao-duas-os-horizontal .impressao-duas-os-slot {
-    width: 138.5mm !important;
-    height: 194mm !important;
+    width: 148mm !important;
+    height: 210mm !important;
+  }
+
+  /* Scale = 148 / 194 ≈ 0.763 — já definido fora do @media, mas garantimos aqui */
+  .impressao-duas-os-horizontal .impressao-duas-os-slot > * {
+    transform: scale(0.763) !important;
+    width: 194mm !important;
+    max-width: 194mm !important;
   }
 
   .impressao-duas-os-horizontal .impressao-duas-os-corte {
-    height: 194mm !important;
+    height: 210mm !important;
     border-left: 1pt dashed #aaa !important;
   }
 
@@ -690,7 +706,7 @@ All colors MUST be HSL.
   }
 
   body.print-duas-os-horizontal #print-root {
-    width: 277mm !important;
+    width: 297mm !important;
   }
 
   /* Fontes ampliadas para modo 2 OS por folha (compensa a escala 0.5 e melhora legibilidade) */
