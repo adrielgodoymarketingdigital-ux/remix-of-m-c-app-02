@@ -31,8 +31,26 @@ interface DialogGerenciarCategoriasProps {
 }
 
 const CORES_PREDEFINIDAS = [
-  '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#14b8a6',
+  // Vermelhos
+  '#fca5a5', '#ef4444', '#b91c1c',
+  // Laranjas
+  '#fdba74', '#f97316', '#c2410c',
+  // Amarelos
+  '#fde047', '#eab308', '#a16207',
+  // Verdes
+  '#86efac', '#22c55e', '#15803d',
+  // Turquesa
+  '#5eead4', '#14b8a6', '#0f766e',
+  // Azuis claros
+  '#7dd3fc', '#3b82f6', '#1d4ed8',
+  // Índigo / Violeta
+  '#a5b4fc', '#6366f1', '#4338ca',
+  // Roxo
+  '#c4b5fd', '#8b5cf6', '#6d28d9',
+  // Rosa
+  '#f9a8d4', '#ec4899', '#be185d',
+  // Cinza
+  '#d1d5db', '#6b7280', '#374151',
 ];
 
 export const DialogGerenciarCategorias = ({
@@ -106,16 +124,35 @@ export const DialogGerenciarCategorias = ({
               </div>
               <div>
                 <Label>Cor</Label>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  {CORES_PREDEFINIDAS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className={`w-7 h-7 rounded-full border-2 transition-transform ${cor === c ? 'border-foreground scale-110' : 'border-transparent'}`}
-                      style={{ backgroundColor: c }}
-                      onClick={() => setCor(c)}
+                <div className="mt-1 space-y-1">
+                  <div className="grid grid-cols-10 gap-1.5">
+                    {CORES_PREDEFINIDAS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        title={c}
+                        className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${cor === c ? 'border-foreground scale-110' : 'border-transparent'}`}
+                        style={{ backgroundColor: c }}
+                        onClick={() => setCor(c)}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground">
+                      <input
+                        type="color"
+                        value={cor}
+                        onChange={(e) => setCor(e.target.value)}
+                        className="w-7 h-7 rounded cursor-pointer border border-input"
+                      />
+                      Cor personalizada
+                    </label>
+                    <span
+                      className="w-5 h-5 rounded-full border border-input flex-shrink-0"
+                      style={{ backgroundColor: cor }}
                     />
-                  ))}
+                    <span className="text-xs font-mono text-muted-foreground">{cor}</span>
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
