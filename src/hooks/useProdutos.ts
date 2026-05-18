@@ -28,6 +28,8 @@ export const useProdutos = () => {
 
       const userId = resolvedUserId ?? user.id;
 
+      console.log('[useProdutos] userId:', userId, '| empresaFiltro:', empresaFiltro, '| resolvedUserId:', resolvedUserId);
+
       let qProdutos = supabase.from('produtos').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
       let qPecas = supabase.from('pecas').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
       if (empresaFiltro) {
@@ -48,6 +50,7 @@ export const useProdutos = () => {
         supabase.from('categorias_produtos').select('id, nome, cor').eq('user_id', userId)
       ]);
 
+      console.log('[useProdutos] produtos retornados:', produtos?.length, '| pecas retornadas:', pecas?.length, '| erros:', erroProdutos, erroPecas);
       if (erroProdutos) throw erroProdutos;
       if (erroPecas) throw erroPecas;
 
