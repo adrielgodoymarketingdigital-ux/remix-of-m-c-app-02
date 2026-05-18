@@ -7,6 +7,7 @@ import { NotificationsSection } from "@/components/landing/NotificationsSection"
 import { StaffSection } from "@/components/landing/StaffSection";
 import { FounderSection } from "@/components/landing/FounderSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
+import { SupportSection } from "@/components/landing/SupportSection";
 import { SystemDemoSection } from "@/components/landing/SystemDemoSection";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { PricingSection } from "@/components/landing/PricingSection";
@@ -21,6 +22,7 @@ export default function Landing() {
       <HeroSection />
       <SystemDemoSection />
       <TestimonialsSection />
+      <SupportSection />
       <MobileDemoSection />
       <FeaturesGrid />
       <SellDevicesSection />
