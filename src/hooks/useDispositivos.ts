@@ -48,7 +48,7 @@ export function useDispositivos() {
           .is("deleted_at", null)
           .order("marca", { ascending: true })
           .order("modelo", { ascending: true });
-        if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+        if (empresaFiltro) query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
         const { data, error } = await query;
         if (error) throw error;
         return data;

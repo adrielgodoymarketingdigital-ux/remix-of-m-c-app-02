@@ -86,7 +86,7 @@ export const useRelatorios = () => {
       if (filtros.tipo && filtros.tipo !== "todos") {
         queryVendas = queryVendas.eq("tipo", filtros.tipo);
       }
-      if (empresaFiltroRef.current) queryVendas = queryVendas.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       // Buscar ordens de serviço finalizadas/entregues (somente do usuário)
       // data_saida preenchida apenas em "entregue". Fallback: created_at (nunca muda),
@@ -115,7 +115,7 @@ export const useRelatorios = () => {
           `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
         );
       }
-      if (empresaFiltroRef.current) queryOrdens = queryOrdens.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) queryOrdens = queryOrdens.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       // Buscar todos os serviços (somente do usuário)
       const queryServicos = supabase
@@ -474,7 +474,7 @@ export const useRelatorios = () => {
         .neq("categoria", "Taxa de Cartão")
         .is("os_numero", null);
 
-      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       if (filtros.dataInicio) {
         query = query.gte("data", filtros.dataInicio);
@@ -564,7 +564,7 @@ export const useRelatorios = () => {
         .eq("status", "pago")
         .eq("categoria", "Taxa de Cartão");
 
-      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       if (filtros.dataInicio) {
         query = query.gte("data", filtros.dataInicio);
@@ -644,7 +644,7 @@ export const useRelatorios = () => {
           `data.lte.${queryFim}T23:59:59,and(data_recebimento.not.is.null,data_recebimento.lte.${queryFim}T23:59:59)`
         );
       }
-      if (ef) queryVendas = queryVendas.eq("empresa_id", ef);
+      if (ef) queryVendas = queryVendas.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
       let queryOrdens = supabase
         .from("ordens_servico")
@@ -669,7 +669,7 @@ export const useRelatorios = () => {
           `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
         );
       }
-      if (ef) queryOrdens = queryOrdens.eq("empresa_id", ef);
+      if (ef) queryOrdens = queryOrdens.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
       // Buscar todos os serviços (somente do usuário)
       const queryServicos = supabase
@@ -741,7 +741,7 @@ export const useRelatorios = () => {
       if (filtros.dataFim) {
         queryContasPagar = queryContasPagar.lte("data", filtros.dataFim);
       }
-      if (ef) queryContasPagar = queryContasPagar.eq("empresa_id", ef);
+      if (ef) queryContasPagar = queryContasPagar.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
       // Buscar receitas manuais - contas "receber/recebido" (somente do usuário)
       let queryContasReceber = supabase
@@ -757,7 +757,7 @@ export const useRelatorios = () => {
       if (filtros.dataFim) {
         queryContasReceber = queryContasReceber.lte("data", filtros.dataFim);
       }
-      if (ef) queryContasReceber = queryContasReceber.eq("empresa_id", ef);
+      if (ef) queryContasReceber = queryContasReceber.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
       // Buscar taxas de cartão separadamente
       let queryTaxasCartao = supabase
@@ -774,7 +774,7 @@ export const useRelatorios = () => {
       if (filtros.dataFim) {
         queryTaxasCartao = queryTaxasCartao.lte("data", filtros.dataFim);
       }
-      if (ef) queryTaxasCartao = queryTaxasCartao.eq("empresa_id", ef);
+      if (ef) queryTaxasCartao = queryTaxasCartao.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
       const [
         { data: contasPagar, error: contaPagarError },
@@ -1008,7 +1008,7 @@ export const useRelatorios = () => {
         .eq("tipo", "receber")
         .eq("status", "recebido");
 
-      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       if (filtros.dataInicio) {
         query = query.gte("data", filtros.dataInicio);

@@ -45,7 +45,7 @@ export function useClientes(options: UseClientesOptions = {}) {
           .eq("user_id", targetUserId)
           .is("deleted_at", null)
           .order("nome");
-        if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+        if (empresaFiltro) query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
         const { data, error } = await query;
         if (error) throw error;
         return data;

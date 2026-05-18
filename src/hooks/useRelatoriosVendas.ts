@@ -47,7 +47,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         query = query.lte("data", filtros.dataFim);
       }
-      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       const { data: vendas, error } = await query;
       if (error) throw error;
@@ -137,7 +137,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         queryVendas = queryVendas.lte("data", filtros.dataFim);
       }
-      if (empresaFiltroRef.current) queryVendas = queryVendas.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       const { data: vendas, error } = await queryVendas;
       if (error) throw error;
@@ -223,7 +223,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         query = query.lte("updated_at", filtros.dataFim);
       }
-      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       const { data: ordens, error } = await query;
       if (error) throw error;
@@ -313,7 +313,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         query = query.lte("created_at", `${filtros.dataFim}T23:59:59`);
       }
-      if (empresaFiltroRef.current) query = query.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       const { data, error } = await query;
       if (error) throw error;

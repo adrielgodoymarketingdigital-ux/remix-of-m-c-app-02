@@ -28,7 +28,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         .select("*")
         .eq("user_id", targetUserId)
         .order("data", { ascending: false });
-      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      if (empresaFiltro) query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
 
       if (filtros?.inicio) {
         query = query.gte("data", filtros.inicio.toISOString().split("T")[0]);

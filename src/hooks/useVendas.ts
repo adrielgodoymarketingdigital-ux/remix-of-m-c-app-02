@@ -44,7 +44,7 @@ export const useVendas = () => {
         .order("data", { ascending: false });
 
       if (empresaFiltro) {
-        queryVendas = queryVendas.eq("empresa_id", empresaFiltro);
+        queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
       }
 
       // Usar offset de timezone local para garantir que o filtro respeite o dia do usuário
@@ -77,7 +77,7 @@ export const useVendas = () => {
         .order("data_saida", { ascending: false, nullsFirst: false });
 
       if (empresaFiltro) {
-        queryOrdens = queryOrdens.eq("empresa_id", empresaFiltro);
+        queryOrdens = queryOrdens.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
       }
 
       if (dataInicio && dataFim) {
