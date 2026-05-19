@@ -1,5 +1,5 @@
 import { OrdemServico } from "@/hooks/useOrdensServico";
-import { formatCurrency, formatDate, formatPhone, formatCPF } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatPhone, formatCPF, formatarEndereco } from "@/lib/formatters";
 import { AvariasOS, AvariaVisual, ProdutoUtilizado, ServicoRealizado, CustoAdicional } from "@/types/ordem-servico";
 import { ConfiguracaoLoja, LayoutOSConfig } from "@/types/configuracao-loja";
 import { SilhuetaComAvarias } from "./SilhuetaComAvarias";
@@ -66,7 +66,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
               {configuracaoLoja.cnpj && <span> · CNPJ: {configuracaoLoja.cnpj}</span>}
             </div>
             <div>
-              {configuracaoLoja.endereco && <span>{configuracaoLoja.endereco}</span>}
+              {formatarEndereco(configuracaoLoja) && <span>{formatarEndereco(configuracaoLoja)}</span>}
               {configuracaoLoja.telefone && <span> · Tel: {formatPhone(configuracaoLoja.telefone)}</span>}
             </div>
           </div>

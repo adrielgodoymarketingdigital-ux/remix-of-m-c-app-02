@@ -1,5 +1,5 @@
 import { OrdemServico } from "@/hooks/useOrdensServico";
-import { formatCurrency, formatDate, formatPhone, formatCPF } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatPhone, formatCPF, formatarEndereco } from "@/lib/formatters";
 import { AvariasOS, AvariaVisual, ProdutoUtilizado, ServicoRealizado, CustoAdicional } from "@/types/ordem-servico";
 import { ConfiguracaoLoja, LayoutOSConfig } from "@/types/configuracao-loja";
 import { SilhuetaComAvarias } from "./SilhuetaComAvarias";
@@ -62,7 +62,7 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
               <strong>{configuracaoLoja.nome_loja}</strong>
             </div>
             {configuracaoLoja.cnpj && <div className="text-xs">CNPJ: {configuracaoLoja.cnpj}</div>}
-            {configuracaoLoja.endereco && <div className="text-xs">{configuracaoLoja.endereco}</div>}
+            {formatarEndereco(configuracaoLoja) && <div className="text-xs">{formatarEndereco(configuracaoLoja)}</div>}
             {configuracaoLoja.telefone && (
               <div className="text-xs">Tel: {formatPhone(configuracaoLoja.telefone)}</div>
             )}

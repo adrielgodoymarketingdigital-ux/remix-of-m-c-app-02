@@ -47,3 +47,27 @@ export const formatCPF = (cpf: string | null): string => {
   }
   return cpf;
 };
+
+interface EnderecoLoja {
+  endereco?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+}
+
+export const formatarEndereco = (loja: EnderecoLoja): string => {
+  if (loja.endereco?.trim()) return loja.endereco.trim();
+  const partes: string[] = [];
+  if (loja.logradouro) partes.push(loja.logradouro);
+  if (loja.numero) partes.push(`nº ${loja.numero}`);
+  if (loja.complemento) partes.push(loja.complemento);
+  if (loja.bairro) partes.push(`- ${loja.bairro}`);
+  if (loja.cidade && loja.estado) partes.push(`- ${loja.cidade}/${loja.estado}`);
+  else if (loja.cidade) partes.push(`- ${loja.cidade}`);
+  if (loja.cep) partes.push(`- CEP: ${loja.cep}`);
+  return partes.join(" ");
+};
