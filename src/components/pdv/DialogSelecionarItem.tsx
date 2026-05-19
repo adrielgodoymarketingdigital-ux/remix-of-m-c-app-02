@@ -134,7 +134,7 @@ export const DialogSelecionarItem = ({
             <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
           </div>
 
-          <Tabs defaultValue="dispositivos">
+          <Tabs defaultValue="produtos">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="dispositivos">
                 <Smartphone className="h-4 w-4 mr-2" />
