@@ -52,7 +52,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         .eq("user_id", userIdVendas)
         .gte("data", caixa.data_abertura)
         .lte("data", new Date().toISOString())
-        .neq("cancelada", true);
+        .or("cancelada.is.null,cancelada.eq.false");
 
       if (caixa.empresa_id) {
         query = query.eq("empresa_id", caixa.empresa_id);
