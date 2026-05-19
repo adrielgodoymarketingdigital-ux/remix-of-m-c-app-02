@@ -762,6 +762,18 @@ All colors MUST be HSL.
     font-size: 10pt !important;
   }
 
+  .impressao-duas-os-slot .impressao-loja-info {
+    font-size: 10pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-loja-info .text-sm {
+    font-size: 11pt !important;
+  }
+
+  .impressao-duas-os-slot .impressao-loja-info .text-xs {
+    font-size: 9pt !important;
+  }
+
   /* Modo horizontal usa scale(0.713) — fontes ligeiramente menores que vertical */
   .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-ordem-container {
     font-size: 10pt !important;
@@ -813,6 +825,18 @@ All colors MUST be HSL.
 
   .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-header-loja {
     font-size: 8pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info {
+    font-size: 8pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-sm {
+    font-size: 9pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-xs {
+    font-size: 7pt !important;
   }
 }
 

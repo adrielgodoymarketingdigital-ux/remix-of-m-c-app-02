@@ -344,6 +344,15 @@ export const ImpressaoOrdemServico = ({
     .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.763); }
     .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 1mm; flex-shrink: 0; border-left: 1pt dashed #aaa; height: 210mm; display: flex; align-items: center; justify-content: center; position: relative; }
     .impressao-duas-os-corte-label { background: white; padding: 2mm 0; font-size: 6pt; color: #bbb; font-style: italic; writing-mode: vertical-rl; white-space: nowrap; position: absolute; top: 50%; transform: translateY(-50%) rotate(180deg); }
+    /* ── FONTES AMPLIADAS PARA 2 OS (compensa escala ~0.54) ── */
+    .impressao-duas-os-slot .impressao-header-loja { font-size: 10pt !important; }
+    .impressao-duas-os-slot .impressao-loja-info { font-size: 10pt !important; }
+    .impressao-duas-os-slot .impressao-loja-info .text-sm { font-size: 11pt !important; }
+    .impressao-duas-os-slot .impressao-loja-info .text-xs { font-size: 9pt !important; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-header-loja { font-size: 8pt !important; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info { font-size: 8pt !important; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-sm { font-size: 9pt !important; }
+    .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-xs { font-size: 7pt !important; }
     ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 0; }')}
     @media print {
       * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
