@@ -7,8 +7,6 @@ import { obterTermoGarantia, LAYOUT_PADRAO } from "@/lib/termo-garantia-utils";
 import { ImpressaoCupom80mm } from "./ImpressaoCupom80mm";
 import { ImpressaoA4Padrao } from "./ImpressaoA4Padrao";
 import { ImpressaoA4Tech } from "./ImpressaoA4Tech";
-import { OSPrintLayout } from "./OSPrintLayout";
-import { imprimirDuasOSPDF, COLUNA_W_PX } from "@/lib/imprimirDuasOSPDF";
 
 const CONFIG_80MM_PADRAO: Layout80mmConfig = {
   mostrar_logo: true,
@@ -373,16 +371,8 @@ export const ImpressaoOrdemServico = ({
   const handlePrint = () => {
     const isDuasOS = !is80mm && (layoutConfig.duas_os_por_folha ?? false);
 
-    // Android/PWA com modo 2 vias: gerar PDF via html2canvas para preservar layout lado a lado
-    if ((isAndroid || isStandalone) && isDuasOS && duasOsContainerRef.current) {
-      imprimirDuasOSPDF(duasOsContainerRef.current).catch(() => {
-        // Fallback: usa o fluxo existente de nova janela
-        handlePrintAndroid();
-      });
-      return;
-    }
-
-    // PWA (standalone) and Android sem modo 2 vias: use new-window approach.
+    // PWA (standalone) e Android: sempre usar nova janela com HTML completo,
+    // inclusive no modo 2 OS por folha (o CSS de scale/dimensões já está embutido no htmlDoc)
     if (isAndroid || isStandalone) {
       handlePrintAndroid();
       return;
@@ -452,31 +442,14 @@ export const ImpressaoOrdemServico = ({
           ref={duasOsContainerRef}
           className={`impressao-duas-os-wrapper impressao-duas-os-${duasOsOrientacao}`}
         >
-          {/* os-pdf-slot: marcador usado pela geração de PDF (Android/PWA) */}
           <div className="impressao-duas-os-slot os-pdf-slot">
-            {(isAndroid || isStandalone) ? (
-              <OSPrintLayout
-                ordem={ordem}
-                configuracaoLoja={configuracaoLoja}
-                layoutConfig={layoutConfig}
-                termoGarantia={termoGarantia}
-                larguraPx={COLUNA_W_PX}
-              />
-            ) : renderA4()}
+            {renderA4()}
           </div>
           <div className="impressao-duas-os-corte">
             <span className="impressao-duas-os-corte-label">✂ cortar aqui</span>
           </div>
           <div className="impressao-duas-os-slot os-pdf-slot">
-            {(isAndroid || isStandalone) ? (
-              <OSPrintLayout
-                ordem={ordem}
-                configuracaoLoja={configuracaoLoja}
-                layoutConfig={layoutConfig}
-                termoGarantia={termoGarantia}
-                larguraPx={COLUNA_W_PX}
-              />
-            ) : renderA4()}
+            {renderA4()}
           </div>
         </div>
       ) : (
