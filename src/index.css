@@ -929,6 +929,8 @@ All colors MUST be HSL.
   margin-bottom: 3mm;
   padding-bottom: 2mm;
   border-bottom: 1.5pt solid #000;
+  overflow: visible;
+  border-radius: 0;
 }
 
 .impressao-a4-padrao .impressao-header-content {
