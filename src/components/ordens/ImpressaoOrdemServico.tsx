@@ -114,12 +114,29 @@ export const ImpressaoOrdemServico = ({
 
   // On Android, window.print() on the main SPA DOM causes "Preparing preview..." hang.
   // Always use a new window on Android to isolate the print content.
-  const handlePrintAndroid = () => {
+  const handlePrintAndroid = async () => {
     if (!portalEl) return;
 
     // Get the print content
     const contentEl = portalEl.querySelector('.impressao-ordem-container, .cupom-80mm-container, .impressao-duas-os-wrapper');
-    const contentHtml = contentEl ? contentEl.outerHTML : portalEl.innerHTML;
+    let contentHtml = contentEl ? contentEl.outerHTML : portalEl.innerHTML;
+
+    // Converter imagens externas (logo) para base64 para evitar bloqueio de CORS na nova janela
+    if (contentEl) {
+      const imgs = Array.from(contentEl.querySelectorAll('img'));
+      await Promise.all(imgs.map(async (img) => {
+        try {
+          const res = await fetch(img.src, { mode: 'cors' });
+          const blob = await res.blob();
+          const b64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          contentHtml = contentHtml.replace(img.src, b64);
+        } catch { /* manter src original se falhar */ }
+      }));
+    }
     const is80mmFormat = layoutConfig.formato_papel === '80mm';
     const isHorizontalMode = !is80mmFormat && layoutConfig.duas_os_por_folha && layoutConfig.duas_os_orientacao === 'horizontal';
 
@@ -213,6 +230,25 @@ export const ImpressaoOrdemServico = ({
       display: flex; align-items: center; justify-content: space-between;
     }
     .impressao-header-loja strong { color: #1e293b; font-weight: 700; }
+    /* ── HEADER LAYOUT PADRÃO ── */
+    .impressao-a4-padrao .impressao-header { margin-bottom: 3mm; padding-bottom: 2mm; border-bottom: 1.5pt solid #000; border-radius: 0; overflow: visible; }
+    .impressao-a4-padrao .impressao-header-content { display: flex; align-items: center; gap: 3mm; margin-bottom: 1.5mm; }
+    .impressao-a4-padrao .impressao-logo { width: 14mm; height: 14mm; object-fit: contain; background: none; border-radius: 0; }
+    .impressao-a4-padrao .impressao-titulo { font-size: 14pt; font-weight: 900; letter-spacing: 0.03em; margin: 0; color: #000; }
+    .impressao-a4-padrao .impressao-numero-os { font-size: 10pt; font-weight: 800; margin-top: 0.5mm; color: #000; }
+    .impressao-a4-padrao .impressao-data-status { display: flex; align-items: center; gap: 2mm; margin-top: 0.5mm; font-size: 8pt; font-weight: 600; color: #000; }
+    .impressao-a4-padrao .impressao-badge { display: inline-block; padding: 0.3mm 1.5mm; border-radius: 1px; font-size: 7pt; font-weight: 700; text-transform: uppercase; background: #eee; color: #000; border: 1pt solid #000; }
+    .impressao-a4-padrao .impressao-loja-info { padding: 1.5mm; background: #f5f5f5; border-radius: 1px; font-size: 7.5pt; font-weight: 500; line-height: 1.3; color: #000; }
+    .impressao-a4-padrao .impressao-loja-info .text-sm { font-size: 8pt; }
+    .impressao-a4-padrao .impressao-loja-info .text-xs { font-size: 6pt; }
+    .impressao-a4-padrao .impressao-block { border: 1pt solid #000; border-left: 3pt solid #000; border-radius: 1px; padding: 2mm; }
+    .impressao-a4-padrao .impressao-block-minimal { padding: 1.5mm; }
+    .impressao-a4-padrao .impressao-block-header { display: flex; align-items: center; gap: 1mm; margin-bottom: 1mm; padding-bottom: 0.5mm; border-bottom: 0.5pt solid #000; }
+    .impressao-a4-padrao .impressao-block-title { font-size: 7pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; margin: 0; color: #000; }
+    .impressao-a4-padrao .impressao-block-content { font-size: 7.5pt; }
+    .impressao-a4-padrao .impressao-label { color: #000; font-weight: 700; }
+    .impressao-a4-padrao .impressao-value { color: #000; }
+    .impressao-a4-padrao .impressao-footer { border-top: 1pt solid #000; }
     /* ── BLOCKS ── */
     .impressao-block {
       overflow: visible !important;
