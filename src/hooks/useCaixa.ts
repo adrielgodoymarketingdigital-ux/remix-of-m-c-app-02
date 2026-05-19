@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
 import { useEmpresaFiltro } from "./useResolvedUserId";
+import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
   const [loading, setLoading] = useState(true);
   const empresaFiltro = useEmpresaFiltro();
+  const { lojaUserId } = useFuncionarioPermissoes();
 
   useEffect(() => {
     carregarCaixaAtual();
@@ -74,6 +76,10 @@ export function useCaixa() {
       return caixa;
     }
 
+    // proprietario_id: ID do dono da loja (cujas vendas serão consultadas no fechamento)
+    // Para funcionários, lojaUserId é o dono. Para o próprio dono, usa user.id.
+    const proprietarioId = lojaUserId ?? user.id;
+
     const { data, error } = await supabase
       .from("caixas")
       .insert({
@@ -82,6 +88,7 @@ export function useCaixa() {
         observacoes: observacoes || null,
         status: "aberto",
         empresa_id: empresaFiltro ?? null,
+        proprietario_id: proprietarioId,
       })
       .select()
       .single();
@@ -109,10 +116,12 @@ export function useCaixa() {
     const caixa = caixaData as Caixa;
 
     // Buscar vendas do período (data_abertura até agora)
+    // Usar proprietario_id quando disponível (caixas abertos por funcionários)
+    const userIdVendas = caixa.proprietario_id ?? caixa.user_id;
     let vendasQuery = supabase
       .from("vendas")
       .select("forma_pagamento, total")
-      .eq("user_id", caixa.user_id)
+      .eq("user_id", userIdVendas)
       .gte("data", caixa.data_abertura)
       .lte("data", new Date().toISOString())
       .neq("cancelada", true);

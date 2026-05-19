@@ -44,10 +44,12 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
   const calcularResumoPreview = async () => {
     setCarregandoResumo(true);
     try {
+      // Usar proprietario_id quando disponível (caixas abertos por funcionários)
+      const userIdVendas = caixa.proprietario_id ?? caixa.user_id;
       let query = supabase
         .from("vendas")
         .select("forma_pagamento, total")
-        .eq("user_id", caixa.user_id)
+        .eq("user_id", userIdVendas)
         .gte("data", caixa.data_abertura)
         .lte("data", new Date().toISOString())
         .neq("cancelada", true);

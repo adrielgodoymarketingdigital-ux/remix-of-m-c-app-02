@@ -14,4 +14,5 @@ export interface Caixa {
   status: 'aberto' | 'fechado';
   created_at: string;
   empresa_id: string | null;
+  proprietario_id: string | null;
 }
