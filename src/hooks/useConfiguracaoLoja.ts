@@ -1,26 +1,25 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
+import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 
 export function useConfiguracaoLoja() {
   const [config, setConfig] = useState<ConfiguracaoLoja | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isFuncionario, lojaUserId, carregando: funcionarioCarregando } = useFuncionarioPermissoes();
 
   useEffect(() => {
+    if (funcionarioCarregando) return;
     buscarConfiguracao();
-  }, []);
+  }, [funcionarioCarregando, isFuncionario, lojaUserId]);
 
-  const criarConfiguracaoPadrao = async () => {
+  const criarConfiguracaoPadrao = async (userId: string, userEmail: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) return false;
-
       // Verificar se já existe configuração para evitar duplicatas
       const { data: existente } = await supabase
         .from("configuracoes_loja")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .limit(1)
         .maybeSingle();
 
@@ -33,13 +32,13 @@ export function useConfiguracaoLoja() {
       const { error } = await supabase
         .from("configuracoes_loja")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           nome_loja: "Minha Loja",
           razao_social: "",
           cnpj: "",
           endereco: "",
           telefone: "",
-          email: user.email || "",
+          email: userEmail,
         });
 
       if (error) {
@@ -65,10 +64,13 @@ export function useConfiguracaoLoja() {
         return;
       }
 
+      // Funcionários usam a configuração da loja do proprietário
+      const targetUserId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
+
       const { data, error } = await supabase
         .from("configuracoes_loja")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", targetUserId)
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
@@ -76,8 +78,10 @@ export function useConfiguracaoLoja() {
       if (error) {
         console.error("Erro ao buscar configurações:", error);
       } else if (!data) {
-        // Nenhuma configuração encontrada, criar uma padrão
-        await criarConfiguracaoPadrao();
+        // Só criar configuração padrão para o próprio usuário (não para funcionários)
+        if (!isFuncionario) {
+          await criarConfiguracaoPadrao(user.id, user.email || "");
+        }
       } else {
         setConfig(data as unknown as ConfiguracaoLoja);
       }
@@ -108,7 +112,7 @@ export function useConfiguracaoLoja() {
       // Se não existe, criar primeiro
       if (errorBusca || !configAtual) {
         console.log("Configuração não encontrada, criando...");
-        const criado = await criarConfiguracaoPadrao();
+        const criado = await criarConfiguracaoPadrao(user.id, user.email || "");
         if (!criado) {
           console.error("Erro ao criar configuração");
           return false;
