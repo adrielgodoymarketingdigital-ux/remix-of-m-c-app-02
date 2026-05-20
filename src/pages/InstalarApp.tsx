@@ -113,7 +113,7 @@ export default function InstalarApp() {
   }, [navigate]);
 
   const continuar = () => {
-    navigate("/dashboard");
+    navigate("/onboarding-inicial", { replace: true });
   };
 
   if (carregando) {
