@@ -40,6 +40,7 @@ export interface UsuarioAdmin {
   bloqueado_admin_em: string | null;
   bloqueado_tipo: TipoBloqueio | null;
   payment_method: string | null;
+  cancelado_em: string | null;
 }
 
 export interface EstatisticasUsuarios {
@@ -235,6 +236,7 @@ export function useAdminUsuarios() {
           bloqueado_admin_em: item.bloqueado_admin_em || null,
           bloqueado_tipo: item.bloqueado_tipo || null,
           payment_method: item.payment_method || null,
+          cancelado_em: item.cancelado_em || null,
         };
       });
 

@@ -135,6 +135,7 @@ serve(async (req: Request) => {
         bloqueado_tipo: assinatura?.bloqueado_tipo || null,
         payment_method: assinatura?.payment_method || null,
         payment_provider: assinatura?.payment_provider || null,
+        cancelado_em: assinatura?.cancelado_em || null,
       };
     });
 

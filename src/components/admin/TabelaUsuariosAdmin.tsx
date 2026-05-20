@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
-import { MessageCircle, Mail, Clock, CreditCard, AlertTriangle, Phone, ChevronLeft, ChevronRight, Download, ShieldAlert, ShieldX, ShieldCheck, Lock, Trash2, KeyRound } from "lucide-react";
+import { MessageCircle, Mail, Clock, CreditCard, AlertTriangle, Phone, ChevronLeft, ChevronRight, Download, ShieldAlert, ShieldX, ShieldCheck, Lock, Trash2, KeyRound, CalendarX2 } from "lucide-react";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
 import { toast } from "sonner";
 
@@ -23,17 +23,19 @@ interface TabelaUsuariosAdminProps {
   isLoading: boolean;
   mostrarDiasTrial?: boolean;
   mostrarUsoIndevido?: boolean;
+  mostrarCancelamento?: boolean;
   onBloquear?: (usuario: UsuarioAdmin) => void;
   onDeletar?: (usuario: UsuarioAdmin) => void;
   onConcederAcesso?: (usuario: UsuarioAdmin) => void;
   getMensagemFormatada?: (status: string, nome: string) => string;
 }
 
-export function TabelaUsuariosAdmin({ 
-  usuarios, 
-  isLoading, 
-  mostrarDiasTrial = false, 
+export function TabelaUsuariosAdmin({
+  usuarios,
+  isLoading,
+  mostrarDiasTrial = false,
   mostrarUsoIndevido = false,
+  mostrarCancelamento = false,
   onBloquear,
   onDeletar,
   onConcederAcesso,
@@ -311,6 +313,7 @@ export function TabelaUsuariosAdmin({
                 <TableHead>Bloqueio</TableHead>
                 {mostrarDiasTrial && <TableHead>Tempo Restante</TableHead>}
                 {mostrarUsoIndevido && <TableHead>Uso Indevido</TableHead>}
+                {mostrarCancelamento && <TableHead>Cancelado em</TableHead>}
                 <TableHead>Cadastro</TableHead>
                 <TableHead>Pagamento</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -453,6 +456,20 @@ export function TabelaUsuariosAdmin({
                         </Badge>
                       ) : (
                         <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {mostrarCancelamento && (
+                    <TableCell>
+                      {usuario.cancelado_em ? (
+                        <div className="flex items-center gap-1.5 text-red-600">
+                          <CalendarX2 className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-sm font-medium">
+                            {formatarData(usuario.cancelado_em)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </TableCell>
                   )}

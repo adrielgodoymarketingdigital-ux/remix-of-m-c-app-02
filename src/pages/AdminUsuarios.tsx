@@ -661,7 +661,7 @@ export default function AdminUsuarios() {
                   <p className="text-sm text-muted-foreground mt-1">Cancelaram a assinatura</p>
                 </CardHeader>
                 <CardContent>
-                  <TabelaUsuariosAdmin usuarios={assinantesPerdidos} isLoading={isLoading} onBloquear={handleAbrirBloqueio} onDeletar={handleAbrirDeletar} onConcederAcesso={handleAbrirConcederAcesso} getMensagemFormatada={getMensagemFormatada} />
+                  <TabelaUsuariosAdmin usuarios={assinantesPerdidos} isLoading={isLoading} mostrarCancelamento onBloquear={handleAbrirBloqueio} onDeletar={handleAbrirDeletar} onConcederAcesso={handleAbrirConcederAcesso} getMensagemFormatada={getMensagemFormatada} />
                 </CardContent>
               </Card>
             </TabsContent>
