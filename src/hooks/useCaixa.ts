@@ -116,8 +116,8 @@ export function useCaixa() {
     const caixa = caixaData as Caixa;
 
     // Buscar vendas do período (data_abertura até agora)
-    // Usar proprietario_id quando disponível (caixas abertos por funcionários)
-    const userIdVendas = caixa.proprietario_id ?? caixa.user_id;
+    // proprietario_id = dono da loja; lojaUserId = fallback para caixas antigos sem proprietario_id
+    const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
     let vendasQuery = supabase
       .from("vendas")
       .select("forma_pagamento, total")

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useCaixa } from "@/hooks/useCaixa";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -29,6 +30,7 @@ interface DialogFechamentoCaixaProps {
 export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechado }: DialogFechamentoCaixaProps) {
   const { toast } = useToast();
   const { fecharCaixa } = useCaixa();
+  const { lojaUserId } = useFuncionarioPermissoes();
   const [observacoes, setObservacoes] = useState("");
   const [fechando, setFechando] = useState(false);
   const [resumo, setResumo] = useState<ResumoFechamento | null>(null);
@@ -44,8 +46,9 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
   const calcularResumoPreview = async () => {
     setCarregandoResumo(true);
     try {
-      // Usar proprietario_id quando disponível (caixas abertos por funcionários)
-      const userIdVendas = caixa.proprietario_id ?? caixa.user_id;
+      // proprietario_id = dono da loja (vendas salvas com esse user_id)
+      // lojaUserId = fallback para caixas antigos sem proprietario_id (funcionários)
+      const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
       let query = supabase
         .from("vendas")
         .select("forma_pagamento, total")
