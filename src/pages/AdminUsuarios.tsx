@@ -35,6 +35,7 @@ import {
   Activity,
 } from "lucide-react";
 import { DialogConfiguracaoMensagensWhatsAppAdmin } from "@/components/admin/DialogConfiguracaoMensagensWhatsAppAdmin";
+import { FunilConversaoCompleto } from "@/components/admin/FunilConversaoCompleto";
 import { useAdminWhatsAppTemplates } from "@/hooks/useAdminWhatsAppTemplates";
 import { Navigate } from "react-router-dom";
 import { useOnlineUsersCount } from "@/hooks/useUserPresence";
@@ -545,7 +546,7 @@ export default function AdminUsuarios() {
           {/* TABS */}
           <Tabs value={abaAtiva} onValueChange={setAbaAtiva}>
             <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-              <TabsList className="grid w-max md:w-full grid-cols-7 min-w-[600px]">
+              <TabsList className="grid w-max md:w-full grid-cols-8 min-w-[700px]">
                 <TabsTrigger value="todos" className="text-[10px] md:text-xs px-2">
                   Todos ({usuariosFiltrados.length})
                 </TabsTrigger>
@@ -563,6 +564,9 @@ export default function AdminUsuarios() {
                 </TabsTrigger>
                 <TabsTrigger value="perdidos" className="text-[10px] md:text-xs text-red-600 px-2">
                   Perdidos ({assinantesPerdidos.length})
+                </TabsTrigger>
+                <TabsTrigger value="funil" className="text-[10px] md:text-xs text-violet-600 px-2 col-span-2">
+                  📊 Funil de Conversão
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -664,6 +668,10 @@ export default function AdminUsuarios() {
                   <TabelaUsuariosAdmin usuarios={assinantesPerdidos} isLoading={isLoading} mostrarCancelamento onBloquear={handleAbrirBloqueio} onDeletar={handleAbrirDeletar} onConcederAcesso={handleAbrirConcederAcesso} getMensagemFormatada={getMensagemFormatada} />
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="funil" className="mt-4">
+              <FunilConversaoCompleto />
             </TabsContent>
 
           </Tabs>
