@@ -547,7 +547,7 @@ export default function AdminUsuarios() {
           {/* TABS */}
           <Tabs value={abaAtiva} onValueChange={setAbaAtiva}>
             <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-              <TabsList className="grid w-max md:w-full grid-cols-9 min-w-[800px]">
+              <TabsList className="grid w-max md:w-full grid-cols-7 min-w-[600px]">
                 <TabsTrigger value="todos" className="text-[10px] md:text-xs px-2">
                   Todos ({usuariosFiltrados.length})
                 </TabsTrigger>
@@ -566,11 +566,8 @@ export default function AdminUsuarios() {
                 <TabsTrigger value="perdidos" className="text-[10px] md:text-xs text-red-600 px-2">
                   Perdidos ({assinantesPerdidos.length})
                 </TabsTrigger>
-                <TabsTrigger value="funil" className="text-[10px] md:text-xs text-violet-600 px-2 col-span-2">
-                  📊 Funil de Conversão
-                </TabsTrigger>
-                <TabsTrigger value="melhores-dias" className="text-[10px] md:text-xs text-blue-600 px-2 col-span-2">
-                  📅 Melhores Dias
+                <TabsTrigger value="funil" className="text-[10px] md:text-xs text-violet-600 px-2">
+                  📊 Funil
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -678,11 +675,10 @@ export default function AdminUsuarios() {
               <FunilConversaoCompleto />
             </TabsContent>
 
-            <TabsContent value="melhores-dias" className="mt-4">
-              <MelhoresDiasMes />
-            </TabsContent>
-
           </Tabs>
+
+          {/* ANÁLISE — Melhores Dias para Anunciar (sempre visível) */}
+          <MelhoresDiasMes />
 
         </div>
       </main>
