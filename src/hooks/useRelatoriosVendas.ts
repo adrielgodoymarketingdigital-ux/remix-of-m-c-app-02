@@ -313,7 +313,6 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         query = query.lte("created_at", `${filtros.dataFim}T23:59:59`);
       }
-      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       const { data, error } = await query;
       if (error) throw error;
