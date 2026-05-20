@@ -349,7 +349,6 @@ serve(async (req) => {
     const isVigente = (a: any) => {
       if ((a.payment_provider || "").toLowerCase() === "stripe") return true; // Stripe: confiar no status
       if (!a.data_fim) return true;
-      // Ticto/Pagar.me: mesmo status=active, se data_fim venceu não é mais vigente
       return new Date(a.data_fim).getTime() > agora.getTime();
     };
 
