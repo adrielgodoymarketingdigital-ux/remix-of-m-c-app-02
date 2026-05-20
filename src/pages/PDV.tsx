@@ -738,29 +738,6 @@ const PDV = () => {
             <Card className="p-4 sm:p-6">
               <h2 className="text-lg sm:text-xl font-semibold mb-4">Dados do Cliente</h2>
 
-              {/* Seletor de funcionário responsável pela venda */}
-              {funcionarios.length > 0 && (
-                <div className="mb-4 space-y-1">
-                  <Label>Vendedor</Label>
-                  <Select
-                    value={funcionarioSelecionadoId ?? "nenhum"}
-                    onValueChange={(v) => setFuncionarioSelecionadoId(v === "nenhum" ? null : v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o vendedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nenhum">— Nenhum —</SelectItem>
-                      {funcionarios.filter(f => f.ativo).map((f) => (
-                        <SelectItem key={f.id} value={f.id}>
-                          {f.nome}{f.cargo ? ` (${f.cargo})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               <SelecionadorCliente
                 clientes={clientes}
                 clienteSelecionado={clienteSelecionado}
@@ -860,6 +837,29 @@ const PDV = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Seletor de vendedor */}
+              {funcionarios.length > 0 && (
+                <div className="mb-4 space-y-1">
+                  <Label>Vendedor</Label>
+                  <Select
+                    value={funcionarioSelecionadoId ?? "nenhum"}
+                    onValueChange={(v) => setFuncionarioSelecionadoId(v === "nenhum" ? null : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">— Nenhum —</SelectItem>
+                      {funcionarios.filter(f => f.ativo).map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.nome}{f.cargo ? ` (${f.cargo})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-4 mb-6">
                 <div className="space-y-2">
