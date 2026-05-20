@@ -20,11 +20,14 @@ export function useCaixa() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Tentar caixa aberto primeiro
+      // proprietario_id da loja (dono ou dono do funcionário)
+      const proprietarioId = lojaUserId ?? user.id;
+
+      // Tentar caixa aberto da loja toda (pelo proprietario_id)
       let baseAberto = supabase
         .from("caixas")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("proprietario_id", proprietarioId)
         .eq("status", "aberto")
         .order("data_abertura", { ascending: false })
         .limit(1);
@@ -38,11 +41,11 @@ export function useCaixa() {
         return;
       }
 
-      // Se não houver aberto, buscar o mais recente fechado
+      // Se não houver aberto, buscar o mais recente fechado da loja
       let baseFechado = supabase
         .from("caixas")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("proprietario_id", proprietarioId)
         .eq("status", "fechado")
         .order("data_abertura", { ascending: false })
         .limit(1);

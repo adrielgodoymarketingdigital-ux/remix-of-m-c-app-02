@@ -10,6 +10,7 @@ import { useCaixa } from "@/hooks/useCaixa";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
+import { Users } from "lucide-react";
 
 interface ResumoFechamento {
   total_dinheiro: number;
@@ -18,6 +19,13 @@ interface ResumoFechamento {
   total_a_receber: number;
   total_vendas: number;
   saldo_final: number;
+}
+
+interface VendaFuncionario {
+  funcionario_id: string | null;
+  nome: string;
+  total: number;
+  quantidade: number;
 }
 
 interface DialogFechamentoCaixaProps {
@@ -36,6 +44,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
   const [resumo, setResumo] = useState<ResumoFechamento | null>(null);
   const [carregandoResumo, setCarregandoResumo] = useState(false);
   const [saldoFinalContado, setSaldoFinalContado] = useState<number>(0);
+  const [vendaFuncionarios, setVendaFuncionarios] = useState<VendaFuncionario[]>([]);
 
   useEffect(() => {
     if (open && caixa) {
@@ -51,7 +60,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
       let query = supabase
         .from("vendas")
-        .select("forma_pagamento, total")
+        .select("forma_pagamento, total, funcionario_id")
         .eq("user_id", userIdVendas)
         .gte("data", caixa.data_abertura)
         .lte("data", new Date().toISOString())
@@ -69,13 +78,45 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       let total_cartao = 0;
       let total_a_receber = 0;
 
+      // Agregar por funcionário
+      const mapaFunc: Record<string, { total: number; quantidade: number }> = {};
+
       for (const venda of vendas ?? []) {
         const valor = Number(venda.total) || 0;
         if (venda.forma_pagamento === "dinheiro") total_dinheiro += valor;
         else if (venda.forma_pagamento === "pix") total_pix += valor;
         else if (formasCartao.includes(venda.forma_pagamento ?? "")) total_cartao += valor;
         else if (venda.forma_pagamento === "a_receber") total_a_receber += valor;
+
+        const fid = venda.funcionario_id ?? "__sem_funcionario__";
+        if (!mapaFunc[fid]) mapaFunc[fid] = { total: 0, quantidade: 0 };
+        mapaFunc[fid].total += valor;
+        mapaFunc[fid].quantidade += 1;
       }
+
+      // Buscar nomes dos funcionários
+      const funcionarioIds = Object.keys(mapaFunc).filter(id => id !== "__sem_funcionario__");
+      const nomesMap: Record<string, string> = {};
+      if (funcionarioIds.length > 0) {
+        const { data: funcs } = await supabase
+          .from("loja_funcionarios")
+          .select("id, nome")
+          .in("id", funcionarioIds);
+        for (const f of funcs ?? []) {
+          nomesMap[f.id] = f.nome;
+        }
+      }
+
+      const breakdownFunc: VendaFuncionario[] = Object.entries(mapaFunc)
+        .map(([fid, dados]) => ({
+          funcionario_id: fid === "__sem_funcionario__" ? null : fid,
+          nome: fid === "__sem_funcionario__" ? "Sem vendedor" : (nomesMap[fid] || "Desconhecido"),
+          total: dados.total,
+          quantidade: dados.quantidade,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      setVendaFuncionarios(breakdownFunc);
 
       const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
       const saldo_final = caixa.saldo_inicial + total_dinheiro;
@@ -129,14 +170,34 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
           {carregandoResumo ? (
             <p className="text-sm text-muted-foreground text-center py-4">Calculando resumo...</p>
           ) : (
-            <Card className="p-4 space-y-2">
-              {linhasResumo.map(({ label, valor }) => (
-                <div key={label} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium">{formatCurrency(valor)}</span>
-                </div>
-              ))}
-            </Card>
+            <>
+              <Card className="p-4 space-y-2">
+                {linhasResumo.map(({ label, valor }) => (
+                  <div key={label} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-medium">{formatCurrency(valor)}</span>
+                  </div>
+                ))}
+              </Card>
+
+              {vendaFuncionarios.length > 0 && (
+                <Card className="p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Vendas por Vendedor</span>
+                  </div>
+                  {vendaFuncionarios.map((vf) => (
+                    <div key={vf.funcionario_id ?? "sem"} className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">
+                        {vf.nome}
+                        <span className="ml-1 text-xs">({vf.quantidade} venda{vf.quantidade !== 1 ? "s" : ""})</span>
+                      </span>
+                      <span className="font-medium">{formatCurrency(vf.total)}</span>
+                    </div>
+                  ))}
+                </Card>
+              )}
+            </>
           )}
 
           <div className="space-y-1">

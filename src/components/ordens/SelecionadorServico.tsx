@@ -16,7 +16,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 export interface ServicoComPrecoEditado extends Servico {
@@ -49,6 +48,7 @@ export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProp
   const [dialogNovoOpen, setDialogNovoOpen] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [precoEditando, setPrecoEditando] = useState("");
+  const [custoEditando, setCustoEditando] = useState("");
   const [pecaExpandidaId, setPecaExpandidaId] = useState<string | null>(null);
   const [mostrarManual, setMostrarManual] = useState(false);
   const [manualNome, setManualNome] = useState("");
@@ -81,24 +81,36 @@ export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProp
   const handleIniciarEdicao = (servico: ServicoComPrecoEditado) => {
     setEditandoId(servico.id);
     setPrecoEditando(servico.preco.toString());
+    const custoAtual = servico.peca_valor !== undefined ? servico.peca_valor : servico.custo;
+    setCustoEditando(custoAtual !== undefined ? custoAtual.toString() : "");
   };
 
   const handleConfirmarEdicao = (id: string) => {
     const novoPreco = parseFloat(precoEditando);
+    const novoCusto = parseFloat(custoEditando);
     if (!isNaN(novoPreco) && novoPreco >= 0) {
-      onChange(servicosValue.map(s => 
-        s.id === id 
-          ? { ...s, preco: novoPreco, precoEditado: novoPreco }
-          : s
-      ));
+      const custo = !isNaN(novoCusto) && novoCusto >= 0 ? novoCusto : undefined;
+      onChange(servicosValue.map(s => {
+        if (s.id !== id) return s;
+        const custoFinal = custo !== undefined ? custo : (s.peca_valor !== undefined ? s.peca_valor : s.custo);
+        return {
+          ...s,
+          preco: novoPreco,
+          precoEditado: novoPreco,
+          custo: custoFinal ?? s.custo,
+          peca_valor: custo !== undefined ? custo : s.peca_valor,
+        };
+      }));
     }
     setEditandoId(null);
     setPrecoEditando("");
+    setCustoEditando("");
   };
 
   const handleCancelarEdicao = () => {
     setEditandoId(null);
     setPrecoEditando("");
+    setCustoEditando("");
   };
 
   const handleCriarServico = async (dados: ServicoComFornecedor) => {
@@ -373,25 +385,39 @@ export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProp
                     </div>
 
                     {editandoId === servico.id ? (
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-muted-foreground">R$</span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={precoEditando}
-                          onChange={(e) => setPrecoEditando(e.target.value)}
-                          className="h-8 w-24"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleConfirmarEdicao(servico.id);
-                            } else if (e.key === 'Escape') {
-                              handleCancelarEdicao();
-                            }
-                          }}
-                        />
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">Custo R$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0,00"
+                            value={custoEditando}
+                            onChange={(e) => setCustoEditando(e.target.value)}
+                            className="h-8 w-24"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); handleConfirmarEdicao(servico.id); }
+                              else if (e.key === 'Escape') { handleCancelarEdicao(); }
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">Venda R$</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={precoEditando}
+                            onChange={(e) => setPrecoEditando(e.target.value)}
+                            className="h-8 w-24"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); handleConfirmarEdicao(servico.id); }
+                              else if (e.key === 'Escape') { handleCancelarEdicao(); }
+                            }}
+                          />
+                        </div>
                         <Button
                           type="button"
                           size="icon"

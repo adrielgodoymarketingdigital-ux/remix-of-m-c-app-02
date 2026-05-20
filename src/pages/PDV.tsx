@@ -16,6 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
@@ -60,7 +61,8 @@ const PDV = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { clientes, refetch: carregarClientes, criarCliente } = useClientes({ modoSilencioso: true });
-  const { lojaUserId, funcionarioId } = useFuncionarioPermissoes();
+  const { lojaUserId, funcionarioId, isFuncionario } = useFuncionarioPermissoes();
+  const { funcionarios } = useFuncionarios();
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const { dispatchEvent } = useEventDispatcher();
   const [loading, setLoading] = useState(true);
@@ -86,6 +88,16 @@ const PDV = () => {
   const [dadosRecibo, setDadosRecibo] = useState<DadosReciboPDV | null>(null);
   const [bandeiraSelecionada, setBandeiraSelecionada] = useState("");
   const { taxasAtivas, calcularTaxa } = useTaxasCartao();
+
+  // Funcionário selecionado para a venda
+  const [funcionarioSelecionadoId, setFuncionarioSelecionadoId] = useState<string | null>(null);
+
+  // Pré-selecionar funcionário logado quando os dados carregarem
+  useEffect(() => {
+    if (isFuncionario && funcionarioId) {
+      setFuncionarioSelecionadoId(funcionarioId);
+    }
+  }, [isFuncionario, funcionarioId]);
 
   // Dados do cliente
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
@@ -372,7 +384,7 @@ const PDV = () => {
             recebido: formaPagamento !== "a_receber",
             grupo_venda: grupoVendaId,
             valor_desconto_manual: descontoPorParcela,
-            funcionario_id: funcionarioId || null,
+            funcionario_id: funcionarioSelecionadoId || null,
             parcela_numero: isParceladoReceber ? parcIdx + 1 : null,
             total_parcelas: isParceladoReceber ? totalParcelas : null,
           };
@@ -497,7 +509,7 @@ const PDV = () => {
               recebido: segundaFormaPagamento !== "a_receber",
               grupo_venda: grupoVendaId,
               valor_desconto_manual: 0,
-              funcionario_id: funcionarioId || null,
+              funcionario_id: funcionarioSelecionadoId || null,
               parcela_numero: isParceladoSegunda ? parcIdx + 1 : null,
               total_parcelas: isParceladoSegunda ? totalParcelasSegunda : null,
             };
@@ -599,6 +611,8 @@ const PDV = () => {
       // Limpar formulário
       setItensCarrinho([]);
       setClienteSelecionado(null);
+      // Manter funcionário selecionado se for funcionário logado; limpar se for dono
+      if (!isFuncionario) setFuncionarioSelecionadoId(null);
       setDescontoValor(0);
       setTipoDesconto("valor");
       setFormaPagamento("");
@@ -721,6 +735,30 @@ const PDV = () => {
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             <Card className="p-4 sm:p-6">
               <h2 className="text-lg sm:text-xl font-semibold mb-4">Dados do Cliente</h2>
+
+              {/* Seletor de funcionário responsável pela venda */}
+              {funcionarios.length > 0 && (
+                <div className="mb-4 space-y-1">
+                  <Label>Vendedor</Label>
+                  <Select
+                    value={funcionarioSelecionadoId ?? "nenhum"}
+                    onValueChange={(v) => setFuncionarioSelecionadoId(v === "nenhum" ? null : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">— Nenhum —</SelectItem>
+                      {funcionarios.filter(f => f.ativo).map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.nome}{f.cargo ? ` (${f.cargo})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <SelecionadorCliente
                 clientes={clientes}
                 clienteSelecionado={clienteSelecionado}

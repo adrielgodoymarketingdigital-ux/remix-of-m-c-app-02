@@ -183,7 +183,7 @@ const Dashboard = () => {
     };
     window.addEventListener("os-salva", handler);
     return () => window.removeEventListener("os-salva", handler);
-  }, [mesSelecionado, dashboardBloqueado]);
+  }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
