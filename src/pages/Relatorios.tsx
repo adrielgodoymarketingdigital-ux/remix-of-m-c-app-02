@@ -95,6 +95,14 @@ export default function Relatorios() {
     carregarDados(tipoFiltroData, mesSelecionado, anoSelecionado, dataInicio, dataFim);
   }, [resolvedUserId]);
 
+  useEffect(() => {
+    const handler = () => {
+      carregarDados(tipoFiltroData, mesSelecionado, anoSelecionado, dataInicio, dataFim);
+    };
+    window.addEventListener("os-salva", handler);
+    return () => window.removeEventListener("os-salva", handler);
+  }, [tipoFiltroData, mesSelecionado, anoSelecionado, dataInicio, dataFim]);
+
   const calcularDatas = (
     _tipo: string,
     _mes: string,
