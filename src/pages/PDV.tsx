@@ -62,7 +62,9 @@ const PDV = () => {
   const { toast } = useToast();
   const { clientes, refetch: carregarClientes, criarCliente } = useClientes({ modoSilencioso: true });
   const { lojaUserId, funcionarioId, isFuncionario } = useFuncionarioPermissoes();
-  const { funcionarios } = useFuncionarios();
+  // Passa lojaUserId como override para garantir que busca os funcionários do dono,
+  // independente de empresaAtiva no contexto (que causaria retorno vazio)
+  const { funcionarios } = useFuncionarios(lojaUserId);
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const { dispatchEvent } = useEventDispatcher();
   const [loading, setLoading] = useState(true);
