@@ -106,7 +106,8 @@ export function SecaoDispositivosVendidos() {
         .not("dispositivo_id", "is", null)
         .or("cancelada.eq.false,cancelada.is.null")
         // Oculta registros auxiliares de pagamento duplo (2ª forma)
-        .neq("observacoes", "pagamento_duplo_secundario")
+        // Nota: .neq() no Supabase exclui NULLs, por isso usamos .or() explícito
+        .or("observacoes.is.null,observacoes.neq.pagamento_duplo_secundario")
         .order("data", { ascending: false });
       if (empresaFiltroRef.current) queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
       const { data: vendasData, error: vendasError } = await queryVendas;
