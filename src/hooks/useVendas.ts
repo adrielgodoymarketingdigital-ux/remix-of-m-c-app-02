@@ -125,17 +125,14 @@ export const useVendas = () => {
 
         let dispMap = new Map<string, { tipo: string; marca: string; modelo: string }>();
         if (dispositivoIds.length > 0) {
-          const { data: disps, error: dispError } = await supabase
+          const { data: disps } = await supabase
             .from("dispositivos")
             .select("id, tipo, marca, modelo")
             .in("id", dispositivoIds);
-          console.log("[useVendas] dispositivoIds:", dispositivoIds);
-          console.log("[useVendas] disps result:", disps, "error:", dispError);
           if (disps) {
             disps.forEach((d: any) => dispMap.set(d.id, { tipo: d.tipo, marca: d.marca, modelo: d.modelo }));
           }
         }
-        console.log("[useVendas] dispMap size:", dispMap.size, "rawVendas tipo dispositivo:", rawVendas.filter((v:any) => v.tipo === "dispositivo").length);
 
         vendasData = rawVendas.map((v: any) => ({
           ...v,
