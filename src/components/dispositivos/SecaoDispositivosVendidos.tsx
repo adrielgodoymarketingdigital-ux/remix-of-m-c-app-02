@@ -3,13 +3,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Printer, Search, ImageIcon, Package, Calendar as CalendarIcon, X, ShieldCheck } from "lucide-react";
+import { Printer, Search, ImageIcon, Package, Calendar as CalendarIcon, X, ShieldCheck, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DialogReimprimirReciboVenda } from "./DialogReimprimirReciboVenda";
+import { DialogEditarVendaDispositivo, VendaDispositivoParaEditar } from "./DialogEditarVendaDispositivo";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,6 +24,8 @@ interface VendaDispositivo {
   cliente_id: string;
   quantidade: number;
   total: number;
+  custo_unitario?: number;
+  grupo_venda?: string | null;
   forma_pagamento: string;
   data: string;
   cliente_nome?: string;
@@ -63,6 +66,8 @@ export function SecaoDispositivosVendidos() {
   const [mesSelecionado, setMesSelecionado] = useState<string>("todos");
   const [dataInicio, setDataInicio] = useState<Date | undefined>();
   const [dataFim, setDataFim] = useState<Date | undefined>();
+  const [vendaParaEditar, setVendaParaEditar] = useState<VendaDispositivoParaEditar | null>(null);
+  const [dialogEdicaoAberto, setDialogEdicaoAberto] = useState(false);
 
   // Gerar lista dos últimos 12 meses
   const mesesDisponiveis = useMemo(() => {
@@ -100,7 +105,7 @@ export function SecaoDispositivosVendidos() {
       // First fetch vendas filtered by user
       let queryVendas = supabase
         .from("vendas")
-        .select("id, dispositivo_id, cliente_id, quantidade, total, forma_pagamento, data, grupo_venda, observacoes")
+        .select("id, dispositivo_id, cliente_id, quantidade, total, custo_unitario, forma_pagamento, data, grupo_venda, observacoes")
         .eq("user_id", userId)
         .eq("tipo", "dispositivo")
         .not("dispositivo_id", "is", null)
@@ -163,6 +168,8 @@ export function SecaoDispositivosVendidos() {
           cliente_id: v.cliente_id,
           quantidade: v.quantidade,
           total: totalReal,
+          custo_unitario: Number(v.custo_unitario || 0),
+          grupo_venda: v.grupo_venda ?? null,
           forma_pagamento: v.forma_pagamento,
           data: v.data,
           cliente_nome: cli?.nome,
@@ -268,6 +275,20 @@ export function SecaoDispositivosVendidos() {
     setVendaSelecionada(venda);
     setModoImpressao("garantia");
     setDialogReciboAberto(true);
+  };
+
+  const handleEditar = (venda: VendaDispositivo) => {
+    setVendaParaEditar({
+      id: venda.id,
+      dispositivo_id: venda.dispositivo_id,
+      grupo_venda: venda.grupo_venda,
+      total: venda.total,
+      custo_unitario: venda.custo_unitario,
+      forma_pagamento: venda.forma_pagamento,
+      dispositivo_marca: venda.dispositivo_marca,
+      dispositivo_modelo: venda.dispositivo_modelo,
+    });
+    setDialogEdicaoAberto(true);
   };
 
   if (loading) {
@@ -430,14 +451,28 @@ export function SecaoDispositivosVendidos() {
                   )}
                 </div>
 
-                <div className="border-t pt-3 flex justify-between items-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total</p>
-                    <p className="text-lg font-bold">
-                      <ValorMonetario valor={venda.total} tipo="preco" />
-                    </p>
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="text-lg font-bold">
+                        <ValorMonetario valor={venda.total} tipo="preco" />
+                      </p>
+                    </div>
+                    {(venda.custo_unitario ?? 0) > 0 && (
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Lucro</p>
+                        <p className={`text-sm font-semibold ${venda.total - (venda.custo_unitario ?? 0) >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                          <ValorMonetario valor={venda.total - (venda.custo_unitario ?? 0)} />
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 justify-end">
+                    <Button size="sm" variant="outline" onClick={() => handleEditar(venda)} title="Editar venda">
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => handleImprimirGarantia(venda)} title="Imprimir Garantia">
                       <ShieldCheck className="h-4 w-4 mr-1" />
                       Garantia
@@ -459,6 +494,13 @@ export function SecaoDispositivosVendidos() {
         onOpenChange={setDialogReciboAberto}
         venda={vendaSelecionada}
         modo={modoImpressao}
+      />
+
+      <DialogEditarVendaDispositivo
+        open={dialogEdicaoAberto}
+        onOpenChange={setDialogEdicaoAberto}
+        venda={vendaParaEditar}
+        onSalvo={carregarVendas}
       />
     </div>
   );
