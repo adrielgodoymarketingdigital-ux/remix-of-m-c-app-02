@@ -216,7 +216,7 @@ const Dashboard = () => {
       .is("deleted_at", null)
       .gte("created_at", inicioISO)
       .lte("created_at", fimISO);
-    if (ef) qTodasOrdens = qTodasOrdens.eq("empresa_id", ef);
+    if (ef) qTodasOrdens = qTodasOrdens.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: todasOrdens } = await qTodasOrdens;
 
     // Buscar apenas finalizadas/entregues para cálculo de faturamento
@@ -231,7 +231,7 @@ const Dashboard = () => {
       .or(
         `and(data_saida.not.is.null,data_saida.gte.${inicioStr},data_saida.lte.${fimStr}T23:59:59),and(data_saida.is.null,created_at.gte.${inicioISO},created_at.lte.${fimISO})`
       );
-    if (ef) qVendasServicos = qVendasServicos.eq("empresa_id", ef);
+    if (ef) qVendasServicos = qVendasServicos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: vendasServicos } = await qVendasServicos;
 
     // Buscar custos dos serviços (somente por vínculo servico_id)
@@ -262,7 +262,7 @@ const Dashboard = () => {
       .eq("cancelada", false)
       .is("deleted_at", null)
       .or(`and(data.gte.${queryInicio},data.lte.${queryFim}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${queryInicio},data_recebimento.lte.${queryFim}T23:59:59)`);
-    if (ef) qVendasProdutos = qVendasProdutos.eq("empresa_id", ef);
+    if (ef) qVendasProdutos = qVendasProdutos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: vendasProdutos } = await qVendasProdutos;
 
     // Buscar vendas de dispositivos com custo
@@ -274,7 +274,7 @@ const Dashboard = () => {
       .eq("cancelada", false)
       .is("deleted_at", null)
       .or(`and(data.gte.${queryInicio},data.lte.${queryFim}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${queryInicio},data_recebimento.lte.${queryFim}T23:59:59)`);
-    if (ef) qVendasDispositivos = qVendasDispositivos.eq("empresa_id", ef);
+    if (ef) qVendasDispositivos = qVendasDispositivos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: vendasDispositivos } = await qVendasDispositivos;
 
     // Calcular serviços (custo pelo servico_id + custos adicionais assumidos pela loja)
@@ -348,7 +348,7 @@ const Dashboard = () => {
       .in("status", ["entregue", "finalizado"])
       .gte("created_at", avulsosInicioISO)
       .lte("created_at", avulsosFimISO);
-    if (ef) qAvulsosMes = qAvulsosMes.eq("empresa_id", ef);
+    if (ef) qAvulsosMes = qAvulsosMes.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: avulsosMes } = await qAvulsosMes;
 
     const faturamentoServicosAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.preco || 0), 0) || 0;
@@ -409,7 +409,7 @@ const Dashboard = () => {
       .eq("tipo", "pagar")
       .eq("status", "pendente")
       .eq("data", hoje);
-    if (ef) qContasHoje = qContasHoje.eq("empresa_id", ef);
+    if (ef) qContasHoje = qContasHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: contasHoje } = await qContasHoje;
 
     // Calcular totais
@@ -458,7 +458,7 @@ const Dashboard = () => {
       .in("status", ["finalizado", "entregue"])
       .gte("data_saida", inicioDiaISO)
       .lte("data_saida", fimDiaISO);
-    if (ef) qOrdensHoje = qOrdensHoje.eq("empresa_id", ef);
+    if (ef) qOrdensHoje = qOrdensHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
     let qVendasHoje = supabase
       .from("vendas")
@@ -466,7 +466,7 @@ const Dashboard = () => {
       .eq("user_id", userId)
       .eq("cancelada", false)
       .or(`and(data.gte.${inicioDiaISO},data.lte.${fimDiaISO}),and(data_recebimento.not.is.null,data_recebimento.gte.${inicioDiaISO},data_recebimento.lte.${fimDiaISO})`);
-    if (ef) qVendasHoje = qVendasHoje.eq("empresa_id", ef);
+    if (ef) qVendasHoje = qVendasHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
     let qAvulsosHoje = supabase
       .from("servicos_avulsos")
@@ -475,7 +475,7 @@ const Dashboard = () => {
       .in("status", ["entregue", "finalizado"])
       .gte("created_at", inicioDiaISO)
       .lte("created_at", fimDiaISO);
-    if (ef) qAvulsosHoje = qAvulsosHoje.eq("empresa_id", ef);
+    if (ef) qAvulsosHoje = qAvulsosHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
     const qVendasAvulsasHoje = supabase
       .from("vendas_avulsas" as any)

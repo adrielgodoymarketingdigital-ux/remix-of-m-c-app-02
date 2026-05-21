@@ -106,7 +106,7 @@ export function SecaoDispositivosVendidos() {
         .not("dispositivo_id", "is", null)
         .or("cancelada.eq.false,cancelada.is.null")
         .order("data", { ascending: false });
-      if (empresaFiltroRef.current) queryVendas = queryVendas.eq("empresa_id", empresaFiltroRef.current);
+      if (empresaFiltroRef.current) queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
       const { data: vendasData, error: vendasError } = await queryVendas;
 
       if (vendasError) {
