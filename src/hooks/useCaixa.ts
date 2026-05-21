@@ -1,18 +1,16 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
-import { useEmpresaFiltro } from "./useResolvedUserId";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
   const [loading, setLoading] = useState(true);
-  const empresaFiltro = useEmpresaFiltro();
   const { lojaUserId } = useFuncionarioPermissoes();
 
   useEffect(() => {
     carregarCaixaAtual();
-  }, [empresaFiltro]);
+  }, []);
 
   const carregarCaixaAtual = async () => {
     setLoading(true);
@@ -24,15 +22,15 @@ export function useCaixa() {
       const proprietarioId = lojaUserId ?? user.id;
 
       // Tentar caixa aberto da loja toda (pelo proprietario_id)
-      let baseAberto = supabase
+      // Busca sem filtro de empresa para capturar caixas com ou sem empresa_id preenchido
+      const { data: aberto, error: erroAberto } = await supabase
         .from("caixas")
         .select("*")
         .eq("proprietario_id", proprietarioId)
         .eq("status", "aberto")
         .order("data_abertura", { ascending: false })
-        .limit(1);
-      if (empresaFiltro) baseAberto = baseAberto.eq("empresa_id", empresaFiltro);
-      const { data: aberto, error: erroAberto } = await baseAberto.maybeSingle();
+        .limit(1)
+        .maybeSingle();
 
       if (erroAberto) throw erroAberto;
 
@@ -42,15 +40,14 @@ export function useCaixa() {
       }
 
       // Se não houver aberto, buscar o mais recente fechado da loja
-      let baseFechado = supabase
+      const { data: fechado, error: erroFechado } = await supabase
         .from("caixas")
         .select("*")
         .eq("proprietario_id", proprietarioId)
         .eq("status", "fechado")
         .order("data_abertura", { ascending: false })
-        .limit(1);
-      if (empresaFiltro) baseFechado = baseFechado.eq("empresa_id", empresaFiltro);
-      const { data: fechado, error: erroFechado } = await baseFechado.maybeSingle();
+        .limit(1)
+        .maybeSingle();
 
       if (erroFechado) throw erroFechado;
       setCaixaAtual(fechado as Caixa | null);
@@ -63,15 +60,14 @@ export function useCaixa() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // Verificar se já existe caixa aberto (com mesmo filtro de empresa)
-    let queryExistente = supabase
+    // Verificar se já existe caixa aberto para este usuário
+    const { data: existente } = await supabase
       .from("caixas")
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "aberto")
-      .limit(1);
-    if (empresaFiltro) queryExistente = queryExistente.eq("empresa_id", empresaFiltro);
-    const { data: existente } = await queryExistente.maybeSingle();
+      .limit(1)
+      .maybeSingle();
 
     if (existente) {
       const caixa = existente as Caixa;
@@ -90,7 +86,7 @@ export function useCaixa() {
         saldo_inicial: saldoInicial,
         observacoes: observacoes || null,
         status: "aberto",
-        empresa_id: empresaFiltro ?? null,
+        empresa_id: null,
         proprietario_id: proprietarioId,
       })
       .select()

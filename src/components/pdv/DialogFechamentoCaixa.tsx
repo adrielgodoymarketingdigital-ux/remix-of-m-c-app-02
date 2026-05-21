@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useCaixa } from "@/hooks/useCaixa";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
@@ -33,11 +32,11 @@ interface DialogFechamentoCaixaProps {
   onOpenChange: (open: boolean) => void;
   caixa: Caixa;
   onCaixaFechado: () => void;
+  fecharCaixa: (caixaId: string, observacoes?: string, saldoFinalContado?: number) => Promise<boolean>;
 }
 
-export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechado }: DialogFechamentoCaixaProps) {
+export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechado, fecharCaixa }: DialogFechamentoCaixaProps) {
   const { toast } = useToast();
-  const { fecharCaixa } = useCaixa();
   const { lojaUserId } = useFuncionarioPermissoes();
   const [observacoes, setObservacoes] = useState("");
   const [fechando, setFechando] = useState(false);

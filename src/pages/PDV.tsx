@@ -78,7 +78,7 @@ const PDV = () => {
   const [dialogHistoricoCaixasAberto, setDialogHistoricoCaixasAberto] = useState(false);
   const [dialogStatusCaixaAberto, setDialogStatusCaixaAberto] = useState(false);
   const [dialogVendaAvulsaAberto, setDialogVendaAvulsaAberto] = useState(false);
-  const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa } = useCaixa();
+  const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa, fecharCaixa } = useCaixa();
   const [pagamentoDuploAtivo, setPagamentoDuploAtivo] = useState(false);
   const [valorPrimeiraPagamento, setValorPrimeiraPagamento] = useState(0);
   const [segundaFormaPagamento, setSegundaFormaPagamento] = useState("");
@@ -1092,6 +1092,7 @@ const PDV = () => {
           open={dialogFechamentoCaixaAberto}
           onOpenChange={setDialogFechamentoCaixaAberto}
           caixa={caixaAtual}
+          fecharCaixa={fecharCaixa}
           onCaixaFechado={() => { setDialogFechamentoCaixaAberto(false); carregarCaixaAtual(); }}
         />
       )}
