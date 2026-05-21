@@ -354,6 +354,12 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         {venda.parcela_numero && venda.total_parcelas && (
                           <span className="text-xs text-muted-foreground">({venda.parcela_numero}/{venda.total_parcelas})</span>
                         )}
+                        {venda.segunda_forma_pagamento && (
+                          <span className="text-xs text-muted-foreground">
+                            + {formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}
+                            {venda.valor_segunda_forma ? ` (R$${Number(venda.valor_segunda_forma).toFixed(2).replace('.', ',')})` : ""}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -504,6 +510,12 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                           <span className="text-muted-foreground ml-1">({venda.parcela_numero}/{venda.total_parcelas})</span>
                         )}
                       </span>
+                      {venda.segunda_forma_pagamento && (
+                        <span className="text-xs text-muted-foreground">
+                          + {formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}
+                          {venda.valor_segunda_forma ? ` (R$${Number(venda.valor_segunda_forma).toFixed(2).replace('.', ',')})` : ""}
+                        </span>
+                      )}
                       {isAReceber && venda.data_prevista_recebimento && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
