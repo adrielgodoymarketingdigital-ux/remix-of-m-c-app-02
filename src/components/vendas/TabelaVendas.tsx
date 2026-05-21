@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Venda } from "@/types/venda";
 import { DialogEditarVenda } from "./DialogEditarVenda";
-import { formatCurrency, formatDateTime, formatDate } from "@/lib/formatters";
+import { formatDateTime, formatDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart } from "lucide-react";
@@ -95,8 +95,6 @@ function agruparVendas(vendas: Venda[]): VendaOuGrupo[] {
     }
   }
 
-  const resultado: VendaOuGrupo[] = [];
-
   // Process groups - keep track of position by first item's data
   const grupos: VendaOuGrupo[] = [];
   for (const [grupoId, vendasDoGrupo] of grupoMap.entries()) {
@@ -137,14 +135,24 @@ function agruparVendas(vendas: Venda[]): VendaOuGrupo[] {
 }
 
 function getNomeItem(venda: Venda): string {
-  if (venda.tipo === "dispositivo" && venda.dispositivos) {
-    return `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`;
+  if (venda.tipo === "dispositivo") {
+    if (venda.dispositivos) {
+      return `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`;
+    }
+    // Fallback: nome salvo em observacoes pelo PDV (quando join RLS bloqueia)
+    if (venda.observacoes && venda.observacoes !== "pagamento_duplo_secundario") {
+      return venda.observacoes;
+    }
   }
   if (venda.tipo === "servico" && venda.ordens_servico) {
     return `OS ${venda.ordens_servico.numero_os}`;
   }
   if (venda.tipo === "avulsa") {
     return venda.produtos?.nome || "Venda Avulsa";
+  }
+  if (venda.tipo === "produto") {
+    if (venda.produtos?.nome) return venda.produtos.nome;
+    if (venda.observacoes && venda.observacoes !== "pagamento_duplo_secundario") return venda.observacoes;
   }
   return venda.produtos?.nome || venda.pecas?.nome || "-";
 }
@@ -267,7 +275,6 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   em3Dias.setDate(hoje.getDate() + 3);
 
   const renderStatusBadge = (venda: Venda) => {
-    const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
     const dataVencimento = venda.data_prevista_recebimento ? new Date(venda.data_prevista_recebimento) : null;
     if (dataVencimento) dataVencimento.setHours(0, 0, 0, 0);
     const isVencida = dataVencimento && dataVencimento < hoje;
@@ -324,7 +331,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     return (
       <>
         <div className="space-y-3">
-          {vendasAgrupadas.map((item, idx) => {
+          {vendasAgrupadas.map((item) => {
             if (item.tipo === "individual" && item.venda) {
               const venda = item.venda;
               return (
@@ -477,7 +484,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
           </TableRow>
         </TableHeader>
         <TableBody>
-          {vendasAgrupadas.map((item, idx) => {
+          {vendasAgrupadas.map((item) => {
             if (item.tipo === "individual" && item.venda) {
               const venda = item.venda;
               const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;

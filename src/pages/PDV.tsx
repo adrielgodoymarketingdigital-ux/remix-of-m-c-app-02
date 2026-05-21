@@ -379,8 +379,10 @@ const PDV = () => {
             produto_id: produtoId,
             peca_id: pecaId,
             quantidade: item.quantidade,
-            // Registro principal sempre guarda o total REAL da venda (não a fatia)
-            total: valorPorParcela,
+            // Registro principal guarda o total REAL da venda
+            // Em pagamento duplo: valor total do item (não a fatia da 1ª forma)
+            // Em parcelado a_receber: valor por parcela
+            total: pagamentoDuploAtivo ? totalRealItem : valorPorParcela,
             custo_unitario: isParceladoReceber ? (item.custo || 0) / totalParcelas : item.custo,
             forma_pagamento: formaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
             user_id: userIdParaVenda,
@@ -392,6 +394,8 @@ const PDV = () => {
             funcionario_id: funcionarioSelecionadoId || null,
             parcela_numero: isParceladoReceber ? parcIdx + 1 : null,
             total_parcelas: isParceladoReceber ? totalParcelas : null,
+            // Salva o nome do item como fallback (usado quando o join com dispositivos/produtos falha por RLS)
+            observacoes: item.nome || null,
             // Se houver pagamento duplo, guarda a 2ª forma no registro principal para exibição
             segunda_forma_pagamento: (pagamentoDuploAtivo && segundaFormaPagamento) ? segundaFormaPagamento : null,
             valor_segunda_forma: (pagamentoDuploAtivo && valorSegundaPagamento > 0) ? valorSegundaPagamento : null,

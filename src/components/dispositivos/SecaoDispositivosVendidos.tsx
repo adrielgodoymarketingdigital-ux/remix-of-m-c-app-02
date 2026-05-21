@@ -100,11 +100,13 @@ export function SecaoDispositivosVendidos() {
       // First fetch vendas filtered by user
       let queryVendas = supabase
         .from("vendas")
-        .select("id, dispositivo_id, cliente_id, quantidade, total, forma_pagamento, data, grupo_venda")
+        .select("id, dispositivo_id, cliente_id, quantidade, total, forma_pagamento, data, grupo_venda, observacoes")
         .eq("user_id", userId)
         .eq("tipo", "dispositivo")
         .not("dispositivo_id", "is", null)
         .or("cancelada.eq.false,cancelada.is.null")
+        // Oculta registros auxiliares de pagamento duplo (2ª forma)
+        .neq("observacoes", "pagamento_duplo_secundario")
         .order("data", { ascending: false });
       if (empresaFiltroRef.current) queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
       const { data: vendasData, error: vendasError } = await queryVendas;
@@ -120,23 +122,16 @@ export function SecaoDispositivosVendidos() {
       }
 
       // Group parceled sales by grupo_venda - keep only the first entry per group
+      // (pagamento duplo: apenas o registro principal chega aqui, pois o secundário foi filtrado acima)
       const vendasAgrupadas: typeof vendasData = [];
       const gruposVistos = new Set<string>();
-      
+
       for (const v of vendasData) {
         if (v.grupo_venda) {
           if (gruposVistos.has(v.grupo_venda)) continue;
           gruposVistos.add(v.grupo_venda);
         }
         vendasAgrupadas.push(v);
-      }
-
-      // Calculate total for grouped sales
-      const totalPorGrupo = new Map<string, number>();
-      for (const v of vendasData) {
-        if (v.grupo_venda) {
-          totalPorGrupo.set(v.grupo_venda, (totalPorGrupo.get(v.grupo_venda) || 0) + v.total);
-        }
       }
 
       // Fetch dispositivos and clientes separately
@@ -158,8 +153,9 @@ export function SecaoDispositivosVendidos() {
       const vendasFormatadas: VendaDispositivo[] = vendasAgrupadas.map((v: any) => {
         const disp = dispMap.get(v.dispositivo_id);
         const cli = cliMap.get(v.cliente_id);
-        const totalReal = v.grupo_venda ? (totalPorGrupo.get(v.grupo_venda) || v.total) : v.total;
-        
+        // O registro principal já carrega o total real da venda (valor completo)
+        const totalReal = Number(v.total || 0);
+
         return {
           id: v.id,
           dispositivo_id: v.dispositivo_id,

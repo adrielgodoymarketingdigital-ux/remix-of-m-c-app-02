@@ -51,6 +51,7 @@ export interface Venda {
   funcionario_id?: string | null;
   segunda_forma_pagamento?: string | null;
   valor_segunda_forma?: number | null;
+  observacoes?: string | null;
 }
 
 export interface ResumoVendas {
