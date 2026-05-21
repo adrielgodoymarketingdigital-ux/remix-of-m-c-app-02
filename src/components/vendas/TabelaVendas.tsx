@@ -100,27 +100,7 @@ function agruparVendas(vendas: Venda[]): VendaOuGrupo[] {
   // Process groups - keep track of position by first item's data
   const grupos: VendaOuGrupo[] = [];
   for (const [grupoId, vendasDoGrupo] of grupoMap.entries()) {
-    // Conta itens únicos por identidade física (dispositivo, produto ou peça).
-    // Num pagamento duplo o mesmo item gera 2 registros com o mesmo dispositivo_id/produto_id —
-    // nesses casos queremos contar 1 item, não 2.
-    const chavesUnicas = new Set(
-      vendasDoGrupo.map(v =>
-        v.dispositivo_id ?? v.produto_id ?? v.peca_id ?? v.id
-      )
-    );
-    const itensUnicos = chavesUnicas.size;
-
-    if (itensUnicos === 1 && vendasDoGrupo.length > 1) {
-      // Pagamento duplo: múltiplos registros mas um único item físico.
-      // Soma os totais (cada registro guarda a fatia do pagamento) e exibe como individual
-      // para não confundir o usuário com "2 itens".
-      const totalGrupo = vendasDoGrupo.reduce((acc, v) => {
-        return acc + Number(v.total) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
-      }, 0);
-      // Usa o primeiro registro como base, substituindo o total pelo valor real da venda
-      const vendaRepresentativa: Venda = { ...vendasDoGrupo[0], total: totalGrupo };
-      grupos.push({ tipo: "individual", venda: vendaRepresentativa });
-    } else if (vendasDoGrupo.length === 1) {
+    if (vendasDoGrupo.length === 1) {
       // Grupo com apenas um registro — exibe como individual
       grupos.push({ tipo: "individual", venda: vendasDoGrupo[0] });
     } else {
@@ -133,7 +113,7 @@ function agruparVendas(vendas: Venda[]): VendaOuGrupo[] {
         grupoId,
         vendas: vendasDoGrupo,
         totalGrupo,
-        quantidadeItens: itensUnicos,
+        quantidadeItens: vendasDoGrupo.length,
       });
     }
   }

@@ -357,7 +357,9 @@ const PDV = () => {
         // Determinar parcelas para "a_receber"
         const isParceladoReceber = formaPagamento === "a_receber" && tipoRecebimento === "parcelado";
         const totalParcelas = isParceladoReceber ? numParcelasReceber : 1;
-        const valorPorParcela = (item.preco * item.quantidade) / totalParcelas;
+        // Total real do item (sem dividir pela forma de pagamento)
+        const totalRealItem = (item.preco * item.quantidade) - valorDescontoManualPorItem;
+        const valorPorParcela = totalRealItem / totalParcelas;
         const descontoPorParcela = valorDescontoManualPorItem / totalParcelas;
 
         for (let parcIdx = 0; parcIdx < totalParcelas; parcIdx++) {
@@ -376,7 +378,8 @@ const PDV = () => {
             dispositivo_id: dispositivoId,
             produto_id: produtoId,
             peca_id: pecaId,
-            quantidade: totalParcelas === 1 ? item.quantidade : item.quantidade,
+            quantidade: item.quantidade,
+            // Registro principal sempre guarda o total REAL da venda (não a fatia)
             total: valorPorParcela,
             custo_unitario: isParceladoReceber ? (item.custo || 0) / totalParcelas : item.custo,
             forma_pagamento: formaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
@@ -389,6 +392,9 @@ const PDV = () => {
             funcionario_id: funcionarioSelecionadoId || null,
             parcela_numero: isParceladoReceber ? parcIdx + 1 : null,
             total_parcelas: isParceladoReceber ? totalParcelas : null,
+            // Se houver pagamento duplo, guarda a 2ª forma no registro principal para exibição
+            segunda_forma_pagamento: (pagamentoDuploAtivo && segundaFormaPagamento) ? segundaFormaPagamento : null,
+            valor_segunda_forma: (pagamentoDuploAtivo && valorSegundaPagamento > 0) ? valorSegundaPagamento : null,
           };
 
           const { data: venda, error: vendaError } = await supabase
@@ -507,6 +513,7 @@ const PDV = () => {
               custo_unitario: 0,
               forma_pagamento: segundaFormaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
               user_id: userIdParaVenda,
+              empresa_id: empresaIdPDV,
               data_prevista_recebimento: dataPrevisaoSegunda,
               recebido: segundaFormaPagamento !== "a_receber",
               grupo_venda: grupoVendaId,
@@ -514,6 +521,8 @@ const PDV = () => {
               funcionario_id: funcionarioSelecionadoId || null,
               parcela_numero: isParceladoSegunda ? parcIdx + 1 : null,
               total_parcelas: isParceladoSegunda ? totalParcelasSegunda : null,
+              // Marca como registro auxiliar de pagamento duplo — não aparece na listagem de vendas
+              observacoes: "pagamento_duplo_secundario",
             };
 
             const { data: vendaSegunda, error: errSegunda } = await supabase

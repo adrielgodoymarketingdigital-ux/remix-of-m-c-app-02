@@ -316,10 +316,11 @@ const Dashboard = () => {
 
     // Margem de serviços será calculada após incluir avulsos
 
-    // Excluir peças/itens de OS (mesmo critério de useVendas e useRelatorios)
+    // Excluir peças/itens de OS e registros auxiliares de pagamento duplo
     const excluirItemOS = (v: any) => {
       if (v.peca_id) return true;
       if (v.observacoes && typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return true;
+      if (v.observacoes === "pagamento_duplo_secundario") return true;
       return false;
     };
 
@@ -507,6 +508,7 @@ const Dashboard = () => {
 
     const vendasFiltradas = (vendasHoje || []).filter((v) => {
       if (v.observacoes && typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return false;
+      if (v.observacoes === "pagamento_duplo_secundario") return false;
       if (v.peca_id) return false;
       const dataRef = (v.forma_pagamento === "a_receber" || v.forma_pagamento === "a_prazo") && v.recebido
         ? v.data_recebimento || v.data

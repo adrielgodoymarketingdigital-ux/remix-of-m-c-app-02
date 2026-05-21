@@ -116,16 +116,19 @@ export const useVendas = () => {
 
       if (vendasResult.status === "fulfilled") {
         const rawVendas = vendasResult.value.data || [];
-        vendasData = rawVendas.map((v: any) => ({
-          ...v,
-          total: Number(v.total || 0),
-          quantidade: Number(v.quantidade || 1),
-          custo_unitario: Number(v.custo_unitario || 0),
-          valor_desconto_manual: Number(v.valor_desconto_manual || 0),
-          valor_desconto_cupom: Number(v.valor_desconto_cupom || 0),
-          parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
-          total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
-        }));
+        vendasData = rawVendas
+          // Oculta registros auxiliares de pagamento duplo (2ª forma) — apenas o principal é exibido
+          .filter((v: any) => v.observacoes !== "pagamento_duplo_secundario")
+          .map((v: any) => ({
+            ...v,
+            total: Number(v.total || 0),
+            quantidade: Number(v.quantidade || 1),
+            custo_unitario: Number(v.custo_unitario || 0),
+            valor_desconto_manual: Number(v.valor_desconto_manual || 0),
+            valor_desconto_cupom: Number(v.valor_desconto_cupom || 0),
+            parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
+            total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
+          }));
       } else {
         console.error("[useVendas] Vendas query failed after retries:", vendasResult.reason);
       }
@@ -257,16 +260,18 @@ export const useVendas = () => {
           };
         });
 
-        const allVendasNormalizadas = (allVendasData || []).map((v: any) => ({
-          ...v,
-          total: Number(v.total || 0),
-          quantidade: Number(v.quantidade || 1),
-          custo_unitario: Number(v.custo_unitario || 0),
-          valor_desconto_manual: Number(v.valor_desconto_manual || 0),
-          valor_desconto_cupom: Number(v.valor_desconto_cupom || 0),
-          parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
-          total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
-        }));
+        const allVendasNormalizadas = (allVendasData || [])
+          .filter((v: any) => v.observacoes !== "pagamento_duplo_secundario")
+          .map((v: any) => ({
+            ...v,
+            total: Number(v.total || 0),
+            quantidade: Number(v.quantidade || 1),
+            custo_unitario: Number(v.custo_unitario || 0),
+            valor_desconto_manual: Number(v.valor_desconto_manual || 0),
+            valor_desconto_cupom: Number(v.valor_desconto_cupom || 0),
+            parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
+            total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
+          }));
 
         const { data: allAvulsasData } = await supabase
           .from("vendas_avulsas" as any)
