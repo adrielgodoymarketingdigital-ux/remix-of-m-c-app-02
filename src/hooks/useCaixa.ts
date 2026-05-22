@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
@@ -6,11 +6,20 @@ import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
   const [loading, setLoading] = useState(true);
-  const { lojaUserId } = useFuncionarioPermissoes();
+  const { lojaUserId, carregando: permissoesCarregando } = useFuncionarioPermissoes();
 
+  // Ref para sempre ter o lojaUserId mais atualizado dentro de callbacks assíncronos
+  const lojaUserIdRef = useRef<string | null>(lojaUserId);
   useEffect(() => {
-    carregarCaixaAtual();
-  }, []);
+    lojaUserIdRef.current = lojaUserId;
+  }, [lojaUserId]);
+
+  // Recarregar caixa quando as permissões terminarem de carregar (lojaUserId disponível)
+  useEffect(() => {
+    if (!permissoesCarregando) {
+      carregarCaixaAtual();
+    }
+  }, [permissoesCarregando]);
 
   const carregarCaixaAtual = async () => {
     setLoading(true);
@@ -18,8 +27,8 @@ export function useCaixa() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // proprietario_id da loja (dono ou dono do funcionário)
-      const proprietarioId = lojaUserId ?? user.id;
+      // proprietario_id da loja — usa ref para garantir valor atual mesmo em callbacks
+      const proprietarioId = lojaUserIdRef.current ?? user.id;
 
       // Tentar caixa aberto da loja toda (pelo proprietario_id)
       // Busca sem filtro de empresa para capturar caixas com ou sem empresa_id preenchido
@@ -60,11 +69,14 @@ export function useCaixa() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    // Verificar se já existe caixa aberto para este usuário
+    // proprietario_id: ID do dono da loja — usa ref para valor atual
+    const proprietarioId = lojaUserIdRef.current ?? user.id;
+
+    // Verificar se já existe caixa aberto para este proprietario_id (toda a loja)
     const { data: existente } = await supabase
       .from("caixas")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("proprietario_id", proprietarioId)
       .eq("status", "aberto")
       .limit(1)
       .maybeSingle();
@@ -75,10 +87,6 @@ export function useCaixa() {
       return caixa;
     }
 
-    // proprietario_id: ID do dono da loja (cujas vendas serão consultadas no fechamento)
-    // Para funcionários, lojaUserId é o dono. Para o próprio dono, usa user.id.
-    const proprietarioId = lojaUserId ?? user.id;
-
     const { data, error } = await supabase
       .from("caixas")
       .insert({
@@ -87,7 +95,7 @@ export function useCaixa() {
         observacoes: observacoes || null,
         status: "aberto",
         empresa_id: null,
-        proprietario_id: proprietarioId,
+        proprietario_id: proprietarioId, // sempre o dono da loja
       })
       .select()
       .single();
@@ -115,8 +123,8 @@ export function useCaixa() {
     const caixa = caixaData as Caixa;
 
     // Buscar vendas do período (data_abertura até agora)
-    // proprietario_id = dono da loja; lojaUserId = fallback para caixas antigos sem proprietario_id
-    const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
+    // proprietario_id = dono da loja; usa ref para garantir valor atual
+    const userIdVendas = caixa.proprietario_id ?? lojaUserIdRef.current ?? caixa.user_id;
     let vendasQuery = supabase
       .from("vendas")
       .select("forma_pagamento, total")
