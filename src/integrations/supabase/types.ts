@@ -2132,7 +2132,7 @@ export type Database = {
           servico_fornecedor_id: string | null
           servico_id: string | null
           servico_status_pagamento: string | null
-          status: Database["public"]["Enums"]["status_os"] | null
+          status: string | null
           tempo_garantia: number | null
           tipo_servico_id: string | null
           tipo_servico_nome_snapshot: string | null
@@ -2170,7 +2170,7 @@ export type Database = {
           servico_fornecedor_id?: string | null
           servico_id?: string | null
           servico_status_pagamento?: string | null
-          status?: Database["public"]["Enums"]["status_os"] | null
+          status?: string | null
           tempo_garantia?: number | null
           tipo_servico_id?: string | null
           tipo_servico_nome_snapshot?: string | null
@@ -2208,7 +2208,7 @@ export type Database = {
           servico_fornecedor_id?: string | null
           servico_id?: string | null
           servico_status_pagamento?: string | null
-          status?: Database["public"]["Enums"]["status_os"] | null
+          status?: string | null
           tempo_garantia?: number | null
           tipo_servico_id?: string | null
           tipo_servico_nome_snapshot?: string | null
@@ -4013,7 +4013,7 @@ export type Database = {
           servico_fornecedor_id: string | null
           servico_id: string | null
           servico_status_pagamento: string | null
-          status: Database["public"]["Enums"]["status_os"] | null
+          status: string | null
           tempo_garantia: number | null
           tipo_servico_id: string | null
           tipo_servico_nome_snapshot: string | null
@@ -4050,7 +4050,7 @@ export type Database = {
           servico_fornecedor_id?: string | null
           servico_id?: string | null
           servico_status_pagamento?: string | null
-          status?: Database["public"]["Enums"]["status_os"] | null
+          status?: string | null
           tempo_garantia?: number | null
           tipo_servico_id?: string | null
           tipo_servico_nome_snapshot?: string | null
@@ -4087,7 +4087,7 @@ export type Database = {
           servico_fornecedor_id?: string | null
           servico_id?: string | null
           servico_status_pagamento?: string | null
-          status?: Database["public"]["Enums"]["status_os"] | null
+          status?: string | null
           tempo_garantia?: number | null
           tipo_servico_id?: string | null
           tipo_servico_nome_snapshot?: string | null
