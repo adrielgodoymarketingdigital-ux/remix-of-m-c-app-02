@@ -395,6 +395,7 @@ export function useAssinatura() {
       orcamentos: false,
       catalogo: false,
       landing_page: false,
+      precificador: false,
     },
     recursos_premium: {
       consulta_imei: false,
@@ -452,13 +453,30 @@ export function useAssinatura() {
     return true;
   }, [assinatura]);
 
+  // Aplica modulos_extras da assinatura sobre os limites base do plano
+  // Permite liberar módulos individuais sem mudar o plano inteiro
+  const aplicarModulosExtras = useCallback((limitesBase: LimitesPlano, ass: Assinatura): LimitesPlano => {
+    const extras = (ass as any).modulos_extras as Record<string, boolean> | null | undefined;
+    if (!extras || typeof extras !== 'object') return limitesBase;
+
+    const modulosOverride = { ...limitesBase.modulos };
+    for (const [modulo, liberado] of Object.entries(extras)) {
+      if (modulo in modulosOverride && typeof liberado === 'boolean') {
+        (modulosOverride as Record<string, boolean>)[modulo] = liberado;
+      }
+    }
+
+    return { ...limitesBase, modulos: modulosOverride };
+  }, []);
+
   const limites = useMemo(() => {
-    // Se não tem assinatura MAS está carregando ou acabou de iniciar, 
-    // assumir limites de trial para não bloquear novos usuários
+    // Se não tem assinatura (ainda carregando ou sem registro), aplicar limites Free restritivos
+    // para evitar que usuários Free acessem módulos premium durante o carregamento
     if (!assinatura) {
-      // Dar benefício da dúvida - assumir trial até confirmar que realmente não existe
-      console.log("📋 Assinatura não carregada, assumindo limites de trial temporariamente");
-      return LIMITES_POR_PLANO.trial;
+      // Durante o carregamento: usar limites Free (sem acesso a clientes, financeiro etc.)
+      // O carregamento real é indicado pelo flag `carregando` — quem precisa de loading usa ele
+      console.log("📋 Assinatura não carregada, assumindo limites Free por segurança");
+      return getLimitesFree(undefined);
     }
 
     // NOVO: Se bloqueado manualmente pelo admin, aplicar bloqueio total
@@ -470,19 +488,19 @@ export function useAssinatura() {
     // Pagamento problemático ou cancelado: downgrade para limites Free
     if (assinatura.status === 'canceled' || assinatura.status === 'past_due' || assinatura.status === 'unpaid' || assinatura.status === 'incomplete_expired') {
       console.log("📋 Assinatura com status problemático, aplicando limites Free:", assinatura.status);
-      return getLimitesFree(assinatura.created_at);
+      return aplicarModulosExtras(getLimitesFree(assinatura.created_at), assinatura);
     }
-    
+
     if (assinatura.plano_tipo === 'trial' && trialExpirado) {
       return limiteTrialExpirado;
     }
-    
+
     // "demonstracao" com status ativo = trial (legado), mas se não ativo = Free
     if (assinatura.plano_tipo === 'demonstracao' && assinatura.status !== 'active' && assinatura.status !== 'trialing') {
       console.log("📋 Demonstração não ativa, aplicando limites Free");
-      return getLimitesFree(assinatura.created_at);
+      return aplicarModulosExtras(getLimitesFree(assinatura.created_at), assinatura);
     }
-    
+
     // Para plano Free, verificar se tem trial de 24h ativo
     if (assinatura.plano_tipo === 'free') {
       const freeTrialEndsAt = (assinatura as any).free_trial_ends_at;
@@ -490,11 +508,12 @@ export function useAssinatura() {
         console.log("🎁 Trial 24h ativo, liberando acesso completo");
         return LIMITES_POR_PLANO.trial;
       }
-      return getLimitesFree(assinatura.created_at);
+      return aplicarModulosExtras(getLimitesFree(assinatura.created_at), assinatura);
     }
-    
-    return LIMITES_POR_PLANO[assinatura.plano_tipo as PlanoTipo] || limiteTrialExpirado;
-  }, [assinatura, trialExpirado, bloqueadoPorAdmin]);
+
+    const limitesPlano = LIMITES_POR_PLANO[assinatura.plano_tipo as PlanoTipo] || limiteTrialExpirado;
+    return aplicarModulosExtras(limitesPlano, assinatura);
+  }, [assinatura, trialExpirado, bloqueadoPorAdmin, aplicarModulosExtras]);
 
   const temAcessoModulo = useCallback((modulo: keyof typeof limites.modulos): boolean => {
     return limites.modulos[modulo];

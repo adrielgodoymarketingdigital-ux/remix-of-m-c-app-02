@@ -80,6 +80,10 @@ export function useOrcamentos() {
           data_validade: dataValidade.toISOString(),
           observacoes: dados.observacoes,
           termos_condicoes: dados.termos_condicoes,
+          tipo_dispositivo: dados.tipo_dispositivo ?? null,
+          sistema_operacional: dados.sistema_operacional ?? null,
+          fabricante: dados.fabricante ?? null,
+          checklist: dados.checklist ? (dados.checklist as any) : null,
         }])
         .select()
         .single();

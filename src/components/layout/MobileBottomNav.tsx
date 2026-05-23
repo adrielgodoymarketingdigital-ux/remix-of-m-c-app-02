@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { MobileMenuDrawer } from "./MobileMenuDrawer";
 import { MobileNavCustomizer, allNavOptions, getSelectedNavItems } from "./MobileNavCustomizer";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useAssinatura } from "@/hooks/useAssinatura";
 import type { PermissoesModulos } from "@/types/funcionario";
 
 // Mapeamento de id do nav para módulo de permissão
@@ -37,7 +38,8 @@ export function MobileBottomNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [selectedNavIds, setSelectedNavIds] = useState<string[]>(getSelectedNavItems);
-  const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
 
   // Listen for tutorial requesting to open the mobile menu
   useEffect(() => {
@@ -46,22 +48,36 @@ export function MobileBottomNav() {
     return () => window.removeEventListener("tutorial-open-mobile-menu", handler);
   }, []);
 
-  // Filtrar itens da barra inferior baseado nas permissões do funcionário
+  // Filtrar itens da barra inferior baseado nas permissões do funcionário E no plano contratado
   const navItems = useMemo(() => {
     const items = selectedNavIds
       .map((id) => allNavOptions.find((opt) => opt.id === id))
       .filter(Boolean) as typeof allNavOptions;
 
-    if (carregandoPermissoes || !isFuncionario) return items;
+    if (carregandoPermissoes) return items;
 
+    if (!isFuncionario) {
+      // Dono da loja: filtrar pelo plano contratado
+      return items.filter((item) => {
+        const modulosSemRestricao = ["plano", "suporte", "tutoriais"];
+        if (modulosSemRestricao.includes(item.id)) return true;
+        const modulo = NAV_ID_TO_MODULO[item.id];
+        if (!modulo) return true;
+        // Módulos que existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano)
+        const modulosSoPorFuncionario = ["origem_dispositivos", "relatorios", "equipe", "novidades"];
+        if (modulosSoPorFuncionario.includes(modulo)) return true;
+        return temAcessoModuloPlano(modulo as Parameters<typeof temAcessoModuloPlano>[0]);
+      });
+    }
+
+    // Funcionário: filtrar por permissões configuradas pelo dono
     return items.filter((item) => {
       const modulo = NAV_ID_TO_MODULO[item.id];
       if (!modulo) return true;
-      // Funcionários nunca veem plano/equipe
       if (["plano", "equipe"].includes(item.id)) return false;
-      return temAcessoModulo(modulo);
+      return temAcessoModuloFuncionario(modulo);
     });
-  }, [selectedNavIds, isFuncionario, temAcessoModulo, carregandoPermissoes]);
+  }, [selectedNavIds, isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes]);
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {

@@ -47,6 +47,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useAssinatura } from "@/hooks/useAssinatura";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { cn } from "@/lib/utils";
 
@@ -114,7 +115,8 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const [isAdmin, setIsAdmin] = useState(false);
   const [clientesExpandido, setClientesExpandido] = useState(false);
   const { badges } = useAdminBadges(isAdmin);
-  const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
 
   // Verificar admin quando o drawer abrir
   useEffect(() => {
@@ -136,13 +138,22 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
 
   const menusVisiveis = useMemo(() => {
     if (carregandoPermissoes) return [];
-    if (!isFuncionario) return menuItems;
-    
+
+    // Dono da loja: filtrar pelo plano contratado
+    if (!isFuncionario) {
+      return menuItems.filter(item => {
+        const modulosSemRestricao: string[] = ['/plano', '/suporte', '/tutoriais', '/baixar-app'];
+        if (modulosSemRestricao.includes(item.url)) return true;
+        return temAcessoModuloPlano(item.modulo);
+      });
+    }
+
+    // Funcionário: filtrar por permissões configuradas pelo dono
     return menuItems.filter(item => {
       if (['/plano', '/equipe'].includes(item.url)) return false;
-      return temAcessoModulo(item.modulo);
+      return temAcessoModuloFuncionario(item.modulo);
     });
-  }, [isFuncionario, temAcessoModulo, carregandoPermissoes]);
+  }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes]);
 
   const handleLogout = async () => {
     clearSessionMeta();

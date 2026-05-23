@@ -9,6 +9,14 @@ export interface ItemOrcamento {
   valor_total: number;
 }
 
+export interface ChecklistOrcamento {
+  entrada: Record<string, boolean>;
+  saida: Record<string, boolean>;
+  sem_teste?: boolean;
+  peca_trocada_descricao_entrada?: string;
+  peca_trocada_descricao_saida?: string;
+}
+
 export interface Orcamento {
   id: string;
   user_id: string;
@@ -26,6 +34,10 @@ export interface Orcamento {
   data_validade?: string;
   observacoes?: string;
   termos_condicoes?: string;
+  tipo_dispositivo?: string;
+  sistema_operacional?: string;
+  fabricante?: string;
+  checklist?: ChecklistOrcamento;
   created_at: string;
   updated_at: string;
 }

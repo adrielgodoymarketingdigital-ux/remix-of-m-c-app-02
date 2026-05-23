@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Crown, AlertCircle, CreditCard } from "lucide-react";
+import { Crown, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { LIMITES_POR_PLANO } from "@/types/assinatura";
@@ -13,7 +13,7 @@ interface ComVerificacaoPlanoProps {
 }
 
 export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoProps) {
-  const { temAcessoModulo, assinatura, carregando, migracaoNecessaria } = useAssinatura();
+  const { temAcessoModulo, assinatura, carregando } = useAssinatura();
   const { isFuncionario, carregando: carregandoFuncionario, temAcessoModulo: temAcessoModuloFuncionario } = useFuncionarioPermissoes();
   const navigate = useNavigate();
 
@@ -57,10 +57,9 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
     return <>{children}</>;
   }
 
-  // Sem assinatura após carregamento — liberar e deixar o ProtectedAppRoute tratar
-  if (!assinatura) {
-    return <>{children}</>;
-  }
+  // Sem assinatura após carregamento — bloquear módulos restritos (getLimitesFree já é aplicado no hook)
+  // Apenas libera se o módulo estiver disponível no plano Free (verificado abaixo via temAcessoModulo)
+  // Nota: temAcessoModulo já usa getLimitesFree quando assinatura é null, então o check abaixo cobre isso.
 
   // Módulos com mensagem de bloqueio personalizada
   const BLOQUEIOS_PERSONALIZADOS: Partial<Record<typeof modulo, { titulo: string; descricao: string }>> = {
@@ -84,10 +83,15 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
             <p>
               {personalizado?.descricao ?? (
                 <>
-                  Este módulo não está disponível no seu plano atual:{" "}
-                  <span className="font-semibold">
-                    {assinatura.plano_tipo.replace(/_/g, " ").toUpperCase()}
-                  </span>. Faça upgrade para um plano superior e desbloqueie todos os recursos avançados do sistema!
+                  Este módulo não está disponível no seu plano atual
+                  {assinatura && (
+                    <>
+                      :{" "}
+                      <span className="font-semibold">
+                        {assinatura.plano_tipo.replace(/_/g, " ").toUpperCase()}
+                      </span>
+                    </>
+                  )}. Faça upgrade para um plano superior e desbloqueie todos os recursos avançados do sistema!
                 </>
               )}
             </p>
