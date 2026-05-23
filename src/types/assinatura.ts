@@ -214,7 +214,7 @@ const LIMITES_ADMIN: LimitesPlano = {
 // Limites do plano básico
 const LIMITES_BASICO: LimitesPlano = {
   dispositivos: 50,
-  ordens_servico_mes: -1, // Ilimitado para planos pagos
+  ordens_servico_mes: 20,
   produtos_mes: -1, // Ilimitado para planos pagos
   dispositivos_catalogo: 0, // Sem acesso ao catálogo
   servicos_avulsos_mes: 0, // Não disponível no básico
