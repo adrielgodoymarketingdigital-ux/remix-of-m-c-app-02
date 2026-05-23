@@ -39,7 +39,7 @@ export function MobileBottomNav() {
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [selectedNavIds, setSelectedNavIds] = useState<string[]>(getSelectedNavItems);
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
-  const { temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
+  const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
 
   // Listen for tutorial requesting to open the mobile menu
   useEffect(() => {
@@ -58,6 +58,8 @@ export function MobileBottomNav() {
 
     if (!isFuncionario) {
       // Dono da loja: filtrar pelo plano contratado
+      // Se assinatura ainda carregando, mostrar todos os itens (evitar piscar/sumir itens)
+      if (carregandoAssinatura && !assinatura) return items;
       return items.filter((item) => {
         const modulosSemRestricao = ["plano", "suporte", "tutoriais"];
         if (modulosSemRestricao.includes(item.id)) return true;
@@ -77,7 +79,7 @@ export function MobileBottomNav() {
       if (["plano", "equipe"].includes(item.id)) return false;
       return temAcessoModuloFuncionario(modulo);
     });
-  }, [selectedNavIds, isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes]);
+  }, [selectedNavIds, isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura]);
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {

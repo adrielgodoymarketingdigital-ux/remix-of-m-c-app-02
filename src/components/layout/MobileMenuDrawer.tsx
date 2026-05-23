@@ -116,7 +116,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const [clientesExpandido, setClientesExpandido] = useState(false);
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
-  const { temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
+  const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
 
   // Verificar admin quando o drawer abrir
   useEffect(() => {
@@ -140,11 +140,16 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
     if (carregandoPermissoes) return [];
 
     // Dono da loja: filtrar pelo plano contratado
+    // Se assinatura ainda carregando, mostrar todos os menus (evitar piscar/sumir itens)
     if (!isFuncionario) {
+      if (carregandoAssinatura && !assinatura) return menuItems;
       return menuItems.filter(item => {
         const modulosSemRestricao: string[] = ['/plano', '/suporte', '/tutoriais', '/baixar-app'];
         if (modulosSemRestricao.includes(item.url)) return true;
-        return temAcessoModuloPlano(item.modulo);
+        // Módulos que existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano)
+        const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe'];
+        if (modulosSoPorFuncionario.includes(item.modulo)) return true;
+        return temAcessoModuloPlano(item.modulo as Parameters<typeof temAcessoModuloPlano>[0]);
       });
     }
 
@@ -153,7 +158,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
       if (['/plano', '/equipe'].includes(item.url)) return false;
       return temAcessoModuloFuncionario(item.modulo);
     });
-  }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes]);
+  }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura]);
 
   const handleLogout = async () => {
     clearSessionMeta();

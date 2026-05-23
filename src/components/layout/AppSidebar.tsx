@@ -119,7 +119,7 @@ export function AppSidebar() {
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
-  const { assinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
+  const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
   const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
 
   useEffect(() => {
@@ -145,14 +145,19 @@ export function AppSidebar() {
     }
 
     // Dono da loja: filtrar pelo plano contratado
+    // Se assinatura ainda carregando, mostrar todos os menus (evitar piscar/sumir itens)
     if (!isFuncionario) {
+      if (carregandoAssinatura && !assinatura) return menuItems;
       return menuItems.filter(item => {
         if (item.url === '/multi-empresas' && !isUltra && !isAdmin) return false;
         // Menus sem módulo controlado por plano (plano, suporte, tutoriais, baixar-app) sempre visíveis
         const modulosSemRestricao: string[] = ['/plano', '/suporte', '/tutoriais', '/baixar-app'];
         if (modulosSemRestricao.includes(item.url)) return true;
+        // Módulos que existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano)
+        const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe'];
+        if (modulosSoPorFuncionario.includes(item.modulo)) return true;
         // Verificar se o plano libera este módulo
-        return temAcessoModuloPlano(item.modulo);
+        return temAcessoModuloPlano(item.modulo as Parameters<typeof temAcessoModuloPlano>[0]);
       });
     }
 
@@ -165,10 +170,10 @@ export function AppSidebar() {
       // Verificar permissão do módulo conforme configurado pelo dono
       return temAcessoModuloFuncionario(item.modulo);
     });
-  }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, isUltra, isAdmin]);
+  }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin]);
 
   // Verificar se novidades está visível (não mostrar durante loading)
-  const novidadesVisivel = !carregandoPermissoes && (!isFuncionario || temAcessoModulo(novidadesItem.modulo));
+  const novidadesVisivel = !carregandoPermissoes && (!isFuncionario || temAcessoModuloFuncionario(novidadesItem.modulo));
 
   const handleLogout = async () => {
     clearSessionMeta();
