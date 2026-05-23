@@ -227,7 +227,7 @@ const LIMITES_BASICO: LimitesPlano = {
     vendas: true,
     ordem_servico: true,
     fornecedores: false,
-    clientes: true, // Liberado para plano básico
+    clientes: false,
     contas: false,
     financeiro: false,
     configuracoes: true,
