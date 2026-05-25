@@ -1,9 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, ShoppingCart, Wrench } from "lucide-react";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
-import { formatCurrency } from "@/lib/formatters";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
@@ -43,7 +41,9 @@ export function DashboardComissaoFuncionario() {
         .eq("funcionario_id", funcionarioId)
         .eq("cancelada", false)
         .gte("data", inicio)
-        .lte("data", fim);
+        .lte("data", fim)
+        // Exclui registros auxiliares de pagamento duplo (não representam vendas reais)
+        .or("observacoes.is.null,observacoes.neq.pagamento_duplo_secundario");
 
       const { data: ordens } = await supabase
         .from("ordens_servico")

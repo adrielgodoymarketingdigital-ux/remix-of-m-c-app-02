@@ -387,6 +387,8 @@ const PDV = () => {
             forma_pagamento: formaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
             user_id: userIdParaVenda,
             empresa_id: empresaIdPDV,
+            // Campo data é obrigatório para filtros de comissão/relatórios por período
+            data: new Date().toISOString().split("T")[0],
             data_prevista_recebimento: dataPrevisao,
             recebido: formaPagamento !== "a_receber",
             grupo_venda: grupoVendaId,
@@ -518,6 +520,8 @@ const PDV = () => {
               forma_pagamento: segundaFormaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
               user_id: userIdParaVenda,
               empresa_id: empresaIdPDV,
+              // Campo data obrigatório para filtros por período
+              data: new Date().toISOString().split("T")[0],
               data_prevista_recebimento: dataPrevisaoSegunda,
               recebido: segundaFormaPagamento !== "a_receber",
               grupo_venda: grupoVendaId,

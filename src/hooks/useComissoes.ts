@@ -126,7 +126,9 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
         .in("funcionario_id", funcionarioIds)
         .gte("data", inicio)
         .lte("data", fim)
-        .eq("cancelada", false);
+        .eq("cancelada", false)
+        // Exclui registros auxiliares de pagamento duplo (não representam vendas reais)
+        .or("observacoes.is.null,observacoes.neq.pagamento_duplo_secundario");
 
       const { data: osMes } = await supabase
         .from("ordens_servico")
@@ -145,7 +147,8 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
         .in("funcionario_id", funcionarioIds)
         .gte("data", inicioAnterior)
         .lte("data", fimAnterior)
-        .eq("cancelada", false);
+        .eq("cancelada", false)
+        .or("observacoes.is.null,observacoes.neq.pagamento_duplo_secundario");
 
       const processar = (vendas: any[], ordens: any[]) => {
         return funcionarios.map((f) => {
