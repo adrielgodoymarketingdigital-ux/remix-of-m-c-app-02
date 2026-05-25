@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
 import { useIdentidade } from "@/hooks/useResolvedUserId";
+import { useAssinatura } from "@/hooks/useAssinatura";
+import { DialogLimiteAtingido } from "@/components/planos/DialogLimiteAtingido";
 
 interface DialogConverterOrcamentoOSProps {
   aberto: boolean;
@@ -29,9 +31,11 @@ export function DialogConverterOrcamentoOS({
   onConvertido,
 }: DialogConverterOrcamentoOSProps) {
   const [convertendo, setConvertendo] = useState(false);
+  const [dialogLimiteAberto, setDialogLimiteAberto] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { userId: resolvedUserId, empresaId } = useIdentidade();
+  const { obterContagemOSMes } = useAssinatura();
 
   if (!orcamento) return null;
 
@@ -45,6 +49,14 @@ export function DialogConverterOrcamentoOS({
 
   const handleConverter = async () => {
     if (!orcamento) return;
+
+    // Verificar limite do plano antes de criar a OS
+    const contador = await obterContagemOSMes();
+    if (!contador.ilimitado && contador.usadas >= contador.limite) {
+      setDialogLimiteAberto(true);
+      return;
+    }
+
     setConvertendo(true);
 
     try {
@@ -138,6 +150,12 @@ export function DialogConverterOrcamentoOS({
   };
 
   return (
+    <>
+    <DialogLimiteAtingido
+      open={dialogLimiteAberto}
+      onOpenChange={setDialogLimiteAberto}
+      tipo="os"
+    />
     <Dialog open={aberto} onOpenChange={onFechar}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -247,5 +265,6 @@ export function DialogConverterOrcamentoOS({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
