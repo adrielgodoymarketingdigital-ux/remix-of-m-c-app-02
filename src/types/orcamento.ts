@@ -37,6 +37,9 @@ export interface Orcamento {
   tipo_dispositivo?: string;
   sistema_operacional?: string;
   fabricante?: string;
+  marca_dispositivo?: string;
+  modelo_dispositivo?: string;
+  cor_dispositivo?: string;
   checklist?: ChecklistOrcamento;
   created_at: string;
   updated_at: string;

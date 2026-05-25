@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, User, FileText, ClipboardCheck } from "lucide-react";
+import { Plus, Trash2, User, FileText, ClipboardCheck, Search, X, Smartphone, Wrench, Package, Info } from "lucide-react";
 import { ChecklistOrcamento, ItemOrcamento, Orcamento } from "@/types/orcamento";
 import { Checklist } from "@/types/ordem-servico";
 import { useClientes } from "@/hooks/useClientes";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/formatters";
 import { ChecklistDispositivo } from "@/components/ordens/ChecklistDispositivo";
+import { Badge } from "@/components/ui/badge";
 
 interface DialogCadastroOrcamentoProps {
   aberto: boolean;
@@ -38,10 +39,19 @@ export function DialogCadastroOrcamento({
   orcamentoEdicao,
 }: DialogCadastroOrcamentoProps) {
   const { clientes } = useClientes();
+
+  // Cliente
   const [clienteId, setClienteId] = useState<string>("");
   const [clienteNome, setClienteNome] = useState("");
   const [clienteTelefone, setClienteTelefone] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
+
+  // Busca de cliente
+  const [buscaCliente, setBuscaCliente] = useState("");
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
+  const buscaRef = useRef<HTMLDivElement>(null);
+
+  // Itens
   const [itens, setItens] = useState<ItemOrcamento[]>([]);
   const [desconto, setDesconto] = useState(0);
   const [validadeDias, setValidadeDias] = useState(30);
@@ -49,16 +59,31 @@ export function DialogCadastroOrcamento({
   const [termosCondicoes, setTermosCondicoes] = useState("");
   const [salvando, setSalvando] = useState(false);
 
-  // Checklist
+  // Dispositivo
   const [tipoDispositivo, setTipoDispositivo] = useState("");
   const [sistemaOperacional, setSistemaOperacional] = useState("");
   const [fabricante, setFabricante] = useState("");
+  const [marcaDispositivo, setMarcaDispositivo] = useState("");
+  const [modeloDispositivo, setModeloDispositivo] = useState("");
+  const [corDispositivo, setCorDispositivo] = useState("");
   const [checklist, setChecklist] = useState<ChecklistOrcamento>({ entrada: {}, saida: {} });
+
+  // Fechar sugestões ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (buscaRef.current && !buscaRef.current.contains(e.target as Node)) {
+        setMostrarSugestoes(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (orcamentoEdicao) {
       setClienteId(orcamentoEdicao.cliente_id || "");
       setClienteNome(orcamentoEdicao.cliente_nome || "");
+      setBuscaCliente(orcamentoEdicao.cliente_nome || "");
       setClienteTelefone(orcamentoEdicao.cliente_telefone || "");
       setClienteEmail(orcamentoEdicao.cliente_email || "");
       setItens(orcamentoEdicao.itens || []);
@@ -69,6 +94,9 @@ export function DialogCadastroOrcamento({
       setTipoDispositivo(orcamentoEdicao.tipo_dispositivo || "");
       setSistemaOperacional(orcamentoEdicao.sistema_operacional || "");
       setFabricante(orcamentoEdicao.fabricante || "");
+      setMarcaDispositivo(orcamentoEdicao.marca_dispositivo || "");
+      setModeloDispositivo(orcamentoEdicao.modelo_dispositivo || "");
+      setCorDispositivo(orcamentoEdicao.cor_dispositivo || "");
       setChecklist(
         orcamentoEdicao.checklist
           ? { entrada: {}, saida: {}, ...orcamentoEdicao.checklist }
@@ -82,6 +110,7 @@ export function DialogCadastroOrcamento({
   const limparFormulario = () => {
     setClienteId("");
     setClienteNome("");
+    setBuscaCliente("");
     setClienteTelefone("");
     setClienteEmail("");
     setItens([]);
@@ -92,25 +121,44 @@ export function DialogCadastroOrcamento({
     setTipoDispositivo("");
     setSistemaOperacional("");
     setFabricante("");
+    setMarcaDispositivo("");
+    setModeloDispositivo("");
+    setCorDispositivo("");
     setChecklist({ entrada: {}, saida: {} });
   };
 
-  const handleClienteChange = (id: string) => {
-    setClienteId(id);
-    if (id) {
-      const cliente = clientes.find((c) => c.id === id);
-      if (cliente) {
-        setClienteNome(cliente.nome);
-        setClienteTelefone(cliente.telefone || "");
-        setClienteEmail("");
-      }
+  // Filtra clientes pela busca
+  const clientesFiltrados = buscaCliente.trim().length >= 1
+    ? clientes.filter((c) =>
+        c.nome.toLowerCase().includes(buscaCliente.toLowerCase()) ||
+        (c.telefone || "").includes(buscaCliente)
+      ).slice(0, 6)
+    : [];
+
+  const selecionarCliente = (id: string) => {
+    const cliente = clientes.find((c) => c.id === id);
+    if (cliente) {
+      setClienteId(cliente.id);
+      setClienteNome(cliente.nome);
+      setBuscaCliente(cliente.nome);
+      setClienteTelefone(cliente.telefone || "");
+      setClienteEmail("");
     }
+    setMostrarSugestoes(false);
+  };
+
+  const limparCliente = () => {
+    setClienteId("");
+    setClienteNome("");
+    setBuscaCliente("");
+    setClienteTelefone("");
+    setClienteEmail("");
   };
 
   const adicionarItem = () => {
     const novoItem: ItemOrcamento = {
       id: crypto.randomUUID(),
-      tipo: "produto",
+      tipo: "servico",
       descricao: "",
       quantidade: 1,
       valor_unitario: 0,
@@ -141,7 +189,7 @@ export function DialogCadastroOrcamento({
   const subtotal = itens.reduce((acc, item) => acc + item.valor_total, 0);
   const valorTotal = subtotal - desconto;
 
-  // Converter checklist para o tipo Checklist da OS (compatível com ChecklistDispositivo)
+  // Converter checklist para o tipo Checklist da OS
   const checklistParaOS: Checklist = {
     entrada: checklist.entrada,
     saida: checklist.saida,
@@ -166,7 +214,6 @@ export function DialogCadastroOrcamento({
 
     setSalvando(true);
     try {
-      // Salvar checklist apenas se houver tipo de dispositivo selecionado
       const checklistFinal =
         tipoDispositivo &&
         (Object.keys(checklist.entrada).length > 0 || Object.keys(checklist.saida).length > 0)
@@ -189,6 +236,9 @@ export function DialogCadastroOrcamento({
         tipo_dispositivo: tipoDispositivo || undefined,
         sistema_operacional: sistemaOperacional || undefined,
         fabricante: fabricante || undefined,
+        marca_dispositivo: marcaDispositivo || undefined,
+        modelo_dispositivo: modeloDispositivo || undefined,
+        cor_dispositivo: corDispositivo || undefined,
         checklist: checklistFinal,
       });
       onFechar();
@@ -199,6 +249,12 @@ export function DialogCadastroOrcamento({
 
   const totalChecklistItens =
     Object.keys(checklist.entrada).length + Object.keys(checklist.saida).length;
+
+  const tipoIcon = (tipo: string) => {
+    if (tipo === "servico") return <Wrench className="h-3.5 w-3.5 text-blue-500" />;
+    if (tipo === "produto") return <Package className="h-3.5 w-3.5 text-green-500" />;
+    return <Smartphone className="h-3.5 w-3.5 text-purple-500" />;
+  };
 
   return (
     <Dialog open={aberto} onOpenChange={onFechar}>
@@ -240,41 +296,96 @@ export function DialogCadastroOrcamento({
               </TabsTrigger>
             </TabsList>
 
-            {/* ABA: Dados do Cliente + Configurações */}
-            <TabsContent value="dados" className="space-y-5 mt-4">
+            {/* ABA: Dados do Cliente + Dispositivo + Configurações */}
+            <TabsContent value="dados" className="space-y-6 mt-4">
+
               {/* Dados do Cliente */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Dados do Cliente</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Cliente Cadastrado</Label>
-                    <Select value={clienteId || "none"} onValueChange={(v) => handleClienteChange(v === "none" ? "" : v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um cliente..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {clientes.map((cliente) => (
-                          <SelectItem key={cliente.id} value={cliente.id}>
-                            {cliente.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nome do Cliente *</Label>
+                <h3 className="font-semibold text-base flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  Dados do Cliente
+                </h3>
+
+                {/* Busca de cliente com autocomplete */}
+                <div className="space-y-2" ref={buscaRef}>
+                  <Label className="flex items-center gap-1.5">
+                    <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                    Buscar cliente cadastrado
+                  </Label>
+                  <div className="relative">
                     <Input
-                      value={clienteNome}
-                      onChange={(e) => setClienteNome(e.target.value)}
-                      required
+                      value={buscaCliente}
+                      onChange={(e) => {
+                        setBuscaCliente(e.target.value);
+                        setClienteNome(e.target.value);
+                        if (clienteId) setClienteId(""); // desvincular se digitar manualmente
+                        setMostrarSugestoes(true);
+                      }}
+                      onFocus={() => setMostrarSugestoes(true)}
+                      placeholder="Digite o nome ou telefone do cliente..."
+                      className={clienteId ? "pr-8 border-green-500 focus-visible:ring-green-400" : "pr-8"}
                     />
+                    {clienteId && (
+                      <Badge
+                        variant="secondary"
+                        className="absolute right-8 top-1/2 -translate-y-1/2 text-[10px] bg-green-100 text-green-700 border-green-200 px-1.5 py-0"
+                      >
+                        cadastrado
+                      </Badge>
+                    )}
+                    {buscaCliente && (
+                      <button
+                        type="button"
+                        onClick={limparCliente}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    {/* Dropdown de sugestões */}
+                    {mostrarSugestoes && clientesFiltrados.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg overflow-hidden">
+                        {clientesFiltrados.map((cliente) => (
+                          <button
+                            key={cliente.id}
+                            type="button"
+                            onClick={() => selecionarCliente(cliente.id)}
+                            className="w-full text-left px-3 py-2.5 hover:bg-muted transition-colors flex items-center justify-between gap-2 border-b last:border-b-0"
+                          >
+                            <div>
+                              <p className="font-medium text-sm">{cliente.nome}</p>
+                              {cliente.telefone && (
+                                <p className="text-xs text-muted-foreground">{cliente.telefone}</p>
+                              )}
+                            </div>
+                            <Badge variant="outline" className="text-[10px] shrink-0">selecionar</Badge>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Nenhum resultado */}
+                    {mostrarSugestoes && buscaCliente.trim().length >= 2 && clientesFiltrados.length === 0 && !clienteId && (
+                      <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg px-3 py-2.5 text-sm text-muted-foreground">
+                        Nenhum cliente encontrado — o nome será salvo como cliente avulso.
+                      </div>
+                    )}
                   </div>
+                  {clienteId && (
+                    <p className="text-xs text-green-600 flex items-center gap-1">
+                      ✓ Cliente vinculado — telefone e e-mail preenchidos automaticamente
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Telefone</Label>
                     <Input
                       value={clienteTelefone}
                       onChange={(e) => setClienteTelefone(e.target.value)}
+                      placeholder="(00) 00000-0000"
                     />
                   </div>
                   <div className="space-y-2">
@@ -283,49 +394,110 @@ export function DialogCadastroOrcamento({
                       type="email"
                       value={clienteEmail}
                       onChange={(e) => setClienteEmail(e.target.value)}
+                      placeholder="cliente@email.com"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Dados do Dispositivo */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-base flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-muted-foreground" />
+                  Dispositivo <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Marca</Label>
+                    <Input
+                      value={marcaDispositivo}
+                      onChange={(e) => setMarcaDispositivo(e.target.value)}
+                      placeholder="Ex: Samsung, Apple, Motorola..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Modelo</Label>
+                    <Input
+                      value={modeloDispositivo}
+                      onChange={(e) => setModeloDispositivo(e.target.value)}
+                      placeholder="Ex: Galaxy S23, iPhone 14..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cor</Label>
+                    <Input
+                      value={corDispositivo}
+                      onChange={(e) => setCorDispositivo(e.target.value)}
+                      placeholder="Ex: Preto, Branco, Azul..."
                     />
                   </div>
                 </div>
               </div>
 
               {/* Configurações */}
-              <div className="space-y-2">
-                <Label>Validade (dias)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  className="max-w-xs"
-                  value={validadeDias}
-                  onChange={(e) => setValidadeDias(parseInt(e.target.value) || 30)}
-                />
-              </div>
-
-              {/* Observações */}
-              <div className="space-y-2">
-                <Label>Observações</Label>
-                <Textarea
-                  value={observacoes}
-                  onChange={(e) => setObservacoes(e.target.value)}
-                  placeholder="Observações adicionais..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Termos e Condições</Label>
-                <Textarea
-                  value={termosCondicoes}
-                  onChange={(e) => setTermosCondicoes(e.target.value)}
-                  placeholder="Termos e condições do orçamento..."
-                  rows={3}
-                />
+              <div className="space-y-4">
+                <h3 className="font-semibold text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Configurações do Orçamento
+                </h3>
+                <div className="space-y-2 max-w-xs">
+                  <Label>Validade (dias)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={validadeDias}
+                    onChange={(e) => setValidadeDias(parseInt(e.target.value) || 30)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={observacoes}
+                    onChange={(e) => setObservacoes(e.target.value)}
+                    placeholder="Observações adicionais sobre o orçamento..."
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Termos e Condições</Label>
+                  <Textarea
+                    value={termosCondicoes}
+                    onChange={(e) => setTermosCondicoes(e.target.value)}
+                    placeholder="Ex: Orçamento válido por 30 dias. Peças com garantia de 90 dias..."
+                    rows={3}
+                  />
+                </div>
               </div>
             </TabsContent>
 
             {/* ABA: Itens */}
             <TabsContent value="itens" className="space-y-4 mt-4">
+              {/* Explicação da aba */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-2.5 text-sm text-blue-800">
+                <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-500" />
+                <div className="space-y-1.5">
+                  <p className="font-semibold">Como funciona a aba de itens?</p>
+                  <p>Cada item do orçamento tem um <strong>tipo</strong> que determina o que está sendo cobrado:</p>
+                  <ul className="space-y-1 mt-1">
+                    <li className="flex items-center gap-2">
+                      <Wrench className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                      <span><strong>Serviço</strong> — mão de obra, ex: troca de tela, formatação, limpeza</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Package className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                      <span><strong>Produto/Peça</strong> — componente usado, ex: tela, bateria, conector</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Smartphone className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                      <span><strong>Dispositivo</strong> — aparelho inteiro, ex: venda ou repasse de aparelho</span>
+                    </li>
+                  </ul>
+                  <p className="text-xs text-blue-600 mt-1">Adicione quantos itens precisar. O total é calculado automaticamente.</p>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">Itens do Orçamento</h3>
+                <h3 className="font-semibold text-base">Itens do Orçamento</h3>
                 <Button type="button" variant="outline" size="sm" onClick={adicionarItem}>
                   <Plus className="h-4 w-4 mr-2" />
                   Adicionar Item
@@ -333,13 +505,32 @@ export function DialogCadastroOrcamento({
               </div>
 
               {itens.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  Nenhum item adicionado. Clique em "Adicionar Item" para começar.
-                </p>
+                <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed rounded-lg text-muted-foreground gap-2">
+                  <FileText className="h-8 w-8 opacity-30" />
+                  <p className="text-sm font-medium">Nenhum item adicionado</p>
+                  <p className="text-xs">Clique em "Adicionar Item" para incluir serviços, peças ou dispositivos</p>
+                </div>
               ) : (
                 <div className="space-y-3">
-                  {itens.map((item) => (
-                    <div key={item.id} className="border rounded-lg p-3 space-y-3">
+                  {itens.map((item, index) => (
+                    <div key={item.id} className="border rounded-lg p-3 space-y-3 bg-muted/20">
+                      {/* Cabeçalho do item */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                          {tipoIcon(item.tipo)}
+                          Item {index + 1}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removerItem(item.id)}
+                          className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
                       {/* Linha 1: Tipo + Descrição */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1">
@@ -352,9 +543,21 @@ export function DialogCadastroOrcamento({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="produto">Produto</SelectItem>
-                              <SelectItem value="servico">Serviço</SelectItem>
-                              <SelectItem value="dispositivo">Dispositivo</SelectItem>
+                              <SelectItem value="servico">
+                                <span className="flex items-center gap-2">
+                                  <Wrench className="h-3.5 w-3.5 text-blue-500" /> Serviço
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="produto">
+                                <span className="flex items-center gap-2">
+                                  <Package className="h-3.5 w-3.5 text-green-500" /> Produto / Peça
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="dispositivo">
+                                <span className="flex items-center gap-2">
+                                  <Smartphone className="h-3.5 w-3.5 text-purple-500" /> Dispositivo
+                                </span>
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -363,14 +566,20 @@ export function DialogCadastroOrcamento({
                           <Input
                             value={item.descricao}
                             onChange={(e) => atualizarItem(item.id, "descricao", e.target.value)}
-                            placeholder="Descrição do item"
+                            placeholder={
+                              item.tipo === "servico"
+                                ? "Ex: Troca de tela, Formatação..."
+                                : item.tipo === "produto"
+                                ? "Ex: Tela original, Bateria..."
+                                : "Ex: iPhone 13 128GB Preto"
+                            }
                             required
                           />
                         </div>
                       </div>
 
-                      {/* Linha 2: Qtd + Valor Unit. + Total + Excluir */}
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 items-end">
+                      {/* Linha 2: Qtd + Valor Unit. + Total */}
+                      <div className="grid grid-cols-3 gap-3 items-end">
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Quantidade</Label>
                           <Input
@@ -383,7 +592,7 @@ export function DialogCadastroOrcamento({
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Valor Unit. (R$)</Label>
+                          <Label className="text-xs text-muted-foreground">Valor Unitário (R$)</Label>
                           <Input
                             type="number"
                             min="0"
@@ -399,19 +608,8 @@ export function DialogCadastroOrcamento({
                           <Input
                             value={formatCurrency(item.valor_total)}
                             disabled
-                            className="bg-muted font-medium"
+                            className="bg-muted font-semibold"
                           />
-                        </div>
-                        <div className="flex items-end justify-end sm:justify-center">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removerItem(item.id)}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
                     </div>
@@ -420,41 +618,45 @@ export function DialogCadastroOrcamento({
               )}
 
               {/* Totais */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
-                <div className="space-y-2">
-                  <Label>Subtotal</Label>
-                  <Input value={formatCurrency(subtotal)} disabled className="bg-background" />
+              {itens.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg border">
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs">Subtotal</Label>
+                    <Input value={formatCurrency(subtotal)} disabled className="bg-background font-medium" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">
+                      Desconto (R$)
+                      <span className="ml-1 text-muted-foreground font-normal">— opcional</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={desconto}
+                      onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Total Final</Label>
+                    <Input
+                      value={formatCurrency(valorTotal)}
+                      disabled
+                      className="bg-background font-bold text-lg text-primary"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Desconto (R$)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={desconto}
-                    onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Valor Total</Label>
-                  <Input
-                    value={formatCurrency(valorTotal)}
-                    disabled
-                    className="bg-background font-bold text-lg"
-                  />
-                </div>
-              </div>
+              )}
             </TabsContent>
 
             {/* ABA: Checklist */}
             <TabsContent value="checklist" className="space-y-4 mt-4">
               <div className="space-y-3">
-                <h3 className="font-semibold text-lg">Checklist do Dispositivo</h3>
+                <h3 className="font-semibold text-base">Checklist do Dispositivo</h3>
                 <p className="text-sm text-muted-foreground">
                   Registre o estado do dispositivo na entrada e saída, igual ao checklist da Ordem de Serviço.
                 </p>
 
-                {/* Tipo de dispositivo */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Tipo de Dispositivo</Label>
@@ -484,7 +686,6 @@ export function DialogCadastroOrcamento({
                   </div>
                 </div>
 
-                {/* Componente de checklist idêntico ao da OS */}
                 {tipoDispositivo ? (
                   <ChecklistDispositivo
                     tipoDispositivo={tipoDispositivo}

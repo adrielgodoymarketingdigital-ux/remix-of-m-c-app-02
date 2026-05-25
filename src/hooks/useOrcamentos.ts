@@ -83,6 +83,9 @@ export function useOrcamentos() {
           tipo_dispositivo: dados.tipo_dispositivo ?? null,
           sistema_operacional: dados.sistema_operacional ?? null,
           fabricante: dados.fabricante ?? null,
+          marca_dispositivo: dados.marca_dispositivo ?? null,
+          modelo_dispositivo: dados.modelo_dispositivo ?? null,
+          cor_dispositivo: dados.cor_dispositivo ?? null,
           checklist: dados.checklist ? (dados.checklist as any) : null,
         }])
         .select()
