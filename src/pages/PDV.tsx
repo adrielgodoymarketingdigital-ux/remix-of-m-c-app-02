@@ -357,9 +357,10 @@ const PDV = () => {
         // Determinar parcelas para "a_receber"
         const isParceladoReceber = formaPagamento === "a_receber" && tipoRecebimento === "parcelado";
         const totalParcelas = isParceladoReceber ? numParcelasReceber : 1;
-        // Total real do item (sem dividir pela forma de pagamento)
-        const totalRealItem = (item.preco * item.quantidade) - valorDescontoManualPorItem;
-        const valorPorParcela = totalRealItem / totalParcelas;
+        // Total bruto do item (SEM desconto — o desconto é salvo separadamente em valor_desconto_manual)
+        // A tela de vendas subtrai o desconto na exibição para mostrar o valor cobrado ao cliente
+        const totalBrutoItem = item.preco * item.quantidade;
+        const valorPorParcela = totalBrutoItem / totalParcelas;
         const descontoPorParcela = valorDescontoManualPorItem / totalParcelas;
 
         for (let parcIdx = 0; parcIdx < totalParcelas; parcIdx++) {
@@ -379,10 +380,11 @@ const PDV = () => {
             produto_id: produtoId,
             peca_id: pecaId,
             quantidade: item.quantidade,
-            // Registro principal guarda o total REAL da venda
-            // Em pagamento duplo: valor total do item (não a fatia da 1ª forma)
-            // Em parcelado a_receber: valor por parcela
-            total: pagamentoDuploAtivo ? totalRealItem : valorPorParcela,
+            // Registro principal guarda o total BRUTO do item (sem desconto)
+            // O desconto fica em valor_desconto_manual e é subtraído na exibição
+            // Em pagamento duplo: total bruto do item (a tela ignora o registro secundário)
+            // Em parcelado a_receber: valor por parcela (bruto / número de parcelas)
+            total: pagamentoDuploAtivo ? totalBrutoItem : valorPorParcela,
             custo_unitario: isParceladoReceber ? (item.custo || 0) / totalParcelas : item.custo,
             forma_pagamento: formaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
             user_id: userIdParaVenda,
