@@ -24,6 +24,7 @@ import { useOrcamentos } from "@/hooks/useOrcamentos";
 import { TabelaOrcamentos } from "@/components/orcamentos/TabelaOrcamentos";
 import { DialogCadastroOrcamento } from "@/components/orcamentos/DialogCadastroOrcamento";
 import { DialogVisualizarOrcamento } from "@/components/orcamentos/DialogVisualizarOrcamento";
+import { DialogConverterOrcamentoOS } from "@/components/orcamentos/DialogConverterOrcamentoOS";
 import { Orcamento } from "@/types/orcamento";
 import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -42,6 +43,7 @@ export default function Orcamentos() {
   const [filtroStatus, setFiltroStatus] = useState<string>("todos");
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dialogVisualizarAberto, setDialogVisualizarAberto] = useState(false);
+  const [dialogConverterAberto, setDialogConverterAberto] = useState(false);
   const [orcamentoSelecionado, setOrcamentoSelecionado] = useState<Orcamento | null>(null);
   const [orcamentoExcluir, setOrcamentoExcluir] = useState<Orcamento | null>(null);
 
@@ -80,6 +82,11 @@ export default function Orcamentos() {
   const handleVisualizar = (orcamento: Orcamento) => {
     setOrcamentoSelecionado(orcamento);
     setDialogVisualizarAberto(true);
+  };
+
+  const handleConverterOS = (orcamento: Orcamento) => {
+    setOrcamentoSelecionado(orcamento);
+    setDialogConverterAberto(true);
   };
 
   const handleConfirmarExclusao = async () => {
@@ -199,6 +206,7 @@ export default function Orcamentos() {
             onEditar={handleEditar}
             onExcluir={setOrcamentoExcluir}
             onAtualizarStatus={atualizarStatus}
+            onConverterOS={handleConverterOS}
           />
         )}
       </main>
@@ -222,6 +230,20 @@ export default function Orcamentos() {
           setOrcamentoSelecionado(null);
         }}
         orcamento={orcamentoSelecionado}
+      />
+
+      {/* Dialog de Converter em OS */}
+      <DialogConverterOrcamentoOS
+        aberto={dialogConverterAberto}
+        onFechar={() => {
+          setDialogConverterAberto(false);
+          setOrcamentoSelecionado(null);
+        }}
+        orcamento={orcamentoSelecionado}
+        onConvertido={() => {
+          setDialogConverterAberto(false);
+          setOrcamentoSelecionado(null);
+        }}
       />
 
       {/* Dialog de Confirmação de Exclusão */}

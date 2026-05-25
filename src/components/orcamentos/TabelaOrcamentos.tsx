@@ -27,6 +27,7 @@ import {
   ShoppingCart,
   Printer,
   Check,
+  ArrowRight,
 } from "lucide-react";
 import { gerarOrcamentoPDF } from "@/lib/gerarOrcamentoPDF";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
@@ -40,6 +41,7 @@ interface TabelaOrcamentosProps {
   onEditar: (orcamento: Orcamento) => void;
   onExcluir: (orcamento: Orcamento) => void;
   onAtualizarStatus: (id: string, status: StatusOrcamento) => void;
+  onConverterOS: (orcamento: Orcamento) => void;
 }
 
 // Cores por status — segue a mesma lógica visual da OS
@@ -129,6 +131,7 @@ export function TabelaOrcamentos({
   onEditar,
   onExcluir,
   onAtualizarStatus,
+  onConverterOS,
 }: TabelaOrcamentosProps) {
   const { config: lojaConfig } = useConfiguracaoLoja();
   const isMobileOrTablet = useIsMobileOrTablet();
@@ -211,6 +214,14 @@ export function TabelaOrcamentos({
                             <XCircle className="h-4 w-4 mr-2 text-destructive" /> Rejeitar
                           </DropdownMenuItem>
                         </>
+                      )}
+                      {(orcamento.status === "pendente" || orcamento.status === "aprovado") && (
+                        <DropdownMenuItem
+                          onClick={() => onConverterOS(orcamento)}
+                          className="text-primary font-medium"
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2" /> Converter em OS
+                        </DropdownMenuItem>
                       )}
                       {orcamento.status === "aprovado" && (
                         <DropdownMenuItem onClick={() => onAtualizarStatus(orcamento.id, "convertido")}>
@@ -328,6 +339,14 @@ export function TabelaOrcamentos({
                             <XCircle className="h-4 w-4 mr-2 text-destructive" /> Rejeitar
                           </DropdownMenuItem>
                         </>
+                      )}
+                      {(orcamento.status === "pendente" || orcamento.status === "aprovado") && (
+                        <DropdownMenuItem
+                          onClick={() => onConverterOS(orcamento)}
+                          className="text-primary font-medium"
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2" /> Converter em OS
+                        </DropdownMenuItem>
                       )}
                       {orcamento.status === "aprovado" && (
                         <DropdownMenuItem
