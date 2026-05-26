@@ -89,11 +89,12 @@ serve(async (req) => {
 
     // ── 2. Validar body ──────────────────────────────────────────────
     const body = await req.json();
-    const { plan_code, card_token, cpf, holder_name, billing_address } = body as {
+    const { plan_code, card_token, cpf, holder_name, billing_address, coupon_id } = body as {
       plan_code?: string;
       card_token?: string;
       cpf?: string;
       holder_name?: string;
+      coupon_id?: string | null;
       billing_address?: {
         line_1?: string;
         zip_code?: string;
@@ -151,13 +152,18 @@ serve(async (req) => {
     const plano = plan_code as PlanoTipoPago;
     const pagarmePlanId = PAGARME_PLAN_IDS[plano];
     const displayName = PLANO_NOMES[plano];
-    const valorCentavos = PRECOS_CENTAVOS[plano];
-    log("Plano validado", { plano, pagarmePlanId, valorCentavos });
+    const valorCentavosOriginal = PRECOS_CENTAVOS[plano];
+    log("Plano validado", { plano, pagarmePlanId, valorCentavosOriginal });
 
     // ── 3. Chave Pagar.me ────────────────────────────────────────────
     const pagarmeKey = Deno.env.get("PAGARME_SECRET_KEY");
     if (!pagarmeKey) throw new Error("PAGARME_SECRET_KEY não configurada.");
     const pagarmeAuth = `Basic ${btoa(`${pagarmeKey}:`)}`;
+
+    // ── 3b. Aplicar cupom de desconto (se informado) ─────────────────
+    // O cupom já foi validado e incrementado pela função validar-cupom.
+    // Aqui buscamos apenas para calcular o desconto correto.
+    let valorCentavos = valorCentavosOriginal;
 
     // ── 4. Buscar perfil ─────────────────────────────────────────────
     const supabaseAdmin = createClient(
@@ -175,6 +181,26 @@ serve(async (req) => {
       (holder_name || profile?.nome || userEmail.split("@")[0]).trim();
     const rawPhone = sanitizeDigits(profile?.celular);
     const customerPhone = rawPhone.length >= 10 ? rawPhone : "11999999999";
+
+    // ── 4b. Calcular desconto do cupom ───────────────────────────────
+    if (coupon_id) {
+      const { data: cupomData } = await supabaseAdmin
+        .from("cupons")
+        .select("tipo, valor")
+        .eq("id", coupon_id)
+        .maybeSingle();
+
+      if (cupomData) {
+        if (cupomData.tipo === "percent") {
+          valorCentavos = Math.round(valorCentavosOriginal * (1 - cupomData.valor / 100));
+        } else {
+          valorCentavos = Math.max(0, valorCentavosOriginal - cupomData.valor);
+        }
+        // Pagar.me exige mínimo de R$1,00
+        valorCentavos = Math.max(valorCentavos, 100);
+        log("Desconto aplicado", { cupom_id: coupon_id, tipo: cupomData.tipo, valor: cupomData.valor, valorOriginal: valorCentavosOriginal, valorFinal: valorCentavos });
+      }
+    }
 
     // ── 5. Reaproveitar/criar customer ───────────────────────────────
     const { data: existing } = await supabaseAdmin
@@ -224,7 +250,12 @@ serve(async (req) => {
     }
 
     // ── 6. Criar subscription ────────────────────────────────────────
-    const subscriptionPayload = {
+    // Se há desconto de cupom, aplicamos via campo discounts da Pagar.me.
+    // O plano continua sendo o mesmo; o desconto é aplicado sobre o valor do plano.
+    const descontoAplicado = valorCentavos < valorCentavosOriginal;
+    const descontoCentavos = valorCentavosOriginal - valorCentavos;
+
+    const subscriptionPayload: Record<string, unknown> = {
       plan_id: pagarmePlanId,
       customer_id: customerId,
       payment_method: "credit_card",
@@ -235,8 +266,20 @@ serve(async (req) => {
       metadata: {
         user_id: userId,
         plano_tipo: plano,
+        ...(coupon_id ? { coupon_id } : {}),
       },
     };
+
+    // Adicionar desconto se houver cupom
+    if (descontoAplicado && descontoCentavos > 0) {
+      subscriptionPayload.discounts = [
+        {
+          value: descontoCentavos,
+          discount_type: "flat",
+          cycles: 1, // desconto apenas na primeira cobrança
+        },
+      ];
+    }
 
     log("Criando subscription na Pagar.me", {
       plan_id: pagarmePlanId,

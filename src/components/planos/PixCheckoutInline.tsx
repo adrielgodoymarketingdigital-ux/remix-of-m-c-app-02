@@ -6,9 +6,12 @@ import { Loader2, Copy, CheckCircle2, RefreshCw, Clock, AlertCircle } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { trackPurchase } from "@/lib/pixel";
 import { toast } from "sonner";
+import { useCupom } from "@/hooks/useCupom";
+import { CupomField } from "@/components/planos/CupomField";
 
 interface PixCheckoutInlineProps {
   planoKey: string;
+  planoPreco?: number; // preço em reais — necessário para exibir o desconto do cupom
   onSuccess?: () => void;
 }
 
@@ -35,7 +38,7 @@ const formatCPF = (value: string) => {
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 };
 
-export function PixCheckoutInline({ planoKey, onSuccess }: PixCheckoutInlineProps) {
+export function PixCheckoutInline({ planoKey, planoPreco, onSuccess }: PixCheckoutInlineProps) {
   const [loading, setLoading] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +48,13 @@ export function PixCheckoutInline({ planoKey, onSuccess }: PixCheckoutInlineProp
   const [timeLeft, setTimeLeft] = useState("");
   const [cpf, setCpf] = useState("");
 
+  const cupom = useCupom();
+
   const cpfDigits = cpf.replace(/\D/g, "");
   const canGeneratePix = cpfDigits.length === 11;
+
+  // Preço em centavos para o campo de cupom
+  const precoOriginalCentavos = planoPreco != null ? Math.round(planoPreco * 100) : 0;
 
   const gerarPix = useCallback(async () => {
     if (!canGeneratePix) {
@@ -63,7 +71,11 @@ export function PixCheckoutInline({ planoKey, onSuccess }: PixCheckoutInlineProp
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke("create-pix-order", {
-        body: { plan_code: planoKey, cpf: cpfDigits },
+        body: {
+          plan_code: planoKey,
+          cpf: cpfDigits,
+          coupon_id: cupom.desconto?.cupomId ?? null,
+        },
       });
 
       if (fnError) {
@@ -93,7 +105,7 @@ export function PixCheckoutInline({ planoKey, onSuccess }: PixCheckoutInlineProp
     } finally {
       setLoading(false);
     }
-  }, [canGeneratePix, cpfDigits, planoKey]);
+  }, [canGeneratePix, cpfDigits, planoKey, cupom.desconto]);
 
   useEffect(() => {
     if (!pixData?.expires_at) return;
@@ -210,6 +222,14 @@ export function PixCheckoutInline({ planoKey, onSuccess }: PixCheckoutInlineProp
           />
           <p className="text-xs text-muted-foreground">O CPF é obrigatório para gerar o código PIX.</p>
         </div>
+
+        {/* Cupom de desconto — exibido apenas quando temos o preço do plano */}
+        {precoOriginalCentavos > 0 && (
+          <CupomField
+            {...cupom}
+            precoOriginalCentavos={precoOriginalCentavos}
+          />
+        )}
 
         {error && (
           <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

@@ -130,7 +130,7 @@ serve(async (req) => {
 
     // ── 2. Validar body ──────────────────────────────────────────────
     const body = await req.json();
-    const { plan_code, cpf } = body as { plan_code?: string; cpf?: string };
+    const { plan_code, cpf, coupon_id } = body as { plan_code?: string; cpf?: string; coupon_id?: string | null };
 
     if (!plan_code || !VALID_PLANS.includes(plan_code as PlanoTipoPago)) {
       log("plan_code inválido", { plan_code });
@@ -171,6 +171,7 @@ serve(async (req) => {
     let isUpgrade = false;
     let creditAmount = 0;
     let currentPlanLabel = "";
+    let cupomDesconto = 0;
 
     const { data: currentSub } = await supabaseAdmin
       .from("assinaturas")
@@ -211,6 +212,28 @@ serve(async (req) => {
             adjustedAmount: amount,
           });
         }
+      }
+    }
+
+    // ── 2c. Aplicar desconto do cupom ────────────────────────────────
+    // O cupom já foi validado e seu uso incrementado pela função validar-cupom.
+    // Aqui apenas buscamos tipo/valor para subtrair do amount.
+    if (coupon_id) {
+      const { data: cupomData } = await supabaseAdmin
+        .from("cupons")
+        .select("tipo, valor")
+        .eq("id", coupon_id)
+        .maybeSingle();
+
+      if (cupomData) {
+        if (cupomData.tipo === "percent") {
+          cupomDesconto = Math.round(amount * (cupomData.valor / 100));
+        } else {
+          cupomDesconto = cupomData.valor;
+        }
+        // Aplicar desconto sobre o amount atual (já considera pro-rata se houver upgrade)
+        amount = Math.max(amount - cupomDesconto, 100); // mínimo R$1,00
+        log("Desconto de cupom aplicado", { coupon_id, tipo: cupomData.tipo, valor: cupomData.valor, desconto: cupomDesconto, novoAmount: amount });
       }
     }
 
@@ -275,6 +298,7 @@ serve(async (req) => {
       metadata: {
         user_id: userId,
         plano_tipo: plano,
+        ...(coupon_id ? { coupon_id } : {}),
       },
       closed: true,
     };

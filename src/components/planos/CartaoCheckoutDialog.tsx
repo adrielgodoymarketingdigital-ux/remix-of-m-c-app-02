@@ -26,6 +26,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { trackPurchase, trackInitiateCheckout } from "@/lib/pixel";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useCupom } from "@/hooks/useCupom";
+import { CupomField } from "@/components/planos/CupomField";
 
 // Public Key da Pagar.me (segura para o frontend — usada apenas para tokenizar cartões)
 const PAGARME_PUBLIC_KEY = "pk_p096KVAIDFNmGjNk";
@@ -97,6 +99,7 @@ export function CartaoCheckoutDialog({
   onSuccess,
 }: CartaoCheckoutDialogProps) {
   const { toast } = useToast();
+  const cupom = useCupom();
 
   useEffect(() => {
     if (open) trackInitiateCheckout({ value: planoPreco, planName: planoNome })
@@ -156,6 +159,7 @@ export function CartaoCheckoutDialog({
     setBilling({ cep: "", logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", estado: "" });
     setError(null);
     setSuccess(false);
+    cupom.limpar();
   };
 
   const fetchCep = async (rawCep: string) => {
@@ -255,6 +259,7 @@ export function CartaoCheckoutDialog({
               state: billing.estado,
               country: "BR",
             },
+            coupon_id: cupom.desconto?.cupomId ?? null,
           },
         }
       );
@@ -606,6 +611,12 @@ export function CartaoCheckoutDialog({
                 </div>
               </div>
 
+              {/* Cupom de desconto */}
+              <CupomField
+                {...cupom}
+                precoOriginalCentavos={Math.round(planoPreco * 100)}
+              />
+
               {error && (
                 <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
                   <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -630,7 +641,10 @@ export function CartaoCheckoutDialog({
                 ) : (
                   <>
                     <Lock className="w-4 h-4 mr-2" />
-                    Assinar por {formatCurrency(planoPreco)}
+                    Assinar por{" "}
+                    {cupom.desconto
+                      ? formatCurrency(cupom.calcularPrecoFinal(Math.round(planoPreco * 100)) / 100)
+                      : formatCurrency(planoPreco)}
                   </>
                 )}
               </Button>

@@ -52,6 +52,7 @@ import {
   Building2,
   Smartphone,
   Calculator,
+  Ticket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +101,7 @@ const menuItems = [
 const adminMenuItems = [
   { title: "Usuários", url: "/admin/usuarios", icon: Users, badgeKey: null },
   { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign, badgeKey: null },
+  { title: "Cupons", url: "/admin/cupons", icon: Ticket, badgeKey: null },
   { title: "Novidades", url: "/admin/novidades", icon: Sparkles, badgeKey: null },
   { title: "Onboarding", url: "/admin/onboarding", icon: ClipboardCheck, badgeKey: null },
   { title: "Push Notifications", url: "/admin/push", icon: Bell, badgeKey: null },
