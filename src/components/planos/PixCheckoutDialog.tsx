@@ -24,10 +24,12 @@ import {
   Smartphone,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { trackInitiateCheckout } from "@/lib/pixel";
+import { trackInitiateCheckout, trackPurchase } from "@/lib/pixel";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { useCupom } from "@/hooks/useCupom";
+import { CupomField } from "@/components/planos/CupomField";
 
 interface PixCheckoutDialogProps {
   open: boolean;
@@ -69,6 +71,7 @@ export function PixCheckoutDialog({
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [cpf, setCpf] = useState("");
   const { toast } = useToast();
+  const cupom = useCupom();
 
   const cpfDigits = cpf.replace(/\D/g, "");
   const canGeneratePix = cpfDigits.length === 11;
@@ -96,7 +99,7 @@ export function PixCheckoutDialog({
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
         "create-pix-order",
-        { body: { plan_code: planoKey, cpf: cpfDigits } }
+        { body: { plan_code: planoKey, cpf: cpfDigits, coupon_id: cupom.desconto?.cupomId ?? null } }
       );
 
       if (fnError) {
@@ -142,6 +145,7 @@ export function PixCheckoutDialog({
       setPaymentConfirmed(false);
       setCopied(false);
       setCpf("");
+      cupom.limpar();
     }
   }, [open]);
 
@@ -200,6 +204,7 @@ export function PixCheckoutDialog({
 
       if (data?.paid) {
         setPaymentConfirmed(true);
+        trackPurchase({ value: planoPreco, planName: planoNome });
         toast({
           title: "Pagamento confirmado! 🎉",
           description: "Sua assinatura foi ativada com sucesso.",
@@ -311,6 +316,12 @@ export function PixCheckoutDialog({
                 </p>
               </div>
 
+              {/* Cupom de desconto */}
+              <CupomField
+                {...cupom}
+                precoOriginalCentavos={Math.round(planoPreco * 100)}
+              />
+
               <Button
                 onClick={gerarPix}
                 disabled={!canGeneratePix}
@@ -318,7 +329,9 @@ export function PixCheckoutDialog({
                 className="h-12 w-full text-base font-semibold bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20"
               >
                 <QrCode className="mr-2 h-5 w-5" />
-                Gerar código PIX
+                {cupom.desconto
+                  ? `Gerar PIX por ${formatCurrency(cupom.calcularPrecoFinal(Math.round(planoPreco * 100)) / 100)}`
+                  : "Gerar código PIX"}
               </Button>
             </div>
           )}
