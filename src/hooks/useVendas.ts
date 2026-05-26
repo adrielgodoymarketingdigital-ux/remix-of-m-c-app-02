@@ -50,18 +50,14 @@ export const useVendas = () => {
         queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
       }
 
-      // Usar offset de timezone local para garantir que o filtro respeite o dia do usuário
-      const tzOffset = new Date().getTimezoneOffset();
-      const tzSign = tzOffset <= 0 ? "+" : "-";
-      const tzHours = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
-      const tzMinutes = String(Math.abs(tzOffset) % 60).padStart(2, "0");
-      const tzString = `${tzSign}${tzHours}:${tzMinutes}`;
-
+      // O campo `data` em vendas é armazenado como data pura (YYYY-MM-DD), sem hora.
+      // Comparar diretamente com a string de data evita problemas de timezone onde
+      // filtros com offset local excluíam vendas salvas como meia-noite UTC.
       if (dataInicio) {
-        queryVendas = queryVendas.gte("data", `${dataInicio}T00:00:00${tzString}`);
+        queryVendas = queryVendas.gte("data", dataInicio);
       }
       if (dataFim) {
-        queryVendas = queryVendas.lte("data", `${dataFim}T23:59:59${tzString}`);
+        queryVendas = queryVendas.lte("data", dataFim);
       }
 
       // Carregar ordens de serviço finalizadas (somente do usuário logado)
@@ -83,18 +79,27 @@ export const useVendas = () => {
         queryOrdens = queryOrdens.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
       }
 
-      if (dataInicio && dataFim) {
-        queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tzString},data_saida.lte.${dataFim}T23:59:59${tzString}),and(data_saida.is.null,created_at.gte.${dataInicio}T00:00:00${tzString},created_at.lte.${dataFim}T23:59:59${tzString})`
-        );
-      } else if (dataInicio) {
-        queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tzString}),and(data_saida.is.null,created_at.gte.${dataInicio}T00:00:00${tzString})`
-        );
-      } else if (dataFim) {
-        queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.lte.${dataFim}T23:59:59${tzString}),and(data_saida.is.null,created_at.lte.${dataFim}T23:59:59${tzString})`
-        );
+      // OS usam timestamps (data_saida, created_at) — manter offset local para comparação correta
+      if (dataInicio || dataFim) {
+        const tzOffset = new Date().getTimezoneOffset();
+        const tzSign = tzOffset <= 0 ? "+" : "-";
+        const tzHh = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
+        const tzMm = String(Math.abs(tzOffset) % 60).padStart(2, "0");
+        const tz = `${tzSign}${tzHh}:${tzMm}`;
+
+        if (dataInicio && dataFim) {
+          queryOrdens = queryOrdens.or(
+            `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tz},data_saida.lte.${dataFim}T23:59:59${tz}),and(data_saida.is.null,created_at.gte.${dataInicio}T00:00:00${tz},created_at.lte.${dataFim}T23:59:59${tz})`
+          );
+        } else if (dataInicio) {
+          queryOrdens = queryOrdens.or(
+            `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tz}),and(data_saida.is.null,created_at.gte.${dataInicio}T00:00:00${tz})`
+          );
+        } else if (dataFim) {
+          queryOrdens = queryOrdens.or(
+            `and(data_saida.not.is.null,data_saida.lte.${dataFim}T23:59:59${tz}),and(data_saida.is.null,created_at.lte.${dataFim}T23:59:59${tz})`
+          );
+        }
       }
 
       // Query vendas avulsas com o mesmo filtro de data
@@ -104,8 +109,15 @@ export const useVendas = () => {
         .eq("user_id", resolvedUserId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
-      if (dataInicio) queryVendasAvulsas = queryVendasAvulsas.gte("created_at", `${dataInicio}T00:00:00${tzString}`);
-      if (dataFim) queryVendasAvulsas = queryVendasAvulsas.lte("created_at", `${dataFim}T23:59:59${tzString}`);
+      if (dataInicio || dataFim) {
+        const tzOffset = new Date().getTimezoneOffset();
+        const tzSign = tzOffset <= 0 ? "+" : "-";
+        const tzHh = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
+        const tzMm = String(Math.abs(tzOffset) % 60).padStart(2, "0");
+        const tz = `${tzSign}${tzHh}:${tzMm}`;
+        if (dataInicio) queryVendasAvulsas = queryVendasAvulsas.gte("created_at", `${dataInicio}T00:00:00${tz}`);
+        if (dataFim) queryVendasAvulsas = queryVendasAvulsas.lte("created_at", `${dataFim}T23:59:59${tz}`);
+      }
 
       // Executar queries em paralelo com retry individual
       const [vendasResult, ordensResult, avulsasResult] = await Promise.allSettled([

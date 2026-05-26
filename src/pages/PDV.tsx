@@ -49,6 +49,17 @@ import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogVendaAvulsa } from "@/components/pdv/DialogVendaAvulsa";
 
+/** Retorna a data de hoje no formato YYYY-MM-DD no timezone local do usuário.
+ * Necessário porque new Date().toISOString() retorna UTC, o que pode salvar
+ * a data do dia anterior para usuários no UTC-3 (Brasil) após as 21h. */
+const dataLocalHoje = (): string => {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+};
+
 const clienteSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
   telefone: z.string().trim().max(20).optional(),
@@ -390,7 +401,7 @@ const PDV = () => {
             user_id: userIdParaVenda,
             empresa_id: empresaIdPDV,
             // Campo data é obrigatório para filtros de comissão/relatórios por período
-            data: new Date().toISOString().split("T")[0],
+            data: dataLocalHoje(),
             data_prevista_recebimento: dataPrevisao,
             recebido: formaPagamento !== "a_receber",
             grupo_venda: grupoVendaId,
@@ -426,7 +437,7 @@ const PDV = () => {
                 nome: `Venda - ${nomeItem} - ${nomeCliente}${sufixoParcela}`,
                 tipo: "receber",
                 valor: vendaData.total,
-                data: dataPrevisao || new Date().toISOString().split('T')[0],
+                data: dataPrevisao || dataLocalHoje(),
                 data_vencimento: dataPrevisao || null,
                 status: "pendente",
                 recorrente: false,
@@ -523,7 +534,7 @@ const PDV = () => {
               user_id: userIdParaVenda,
               empresa_id: empresaIdPDV,
               // Campo data obrigatório para filtros por período
-              data: new Date().toISOString().split("T")[0],
+              data: dataLocalHoje(),
               data_prevista_recebimento: dataPrevisaoSegunda,
               recebido: segundaFormaPagamento !== "a_receber",
               grupo_venda: grupoVendaId,
@@ -551,7 +562,7 @@ const PDV = () => {
                 nome: `Venda - ${item.nome} - ${clienteSelecionado?.nome || "Cliente avulso"}${sufixoParcela} (2ª forma)`,
                 tipo: "receber",
                 valor: valorItemSegundaParcela,
-                data: dataPrevisaoSegunda || new Date().toISOString().split("T")[0],
+                data: dataPrevisaoSegunda || dataLocalHoje(),
                 data_vencimento: dataPrevisaoSegunda || null,
                 status: "pendente",
                 recorrente: false,
@@ -577,7 +588,7 @@ const PDV = () => {
               nome: `Taxa Cartão ${taxaSel.bandeira} - Venda PDV`,
               tipo: "pagar" as const,
               valor: valorTaxa,
-              data: new Date().toISOString().split('T')[0],
+              data: dataLocalHoje(),
               status: "pago" as const,
               recorrente: false,
               categoria: "Taxa de Cartão",
