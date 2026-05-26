@@ -50,6 +50,81 @@ function calcularProximaCobranca(planoTipo: string): string {
   ).toISOString();
 }
 
+async function dispararMetaCapiPurchase(
+  supabaseAdmin: AdminClient,
+  userId: string,
+  valorCentavos: number,
+  planoTipo: string
+): Promise<void> {
+  try {
+    // 1. Buscar dados de tracking do profile
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("email, fbc, fbp, purchase_event_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!profile) {
+      log("⚠️ [CAPI] Profile não encontrado para Purchase", { userId });
+      return;
+    }
+
+    // 2. Deduplicação: se já existe purchase_event_id, não disparar novamente
+    if (profile.purchase_event_id) {
+      log("⚠️ [CAPI] Purchase já disparado anteriormente", { userId, purchase_event_id: profile.purchase_event_id });
+      return;
+    }
+
+    // 3. Gerar event_id único e salvar no profile (deduplicação futura)
+    const eventId = crypto.randomUUID();
+    await supabaseAdmin
+      .from("profiles")
+      .update({ purchase_event_id: eventId })
+      .eq("user_id", userId);
+
+    // 4. Calcular valor em BRL
+    const valorBRL = valorCentavos / 100;
+
+    // 5. Chamar meta-capi-event
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const capiRes = await fetch(`${supabaseUrl}/functions/v1/meta-capi-event`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({
+        event_name: "Purchase",
+        event_id: eventId,
+        email: profile.email || null,
+        fbp: profile.fbp || null,
+        fbc: profile.fbc || null,
+        client_user_agent: null,
+        custom_data: {
+          currency: "BRL",
+          value: valorBRL,
+          content_name: planoTipo,
+          content_type: "product",
+        },
+      }),
+    });
+
+    const capiBody = await capiRes.text();
+    log("📣 [CAPI] Purchase enviado", {
+      userId,
+      eventId,
+      valorBRL,
+      status: capiRes.status,
+      response: capiBody.substring(0, 200),
+    });
+  } catch (err) {
+    // Fire-and-forget: erro no CAPI não deve quebrar o webhook
+    log("⚠️ [CAPI] Erro ao disparar Purchase (não crítico)", { error: String(err) });
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -337,6 +412,9 @@ serve(async (req) => {
       log("Assinatura criada", { userId, planoTipo });
     }
 
+    // 🎯 Meta CAPI Purchase (server-side)
+    await dispararMetaCapiPurchase(supabaseAdmin, userId, pagamento.valor_centavos, planoTipo);
+
     // ── 4. Notificação admin ─────────────────────────────────────────
     await supabaseAdmin.from("admin_notifications").insert({
       tipo: "nova_assinatura_pix",
@@ -498,6 +576,24 @@ async function handleSubscriptionCharged(
     plano: assinatura.plano_tipo,
     proximaCobranca,
   });
+
+  // 🎯 Meta CAPI Purchase (server-side)
+  const chargeForCapi =
+    ((data?.charge as Record<string, unknown>) ??
+      ((data?.charges as unknown[])?.[0] as Record<string, unknown>) ??
+      ((data?.invoice as Record<string, unknown>)?.charge as Record<string, unknown>)) ||
+    undefined;
+  const valorCentavosCard =
+    (chargeForCapi?.amount as number) ??
+    ((data?.invoice as Record<string, unknown>)?.amount as number) ??
+    (data?.amount as number) ??
+    0;
+  await dispararMetaCapiPurchase(
+    supabaseAdmin,
+    assinatura.user_id,
+    Number(valorCentavosCard),
+    assinatura.plano_tipo
+  );
 
   // 🔔 Push admin via dispatch-event (usa notification_rules do painel admin)
   try {
