@@ -281,11 +281,28 @@ export function CartaoCheckoutDialog({
         throw new Error("Pagamento não aprovado pela operadora.");
       }
 
+      // Buscar purchase_event_id do profile para deduplicação com CAPI
+      let purchaseEventId: string | undefined;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("purchase_event_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          purchaseEventId = profile?.purchase_event_id ?? undefined;
+        }
+      } catch {
+        // fire-and-forget: erro aqui não impede o fluxo
+      }
+
       setSuccess(true);
       trackPurchase({
         value: planoPreco,
         orderId: data?.subscription_id,
         planName: planoNome,
+        eventId: purchaseEventId,
       });
       toast({
         title: "Assinatura ativada!",

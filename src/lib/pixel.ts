@@ -51,17 +51,26 @@ export async function trackPurchase(dados: {
   currency?: string
   orderId?: string
   planName?: string
+  eventId?: string
 }) {
   if (typeof window === 'undefined' || !PIXEL_ID) return
   if (import.meta.env.DEV) {
     console.log('[Pixel] Purchase', dados)
   }
-  const { default: ReactPixel } = await import('react-facebook-pixel')
-  ReactPixel.track('Purchase', {
-    value: dados.value,
-    currency: dados.currency ?? 'BRL',
-    content_name: dados.planName ?? 'Assinatura',
-    content_type: 'product',
-    order_id: dados.orderId,
-  })
+  // Usa window.fbq diretamente para poder passar { eventID } no 4º argumento
+  // (o wrapper react-facebook-pixel não repassa esse parâmetro de deduplicação)
+  if (typeof window.fbq === 'function') {
+    window.fbq(
+      'track',
+      'Purchase',
+      {
+        value: dados.value,
+        currency: dados.currency ?? 'BRL',
+        content_name: dados.planName ?? 'Assinatura',
+        content_type: 'product',
+        order_id: dados.orderId,
+      },
+      dados.eventId ? { eventID: dados.eventId } : {},
+    )
+  }
 }

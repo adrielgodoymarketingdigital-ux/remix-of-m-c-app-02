@@ -134,11 +134,28 @@ export function PixCheckoutInline({ planoKey, onSuccess }: PixCheckoutInlineProp
         .maybeSingle();
       if (queryError) throw queryError;
       if (data?.status === "paid") {
+        // Buscar purchase_event_id para deduplicação com CAPI
+        let purchaseEventId: string | undefined;
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("purchase_event_id")
+              .eq("user_id", user.id)
+              .maybeSingle();
+            purchaseEventId = profile?.purchase_event_id ?? undefined;
+          }
+        } catch {
+          // fire-and-forget
+        }
+
         setPaymentConfirmed(true);
         trackPurchase({
           value: pixData.plan.amount_cents / 100,
           orderId: pixData.order_id,
           planName: pixData.plan.name,
+          eventId: purchaseEventId,
         });
         toast.success("Pagamento confirmado! 🎉 Sua assinatura foi ativada.");
         onSuccess?.();
