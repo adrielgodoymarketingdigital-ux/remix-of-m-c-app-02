@@ -488,7 +488,21 @@ export default function MultiEmpresas() {
     try {
       const response = await supabase.functions.invoke("criar-filial", { body: dados });
       if (response.error) {
-        const msg = response.data?.error || response.error.message || "Erro ao criar filial";
+        // Quando a edge function retorna HTTP 4xx/5xx, o SDK popula response.error
+        // (FunctionsHttpError) e response.data fica null. O body real com a mensagem
+        // de erro está em response.error.context (o Response original).
+        let msg = "Erro ao criar filial";
+        try {
+          const ctx = (response.error as any)?.context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            msg = body?.error || msg;
+          } else {
+            msg = response.error.message || msg;
+          }
+        } catch {
+          msg = response.error.message || msg;
+        }
         toast.error(msg);
         return;
       }
