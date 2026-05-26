@@ -67,12 +67,27 @@ export default function CadastroPlano() {
         return;
       }
 
+      // Capturar tracking antes do signUp para incluir no raw_user_meta_data
+      // O trigger handle_new_user (SECURITY DEFINER) lê esses campos e grava no profile
+      const tracking = getTrackingParams();
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password: senha,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
-          data: { nome, celular: celularNumeros }
+          data: {
+            nome,
+            celular: celularNumeros,
+            fbc: tracking.fbc,
+            fbp: tracking.fbp,
+            fbclid: tracking.fbclid,
+            utm_source: tracking.utm_source,
+            utm_medium: tracking.utm_medium,
+            utm_campaign: tracking.utm_campaign,
+            utm_content: tracking.utm_content,
+            utm_term: tracking.utm_term,
+          }
         }
       });
 
@@ -100,26 +115,6 @@ export default function CadastroPlano() {
             setIsLogin(true);
             return;
           }
-        }
-
-        // Salvar parâmetros de tracking no profile (linha já existe via trigger AFTER INSERT)
-        try {
-          const tracking = getTrackingParams();
-          await supabase
-            .from('profiles')
-            .update({
-              fbc: tracking.fbc,
-              fbp: tracking.fbp,
-              fbclid: tracking.fbclid,
-              utm_source: tracking.utm_source,
-              utm_medium: tracking.utm_medium,
-              utm_campaign: tracking.utm_campaign,
-              utm_content: tracking.utm_content,
-              utm_term: tracking.utm_term,
-            })
-            .eq('user_id', data.user.id);
-        } catch (trackingErr) {
-          console.warn('[Tracking] Falha ao salvar params no profile:', trackingErr);
         }
 
         // Aguardar profile ser criado pelo trigger e disparar CompleteRegistration

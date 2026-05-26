@@ -67,6 +67,10 @@ export default function CadastroTrial() {
     setLoading(true);
 
     try {
+      // Capturar tracking antes do signUp para incluir no raw_user_meta_data
+      // O trigger handle_new_user (SECURITY DEFINER) lê esses campos e grava no profile
+      const tracking = getTrackingParams();
+
       // Create account
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
@@ -75,6 +79,14 @@ export default function CadastroTrial() {
           data: {
             nome: formData.nome,
             celular: whatsappDigits,
+            fbc: tracking.fbc,
+            fbp: tracking.fbp,
+            fbclid: tracking.fbclid,
+            utm_source: tracking.utm_source,
+            utm_medium: tracking.utm_medium,
+            utm_campaign: tracking.utm_campaign,
+            utm_content: tracking.utm_content,
+            utm_term: tracking.utm_term,
           },
         },
       });
@@ -91,26 +103,6 @@ export default function CadastroTrial() {
           });
           setLoading(false);
           return;
-        }
-
-        // Salvar parâmetros de tracking no profile (linha já existe via trigger AFTER INSERT)
-        try {
-          const tracking = getTrackingParams();
-          await supabase
-            .from('profiles')
-            .update({
-              fbc: tracking.fbc,
-              fbp: tracking.fbp,
-              fbclid: tracking.fbclid,
-              utm_source: tracking.utm_source,
-              utm_medium: tracking.utm_medium,
-              utm_campaign: tracking.utm_campaign,
-              utm_content: tracking.utm_content,
-              utm_term: tracking.utm_term,
-            })
-            .eq('user_id', data.user!.id);
-        } catch (trackingErr) {
-          console.warn('[Tracking] Falha ao salvar params no profile:', trackingErr);
         }
 
         // Track CompleteRegistration com deduplicação Pixel + CAPI
