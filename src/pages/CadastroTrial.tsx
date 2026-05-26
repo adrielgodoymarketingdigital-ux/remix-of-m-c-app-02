@@ -126,7 +126,7 @@ export default function CadastroTrial() {
         });
 
         // Redirecionar para pagamento
-        navigate(`/cadastro-plano?plan=${planFromUrl}`);
+        window.location.href = `/video-boas-vindas?plan=${planFromUrl}`;
       }
     } catch (error: any) {
       console.error("Registration error:", error);
