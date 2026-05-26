@@ -99,7 +99,23 @@ export function PixCheckoutDialog({
         { body: { plan_code: planoKey, cpf: cpfDigits } }
       );
 
-      if (fnError) throw new Error(fnError.message);
+      if (fnError) {
+        // supabase.functions.invoke coloca a resposta HTTP em fnError.context
+        // quando a edge function retorna status não-2xx — extrair a mensagem real
+        let message = fnError.message;
+        const errorWithContext = fnError as Error & { context?: Response };
+        if (errorWithContext.context) {
+          try {
+            const errorBody = await errorWithContext.context.json();
+            if (typeof errorBody?.error === "string") {
+              message = errorBody.error;
+            }
+          } catch {
+            // noop — mantém fnError.message
+          }
+        }
+        throw new Error(message);
+      }
       if (data?.error) throw new Error(data.error);
 
       setPixData(data);
