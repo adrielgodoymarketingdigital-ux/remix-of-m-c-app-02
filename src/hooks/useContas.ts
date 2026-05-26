@@ -159,7 +159,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         return false;
       }
 
-      const insertData: Record<string, unknown> = { ...dados, user_id: user.id };
+      const targetUserId = resolvedUserIdFromContext ?? user.id;
+      const insertData: Record<string, unknown> = { ...dados, user_id: targetUserId };
       if (empresaFiltro) insertData.empresa_id = empresaFiltro;
       const { error } = await supabase.from("contas").insert(insertData);
 
@@ -188,6 +189,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
+      const targetUserId = resolvedUserIdFromContext ?? user.id;
+
       // Se é uma conta virtual de venda, atualizar a venda
       if (id.startsWith("venda_")) {
         const vendaId = id.replace("venda_", "");
@@ -196,7 +199,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
             .from("vendas")
             .update({ recebido: true, data_recebimento: new Date().toISOString() })
             .eq("id", vendaId)
-            .eq("user_id", user.id);
+            .eq("user_id", targetUserId);
           if (error) throw error;
         }
         toast({
@@ -211,7 +214,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         .from("contas")
         .update(dados)
         .eq("id", id)
-        .eq("user_id", user.id);
+        .eq("user_id", targetUserId);
 
       if (error) throw error;
 
@@ -238,6 +241,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
+      const targetUserId = resolvedUserIdFromContext ?? user.id;
+
       // Contas virtuais de venda não podem ser excluídas
       if (id.startsWith("venda_")) {
         toast({
@@ -252,7 +257,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         .from("contas")
         .delete()
         .eq("id", id)
-        .eq("user_id", user.id);
+        .eq("user_id", targetUserId);
 
       if (error) throw error;
 
@@ -289,6 +294,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            const targetUserId = resolvedUserIdFromContext ?? user.id;
             const dataAtual = new Date(conta.data);
             const proximoMes = new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, dataAtual.getDate());
             const proximaData = `${proximoMes.getFullYear()}-${String(proximoMes.getMonth() + 1).padStart(2, '0')}-${String(proximoMes.getDate()).padStart(2, '0')}`;
@@ -296,7 +302,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
             const { data: existente } = await supabase
               .from("contas")
               .select("id")
-              .eq("user_id", user.id)
+              .eq("user_id", targetUserId)
               .eq("nome", conta.nome)
               .eq("data", proximaData)
               .eq("recorrente", true)
@@ -313,7 +319,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
                 categoria: conta.categoria || null,
                 descricao: conta.descricao || null,
                 fornecedor_id: conta.fornecedor_id || null,
-                user_id: user.id,
+                user_id: targetUserId,
               });
 
               toast({
@@ -338,8 +344,10 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
+      const targetUserId = resolvedUserIdFromContext ?? user.id;
+
       const contasParaBaixa = contas.filter(c => ids.includes(c.id) && c.status === 'pendente');
-      
+
       // Separar contas reais de virtuais (vendas)
       const contasReaisPagar = contasParaBaixa.filter(c => c.tipo === 'pagar' && !c.id.startsWith("venda_")).map(c => c.id);
       const contasReaisReceber = contasParaBaixa.filter(c => c.tipo === 'receber' && !c.id.startsWith("venda_")).map(c => c.id);
@@ -350,7 +358,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           .from("contas")
           .update({ status: 'pago' as any })
           .in("id", contasReaisPagar)
-          .eq("user_id", user.id);
+          .eq("user_id", targetUserId);
         if (error) throw error;
       }
 
@@ -359,7 +367,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           .from("contas")
           .update({ status: 'recebido' as any })
           .in("id", contasReaisReceber)
-          .eq("user_id", user.id);
+          .eq("user_id", targetUserId);
         if (error) throw error;
       }
 
@@ -370,7 +378,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           .from("vendas")
           .update({ recebido: true, data_recebimento: new Date().toISOString() })
           .in("id", vendaIds)
-          .eq("user_id", user.id);
+          .eq("user_id", targetUserId);
         if (error) throw error;
       }
 
