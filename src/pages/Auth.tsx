@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone, Eye, EyeOff, Mail, KeyRound, CheckCircle2 } from "lucide-react";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
-import { trackCompleteRegistration } from "@/lib/tracking";
+import { trackCompleteRegistration, getTrackingParams } from "@/lib/tracking";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import {
   Dialog,
@@ -111,6 +111,10 @@ const Auth = () => {
           return;
         }
 
+        // Capturar tracking antes do signUp para incluir no raw_user_meta_data
+        // O trigger handle_new_user (SECURITY DEFINER) lê esses campos e grava no profile
+        const tracking = getTrackingParams();
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password: senha,
@@ -118,6 +122,14 @@ const Auth = () => {
             data: {
               nome: nome,
               celular: celularNumeros,
+              fbc: tracking.fbc,
+              fbp: tracking.fbp,
+              fbclid: tracking.fbclid,
+              utm_source: tracking.utm_source,
+              utm_medium: tracking.utm_medium,
+              utm_campaign: tracking.utm_campaign,
+              utm_content: tracking.utm_content,
+              utm_term: tracking.utm_term,
             },
             emailRedirectTo: `${window.location.origin}/video-boas-vindas`,
           },
