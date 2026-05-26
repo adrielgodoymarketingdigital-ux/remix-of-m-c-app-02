@@ -27,7 +27,10 @@ export const useVendas = () => {
       const user = session?.user;
       if (!user) { setLoading(false); return; }
 
-      const resolvedUserId = resolvedUserIdFromContext ?? ((isFuncionario && lojaUserId) ? lojaUserId : user.id);
+      // Usa || em vez de ?? para que null (estado de carregamento) também acione o fallback.
+      // ?? só ignora undefined; || ignora null e undefined — necessário porque selfId
+      // começa como null no useIdentidade antes de resolver o auth.getUser().
+      const resolvedUserId = resolvedUserIdFromContext || (isFuncionario && lojaUserId ? lojaUserId : user.id);
 
       // Carregar vendas normais (somente do usuário logado)
       let queryVendas = supabase
