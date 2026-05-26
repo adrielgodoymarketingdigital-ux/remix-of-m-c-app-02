@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Gift, CheckCircle2, Lock, Phone } from "lucide-react";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
-import { trackCompleteRegistration } from "@/lib/tracking";
+import { trackCompleteRegistration, getTrackingParams } from "@/lib/tracking";
 
 export default function CadastroTrial() {
   const navigate = useNavigate();
@@ -91,6 +91,26 @@ export default function CadastroTrial() {
           });
           setLoading(false);
           return;
+        }
+
+        // Salvar parâmetros de tracking no profile (linha já existe via trigger AFTER INSERT)
+        try {
+          const tracking = getTrackingParams();
+          await supabase
+            .from('profiles')
+            .update({
+              fbc: tracking.fbc,
+              fbp: tracking.fbp,
+              fbclid: tracking.fbclid,
+              utm_source: tracking.utm_source,
+              utm_medium: tracking.utm_medium,
+              utm_campaign: tracking.utm_campaign,
+              utm_content: tracking.utm_content,
+              utm_term: tracking.utm_term,
+            })
+            .eq('user_id', data.user!.id);
+        } catch (trackingErr) {
+          console.warn('[Tracking] Falha ao salvar params no profile:', trackingErr);
         }
 
         // Track CompleteRegistration com deduplicação Pixel + CAPI
