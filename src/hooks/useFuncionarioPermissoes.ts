@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Permissoes, PermissoesModulos, PermissoesDados } from "@/types/funcionario";
+import type { Permissoes, PermissoesModulos, PermissoesDados, PermissoesRecursos } from "@/types/funcionario";
 
 interface FuncionarioPermissoesResult {
   isFuncionario: boolean;
@@ -21,6 +21,8 @@ interface FuncionarioPermissoesResult {
   podeSincronizarDispositivos: boolean;
   podeSincronizarServicos: boolean;
   podeSincronizarClientes: boolean;
+  podeVerContasPagarReceber: boolean;
+  podeVerAnaliseLucros: boolean;
 }
 
 const PERMISSOES_DONO: Permissoes = {
@@ -35,6 +37,7 @@ const PERMISSOES_DONO: Permissoes = {
     origem_dispositivos: true,
     fornecedores: true,
     clientes: true,
+    fidelidade: true,
     orcamentos: true,
     contas: true,
     vendas: true,
@@ -46,6 +49,7 @@ const PERMISSOES_DONO: Permissoes = {
     suporte: true,
     novidades: true,
     tutoriais: true,
+    precificador: true,
   },
   recursos: {
     ver_custos: true,
@@ -55,6 +59,8 @@ const PERMISSOES_DONO: Permissoes = {
     ver_tecnicos_os: true,
     ver_inventario: true,
     ver_todas_os: true,
+    ver_contas_pagar_receber: true,
+    ver_analise_lucros: true,
   },
   dados: {
     produtos_pecas: true,
@@ -77,6 +83,7 @@ const ROTA_MODULO_MAP: Record<string, keyof PermissoesModulos> = {
   "/origem-dispositivos": "origem_dispositivos",
   "/fornecedores": "fornecedores",
   "/clientes": "clientes",
+  "/fidelidade": "fidelidade",
   "/orcamentos": "orcamentos",
   "/contas": "contas",
   "/vendas": "vendas",
@@ -223,5 +230,7 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
     podeSincronizarDispositivos,
     podeSincronizarServicos,
     podeSincronizarClientes,
+    podeVerContasPagarReceber: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_contas_pagar_receber ?? false),
+    podeVerAnaliseLucros: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_analise_lucros ?? false),
   };
 }

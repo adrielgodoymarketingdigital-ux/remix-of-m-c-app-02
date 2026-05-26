@@ -78,15 +78,15 @@ const menuItems = [
   { title: "Origem de Dispositivos", url: "/origem-dispositivos", icon: ShoppingBag, modulo: "origem_dispositivos" as keyof PermissoesModulos },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, modulo: "fornecedores" as keyof PermissoesModulos },
   { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos, items: [
-    { title: "👥 Clientes", url: "/clientes" },
-    { title: "🏆 Fidelidade", url: "/fidelidade" },
+    { title: "👥 Clientes", url: "/clientes", modulo: "clientes" as keyof PermissoesModulos },
+    { title: "🏆 Fidelidade", url: "/fidelidade", modulo: "fidelidade" as keyof PermissoesModulos },
   ]},
   { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
-  
+
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
   { title: "Financeiro", url: "/financeiro", icon: FileText, modulo: "financeiro" as keyof PermissoesModulos, items: [
-    { title: "💰 Financeiro", url: "/financeiro" },
-    { title: "📊 Relatórios", url: "/relatorios" },
+    { title: "💰 Financeiro", url: "/financeiro", modulo: "financeiro" as keyof PermissoesModulos },
+    { title: "📊 Relatórios", url: "/relatorios", modulo: "relatorios" as keyof PermissoesModulos },
   ]},
   { title: "Equipe", url: "/equipe", icon: Users, modulo: "equipe" as keyof PermissoesModulos },
   { title: "Configurações", url: "/configuracoes", icon: Settings, modulo: "configuracoes" as keyof PermissoesModulos },
@@ -164,14 +164,30 @@ export function AppSidebar() {
     }
 
     // Para funcionários, filtrar por permissões configuradas pelo dono
-    return menuItems.filter(item => {
-      // Funcionários NUNCA veem Plano, Equipe ou Multi Empresas
-      if (['/plano', '/equipe', '/multi-empresas'].includes(item.url)) {
-        return false;
-      }
-      // Verificar permissão do módulo conforme configurado pelo dono
-      return temAcessoModuloFuncionario(item.modulo);
-    });
+    return menuItems
+      .filter(item => {
+        // Funcionários NUNCA veem Plano, Equipe ou Multi Empresas
+        if (['/plano', '/equipe', '/multi-empresas'].includes(item.url)) {
+          return false;
+        }
+        // Verificar permissão do módulo conforme configurado pelo dono
+        return temAcessoModuloFuncionario(item.modulo);
+      })
+      .map(item => {
+        // Filtrar submenus individualmente por permissão de módulo
+        if (item.items && item.items.length > 0) {
+          const subsFiltrados = item.items.filter(sub =>
+            sub.modulo ? temAcessoModuloFuncionario(sub.modulo) : true
+          );
+          return { ...item, items: subsFiltrados };
+        }
+        return item;
+      })
+      .filter(item => {
+        // Se todos os submenus foram removidos, ocultar o item pai inteiro
+        if (item.items !== undefined) return item.items.length > 0;
+        return true;
+      });
   }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin]);
 
   // Verificar se novidades está visível (não mostrar durante loading)

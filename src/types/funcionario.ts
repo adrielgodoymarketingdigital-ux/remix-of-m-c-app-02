@@ -41,6 +41,7 @@ export interface PermissoesModulos {
   origem_dispositivos: boolean;
   fornecedores: boolean;
   clientes: boolean;
+  fidelidade: boolean;
   orcamentos: boolean;
   contas: boolean;
   vendas: boolean;
@@ -63,6 +64,8 @@ export interface PermissoesRecursos {
   ver_tecnicos_os: boolean;
   ver_inventario: boolean;
   ver_todas_os: boolean;
+  ver_contas_pagar_receber: boolean;
+  ver_analise_lucros: boolean;
 }
 
 export interface PermissoesDados {
@@ -128,6 +131,7 @@ export const PERMISSOES_DEFAULT: Permissoes = {
     origem_dispositivos: false,
     fornecedores: false,
     clientes: false,
+    fidelidade: false,
     orcamentos: false,
     contas: false,
     vendas: false,
@@ -149,6 +153,8 @@ export const PERMISSOES_DEFAULT: Permissoes = {
     ver_tecnicos_os: false,
     ver_inventario: false,
     ver_todas_os: false,
+    ver_contas_pagar_receber: false,
+    ver_analise_lucros: false,
   },
   dados: {
     produtos_pecas: false,
@@ -170,6 +176,7 @@ export const MODULOS_LABELS: Record<keyof PermissoesModulos, string> = {
   origem_dispositivos: "Origem de Dispositivos",
   fornecedores: "Fornecedores",
   clientes: "Clientes",
+  fidelidade: "Fidelidade",
   orcamentos: "Orçamentos",
   contas: "Contas",
   vendas: "Vendas",
@@ -192,6 +199,8 @@ export const RECURSOS_LABELS: Record<keyof PermissoesRecursos, string> = {
   ver_tecnicos_os: "Ver lista de técnicos na Ordem de Serviço",
   ver_inventario: "Ver cards de inventário (estoque valorizado)",
   ver_todas_os: "Ver todas as ordens de serviço (desativado = apenas as próprias)",
+  ver_contas_pagar_receber: "Ver seção de Contas a Pagar e Receber (dentro do Financeiro)",
+  ver_analise_lucros: "Ver seção de Análise de Lucros e Custos (dentro do Financeiro)",
 };
 
 export const DADOS_LABELS: Record<keyof PermissoesDados, string> = {
@@ -213,6 +222,7 @@ export const ROTA_PARA_MODULO: Record<string, keyof PermissoesModulos> = {
   "/origem-dispositivos": "origem_dispositivos",
   "/fornecedores": "fornecedores",
   "/clientes": "clientes",
+  "/fidelidade": "fidelidade",
   "/orcamentos": "orcamentos",
   "/contas": "contas",
   "/vendas": "vendas",

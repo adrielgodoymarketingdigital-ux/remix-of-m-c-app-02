@@ -21,11 +21,13 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useConfetti } from "@/hooks/useConfetti";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FiltrosPeriodo } from "@/components/financeiro/FiltroPeriodoAvancado";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 
 export default function Financeiro() {
   const { toast } = useToast();
   const { disparar: dispararConfetti, dispararLados } = useConfetti();
   const jaCompletouLucroRef = useRef(false);
+  const { podeVerContasPagarReceber, podeVerAnaliseLucros, isDonoLoja } = useFuncionarioPermissoes();
   const {
     loading,
     calcularLucroPorItem,
@@ -209,23 +211,27 @@ export default function Financeiro() {
           </div>
 
           {/* Seção 1: Contas a Pagar e a Receber */}
-          <SecaoContasPagarReceber
-            contas={contas}
-            onCriarConta={criarConta}
-            onAtualizarConta={atualizarConta}
-            onExcluirConta={excluirConta}
-            onMarcarComoPaga={marcarComoPaga}
-            categoriasExtras={todasCategorias()}
-          />
+          {(isDonoLoja || podeVerContasPagarReceber) && (
+            <SecaoContasPagarReceber
+              contas={contas}
+              onCriarConta={criarConta}
+              onAtualizarConta={atualizarConta}
+              onExcluirConta={excluirConta}
+              onMarcarComoPaga={marcarComoPaga}
+              categoriasExtras={todasCategorias()}
+            />
+          )}
 
           {/* Seção 2: Análise de Lucros e Custos */}
-          <SecaoAnaliseLucrosCustos
-            loading={loading}
-            calcularLucroPorItem={calcularLucroPorItem}
-            calcularEvolucaoMensal={calcularEvolucaoMensal}
-            calcularResumo={calcularResumo}
-            onFiltroChange={handleFiltroChange}
-          />
+          {(isDonoLoja || podeVerAnaliseLucros) && (
+            <SecaoAnaliseLucrosCustos
+              loading={loading}
+              calcularLucroPorItem={calcularLucroPorItem}
+              calcularEvolucaoMensal={calcularEvolucaoMensal}
+              calcularResumo={calcularResumo}
+              onFiltroChange={handleFiltroChange}
+            />
+          )}
         </div>
       </main>
     </AppLayout>
