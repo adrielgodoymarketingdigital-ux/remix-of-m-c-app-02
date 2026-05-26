@@ -416,9 +416,10 @@ serve(async (req) => {
     await dispararMetaCapiPurchase(supabaseAdmin, userId, pagamento.valor_centavos, planoTipo);
 
     // ── 4. Notificação admin ─────────────────────────────────────────
+    const isRenovacaoPix = !!assinaturaExistente;
     await supabaseAdmin.from("admin_notifications").insert({
       tipo: "nova_assinatura_pix",
-      titulo: "Nova assinatura via PIX!",
+      titulo: isRenovacaoPix ? "Renovação via PIX!" : "Nova assinatura via PIX!",
       mensagem: `Pagamento PIX confirmado para plano ${planoTipo}`,
       dados: {
         user_id: userId,
@@ -446,7 +447,7 @@ serve(async (req) => {
           "Authorization": `Bearer ${serviceKey}`,
         },
         body: JSON.stringify({
-          event_type: "SUBSCRIPTION_CREATED",
+          event_type: isRenovacaoPix ? "SUBSCRIPTION_RENEWED" : "SUBSCRIPTION_CREATED",
           payload: {
             user_id: userId,
             valor: valorBRL,
@@ -456,7 +457,11 @@ serve(async (req) => {
         }),
       });
       const dispatchBody = await dispatchRes.text();
-      log("📣 dispatch-event respondeu (PIX)", { status: dispatchRes.status, body: dispatchBody.substring(0, 200) });
+      log("📣 dispatch-event respondeu (PIX)", {
+        status: dispatchRes.status,
+        body: dispatchBody.substring(0, 200),
+        event_type: isRenovacaoPix ? "SUBSCRIPTION_RENEWED" : "SUBSCRIPTION_CREATED",
+      });
     } catch (err) {
       log("⚠️ Erro ao disparar dispatch-event (PIX)", { error: String(err) });
     }
@@ -632,7 +637,7 @@ async function handleSubscriptionCharged(
         "Authorization": `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({
-        event_type: "SUBSCRIPTION_CREATED",
+        event_type: eraNovaVenda ? "SUBSCRIPTION_CREATED" : "SUBSCRIPTION_RENEWED",
         payload: {
           user_id: assinatura.user_id,
           valor: valorBRL,
@@ -645,6 +650,7 @@ async function handleSubscriptionCharged(
     log("📣 dispatch-event respondeu (cartão)", {
       status: dispatchRes.status,
       body: dispatchBody.substring(0, 200),
+      event_type: eraNovaVenda ? "SUBSCRIPTION_CREATED" : "SUBSCRIPTION_RENEWED",
     });
   } catch (err) {
     log("⚠️ Erro ao disparar dispatch-event (cartão)", { error: String(err) });
