@@ -182,9 +182,14 @@ export const distribuirCustoParcelasGrupo = (vendas: VendaFinanceiraLike[]): Ven
     const custoPorParcela = custoGrupo / totalParcelas;
 
     for (const p of parcelas) {
+      // custoPorParcela é o custo total desta entrada (já considerando a quantidade original).
+      // Dividimos pela quantidade para obter o custo unitário correto, evitando que
+      // getVendaCustoTotal (custo_unitario * quantidade) produza valores errados
+      // (ex: sem esta divisão: 700 * 100 = 70.000 em vez de 700).
+      const qtd = toNumber(p.quantidade || 1);
       resultado.push({
         ...p,
-        custo_unitario: custoPorParcela,
+        custo_unitario: qtd > 0 ? custoPorParcela / qtd : custoPorParcela,
       });
     }
   }
