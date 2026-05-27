@@ -133,6 +133,23 @@ export interface Layout80mmVendasConfig {
   mostrar_assinaturas?: boolean;
 }
 
+export interface LayoutOrcamentoConfig {
+  formato_papel?: 'a4' | '80mm';
+  tamanho_fonte?: 'pequeno' | 'normal' | 'grande';
+  mostrar_logo?: boolean;
+  mostrar_dados_loja?: boolean;
+  mostrar_dados_cliente?: boolean;
+  mostrar_dados_dispositivo?: boolean;
+  mostrar_itens?: boolean;
+  mostrar_subtotal?: boolean;
+  mostrar_desconto?: boolean;
+  mostrar_total?: boolean;
+  mostrar_validade?: boolean;
+  mostrar_observacoes?: boolean;
+  mostrar_termos?: boolean;
+  mostrar_assinaturas?: boolean;
+}
+
 export interface TrackingPageConfig {
   cor_fundo: string;        // hex — fundo da página
   cor_card: string;         // hex — fundo do card central
@@ -185,6 +202,7 @@ export interface ConfiguracaoLoja {
   layout_os_config?: LayoutOSConfig;
   layout_pdv_config?: LayoutPDVConfig;
   layout_vendas_config?: LayoutVendasConfig;
+  layout_orcamento_config?: LayoutOrcamentoConfig;
   termo_responsabilidade_config?: TermoResponsabilidadeConfig;
   layout_dispositivos_config?: Record<string, any>;
   termo_garantia_dispositivo_config?: Record<string, any>;

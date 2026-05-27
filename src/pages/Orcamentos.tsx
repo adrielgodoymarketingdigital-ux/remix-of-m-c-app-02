@@ -19,12 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, FileText, Clock, CheckCircle } from "lucide-react";
+import { Plus, Search, FileText, Clock, CheckCircle, Settings } from "lucide-react";
 import { useOrcamentos } from "@/hooks/useOrcamentos";
 import { TabelaOrcamentos } from "@/components/orcamentos/TabelaOrcamentos";
 import { DialogCadastroOrcamento } from "@/components/orcamentos/DialogCadastroOrcamento";
 import { DialogVisualizarOrcamento } from "@/components/orcamentos/DialogVisualizarOrcamento";
 import { DialogConverterOrcamentoOS } from "@/components/orcamentos/DialogConverterOrcamentoOS";
+import { DialogConfiguracaoLayoutOrcamento } from "@/components/orcamentos/DialogConfiguracaoLayoutOrcamento";
 import { Orcamento } from "@/types/orcamento";
 import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -46,6 +47,7 @@ export default function Orcamentos() {
   const [dialogConverterAberto, setDialogConverterAberto] = useState(false);
   const [orcamentoSelecionado, setOrcamentoSelecionado] = useState<Orcamento | null>(null);
   const [orcamentoExcluir, setOrcamentoExcluir] = useState<Orcamento | null>(null);
+  const [configLayoutAberto, setConfigLayoutAberto] = useState(false);
 
   const orcamentosFiltrados = orcamentos.filter((o) => {
     const matchBusca =
@@ -107,10 +109,20 @@ export default function Orcamentos() {
               Gerencie seus orçamentos e propostas comerciais
             </p>
           </div>
-          <Button onClick={() => setDialogAberto(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Orçamento
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setConfigLayoutAberto(true)}
+              title="Configurar layout de impressão"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => setDialogAberto(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Orçamento
+            </Button>
+          </div>
         </div>
 
         {/* Cards de Resumo */}
@@ -210,6 +222,12 @@ export default function Orcamentos() {
           />
         )}
       </main>
+
+      {/* Dialog de Configuração de Layout de Impressão */}
+      <DialogConfiguracaoLayoutOrcamento
+        open={configLayoutAberto}
+        onOpenChange={setConfigLayoutAberto}
+      />
 
       {/* Dialog de Cadastro/Edição */}
       <DialogCadastroOrcamento
