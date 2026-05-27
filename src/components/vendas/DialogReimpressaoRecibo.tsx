@@ -173,14 +173,17 @@ export function DialogReimpressaoRecibo({
 
   const vendasConfig = configLoja?.layout_vendas_config as any;
   const formatoPapel = vendasConfig?.formato_papel || 'a4';
-  const is80mm = formatoPapel !== 'a4';
-  const showLogo = vendasConfig?.mostrar_logo !== false;
-  const showDadosLoja = vendasConfig?.mostrar_dados_loja !== false;
-  const showDadosCliente = vendasConfig?.mostrar_dados_cliente !== false;
+  const isThermal = formatoPapel !== 'a4';
+  // Flags de visibilidade ficam em config_80mm (únicas flags de seção salvas pelo DialogConfiguracaoLayoutVendas)
+  const config80mm = vendasConfig?.config_80mm || {};
+  const showLogo = config80mm?.mostrar_logo !== false;
+  const showDadosLoja = config80mm?.mostrar_dados_loja !== false;
+  const showDadosCliente = config80mm?.mostrar_dados_cliente !== false;
+  // Fallback: ler também as flags legadas de nível superior
   const showDadosDispositivo = vendasConfig?.mostrar_dados_dispositivo !== false;
   const showChecklist = vendasConfig?.mostrar_checklist !== false;
   const showGarantia = vendasConfig?.mostrar_garantia !== false;
-  const showAssinaturas = vendasConfig?.mostrar_assinaturas !== false;
+  const showAssinaturas = config80mm?.mostrar_assinaturas !== false;
   const showValor = vendasConfig?.mostrar_valor !== false;
 
   const imprimirRecibo = () => {
@@ -188,123 +191,151 @@ export function DialogReimpressaoRecibo({
 
     const conteudo = reciboRef.current.innerHTML;
     const janelaImpressao = window.open("", "_blank");
-    
+
     if (janelaImpressao) {
       const paper = resolvePaperSize(formatoPapel, vendasConfig?.largura_mm, vendasConfig?.altura_mm);
-      const estilos80mm = getThermalPrintCSS(paper);
+      // getThermalPrintCSS gera @page + body para térmica; A4 retorna string vazia
+      const cssTermico = getThermalPrintCSS(paper);
+      const titulo = venda?.tipo === "dispositivo"
+        ? `${venda.dispositivos?.marca} ${venda.dispositivos?.modelo}`
+        : (venda?.produtos?.nome || "Produto");
 
-      janelaImpressao.document.write(`
-        <html>
-          <head>
-            <title>Recibo de Venda - ${venda?.tipo === "dispositivo" ? `${venda.dispositivos?.marca} ${venda.dispositivos?.modelo}` : venda?.produtos?.nome}</title>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                padding: ${is80mm ? '2mm' : '20px'};
-                max-width: ${is80mm ? '76mm' : '800px'};
-                margin: 0 auto;
-              }
-              .recibo-header {
-                text-align: center;
-                border-bottom: ${is80mm ? '1px dashed #000' : '2px solid #000'};
-                padding-bottom: ${is80mm ? '10px' : '20px'};
-                margin-bottom: ${is80mm ? '10px' : '20px'};
-              }
-              .recibo-section {
-                margin-bottom: ${is80mm ? '10px' : '20px'};
-                page-break-inside: avoid;
-              }
-              .recibo-section h3 {
-                border-bottom: ${is80mm ? '1px dashed #ccc' : '1px solid #ccc'};
-                padding-bottom: 5px;
-                margin-bottom: 10px;
-                font-size: ${is80mm ? '11px' : '14px'};
-              }
-              .termos-garantia {
-                font-size: ${is80mm ? '8px' : '11px'};
-                line-height: 1.6;
-                white-space: pre-line;
-              }
-              .logo-loja {
-                max-width: ${is80mm ? '30mm' : '150px'};
-                height: auto;
-                margin: 0 auto 15px;
-              }
-              .dados-loja {
-                font-size: ${is80mm ? '9px' : '12px'};
-                margin-top: 10px;
-              }
-              .recibo-info {
-                display: flex;
-                justify-content: space-between;
-                margin: 5px 0;
-              }
-              .recibo-total {
-                font-size: ${is80mm ? '14px' : '20px'};
-                font-weight: bold;
-                text-align: right;
-                margin-top: ${is80mm ? '10px' : '20px'};
-                padding-top: ${is80mm ? '10px' : '20px'};
-                border-top: ${is80mm ? '1px dashed #000' : '2px solid #000'};
-              }
-              .recibo-checklist {
-                display: grid;
-                grid-template-columns: ${is80mm ? '1fr' : '1fr 1fr'};
-                gap: 8px ${is80mm ? '8px' : '16px'};
-                margin-top: 10px;
-              }
-              .recibo-checklist-item {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                font-size: ${is80mm ? '9px' : '11px'};
-              }
-              .recibo-checklist-icon {
-                font-size: 12px;
-                flex-shrink: 0;
-              }
-              .recibo-checklist-label {
-                color: #333;
-              }
-              @media print {
-                body { margin: 0; }
-                .recibo-checklist {
-                  page-break-inside: avoid;
-                }
-              }
-              ${estilos80mm}
-            </style>
-          </head>
-          <body>
-            ${conteudo}
-            <script>
-              (function() {
-                var printed = false;
-                function doPrint() {
-                  if (printed) return;
-                  printed = true;
-                  window.print();
-                  window.onafterprint = function() { window.close(); };
-                }
-                var images = document.querySelectorAll('img');
-                if (images.length === 0) {
-                  setTimeout(doPrint, 300);
-                } else {
-                  var promises = Array.from(images).map(function(img) {
-                    if (img.complete) return Promise.resolve();
-                    return new Promise(function(resolve) {
-                      img.onload = resolve;
-                      img.onerror = function() { img.style.display = 'none'; resolve(); };
-                    });
-                  });
-                  Promise.all(promises).then(function() { setTimeout(doPrint, 300); });
-                }
-                setTimeout(doPrint, 3000);
-              })();
-            </script>
-          </body>
-        </html>
-      `);
+      janelaImpressao.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Recibo de Venda - ${titulo}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: A4 portrait; margin: 10mm; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: ${isThermal ? '11px' : '13px'};
+      color: #111;
+      background: white;
+      padding: ${isThermal ? '2mm' : '15px'};
+      max-width: ${isThermal ? 'none' : '800px'};
+      margin: 0 auto;
+      line-height: 1.4;
+    }
+    .recibo-header {
+      text-align: center;
+      border-bottom: ${isThermal ? '1px dashed #000' : '2px solid #000'};
+      padding-bottom: ${isThermal ? '6px' : '16px'};
+      margin-bottom: ${isThermal ? '8px' : '16px'};
+    }
+    .logo-loja {
+      display: block;
+      max-width: ${isThermal ? '28mm' : '120px'};
+      max-height: ${isThermal ? '14mm' : '70px'};
+      height: auto;
+      margin: 0 auto ${isThermal ? '4px' : '10px'};
+    }
+    .recibo-header h1 {
+      font-size: ${isThermal ? '12px' : '20px'};
+      font-weight: 900;
+      margin: ${isThermal ? '2px 0' : '6px 0'};
+    }
+    .dados-loja {
+      font-size: ${isThermal ? '8px' : '11px'};
+      color: #444;
+      margin-top: ${isThermal ? '2px' : '6px'};
+      line-height: 1.5;
+    }
+    .recibo-titulo-bloco {
+      margin-top: ${isThermal ? '6px' : '12px'};
+      padding-top: ${isThermal ? '6px' : '12px'};
+      border-top: ${isThermal ? '1px dashed #000' : '1.5px solid #000'};
+    }
+    .recibo-header h2 {
+      font-size: ${isThermal ? '11px' : '15px'};
+      font-weight: 700;
+      margin: 2px 0;
+    }
+    .recibo-header p { font-size: ${isThermal ? '9px' : '11px'}; color: #555; }
+    .recibo-section {
+      margin-bottom: ${isThermal ? '8px' : '16px'};
+      page-break-inside: avoid;
+    }
+    .recibo-section h3 {
+      font-size: ${isThermal ? '10px' : '13px'};
+      font-weight: 700;
+      border-bottom: ${isThermal ? '1px dashed #ccc' : '1px solid #ccc'};
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+    .termos-garantia {
+      font-size: ${isThermal ? '7px' : '10px'};
+      line-height: 1.6;
+      white-space: pre-line;
+      color: #333;
+    }
+    .recibo-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: ${isThermal ? '9px' : '12px'};
+      margin: 4px 0;
+    }
+    .recibo-total {
+      font-size: ${isThermal ? '14px' : '20px'};
+      font-weight: bold;
+      text-align: right;
+      margin-top: ${isThermal ? '10px' : '20px'};
+      padding-top: ${isThermal ? '8px' : '16px'};
+      border-top: ${isThermal ? '1px dashed #000' : '2px solid #000'};
+    }
+    .recibo-checklist {
+      display: grid;
+      grid-template-columns: ${isThermal ? '1fr' : '1fr 1fr'};
+      gap: 6px ${isThermal ? '6px' : '14px'};
+      margin-top: 8px;
+    }
+    .recibo-checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: ${isThermal ? '8px' : '11px'};
+    }
+    .recibo-checklist-icon { font-size: 11px; flex-shrink: 0; }
+    .recibo-checklist-label { color: #333; }
+    @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { margin: 0 !important; }
+      .recibo-checklist { page-break-inside: avoid; }
+    }
+    /* Sobrescreve @page e body para térmica (deve vir por último) */
+    ${cssTermico}
+  </style>
+</head>
+<body>
+  ${conteudo}
+  <script>
+    (function() {
+      var printed = false;
+      function doPrint() {
+        if (printed) return;
+        printed = true;
+        window.print();
+        window.onafterprint = function() { window.close(); };
+      }
+      var images = document.querySelectorAll('img');
+      if (images.length === 0) {
+        setTimeout(doPrint, 300);
+      } else {
+        var promises = Array.from(images).map(function(img) {
+          if (img.complete) return Promise.resolve();
+          return new Promise(function(resolve) {
+            img.onload = resolve;
+            img.onerror = function() { img.style.display = 'none'; resolve(); };
+          });
+        });
+        Promise.all(promises).then(function() { setTimeout(doPrint, 300); });
+      }
+      setTimeout(doPrint, 3000);
+    })();
+  </script>
+</body>
+</html>`);
       janelaImpressao.document.close();
     }
   };
@@ -334,27 +365,28 @@ export function DialogReimpressaoRecibo({
           <div ref={reciboRef}>
             <div className="recibo-header">
               {showLogo && configLoja?.logo_url && (
-                <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                  <img 
-                    src={configLoja.logo_url} 
-                    alt="Logo da Loja" 
-                    className="logo-loja"
-                  />
-                </div>
+                <img
+                  src={configLoja.logo_url}
+                  alt="Logo da Loja"
+                  className="logo-loja"
+                  crossOrigin="anonymous"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
               )}
-              
-              <h1>{configLoja?.nome_loja || 'G360 System'}</h1>
-              
+
+              <h1>{configLoja?.nome_loja || ''}</h1>
+
               {showDadosLoja && (
                 <div className="dados-loja">
                   {configLoja?.cnpj && <p>CNPJ: {configLoja.cnpj}</p>}
-                  {configLoja?.endereco && <p>Endereço: {configLoja.endereco}</p>}
-                  {configLoja?.telefone && <p>Telefone: {configLoja.telefone}</p>}
-                  {configLoja?.email && <p>E-mail: {configLoja.email}</p>}
+                  {configLoja?.endereco && <p>{configLoja.endereco}</p>}
+                  {configLoja?.telefone && <p>Tel: {configLoja.telefone}</p>}
+                  {configLoja?.whatsapp && <p>WhatsApp: {configLoja.whatsapp}</p>}
+                  {configLoja?.email && <p>{configLoja.email}</p>}
                 </div>
               )}
-              
-              <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '2px solid #000' }}>
+
+              <div className="recibo-titulo-bloco">
                 <h2>RECIBO DE VENDA</h2>
                 <p>Data: {dataVenda}</p>
               </div>

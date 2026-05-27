@@ -209,37 +209,28 @@ export function DialogConfiguracaoLayoutPDV({
 
             <Separator />
 
-            {/* Seções visíveis - always show for thermal formats */}
-            {isThermal ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Eye className="h-4 w-4" />
-                  Seções visíveis no cupom
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Escolha o que aparece na impressão do recibo de venda.
-                </p>
-                {secoes80mm.map((secao) => (
-                  <div key={secao.id} className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm">{secao.label}</Label>
-                      <p className="text-xs text-muted-foreground">{secao.desc}</p>
-                    </div>
-                    <Switch
-                      checked={config80mm[secao.id] ?? true}
-                      onCheckedChange={() => handleToggle80mm(secao.id)}
-                    />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Eye className="h-4 w-4" />
+                Seções visíveis no recibo
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Escolha o que aparece na impressão do recibo de venda
+                {isThermal ? " (menos seções = cupom mais curto)" : ""}.
+              </p>
+              {secoes80mm.map((secao) => (
+                <div key={secao.id} className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm">{secao.label}</Label>
+                    <p className="text-xs text-muted-foreground">{secao.desc}</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-sm font-medium">Seções do Recibo</div>
-                <p className="text-xs text-muted-foreground">
-                  No formato A4, todas as seções do recibo são exibidas por padrão.
-                </p>
-              </div>
-            )}
+                  <Switch
+                    checked={config80mm[secao.id] ?? true}
+                    onCheckedChange={() => handleToggle80mm(secao.id)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Preview 80mm */}
