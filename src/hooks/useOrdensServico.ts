@@ -669,6 +669,40 @@ export const useOrdensServico = () => {
     let clientesCriados = 0;
     let erros = 0;
 
+    // Helper: converte data da planilha (vários formatos) para ISO string ou null
+    const parsearData = (raw: string | undefined): string | null => {
+      if (!raw || raw.trim() === '') return null;
+      const s = raw.trim();
+
+      // Formato ISO: YYYY-MM-DD ou YYYY-MM-DDTHH:mm...
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d.toISOString();
+      }
+
+      // Formato BR: DD/MM/YYYY ou DD/MM/AAAA
+      const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (brMatch) {
+        const [, dd, mm, yyyy] = brMatch;
+        const d = new Date(`${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`);
+        return isNaN(d.getTime()) ? null : d.toISOString();
+      }
+
+      // Número serial do Excel (dias desde 1900-01-01, com ajuste do bug do ano 1900)
+      if (/^\d+$/.test(s) || /^\d+\.\d+$/.test(s)) {
+        const serial = parseFloat(s);
+        if (serial > 1000 && serial < 100000) {
+          // Fórmula de conversão do serial do Excel para Date JS
+          const d = new Date((serial - 25569) * 86400 * 1000);
+          return isNaN(d.getTime()) ? null : d.toISOString();
+        }
+      }
+
+      // Tentar parse genérico como último recurso
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    };
+
     // Cache de clientes existentes
     const { data: clientesExistentes } = await supabase
       .from("clientes")
@@ -698,21 +732,13 @@ export const useOrdensServico = () => {
             .single();
 
           if (errCliente || !novoCliente) {
+            console.error("Erro ao criar cliente:", errCliente);
             erros++;
             continue;
           }
           clienteId = novoCliente.id;
           cacheClientes.set(nomeNorm, clienteId);
           clientesCriados++;
-        }
-
-        // Gerar número da OS
-        const { data: numeroOS, error: numErr } = await supabase
-          .rpc("generate_os_number", { p_user_id: userId });
-
-        if (numErr || !numeroOS) {
-          erros++;
-          continue;
         }
 
         // Mapear status
@@ -731,8 +757,12 @@ export const useOrdensServico = () => {
           statusFinal = statusMap[s] || 'aberta';
         }
 
-        const { error: insertErr } = await supabase.from("ordens_servico").insert([{
-          numero_os: numeroOS,
+        // Parsear data com suporte a formatos BR (DD/MM/AAAA) e serial do Excel
+        const createdAtISO = parsearData(os.data_abertura);
+
+        // Não chamar generate_os_number via RPC: deixar o trigger gerar o número.
+        // Isso evita que o contador seja desperdiçado quando o INSERT falha.
+        const insertPayload: Record<string, unknown> = {
           cliente_id: clienteId,
           user_id: userId,
           dispositivo_tipo: os.dispositivo_tipo || 'celular',
@@ -741,10 +771,16 @@ export const useOrdensServico = () => {
           dispositivo_imei: os.dispositivo_imei || null,
           dispositivo_cor: os.dispositivo_cor || null,
           defeito_relatado: os.defeito_relatado,
-          status: statusFinal as any,
+          status: statusFinal,
           total: os.total || null,
-          created_at: os.data_abertura ? new Date(os.data_abertura).toISOString() : new Date().toISOString(),
-        }]);
+        };
+
+        // Só incluir created_at se a data for válida; caso contrário usa o default do banco
+        if (createdAtISO) {
+          insertPayload.created_at = createdAtISO;
+        }
+
+        const { error: insertErr } = await supabase.from("ordens_servico").insert([insertPayload]);
 
         if (insertErr) {
           console.error("Erro ao inserir OS:", insertErr);
