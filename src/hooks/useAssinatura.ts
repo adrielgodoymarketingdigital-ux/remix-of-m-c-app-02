@@ -68,25 +68,23 @@ export function useAssinatura() {
       const user = session.user;
       setUserId(user.id);
 
-      // Verificar se o usuário é funcionário de alguma loja
-      const { data: funcionarioData } = await supabase
-        .from("loja_funcionarios")
-        .select("loja_user_id")
-        .eq("funcionario_user_id", user.id)
-        .eq("ativo", true)
-        .maybeSingle();
-
-      // Verificar se é gerente de filial (usa o plano do proprietário da matriz)
-      const { data: gerenteFilial } = await supabase
-        .from("empresa_usuarios")
-        .select("proprietario_id")
-        .eq("gerente_id", user.id)
-        .maybeSingle();
+      // Buscar funcionário e gerente de filial em paralelo
+      const [{ data: funcionarioData }, { data: gerenteFilial }] = await Promise.all([
+        supabase
+          .from("loja_funcionarios")
+          .select("loja_user_id")
+          .eq("funcionario_user_id", user.id)
+          .eq("ativo", true)
+          .maybeSingle(),
+        supabase
+          .from("empresa_usuarios")
+          .select("proprietario_id")
+          .eq("gerente_id", user.id)
+          .maybeSingle(),
+      ]);
 
       // Prioridade: funcionário de loja > gerente de filial > próprio usuário
       const userIdParaAssinatura = funcionarioData?.loja_user_id || gerenteFilial?.proprietario_id || user.id;
-
-      console.log("🔍 Buscando assinatura para:", funcionarioData ? "dono da loja" : gerenteFilial ? "proprietário da matriz" : "próprio usuário", userIdParaAssinatura);
 
       const { data, error } = await supabase
         .from("assinaturas")

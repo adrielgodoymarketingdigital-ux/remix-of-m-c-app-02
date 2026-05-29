@@ -433,53 +433,34 @@ export function useVerificacaoAcesso() {
       // Renovar metadados da sessão de longa duração a cada verificação
       saveSessionMeta(userId);
 
-      // 2. Verificar se é funcionário primeiro (com tratamento de erro robusto)
-      console.log("🔍 [useVerificacaoAcesso] Verificando se usuário é funcionário...", { userId });
-
-      let funcionarioData = null;
-      let isFuncionario = false;
-
-      try {
-        const { data, error: funcError } = await supabase
+      // 2. Verificar funcionário e gerente de filial em paralelo
+      const [funcResult, gerenteResult] = await Promise.allSettled([
+        supabase
           .from("loja_funcionarios")
           .select("id, loja_user_id, ativo, permissoes")
           .eq("funcionario_user_id", userId)
           .eq("ativo", true)
-          .maybeSingle();
+          .maybeSingle(),
+        supabase
+          .from("empresa_usuarios")
+          .select("proprietario_id")
+          .eq("gerente_id", userId)
+          .maybeSingle(),
+      ]);
 
-        if (!funcError && data) {
-          funcionarioData = data;
-          isFuncionario = true;
-        } else if (funcError) {
-          // Erro de RLS ou outro - assumir que não é funcionário
-          console.warn("⚠️ [useVerificacaoAcesso] Erro ao buscar funcionário (pode ser RLS):", funcError);
-        }
-      } catch (e) {
-        console.warn("⚠️ [useVerificacaoAcesso] Exceção ao buscar funcionário, assumindo dono:", e);
+      let funcionarioData = null;
+      let isFuncionario = false;
+      let gerenteFilialProprietarioId: string | null = null;
+
+      if (funcResult.status === "fulfilled" && !funcResult.value.error && funcResult.value.data) {
+        funcionarioData = funcResult.value.data;
+        isFuncionario = true;
+      } else if (funcResult.status === "fulfilled" && funcResult.value.error) {
+        console.warn("⚠️ [useVerificacaoAcesso] Erro ao buscar funcionário:", funcResult.value.error);
       }
 
-      console.log("🔍 [useVerificacaoAcesso] Resultado da busca funcionário:", {
-        funcionarioData,
-        isFuncionario,
-        userId
-      });
-
-      // Verificar se é gerente de filial — usa o plano do proprietário da matriz
-      let gerenteFilialProprietarioId: string | null = null;
-      if (!isFuncionario) {
-        try {
-          const { data: gerenteData } = await supabase
-            .from("empresa_usuarios")
-            .select("proprietario_id")
-            .eq("gerente_id", userId)
-            .maybeSingle();
-          if (gerenteData?.proprietario_id) {
-            gerenteFilialProprietarioId = gerenteData.proprietario_id;
-            console.log("🏢 [useVerificacaoAcesso] Usuário é GERENTE DE FILIAL - usando assinatura do proprietário:", gerenteFilialProprietarioId);
-          }
-        } catch (e) {
-          console.warn("⚠️ [useVerificacaoAcesso] Exceção ao buscar gerente de filial:", e);
-        }
+      if (!isFuncionario && gerenteResult.status === "fulfilled" && gerenteResult.value.data?.proprietario_id) {
+        gerenteFilialProprietarioId = gerenteResult.value.data.proprietario_id;
       }
 
       // Prioridade: funcionário de loja > gerente de filial > próprio usuário
