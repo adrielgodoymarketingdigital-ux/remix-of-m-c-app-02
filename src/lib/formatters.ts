@@ -9,8 +9,10 @@ export const formatCurrency = (value: number | null | undefined): string => {
 };
 
 function parseDate(date: string | Date): Date {
-  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return new Date(`${date}T00:00:00`);
+  if (typeof date === "string") {
+    // Extract YYYY-MM-DD directly to avoid timezone offset shifting the day
+    const match = date.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return new Date(`${match[1]}T00:00:00`);
   }
   return new Date(date);
 }

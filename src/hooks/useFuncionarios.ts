@@ -1,15 +1,13 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { Funcionario, FuncionarioFormData, Permissoes } from "@/types/funcionario";
+import type { Funcionario, FuncionarioFormData } from "@/types/funcionario";
 import type { Json } from "@/integrations/supabase/types";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 
 export function useFuncionarios(lojaUserIdOverride?: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isLoading, setIsLoading] = useState(false);
   const { empresas, empresaAtiva } = useEmpresa();
   const empresaSelecionada = empresas.find(e => e.id === empresaAtiva);
 
@@ -65,7 +63,7 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
     mutationFn: async (dados: FuncionarioFormData & { senha?: string }) => {
       if (!dados.senha) throw new Error("Senha é obrigatória para criar funcionário");
 
-      const { data, error } = await supabase.functions.invoke("criar-funcionario", {
+      const response = await supabase.functions.invoke("criar-funcionario", {
         body: {
           nome: dados.nome,
           email: dados.email.toLowerCase(),
@@ -79,9 +77,23 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
         },
       });
 
-      if (error) throw new Error(error.message || "Erro ao criar funcionário");
-      if (data?.error) throw new Error(data.error);
-      return data;
+      if (response.error) {
+        let msg = "Erro ao criar funcionário";
+        try {
+          const ctx = (response.error as any)?.context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            msg = body?.error || msg;
+          } else {
+            msg = response.error.message || msg;
+          }
+        } catch {
+          msg = response.error.message || msg;
+        }
+        throw new Error(msg);
+      }
+      if (response.data?.error) throw new Error(response.data.error);
+      return response.data;
     },
     onSuccess: () => {
       toast({ title: "Funcionário cadastrado", description: "O funcionário já pode acessar o sistema." });
