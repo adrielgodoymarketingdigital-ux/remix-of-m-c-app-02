@@ -305,7 +305,7 @@ export const useOrdensServico = () => {
 
       let query = supabase
         .from("ordens_servico")
-        .select("avarias")
+        .select("avarias, total")
         .eq("user_id", userId)
         .eq("status", "entregue")
         .eq("is_teste", false)
@@ -328,7 +328,12 @@ export const useOrdensServico = () => {
 
       const lucro = (data || []).reduce((acc, ordem: any) => {
         const servicos = ordem?.avarias?.servicos_realizados || [];
-        return acc + servicos.reduce((sum: number, s: any) => sum + (Number(s.preco || 0) - Number(s.custo || 0)), 0);
+        if (servicos.length > 0) {
+          // OS com serviços registrados: soma preco - custo de cada serviço
+          return acc + servicos.reduce((sum: number, s: any) => sum + (Number(s.preco || 0) - Number(s.custo || 0)), 0);
+        }
+        // OS sem serviços (ex: importadas): usa o total como lucro (custo desconhecido)
+        return acc + Number(ordem.total || 0);
       }, 0);
 
       setLucroOrdensEntregues(lucro);
