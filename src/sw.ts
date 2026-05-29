@@ -21,7 +21,16 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   console.log('[SW] Service Worker ativado - assumindo controle');
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    self.clients.claim().then(() => {
+      // Avisa todos os clientes abertos (PWA instalada) para recarregarem
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'SW_UPDATED' });
+        });
+      });
+    })
+  );
 });
 
 // Precache (gerenciado pelo vite-plugin-pwa)

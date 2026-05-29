@@ -29,16 +29,24 @@ const updateSW = registerSW({
   immediate: true,
   onRegisteredSW(_swUrl, registration) {
     registration?.update();
-    setInterval(() => registration?.update(), 60 * 60 * 1000);
+    // Verifica atualização a cada 5 minutos
+    setInterval(() => registration?.update(), 5 * 60 * 1000);
   },
   onNeedRefresh() {
-    // Atualiza o SW e recarrega para pegar o bundle novo
     console.log("[PWA] Nova versão disponível - atualizando e recarregando");
     updateSW(true);
   },
   onOfflineReady() {
     console.log("[PWA] Offline pronto");
   },
+});
+
+// Recebe mensagem do SW quando ele ativa (nova versão instalada) e recarrega a página
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  if (event.data?.type === "SW_UPDATED") {
+    console.log("[PWA] SW sinalizou atualização - recarregando");
+    window.location.reload();
+  }
 });
 
 // Listener para tocar sons customizados de notificação enviados pelo SW
