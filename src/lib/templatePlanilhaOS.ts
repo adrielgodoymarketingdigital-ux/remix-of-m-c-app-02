@@ -4,8 +4,8 @@ export const baixarTemplateOS = () => {
   const dados = [
     ['Cliente', 'Telefone Cliente', 'Tipo Dispositivo', 'Marca', 'Modelo', 'IMEI', 'Cor', 'Defeito Relatado', 'Status', 'Valor Total', 'Data Abertura'],
     ['João Silva', '(11) 99999-0000', 'celular', 'Apple', 'iPhone 12', '123456789012345', 'Preto', 'Tela quebrada', 'em_andamento', 250.00, '2024-01-15'],
-    ['Maria Santos', '(21) 98888-7777', 'celular', 'Samsung', 'Galaxy S21', '', 'Branco', 'Não liga', 'orcamento', 180.00, '2024-01-16'],
-    ['Pedro Oliveira', '(31) 97777-6666', 'notebook', 'Dell', 'Inspiron 15', '', '', 'Lento, travar', 'aberta', 300.00, '2024-01-17'],
+    ['Maria Santos', '(21) 98888-7777', 'celular', 'Samsung', 'Galaxy S21', '', 'Branco', 'Não liga', 'aguardando_aprovacao', 180.00, '2024-01-16'],
+    ['Pedro Oliveira', '(31) 97777-6666', 'notebook', 'Dell', 'Inspiron 15', '', '', 'Lento, travar', 'finalizado', 300.00, '2024-01-17'],
   ];
 
   const wb = XLSX.utils.book_new();

@@ -253,7 +253,7 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
                     <tr><td className="px-3 py-1.5 font-medium">Tipo Dispositivo</td><td className="text-center px-3 py-1.5">Não</td><td className="px-3 py-1.5 text-muted-foreground">Ex: celular, tablet (padrão: celular)</td></tr>
                     <tr><td className="px-3 py-1.5 font-medium">IMEI</td><td className="text-center px-3 py-1.5">Não</td><td className="px-3 py-1.5 text-muted-foreground">Número IMEI do aparelho</td></tr>
                     <tr><td className="px-3 py-1.5 font-medium">Cor</td><td className="text-center px-3 py-1.5">Não</td><td className="px-3 py-1.5 text-muted-foreground">Cor do dispositivo</td></tr>
-                    <tr><td className="px-3 py-1.5 font-medium">Status</td><td className="text-center px-3 py-1.5">Não</td><td className="px-3 py-1.5 text-muted-foreground">Ex: aberta, concluida (padrão: aberta)</td></tr>
+                    <tr><td className="px-3 py-1.5 font-medium">Status</td><td className="text-center px-3 py-1.5">Não</td><td className="px-3 py-1.5 text-muted-foreground">Ex: aguardando_aprovacao, em_andamento, finalizado, aguardando_retirada, entregue, cancelada, garantia, estornado (padrão: aguardando_aprovacao)</td></tr>
                     <tr><td className="px-3 py-1.5 font-medium">Valor</td><td className="text-center px-3 py-1.5">Não</td><td className="px-3 py-1.5 text-muted-foreground">Número decimal ex: 150.00</td></tr>
                     <tr><td className="px-3 py-1.5 font-medium">Data</td><td className="text-center px-3 py-1.5">Não</td><td className="px-3 py-1.5 text-muted-foreground">Data de abertura ex: 2024-01-15</td></tr>
                   </tbody>

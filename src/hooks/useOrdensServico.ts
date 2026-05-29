@@ -741,20 +741,58 @@ export const useOrdensServico = () => {
           clientesCriados++;
         }
 
-        // Mapear status
-        let statusFinal = 'aberta';
+        // Mapear status — slugs válidos: aguardando_aprovacao, em_andamento, finalizado,
+        // aguardando_retirada, entregue, cancelada, garantia, estornado
+        let statusFinal = 'aguardando_aprovacao';
         if (os.status) {
           const s = os.status.toLowerCase().trim();
           const statusMap: Record<string, string> = {
-            'aberta': 'aberta', 'aberto': 'aberta',
-            'em_andamento': 'em_andamento', 'em andamento': 'em_andamento', 'andamento': 'em_andamento',
-            'orcamento': 'orcamento', 'orçamento': 'orcamento',
-            'aprovado': 'aprovado', 'aprovada': 'aprovado',
-            'concluida': 'concluida', 'concluído': 'concluida', 'concluída': 'concluida', 'finalizada': 'concluida',
+            // aguardando_aprovacao
+            'aguardando_aprovacao': 'aguardando_aprovacao',
+            'aguardando aprovacao': 'aguardando_aprovacao',
+            'aguardando aprovação': 'aguardando_aprovacao',
+            'aguardando': 'aguardando_aprovacao',
+            'aberta': 'aguardando_aprovacao',
+            'aberto': 'aguardando_aprovacao',
+            'orcamento': 'aguardando_aprovacao',
+            'orçamento': 'aguardando_aprovacao',
+            'aprovado': 'aguardando_aprovacao',
+            'aprovada': 'aguardando_aprovacao',
+            'pendente': 'aguardando_aprovacao',
+            // em_andamento
+            'em_andamento': 'em_andamento',
+            'em andamento': 'em_andamento',
+            'andamento': 'em_andamento',
+            'em_servico': 'em_andamento',
+            'em serviço': 'em_andamento',
+            // finalizado
+            'finalizado': 'finalizado',
+            'finalizada': 'finalizado',
+            'concluido': 'finalizado',
+            'concluída': 'finalizado',
+            'concluído': 'finalizado',
+            'concluida': 'finalizado',
+            'pronto': 'finalizado',
+            // aguardando_retirada
+            'aguardando_retirada': 'aguardando_retirada',
+            'aguardando retirada': 'aguardando_retirada',
+            'retirada': 'aguardando_retirada',
+            // entregue
             'entregue': 'entregue',
-            'cancelada': 'cancelada', 'cancelado': 'cancelada',
+            'entregado': 'entregue',
+            // cancelada
+            'cancelada': 'cancelada',
+            'cancelado': 'cancelada',
+            'cancelar': 'cancelada',
+            // garantia
+            'garantia': 'garantia',
+            'em_garantia': 'garantia',
+            'em garantia': 'garantia',
+            // estornado
+            'estornado': 'estornado',
+            'estornada': 'estornado',
           };
-          statusFinal = statusMap[s] || 'aberta';
+          statusFinal = statusMap[s] || 'aguardando_aprovacao';
         }
 
         // Parsear data com suporte a formatos BR (DD/MM/AAAA) e serial do Excel
