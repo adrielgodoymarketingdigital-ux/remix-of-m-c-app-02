@@ -10,12 +10,34 @@ export const formatCurrency = (value: number | null | undefined): string => {
 
 function parseDate(date: string | Date): Date {
   if (typeof date === "string") {
-    // Extract YYYY-MM-DD directly to avoid timezone offset shifting the day
-    const match = date.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (match) return new Date(`${match[1]}T00:00:00`);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      // Pure date — parse as local midnight to avoid timezone shift
+      return new Date(`${date}T00:00:00`);
+    }
+    // Timestamp — new Date() applies local timezone correctly for display
+    return new Date(date);
   }
   return new Date(date);
 }
+
+// Extracts YYYY-MM-DD from any date string, applying local timezone for timestamps
+export const extrairDataLocal = (date: string | Date): string => {
+  if (typeof date === "string") {
+    // Pure date (YYYY-MM-DD) — use as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    // Timestamp — convert to local date to avoid UTC offset shifting the day
+    const d = new Date(date);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const d = date as Date;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
 
 // Returns today's date as YYYY-MM-DD using local timezone (not UTC)
 export const dataHoje = (): string => {

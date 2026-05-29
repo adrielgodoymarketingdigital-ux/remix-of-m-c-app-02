@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Venda } from "@/types/venda";
 import { DialogEditarVenda } from "./DialogEditarVenda";
-import { formatDateTime, formatDate } from "@/lib/formatters";
+import { formatDateTime, formatDate, extrairDataLocal } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart } from "lucide-react";
@@ -130,7 +130,7 @@ function agruparVendas(vendas: Venda[]): VendaOuGrupo[] {
     allItems.push({ date, item: grupo });
   }
 
-  allItems.sort((a, b) => b.date.localeCompare(a.date));
+  allItems.sort((a, b) => extrairDataLocal(b.date).localeCompare(extrairDataLocal(a.date)));
   return allItems.map(i => i.item);
 }
 

@@ -4,7 +4,7 @@ import { Venda, ResumoVendas, VendasPorPeriodo, ResumoAReceber } from "@/types/v
 import { useToast } from "@/hooks/use-toast";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
-import { dataHoje } from "@/lib/formatters";
+import { dataHoje, extrairDataLocal } from "@/lib/formatters";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useIdentidade } from "./useResolvedUserId";
 
@@ -237,7 +237,7 @@ export const useVendas = () => {
 
       // Combinar vendas, ordens de serviço e vendas avulsas
       const todasAsVendas = [...vendasData, ...ordensComoVendas, ...avulsasComoVendas];
-      todasAsVendas.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+      todasAsVendas.sort((a, b) => extrairDataLocal(b.data).localeCompare(extrairDataLocal(a.data)));
 
       setVendas(todasAsVendas);
 
@@ -335,7 +335,7 @@ export const useVendas = () => {
         }));
 
         const allCombined = [...allVendasNormalizadas, ...allOrdensComoVendas, ...allAvulsasComoVendas];
-        allCombined.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+        allCombined.sort((a, b) => extrairDataLocal(b.data).localeCompare(extrairDataLocal(a.data)));
         setTodasVendas(allCombined);
       } else {
         setTodasVendas(todasAsVendas);
@@ -502,8 +502,9 @@ export const useVendas = () => {
     const vendasAtivas = vendasFiltradas.filter((v) => !v.cancelada);
     
     const agrupadas = vendasAtivas.reduce((acc, venda) => {
-      // venda.data is DATE (YYYY-MM-DD) — format directly to avoid UTC offset shift
-      const [y, m, d] = venda.data.split("-");
+      // Normaliza para YYYY-MM-DD independente de venda.data ser DATE ou TIMESTAMP
+      const iso = extrairDataLocal(venda.data);
+      const [y, m, d] = iso.split("-");
       const data = `${d}/${m}/${y}`;
       if (!acc[data]) {
         acc[data] = { data, total: 0, quantidade: 0 };
