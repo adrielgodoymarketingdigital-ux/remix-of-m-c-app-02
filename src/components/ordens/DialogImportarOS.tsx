@@ -149,7 +149,10 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
       else if (!defeito_relatado) erro = 'Defeito é obrigatório';
 
       const totalRaw = getValue('total');
-      let total = parseFloat(totalRaw) || 0;
+      // Suporta vírgula (R$ 150,00) e ponto (150.00)
+      const totalNorm = totalRaw.replace(/\./g, '').replace(',', '.');
+      let total = parseFloat(totalNorm);
+      if (isNaN(total)) total = 0;
       if (total < 0) { avisos.push('Valor negativo → 0'); total = 0; }
 
       const dispositivo_tipo = getValue('dispositivo_tipo') || 'celular';

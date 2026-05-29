@@ -817,7 +817,7 @@ export const useOrdensServico = () => {
           dispositivo_cor: os.dispositivo_cor || null,
           defeito_relatado: os.defeito_relatado,
           status: statusFinal,
-          total: os.total || null,
+          total: (os.total != null && os.total > 0) ? os.total : null,
         };
 
         // Incluir funcionario_id quando o usuário logado é funcionário
