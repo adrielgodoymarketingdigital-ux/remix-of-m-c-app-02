@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Upload, FileSpreadsheet, Download, CheckCircle2, AlertTriangle,
-  XCircle, Loader2, ArrowLeft,
+  XCircle, Loader2, ArrowLeft, Trash2,
 } from 'lucide-react';
 import { lerPlanilha } from '@/lib/templatePlanilhaProdutos';
 import { detectarMapeamentoOS, baixarTemplateOS } from '@/lib/templatePlanilhaOS';
@@ -171,6 +171,10 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
     validarItens(dados, novo);
   };
 
+  const removerLinha = (linha: number) => {
+    setItensValidados(prev => prev.filter(i => i._linha !== linha));
+  };
+
   const handleImportar = async () => {
     const validos = itensValidados.filter(i => !i._erro);
     if (validos.length === 0) { setErro('Nenhum item válido'); return; }
@@ -276,7 +280,10 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
               <Badge variant="outline">{arquivo?.name}</Badge>
             </div>
 
-            <p className="text-sm text-muted-foreground">Encontradas <strong>{dados.length}</strong> linhas</p>
+            <p className="text-sm text-muted-foreground">
+              Encontradas <strong>{dados.length}</strong> linhas
+              {itensValidados.length < dados.length && <span className="text-yellow-600"> · <strong>{dados.length - itensValidados.length}</strong> removida(s)</span>}
+            </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {CAMPOS.map(campo => (
@@ -309,10 +316,11 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
                     <TableHead>Defeito</TableHead>
                     <TableHead className="w-24 text-right">Valor</TableHead>
                     <TableHead className="w-28">Status</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {itensValidados.slice(0, 50).map((item, idx) => (
+                  {itensValidados.map((item, idx) => (
                     <TableRow key={idx} className={item._erro ? 'bg-red-50' : item._avisos.length > 0 ? 'bg-yellow-50' : ''}>
                       <TableCell className="text-muted-foreground">{item._linha}</TableCell>
                       <TableCell className="font-medium truncate max-w-[150px]">
@@ -328,11 +336,21 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
                           : item._avisos.length > 0 ? <span className="text-xs text-yellow-600">{item._avisos.join(', ')}</span>
                           : <CheckCircle2 className="w-4 h-4 text-green-600" />}
                       </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                          onClick={() => removerLinha(item._linha)}
+                          title="Remover linha"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              {itensValidados.length > 50 && <p className="p-2 text-center text-xs text-muted-foreground">Mostrando 50 de {itensValidados.length}</p>}
             </ScrollArea>
 
             {erro && <Alert variant="destructive"><XCircle className="h-4 w-4" /><AlertDescription>{erro}</AlertDescription></Alert>}
