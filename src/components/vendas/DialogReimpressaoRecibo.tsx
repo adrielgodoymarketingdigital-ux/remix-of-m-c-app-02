@@ -8,14 +8,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, Copy, FileText } from "lucide-react";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { checklistLabels } from "@/lib/checklist-templates";
 import { Venda } from "@/types/venda";
 import { Dispositivo } from "@/types/dispositivo";
 import { useToast } from "@/hooks/use-toast";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const TERMOS_GARANTIA_CDC = (tempoGarantia?: number) => `
@@ -342,7 +342,7 @@ export function DialogReimpressaoRecibo({
 
   if (!venda) return null;
 
-  const dataVenda = format(parseISO(venda.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  const dataVenda = formatDate(venda.data);
 
   const descontoManual = Number((venda as any).valor_desconto_manual || 0);
   const descontoCupom = Number((venda as any).valor_desconto_cupom || 0);

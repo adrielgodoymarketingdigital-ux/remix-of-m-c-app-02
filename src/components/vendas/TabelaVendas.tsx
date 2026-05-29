@@ -117,20 +117,20 @@ function agruparVendas(vendas: Venda[]): VendaOuGrupo[] {
   }
 
   // Merge all into a single list, sorted by date (first item date for groups)
-  const allItems: { date: Date; item: VendaOuGrupo }[] = [];
+  const allItems: { date: string; item: VendaOuGrupo }[] = [];
 
   for (const ind of individuais) {
-    allItems.push({ date: new Date(ind.data), item: { tipo: "individual", venda: ind } });
+    allItems.push({ date: ind.data, item: { tipo: "individual", venda: ind } });
   }
 
   for (const grupo of grupos) {
     const date = grupo.tipo === "grupo"
-      ? new Date(grupo.vendas![0].data)
-      : new Date(grupo.venda!.data);
+      ? grupo.vendas![0].data
+      : grupo.venda!.data;
     allItems.push({ date, item: grupo });
   }
 
-  allItems.sort((a, b) => b.date.getTime() - a.date.getTime());
+  allItems.sort((a, b) => b.date.localeCompare(a.date));
   return allItems.map(i => i.item);
 }
 
@@ -348,7 +348,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{formatDateTime(venda.data)}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(venda.data)}</p>
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-xs">{formaPagamentoLabels[venda.forma_pagamento] || "-"}</span>
                         {venda.parcela_numero && venda.total_parcelas && (
@@ -406,7 +406,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">{formatDateTime(primeiraVenda.data)}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(primeiraVenda.data)}</p>
                         <span className="text-xs">{formaPagamentoLabels[primeiraVenda.forma_pagamento] || "-"}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -497,7 +497,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
               return (
                 <TableRow key={venda.id} className={venda.cancelada ? 'opacity-60 bg-muted/30' : ''}>
                   <TableCell></TableCell>
-                  <TableCell>{formatDateTime(venda.data)}</TableCell>
+                  <TableCell>{formatDate(venda.data)}</TableCell>
                   <TableCell><Badge className={tipoColors[venda.tipo]}>{tipoLabels[venda.tipo]}</Badge></TableCell>
                   <TableCell>{getNomeItem(venda)}</TableCell>
                   <TableCell>{venda.clientes?.nome || "Cliente não informado"}</TableCell>
@@ -553,7 +553,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         {expandido ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                       </div>
                     </TableCell>
-                    <TableCell>{formatDateTime(primeiraVenda.data)}</TableCell>
+                    <TableCell>{formatDate(primeiraVenda.data)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="border-primary text-primary">
                         <ShoppingCart className="h-3 w-3 mr-1" />
@@ -583,7 +583,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         <TableCell className="w-8 pl-6">
                           <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{formatDateTime(venda.data)}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{formatDate(venda.data)}</TableCell>
                         <TableCell><Badge className={`${tipoColors[venda.tipo]} text-xs`}>{tipoLabels[venda.tipo]}</Badge></TableCell>
                         <TableCell className="text-sm">{getNomeItem(venda)}</TableCell>
                         <TableCell></TableCell>

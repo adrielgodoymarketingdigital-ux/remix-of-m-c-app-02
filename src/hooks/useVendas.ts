@@ -502,7 +502,9 @@ export const useVendas = () => {
     const vendasAtivas = vendasFiltradas.filter((v) => !v.cancelada);
     
     const agrupadas = vendasAtivas.reduce((acc, venda) => {
-      const data = new Date(venda.data).toLocaleDateString("pt-BR");
+      // venda.data is DATE (YYYY-MM-DD) — format directly to avoid UTC offset shift
+      const [y, m, d] = venda.data.split("-");
+      const data = `${d}/${m}/${y}`;
       if (!acc[data]) {
         acc[data] = { data, total: 0, quantidade: 0 };
       }
@@ -511,10 +513,10 @@ export const useVendas = () => {
       return acc;
     }, {} as Record<string, VendasPorPeriodo>);
 
-    return Object.values(agrupadas).sort((a, b) => 
-      new Date(a.data.split("/").reverse().join("-")).getTime() - 
-      new Date(b.data.split("/").reverse().join("-")).getTime()
-    );
+    return Object.values(agrupadas).sort((a, b) => {
+      const toISO = (s: string) => s.split("/").reverse().join("-");
+      return toISO(a.data).localeCompare(toISO(b.data));
+    });
   };
 
   const calcularResumoAReceber = (vendasFiltradas: Venda[]): ResumoAReceber => {

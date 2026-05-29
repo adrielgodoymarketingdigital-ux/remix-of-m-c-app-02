@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Package, RotateCcw } from "lucide-react";
 import { Venda } from "@/types/venda";
-import { formatCurrency, formatDateTime } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useState } from "react";
 
@@ -97,7 +97,7 @@ export const DialogCancelarVenda = ({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Data:</span>
-              <span className="text-sm">{formatDateTime(venda.data)}</span>
+              <span className="text-sm">{formatDate(venda.data)}</span>
             </div>
             {venda.clientes?.nome && (
               <div className="flex items-center justify-between">
