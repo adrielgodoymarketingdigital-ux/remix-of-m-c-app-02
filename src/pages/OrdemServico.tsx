@@ -683,44 +683,6 @@ export default function OrdemServicoPage() {
 
             </div>
 
-            {/* Barra de ações em lote */}
-            {selecaoAtiva && itensSelecionados.size > 0 && (
-              <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
-                <span className="font-semibold text-foreground">
-                  {itensSelecionados.size} {itensSelecionados.size === 1 ? "OS selecionada" : "OS selecionadas"}
-                </span>
-                <div className="ml-auto flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCancelarSelecao}
-                    className="h-7 text-xs px-3 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5 mr-1" />
-                    Cancelar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDialogMudarStatusEmLote(true)}
-                    className="h-7 text-xs px-3 gap-1.5"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Mudar status
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDialogExcluirEmLote(true)}
-                    className="h-7 text-xs px-3 gap-1.5"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir {itensSelecionados.size} {itensSelecionados.size === 1 ? "OS" : "OS"}
-                  </Button>
-                </div>
-              </div>
-            )}
-
             {/* Filtro de período — linha compacta */}
             <div className="flex items-center gap-1.5 flex-wrap">
               <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground font-mono">
@@ -901,7 +863,44 @@ export default function OrdemServicoPage() {
             <CardContent className="min-w-0 space-y-4 overflow-hidden p-4 sm:p-5 pt-4 sm:pt-4">
               {visualizacao === "tabela" && (
                 <>
-                  <BuscaOrdemServico 
+                  {/* Barra de ações em lote */}
+                  {selecaoAtiva && itensSelecionados.size > 0 && (
+                    <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                      <span className="font-semibold text-foreground">
+                        {itensSelecionados.size} {itensSelecionados.size === 1 ? "OS selecionada" : "OS selecionadas"}
+                      </span>
+                      <div className="ml-auto flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCancelarSelecao}
+                          className="h-7 text-xs px-3 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3.5 w-3.5 mr-1" />
+                          Cancelar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDialogMudarStatusEmLote(true)}
+                          className="h-7 text-xs px-3 gap-1.5"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Mudar status
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setDialogExcluirEmLote(true)}
+                          className="h-7 text-xs px-3 gap-1.5"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Excluir {itensSelecionados.size} {itensSelecionados.size === 1 ? "OS" : "OS"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  <BuscaOrdemServico
                     busca={busca} 
                     onBuscaChange={setBusca}
                     statusFiltro={statusFiltro}
