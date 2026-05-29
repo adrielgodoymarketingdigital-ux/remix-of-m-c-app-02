@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
@@ -55,6 +56,10 @@ interface TabelaOrdensServicoProps {
   onImprimirTermo?: (ordem: OrdemServico) => void;
   onImprimirEtiqueta?: (ordem: OrdemServico) => void;
   termoAtivo?: boolean;
+  selecaoAtiva?: boolean;
+  itensSelecionados?: Set<string>;
+  onToggleSelecionado?: (id: string) => void;
+  onToggleTodos?: (ids: string[]) => void;
 }
 
 export const TabelaOrdensServico = ({
@@ -70,6 +75,10 @@ export const TabelaOrdensServico = ({
   onImprimirTermo,
   onImprimirEtiqueta,
   termoAtivo,
+  selecaoAtiva = false,
+  itensSelecionados = new Set(),
+  onToggleSelecionado,
+  onToggleTodos,
 }: TabelaOrdensServicoProps) => {
   const [popoverAberto, setPopoverAberto] = useState<string | null>(null);
   const isMobileOrTablet = useIsMobileOrTablet();
@@ -127,12 +136,21 @@ export const TabelaOrdensServico = ({
             <div
               key={ordem.id}
               className="relative rounded-xl border bg-card overflow-hidden transition-all duration-150 hover:border-border"
-              style={{ borderColor: `${cor}25` }}
+              style={{ borderColor: selecaoAtiva && itensSelecionados.has(ordem.id) ? `${cor}80` : `${cor}25` }}
             >
               {/* Linha de cor no topo */}
               <div className="h-[2px] w-full" style={{ background: `linear-gradient(90deg, ${cor}90, ${cor}20)` }} />
+              {selecaoAtiva && (
+                <div className="absolute top-3 left-3 z-10">
+                  <Checkbox
+                    checked={itensSelecionados.has(ordem.id)}
+                    onCheckedChange={() => onToggleSelecionado?.(ordem.id)}
+                    className="h-4 w-4"
+                  />
+                </div>
+              )}
 
-              <div className="p-3.5">
+              <div className={`p-3.5 ${selecaoAtiva ? "pl-9" : ""}`}>
                 <div className="flex justify-between items-start mb-2.5">
                   <div className="flex items-center gap-2">
                     {isAvulso ? (
@@ -230,6 +248,7 @@ export const TabelaOrdensServico = ({
 
   // Desktop
   const baseWidths: Record<string, number> = {
+    selecao: 3,
     numero_os: 6,
     cliente: 13,
     dispositivo: 15,
@@ -241,7 +260,7 @@ export const TabelaOrdensServico = ({
     acoes: 15,
   };
 
-  const fixedWidth = baseWidths.numero_os + baseWidths.entrada + baseWidths.acoes;
+  const fixedWidth = (selecaoAtiva ? baseWidths.selecao : 0) + baseWidths.numero_os + baseWidths.entrada + baseWidths.acoes;
   const optionalCols = ["cliente", "dispositivo", "data_saida", "defeito", "status", "valor"] as const;
   const activeOptionalBaseWidth = optionalCols
     .filter(c => colunasAtivas.includes(c))
@@ -255,6 +274,15 @@ export const TabelaOrdensServico = ({
       <Table className="w-full table-fixed text-[11px]">
         <TableHeader>
           <TableRow className="border-b border-border/50 hover:bg-transparent">
+            {selecaoAtiva && (
+              <TableHead style={{ width: w("selecao") }} className="px-3 py-2.5 bg-muted/30">
+                <Checkbox
+                  checked={ordens.length > 0 && ordens.every(o => itensSelecionados.has(o.id))}
+                  onCheckedChange={() => onToggleTodos?.(ordens.map(o => o.id))}
+                  className="h-4 w-4"
+                />
+              </TableHead>
+            )}
             <TableHead style={{ width: w("numero_os") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
               OS
             </TableHead>
@@ -305,8 +333,17 @@ export const TabelaOrdensServico = ({
             return (
               <TableRow
                 key={ordem.id}
-                className="group border-b border-border/20 transition-colors duration-100 hover:bg-muted/30 cursor-default"
+                className={`group border-b border-border/20 transition-colors duration-100 hover:bg-muted/30 cursor-default ${selecaoAtiva && itensSelecionados.has(ordem.id) ? "bg-primary/5" : ""}`}
               >
+                {selecaoAtiva && (
+                  <TableCell className="px-3 py-2">
+                    <Checkbox
+                      checked={itensSelecionados.has(ordem.id)}
+                      onCheckedChange={() => onToggleSelecionado?.(ordem.id)}
+                      className="h-4 w-4"
+                    />
+                  </TableCell>
+                )}
                 {/* OS */}
                 <TableCell className="px-3 py-2 font-mono">
                   {isAvulso ? (

@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
@@ -169,6 +169,9 @@ export default function OrdemServicoPage() {
   const [ordemParaEtiqueta, setOrdemParaEtiqueta] = useState<OrdemServico | null>(null);
   const [dialogPersonalizarColunas, setDialogPersonalizarColunas] = useState(false);
   const [dialogTracking, setDialogTracking] = useState(false);
+  const [selecaoAtiva, setSelecaoAtiva] = useState(false);
+  const [itensSelecionados, setItensSelecionados] = useState<Set<string>>(new Set());
+  const [dialogExcluirEmLote, setDialogExcluirEmLote] = useState(false);
   const etiquetaPrintWindowRef = useRef<Window | null>(null);
   const osGerencialRef = useRef<HTMLDivElement | null>(null);
   const [usoCompartilhamentos, setUsoCompartilhamentos] = useState({ usado: 0, limite: 0, plano: '' });
@@ -349,6 +352,50 @@ export default function OrdemServicoPage() {
       await excluirOrdem(ordemParaExcluir.id);
       setOrdemParaExcluir(null);
     }
+  };
+
+  const handleToggleSelecionado = (id: string) => {
+    setItensSelecionados(prev => {
+      const novo = new Set(prev);
+      if (novo.has(id)) {
+        novo.delete(id);
+      } else {
+        novo.add(id);
+      }
+      return novo;
+    });
+  };
+
+  const handleToggleTodos = (ids: string[]) => {
+    setItensSelecionados(prev => {
+      const todosJaSelecionados = ids.every(id => prev.has(id));
+      if (todosJaSelecionados) {
+        const novo = new Set(prev);
+        ids.forEach(id => novo.delete(id));
+        return novo;
+      }
+      return new Set([...prev, ...ids]);
+    });
+  };
+
+  const handleCancelarSelecao = () => {
+    setSelecaoAtiva(false);
+    setItensSelecionados(new Set());
+  };
+
+  const handleConfirmarExclusaoEmLote = async () => {
+    const ids = Array.from(itensSelecionados);
+    for (const id of ids) {
+      const isAvulso = servicosAvulsos.some(sa => sa.id === id);
+      if (isAvulso) {
+        await excluirServicoAvulso(id);
+      } else {
+        await excluirOrdem(id);
+      }
+    }
+    setDialogExcluirEmLote(false);
+    handleCancelarSelecao();
+    toast.success(`${ids.length} ${ids.length === 1 ? "OS excluída" : "OS excluídas"} com sucesso`);
   };
 
   // Interceptar mudança de status para "entregue" - abrir dialog de assinatura
@@ -612,7 +659,46 @@ export default function OrdemServicoPage() {
                 Nova OS
               </Button>
 
+              <Button
+                variant={selecaoAtiva ? "default" : "outline"}
+                size="sm"
+                onClick={() => selecaoAtiva ? handleCancelarSelecao() : setSelecaoAtiva(true)}
+                className={`h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 ${selecaoAtiva ? "bg-primary/90" : "hover:border-border"}`}
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                {selecaoAtiva ? "Cancelar" : "Selecionar"}
+              </Button>
+
             </div>
+
+            {/* Barra de ações em lote */}
+            {selecaoAtiva && itensSelecionados.size > 0 && (
+              <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                <span className="font-semibold text-foreground">
+                  {itensSelecionados.size} {itensSelecionados.size === 1 ? "OS selecionada" : "OS selecionadas"}
+                </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelarSelecao}
+                    className="h-7 text-xs px-3 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDialogExcluirEmLote(true)}
+                    className="h-7 text-xs px-3 gap-1.5"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Excluir {itensSelecionados.size} {itensSelecionados.size === 1 ? "OS" : "OS"}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Filtro de período — linha compacta */}
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -793,6 +879,10 @@ export default function OrdemServicoPage() {
                     onMesFiltroChange={aplicarFiltroMes}
                   />
                   <TabelaOrdensServico
+                    selecaoAtiva={selecaoAtiva}
+                    itensSelecionados={itensSelecionados}
+                    onToggleSelecionado={handleToggleSelecionado}
+                    onToggleTodos={handleToggleTodos}
                     ordens={(() => {
                       const avulsosFiltradosPorStatus = statusFiltro !== "todos"
                         ? servicosAvulsosFiltrados.filter(sa => {
@@ -1067,6 +1157,29 @@ export default function OrdemServicoPage() {
             onOpenChange={setDialogTermoResponsabilidade}
             onSave={refetchConfig}
           />
+
+          {/* Excluir em lote */}
+          <AlertDialog open={dialogExcluirEmLote} onOpenChange={setDialogExcluirEmLote}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão em Lote</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir{" "}
+                  <strong>{itensSelecionados.size} {itensSelecionados.size === 1 ? "ordem de serviço" : "ordens de serviço"}</strong>?
+                  Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirmarExclusaoEmLote}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Excluir {itensSelecionados.size} {itensSelecionados.size === 1 ? "OS" : "OS"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <AlertDialog
             open={!!ordemParaExcluir}
