@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ItemCarrinho } from "@/components/pdv/ItemCarrinho";
 import { SelecionadorCliente } from "@/components/pdv/SelecionadorCliente";
-import { formatCurrency, dataHoje } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { z } from "zod";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { Dispositivo } from "@/types/dispositivo";
@@ -52,13 +52,8 @@ import { DialogVendaAvulsa } from "@/components/pdv/DialogVendaAvulsa";
 /** Retorna a data de hoje no formato YYYY-MM-DD no timezone local do usuário.
  * Necessário porque new Date().toISOString() retorna UTC, o que pode salvar
  * a data do dia anterior para usuários no UTC-3 (Brasil) após as 21h. */
-const dataLocalHoje = (): string => {
-  const hoje = new Date();
-  const ano = hoje.getFullYear();
-  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
-  const dia = String(hoje.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
-};
+const agora = (): string => new Date().toISOString();
+const dataLocalHoje = agora;
 
 const clienteSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -627,7 +622,7 @@ const PDV = () => {
           total: calcularTotal(),
           formaPagamento: formaPagamento,
           numeroParcelas: formaPagamento === "credito_parcelado" ? numeroParcelas : undefined,
-          data: dataHoje(),
+          data: agora(),
           grupoVendaId: grupoVendaId,
           pagamentoDuplo: pagamentoDuploAtivo && segundaFormaPagamento ? {
             valorPrimeira: valorPrimeiraPagamento,

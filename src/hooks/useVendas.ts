@@ -51,14 +51,15 @@ export const useVendas = () => {
         queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
       }
 
-      // O campo `data` em vendas é armazenado como data pura (YYYY-MM-DD), sem hora.
-      // Comparar diretamente com a string de data evita problemas de timezone onde
-      // filtros com offset local excluíam vendas salvas como meia-noite UTC.
-      if (dataInicio) {
-        queryVendas = queryVendas.gte("data", dataInicio);
-      }
-      if (dataFim) {
-        queryVendas = queryVendas.lte("data", dataFim);
+      // O campo `data` em vendas é TIMESTAMP WITH TIME ZONE — usar offset local para filtrar corretamente.
+      if (dataInicio || dataFim) {
+        const tzOffset = new Date().getTimezoneOffset();
+        const tzSign = tzOffset <= 0 ? "+" : "-";
+        const tzHh = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
+        const tzMm = String(Math.abs(tzOffset) % 60).padStart(2, "0");
+        const tz = `${tzSign}${tzHh}:${tzMm}`;
+        if (dataInicio) queryVendas = queryVendas.gte("data", `${dataInicio}T00:00:00${tz}`);
+        if (dataFim) queryVendas = queryVendas.lte("data", `${dataFim}T23:59:59${tz}`);
       }
 
       // Carregar ordens de serviço finalizadas (somente do usuário logado)
