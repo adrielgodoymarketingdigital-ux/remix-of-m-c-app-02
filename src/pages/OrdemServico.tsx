@@ -659,15 +659,6 @@ export default function OrdemServicoPage() {
                 Nova OS
               </Button>
 
-              <Button
-                variant={selecaoAtiva ? "default" : "outline"}
-                size="sm"
-                onClick={() => selecaoAtiva ? handleCancelarSelecao() : setSelecaoAtiva(true)}
-                className={`h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 ${selecaoAtiva ? "bg-primary/90" : "hover:border-border"}`}
-              >
-                <CheckSquare className="h-3.5 w-3.5" />
-                {selecaoAtiva ? "Cancelar" : "Selecionar"}
-              </Button>
 
             </div>
 
@@ -841,26 +832,40 @@ export default function OrdemServicoPage() {
                   <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
                   <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Gestão de OS</CardTitle>
                 </div>
-                <ToggleGroup
-                  type="single"
-                  value={visualizacao}
-                  onValueChange={(v) => {
-                    if (!v) return;
-                    const novaVis = v as "tabela" | "kanban";
-                    if (novaVis === "kanban" && statusFiltro !== "todos") setStatusFiltro("todos");
-                    setVisualizacao(novaVis);
-                  }}
-                  className="rounded-lg bg-background border border-border/50 p-0.5 h-7"
-                >
-                  <ToggleGroupItem value="tabela" className="gap-1.5 text-xs px-3 h-6 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
-                    <List className="h-3 w-3" />
-                    Tabela
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="kanban" className="gap-1.5 text-xs px-3 h-6 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
-                    <Columns3 className="h-3 w-3" />
-                    Kanban
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                <div className="flex items-center gap-2">
+                  {visualizacao === "tabela" && (
+                    <Button
+                      variant={selecaoAtiva ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => selecaoAtiva ? handleCancelarSelecao() : setSelecaoAtiva(true)}
+                      className="h-7 text-xs px-2.5 gap-1.5"
+                    >
+                      <CheckSquare className="h-3.5 w-3.5" />
+                      {selecaoAtiva ? "Cancelar" : "Selecionar"}
+                    </Button>
+                  )}
+                  <ToggleGroup
+                    type="single"
+                    value={visualizacao}
+                    onValueChange={(v) => {
+                      if (!v) return;
+                      const novaVis = v as "tabela" | "kanban";
+                      if (novaVis === "kanban" && statusFiltro !== "todos") setStatusFiltro("todos");
+                      if (novaVis === "kanban") handleCancelarSelecao();
+                      setVisualizacao(novaVis);
+                    }}
+                    className="rounded-lg bg-background border border-border/50 p-0.5 h-7"
+                  >
+                    <ToggleGroupItem value="tabela" className="gap-1.5 text-xs px-3 h-6 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                      <List className="h-3 w-3" />
+                      Tabela
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="kanban" className="gap-1.5 text-xs px-3 h-6 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                      <Columns3 className="h-3 w-3" />
+                      Kanban
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="min-w-0 space-y-4 overflow-hidden p-4 sm:p-5 pt-4 sm:pt-4">
