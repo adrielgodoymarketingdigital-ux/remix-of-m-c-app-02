@@ -745,17 +745,17 @@ export const useOrdensServico = () => {
         // aguardando_retirada, entregue, cancelada, garantia, estornado
         let statusFinal = 'aguardando_aprovacao';
         if (os.status) {
-          const s = os.status.toLowerCase().trim();
+          const normalize = (v: string) =>
+            v.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+          const s = normalize(os.status);
           const statusMap: Record<string, string> = {
             // aguardando_aprovacao
             'aguardando_aprovacao': 'aguardando_aprovacao',
             'aguardando aprovacao': 'aguardando_aprovacao',
-            'aguardando aprovação': 'aguardando_aprovacao',
             'aguardando': 'aguardando_aprovacao',
             'aberta': 'aguardando_aprovacao',
             'aberto': 'aguardando_aprovacao',
             'orcamento': 'aguardando_aprovacao',
-            'orçamento': 'aguardando_aprovacao',
             'aprovado': 'aguardando_aprovacao',
             'aprovada': 'aguardando_aprovacao',
             'pendente': 'aguardando_aprovacao',
@@ -764,13 +764,11 @@ export const useOrdensServico = () => {
             'em andamento': 'em_andamento',
             'andamento': 'em_andamento',
             'em_servico': 'em_andamento',
-            'em serviço': 'em_andamento',
+            'em servico': 'em_andamento',
             // finalizado
             'finalizado': 'finalizado',
             'finalizada': 'finalizado',
             'concluido': 'finalizado',
-            'concluída': 'finalizado',
-            'concluído': 'finalizado',
             'concluida': 'finalizado',
             'pronto': 'finalizado',
             // aguardando_retirada
@@ -779,7 +777,11 @@ export const useOrdensServico = () => {
             'retirada': 'aguardando_retirada',
             // entregue
             'entregue': 'entregue',
+            'entregues': 'entregue',
             'entregado': 'entregue',
+            'entregada': 'entregue',
+            'servico entregue': 'entregue',
+            'servico entregues': 'entregue',
             // cancelada
             'cancelada': 'cancelada',
             'cancelado': 'cancelada',
