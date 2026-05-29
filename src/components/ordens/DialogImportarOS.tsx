@@ -230,7 +230,7 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-hidden flex flex-col gap-0 p-0">
+      <DialogContent className="sm:max-w-4xl h-[92vh] overflow-hidden flex flex-col gap-0 p-0">
         {/* Header fixo */}
         <div className="px-6 pt-6 pb-4 border-b">
           <DialogHeader>
@@ -365,20 +365,20 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
 
           {/* ETAPA 3 — Preview e remoção de linhas */}
           {etapa === 'preview' && (
-            <div className="flex-1 overflow-hidden flex flex-col px-6 py-4 gap-3">
+            <div className="flex-1 min-h-0 flex flex-col px-6 py-4 gap-3">
               {/* Cabeçalho do preview */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center justify-between flex-wrap gap-2 shrink-0">
                 <div className="flex flex-wrap gap-2">
                   {itensOk.length > 0 && <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50"><CheckCircle2 className="w-3 h-3 mr-1" />{itensOk.length} prontas</Badge>}
                   {itensComAviso.length > 0 && <Badge variant="outline" className="text-yellow-700 border-yellow-300 bg-yellow-50"><AlertTriangle className="w-3 h-3 mr-1" />{itensComAviso.length} com aviso</Badge>}
                   {itensComErro.length > 0 && <Badge variant="outline" className="text-red-700 border-red-300 bg-red-50"><XCircle className="w-3 h-3 mr-1" />{itensComErro.length} com erro</Badge>}
                   {removidas > 0 && <Badge variant="outline" className="text-muted-foreground"><Trash2 className="w-3 h-3 mr-1" />{removidas} removida{removidas !== 1 ? 's' : ''}</Badge>}
                 </div>
-                <p className="text-xs text-muted-foreground">Clique no <Trash2 className="w-3 h-3 inline" /> para remover uma linha antes de importar</p>
+                <p className="text-xs text-muted-foreground">Clique no <Trash2 className="w-3 h-3 inline" /> para remover uma linha</p>
               </div>
 
-              {/* Tabela de preview */}
-              <ScrollArea className="flex-1 border rounded-lg">
+              {/* Tabela de preview — ocupa todo o espaço restante e scrola */}
+              <div className="flex-1 min-h-0 border rounded-lg overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -449,11 +449,11 @@ export const DialogImportarOS = ({ open, onOpenChange, onImportar }: Props) => {
                     ))}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+              </div>
 
-              {erro && <Alert variant="destructive"><XCircle className="h-4 w-4" /><AlertDescription>{erro}</AlertDescription></Alert>}
+              {erro && <Alert variant="destructive" className="shrink-0"><XCircle className="h-4 w-4" /><AlertDescription>{erro}</AlertDescription></Alert>}
 
-              <div className="flex justify-between gap-3 pt-1 border-t">
+              <div className="flex justify-between gap-3 pt-1 border-t shrink-0">
                 <Button variant="ghost" size="sm" onClick={() => setEtapa('mapeamento')}>
                   <ArrowLeft className="w-4 h-4 mr-1" />Voltar
                 </Button>
