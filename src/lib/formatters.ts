@@ -56,6 +56,14 @@ export const formatDateTime = (date: string | Date): string => {
   return format(parseDate(date), "dd/MM/yyyy HH:mm");
 };
 
+// Exibe data+hora se for timestamp, ou só data se for DATE pura (YYYY-MM-DD)
+export const formatDataVenda = (date: string | Date): string => {
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return format(parseDate(date), "dd/MM/yyyy");
+  }
+  return format(new Date(date), "dd/MM/yyyy HH:mm");
+};
+
 export const formatTime = (date: string | Date): string => {
   return format(parseDate(date), "HH:mm");
 };

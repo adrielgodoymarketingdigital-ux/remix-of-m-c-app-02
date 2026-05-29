@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Venda } from "@/types/venda";
 import { DialogEditarVenda } from "./DialogEditarVenda";
-import { formatDateTime, formatDate, extrairDataLocal } from "@/lib/formatters";
+import { formatDateTime, formatDate, formatDataVenda, extrairDataLocal } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart } from "lucide-react";
@@ -348,7 +348,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{formatDate(venda.data)}</p>
+                      <p className="text-xs text-muted-foreground">{formatDataVenda(venda.data)}</p>
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-xs">{formaPagamentoLabels[venda.forma_pagamento] || "-"}</span>
                         {venda.parcela_numero && venda.total_parcelas && (
@@ -406,7 +406,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">{formatDate(primeiraVenda.data)}</p>
+                        <p className="text-xs text-muted-foreground">{formatDataVenda(primeiraVenda.data)}</p>
                         <span className="text-xs">{formaPagamentoLabels[primeiraVenda.forma_pagamento] || "-"}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -497,7 +497,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
               return (
                 <TableRow key={venda.id} className={venda.cancelada ? 'opacity-60 bg-muted/30' : ''}>
                   <TableCell></TableCell>
-                  <TableCell>{formatDate(venda.data)}</TableCell>
+                  <TableCell>{formatDataVenda(venda.data)}</TableCell>
                   <TableCell><Badge className={tipoColors[venda.tipo]}>{tipoLabels[venda.tipo]}</Badge></TableCell>
                   <TableCell>{getNomeItem(venda)}</TableCell>
                   <TableCell>{venda.clientes?.nome || "Cliente não informado"}</TableCell>
@@ -553,7 +553,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         {expandido ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                       </div>
                     </TableCell>
-                    <TableCell>{formatDate(primeiraVenda.data)}</TableCell>
+                    <TableCell>{formatDataVenda(primeiraVenda.data)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="border-primary text-primary">
                         <ShoppingCart className="h-3 w-3 mr-1" />
@@ -583,7 +583,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         <TableCell className="w-8 pl-6">
                           <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{formatDate(venda.data)}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{formatDataVenda(venda.data)}</TableCell>
                         <TableCell><Badge className={`${tipoColors[venda.tipo]} text-xs`}>{tipoLabels[venda.tipo]}</Badge></TableCell>
                         <TableCell className="text-sm">{getNomeItem(venda)}</TableCell>
                         <TableCell></TableCell>
