@@ -669,6 +669,7 @@ export const useOrdensServico = () => {
     let inseridas = 0;
     let clientesCriados = 0;
     let erros = 0;
+    let primeiroErroMsg: string | null = null;
 
     // Helper: converte data da planilha (vários formatos) para ISO string ou null
     const parsearData = (raw: string | undefined): string | null => {
@@ -819,6 +820,11 @@ export const useOrdensServico = () => {
           total: os.total || null,
         };
 
+        // Incluir funcionario_id quando o usuário logado é funcionário
+        if (isFuncionario && funcionarioId) {
+          insertPayload.funcionario_id = funcionarioId;
+        }
+
         // Só incluir created_at se a data for válida; caso contrário usa o default do banco
         if (createdAtISO) {
           insertPayload.created_at = createdAtISO;
@@ -827,7 +833,8 @@ export const useOrdensServico = () => {
         const { error: insertErr } = await supabase.from("ordens_servico").insert([insertPayload]);
 
         if (insertErr) {
-          console.error("Erro ao inserir OS:", insertErr);
+          console.error("Erro ao inserir OS:", JSON.stringify(insertErr), "payload:", JSON.stringify(insertPayload));
+          if (!primeiroErroMsg) primeiroErroMsg = insertErr.message || JSON.stringify(insertErr);
           erros++;
         } else {
           inseridas++;
@@ -839,6 +846,12 @@ export const useOrdensServico = () => {
     }
 
     await carregarOrdens();
+
+    // Se nada foi inserido e há erros, lançar exceção com o primeiro erro para o dialog exibir
+    if (inseridas === 0 && erros > 0 && primeiroErroMsg) {
+      throw new Error(`Falha ao importar: ${primeiroErroMsg}`);
+    }
+
     return { inseridas, clientesCriados, erros };
   };
 
