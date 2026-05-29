@@ -30,6 +30,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormularioCompraDispositivo } from "@/types/origem";
+import { dataHoje } from "@/lib/formatters";
 import { useOrigemPessoas } from "@/hooks/useOrigemPessoas";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { useDispositivos } from "@/hooks/useDispositivos";
@@ -110,7 +111,7 @@ export function DialogCadastroCompra({
       pessoa_id: "",
       fornecedor_id: "",
       dispositivo_id: dispositivoId || "",
-      data_compra: new Date().toISOString().split('T')[0],
+      data_compra: dataHoje(),
       valor_pago: 0,
       forma_pagamento: 'pix',
       funcionario_responsavel: "",

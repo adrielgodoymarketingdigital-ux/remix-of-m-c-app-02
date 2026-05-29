@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { dataHoje } from "@/lib/formatters";
 
 export interface ServicoAvulso {
   id: string;
@@ -120,7 +121,7 @@ export function useServicosAvulsos() {
           tipo: "receber" as any,
           valor: dados.preco,
           valor_pago: dados.preco,
-          data: new Date().toISOString().split('T')[0],
+          data: dataHoje(),
           status: "pago" as any,
           recorrente: false,
           categoria: "Serviços",

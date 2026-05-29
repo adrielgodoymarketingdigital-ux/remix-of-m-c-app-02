@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
+import { dataHoje } from "@/lib/formatters";
 import { useOrigemPessoas } from "@/hooks/useOrigemPessoas";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { Loader2 } from "lucide-react";
@@ -85,7 +86,7 @@ export function DialogEditarCompra({
       tipo_origem: 'terceiro',
       pessoa_id: "",
       fornecedor_id: "",
-      data_compra: new Date().toISOString().split('T')[0],
+      data_compra: dataHoje(),
       valor_pago: 0,
       forma_pagamento: 'pix',
       funcionario_responsavel: "",

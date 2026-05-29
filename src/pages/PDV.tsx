@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ItemCarrinho } from "@/components/pdv/ItemCarrinho";
 import { SelecionadorCliente } from "@/components/pdv/SelecionadorCliente";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, dataHoje } from "@/lib/formatters";
 import { z } from "zod";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { Dispositivo } from "@/types/dispositivo";
@@ -627,7 +627,7 @@ const PDV = () => {
           total: calcularTotal(),
           formaPagamento: formaPagamento,
           numeroParcelas: formaPagamento === "credito_parcelado" ? numeroParcelas : undefined,
-          data: new Date().toISOString(),
+          data: dataHoje(),
           grupoVendaId: grupoVendaId,
           pagamentoDuplo: pagamentoDuploAtivo && segundaFormaPagamento ? {
             valorPrimeira: valorPrimeiraPagamento,

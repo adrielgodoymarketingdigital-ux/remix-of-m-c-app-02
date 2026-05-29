@@ -51,7 +51,7 @@ import { useServicosAvulsos } from "@/hooks/useServicosAvulsos";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, dataHoje } from "@/lib/formatters";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -481,8 +481,8 @@ export default function OrdemServicoPage() {
         nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || 'Cliente'}`,
         tipo: "receber",
         valor: saldoAReceber > 0 ? saldoAReceber : valorOrdem,
-        data: dataVencimento ? dataVencimento.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        data_vencimento: semPrazo ? null : (dataVencimento ? dataVencimento.toISOString().split('T')[0] : null),
+        data: dataHoje(),
+        data_vencimento: semPrazo ? null : (dataVencimento ? `${dataVencimento.getFullYear()}-${String(dataVencimento.getMonth()+1).padStart(2,'0')}-${String(dataVencimento.getDate()).padStart(2,'0')}` : null),
         status: "pendente",
         recorrente: false,
         categoria: "Serviços",

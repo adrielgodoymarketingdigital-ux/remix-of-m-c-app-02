@@ -62,7 +62,7 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, dataHoje } from "@/lib/formatters";
 
 interface DialogOrdemServicoProps {
   open: boolean;
@@ -807,7 +807,7 @@ export const DialogOrdemServico = ({
                 nome: `OS ${ordem.numero_os} - ${formData.clienteNome}`,
                 tipo: "receber",
                 valor: saldoRestante > 0 ? saldoRestante : total,
-                data: dataVencConta || new Date().toISOString().split('T')[0],
+                data: dataVencConta || dataHoje(),
                 data_vencimento: dataVencConta,
                 valor_pago: entradaPaga > 0 ? entradaPaga : null,
                 os_numero: ordem.numero_os,
@@ -858,7 +858,7 @@ export const DialogOrdemServico = ({
                 await supabase.from("contas").update({
                   nome: nomeConta,
                   valor: Number(pecaValor),
-                  data: s.peca_data_pagamento || new Date().toISOString().split('T')[0],
+                  data: s.peca_data_pagamento || dataHoje(),
                   fornecedor_id: s.peca_fornecedor_id || null,
                   descricao: `Peça "${pecaNome}" utilizada no serviço "${s.nome}" - OS ${ordem.numero_os}`,
                 }).eq("id", contaPecaExistente.id);
@@ -867,7 +867,7 @@ export const DialogOrdemServico = ({
                   nome: nomeConta,
                   tipo: "pagar",
                   valor: Number(pecaValor),
-                  data: s.peca_data_pagamento || new Date().toISOString().split('T')[0],
+                  data: s.peca_data_pagamento || dataHoje(),
                   status: "pendente",
                   recorrente: false,
                   categoria: "Fornecedores",
@@ -1038,7 +1038,7 @@ export const DialogOrdemServico = ({
             nome: `OS ${numeroOS} - ${formData.clienteNome}`,
             tipo: "receber",
             valor: saldoRestante > 0 ? saldoRestante : total,
-            data: dadosPag?.data_vencimento_prazo || new Date().toISOString().split('T')[0],
+            data: dadosPag?.data_vencimento_prazo || dataHoje(),
             data_vencimento: dadosPag?.data_vencimento_prazo || null,
             valor_pago: entradaPaga > 0 ? entradaPaga : null,
             os_numero: numeroOS,
@@ -1061,7 +1061,7 @@ export const DialogOrdemServico = ({
               nome: `Peça: ${pecaNome}${fornecedorNome} (OS ${numeroOS})`,
               tipo: "pagar",
               valor: Number(pecaValor),
-              data: s.peca_data_pagamento || new Date().toISOString().split('T')[0],
+              data: s.peca_data_pagamento || dataHoje(),
               status: "pendente",
               recorrente: false,
               categoria: "Fornecedores",
@@ -1085,7 +1085,7 @@ export const DialogOrdemServico = ({
                 nome: `Taxa Cartão ${taxaSel.bandeira} - OS ${numeroOS}`,
                 tipo: "pagar" as const,
                 valor: valorTaxa,
-                data: new Date().toISOString().split('T')[0],
+                data: dataHoje(),
                 status: "pago" as const,
                 recorrente: false,
                 categoria: "Taxa de Cartão",

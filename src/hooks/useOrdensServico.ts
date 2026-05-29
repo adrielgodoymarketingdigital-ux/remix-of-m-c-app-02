@@ -5,6 +5,7 @@ import { startOfMonth, endOfMonth, format } from "date-fns";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useEventDispatcher } from "./useEventDispatcher";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
+import { dataHoje } from "@/lib/formatters";
 import { useIdentidade } from "./useResolvedUserId";
 
 export interface OrdemServico {
@@ -475,7 +476,7 @@ export const useOrdensServico = () => {
               nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || 'Cliente'}`,
               tipo: "receber",
               valor: saldoAReceber > 0 ? saldoAReceber : valorOrdem,
-              data: new Date().toISOString().split('T')[0],
+              data: dataHoje(),
               status: "pendente",
               recorrente: false,
               categoria: "Serviços",
@@ -530,7 +531,7 @@ export const useOrdensServico = () => {
               nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || 'Cliente'}`,
               tipo: "receber",
               valor: valorOrdem,
-              data: new Date().toISOString().split('T')[0],
+              data: dataHoje(),
               status: "recebido",
               recorrente: false,
               categoria: "Serviços",
@@ -795,6 +796,9 @@ export const useOrdensServico = () => {
             'estornada': 'estornado',
           };
           statusFinal = statusMap[s] || 'aguardando_aprovacao';
+          if (!statusMap[s]) {
+            console.warn('[importarOS] status não reconhecido:', JSON.stringify(os.status), '=> normalizado:', JSON.stringify(s));
+          }
         }
 
         // Parsear data com suporte a formatos BR (DD/MM/AAAA) e serial do Excel

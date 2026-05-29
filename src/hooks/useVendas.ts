@@ -4,6 +4,7 @@ import { Venda, ResumoVendas, VendasPorPeriodo, ResumoAReceber } from "@/types/v
 import { useToast } from "@/hooks/use-toast";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
+import { dataHoje } from "@/lib/formatters";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useIdentidade } from "./useResolvedUserId";
 
@@ -660,7 +661,7 @@ export const useVendas = () => {
           nome: `Venda - ${nomeItem} - ${nomeCliente}${sufixoParcela}`,
           tipo: "receber",
           valor: vendaOriginal.total,
-          data: dados.data_prevista_recebimento || new Date().toISOString().split('T')[0],
+          data: dados.data_prevista_recebimento || dataHoje(),
           data_vencimento: dados.data_prevista_recebimento || null,
           status: "pendente",
           recorrente: false,
@@ -680,7 +681,7 @@ export const useVendas = () => {
         await supabase.from("contas")
           .update({
             data_vencimento: dados.data_prevista_recebimento || null,
-            data: dados.data_prevista_recebimento || new Date().toISOString().split('T')[0],
+            data: dados.data_prevista_recebimento || dataHoje(),
           })
           .eq("user_id", vendaOriginal.user_id)
           .ilike("descricao", `%venda_id:${vendaId}%`)

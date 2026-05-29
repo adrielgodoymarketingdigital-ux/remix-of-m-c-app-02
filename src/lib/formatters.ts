@@ -17,6 +17,15 @@ function parseDate(date: string | Date): Date {
   return new Date(date);
 }
 
+// Returns today's date as YYYY-MM-DD using local timezone (not UTC)
+export const dataHoje = (): string => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export const formatDate = (date: string | Date): string => {
   return format(parseDate(date), "dd/MM/yyyy");
 };
