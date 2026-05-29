@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
@@ -172,6 +172,8 @@ export default function OrdemServicoPage() {
   const [selecaoAtiva, setSelecaoAtiva] = useState(false);
   const [itensSelecionados, setItensSelecionados] = useState<Set<string>>(new Set());
   const [dialogExcluirEmLote, setDialogExcluirEmLote] = useState(false);
+  const [dialogMudarStatusEmLote, setDialogMudarStatusEmLote] = useState(false);
+  const [statusEmLoteSelecionado, setStatusEmLoteSelecionado] = useState<string>("");
   const etiquetaPrintWindowRef = useRef<Window | null>(null);
   const osGerencialRef = useRef<HTMLDivElement | null>(null);
   const [usoCompartilhamentos, setUsoCompartilhamentos] = useState({ usado: 0, limite: 0, plano: '' });
@@ -396,6 +398,25 @@ export default function OrdemServicoPage() {
     setDialogExcluirEmLote(false);
     handleCancelarSelecao();
     toast.success(`${ids.length} ${ids.length === 1 ? "OS excluída" : "OS excluídas"} com sucesso`);
+  };
+
+  const handleConfirmarMudarStatusEmLote = async () => {
+    if (!statusEmLoteSelecionado) return;
+    const ids = Array.from(itensSelecionados);
+    for (const id of ids) {
+      const isAvulso = servicosAvulsos.some(sa => sa.id === id);
+      if (isAvulso) {
+        await atualizarStatusAvulso(id, statusEmLoteSelecionado);
+      } else {
+        await atualizarStatus(id, statusEmLoteSelecionado);
+      }
+    }
+    setDialogMudarStatusEmLote(false);
+    setStatusEmLoteSelecionado("");
+    const statusConfig = statusList.find(s => s.slug === statusEmLoteSelecionado);
+    const nomeStatus = statusConfig?.nome ?? statusEmLoteSelecionado;
+    handleCancelarSelecao();
+    toast.success(`${ids.length} ${ids.length === 1 ? "OS atualizada" : "OS atualizadas"} para "${nomeStatus}"`);
   };
 
   // Interceptar mudança de status para "entregue" - abrir dialog de assinatura
@@ -677,6 +698,15 @@ export default function OrdemServicoPage() {
                   >
                     <X className="h-3.5 w-3.5 mr-1" />
                     Cancelar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogMudarStatusEmLote(true)}
+                    className="h-7 text-xs px-3 gap-1.5"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Mudar status
                   </Button>
                   <Button
                     variant="destructive"
@@ -1162,6 +1192,57 @@ export default function OrdemServicoPage() {
             onOpenChange={setDialogTermoResponsabilidade}
             onSave={refetchConfig}
           />
+
+          {/* Mudar status em lote */}
+          <Dialog open={dialogMudarStatusEmLote} onOpenChange={(open) => {
+            setDialogMudarStatusEmLote(open);
+            if (!open) setStatusEmLoteSelecionado("");
+          }}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Mudar Status em Lote
+                </DialogTitle>
+                <DialogDescription>
+                  Selecione o novo status para{" "}
+                  <strong>{itensSelecionados.size} {itensSelecionados.size === 1 ? "OS selecionada" : "OS selecionadas"}</strong>.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-2">
+                <Select value={statusEmLoteSelecionado} onValueChange={setStatusEmLoteSelecionado}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um status..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusList.filter(s => s.ativo).map(s => (
+                      <SelectItem key={s.slug} value={s.slug}>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: s.cor }}
+                          />
+                          {s.nome}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="ghost" size="sm" onClick={() => setDialogMudarStatusEmLote(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!statusEmLoteSelecionado}
+                  onClick={handleConfirmarMudarStatusEmLote}
+                >
+                  Confirmar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Excluir em lote */}
           <AlertDialog open={dialogExcluirEmLote} onOpenChange={setDialogExcluirEmLote}>
