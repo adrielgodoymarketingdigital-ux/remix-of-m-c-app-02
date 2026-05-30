@@ -1129,34 +1129,6 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-red-500">
-              <div className="flex items-center justify-between mb-3">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                  <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
-                </div>
-                <div className="text-right">
-                  <p className="text-xl sm:text-2xl font-semibold">{financeiroData.contasHojeQtd}</p>
-                  <p className="text-xs text-muted-foreground">contas</p>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground mb-1">Contas a Pagar Hoje</p>
-              <p className="text-lg sm:text-xl font-semibold text-red-600 dark:text-red-400">
-                <ValorMonetario valor={financeiroData.contasHojeTotal} />
-              </p>
-            </Card>
-
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-orange-500">
-              <div className="flex items-center justify-between mb-3">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                  <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground mb-1">Custo Total do Mês</p>
-              <p className="text-lg sm:text-xl font-semibold text-orange-600 dark:text-orange-400">
-                <ValorMonetario valor={financeiroData.custoTotal + financeiroData.custoOperacional} />
-              </p>
-            </Card>
-
             <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-green-500">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
@@ -1194,15 +1166,15 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-purple-500">
+            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-orange-500">
               <div className="flex items-center justify-between mb-3">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                  <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                  <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Taxas de Cartão</p>
-              <p className="text-lg sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
-                <ValorMonetario valor={financeiroData.taxasCartao} />
+              <p className="text-sm text-muted-foreground mb-1">Custo Total do Mês</p>
+              <p className="text-lg sm:text-xl font-semibold text-orange-600 dark:text-orange-400">
+                <ValorMonetario valor={financeiroData.custoTotal + financeiroData.custoOperacional} />
               </p>
             </Card>
 
@@ -1215,6 +1187,18 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground mb-1">Despesas Operacionais</p>
               <p className="text-lg sm:text-xl font-semibold text-rose-600 dark:text-rose-400">
                 <ValorMonetario valor={financeiroData.custoOperacional} />
+              </p>
+            </Card>
+
+            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-purple-500">
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">Taxas de Cartão</p>
+              <p className="text-lg sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
+                <ValorMonetario valor={financeiroData.taxasCartao} />
               </p>
             </Card>
 
