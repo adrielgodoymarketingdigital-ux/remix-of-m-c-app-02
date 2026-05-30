@@ -66,7 +66,7 @@ export function DialogVisualizarOrcamento({
 }: DialogVisualizarOrcamentoProps) {
   const { config: lojaConfig } = useConfiguracaoLoja();
   const [imprimindo, setImprimindo] = useState(false);
-  const [formatoImpressao, setFormatoImpressao] = useState<"a4" | "80mm" | null>(null);
+  const [configImpressao, setConfigImpressao] = useState<typeof lojaConfig | null>(null);
   const [configLayoutAberto, setConfigLayoutAberto] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -81,18 +81,30 @@ export function DialogVisualizarOrcamento({
   );
 
   const handleImprimirA4 = () => {
+    setConfigImpressao({
+      ...lojaConfig,
+      layout_orcamento_config: {
+        ...(lojaConfig?.layout_orcamento_config ?? {}),
+        formato_papel: "a4" as const,
+      },
+    });
     setImprimindo(true);
-    setFormatoImpressao("a4");
   };
 
   const handleImprimirTermica = () => {
+    setConfigImpressao({
+      ...lojaConfig,
+      layout_orcamento_config: {
+        ...(lojaConfig?.layout_orcamento_config ?? {}),
+        formato_papel: "80mm" as const,
+      },
+    });
     setImprimindo(true);
-    setFormatoImpressao("80mm");
   };
 
   const handleFecharImpressao = () => {
     setImprimindo(false);
-    setFormatoImpressao(null);
+    setConfigImpressao(null);
   };
 
   const handleConverterOS = () => {
@@ -121,16 +133,6 @@ export function DialogVisualizarOrcamento({
     onFechar();
   };
 
-  // Build a config with the desired format overridden when triggered explicitly
-  const lojaConfigComFormato = formatoImpressao
-    ? {
-        ...lojaConfig,
-        layout_orcamento_config: {
-          ...(lojaConfig?.layout_orcamento_config ?? {}),
-          formato_papel: formatoImpressao,
-        },
-      }
-    : lojaConfig;
 
   return (
     <>
@@ -367,10 +369,10 @@ export function DialogVisualizarOrcamento({
       </Dialog>
 
       {/* Componente de impressão — renderizado fora do dialog */}
-      {imprimindo && formatoImpressao && lojaConfigComFormato !== null && (
+      {imprimindo && configImpressao && (
         <ImpressaoOrcamento
           orcamento={orcamento}
-          configuracaoLoja={lojaConfigComFormato ?? undefined}
+          configuracaoLoja={configImpressao ?? undefined}
           onFecharImpressao={handleFecharImpressao}
         />
       )}

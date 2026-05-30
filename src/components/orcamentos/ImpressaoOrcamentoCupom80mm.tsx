@@ -3,7 +3,6 @@ import { Orcamento } from "@/types/orcamento";
 import { ConfiguracaoLoja, LayoutOrcamentoConfig } from "@/types/configuracao-loja";
 import { formatCurrency, formatDate, formatPhone } from "@/lib/formatters";
 import { getPrintScript } from "@/lib/print-utils";
-import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 
 interface ImpressaoOrcamentoCupom80mmProps {
   orcamento: Orcamento;
@@ -23,9 +22,6 @@ export function ImpressaoOrcamentoCupom80mm({
   useEffect(() => {
     if (printedRef.current) return;
     printedRef.current = true;
-
-    const paper = resolvePaperSize("80mm");
-    const thermalCSS = getThermalPrintCSS(paper);
 
     const mostrarLogo = layoutConfig.mostrar_logo ?? true;
     const mostrarDadosLoja = layoutConfig.mostrar_dados_loja ?? true;
@@ -117,7 +113,7 @@ export function ImpressaoOrcamentoCupom80mm({
       mostrarObservacoes && orcamento.observacoes
         ? `<div class="cupom-secao cupom-borda-baixo">
             <div class="cupom-titulo-secao">OBSERVAÇÕES</div>
-            <div style="white-space:pre-line;font-size:7pt">${orcamento.observacoes}</div>
+            <div style="white-space:pre-line;font-size:8pt">${orcamento.observacoes}</div>
           </div>`
         : "";
 
@@ -125,7 +121,7 @@ export function ImpressaoOrcamentoCupom80mm({
       mostrarTermos && orcamento.termos_condicoes
         ? `<div class="cupom-secao cupom-termos">
             <div class="cupom-titulo-secao">TERMOS</div>
-            <div style="font-size:6pt;white-space:pre-line">${orcamento.termos_condicoes}</div>
+            <div style="font-size:6.5pt;white-space:pre-line">${orcamento.termos_condicoes}</div>
           </div>`
         : "";
 
@@ -150,8 +146,10 @@ export function ImpressaoOrcamentoCupom80mm({
   <title>Orçamento ${orcamento.numero_orcamento}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    ${thermalCSS}
+    @page { size: 80mm auto; margin: 2mm; }
     body {
+      width: 76mm !important;
+      max-width: 76mm !important;
       font-family: Arial, Helvetica, sans-serif;
       font-size: 9pt;
       color: #000;
@@ -181,9 +179,9 @@ export function ImpressaoOrcamentoCupom80mm({
       letter-spacing: 0.3px;
     }
     .cupom-pequeno {
-      font-size: 7pt;
+      font-size: 8.5pt;
       color: #000;
-      font-weight: 500;
+      font-weight: 600;
     }
     .cupom-logo {
       max-width: 28mm;
@@ -198,8 +196,8 @@ export function ImpressaoOrcamentoCupom80mm({
       font-weight: 700;
     }
     .cupom-titulo-secao {
-      font-weight: 800;
-      font-size: 8pt;
+      font-weight: 900;
+      font-size: 9pt;
       margin-bottom: 1mm;
       text-decoration: underline;
       letter-spacing: 0.5px;
