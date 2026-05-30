@@ -319,9 +319,9 @@ export const ImpressaoOrdemServico = ({
     .cupom-center { text-align: center; }
     .cupom-border-bottom { border-bottom: 1.5px dashed #000; padding-bottom: 2mm; }
     .cupom-loja-nome { font-weight: 900; font-size: 11pt; letter-spacing: 0.3px; }
-    .cupom-small { font-size: 7pt; color: #000; font-weight: 500; }
+    .cupom-small { font-size: 8.5pt; color: #000; font-weight: 600; }
     .cupom-os-numero { font-size: 12pt; font-weight: 900; }
-    .cupom-section-title { font-weight: 800; font-size: 8pt; margin-bottom: 1mm; text-decoration: underline; letter-spacing: 0.5px; }
+    .cupom-section-title { font-weight: 900; font-size: 9pt; margin-bottom: 1mm; text-decoration: underline; letter-spacing: 0.5px; }
     .cupom-line-between { display: flex; justify-content: space-between; font-weight: 600; }
     .cupom-total { font-size: 13pt; font-weight: 900; text-align: center; border-top: 2px dashed #000; border-bottom: 2px dashed #000; padding: 2.5mm 0; }
     .cupom-logo { max-width: 28mm; max-height: 14mm; }
