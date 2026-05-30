@@ -148,7 +148,8 @@ export function DialogReciboPDV({
       margin: ${isThermal ? '2px 0' : '6px 0'};
     }
     .dados-loja {
-      font-size: ${isThermal ? '8px' : '11px'};
+      font-size: ${isThermal ? '11px' : '11px'};
+      font-weight: ${isThermal ? '600' : '400'};
       color: #444;
       margin-top: ${isThermal ? '2px' : '6px'};
       line-height: 1.5;

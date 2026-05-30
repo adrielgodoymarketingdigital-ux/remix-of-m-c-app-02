@@ -231,7 +231,8 @@ export function DialogReimprimirReciboVenda({
                 margin: 0 auto 15px;
               }
               .dados-loja {
-                font-size: ${is80mm ? '9px' : '12px'};
+                font-size: ${is80mm ? '11px' : '12px'};
+                font-weight: ${is80mm ? '600' : '400'};
                 margin-top: 10px;
               }
               .recibo-info {
