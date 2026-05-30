@@ -845,7 +845,7 @@ const Dashboard = () => {
                   <div className="h-px w-full bg-blue-400/30 my-1" />
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-300" />
-                    <span className="text-xs font-mono text-blue-200/70 uppercase tracking-wider">Lucro do mês</span>
+                    <span className="text-xs font-mono text-blue-200/70 uppercase tracking-wider">Lucro Líquido</span>
                     <span className={`text-sm font-bold font-mono ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
                       <ValorMonetario valor={financeiroData.lucroLiquido} />
                     </span>
@@ -1116,7 +1116,7 @@ const Dashboard = () => {
           </div>
 
           {/* Cards Financeiros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
             <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-primary">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1160,11 +1160,24 @@ const Dashboard = () => {
             <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-green-500">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                  <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
+                  <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Lucro do Mês</p>
-              <p className={`text-lg sm:text-xl font-semibold ${financeiroData.lucroLiquido >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              <p className="text-sm text-muted-foreground mb-1">Lucro Bruto</p>
+              <p className={`text-lg sm:text-xl font-semibold ${financeiroData.lucroTotal >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <ValorMonetario valor={financeiroData.lucroTotal} />
+              </p>
+            </Card>
+
+            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-emerald-600">
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                  <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">Lucro Líquido</p>
+              <p className="text-xs text-muted-foreground mb-1">após despesas pagas</p>
+              <p className={`text-lg sm:text-xl font-semibold ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                 <ValorMonetario valor={financeiroData.lucroLiquido} />
               </p>
             </Card>
