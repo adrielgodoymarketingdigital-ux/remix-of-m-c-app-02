@@ -1057,6 +1057,12 @@ export const useRelatorios = () => {
       const custoProdutosServicos = lucros.reduce((acc, item) => acc + item.custoTotal, 0);
       const custoTotal = custoProdutosServicos + taxasCartao.total;
       const custoOperacional = custos.agrupados.reduce((acc, custo) => acc + custo.total, 0);
+
+      console.log('[Dashboard Debug] custos operacionais:', {
+        agrupados: custos.agrupados,
+        detalhes: custos.detalhes,
+        custoOperacional,
+      });
       
       // Lucro bruto = receita total (vendas/OS + receitas manuais) - custo total (produtos/serviços + taxas cartão)
       const lucroTotal = receitaTotal - custoTotal;
