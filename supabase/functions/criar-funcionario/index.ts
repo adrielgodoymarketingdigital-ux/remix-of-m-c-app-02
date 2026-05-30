@@ -36,13 +36,30 @@ serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user: donoLoja }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !donoLoja) {
+    const { data: { user: usuarioLogado }, error: authError } = await supabaseUser.auth.getUser();
+    if (authError || !usuarioLogado) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: assinatura, error: assinaturaError } = await supabaseUser
-      .from("assinaturas").select("*").eq("user_id", donoLoja.id).maybeSingle();
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // Detectar se quem está logado é gerente de filial.
+    // Se sim, as verificações de assinatura e limite usam o proprietário da filial.
+    const { data: gerenteFilial } = await supabaseAdmin
+      .from("empresa_usuarios")
+      .select("empresa_id, proprietario_id")
+      .eq("gerente_id", usuarioLogado.id)
+      .maybeSingle();
+
+    const lojaUserIdEfetivo = gerenteFilial?.proprietario_id ?? usuarioLogado.id;
+    const empresaIdFuncionario = gerenteFilial?.empresa_id ?? null;
+
+    const { data: assinatura, error: assinaturaError } = await supabaseAdmin
+      .from("assinaturas").select("*").eq("user_id", lojaUserIdEfetivo).maybeSingle();
 
     if (assinaturaError) {
       return new Response(JSON.stringify({ error: "Erro ao verificar assinatura" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -61,27 +78,22 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "A senha deve ter pelo menos 6 caracteres" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
     const { data: funcionarioExistente } = await supabaseAdmin
-      .from("loja_funcionarios").select("id").eq("loja_user_id", donoLoja.id).eq("email", email.toLowerCase()).maybeSingle();
+      .from("loja_funcionarios").select("id").eq("loja_user_id", lojaUserIdEfetivo).eq("email", email.toLowerCase()).maybeSingle();
 
     if (funcionarioExistente) {
       return new Response(JSON.stringify({ error: "Este email já está cadastrado como funcionário" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { count: totalFuncionarios } = await supabaseAdmin
-      .from("loja_funcionarios").select("id", { count: "exact", head: true }).eq("loja_user_id", donoLoja.id);
+      .from("loja_funcionarios").select("id", { count: "exact", head: true }).eq("loja_user_id", lojaUserIdEfetivo);
 
     const plano = assinatura.plano_tipo;
     let limite = 0;
-    if (plano.includes("intermediario")) limite = 3;
+    if (plano === "trial" || plano === "demonstracao") limite = 1;
+    else if (plano.includes("basico")) limite = 1;
+    else if (plano.includes("intermediario")) limite = 3;
     else if (plano.includes("profissional") || plano === "admin") limite = 999;
-    else if (plano === "trial" || plano === "demonstracao") limite = 1;
 
     if ((totalFuncionarios ?? 0) >= limite) {
       return new Response(JSON.stringify({ error: `Limite de ${limite} funcionário(s) atingido para seu plano` }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -93,7 +105,7 @@ serve(async (req: Request) => {
       email: email.toLowerCase(),
       password: senha,
       email_confirm: true,
-      user_metadata: { nome, tipo: "funcionario", loja_user_id: donoLoja.id },
+      user_metadata: { nome, tipo: "funcionario", loja_user_id: lojaUserIdEfetivo },
     });
 
     if (createError) {
@@ -121,7 +133,7 @@ serve(async (req: Request) => {
         const { data: vinculoExistente } = await supabaseAdmin
           .from("loja_funcionarios").select("id, loja_user_id").eq("funcionario_user_id", usuarioExistente.id).eq("ativo", true).maybeSingle();
 
-        if (vinculoExistente && vinculoExistente.loja_user_id !== donoLoja.id) {
+        if (vinculoExistente && vinculoExistente.loja_user_id !== lojaUserIdEfetivo) {
           return new Response(JSON.stringify({ error: "Este email já está vinculado a outra loja" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
@@ -132,7 +144,7 @@ serve(async (req: Request) => {
 
         funcionarioUserId = usuarioExistente.id;
         // Only reset password if this is an employee already linked to THIS store
-        if (isExistingFuncionario && vinculoExistente && vinculoExistente.loja_user_id === donoLoja.id) {
+        if (isExistingFuncionario && vinculoExistente && vinculoExistente.loja_user_id === lojaUserIdEfetivo) {
           await supabaseAdmin.auth.admin.updateUserById(funcionarioUserId, { password: senha });
         }
       } else {
@@ -145,7 +157,7 @@ serve(async (req: Request) => {
     const { data: funcionario, error: insertError } = await supabaseAdmin
       .from("loja_funcionarios")
       .insert({
-        loja_user_id: donoLoja.id,
+        loja_user_id: lojaUserIdEfetivo,
         funcionario_user_id: funcionarioUserId,
         nome,
         email: email.toLowerCase(),
@@ -157,6 +169,7 @@ serve(async (req: Request) => {
         comissao_valor: comissao_valor || 0,
         comissao_escopo: comissao_escopo || null,
         comissoes_por_cargo: comissoes_por_cargo || null,
+        empresa_id: empresaIdFuncionario,
       })
       .select()
       .single();

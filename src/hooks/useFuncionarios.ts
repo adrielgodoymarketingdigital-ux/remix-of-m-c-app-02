@@ -20,30 +20,32 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return [];
 
-        if (empresaAtiva) {
-          // Filial selecionada: mostrar apenas funcionários do gerente da filial.
-          // Se a filial não tem gerente, retorna vazio (sem equipe própria).
-          const gerenteId = empresaSelecionada?.gerente_id ?? null;
-          if (!gerenteId) return [];
-          lojaUserId = gerenteId;
-        } else {
-          // Check if the current user is a staff member
-          const { data: funcionarioData } = await supabase
-            .from("loja_funcionarios")
-            .select("loja_user_id")
-            .eq("funcionario_user_id", user.id)
-            .eq("ativo", true)
-            .maybeSingle();
+        // Check if the current user is a staff member or gerente de filial
+        const { data: funcionarioData } = await supabase
+          .from("loja_funcionarios")
+          .select("loja_user_id")
+          .eq("funcionario_user_id", user.id)
+          .eq("ativo", true)
+          .maybeSingle();
 
-          lojaUserId = funcionarioData?.loja_user_id || user.id;
-        }
+        lojaUserId = funcionarioData?.loja_user_id || user.id;
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("loja_funcionarios")
         .select("*")
         .eq("loja_user_id", lojaUserId)
         .order("created_at", { ascending: false });
+
+      if (empresaAtiva) {
+        // Filial selecionada: mostrar apenas funcionários dessa filial
+        query = query.eq("empresa_id", empresaAtiva);
+      } else {
+        // Sem filial selecionada: mostrar apenas funcionários da matriz (sem empresa_id)
+        query = query.is("empresa_id", null);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       
