@@ -104,7 +104,9 @@ const Dashboard = () => {
     contasHojeQtd: 0,
     margemLucro: 0,
     custoTotal: 0,
+    custoOperacional: 0,
     lucroTotal: 0,
+    lucroLiquido: 0,
     taxasCartao: 0,
   });
   const [hojeData, setHojeData] = useState({
@@ -427,7 +429,9 @@ const Dashboard = () => {
       contasHojeQtd: qtdContasHoje,
       margemLucro: resumo.margemLucroMedia,
       custoTotal: resumo.custoTotal,
+      custoOperacional: resumo.custoOperacional,
       lucroTotal: resumo.lucroTotal,
+      lucroLiquido: resumo.lucroLiquido,
       taxasCartao: resumo.taxasCartao,
     });
 
@@ -838,8 +842,8 @@ const Dashboard = () => {
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-300" />
                     <span className="text-xs font-mono text-blue-200/70 uppercase tracking-wider">Lucro do mês</span>
-                    <span className={`text-sm font-bold font-mono ${financeiroData.lucroTotal >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                      <ValorMonetario valor={financeiroData.lucroTotal} />
+                    <span className={`text-sm font-bold font-mono ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                      <ValorMonetario valor={financeiroData.lucroLiquido} />
                     </span>
                   </div>
                 </div>
@@ -1145,7 +1149,7 @@ const Dashboard = () => {
               </div>
               <p className="text-sm text-muted-foreground mb-1">Custo Total do Mês</p>
               <p className="text-lg sm:text-xl font-semibold text-orange-600 dark:text-orange-400">
-                <ValorMonetario valor={financeiroData.custoTotal} />
+                <ValorMonetario valor={financeiroData.custoTotal + financeiroData.custoOperacional} />
               </p>
             </Card>
 
@@ -1156,8 +1160,8 @@ const Dashboard = () => {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground mb-1">Lucro do Mês</p>
-              <p className={`text-lg sm:text-xl font-semibold ${financeiroData.lucroTotal >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                <ValorMonetario valor={financeiroData.lucroTotal} />
+              <p className={`text-lg sm:text-xl font-semibold ${financeiroData.lucroLiquido >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <ValorMonetario valor={financeiroData.lucroLiquido} />
               </p>
             </Card>
 
