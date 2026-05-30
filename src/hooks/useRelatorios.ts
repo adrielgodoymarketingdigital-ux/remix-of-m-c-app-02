@@ -476,11 +476,14 @@ export const useRelatorios = () => {
 
       if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
-      if (filtros.dataInicio) {
-        query = query.gte("data_pagamento", filtros.dataInicio);
-      }
-      if (filtros.dataFim) {
-        query = query.lte("data_pagamento", filtros.dataFim);
+      if (filtros.dataInicio && filtros.dataFim) {
+        query = query.or(
+          `and(data_pagamento.gte.${filtros.dataInicio},data_pagamento.lte.${filtros.dataFim}),and(data_pagamento.is.null,data.gte.${filtros.dataInicio},data.lte.${filtros.dataFim})`
+        );
+      } else if (filtros.dataInicio) {
+        query = query.or(`data_pagamento.gte.${filtros.dataInicio},and(data_pagamento.is.null,data.gte.${filtros.dataInicio})`);
+      } else if (filtros.dataFim) {
+        query = query.or(`data_pagamento.lte.${filtros.dataFim},and(data_pagamento.is.null,data.lte.${filtros.dataFim})`);
       }
 
       const { data: contas, error } = await query;
