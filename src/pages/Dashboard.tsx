@@ -1206,6 +1206,18 @@ const Dashboard = () => {
               </p>
             </Card>
 
+            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-rose-500">
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                  <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-rose-600 dark:text-rose-400" />
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">Despesas Operacionais</p>
+              <p className="text-lg sm:text-xl font-semibold text-rose-600 dark:text-rose-400">
+                <ValorMonetario valor={financeiroData.custoOperacional} />
+              </p>
+            </Card>
+
           </div>
 
           {/* Métricas */}
