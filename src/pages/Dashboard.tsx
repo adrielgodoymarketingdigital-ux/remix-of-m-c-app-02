@@ -184,7 +184,11 @@ const Dashboard = () => {
       loadHojeData();
     };
     window.addEventListener("os-salva", handler);
-    return () => window.removeEventListener("os-salva", handler);
+    window.addEventListener("conta-atualizada", handler);
+    return () => {
+      window.removeEventListener("os-salva", handler);
+      window.removeEventListener("conta-atualizada", handler);
+    };
   }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
 
   const checkAuth = async () => {

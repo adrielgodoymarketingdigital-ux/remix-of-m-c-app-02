@@ -289,6 +289,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     const sucesso = await atualizarConta(id, { status });
 
     if (sucesso) {
+      window.dispatchEvent(new CustomEvent("conta-atualizada"));
       const conta = contas.find(c => c.id === id);
       if (conta?.recorrente) {
         try {
@@ -387,6 +388,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         description: `${contasParaBaixa.length} conta(s) marcada(s) como paga(s)/recebida(s).`,
       });
 
+      window.dispatchEvent(new CustomEvent("conta-atualizada"));
       await carregarContas();
       return true;
     } catch (error) {

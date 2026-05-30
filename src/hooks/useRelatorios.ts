@@ -470,7 +470,7 @@ export const useRelatorios = () => {
         .select("*")
         .eq("user_id", userId)
         .eq("tipo", "pagar")
-        .in("status", ["pago", "pendente"])
+        .eq("status", "pago")
         .neq("categoria", "Taxa de Cartão")
         .is("os_numero", null);
 
