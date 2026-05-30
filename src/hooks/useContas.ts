@@ -286,7 +286,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     }
 
     const status = tipo === 'pagar' ? 'pago' : 'recebido';
-    const sucesso = await atualizarConta(id, { status });
+    const hoje = new Date().toISOString().slice(0, 10);
+    const sucesso = await atualizarConta(id, { status, data_pagamento: hoje });
 
     if (sucesso) {
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
@@ -354,10 +355,12 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       const contasReaisReceber = contasParaBaixa.filter(c => c.tipo === 'receber' && !c.id.startsWith("venda_")).map(c => c.id);
       const vendasVirtuais = contasParaBaixa.filter(c => c.id.startsWith("venda_"));
 
+      const hoje = new Date().toISOString().slice(0, 10);
+
       if (contasReaisPagar.length > 0) {
         const { error } = await supabase
           .from("contas")
-          .update({ status: 'pago' as any })
+          .update({ status: 'pago' as any, data_pagamento: hoje })
           .in("id", contasReaisPagar)
           .eq("user_id", targetUserId);
         if (error) throw error;
@@ -366,7 +369,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       if (contasReaisReceber.length > 0) {
         const { error } = await supabase
           .from("contas")
-          .update({ status: 'recebido' as any })
+          .update({ status: 'recebido' as any, data_pagamento: hoje })
           .in("id", contasReaisReceber)
           .eq("user_id", targetUserId);
         if (error) throw error;

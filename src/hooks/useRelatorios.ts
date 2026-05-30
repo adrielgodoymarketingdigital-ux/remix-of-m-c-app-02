@@ -477,10 +477,10 @@ export const useRelatorios = () => {
       if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
 
       if (filtros.dataInicio) {
-        query = query.gte("data", filtros.dataInicio);
+        query = query.gte("data_pagamento", filtros.dataInicio);
       }
       if (filtros.dataFim) {
-        query = query.lte("data", filtros.dataFim);
+        query = query.lte("data_pagamento", filtros.dataFim);
       }
 
       const { data: contas, error } = await query;
