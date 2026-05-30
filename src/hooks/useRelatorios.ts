@@ -470,7 +470,7 @@ export const useRelatorios = () => {
         .select("*")
         .eq("user_id", userId)
         .eq("tipo", "pagar")
-        .eq("status", "pago")
+        .in("status", ["pago", "pendente"])
         .neq("categoria", "Taxa de Cartão")
         .is("os_numero", null);
 
@@ -1042,53 +1042,18 @@ export const useRelatorios = () => {
       const receitaVendasOS = lucros.reduce((acc, item) => acc + item.receitaTotal, 0);
       const receitaTotal = receitaVendasOS + receitaManual;
       
-      console.log('[Financeiro Debug] Breakdown receita:', {
-        receitaVendasOS,
-        receitaManual,
-        receitaTotal,
-        itensCount: lucros.length,
-        itensPorTipo: {
-          dispositivos: lucros.filter(i => i.tipo === 'dispositivo').reduce((a, i) => a + i.receitaTotal, 0),
-          produtos: lucros.filter(i => i.tipo === 'produto').reduce((a, i) => a + i.receitaTotal, 0),
-          servicos: lucros.filter(i => i.tipo === 'servico').reduce((a, i) => a + i.receitaTotal, 0),
-        }
-      });
-
       const custoProdutosServicos = lucros.reduce((acc, item) => acc + item.custoTotal, 0);
       const custoTotal = custoProdutosServicos + taxasCartao.total;
       const custoOperacional = custos.agrupados.reduce((acc, custo) => acc + custo.total, 0);
 
-      console.log('[Dashboard Debug] custos operacionais:', {
-        agrupados: custos.agrupados,
-        detalhes: custos.detalhes,
-        custoOperacional,
-      });
-      
       // Lucro bruto = receita total (vendas/OS + receitas manuais) - custo total (produtos/serviços + taxas cartão)
       const lucroTotal = receitaTotal - custoTotal;
-      
+
       // Lucro líquido = lucro bruto - custos operacionais
       const lucroLiquido = lucroTotal - custoOperacional;
-      
+
       const margemLucroMedia =
         receitaTotal > 0 ? (lucroTotal / receitaTotal) * 100 : 0;
-
-      console.log('[Financeiro Debug] Breakdown completo:', {
-        receitaTotal,
-        custoProdutosServicos,
-        taxasCartao: taxasCartao.total,
-        custoTotal,
-        lucroTotal_bruto: lucroTotal,
-        custoOperacional,
-        lucroLiquido,
-        lucroPorTipo: {
-          dispositivos_lucro: lucros.filter(i => i.tipo === 'dispositivo').reduce((a, i) => a + (i.receitaTotal - i.custoTotal), 0),
-          produtos_lucro: lucros.filter(i => i.tipo === 'produto').reduce((a, i) => a + (i.receitaTotal - i.custoTotal), 0),
-          servicos_lucro: lucros.filter(i => i.tipo === 'servico').reduce((a, i) => a + (i.receitaTotal - i.custoTotal), 0),
-        },
-        contasOperacionais: custos.detalhes.map(d => ({ nome: d.nome, valor: d.valor, cat: d.categoria })),
-        taxasDetalhes: taxasCartao.detalhes.map(d => ({ bandeira: d.bandeira, valor: d.valor })),
-      });
 
       return {
         receitaTotal,
