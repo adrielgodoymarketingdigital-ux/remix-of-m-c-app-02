@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -1792,6 +1793,36 @@ export type Database = {
           plano_tipo?: string | null
           processado?: boolean | null
           tipo?: string
+        }
+        Relationships: []
+      }
+      lista_compras: {
+        Row: {
+          concluido: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          quantidade: string
+          user_id: string
+        }
+        Insert: {
+          concluido?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          quantidade?: string
+          user_id: string
+        }
+        Update: {
+          concluido?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          quantidade?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -4898,3 +4929,5 @@ export const Constants = {
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.102.0 (currently installed v2.90.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

@@ -55,7 +55,7 @@ export function ListaCompras() {
 
   return (
     <div className="max-w-xl mx-auto space-y-4">
-      {/* Cabeçalho visual */}
+      {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShoppingCart className="h-5 w-5 text-primary" />
@@ -79,108 +79,109 @@ export function ListaCompras() {
         )}
       </div>
 
-      {/* Bloco de notas */}
-      <div
-        className="rounded-xl border-2 border-border shadow-sm overflow-hidden"
-        style={{
-          background: "repeating-linear-gradient(transparent, transparent 31px, hsl(var(--border)) 31px, hsl(var(--border)) 32px)",
-        }}
-      >
-        {/* Topo do bloco */}
-        <div className="bg-primary/10 border-b-2 border-primary/20 px-4 py-2 flex items-center gap-2">
-          <div className="flex gap-1.5">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="h-2.5 w-2.5 rounded-full bg-primary/30" />
-            ))}
-          </div>
-          <span className="text-xs font-medium text-primary/70 ml-1">
-            {itens.length === 0 ? "Lista vazia" : `${itens.length} item${itens.length !== 1 ? "ns" : ""}`}
-          </span>
+      {/* Caderno */}
+      <div className="rounded-xl overflow-hidden shadow-md border border-border">
+
+        {/* Espiral do caderno */}
+        <div className="bg-muted/50 border-b border-border flex items-center gap-0 px-3 py-1.5">
+          {Array.from({ length: 18 }).map((_, i) => (
+            <div key={i} className="flex-1 flex justify-center">
+              <div className="h-3 w-3 rounded-full border-2 border-muted-foreground/25 bg-background" />
+            </div>
+          ))}
         </div>
 
-        {/* Formulário de adição */}
-        <form onSubmit={handleAdicionar} className="px-4 pt-3 pb-2 border-b border-dashed border-border/60">
-          <div className="flex gap-2">
-            <Input
-              ref={inputNovoRef}
-              placeholder="Adicionar item..."
-              value={novoNome}
-              onChange={e => setNovoNome(e.target.value)}
-              className="flex-1 h-8 text-sm border-0 border-b border-border rounded-none bg-transparent px-1 focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/50"
-            />
-            <Input
-              placeholder="Qtd"
-              value={novaQtd}
-              onChange={e => setNovaQtd(e.target.value)}
-              className="w-16 h-8 text-sm border-0 border-b border-border rounded-none bg-transparent px-1 focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/50 text-center"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              disabled={adicionando || !novoNome.trim()}
+        {/* Corpo do caderno com linha vermelha lateral */}
+        <div className="bg-[#fafaf7] dark:bg-[#1a1a16] flex">
+          {/* Margem vermelha */}
+          <div className="w-8 shrink-0 border-r-2 border-red-400/60" />
+
+          {/* Conteúdo */}
+          <div className="flex-1">
+
+            {/* Formulário */}
+            <form
+              onSubmit={handleAdicionar}
+              className="flex items-center gap-2 px-3 py-2.5 border-b border-blue-200/60 dark:border-blue-900/40"
             >
-              <Plus className="h-4 w-4" />
-            </Button>
+              <Input
+                ref={inputNovoRef}
+                placeholder="Adicionar item à lista..."
+                value={novoNome}
+                onChange={e => setNovoNome(e.target.value)}
+                className="flex-1 h-7 text-sm border-0 rounded-none bg-transparent px-0 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/40 font-['Patrick_Hand',_cursive]"
+              />
+              <Input
+                placeholder="Qtd"
+                value={novaQtd}
+                onChange={e => setNovaQtd(e.target.value)}
+                className="w-14 h-7 text-sm border-0 rounded-none bg-transparent px-0 shadow-none focus-visible:ring-0 text-center placeholder:text-muted-foreground/40"
+              />
+              <Button
+                type="submit"
+                size="icon"
+                className="h-7 w-7 shrink-0 rounded-full"
+                disabled={adicionando || !novoNome.trim()}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </form>
+
+            {/* Itens */}
+            {loading ? (
+              <div className="px-3 py-8 text-center text-sm text-muted-foreground">Carregando...</div>
+            ) : itens.length === 0 ? (
+              <div className="px-3 py-10 text-center">
+                <ShoppingCart className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground/50">Lista vazia. Adicione itens acima.</p>
+              </div>
+            ) : (
+              <>
+                {pendentes.map(item => (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    editandoId={editandoId}
+                    editNome={editNome}
+                    editQtd={editQtd}
+                    onToggle={() => toggleConcluido(item.id, item.concluido)}
+                    onIniciarEdicao={() => iniciarEdicao(item)}
+                    onExcluir={() => excluirItem(item.id)}
+                    onEditNomeChange={setEditNome}
+                    onEditQtdChange={setEditQtd}
+                    onConfirmarEdicao={confirmarEdicao}
+                    onCancelarEdicao={cancelarEdicao}
+                  />
+                ))}
+
+                {concluidos.length > 0 && (
+                  <>
+                    <div className="px-3 py-1 bg-muted/30 border-y border-blue-200/60 dark:border-blue-900/40">
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+                        Comprado ({concluidos.length})
+                      </span>
+                    </div>
+                    {concluidos.map(item => (
+                      <ItemRow
+                        key={item.id}
+                        item={item}
+                        editandoId={editandoId}
+                        editNome={editNome}
+                        editQtd={editQtd}
+                        onToggle={() => toggleConcluido(item.id, item.concluido)}
+                        onIniciarEdicao={() => iniciarEdicao(item)}
+                        onExcluir={() => excluirItem(item.id)}
+                        onEditNomeChange={setEditNome}
+                        onEditQtdChange={setEditQtd}
+                        onConfirmarEdicao={confirmarEdicao}
+                        onCancelarEdicao={cancelarEdicao}
+                      />
+                    ))}
+                  </>
+                )}
+              </>
+            )}
           </div>
-        </form>
-
-        {/* Lista de itens */}
-        <div className="divide-y divide-dashed divide-border/40">
-          {loading ? (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</div>
-          ) : itens.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <ShoppingCart className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground/60">Nenhum item na lista ainda.</p>
-              <p className="text-xs text-muted-foreground/40 mt-1">Digite acima para começar.</p>
-            </div>
-          ) : (
-            <>
-              {pendentes.map(item => (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  editandoId={editandoId}
-                  editNome={editNome}
-                  editQtd={editQtd}
-                  onToggle={() => toggleConcluido(item.id, item.concluido)}
-                  onIniciarEdicao={() => iniciarEdicao(item)}
-                  onExcluir={() => excluirItem(item.id)}
-                  onEditNomeChange={setEditNome}
-                  onEditQtdChange={setEditQtd}
-                  onConfirmarEdicao={confirmarEdicao}
-                  onCancelarEdicao={cancelarEdicao}
-                />
-              ))}
-
-              {concluidos.length > 0 && (
-                <>
-                  <div className="px-4 py-1.5 bg-muted/30">
-                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                      Comprado ({concluidos.length})
-                    </span>
-                  </div>
-                  {concluidos.map(item => (
-                    <ItemRow
-                      key={item.id}
-                      item={item}
-                      editandoId={editandoId}
-                      editNome={editNome}
-                      editQtd={editQtd}
-                      onToggle={() => toggleConcluido(item.id, item.concluido)}
-                      onIniciarEdicao={() => iniciarEdicao(item)}
-                      onExcluir={() => excluirItem(item.id)}
-                      onEditNomeChange={setEditNome}
-                      onEditQtdChange={setEditQtd}
-                      onConfirmarEdicao={confirmarEdicao}
-                      onCancelarEdicao={cancelarEdicao}
-                    />
-                  ))}
-                </>
-              )}
-            </>
-          )}
         </div>
       </div>
     </div>
@@ -218,19 +219,25 @@ function ItemRow({
 
   if (isEditando) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-blue-200/60 dark:border-blue-900/40">
         <Input
           autoFocus
           value={editNome}
           onChange={e => onEditNomeChange(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") onConfirmarEdicao(); if (e.key === "Escape") onCancelarEdicao(); }}
-          className="flex-1 h-7 text-sm border-0 border-b border-primary rounded-none bg-transparent px-1 focus-visible:ring-0"
+          onKeyDown={e => {
+            if (e.key === "Enter") onConfirmarEdicao();
+            if (e.key === "Escape") onCancelarEdicao();
+          }}
+          className="flex-1 h-7 text-sm border-0 border-b border-primary rounded-none bg-transparent px-0 shadow-none focus-visible:ring-0"
         />
         <Input
           value={editQtd}
           onChange={e => onEditQtdChange(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") onConfirmarEdicao(); if (e.key === "Escape") onCancelarEdicao(); }}
-          className="w-14 h-7 text-sm border-0 border-b border-primary rounded-none bg-transparent px-1 focus-visible:ring-0 text-center"
+          onKeyDown={e => {
+            if (e.key === "Enter") onConfirmarEdicao();
+            if (e.key === "Escape") onCancelarEdicao();
+          }}
+          className="w-14 h-7 text-sm border-0 border-b border-primary rounded-none bg-transparent px-0 shadow-none focus-visible:ring-0 text-center"
         />
         <Button size="icon" variant="ghost" className="h-6 w-6 text-green-600 hover:text-green-700" onClick={onConfirmarEdicao}>
           <Check className="h-3.5 w-3.5" />
@@ -245,18 +252,19 @@ function ItemRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-4 py-2.5 group hover:bg-muted/20 transition-colors",
-        item.concluido && "opacity-60"
+        "flex items-center gap-3 px-3 py-2.5 border-b border-blue-200/60 dark:border-blue-900/40",
+        "group hover:bg-blue-50/40 dark:hover:bg-blue-950/20 transition-colors",
+        item.concluido && "opacity-55"
       )}
     >
-      {/* Checkbox estilo caderno */}
+      {/* Checkbox */}
       <button
         onClick={onToggle}
         className={cn(
           "h-4 w-4 rounded-sm border-2 shrink-0 flex items-center justify-center transition-colors",
           item.concluido
             ? "bg-primary border-primary"
-            : "border-muted-foreground/40 hover:border-primary"
+            : "border-muted-foreground/35 hover:border-primary"
         )}
       >
         {item.concluido && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
@@ -265,7 +273,7 @@ function ItemRow({
       {/* Nome */}
       <span
         className={cn(
-          "flex-1 text-sm leading-relaxed",
+          "flex-1 text-sm",
           item.concluido && "line-through text-muted-foreground"
         )}
       >
@@ -274,12 +282,12 @@ function ItemRow({
 
       {/* Quantidade */}
       {item.quantidade && item.quantidade !== "1" && (
-        <span className="text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
+        <span className="text-xs text-muted-foreground/70 shrink-0 tabular-nums">
           {item.quantidade}
         </span>
       )}
 
-      {/* Ações - aparecem no hover */}
+      {/* Ações no hover */}
       <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <Button
           size="icon"

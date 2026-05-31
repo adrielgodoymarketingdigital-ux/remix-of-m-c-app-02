@@ -23,7 +23,7 @@ export function useListaCompras() {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from("lista_compras" as never)
+        .from("lista_compras")
         .select("*")
         .eq("user_id", user.id)
         .order("concluido", { ascending: true })
@@ -45,15 +45,18 @@ export function useListaCompras() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
+      // ordem sequencial baseado em segundos desde epoch (cabe em int4 até 2038)
+      const ordemSeq = Math.floor(Date.now() / 1000);
+
       const { error } = await supabase
-        .from("lista_compras" as never)
+        .from("lista_compras")
         .insert({
           user_id: user.id,
           nome: nome.trim(),
           quantidade: quantidade.trim() || "1",
           concluido: false,
-          ordem: Date.now(),
-        } as never);
+          ordem: ordemSeq,
+        });
 
       if (error) throw error;
       await carregar();
@@ -71,8 +74,8 @@ export function useListaCompras() {
       if (!user) return;
 
       const { error } = await supabase
-        .from("lista_compras" as never)
-        .update({ concluido: !concluido } as never)
+        .from("lista_compras")
+        .update({ concluido: !concluido })
         .eq("id", id)
         .eq("user_id", user.id);
 
@@ -92,8 +95,8 @@ export function useListaCompras() {
       if (!user) return false;
 
       const { error } = await supabase
-        .from("lista_compras" as never)
-        .update({ nome: nome.trim(), quantidade: quantidade.trim() || "1" } as never)
+        .from("lista_compras")
+        .update({ nome: nome.trim(), quantidade: quantidade.trim() || "1" })
         .eq("id", id)
         .eq("user_id", user.id);
 
@@ -113,7 +116,7 @@ export function useListaCompras() {
       if (!user) return;
 
       const { error } = await supabase
-        .from("lista_compras" as never)
+        .from("lista_compras")
         .delete()
         .eq("id", id)
         .eq("user_id", user.id);
@@ -132,7 +135,7 @@ export function useListaCompras() {
       if (!user) return;
 
       const { error } = await supabase
-        .from("lista_compras" as never)
+        .from("lista_compras")
         .delete()
         .eq("user_id", user.id)
         .eq("concluido", true);
