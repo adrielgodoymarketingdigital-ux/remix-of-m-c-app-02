@@ -57,4 +57,5 @@ export interface FormularioDispositivo {
     saida?: Record<string, boolean>;
   };
   codigo_barras?: string | null;
+  imeis?: string[];
 }

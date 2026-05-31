@@ -15,6 +15,13 @@ import { useProdutos } from "@/hooks/useProdutos";
 import { formatCurrency } from "@/lib/formatters";
 import { Smartphone, Package, Search } from "lucide-react";
 import { BotaoScanner } from "@/components/scanner/LeitorCodigoBarras";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface ItemVenda {
   id: string;
@@ -27,6 +34,7 @@ export interface ItemVenda {
   dispositivo_id?: string;
   produto_id?: string;
   peca_id?: string;
+  imei_dispositivo?: string;
 }
 
 interface DialogSelecionarItemProps {
@@ -44,6 +52,7 @@ export const DialogSelecionarItem = ({
   const { items: produtos, carregarTodos: carregarProdutos } = useProdutos();
   const [busca, setBusca] = useState("");
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
+  const [imeisSelecionados, setImeisSelecionados] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (open) {
@@ -74,6 +83,14 @@ export const DialogSelecionarItem = ({
   );
 
   const handleAdicionarDispositivo = (dispositivo: any) => {
+    const temImeis = dispositivo.imeis && dispositivo.imeis.length > 0;
+    if (temImeis && !imeisSelecionados[dispositivo.id]) {
+      setImeisSelecionados((prev) => ({ ...prev, [dispositivo.id]: "__pendente__" }));
+      return;
+    }
+    const imei = imeisSelecionados[dispositivo.id] !== "__pendente__"
+      ? imeisSelecionados[dispositivo.id]
+      : undefined;
     const quantidade = quantidades[dispositivo.id] || 1;
     onAdicionarItem({
       id: dispositivo.id,
@@ -84,8 +101,10 @@ export const DialogSelecionarItem = ({
       quantidade,
       estoque: dispositivo.quantidade,
       dispositivo_id: dispositivo.id,
+      imei_dispositivo: imei,
     });
     setQuantidades((prev) => ({ ...prev, [dispositivo.id]: 1 }));
+    setImeisSelecionados((prev) => { const n = { ...prev }; delete n[dispositivo.id]; return n; });
     onOpenChange(false);
   };
 
@@ -152,51 +171,95 @@ export const DialogSelecionarItem = ({
                   Nenhum dispositivo disponível
                 </div>
               ) : (
-                filtrarDispositivos.map((dispositivo) => (
+                filtrarDispositivos.map((dispositivo) => {
+                  const temImeis = dispositivo.imeis && (dispositivo.imeis as string[]).length > 0;
+                  const aguardandoImei = imeisSelecionados[dispositivo.id] === "__pendente__";
+                  const imeiEscolhido = imeisSelecionados[dispositivo.id];
+                  return (
                   <div
                     key={dispositivo.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex-1">
-                      <div className="font-medium">
-                        {dispositivo.marca} {dispositivo.modelo}
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="font-medium">
+                          {dispositivo.marca} {dispositivo.modelo}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline">{dispositivo.tipo}</Badge>
+                          <span className="text-sm text-muted-foreground">
+                            Estoque: {dispositivo.quantidade}
+                          </span>
+                          {temImeis && (
+                            <Badge variant="secondary" className="text-xs">
+                              {(dispositivo.imeis as string[]).length} IMEI{(dispositivo.imeis as string[]).length > 1 ? "s" : ""}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-lg font-semibold mt-1">
+                          {formatCurrency(Number(dispositivo.preco || 0))}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline">{dispositivo.tipo}</Badge>
-                        <span className="text-sm text-muted-foreground">
-                          Estoque: {dispositivo.quantidade}
-                        </span>
-                      </div>
-                      <div className="text-lg font-semibold mt-1">
-                        {formatCurrency(Number(dispositivo.preco || 0))}
+                      <div className="flex items-center gap-2">
+                        {!temImeis && (
+                          <div className="space-y-2">
+                            <Label className="text-xs">Quantidade</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max={dispositivo.quantidade}
+                              value={quantidades[dispositivo.id] || 1}
+                              onChange={(e) =>
+                                setQuantidade(dispositivo.id, parseInt(e.target.value) || 1)
+                              }
+                              className="w-20"
+                            />
+                          </div>
+                        )}
+                        <Button
+                          onClick={() => handleAdicionarDispositivo(dispositivo)}
+                          className="self-end"
+                          disabled={aguardandoImei && !imeiEscolhido}
+                        >
+                          Adicionar
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="space-y-2">
-                        <Label className="text-xs">Quantidade</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          max={dispositivo.quantidade}
-                          value={quantidades[dispositivo.id] || 1}
-                          onChange={(e) =>
-                            setQuantidade(
-                              dispositivo.id,
-                              parseInt(e.target.value) || 1
-                            )
-                          }
-                          className="w-20"
-                        />
+
+                    {/* Seleção de IMEI — aparece após clicar Adicionar */}
+                    {aguardandoImei && (
+                      <div className="mt-3 pt-3 border-t space-y-2">
+                        <Label className="text-sm font-medium">Selecione o IMEI da unidade a vender</Label>
+                        <div className="flex gap-2">
+                          <Select
+                            value={imeiEscolhido === "__pendente__" ? "" : (imeiEscolhido || "")}
+                            onValueChange={(v) =>
+                              setImeisSelecionados((prev) => ({ ...prev, [dispositivo.id]: v }))
+                            }
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Selecionar IMEI" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(dispositivo.imeis as string[]).map((imei: string) => (
+                                <SelectItem key={imei} value={imei}>
+                                  {imei}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            onClick={() => handleAdicionarDispositivo(dispositivo)}
+                            disabled={!imeiEscolhido || imeiEscolhido === "__pendente__"}
+                          >
+                            Confirmar
+                          </Button>
+                        </div>
                       </div>
-                      <Button
-                        onClick={() => handleAdicionarDispositivo(dispositivo)}
-                        className="self-end"
-                      >
-                        Adicionar
-                      </Button>
-                    </div>
+                    )}
                   </div>
-                ))
+                  );
+                })
               )}
             </TabsContent>
 

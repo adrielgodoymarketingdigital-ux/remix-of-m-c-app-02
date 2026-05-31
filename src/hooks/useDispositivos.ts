@@ -41,7 +41,8 @@ export function useDispositivos() {
           .from("dispositivos")
           .select(`
             *,
-            fornecedores (nome)
+            fornecedores (nome),
+            dispositivo_imeis (id, imei, vendido)
           `)
           .eq("user_id", userId)
           .eq("vendido", false)
@@ -54,7 +55,13 @@ export function useDispositivos() {
         return data;
       }, 'useDispositivos.carregarDispositivos');
 
-      setDispositivos((data || []) as Dispositivo[]);
+      const mappedData = (data || []).map((d: any) => ({
+        ...d,
+        imeis: (d.dispositivo_imeis || [])
+          .filter((i: any) => !i.vendido)
+          .map((i: any) => i.imei),
+      }));
+      setDispositivos(mappedData as Dispositivo[]);
     } catch (error: unknown) {
       if (!shouldSuppressToast(error)) {
         const { userMessage } = classifyError(error);
@@ -119,6 +126,16 @@ export function useDispositivos() {
         .single();
 
       if (error) throw error;
+
+      // Salvar IMEIs individuais se informados
+      if (data?.id && dados.imeis && dados.imeis.length > 0) {
+        const imeisParaInserir = dados.imeis
+          .filter((imei: string) => imei.trim())
+          .map((imei: string) => ({ dispositivo_id: data.id, imei: imei.trim() }));
+        if (imeisParaInserir.length > 0) {
+          await supabase.from("dispositivo_imeis").insert(imeisParaInserir);
+        }
+      }
 
       toast({
         title: "Dispositivo cadastrado",
@@ -195,6 +212,21 @@ export function useDispositivos() {
         .eq("user_id", userId);
 
       if (error) throw error;
+
+      // Sincronizar IMEIs: apagar apenas os não-vendidos e reinserir
+      if (dados.imeis !== undefined) {
+        await supabase
+          .from("dispositivo_imeis")
+          .delete()
+          .eq("dispositivo_id", id)
+          .eq("vendido", false);
+        const imeisParaInserir = (dados.imeis as string[])
+          .filter((imei: string) => imei.trim())
+          .map((imei: string) => ({ dispositivo_id: id, imei: imei.trim() }));
+        if (imeisParaInserir.length > 0) {
+          await supabase.from("dispositivo_imeis").insert(imeisParaInserir);
+        }
+      }
 
       toast({
         title: "Dispositivo atualizado",

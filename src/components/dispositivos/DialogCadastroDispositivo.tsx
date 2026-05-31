@@ -38,7 +38,7 @@ import { UploadFotosDispositivo } from "./UploadFotosDispositivo";
 import { ChecklistDispositivo } from "../ordens/ChecklistDispositivo";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
-import { ExternalLink, Shield, Lock } from "lucide-react";
+import { ExternalLink, Shield, Lock, Trash2 } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 
 const optionalNumber = z.preprocess(
@@ -135,7 +135,8 @@ export function DialogCadastroDispositivo({
 }: DialogCadastroDispositivoProps) {
   const { fornecedores } = useFornecedores();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
-  
+  const [imeisLista, setImeisLista] = useState<string[]>([""]);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -167,6 +168,7 @@ export function DialogCadastroDispositivo({
   const lucro = preco - custo;
   const garantiaAtiva = form.watch("garantia");
   const tipoSelecionado = form.watch("tipo");
+  const quantidadeAtual = form.watch("quantidade") || 1;
 
   useEffect(() => {
     if (dispositivoParaEditar) {
@@ -192,6 +194,13 @@ export function DialogCadastroDispositivo({
         checklist: dispositivoParaEditar.checklist || { entrada: {}, saida: {} },
         codigo_barras: dispositivoParaEditar.codigo_barras || "",
       });
+      // Preencher lista de IMEIs ao editar — usa imeis[] se disponível
+      const imeisExistentes = dispositivoParaEditar.imeis && dispositivoParaEditar.imeis.length > 0
+        ? dispositivoParaEditar.imeis
+        : [dispositivoParaEditar.imei || ""];
+      const qtd = dispositivoParaEditar.quantidade || 1;
+      const listaAjustada = Array.from({ length: qtd }, (_, i) => imeisExistentes[i] || "");
+      setImeisLista(listaAjustada);
     } else {
       form.reset({
         tipo: "",
@@ -215,8 +224,19 @@ export function DialogCadastroDispositivo({
         checklist: { entrada: {}, saida: {} },
         codigo_barras: "",
       });
+      setImeisLista([""]);
     }
   }, [dispositivoParaEditar, form]);
+
+  // Ajusta o tamanho da lista de IMEIs quando a quantidade muda
+  useEffect(() => {
+    const qtd = Math.max(1, quantidadeAtual || 1);
+    setImeisLista((prev) => {
+      if (prev.length === qtd) return prev;
+      if (qtd > prev.length) return [...prev, ...Array(qtd - prev.length).fill("")];
+      return prev.slice(0, qtd);
+    });
+  }, [quantidadeAtual]);
 
   useEffect(() => {
     if (!garantiaAtiva) {
@@ -236,15 +256,19 @@ export function DialogCadastroDispositivo({
     if (salvando) return;
     setSalvando(true);
     try {
+      const imeisFiltrados = imeisLista.map((v) => v.trim()).filter(Boolean);
       const dadosDispositivo = {
         ...dados,
+        imei: imeisFiltrados[0] || dados.imei || "",
         fornecedor_id: dados.fornecedor_id === "none" ? null : dados.fornecedor_id,
         fotos: (dados.fotos || []).filter(Boolean),
         codigo_barras: dados.codigo_barras || null,
+        imeis: imeisFiltrados,
       } as FormularioDispositivo;
 
       await onSubmit(dadosDispositivo);
       form.reset();
+      setImeisLista([""]);
     } finally {
       setSalvando(false);
     }
@@ -266,6 +290,32 @@ export function DialogCadastroDispositivo({
             const message = firstError?.message || "Verifique os campos obrigatórios";
             toast.error(`Erro no formulário: ${message}`);
           })} className="space-y-6">
+            {/* Quantidade — campo principal no topo */}
+            <FormField
+              control={form.control}
+              name="quantidade"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quantidade em Estoque *</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="Ex: 5"
+                      {...field}
+                      value={field.value !== undefined && field.value !== null ? field.value : ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        field.onChange(val === "" ? undefined : Number(val));
+                      }}
+                      className="max-w-[160px]"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Informações Básicas */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold">Informações Básicas</h3>
@@ -431,31 +481,56 @@ export function DialogCadastroDispositivo({
             <div className="space-y-4">
               <h3 className="text-sm font-semibold">Identificação</h3>
               <div className="grid grid-cols-1 gap-4">
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                  <FormField
-                    control={form.control}
-                    name="imei"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>IMEI</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: 123456789012345" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="default"
-                    className="whitespace-nowrap"
-                    onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Verificar IMEI
-                  </Button>
+                {/* Campos de IMEI — um por unidade */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">
+                      {imeisLista.length > 1 ? `IMEIs (${imeisLista.length} unidades)` : "IMEI"}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Verificar IMEI
+                    </Button>
+                  </div>
+                  {imeisLista.map((imei, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <div className="flex-1">
+                        {imeisLista.length > 1 && (
+                          <span className="text-xs text-muted-foreground mb-1 block">Unidade {idx + 1}</span>
+                        )}
+                        <Input
+                          placeholder="Ex: 123456789012345"
+                          value={imei}
+                          onChange={(e) => {
+                            const nova = [...imeisLista];
+                            nova[idx] = e.target.value;
+                            setImeisLista(nova);
+                          }}
+                        />
+                      </div>
+                      {imeisLista.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="mt-5 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            const nova = imeisLista.filter((_, i) => i !== idx);
+                            setImeisLista(nova);
+                            form.setValue("quantidade", nova.length || 1);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
@@ -631,31 +706,7 @@ export function DialogCadastroDispositivo({
 
             {/* Valores */}
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Estoque e Valores</h3>
-              
-              <FormField
-                control={form.control}
-                name="quantidade"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantidade em Estoque *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min="1" 
-                        placeholder="Ex: 5" 
-                        {...field}
-                        value={field.value !== undefined && field.value !== null ? field.value : ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val === "" ? undefined : Number(val));
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <h3 className="text-sm font-semibold">Valores</h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {podeVerCustos ? (

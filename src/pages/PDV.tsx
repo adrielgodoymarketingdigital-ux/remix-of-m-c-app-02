@@ -409,6 +409,7 @@ const PDV = () => {
             // Se houver pagamento duplo, guarda a 2ª forma no registro principal para exibição
             segunda_forma_pagamento: (pagamentoDuploAtivo && segundaFormaPagamento) ? segundaFormaPagamento : null,
             valor_segunda_forma: (pagamentoDuploAtivo && valorSegundaPagamento > 0) ? valorSegundaPagamento : null,
+            imei_dispositivo: item.tipo === "dispositivo" ? (item.imei_dispositivo || null) : null,
           };
 
           const { data: venda, error: vendaError } = await supabase
@@ -421,6 +422,15 @@ const PDV = () => {
 
           if (venda) {
             vendasRegistradas.push(venda);
+
+            // Marcar IMEI individual como vendido
+            if (item.tipo === "dispositivo" && item.imei_dispositivo) {
+              await supabase
+                .from("dispositivo_imeis")
+                .update({ vendido: true, venda_id: venda.id })
+                .eq("dispositivo_id", item.dispositivo_id || item.id)
+                .eq("imei", item.imei_dispositivo);
+            }
 
             // Criar lançamento em Contas a Receber para vendas a prazo
             if (formaPagamento === "a_receber") {
