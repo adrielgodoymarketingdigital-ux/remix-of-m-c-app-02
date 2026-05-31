@@ -39,6 +39,7 @@ const PERMISSOES_DONO: Permissoes = {
     clientes: true,
     fidelidade: true,
     orcamentos: true,
+    pedidos: true,
     contas: true,
     vendas: true,
     relatorios: true,

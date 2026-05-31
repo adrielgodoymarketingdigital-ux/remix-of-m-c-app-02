@@ -17,24 +17,23 @@ import "./lib/tracking";
 // Importar Build ID para garantir cache bust do bundle principal
 import { APP_BUILD_ID } from "./lib/build";
 
-// Registrar Service Worker do PWA com update agressivo para evitar código antigo no app instalado
-// (resolve casos onde a PWA fica presa em uma versão anterior e aplica guards antigos)
 import { registerSW } from "virtual:pwa-register";
 import { registerNotificationSoundListener } from "./lib/notification-sounds";
 
-// Log do Build ID no console para debug
 console.log(`[Méc] Build ID: ${APP_BUILD_ID}`);
 
+// Força atualização do SW e limpa todos os caches ao detectar nova versão
 const updateSW = registerSW({
   immediate: true,
   onRegisteredSW(_swUrl, registration) {
     registration?.update();
-    // Verifica atualização a cada 5 minutos
-    setInterval(() => registration?.update(), 5 * 60 * 1000);
+    setInterval(() => registration?.update(), 60 * 1000); // verifica a cada 1 min
   },
   onNeedRefresh() {
-    console.log("[PWA] Nova versão disponível - atualizando e recarregando");
-    updateSW(true);
+    console.log("[PWA] Nova versão detectada - limpando caches e recarregando");
+    caches.keys().then(names => Promise.all(names.map(n => caches.delete(n)))).then(() => {
+      updateSW(true);
+    });
   },
   onOfflineReady() {
     console.log("[PWA] Offline pronto");
