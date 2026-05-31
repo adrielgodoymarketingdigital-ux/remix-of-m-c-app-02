@@ -73,7 +73,6 @@ export default defineConfig(({ mode }) => ({
         // Arquivos de mídia pesados (mp4, mov, jpg grandes) ficam de fora para não
         // travar a instalação do SW. O Vercel serve esses com Cache-Control imutável.
         globPatterns: [
-          "index.html",
           "manifest.webmanifest",
           "favicon.ico",
           "pwa-*.png",

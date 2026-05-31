@@ -22,7 +22,17 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   console.log('[SW] Service Worker ativado - assumindo controle');
   event.waitUntil(
-    self.clients.claim().then(() => {
+    // Limpar caches de assets antigos para evitar tela branca por bundle desatualizado
+    caches.keys().then(cacheNames =>
+      Promise.all(
+        cacheNames
+          .filter(name => name.startsWith('app-assets-cache'))
+          .map(name => {
+            console.log('[SW] Limpando cache antigo:', name);
+            return caches.delete(name);
+          })
+      )
+    ).then(() => self.clients.claim()).then(() => {
       // Avisa todos os clientes abertos (PWA instalada) para recarregarem
       return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
         clients.forEach(client => {
@@ -36,6 +46,13 @@ self.addEventListener('activate', (event) => {
 // Precache (gerenciado pelo vite-plugin-pwa)
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
+
+// index.html sempre da rede — garante que o browser receba o HTML mais recente após deploy
+registerRoute(
+  ({ request, url }) =>
+    request.mode === 'navigate' || (request.destination === 'document' && url.origin === self.location.origin),
+  new NetworkOnly()
+);
 
 // Assets JS/CSS com hash imutável: serve do cache imediatamente, atualiza em background.
 // Como têm hash no nome, uma nova versão = novo arquivo = cache limpo automaticamente.
