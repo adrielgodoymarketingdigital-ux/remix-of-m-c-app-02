@@ -43,6 +43,7 @@ import {
   Gift,
   Building2,
   Smartphone,
+  ClipboardList,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
@@ -71,6 +72,7 @@ const menuItems = [
     { title: "🏆 Fidelidade", url: "/fidelidade", icon: Gift },
   ]},
   { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
+  { title: "Pedidos/Encomendas", url: "/pedidos", icon: ClipboardList, modulo: "pedidos" as keyof PermissoesModulos },
   { title: "Contas", url: "/contas", icon: Receipt, modulo: "contas" as keyof PermissoesModulos },
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
   { title: "Relatórios", url: "/relatorios", icon: FileText, modulo: "relatorios" as keyof PermissoesModulos },
@@ -149,6 +151,9 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
         // Módulos que existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano)
         const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe'];
         if (modulosSoPorFuncionario.includes(item.modulo)) return true;
+        // Módulos sempre visíveis no menu (bloqueio acontece dentro da página via ComVerificacaoPlano)
+        const modulosSempreVisiveis: string[] = ['pedidos'];
+        if (modulosSempreVisiveis.includes(item.modulo)) return true;
         return temAcessoModuloPlano(item.modulo as Parameters<typeof temAcessoModuloPlano>[0]);
       });
     }
