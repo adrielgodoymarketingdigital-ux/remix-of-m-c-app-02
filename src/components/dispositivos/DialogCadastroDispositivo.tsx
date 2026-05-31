@@ -38,7 +38,7 @@ import { UploadFotosDispositivo } from "./UploadFotosDispositivo";
 import { ChecklistDispositivo } from "../ordens/ChecklistDispositivo";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
-import { ExternalLink, Shield, Lock, Trash2 } from "lucide-react";
+import { ExternalLink, Shield, Lock, ChevronDown, ChevronRight } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 
 const optionalNumber = z.preprocess(
@@ -101,6 +101,40 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface CamposUnidade {
+  cor: string;
+  capacidade_gb: string;
+  subtipo_computador: string;
+  condicao: 'novo' | 'semi_novo' | 'usado';
+  imei: string;
+  numero_serie: string;
+  saude_bateria: string;
+  codigo_barras: string;
+  custo: string;
+  preco: string;
+  fotos: string[];
+  foto_url: string;
+  checklist: { entrada?: Record<string, boolean>; saida?: Record<string, boolean> };
+  fornecedor_id: string;
+}
+
+const unidadeVazia = (): CamposUnidade => ({
+  cor: "",
+  capacidade_gb: "",
+  subtipo_computador: "",
+  condicao: "novo",
+  imei: "",
+  numero_serie: "",
+  saude_bateria: "",
+  codigo_barras: "",
+  custo: "",
+  preco: "",
+  fotos: [],
+  foto_url: "",
+  checklist: { entrada: {}, saida: {} },
+  fornecedor_id: "none",
+});
+
 interface DialogCadastroDispositivoProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -135,7 +169,10 @@ export function DialogCadastroDispositivo({
 }: DialogCadastroDispositivoProps) {
   const { fornecedores } = useFornecedores();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
-  const [imeisLista, setImeisLista] = useState<string[]>([""]);
+
+  // Unidades individuais (para quantidade > 1)
+  const [unidades, setUnidades] = useState<CamposUnidade[]>([unidadeVazia()]);
+  const [unidadeAberta, setUnidadeAberta] = useState<number>(0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -143,32 +180,48 @@ export function DialogCadastroDispositivo({
       tipo: "",
       marca: "",
       modelo: "",
+      garantia: false,
+      tempo_garantia: undefined,
+      subtipo_computador: "",
+      quantidade: 1,
+      fornecedor_id: "none",
+      foto_url: "",
+      fotos: [],
+      checklist: { entrada: {}, saida: {} },
+      // campos herdados para compatibilidade (usados só quando quantidade=1)
       cor: "",
       capacidade_gb: undefined,
       imei: "",
       numero_serie: "",
       saude_bateria: undefined,
-      garantia: false,
-      tempo_garantia: undefined,
-      subtipo_computador: "",
       condicao: "novo",
-      quantidade: 1,
-      fornecedor_id: "none",
       custo: undefined,
       preco: undefined,
-      foto_url: "",
-      fotos: [],
-      checklist: { entrada: {}, saida: {} },
       codigo_barras: "",
     },
   });
 
-  const custo = form.watch("custo") || 0;
-  const preco = form.watch("preco") || 0;
-  const lucro = preco - custo;
   const garantiaAtiva = form.watch("garantia");
   const tipoSelecionado = form.watch("tipo");
   const quantidadeAtual = form.watch("quantidade") || 1;
+  const modoMultiplo = quantidadeAtual > 1;
+
+  // Lucro só no modo simples (quantidade=1)
+  const custoSimples = Number(form.watch("custo")) || 0;
+  const precoSimples = Number(form.watch("preco")) || 0;
+  const lucroSimples = precoSimples - custoSimples;
+
+  // Sincroniza lista de unidades com a quantidade
+  useEffect(() => {
+    const qtd = Math.max(1, quantidadeAtual || 1);
+    setUnidades((prev) => {
+      if (prev.length === qtd) return prev;
+      if (qtd > prev.length) {
+        return [...prev, ...Array.from({ length: qtd - prev.length }, unidadeVazia)];
+      }
+      return prev.slice(0, qtd);
+    });
+  }, [quantidadeAtual]);
 
   useEffect(() => {
     if (dispositivoParaEditar) {
@@ -176,11 +229,6 @@ export function DialogCadastroDispositivo({
         tipo: dispositivoParaEditar.tipo,
         marca: dispositivoParaEditar.marca,
         modelo: dispositivoParaEditar.modelo,
-        cor: dispositivoParaEditar.cor || "",
-        capacidade_gb: dispositivoParaEditar.capacidade_gb,
-        imei: dispositivoParaEditar.imei || "",
-        numero_serie: dispositivoParaEditar.numero_serie || "",
-        saude_bateria: dispositivoParaEditar.saude_bateria,
         garantia: dispositivoParaEditar.garantia,
         tempo_garantia: dispositivoParaEditar.tempo_garantia,
         subtipo_computador: dispositivoParaEditar.subtipo_computador || "",
@@ -192,25 +240,30 @@ export function DialogCadastroDispositivo({
         foto_url: dispositivoParaEditar.foto_url || "",
         fotos: dispositivoParaEditar.fotos || (dispositivoParaEditar.foto_url ? [dispositivoParaEditar.foto_url] : []),
         checklist: dispositivoParaEditar.checklist || { entrada: {}, saida: {} },
+        cor: dispositivoParaEditar.cor || "",
+        capacidade_gb: dispositivoParaEditar.capacidade_gb,
+        imei: dispositivoParaEditar.imei || "",
+        numero_serie: dispositivoParaEditar.numero_serie || "",
+        saude_bateria: dispositivoParaEditar.saude_bateria,
         codigo_barras: dispositivoParaEditar.codigo_barras || "",
       });
-      // Preencher lista de IMEIs ao editar — usa imeis[] se disponível
-      const imeisExistentes = dispositivoParaEditar.imeis && dispositivoParaEditar.imeis.length > 0
-        ? dispositivoParaEditar.imeis
-        : [dispositivoParaEditar.imei || ""];
-      const qtd = dispositivoParaEditar.quantidade || 1;
-      const listaAjustada = Array.from({ length: qtd }, (_, i) => imeisExistentes[i] || "");
-      setImeisLista(listaAjustada);
+      setUnidades([{
+        cor: dispositivoParaEditar.cor || "",
+        capacidade_gb: dispositivoParaEditar.capacidade_gb?.toString() || "",
+        subtipo_computador: dispositivoParaEditar.subtipo_computador || "",
+        condicao: dispositivoParaEditar.condicao,
+        imei: dispositivoParaEditar.imei || "",
+        numero_serie: dispositivoParaEditar.numero_serie || "",
+        saude_bateria: dispositivoParaEditar.saude_bateria?.toString() || "",
+        codigo_barras: dispositivoParaEditar.codigo_barras || "",
+        custo: dispositivoParaEditar.custo?.toString() || "",
+        preco: dispositivoParaEditar.preco?.toString() || "",
+      }]);
     } else {
       form.reset({
         tipo: "",
         marca: "",
         modelo: "",
-        cor: "",
-        capacidade_gb: undefined,
-        imei: "",
-        numero_serie: "",
-        saude_bateria: undefined,
         garantia: false,
         tempo_garantia: undefined,
         subtipo_computador: "",
@@ -222,21 +275,17 @@ export function DialogCadastroDispositivo({
         foto_url: "",
         fotos: [],
         checklist: { entrada: {}, saida: {} },
+        cor: "",
+        capacidade_gb: undefined,
+        imei: "",
+        numero_serie: "",
+        saude_bateria: undefined,
         codigo_barras: "",
       });
-      setImeisLista([""]);
+      setUnidades([unidadeVazia()]);
+      setUnidadeAberta(0);
     }
   }, [dispositivoParaEditar, form]);
-
-  // Ajusta o tamanho da lista de IMEIs quando a quantidade muda
-  useEffect(() => {
-    const qtd = Math.max(1, quantidadeAtual || 1);
-    setImeisLista((prev) => {
-      if (prev.length === qtd) return prev;
-      if (qtd > prev.length) return [...prev, ...Array(qtd - prev.length).fill("")];
-      return prev.slice(0, qtd);
-    });
-  }, [quantidadeAtual]);
 
   useEffect(() => {
     if (!garantiaAtiva) {
@@ -250,25 +299,78 @@ export function DialogCadastroDispositivo({
     }
   }, [tipoSelecionado, form]);
 
+  const atualizarUnidade = (idx: number, campo: keyof CamposUnidade, valor: string) => {
+    setUnidades((prev) => prev.map((u, i) => i === idx ? { ...u, [campo]: valor } : u));
+  };
+
   const [salvando, setSalvando] = useState(false);
 
   const handleSubmit = async (dados: FormValues) => {
     if (salvando) return;
     setSalvando(true);
     try {
-      const imeisFiltrados = imeisLista.map((v) => v.trim()).filter(Boolean);
-      const dadosDispositivo = {
-        ...dados,
-        imei: imeisFiltrados[0] || dados.imei || "",
-        fornecedor_id: dados.fornecedor_id === "none" ? null : dados.fornecedor_id,
+      const base = {
+        tipo: dados.tipo,
+        marca: dados.marca,
+        modelo: dados.modelo,
+        garantia: dados.garantia,
+        tempo_garantia: dados.tempo_garantia,
+        fornecedor_id: dados.fornecedor_id === "none" ? null : (dados.fornecedor_id || null),
         fotos: (dados.fotos || []).filter(Boolean),
-        codigo_barras: dados.codigo_barras || null,
-        imeis: imeisFiltrados,
-      } as FormularioDispositivo;
+        foto_url: dados.foto_url || null,
+        checklist: dados.checklist,
+        codigo_barras: null as string | null,
+      };
 
-      await onSubmit(dadosDispositivo);
+      if (!modoMultiplo) {
+        // Modo simples — 1 unidade, todos os campos do form principal
+        await onSubmit({
+          ...base,
+          cor: dados.cor,
+          capacidade_gb: dados.capacidade_gb,
+          subtipo_computador: dados.subtipo_computador,
+          condicao: dados.condicao,
+          imei: dados.imei || "",
+          numero_serie: dados.numero_serie,
+          saude_bateria: dados.saude_bateria,
+          codigo_barras: dados.codigo_barras || null,
+          custo: dados.custo,
+          preco: dados.preco,
+          quantidade: 1,
+          imeis: dados.imei ? [dados.imei] : [],
+        } as FormularioDispositivo);
+      } else {
+        // Modo múltiplo — uma chamada por unidade com todos os campos individuais
+        for (const unidade of unidades) {
+          await onSubmit({
+            tipo: dados.tipo,
+            marca: dados.marca,
+            modelo: dados.modelo,
+            garantia: dados.garantia,
+            tempo_garantia: dados.tempo_garantia,
+            fornecedor_id: unidade.fornecedor_id === "none" ? null : (unidade.fornecedor_id || null),
+            fotos: unidade.fotos.filter(Boolean),
+            foto_url: unidade.fotos[0] || null,
+            checklist: unidade.checklist,
+            cor: unidade.cor || undefined,
+            capacidade_gb: unidade.capacidade_gb ? Number(unidade.capacidade_gb) : undefined,
+            subtipo_computador: unidade.subtipo_computador || undefined,
+            condicao: unidade.condicao,
+            imei: unidade.imei || "",
+            numero_serie: unidade.numero_serie || undefined,
+            saude_bateria: unidade.saude_bateria ? Number(unidade.saude_bateria) : undefined,
+            codigo_barras: unidade.codigo_barras || null,
+            custo: unidade.custo ? Number(unidade.custo) : undefined,
+            preco: unidade.preco ? Number(unidade.preco) : undefined,
+            quantidade: 1,
+            imeis: unidade.imei ? [unidade.imei] : [],
+          } as FormularioDispositivo);
+        }
+      }
+
       form.reset();
-      setImeisLista([""]);
+      setUnidades([unidadeVazia()]);
+      setUnidadeAberta(0);
     } finally {
       setSalvando(false);
     }
@@ -276,7 +378,7 @@ export function DialogCadastroDispositivo({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {dispositivoParaEditar ? "Editar Dispositivo" : "Cadastrar Novo Dispositivo"}
@@ -290,36 +392,37 @@ export function DialogCadastroDispositivo({
             const message = firstError?.message || "Verifique os campos obrigatórios";
             toast.error(`Erro no formulário: ${message}`);
           })} className="space-y-6">
-            {/* Quantidade — campo principal no topo */}
-            <FormField
-              control={form.control}
-              name="quantidade"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Quantidade em Estoque *</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="1"
-                      placeholder="Ex: 5"
-                      {...field}
-                      value={field.value !== undefined && field.value !== null ? field.value : ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        field.onChange(val === "" ? undefined : Number(val));
-                      }}
-                      className="max-w-[160px]"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            {/* Informações Básicas */}
+            {/* ── Campos compartilhados ── */}
             <div className="space-y-4">
               <h3 className="text-sm font-semibold">Informações Básicas</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                {/* Quantidade — primeiro campo */}
+                <FormField
+                  control={form.control}
+                  name="quantidade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="Ex: 5"
+                          {...field}
+                          value={field.value !== undefined && field.value !== null ? field.value : ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(val === "" ? undefined : Number(val));
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="tipo"
@@ -334,9 +437,7 @@ export function DialogCadastroDispositivo({
                         </FormControl>
                         <SelectContent>
                           {TIPOS_DISPOSITIVO.map((tipo) => (
-                            <SelectItem key={tipo} value={tipo}>
-                              {tipo}
-                            </SelectItem>
+                            <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -372,58 +473,346 @@ export function DialogCadastroDispositivo({
                     </FormItem>
                   )}
                 />
+              </div>
+            </div>
 
-                <FormField
-                  control={form.control}
-                  name="cor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cor</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Preto" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* ── Modo múltiplo: accordion de unidades ── */}
+            {modoMultiplo ? (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Unidades ({unidades.length})</h3>
+                {unidades.map((unidade, idx) => (
+                  <div key={idx} className="border rounded-lg overflow-hidden">
+                    {/* Cabeçalho collapsible */}
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors"
+                      onClick={() => setUnidadeAberta(unidadeAberta === idx ? -1 : idx)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>Unidade {idx + 1}</span>
+                        {unidade.imei && (
+                          <span className="text-xs text-muted-foreground font-normal">
+                            IMEI: {unidade.imei}
+                          </span>
+                        )}
+                        {unidade.cor && (
+                          <span className="text-xs text-muted-foreground font-normal">
+                            · {unidade.cor}
+                          </span>
+                        )}
+                      </span>
+                      {unidadeAberta === idx
+                        ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      }
+                    </button>
 
-                <FormField
-                  control={form.control}
-                  name="capacidade_gb"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Capacidade (GB)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Ex: 256"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    {/* Conteúdo expandido */}
+                    {unidadeAberta === idx && (
+                      <div className="px-4 pb-4 pt-2 space-y-4 border-t bg-muted/20">
 
-                {tipoSelecionado === "Notebook/Computador" && (
+                        {/* Identificação */}
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Identificação</p>
+                          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1 space-y-1">
+                              <label className="text-sm font-medium">IMEI</label>
+                              <Input
+                                placeholder="Ex: 123456789012345"
+                                value={unidade.imei}
+                                onChange={(e) => atualizarUnidade(idx, "imei", e.target.value)}
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap"
+                              onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Verificar IMEI
+                            </Button>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1 space-y-1">
+                              <label className="text-sm font-medium">Número de Série</label>
+                              <Input
+                                placeholder="Ex: ABC123XYZ"
+                                value={unidade.numero_serie}
+                                onChange={(e) => atualizarUnidade(idx, "numero_serie", e.target.value)}
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="whitespace-nowrap w-full sm:w-auto"
+                              onClick={() => window.open("https://checkcoverage.apple.com/", "_blank")}
+                            >
+                              <Shield className="h-3 w-3 mr-1.5" />
+                              Verificar Garantia Apple
+                            </Button>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium">Código de Barras</label>
+                            <LeitorCodigoBarras
+                              valor={unidade.codigo_barras}
+                              onChange={(v) => atualizarUnidade(idx, "codigo_barras", v)}
+                              onCodigoLido={(v) => atualizarUnidade(idx, "codigo_barras", v)}
+                              placeholder="Escaneie ou digite o código"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Características físicas */}
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Características</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium">Cor</label>
+                              <Input
+                                placeholder="Ex: Preto"
+                                value={unidade.cor}
+                                onChange={(e) => atualizarUnidade(idx, "cor", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium">Capacidade (GB)</label>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 256"
+                                value={unidade.capacidade_gb}
+                                onChange={(e) => atualizarUnidade(idx, "capacidade_gb", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium">Saúde da Bateria (%)</label>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                placeholder="Ex: 85"
+                                value={unidade.saude_bateria}
+                                onChange={(e) => atualizarUnidade(idx, "saude_bateria", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium">Condição</label>
+                              <Select
+                                value={unidade.condicao}
+                                onValueChange={(v) => atualizarUnidade(idx, "condicao", v as CamposUnidade["condicao"])}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {CONDICOES_DISPOSITIVO.map((c) => (
+                                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {tipoSelecionado === "Notebook/Computador" && (
+                              <div className="space-y-1 sm:col-span-2">
+                                <label className="text-sm font-medium">Tipo de Computador</label>
+                                <Select
+                                  value={unidade.subtipo_computador}
+                                  onValueChange={(v) => atualizarUnidade(idx, "subtipo_computador", v)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {SUBTIPOS_COMPUTADOR.map((s) => (
+                                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Valores */}
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Valores</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {podeVerCustos ? (
+                              <div className="space-y-1">
+                                <label className="text-sm font-medium">Custo</label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  value={unidade.custo}
+                                  onChange={(e) => atualizarUnidade(idx, "custo", e.target.value)}
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-muted-foreground pt-6">
+                                <Lock className="h-4 w-4" />
+                                <span className="text-sm">Custo oculto</span>
+                              </div>
+                            )}
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium">Preço de Venda</label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={unidade.preco}
+                                onChange={(e) => atualizarUnidade(idx, "preco", e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          {podeVerLucros && unidade.custo && unidade.preco && (
+                            <div className="rounded-lg border p-3 bg-muted text-sm flex justify-between">
+                              <span className="font-medium">Lucro:</span>
+                              <span className={`font-bold ${
+                                Number(unidade.preco) - Number(unidade.custo) > 0
+                                  ? "text-green-600"
+                                  : Number(unidade.preco) - Number(unidade.custo) < 0
+                                  ? "text-red-600"
+                                  : "text-muted-foreground"
+                              }`}>
+                                R$ {(Number(unidade.preco) - Number(unidade.custo)).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Fotos */}
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fotos</p>
+                          <UploadFotosDispositivo
+                            fotos={unidade.fotos}
+                            onFotosChange={(urls) => {
+                              setUnidades((prev) => prev.map((u, i) =>
+                                i === idx ? { ...u, fotos: urls, foto_url: urls[0] || "" } : u
+                              ));
+                            }}
+                            maxFotos={10}
+                          />
+                        </div>
+
+                        {/* Checklist */}
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Checklist</p>
+                          <ChecklistDispositivo
+                            tipoDispositivo={tipoSelecionado}
+                            fabricante={unidade.subtipo_computador?.toLowerCase()}
+                            value={unidade.checklist}
+                            onChange={(checklist) => {
+                              setUnidades((prev) => prev.map((u, i) =>
+                                i === idx ? { ...u, checklist } : u
+                              ));
+                            }}
+                          />
+                        </div>
+
+                        {/* Fornecedor */}
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fornecedor</p>
+                          <Select
+                            value={unidade.fornecedor_id}
+                            onValueChange={(v) => atualizarUnidade(idx, "fornecedor_id", v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o fornecedor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhum</SelectItem>
+                              {fornecedores
+                                .filter(f => f.ativo)
+                                .map((fornecedor) => (
+                                  <SelectItem key={fornecedor.id} value={fornecedor.id}>
+                                    {fornecedor.nome}
+                                    {fornecedor.nome_fantasia && ` (${fornecedor.nome_fantasia})`}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* ── Modo simples: campos individuais inline ── */
+              <>
+                {/* Características */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">Características</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="cor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cor</FormLabel>
+                          <FormControl><Input placeholder="Ex: Preto" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="capacidade_gb"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Capacidade (GB)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="Ex: 256" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    {tipoSelecionado === "Notebook/Computador" && (
+                      <FormField
+                        control={form.control}
+                        name="subtipo_computador"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tipo de Computador</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {SUBTIPOS_COMPUTADOR.map((s) => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Condição */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">Condição</h3>
                   <FormField
                     control={form.control}
-                    name="subtipo_computador"
+                    name="condicao"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tipo de Computador</FormLabel>
+                        <FormLabel>Estado do Dispositivo *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder="Selecione a condição" /></SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {SUBTIPOS_COMPUTADOR.map((subtipo) => (
-                              <SelectItem key={subtipo} value={subtipo}>
-                                {subtipo}
-                              </SelectItem>
+                            {CONDICOES_DISPOSITIVO.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -431,191 +820,250 @@ export function DialogCadastroDispositivo({
                       </FormItem>
                     )}
                   />
-                )}
-              </div>
-            </div>
-
-            {/* Condição */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Condição</h3>
-              <FormField
-                control={form.control}
-                name="condicao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado do Dispositivo *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a condição" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {CONDICOES_DISPOSITIVO.map((condicao) => (
-                          <SelectItem key={condicao.value} value={condicao.value}>
-                            {condicao.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-              {/* Fotos */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold">Fotos</h3>
-                <UploadFotosDispositivo
-                  fotos={form.watch("fotos") || []}
-                  onFotosChange={(urls) => {
-                    form.setValue("fotos", urls);
-                    form.setValue("foto_url", urls[0] || "");
-                  }}
-                  maxFotos={10}
-                />
-              </div>
-
-            {/* Identificação */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Identificação</h3>
-              <div className="grid grid-cols-1 gap-4">
-                {/* Campos de IMEI — um por unidade */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
-                      {imeisLista.length > 1 ? `IMEIs (${imeisLista.length} unidades)` : "IMEI"}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
-                    >
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      Verificar IMEI
-                    </Button>
-                  </div>
-                  {imeisLista.map((imei, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <div className="flex-1">
-                        {imeisLista.length > 1 && (
-                          <span className="text-xs text-muted-foreground mb-1 block">Unidade {idx + 1}</span>
-                        )}
-                        <Input
-                          placeholder="Ex: 123456789012345"
-                          value={imei}
-                          onChange={(e) => {
-                            const nova = [...imeisLista];
-                            nova[idx] = e.target.value;
-                            setImeisLista(nova);
-                          }}
-                        />
-                      </div>
-                      {imeisLista.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="mt-5 text-muted-foreground hover:text-destructive"
-                          onClick={() => {
-                            const nova = imeisLista.filter((_, i) => i !== idx);
-                            setImeisLista(nova);
-                            form.setValue("quantidade", nova.length || 1);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                {/* Fotos */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">Fotos</h3>
+                  <UploadFotosDispositivo
+                    fotos={form.watch("fotos") || []}
+                    onFotosChange={(urls) => {
+                      form.setValue("fotos", urls);
+                      form.setValue("foto_url", urls[0] || "");
+                    }}
+                    maxFotos={10}
+                  />
+                </div>
+
+                {/* Identificação */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">Identificação</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                      <FormField
+                        control={form.control}
+                        name="imei"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>IMEI</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: 123456789012345" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="default"
+                        className="whitespace-nowrap"
+                        onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Verificar IMEI
+                      </Button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                      <FormField
+                        control={form.control}
+                        name="numero_serie"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>Número de Série</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ex: ABC123XYZ" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="whitespace-nowrap w-full sm:w-auto"
+                        onClick={() => window.open("https://checkcoverage.apple.com/", "_blank")}
+                      >
+                        <Shield className="h-3 w-3 mr-1.5" />
+                        Verificar Garantia Apple
+                      </Button>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="saude_bateria"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Saúde da Bateria (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              placeholder="Ex: 85"
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="codigo_barras"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Código de Barras</FormLabel>
+                          <FormControl>
+                            <LeitorCodigoBarras
+                              valor={field.value || ""}
+                              onChange={(v) => form.setValue("codigo_barras", v, { shouldDirty: true, shouldTouch: true, shouldValidate: true })}
+                              onCodigoLido={(v) => form.setValue("codigo_barras", v, { shouldDirty: true, shouldTouch: true, shouldValidate: true })}
+                              placeholder="Escaneie ou digite o código"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="numero_serie"
+                    name="garantia"
                     render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>Número de Série</FormLabel>
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Garantia</FormLabel>
+                        </div>
                         <FormControl>
-                          <Input placeholder="Ex: ABC123XYZ" {...field} />
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  {garantiaAtiva && (
+                    <FormField
+                      control={form.control}
+                      name="tempo_garantia"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tempo de Garantia (meses) *</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="1" placeholder="Ex: 12" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
+                {/* Checklist */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">Checklist de Verificação</h3>
+                  <ChecklistDispositivo
+                    tipoDispositivo={form.watch("tipo")}
+                    fabricante={form.watch("subtipo_computador")?.toLowerCase()}
+                    value={{
+                      entrada: form.watch("checklist")?.entrada || {},
+                      saida: form.watch("checklist")?.saida || {}
+                    }}
+                    onChange={(checklist) => form.setValue("checklist", checklist)}
+                  />
+                </div>
+
+                {/* Fornecedor */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">Fornecedor</h3>
+                  <FormField
+                    control={form.control}
+                    name="fornecedor_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fornecedor</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger><SelectValue placeholder="Selecione o fornecedor" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum</SelectItem>
+                            {fornecedores
+                              .filter(f => f.ativo)
+                              .map((fornecedor) => (
+                                <SelectItem key={fornecedor.id} value={fornecedor.id}>
+                                  {fornecedor.nome}
+                                  {fornecedor.nome_fantasia && ` (${fornecedor.nome_fantasia})`}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="whitespace-nowrap w-full sm:w-auto"
-                    onClick={() => window.open("https://checkcoverage.apple.com/", "_blank")}
-                  >
-                    <Shield className="h-3 w-3 mr-1.5" />
-                    Verificar Garantia Apple
-                  </Button>
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="saude_bateria"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Saúde da Bateria (%)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="Ex: 85"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                {/* Valores */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">Valores</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {podeVerCustos ? (
+                      <FormField
+                        control={form.control}
+                        name="custo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Custo</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 text-muted-foreground pt-6">
+                        <Lock className="h-4 w-4" />
+                        <span className="text-sm">Custo oculto</span>
+                      </div>
+                    )}
+                    <FormField
+                      control={form.control}
+                      name="preco"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preço de Venda</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  {podeVerLucros && (
+                    <div className="rounded-lg border p-4 bg-muted">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Lucro:</span>
+                        <span className={`text-lg font-bold ${
+                          lucroSimples > 0 ? "text-green-600" : lucroSimples < 0 ? "text-red-600" : "text-muted-foreground"
+                        }`}>
+                          R$ {lucroSimples.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
                   )}
-                />
+                </div>
+              </>
+            )}
 
-                <FormField
-                  control={form.control}
-                  name="codigo_barras"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Código de Barras</FormLabel>
-                      <FormControl>
-                        <LeitorCodigoBarras
-                          valor={field.value || ""}
-                          onChange={(v) => {
-                            // Garante que o valor fique “commitado” no react-hook-form
-                            form.setValue("codigo_barras", v, {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            });
-                          }}
-                          onCodigoLido={(codigo) => {
-                            // No mobile, alguns flows do scanner não disparam blur/change do input;
-                            // então forçamos o setValue para o submit pegar o valor correto.
-                            form.setValue("codigo_barras", codigo, {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            });
-                          }}
-                          placeholder="Escaneie ou digite o código"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
+            {/* Garantia — compartilhada em ambos os modos */}
+            <div className="space-y-4">
               <FormField
                 control={form.control}
                 name="garantia"
@@ -625,15 +1073,11 @@ export function DialogCadastroDispositivo({
                       <FormLabel className="text-base">Garantia</FormLabel>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                   </FormItem>
                 )}
               />
-
               {garantiaAtiva && (
                 <FormField
                   control={form.control}
@@ -642,138 +1086,12 @@ export function DialogCadastroDispositivo({
                     <FormItem>
                       <FormLabel>Tempo de Garantia (meses) *</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          placeholder="Ex: 12"
-                          {...field}
-                          value={field.value || ""}
-                        />
+                        <Input type="number" min="1" placeholder="Ex: 12" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
-            </div>
-
-            {/* Checklist */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Checklist de Verificação</h3>
-              <ChecklistDispositivo
-                tipoDispositivo={form.watch("tipo")}
-                fabricante={form.watch("subtipo_computador")?.toLowerCase()}
-                value={{
-                  entrada: form.watch("checklist")?.entrada || {},
-                  saida: form.watch("checklist")?.saida || {}
-                }}
-                onChange={(checklist) => form.setValue("checklist", checklist)}
-              />
-            </div>
-
-            {/* Fornecedor */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Fornecedor</h3>
-              <FormField
-                control={form.control}
-                name="fornecedor_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fornecedor</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o fornecedor" />
-                        </SelectTrigger>
-                      </FormControl>
-                       <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {fornecedores
-                          .filter(f => f.ativo)
-                          .map((fornecedor) => (
-                            <SelectItem key={fornecedor.id} value={fornecedor.id}>
-                              {fornecedor.nome}
-                              {fornecedor.nome_fantasia && ` (${fornecedor.nome_fantasia})`}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Valores */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold">Valores</h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {podeVerCustos ? (
-                  <FormField
-                    control={form.control}
-                    name="custo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Custo</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            {...field}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : (
-                  <div className="flex items-center gap-2 text-muted-foreground pt-6">
-                    <Lock className="h-4 w-4" />
-                    <span className="text-sm">Custo oculto</span>
-                  </div>
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="preco"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Preço de Venda</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {podeVerLucros && (
-                <div className="rounded-lg border p-4 bg-muted">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Lucro:</span>
-                    <span
-                      className={`text-lg font-bold ${
-                        lucro > 0
-                          ? "text-green-600"
-                          : lucro < 0
-                          ? "text-red-600"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      R$ {lucro.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
               )}
             </div>
 
@@ -787,13 +1105,19 @@ export function DialogCadastroDispositivo({
                 Cancelar
               </Button>
               <Button type="submit" className="w-full sm:w-auto" disabled={salvando}>
-                {salvando ? "Salvando..." : (dispositivoParaEditar ? "Atualizar" : "Cadastrar")}
+                {salvando
+                  ? "Salvando..."
+                  : dispositivoParaEditar
+                  ? "Atualizar"
+                  : modoMultiplo
+                  ? `Cadastrar ${unidades.length} unidades`
+                  : "Cadastrar"
+                }
               </Button>
             </div>
           </form>
         </Form>
       </DialogContent>
-
     </Dialog>
   );
 }
