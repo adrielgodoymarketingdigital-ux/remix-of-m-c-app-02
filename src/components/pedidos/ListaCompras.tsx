@@ -500,7 +500,7 @@ function ItemRow({
         {item.nome}
       </span>
 
-      {item.quantidade && item.quantidade !== "1" && (
+      {item.quantidade && (
         <span className="text-sm text-muted-foreground/60 shrink-0 tabular-nums">{item.quantidade}</span>
       )}
 
