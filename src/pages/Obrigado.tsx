@@ -4,6 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ObrigadoStatusCard } from "@/components/pagamento/ObrigadoStatusCard";
 import { PLANOS } from "@/types/plano";
+import { trackPurchase } from "@/lib/tracking";
 
 type ObrigadoStatus = "verificando" | "ativado" | "processando";
 
@@ -91,15 +92,9 @@ export default function Obrigado() {
   }, [navigate, searchParams]);
 
   useEffect(() => {
-    if (window.fbq && plan) {
-      const planoInfo = PLANOS[plan as keyof typeof PLANOS];
-      window.fbq('track', 'Purchase', {
-        content_name: planoInfo?.nome || plan,
-        content_category: 'Subscription',
-        currency: 'BRL',
-        value: planoInfo?.preco || 0
-      });
-    }
+    if (!plan) return;
+    const planoInfo = PLANOS[plan as keyof typeof PLANOS];
+    trackPurchase(undefined, planoInfo?.preco || 0);
   }, [plan]);
 
   const ativarPlano = useCallback((plano: string) => {

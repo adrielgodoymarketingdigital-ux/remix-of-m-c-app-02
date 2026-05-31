@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Shield, Check, ArrowRight, Phone, CreditCard, QrCode, ChevronRight, ShieldCheck, Lock, CheckCircle2, Zap, Sparkles } from "lucide-react";
 import { PLANOS } from "@/types/plano";
-import { trackCompleteRegistration, getTrackingParams } from "@/lib/tracking";
+import { trackCompleteRegistration, getTrackingParams, trackInitiateCheckout } from "@/lib/tracking";
 import { trackPageView } from "@/lib/pixel";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
@@ -168,17 +168,6 @@ export default function CadastroPlano() {
     }
   };
 
-  const trackInitiateCheckout = () => {
-    if (typeof window !== "undefined" && (window as any).fbq) {
-      (window as any).fbq("track", "InitiateCheckout", {
-        content_name: planoInfo.nome,
-        content_category: "subscription",
-        currency: "BRL",
-        value: planoInfo.preco,
-      });
-    }
-  };
-
   const garantirSessaoEntao = async (callback: () => void) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -186,7 +175,7 @@ export default function CadastroPlano() {
       setStep("cadastro");
       return;
     }
-    trackInitiateCheckout();
+    trackInitiateCheckout(email, planoInfo.preco);
     callback();
   };
 

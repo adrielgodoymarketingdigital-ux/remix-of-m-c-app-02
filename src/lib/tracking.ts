@@ -159,6 +159,58 @@ export async function trackPageView(pageUrl?: string): Promise<void> {
 }
 
 /**
+ * Dispara InitiateCheckout com deduplicação Pixel + CAPI
+ */
+export async function trackInitiateCheckout(email?: string, value?: number): Promise<void> {
+  try {
+    const eventId = generateEventId()
+
+    if (typeof window !== 'undefined' && window.fbq) {
+      ;(window.fbq as any)('track', 'InitiateCheckout', {
+        currency: 'BRL',
+        value: value || 0,
+      }, { eventID: eventId })
+      console.log('[Tracking] InitiateCheckout Pixel disparado com eventID:', eventId)
+    }
+
+    sendMetaCapiEvent({
+      event_name: 'InitiateCheckout',
+      event_id: eventId,
+      email,
+      custom_data: { currency: 'BRL', value: value || 0 },
+    }).catch((err) => console.error('[Tracking] CAPI InitiateCheckout failed:', err))
+  } catch (error) {
+    console.error('[Tracking] Erro em trackInitiateCheckout:', error)
+  }
+}
+
+/**
+ * Dispara Purchase com deduplicação Pixel + CAPI
+ */
+export async function trackPurchase(email?: string, value?: number, currency = 'BRL'): Promise<void> {
+  try {
+    const eventId = generateEventId()
+
+    if (typeof window !== 'undefined' && window.fbq) {
+      ;(window.fbq as any)('track', 'Purchase', {
+        currency,
+        value: value || 0,
+      }, { eventID: eventId })
+      console.log('[Tracking] Purchase Pixel disparado com eventID:', eventId)
+    }
+
+    sendMetaCapiEvent({
+      event_name: 'Purchase',
+      event_id: eventId,
+      email,
+      custom_data: { currency, value: value || 0 },
+    }).catch((err) => console.error('[Tracking] CAPI Purchase failed:', err))
+  } catch (error) {
+    console.error('[Tracking] Erro em trackPurchase:', error)
+  }
+}
+
+/**
  * Dispara o evento CompleteRegistration com deduplicação Pixel + CAPI
  * Gera um event_id único e envia tanto para o Pixel (frontend) quanto para a CAPI (backend)
  * Garante que o evento seja disparado apenas uma vez por usuário

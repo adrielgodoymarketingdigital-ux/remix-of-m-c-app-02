@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Assinatura, LIMITES_POR_PLANO, PlanoTipo, LimitesPlano, getLimitesFree } from "@/types/assinatura";
 import { PLANOS } from "@/types/plano";
+import { trackInitiateCheckout } from "@/lib/tracking";
 
 
 export function useAssinatura() {
@@ -811,16 +812,9 @@ export function useAssinatura() {
     const planoAtualTipo = assinatura?.plano_tipo;
     const planosPrimeiraAssinatura: PlanoTipo[] = ['trial', 'demonstracao', 'free'];
 
-    // Disparar Meta Pixel antes de redirecionar
+    // Disparar Meta Pixel + CAPI antes de redirecionar
     const planoInfo = PLANOS[planoKey as keyof typeof PLANOS];
-    if (window.fbq) {
-      window.fbq('track', 'InitiateCheckout', {
-        content_name: planoInfo?.nome || planoKey,
-        content_category: 'Subscription',
-        currency: 'BRL',
-        value: planoInfo?.preco || 0,
-      });
-    }
+    trackInitiateCheckout(undefined, planoInfo?.preco || 0);
 
     if (!planoAtualTipo || planosPrimeiraAssinatura.includes(planoAtualTipo)) {
       window.location.href = `/cadastro-plano?plan=${planoKey}`;

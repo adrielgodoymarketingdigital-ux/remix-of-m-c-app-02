@@ -6,14 +6,15 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PLANOS } from "@/types/plano";
-import { 
-  Gift, 
-  CheckCircle2, 
-  CreditCard, 
+import {
+  Gift,
+  CheckCircle2,
+  CreditCard,
   Loader2,
   Lock,
   Sparkles
 } from "lucide-react";
+import { trackInitiateCheckout } from "@/lib/tracking";
 
 export default function AtivarTrial() {
   const navigate = useNavigate();
@@ -162,14 +163,7 @@ export default function AtivarTrial() {
 
     try {
       // Track event
-      if (window.fbq) {
-        window.fbq('track', 'InitiateCheckout', {
-          content_name: `Trial - ${selectedPlan}`,
-          content_category: 'Trial Activation',
-          currency: 'BRL',
-          value: 0,
-        });
-      }
+      trackInitiateCheckout(undefined, 0);
 
       // Get tracking params
       const trackingParams = (window as any).__getTrackingParams?.() || {};
