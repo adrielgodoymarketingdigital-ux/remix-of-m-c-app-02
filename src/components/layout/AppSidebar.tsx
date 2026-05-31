@@ -288,22 +288,12 @@ export function AppSidebar() {
                   const subRotaAtiva = temSubmenu && item.items!.some(sub => location.pathname === sub.url);
                   const estadoManual = expandidos[item.url];
                   const expandido = temSubmenu && (estadoManual !== undefined ? estadoManual : subRotaAtiva);
-                  const isItemActive = !temSubmenu && location.pathname === item.url;
                   return (
                     <SidebarMenuItem key={item.title} data-tutorial={tutorialAttr}>
                       <SidebarMenuButton
-                        onClick={temSubmenu
-                          ? () => setExpandidos(prev => ({ ...prev, [item.url]: !expandido }))
-                          : () => navigate(item.url)
-                        }
-                        isActive={isItemActive}
-                        className={
-                          temSubmenu && subRotaAtiva && !expandido
-                            ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                            : isItemActive
-                            ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                            : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                        }
+                        onClick={temSubmenu ? () => setExpandidos(prev => ({ ...prev, [item.url]: !expandido })) : undefined}
+                        asChild={!temSubmenu}
+                        className={temSubmenu && subRotaAtiva && !expandido ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500" : ""}
                       >
                         {temSubmenu ? (
                           <>
@@ -316,10 +306,15 @@ export function AppSidebar() {
                             )}
                           </>
                         ) : (
-                          <>
-                            <item.icon className="h-5 w-5 shrink-0" />
+                          <NavLink
+                            to={item.url}
+                            end
+                            className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all"
+                            activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+                          >
+                            <item.icon className="h-5 w-5" />
                             {!collapsed && <span>{item.title}</span>}
-                          </>
+                          </NavLink>
                         )}
                       </SidebarMenuButton>
                       {!collapsed && expandido && item.items?.map(sub => (
