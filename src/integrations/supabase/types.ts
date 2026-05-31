@@ -104,6 +104,7 @@ export type Database = {
           data_proxima_cobranca: string | null
           free_trial_ends_at: string | null
           id: string
+          modulos_extras: Json | null
           motivo_cancelamento: string | null
           pagarme_card_id: string | null
           pagarme_customer_id: string | null
@@ -140,6 +141,7 @@ export type Database = {
           data_proxima_cobranca?: string | null
           free_trial_ends_at?: string | null
           id?: string
+          modulos_extras?: Json | null
           motivo_cancelamento?: string | null
           pagarme_card_id?: string | null
           pagarme_customer_id?: string | null
@@ -176,6 +178,7 @@ export type Database = {
           data_proxima_cobranca?: string | null
           free_trial_ends_at?: string | null
           id?: string
+          modulos_extras?: Json | null
           motivo_cancelamento?: string | null
           pagarme_card_id?: string | null
           pagarme_customer_id?: string | null
@@ -694,6 +697,7 @@ export type Database = {
           landing_page_ativa: boolean | null
           landing_page_config: Json | null
           layout_dispositivos_config: Json | null
+          layout_orcamento_config: Json | null
           layout_os_config: Json | null
           layout_pdv_config: Json | null
           layout_vendas_config: Json | null
@@ -735,6 +739,7 @@ export type Database = {
           landing_page_ativa?: boolean | null
           landing_page_config?: Json | null
           layout_dispositivos_config?: Json | null
+          layout_orcamento_config?: Json | null
           layout_os_config?: Json | null
           layout_pdv_config?: Json | null
           layout_vendas_config?: Json | null
@@ -776,6 +781,7 @@ export type Database = {
           landing_page_ativa?: boolean | null
           landing_page_config?: Json | null
           layout_dispositivos_config?: Json | null
+          layout_orcamento_config?: Json | null
           layout_os_config?: Json | null
           layout_pdv_config?: Json | null
           layout_vendas_config?: Json | null
@@ -801,6 +807,7 @@ export type Database = {
           categoria: string | null
           created_at: string | null
           data: string
+          data_pagamento: string | null
           data_vencimento: string | null
           descricao: string | null
           empresa_id: string | null
@@ -819,6 +826,7 @@ export type Database = {
           categoria?: string | null
           created_at?: string | null
           data: string
+          data_pagamento?: string | null
           data_vencimento?: string | null
           descricao?: string | null
           empresa_id?: string | null
@@ -837,6 +845,7 @@ export type Database = {
           categoria?: string | null
           created_at?: string | null
           data?: string
+          data_pagamento?: string | null
           data_vencimento?: string | null
           descricao?: string | null
           empresa_id?: string | null
@@ -1062,54 +1071,95 @@ export type Database = {
       }
       cupons: {
         Row: {
+          ativo: boolean
           codigo: string
-          created_at: string | null
-          data_inicio: string
-          data_validade: string | null
-          descricao: string | null
+          created_at: string
+          expira_em: string | null
           id: string
-          quantidade_maxima_uso: number | null
-          quantidade_usada: number | null
-          status: Database["public"]["Enums"]["status_cupom"]
-          tipo_desconto: Database["public"]["Enums"]["tipo_desconto"]
-          updated_at: string | null
-          user_id: string
+          tipo: string
+          usos_atuais: number
+          usos_maximos: number | null
           valor: number
-          valor_minimo_compra: number | null
         }
         Insert: {
+          ativo?: boolean
           codigo: string
-          created_at?: string | null
-          data_inicio?: string
-          data_validade?: string | null
-          descricao?: string | null
+          created_at?: string
+          expira_em?: string | null
           id?: string
-          quantidade_maxima_uso?: number | null
-          quantidade_usada?: number | null
-          status?: Database["public"]["Enums"]["status_cupom"]
-          tipo_desconto?: Database["public"]["Enums"]["tipo_desconto"]
-          updated_at?: string | null
-          user_id: string
+          tipo: string
+          usos_atuais?: number
+          usos_maximos?: number | null
           valor: number
-          valor_minimo_compra?: number | null
         }
         Update: {
+          ativo?: boolean
           codigo?: string
-          created_at?: string | null
-          data_inicio?: string
-          data_validade?: string | null
-          descricao?: string | null
+          created_at?: string
+          expira_em?: string | null
           id?: string
-          quantidade_maxima_uso?: number | null
-          quantidade_usada?: number | null
-          status?: Database["public"]["Enums"]["status_cupom"]
-          tipo_desconto?: Database["public"]["Enums"]["tipo_desconto"]
-          updated_at?: string | null
-          user_id?: string
+          tipo?: string
+          usos_atuais?: number
+          usos_maximos?: number | null
           valor?: number
-          valor_minimo_compra?: number | null
         }
         Relationships: []
+      }
+      dispositivo_imeis: {
+        Row: {
+          created_at: string | null
+          dispositivo_id: string
+          id: string
+          imei: string
+          venda_id: string | null
+          vendido: boolean
+        }
+        Insert: {
+          created_at?: string | null
+          dispositivo_id: string
+          id?: string
+          imei: string
+          venda_id?: string | null
+          vendido?: boolean
+        }
+        Update: {
+          created_at?: string | null
+          dispositivo_id?: string
+          id?: string
+          imei?: string
+          venda_id?: string | null
+          vendido?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispositivo_imeis_dispositivo_id_fkey"
+            columns: ["dispositivo_id"]
+            isOneToOne: false
+            referencedRelation: "dispositivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispositivo_imeis_dispositivo_id_fkey"
+            columns: ["dispositivo_id"]
+            isOneToOne: false
+            referencedRelation: "dispositivos_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispositivo_imeis_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispositivo_imeis_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas_ativas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dispositivos: {
         Row: {
@@ -1758,6 +1808,7 @@ export type Database = {
           convite_token: string | null
           created_at: string | null
           email: string
+          empresa_id: string | null
           funcionario_user_id: string | null
           id: string
           loja_user_id: string
@@ -1777,6 +1828,7 @@ export type Database = {
           convite_token?: string | null
           created_at?: string | null
           email: string
+          empresa_id?: string | null
           funcionario_user_id?: string | null
           id?: string
           loja_user_id: string
@@ -1796,6 +1848,7 @@ export type Database = {
           convite_token?: string | null
           created_at?: string | null
           email?: string
+          empresa_id?: string | null
           funcionario_user_id?: string | null
           id?: string
           loja_user_id?: string
@@ -1803,7 +1856,15 @@ export type Database = {
           permissoes?: Json
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "loja_funcionarios_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mensagens_suporte: {
         Row: {
@@ -2013,66 +2074,87 @@ export type Database = {
       }
       orcamentos: {
         Row: {
+          checklist: Json | null
           cliente_email: string | null
           cliente_id: string | null
           cliente_nome: string | null
           cliente_telefone: string | null
+          cor_dispositivo: string | null
           created_at: string
           data_validade: string | null
           deleted_at: string | null
           desconto: number
           empresa_id: string | null
+          fabricante: string | null
           id: string
           itens: Json
+          marca_dispositivo: string | null
+          modelo_dispositivo: string | null
           numero_orcamento: string
           observacoes: string | null
+          sistema_operacional: string | null
           status: string
           subtotal: number
           termos_condicoes: string | null
+          tipo_dispositivo: string | null
           updated_at: string
           user_id: string
           validade_dias: number
           valor_total: number
         }
         Insert: {
+          checklist?: Json | null
           cliente_email?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
           cliente_telefone?: string | null
+          cor_dispositivo?: string | null
           created_at?: string
           data_validade?: string | null
           deleted_at?: string | null
           desconto?: number
           empresa_id?: string | null
+          fabricante?: string | null
           id?: string
           itens?: Json
+          marca_dispositivo?: string | null
+          modelo_dispositivo?: string | null
           numero_orcamento: string
           observacoes?: string | null
+          sistema_operacional?: string | null
           status?: string
           subtotal?: number
           termos_condicoes?: string | null
+          tipo_dispositivo?: string | null
           updated_at?: string
           user_id: string
           validade_dias?: number
           valor_total?: number
         }
         Update: {
+          checklist?: Json | null
           cliente_email?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
           cliente_telefone?: string | null
+          cor_dispositivo?: string | null
           created_at?: string
           data_validade?: string | null
           deleted_at?: string | null
           desconto?: number
           empresa_id?: string | null
+          fabricante?: string | null
           id?: string
           itens?: Json
+          marca_dispositivo?: string | null
+          modelo_dispositivo?: string | null
           numero_orcamento?: string
           observacoes?: string | null
+          sistema_operacional?: string | null
           status?: string
           subtotal?: number
           termos_condicoes?: string | null
+          tipo_dispositivo?: string | null
           updated_at?: string
           user_id?: string
           validade_dias?: number
@@ -2126,6 +2208,7 @@ export type Database = {
           id: string
           is_teste: boolean
           numero_os: string
+          origem_cliente: string | null
           senha_desbloqueio: string | null
           servico_data_pagamento: string | null
           servico_fornecedor_id: string | null
@@ -2133,6 +2216,7 @@ export type Database = {
           servico_status_pagamento: string | null
           status: string | null
           tempo_garantia: number | null
+          tipo_midia: string | null
           tipo_servico_id: string | null
           tipo_servico_nome_snapshot: string | null
           total: number | null
@@ -2164,6 +2248,7 @@ export type Database = {
           id?: string
           is_teste?: boolean
           numero_os: string
+          origem_cliente?: string | null
           senha_desbloqueio?: string | null
           servico_data_pagamento?: string | null
           servico_fornecedor_id?: string | null
@@ -2171,6 +2256,7 @@ export type Database = {
           servico_status_pagamento?: string | null
           status?: string | null
           tempo_garantia?: number | null
+          tipo_midia?: string | null
           tipo_servico_id?: string | null
           tipo_servico_nome_snapshot?: string | null
           total?: number | null
@@ -2202,6 +2288,7 @@ export type Database = {
           id?: string
           is_teste?: boolean
           numero_os?: string
+          origem_cliente?: string | null
           senha_desbloqueio?: string | null
           servico_data_pagamento?: string | null
           servico_fornecedor_id?: string | null
@@ -2209,6 +2296,7 @@ export type Database = {
           servico_status_pagamento?: string | null
           status?: string | null
           tempo_garantia?: number | null
+          tipo_midia?: string | null
           tipo_servico_id?: string | null
           tipo_servico_nome_snapshot?: string | null
           total?: number | null
@@ -2699,6 +2787,51 @@ export type Database = {
           },
         ]
       }
+      pedidos: {
+        Row: {
+          cliente_nome: string
+          cliente_telefone: string | null
+          created_at: string | null
+          descricao: string
+          id: string
+          observacoes: string | null
+          pago: boolean
+          previsao_chegada: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+          valor_total: number | null
+        }
+        Insert: {
+          cliente_nome: string
+          cliente_telefone?: string | null
+          created_at?: string | null
+          descricao: string
+          id?: string
+          observacoes?: string | null
+          pago?: boolean
+          previsao_chegada?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          valor_total?: number | null
+        }
+        Update: {
+          cliente_nome?: string
+          cliente_telefone?: string | null
+          created_at?: string | null
+          descricao?: string
+          id?: string
+          observacoes?: string | null
+          pago?: boolean
+          previsao_chegada?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          valor_total?: number | null
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           categoria_id: string | null
@@ -2784,6 +2917,9 @@ export type Database = {
           created_at: string | null
           crm_stage: string | null
           email: string
+          fbc: string | null
+          fbclid: string | null
+          fbp: string | null
           first_os_created_at: string | null
           id: string
           last_login_at: string | null
@@ -2794,6 +2930,11 @@ export type Database = {
           registration_tracked: boolean | null
           updated_at: string | null
           user_id: string
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
           whatsapp_enviado: boolean | null
           whatsapp_followup_stage: number | null
           whatsapp_last_sent_at: string | null
@@ -2807,6 +2948,9 @@ export type Database = {
           created_at?: string | null
           crm_stage?: string | null
           email: string
+          fbc?: string | null
+          fbclid?: string | null
+          fbp?: string | null
           first_os_created_at?: string | null
           id?: string
           last_login_at?: string | null
@@ -2817,6 +2961,11 @@ export type Database = {
           registration_tracked?: boolean | null
           updated_at?: string | null
           user_id: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           whatsapp_enviado?: boolean | null
           whatsapp_followup_stage?: number | null
           whatsapp_last_sent_at?: string | null
@@ -2830,6 +2979,9 @@ export type Database = {
           created_at?: string | null
           crm_stage?: string | null
           email?: string
+          fbc?: string | null
+          fbclid?: string | null
+          fbp?: string | null
           first_os_created_at?: string | null
           id?: string
           last_login_at?: string | null
@@ -2840,6 +2992,11 @@ export type Database = {
           registration_tracked?: boolean | null
           updated_at?: string | null
           user_id?: string
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           whatsapp_enviado?: boolean | null
           whatsapp_followup_stage?: number | null
           whatsapp_last_sent_at?: string | null
@@ -3453,6 +3610,7 @@ export type Database = {
           funcionario_id: string | null
           grupo_venda: string | null
           id: string
+          imei_dispositivo: string | null
           motivo_cancelamento: string | null
           observacoes: string | null
           parcela_numero: number | null
@@ -3460,12 +3618,14 @@ export type Database = {
           produto_id: string | null
           quantidade: number | null
           recebido: boolean | null
+          segunda_forma_pagamento: string | null
           tipo: Database["public"]["Enums"]["tipo_produto"]
           total: number
           total_parcelas: number | null
           user_id: string | null
           valor_desconto_cupom: number | null
           valor_desconto_manual: number | null
+          valor_segunda_forma: number | null
         }
         Insert: {
           cancelada?: boolean | null
@@ -3484,6 +3644,7 @@ export type Database = {
           funcionario_id?: string | null
           grupo_venda?: string | null
           id?: string
+          imei_dispositivo?: string | null
           motivo_cancelamento?: string | null
           observacoes?: string | null
           parcela_numero?: number | null
@@ -3491,12 +3652,14 @@ export type Database = {
           produto_id?: string | null
           quantidade?: number | null
           recebido?: boolean | null
+          segunda_forma_pagamento?: string | null
           tipo: Database["public"]["Enums"]["tipo_produto"]
           total: number
           total_parcelas?: number | null
           user_id?: string | null
           valor_desconto_cupom?: number | null
           valor_desconto_manual?: number | null
+          valor_segunda_forma?: number | null
         }
         Update: {
           cancelada?: boolean | null
@@ -3515,6 +3678,7 @@ export type Database = {
           funcionario_id?: string | null
           grupo_venda?: string | null
           id?: string
+          imei_dispositivo?: string | null
           motivo_cancelamento?: string | null
           observacoes?: string | null
           parcela_numero?: number | null
@@ -3522,12 +3686,14 @@ export type Database = {
           produto_id?: string | null
           quantidade?: number | null
           recebido?: boolean | null
+          segunda_forma_pagamento?: string | null
           tipo?: Database["public"]["Enums"]["tipo_produto"]
           total?: number
           total_parcelas?: number | null
           user_id?: string | null
           valor_desconto_cupom?: number | null
           valor_desconto_manual?: number | null
+          valor_segunda_forma?: number | null
         }
         Relationships: [
           {
@@ -3664,13 +3830,6 @@ export type Database = {
           venda_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "vendas_cupons_cupom_id_fkey"
-            columns: ["cupom_id"]
-            isOneToOne: false
-            referencedRelation: "cupons"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "vendas_cupons_venda_id_fkey"
             columns: ["venda_id"]
