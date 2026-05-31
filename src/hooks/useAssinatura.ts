@@ -395,6 +395,7 @@ export function useAssinatura() {
       catalogo: false,
       landing_page: false,
       precificador: false,
+      pedidos: false,
     },
     recursos_premium: {
       consulta_imei: false,

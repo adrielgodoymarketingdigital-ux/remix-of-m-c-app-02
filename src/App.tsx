@@ -64,6 +64,7 @@ const Orcamentos = lazy(() => import("./pages/Orcamentos"));
 const Fidelidade = lazy(() => import("./pages/Fidelidade"));
 const MultiEmpresas = lazy(() => import("./pages/MultiEmpresas"));
 const Precificador = lazy(() => import("./pages/Precificador"));
+const Pedidos = lazy(() => import("./pages/Pedidos"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AcompanharOS = lazy(() => import("./pages/AcompanharOS"));
 const BaixarApp = lazy(() => import("./pages/BaixarApp"));
@@ -294,6 +295,15 @@ function AppRoutes() {
               <ComVerificacaoFuncionario modulo="orcamentos">
                 <ComVerificacaoPlano modulo="orcamentos">
                   <Orcamentos />
+                </ComVerificacaoPlano>
+              </ComVerificacaoFuncionario>
+            </ProtectedAppRoute>
+          } />
+          <Route path="/pedidos" element={
+            <ProtectedAppRoute>
+              <ComVerificacaoFuncionario modulo="pedidos">
+                <ComVerificacaoPlano modulo="pedidos">
+                  <Pedidos />
                 </ComVerificacaoPlano>
               </ComVerificacaoFuncionario>
             </ProtectedAppRoute>
