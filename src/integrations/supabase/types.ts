@@ -1801,6 +1801,7 @@ export type Database = {
           concluido: boolean
           created_at: string
           id: string
+          lista_id: string | null
           nome: string
           ordem: number
           quantidade: string
@@ -1810,6 +1811,7 @@ export type Database = {
           concluido?: boolean
           created_at?: string
           id?: string
+          lista_id?: string | null
           nome: string
           ordem?: number
           quantidade?: string
@@ -1819,9 +1821,42 @@ export type Database = {
           concluido?: boolean
           created_at?: string
           id?: string
+          lista_id?: string | null
           nome?: string
           ordem?: number
           quantidade?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lista_compras_lista_id_fkey"
+            columns: ["lista_id"]
+            isOneToOne: false
+            referencedRelation: "listas_compras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listas_compras: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
