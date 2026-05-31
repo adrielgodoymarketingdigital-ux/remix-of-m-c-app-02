@@ -216,72 +216,72 @@ export function DialogReimprimirReciboVenda({
               }
               .recibo-section h3 {
                 border-bottom: ${is80mm ? '1px dashed #ccc' : '1px solid #ccc'};
-                padding-bottom: 5px;
-                margin-bottom: 10px;
-                font-size: ${is80mm ? '11px' : '14px'};
+                padding-bottom: 2mm;
+                margin-bottom: 2mm;
+                font-size: ${is80mm ? '9pt' : '14px'};
               }
               .termos-garantia {
-                font-size: ${is80mm ? '8px' : '11px'};
+                font-size: ${is80mm ? '7pt' : '11px'};
                 line-height: 1.7;
                 white-space: pre-line;
               }
               .logo-loja {
                 max-width: ${is80mm ? '30mm' : '150px'};
                 height: auto;
-                margin: 0 auto 15px;
+                margin: 0 auto 3mm;
               }
               .dados-loja {
-                font-size: ${is80mm ? '11px' : '12px'};
+                font-size: ${is80mm ? '9pt' : '12px'};
                 font-weight: ${is80mm ? '600' : '400'};
-                margin-top: 10px;
+                margin-top: 2mm;
               }
               .recibo-info {
                 display: flex;
                 justify-content: space-between;
-                margin: 5px 0;
-                font-size: ${is80mm ? '10px' : 'inherit'};
+                margin: 1mm 0;
+                font-size: ${is80mm ? '9pt' : 'inherit'};
               }
               .recibo-total {
-                font-size: ${is80mm ? '14px' : '20px'};
+                font-size: ${is80mm ? '13pt' : '20px'};
                 font-weight: bold;
                 text-align: right;
-                margin-top: ${is80mm ? '10px' : '20px'};
-                padding-top: ${is80mm ? '10px' : '20px'};
+                margin-top: ${is80mm ? '3mm' : '20px'};
+                padding-top: ${is80mm ? '2mm' : '20px'};
                 border-top: ${is80mm ? '1px dashed #000' : '2px solid #000'};
               }
               .recibo-checklist {
                 display: grid;
                 grid-template-columns: ${is80mm ? '1fr' : '1fr 1fr'};
-                gap: 8px ${is80mm ? '8px' : '16px'};
-                margin-top: 10px;
+                gap: ${is80mm ? '1mm' : '8px 16px'};
+                margin-top: 2mm;
               }
               .recibo-checklist-item {
                 display: flex;
                 align-items: center;
                 gap: 6px;
-                font-size: ${is80mm ? '9px' : '11px'};
+                font-size: ${is80mm ? '8pt' : '11px'};
               }
               .recibo-checklist-icon { font-size: 12px; flex-shrink: 0; }
               .recibo-checklist-label { color: #333; }
               .recibo-reimpressao {
                 text-align: center;
-                font-size: ${is80mm ? '8px' : '10px'};
+                font-size: ${is80mm ? '7pt' : '10px'};
                 color: #999;
-                margin-top: 15px;
+                margin-top: 3mm;
                 font-style: italic;
               }
               .assinatura-bloco {
-                margin-top: 40px;
+                margin-top: 10mm;
                 text-align: center;
               }
               .assinatura-linha {
                 border-bottom: 1px solid #333;
                 width: 70%;
-                margin: 0 auto 6px;
-                min-height: 30px;
+                margin: 0 auto 2mm;
+                min-height: ${is80mm ? '8mm' : '30px'};
               }
               .assinatura-label {
-                font-size: ${is80mm ? '9px' : '11px'};
+                font-size: ${is80mm ? '8pt' : '11px'};
                 color: #555;
               }
               @media print {

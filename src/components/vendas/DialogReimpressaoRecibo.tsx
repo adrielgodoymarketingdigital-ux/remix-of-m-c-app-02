@@ -210,7 +210,7 @@ export function DialogReimpressaoRecibo({
     @page { size: A4 portrait; margin: 10mm; }
     body {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: ${isThermal ? '11px' : '13px'};
+      font-size: ${isThermal ? '9pt' : '13px'};
       color: #111;
       background: white;
       padding: ${isThermal ? '2mm' : '15px'};
@@ -221,52 +221,52 @@ export function DialogReimpressaoRecibo({
     .recibo-header {
       text-align: center;
       border-bottom: ${isThermal ? '1px dashed #000' : '2px solid #000'};
-      padding-bottom: ${isThermal ? '6px' : '16px'};
-      margin-bottom: ${isThermal ? '8px' : '16px'};
+      padding-bottom: ${isThermal ? '2mm' : '16px'};
+      margin-bottom: ${isThermal ? '3mm' : '16px'};
     }
     .logo-loja {
       display: block;
-      max-width: ${isThermal ? '28mm' : '120px'};
-      max-height: ${isThermal ? '14mm' : '70px'};
+      max-width: ${isThermal ? '30mm' : '120px'};
+      max-height: ${isThermal ? '15mm' : '70px'};
       height: auto;
-      margin: 0 auto ${isThermal ? '4px' : '10px'};
+      margin: 0 auto ${isThermal ? '2mm' : '10px'};
     }
     .recibo-header h1 {
-      font-size: ${isThermal ? '12px' : '20px'};
+      font-size: ${isThermal ? '11pt' : '20px'};
       font-weight: 900;
-      margin: ${isThermal ? '2px 0' : '6px 0'};
+      margin: ${isThermal ? '1mm 0' : '6px 0'};
     }
     .dados-loja {
-      font-size: ${isThermal ? '11px' : '11px'};
+      font-size: ${isThermal ? '9pt' : '11px'};
       font-weight: ${isThermal ? '600' : '400'};
       color: #444;
-      margin-top: ${isThermal ? '2px' : '6px'};
+      margin-top: ${isThermal ? '1mm' : '6px'};
       line-height: 1.5;
     }
     .recibo-titulo-bloco {
-      margin-top: ${isThermal ? '6px' : '12px'};
-      padding-top: ${isThermal ? '6px' : '12px'};
+      margin-top: ${isThermal ? '2mm' : '12px'};
+      padding-top: ${isThermal ? '2mm' : '12px'};
       border-top: ${isThermal ? '1px dashed #000' : '1.5px solid #000'};
     }
     .recibo-header h2 {
-      font-size: ${isThermal ? '11px' : '15px'};
+      font-size: ${isThermal ? '10pt' : '15px'};
       font-weight: 700;
-      margin: 2px 0;
+      margin: 1mm 0;
     }
-    .recibo-header p { font-size: ${isThermal ? '9px' : '11px'}; color: #555; }
+    .recibo-header p { font-size: ${isThermal ? '8pt' : '11px'}; color: #555; }
     .recibo-section {
-      margin-bottom: ${isThermal ? '8px' : '16px'};
+      margin-bottom: ${isThermal ? '3mm' : '16px'};
       page-break-inside: avoid;
     }
     .recibo-section h3 {
-      font-size: ${isThermal ? '10px' : '13px'};
+      font-size: ${isThermal ? '9pt' : '13px'};
       font-weight: 700;
       border-bottom: ${isThermal ? '1px dashed #ccc' : '1px solid #ccc'};
-      padding-bottom: 4px;
-      margin-bottom: 6px;
+      padding-bottom: 2mm;
+      margin-bottom: 2mm;
     }
     .termos-garantia {
-      font-size: ${isThermal ? '7px' : '10px'};
+      font-size: ${isThermal ? '7pt' : '10px'};
       line-height: 1.6;
       white-space: pre-line;
       color: #333;
@@ -274,28 +274,28 @@ export function DialogReimpressaoRecibo({
     .recibo-info {
       display: flex;
       justify-content: space-between;
-      font-size: ${isThermal ? '9px' : '12px'};
-      margin: 4px 0;
+      font-size: ${isThermal ? '9pt' : '12px'};
+      margin: 1mm 0;
     }
     .recibo-total {
-      font-size: ${isThermal ? '14px' : '20px'};
+      font-size: ${isThermal ? '13pt' : '20px'};
       font-weight: bold;
       text-align: right;
-      margin-top: ${isThermal ? '10px' : '20px'};
-      padding-top: ${isThermal ? '8px' : '16px'};
+      margin-top: ${isThermal ? '3mm' : '20px'};
+      padding-top: ${isThermal ? '2mm' : '16px'};
       border-top: ${isThermal ? '1px dashed #000' : '2px solid #000'};
     }
     .recibo-checklist {
       display: grid;
       grid-template-columns: ${isThermal ? '1fr' : '1fr 1fr'};
-      gap: 6px ${isThermal ? '6px' : '14px'};
-      margin-top: 8px;
+      gap: ${isThermal ? '1mm' : '6px 14px'};
+      margin-top: 2mm;
     }
     .recibo-checklist-item {
       display: flex;
       align-items: center;
       gap: 5px;
-      font-size: ${isThermal ? '8px' : '11px'};
+      font-size: ${isThermal ? '8pt' : '11px'};
     }
     .recibo-checklist-icon { font-size: 11px; flex-shrink: 0; }
     .recibo-checklist-label { color: #333; }

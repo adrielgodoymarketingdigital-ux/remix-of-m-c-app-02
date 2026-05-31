@@ -62,16 +62,18 @@ export function getThermalPrintCSS(paper: PaperSizeResult): string {
       width: ${paper.bodyWidth} !important;
       max-width: ${paper.bodyMaxWidth} !important;
       padding: 2mm !important;
-      font-size: 11px !important;
+      font-size: 9pt !important;
+      line-height: 1.4 !important;
       margin: 0 !important;
     }
     .logo-loja { max-width: 30mm !important; }
-    .recibo-header h1 { font-size: 12px !important; }
-    .recibo-header h2 { font-size: 11px !important; }
+    .recibo-header h1 { font-size: 11pt !important; }
+    .recibo-header h2 { font-size: 10pt !important; }
     .recibo-checklist { grid-template-columns: 1fr !important; }
-    .recibo-info { font-size: 10px !important; }
-    .recibo-total { font-size: 14px !important; }
-    .termos-garantia { font-size: 8px !important; }
-    .resumo-linha.total { font-size: 14px !important; }
+    .recibo-info { font-size: 9pt !important; }
+    .recibo-total { font-size: 13pt !important; }
+    .dados-loja { font-size: 9pt !important; }
+    .termos-garantia { font-size: 7pt !important; }
+    .resumo-linha.total { font-size: 13pt !important; }
   `;
 }
