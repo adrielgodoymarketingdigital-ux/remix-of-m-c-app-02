@@ -83,6 +83,8 @@ interface FormData {
   clienteEstado: string;
   clienteCEP: string;
   clienteDataNascimento: string;
+  origemCliente: string;
+  tipoMidia: string;
   // Dispositivo
   dispositivoTipo: string;
   dispositivoMarca: string;
@@ -169,6 +171,8 @@ export const DialogOrdemServico = ({
     clienteEstado: "",
     clienteCEP: "",
     clienteDataNascimento: "",
+    origemCliente: "",
+    tipoMidia: "",
     dispositivoTipo: "",
     dispositivoMarca: "",
     dispositivoModelo: "",
@@ -349,6 +353,8 @@ export const DialogOrdemServico = ({
         clienteEstado: "",
         clienteCEP: "",
         clienteDataNascimento: ordem.cliente?.data_nascimento || "",
+        origemCliente: (ordem as any).origem_cliente || "",
+        tipoMidia: (ordem as any).tipo_midia || "",
         dispositivoTipo: ordem.dispositivo_tipo,
         dispositivoMarca: ordem.dispositivo_marca,
         dispositivoModelo: ordem.dispositivo_modelo,
@@ -417,6 +423,8 @@ export const DialogOrdemServico = ({
         clienteEstado: "",
         clienteCEP: "",
         clienteDataNascimento: "",
+        origemCliente: "",
+        tipoMidia: "",
         dispositivoTipo: "",
         dispositivoMarca: "",
         dispositivoModelo: "",
@@ -759,6 +767,8 @@ export const DialogOrdemServico = ({
             data_saida: formData.status === "entregue"
               ? (formData.dataSaida ? formData.dataSaida.toISOString() : new Date().toISOString())
               : null,
+            origem_cliente: formData.origemCliente || null,
+            tipo_midia: formData.tipoMidia || null,
           })
           .eq("id", ordem.id)
           .eq("user_id", effectiveUserId);
@@ -933,6 +943,8 @@ export const DialogOrdemServico = ({
               ? (formData.dataSaida ? formData.dataSaida.toISOString() : new Date().toISOString())
               : null,
             empresa_id: empresaId,
+            origem_cliente: formData.origemCliente || null,
+            tipo_midia: formData.tipoMidia || null,
           }]);
 
           // Se não houve erro, sair do loop
@@ -1175,6 +1187,50 @@ export const DialogOrdemServico = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 overflow-x-hidden">
+          {/* Origem do Cliente */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Origem do Cliente</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="origemCliente">Canal de origem</Label>
+                <Select
+                  value={formData.origemCliente}
+                  onValueChange={(v) => setFormData({ ...formData, origemCliente: v })}
+                >
+                  <SelectTrigger id="origemCliente">
+                    <SelectValue placeholder="Selecionar canal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="instagram">Instagram</SelectItem>
+                    <SelectItem value="tiktok">TikTok</SelectItem>
+                    <SelectItem value="google">Google</SelectItem>
+                    <SelectItem value="facebook">Facebook</SelectItem>
+                    <SelectItem value="youtube">YouTube</SelectItem>
+                    <SelectItem value="indicacao">Indicação</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="tipoMidia">Tipo de mídia</Label>
+                <Select
+                  value={formData.tipoMidia}
+                  onValueChange={(v) => setFormData({ ...formData, tipoMidia: v })}
+                >
+                  <SelectTrigger id="tipoMidia">
+                    <SelectValue placeholder="Selecionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="anuncio">Anúncio (pago)</SelectItem>
+                    <SelectItem value="organico">Orgânico</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Dados do Cliente */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
