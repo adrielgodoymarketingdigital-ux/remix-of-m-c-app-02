@@ -22,24 +22,13 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   console.log('[SW] Service Worker ativado - assumindo controle');
   event.waitUntil(
-    // Limpar caches de assets antigos para evitar tela branca por bundle desatualizado
     caches.keys().then(cacheNames =>
       Promise.all(
         cacheNames
           .filter(name => name.startsWith('app-assets-cache'))
-          .map(name => {
-            console.log('[SW] Limpando cache antigo:', name);
-            return caches.delete(name);
-          })
+          .map(name => caches.delete(name))
       )
-    ).then(() => self.clients.claim()).then(() => {
-      // Avisa todos os clientes abertos (PWA instalada) para recarregarem
-      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-        clients.forEach(client => {
-          client.postMessage({ type: 'SW_UPDATED' });
-        });
-      });
-    })
+    ).then(() => self.clients.claim())
   );
 });
 

@@ -22,30 +22,25 @@ import { registerNotificationSoundListener } from "./lib/notification-sounds";
 
 console.log(`[Méc] Build ID: ${APP_BUILD_ID}`);
 
-// Força atualização do SW e limpa todos os caches ao detectar nova versão
-const updateSW = registerSW({
+// Registra SW — atualiza ao navegar (não força reload automático em background)
+registerSW({
   immediate: true,
   onRegisteredSW(_swUrl, registration) {
-    registration?.update();
-    setInterval(() => registration?.update(), 60 * 1000); // verifica a cada 1 min
+    // Verifica atualização só quando a aba volta ao foco, não em loop contínuo
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        registration?.update();
+      }
+    });
   },
   onNeedRefresh() {
-    console.log("[PWA] Nova versão detectada - limpando caches e recarregando");
-    caches.keys().then(names => Promise.all(names.map(n => caches.delete(n)))).then(() => {
-      updateSW(true);
-    });
+    // Nova versão disponível: limpa caches e recarrega só na próxima navegação do usuário
+    caches.keys().then(names => Promise.all(names.map(n => caches.delete(n))));
+    console.log("[PWA] Nova versão disponível — será aplicada na próxima abertura.");
   },
   onOfflineReady() {
     console.log("[PWA] Offline pronto");
   },
-});
-
-// Recebe mensagem do SW quando ele ativa (nova versão instalada) e recarrega a página
-navigator.serviceWorker?.addEventListener("message", (event) => {
-  if (event.data?.type === "SW_UPDATED") {
-    console.log("[PWA] SW sinalizou atualização - recarregando");
-    window.location.reload();
-  }
 });
 
 // Listener para tocar sons customizados de notificação enviados pelo SW
