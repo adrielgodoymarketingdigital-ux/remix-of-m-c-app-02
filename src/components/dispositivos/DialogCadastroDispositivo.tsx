@@ -419,6 +419,11 @@ export function DialogCadastroDispositivo({
                         />
                       </FormControl>
                       <FormMessage />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {quantidadeAtual > 1
+                          ? `Serão criados ${quantidadeAtual} registros individuais. Preencha os dados de cada unidade abaixo.`
+                          : "Para cadastrar mais de 1 unidade, aumente a quantidade."}
+                      </p>
                     </FormItem>
                   )}
                 />
