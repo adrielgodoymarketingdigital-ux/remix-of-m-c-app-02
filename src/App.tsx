@@ -2,11 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense, useEffect } from "react";
 import { initPixel } from "@/lib/pixel";
+import { trackPageView } from "@/lib/tracking";
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -87,10 +88,15 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   const { isRestoring } = useSessionRestore();
+  const location = useLocation();
 
   useEffect(() => {
     initPixel()
   }, [])
+
+  useEffect(() => {
+    trackPageView(window.location.href)
+  }, [location.pathname])
 
   if (isRestoring) {
     return (

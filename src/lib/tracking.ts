@@ -131,6 +131,34 @@ async function sendMetaCapiEvent(params: {
 }
 
 /**
+ * Dispara PageView com deduplicação Pixel + CAPI
+ * Deve ser chamado em toda mudança de rota
+ */
+export async function trackPageView(pageUrl?: string): Promise<void> {
+  try {
+    const eventId = generateEventId()
+    const url = pageUrl || window.location.href
+
+    if (typeof window !== 'undefined' && window.fbq) {
+      ;(window.fbq as any)('track', 'PageView', {}, { eventID: eventId })
+      console.log('[Tracking] PageView Pixel disparado com eventID:', eventId)
+    }
+
+    sendMetaCapiEvent({
+      event_name: 'PageView',
+      event_id: eventId,
+      custom_data: { page_url: url },
+    }).then((success) => {
+      console.log('[Tracking] CAPI PageView sent:', success)
+    }).catch((err) => {
+      console.error('[Tracking] CAPI PageView failed:', err)
+    })
+  } catch (error) {
+    console.error('[Tracking] Erro em trackPageView:', error)
+  }
+}
+
+/**
  * Dispara o evento CompleteRegistration com deduplicação Pixel + CAPI
  * Gera um event_id único e envia tanto para o Pixel (frontend) quanto para a CAPI (backend)
  * Garante que o evento seja disparado apenas uma vez por usuário
