@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, Pencil, Trash2, Phone, Package, CalendarClock, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Phone, Package, CalendarClock, CheckCircle2, XCircle, ClipboardList, ShoppingCart } from "lucide-react";
 import {
   usePedidos,
   FormularioPedido,
@@ -41,6 +41,7 @@ import {
   STATUS_CORES,
 } from "@/hooks/usePedidos";
 import { formatCurrency } from "@/lib/formatters";
+import { ListaCompras } from "@/components/pedidos/ListaCompras";
 
 const STATUS_OPCOES: { value: StatusPedido; label: string }[] = [
   { value: "aguardando", label: "Aguardando" },
@@ -61,8 +62,11 @@ const FORM_VAZIO: FormularioPedido = {
   observacoes: "",
 };
 
+type Aba = "pedidos" | "lista";
+
 export default function Pedidos() {
   const { pedidos, loading, carregarPedidos, criarPedido, atualizarPedido, excluirPedido } = usePedidos();
+  const [aba, setAba] = useState<Aba>("pedidos");
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<StatusPedido | "todos">("todos");
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -143,11 +147,45 @@ export default function Pedidos() {
             <h1 className="text-2xl font-bold">Pedidos / Encomendas</h1>
             <p className="text-sm text-muted-foreground">Gerencie pedidos e encomendas de clientes</p>
           </div>
-          <Button onClick={abrirNovo}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Pedido
-          </Button>
+          {aba === "pedidos" && (
+            <Button onClick={abrirNovo}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Pedido
+            </Button>
+          )}
         </div>
+
+        {/* Abas */}
+        <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+          <button
+            onClick={() => setAba("pedidos")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              aba === "pedidos"
+                ? "bg-background shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ClipboardList className="h-4 w-4" />
+            Pedidos
+          </button>
+          <button
+            onClick={() => setAba("lista")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              aba === "lista"
+                ? "bg-background shadow text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Lista de Compras
+          </button>
+        </div>
+
+        {/* Aba Lista de Compras */}
+        {aba === "lista" && <ListaCompras />}
+
+        {/* Conteúdo da aba Pedidos */}
+        {aba === "pedidos" && <>
 
         {/* Cards de resumo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -289,6 +327,7 @@ export default function Pedidos() {
             ))}
           </div>
         )}
+        </>}
       </div>
 
       {/* Dialog Novo / Editar */}
