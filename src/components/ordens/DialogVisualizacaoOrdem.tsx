@@ -14,7 +14,7 @@ import {
   User, Smartphone, CheckCircle2, XCircle, PenTool,
   MessageSquare, Camera, Hash, Calendar, Clock,
   MapPin, Phone, CreditCard, Wrench, Lock, FileText,
-  RadioTower, Copy, ExternalLink, Loader2,
+  RadioTower, Copy, ExternalLink, Loader2, Package,
 } from "lucide-react";
 import { checklistIcons } from "@/lib/checklist-icons";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
@@ -176,6 +176,9 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
                 <InfoGrid>
                   <InfoItem icon={<Calendar className="h-3 w-3" />} label="Abertura" value={`${formatDate(ordem.created_at)} ${formatTime(ordem.created_at)}`} mono />
                   <InfoItem icon={<Hash className="h-3 w-3" />} label="OS" value={`#${ordem.numero_os}`} mono />
+                  {ordem.localizacao_fisica && (
+                    <InfoItem icon={<Package className="h-3 w-3" />} label="Localização Física" value={ordem.localizacao_fisica} />
+                  )}
                 </InfoGrid>
                 <div className="mt-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60 mb-1">Defeito Relatado</p>

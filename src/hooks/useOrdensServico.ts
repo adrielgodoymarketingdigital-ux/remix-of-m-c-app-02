@@ -28,6 +28,7 @@ export interface OrdemServico {
   funcionario_id: string | null;
   tipo_servico_id: string | null;
   tempo_garantia: number | null;
+  localizacao_fisica?: string | null;
   is_teste?: boolean;
   cliente?: {
     id: string;

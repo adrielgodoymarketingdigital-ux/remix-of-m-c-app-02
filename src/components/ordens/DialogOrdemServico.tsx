@@ -63,6 +63,7 @@ import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { formatCurrency, dataHoje } from "@/lib/formatters";
+import { useLocalizacoesOS } from "@/hooks/useLocalizacoesOS";
 
 interface DialogOrdemServicoProps {
   open: boolean;
@@ -97,6 +98,7 @@ interface FormData {
   dispositivoSubtipo: string;
   fotosDispositivo: string[];
   // Serviço
+  localizacaoFisica: string;
   defeitoRelatado: string;
   observacoesInternas: string;
   mostrarObsInternasImpressao: boolean;
@@ -152,6 +154,7 @@ export const DialogOrdemServico = ({
   const [bandeiraSelecionada, setBandeiraSelecionada] = useState("");
   const [buscandoCEP, setBuscandoCEP] = useState(false);
   const { taxasAtivas, calcularTaxa } = useTaxasCartao();
+  const { localizacoes } = useLocalizacoesOS();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
   const [mostrarSugestoesNome, setMostrarSugestoesNome] = useState(false);
@@ -183,6 +186,7 @@ export const DialogOrdemServico = ({
     dispositivoFabricante: "",
     dispositivoSubtipo: "",
     fotosDispositivo: [],
+    localizacaoFisica: "",
     defeitoRelatado: "",
     observacoesInternas: "",
     mostrarObsInternasImpressao: false,
@@ -365,6 +369,7 @@ export const DialogOrdemServico = ({
         dispositivoFabricante: avariasData.dispositivo_fabricante || "",
         dispositivoSubtipo: avariasData.dispositivo_subtipo || "",
         fotosDispositivo: avariasData.fotos_dispositivo || [],
+        localizacaoFisica: (ordem as any).localizacao_fisica || "",
         defeitoRelatado: ordem.defeito_relatado,
         observacoesInternas: (avariasData as any)?.observacoes_internas || "",
         mostrarObsInternasImpressao: (avariasData as any)?.mostrar_obs_internas_impressao ?? false,
@@ -748,6 +753,7 @@ export const DialogOrdemServico = ({
             dispositivo_cor: formData.dispositivoCor,
             dispositivo_numero_serie: formData.dispositivoNumeroSerie,
             dispositivo_imei: formData.dispositivoIMEI,
+            localizacao_fisica: formData.localizacaoFisica || null,
             defeito_relatado: formData.defeitoRelatado,
             senha_desbloqueio: encryptValue(formData.senhaDesbloqueio.valor),
             avarias: avariasData as any,
@@ -923,6 +929,7 @@ export const DialogOrdemServico = ({
             dispositivo_cor: formData.dispositivoCor,
             dispositivo_numero_serie: formData.dispositivoNumeroSerie,
             dispositivo_imei: formData.dispositivoIMEI,
+            localizacao_fisica: formData.localizacaoFisica || null,
             defeito_relatado: formData.defeitoRelatado,
             senha_desbloqueio: encryptValue(formData.senhaDesbloqueio.valor),
             avarias: avariasData as any,
@@ -1510,6 +1517,29 @@ export const DialogOrdemServico = ({
               <CardTitle className="text-base">Informações do Serviço</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {localizacoes.length > 0 && (
+                <div>
+                  <Label htmlFor="localizacaoFisica">Localização Física</Label>
+                  <Select
+                    value={formData.localizacaoFisica || "__nenhuma__"}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, localizacaoFisica: value === "__nenhuma__" ? "" : value })
+                    }
+                  >
+                    <SelectTrigger id="localizacaoFisica">
+                      <SelectValue placeholder="Selecionar localização" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__nenhuma__">— Sem localização —</SelectItem>
+                      {localizacoes.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.nome}>
+                          {loc.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div>
                 <Label htmlFor="defeitoRelatado">Defeito Relatado *</Label>
                 <Textarea

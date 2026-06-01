@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
@@ -73,6 +73,7 @@ const ImpressaoTermoResponsabilidade = lazy(() => import("@/components/ordens/Im
 const ConfiguracaoNumeracaoOS = lazy(() => import("@/components/configuracoes/ConfiguracaoNumeracaoOS").then((m) => ({ default: m.ConfiguracaoNumeracaoOS })));
 const ConfiguracaoTaxasCartao = lazy(() => import("@/components/configuracoes/ConfiguracaoTaxasCartao").then((m) => ({ default: m.ConfiguracaoTaxasCartao })));
 const ConfiguracaoStatusOS = lazy(() => import("@/components/configuracoes/ConfiguracaoStatusOS").then((m) => ({ default: m.ConfiguracaoStatusOS })));
+const ConfiguracaoLocalizacaoOS = lazy(() => import("@/components/configuracoes/ConfiguracaoLocalizacaoOS").then((m) => ({ default: m.ConfiguracaoLocalizacaoOS })));
 const DialogLimiteAtingido = lazy(() => import("@/components/planos/DialogLimiteAtingido").then((m) => ({ default: m.DialogLimiteAtingido })));
 const DialogServicoAvulso = lazy(() => import("@/components/ordens/DialogServicoAvulso").then((m) => ({ default: m.DialogServicoAvulso })));
 const DialogImportarOS = lazy(() => import("@/components/ordens/DialogImportarOS").then((m) => ({ default: m.DialogImportarOS })));
@@ -169,6 +170,7 @@ export default function OrdemServicoPage() {
   const [ordemParaEtiqueta, setOrdemParaEtiqueta] = useState<OrdemServico | null>(null);
   const [dialogPersonalizarColunas, setDialogPersonalizarColunas] = useState(false);
   const [dialogTracking, setDialogTracking] = useState(false);
+  const [dialogLocalizacao, setDialogLocalizacao] = useState(false);
   const [selecaoAtiva, setSelecaoAtiva] = useState(false);
   const [itensSelecionados, setItensSelecionados] = useState<Set<string>>(new Set());
   const [dialogExcluirEmLote, setDialogExcluirEmLote] = useState(false);
@@ -659,6 +661,10 @@ export default function OrdemServicoPage() {
                   <DropdownMenuItem onClick={() => setDialogTracking(true)}>
                     <RadioTower className="h-4 w-4 mr-2" />
                     Página de Acompanhamento
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDialogLocalizacao(true)}>
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Localizações Físicas
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1173,6 +1179,15 @@ export default function OrdemServicoPage() {
             open={dialogTracking}
             onOpenChange={setDialogTracking}
           />
+
+          {/* Dialog de Configuração de Localizações Físicas */}
+          <Dialog open={dialogLocalizacao} onOpenChange={setDialogLocalizacao}>
+            <DialogContent className="max-w-md">
+              <Suspense fallback={null}>
+                <ConfiguracaoLocalizacaoOS />
+              </Suspense>
+            </DialogContent>
+          </Dialog>
 
           {/* Impressão de Etiqueta */}
           {ordemParaEtiqueta && (
