@@ -338,6 +338,7 @@ export default function OrdemServicoPage() {
   const handleImprimirTermo = async (ordem: OrdemServico) => {
     const ordemCompleta = await buscarOrdemCompleta(ordem.id);
     if (!ordemCompleta) return;
+    await refetchConfig();
     setOrdemParaImprimirTermo(ordemCompleta);
   };
 
