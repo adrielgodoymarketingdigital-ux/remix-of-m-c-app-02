@@ -286,34 +286,40 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
   return (
     <div className="space-y-6">
       {/* KPIs principais */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard titulo="Faturamento Total" valor={formatarMoedaCompacta(fatTotal)} sub={`OS: ${formatarMoedaCompacta(fatOS)} · Vendas: ${formatarMoedaCompacta(fatVendas)}`} icon={DollarSign} cor="#3b82f6" />
-        <KpiCard titulo="Ordens de Serviço" valor={String(osTotal)} sub={`${osFinalizadas} finalizadas · ${osAbertas} em aberto`} icon={Activity} cor="#10b981" />
-        <KpiCard titulo="Ticket Médio Global" valor={formatarMoedaCompacta(ticketMedioGlobal)} sub={`${taxaFinalizacao}% taxa de finalização`} icon={TrendingUp} cor="#8b5cf6" />
-        <KpiCard titulo="Vendas Realizadas" valor={String(vendasTotal)} sub={`${empresas.length} empresa(s) ativas`} icon={ShoppingBag} cor="#f59e0b" />
+      <div>
+        <p className="text-xs text-muted-foreground mb-2">Resumo consolidado de todas as empresas no período selecionado.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard titulo="Faturamento Total" valor={formatarMoedaCompacta(fatTotal)} sub={`OS: ${formatarMoedaCompacta(fatOS)} · Vendas: ${formatarMoedaCompacta(fatVendas)}`} icon={DollarSign} cor="#3b82f6" />
+          <KpiCard titulo="Ordens de Serviço" valor={String(osTotal)} sub={`${osFinalizadas} finalizadas · ${osAbertas} em aberto`} icon={Activity} cor="#10b981" />
+          <KpiCard titulo="Ticket Médio Global" valor={formatarMoedaCompacta(ticketMedioGlobal)} sub={`${taxaFinalizacao}% taxa de finalização`} icon={TrendingUp} cor="#8b5cf6" />
+          <KpiCard titulo="Vendas Realizadas" valor={String(vendasTotal)} sub={`${empresas.length} empresa(s) ativas`} icon={ShoppingBag} cor="#f59e0b" />
+        </div>
       </div>
 
       {/* KPIs secundários */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">OS Em Aberto</p>
-          <p className={`text-xl font-bold mt-1 ${osAbertas > 0 ? "text-amber-400" : "text-emerald-400"}`}>{osAbertas}</p>
-          <p className="text-[10px] text-muted-foreground">{osTotal > 0 ? `${Math.round((osAbertas / osTotal) * 100)}% do total` : "—"}</p>
-        </div>
-        <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Taxa Finalização</p>
-          <p className={`text-xl font-bold mt-1 ${taxaFinalizacao >= 70 ? "text-emerald-400" : taxaFinalizacao >= 40 ? "text-amber-400" : "text-red-400"}`}>{taxaFinalizacao}%</p>
-          <p className="text-[10px] text-muted-foreground">{osFinalizadas} de {osTotal}</p>
-        </div>
-        <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Fat. por OS</p>
-          <p className="text-xl font-bold mt-1 text-blue-400">{formatarMoedaCompacta(osTotal > 0 ? fatOS / osTotal : 0)}</p>
-          <p className="text-[10px] text-muted-foreground">média por OS</p>
-        </div>
-        <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Melhor Filial</p>
-          <p className="text-sm font-bold mt-1 text-violet-400 truncate px-1">{ranking[0]?.nome || "—"}</p>
-          <p className="text-[10px] text-muted-foreground">{ranking[0] ? formatarMoedaCompacta(ranking[0].metricas.faturamento_mes) : "—"}</p>
+      <div>
+        <p className="text-xs text-muted-foreground mb-2">Indicadores de desempenho operacional — qualidade e eficiência das OS.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">OS Em Aberto</p>
+            <p className={`text-xl font-bold mt-1 ${osAbertas > 0 ? "text-amber-400" : "text-emerald-400"}`}>{osAbertas}</p>
+            <p className="text-[10px] text-muted-foreground">{osTotal > 0 ? `${Math.round((osAbertas / osTotal) * 100)}% do total` : "—"}</p>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Taxa Finalização</p>
+            <p className={`text-xl font-bold mt-1 ${taxaFinalizacao >= 70 ? "text-emerald-400" : taxaFinalizacao >= 40 ? "text-amber-400" : "text-red-400"}`}>{taxaFinalizacao}%</p>
+            <p className="text-[10px] text-muted-foreground">{osFinalizadas} de {osTotal}</p>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Fat. por OS</p>
+            <p className="text-xl font-bold mt-1 text-blue-400">{formatarMoedaCompacta(osTotal > 0 ? fatOS / osTotal : 0)}</p>
+            <p className="text-[10px] text-muted-foreground">receita média por OS</p>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Melhor Filial</p>
+            <p className="text-sm font-bold mt-1 text-violet-400 truncate px-1">{ranking[0]?.nome || "—"}</p>
+            <p className="text-[10px] text-muted-foreground">{ranking[0] ? formatarMoedaCompacta(ranking[0].metricas.faturamento_mes) : "—"}</p>
+          </div>
         </div>
       </div>
 
@@ -327,6 +333,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               <BarChart2 className="h-4 w-4 text-blue-500" />
               Faturamento por Empresa
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground">Receita total gerada por OS finalizadas + vendas diretas em cada empresa.</p>
           </CardHeader>
           <CardContent>
             {empresas.length === 1 ? (
@@ -356,6 +363,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               <Trophy className="h-4 w-4 text-amber-500" />
               Ranking Geral
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground">Empresas ordenadas por faturamento. A barra mostra a participação percentual no total geral.</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -403,6 +411,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               <Activity className="h-4 w-4 text-emerald-500" />
               OS por Empresa
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground">Ordens de serviço abertas (âmbar) vs finalizadas (verde) por empresa. TM = ticket médio da empresa no período.</p>
           </CardHeader>
           <CardContent className="space-y-3">
             {empresas.map((emp, i) => {
@@ -445,6 +454,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               <CreditCard className="h-4 w-4 text-violet-500" />
               Formas de Pagamento (Consolidado)
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground">Distribuição do faturamento por meio de pagamento somando todas as empresas. Considera apenas vendas diretas (não OS).</p>
           </CardHeader>
           <CardContent>
             {formasConsolidado.length === 0 ? (
@@ -494,6 +504,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
                 <Layers className="h-4 w-4 text-pink-500" />
                 Comparativo Multidimensional
               </CardTitle>
+              <p className="text-[11px] text-muted-foreground">Cada eixo é normalizado de 0 a 100 em relação à melhor empresa naquele indicador. Quanto maior a área, melhor o desempenho geral.</p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
@@ -525,6 +536,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               <Package className="h-4 w-4 text-orange-500" />
               Top Produtos / Peças (Consolidado)
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground">Os itens mais vendidos somando todas as empresas, ordenados por receita total gerada no período.</p>
           </CardHeader>
           <CardContent>
             {topProdutosConsolidado.length === 0 ? (
@@ -565,6 +577,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
             <BarChart2 className="h-4 w-4 text-blue-500" />
             Tabela Comparativa Completa
           </CardTitle>
+          <p className="text-[11px] text-muted-foreground">Visão lado a lado de todos os indicadores por empresa. "Part. %" é a fatia de cada empresa no faturamento total consolidado.</p>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -653,6 +666,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               <Target className="h-4 w-4 text-violet-500" />
               Progresso de Metas
             </CardTitle>
+            <p className="text-[11px] text-muted-foreground">Quanto cada empresa já atingiu das metas definidas no período. Verde = meta batida. Clique em "Definir metas" para configurar.</p>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
