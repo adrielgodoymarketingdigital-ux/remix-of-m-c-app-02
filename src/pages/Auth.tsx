@@ -60,7 +60,7 @@ const Auth = () => {
         });
 
         if (redirectTo === "onboarding-inicial") {
-          navigate(`/video-boas-vindas`);
+          navigate(`/instalar-app`);
         } else if (redirectTo.startsWith("/")) {
           navigate(redirectTo);
         } else {
@@ -131,7 +131,7 @@ const Auth = () => {
               utm_content: tracking.utm_content,
               utm_term: tracking.utm_term,
             },
-            emailRedirectTo: `${window.location.origin}/video-boas-vindas`,
+            emailRedirectTo: `${window.location.origin}/instalar-app`,
           },
         });
 
@@ -169,7 +169,7 @@ const Auth = () => {
         });
 
         setTimeout(() => {
-          window.location.href = '/video-boas-vindas';
+          window.location.href = '/instalar-app';
         }, 500);
       }
     } catch (error: any) {
