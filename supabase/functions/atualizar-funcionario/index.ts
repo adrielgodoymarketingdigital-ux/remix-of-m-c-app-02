@@ -20,7 +20,6 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Verifica proprietário/loja via token
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Não autorizado" }, 401);
     const token = authHeader.replace("Bearer ", "");
@@ -33,7 +32,16 @@ serve(async (req) => {
 
     const novoEmail = email.trim().toLowerCase();
 
-    // Verifica que o funcionário pertence ao loja_user_id do caller
+    // Resolve loja_user_id efetivo: se caller for gerente de filial, usa proprietario_id
+    const { data: gerenteFilial } = await supabase
+      .from("empresa_usuarios" as never)
+      .select("proprietario_id")
+      .eq("gerente_id" as never, caller.id)
+      .maybeSingle() as any;
+
+    const lojaUserIdEfetivo: string = gerenteFilial?.proprietario_id ?? caller.id;
+
+    // Verifica que o funcionário pertence a esse loja_user_id
     const { data: funcionario, error: funcError } = await supabase
       .from("loja_funcionarios")
       .select("funcionario_user_id, loja_user_id")
@@ -41,16 +49,16 @@ serve(async (req) => {
       .maybeSingle();
 
     if (funcError || !funcionario) return json({ error: "Funcionário não encontrado" }, 404);
-    if (funcionario.loja_user_id !== caller.id) return json({ error: "Sem permissão para editar este funcionário" }, 403);
+    if (funcionario.loja_user_id !== lojaUserIdEfetivo) return json({ error: "Sem permissão para editar este funcionário" }, 403);
 
     const funcionarioUserId = funcionario.funcionario_user_id;
-    if (!funcionarioUserId) return json({ error: "Funcionário não possui conta de acesso" }, 400);
+    if (!funcionarioUserId) return json({ error: "Funcionário ainda não aceitou o convite e não possui conta de acesso" }, 400);
 
     // Atualiza email no Auth
     const { error: updateAuthError } = await supabase.auth.admin.updateUserById(funcionarioUserId, {
       email: novoEmail,
     });
-    if (updateAuthError) return json({ error: "Erro ao atualizar email no Auth: " + updateAuthError.message }, 500);
+    if (updateAuthError) return json({ error: "Erro ao atualizar email: " + updateAuthError.message }, 500);
 
     // Atualiza email na tabela loja_funcionarios
     await supabase
