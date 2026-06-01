@@ -58,6 +58,7 @@ export default function Financeiro() {
   }, []);
 
   const verificarOnboarding = async () => {
+    if (!isDonoLoja) return;
     if (jaCompletouLucroRef.current) return;
     
     try {
