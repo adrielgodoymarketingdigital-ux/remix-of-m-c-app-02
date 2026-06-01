@@ -24,6 +24,8 @@ interface TabelaUsuariosAdminProps {
   mostrarDiasTrial?: boolean;
   mostrarUsoIndevido?: boolean;
   mostrarCancelamento?: boolean;
+  labelExportar?: string;
+  nomeArquivoExportar?: string;
   onBloquear?: (usuario: UsuarioAdmin) => void;
   onDeletar?: (usuario: UsuarioAdmin) => void;
   onConcederAcesso?: (usuario: UsuarioAdmin) => void;
@@ -36,6 +38,8 @@ export function TabelaUsuariosAdmin({
   mostrarDiasTrial = false,
   mostrarUsoIndevido = false,
   mostrarCancelamento = false,
+  labelExportar,
+  nomeArquivoExportar,
   onBloquear,
   onDeletar,
   onConcederAcesso,
@@ -103,16 +107,16 @@ export function TabelaUsuariosAdmin({
       return statusMap[status] || status;
     };
 
-    const headers = [
-      "Nome",
-      "Email",
-      "Telefone",
-    ];
+    const headers = ["Nome", "Email", "Telefone", "Plano"];
 
     const rows = usuarios.map((usuario) => {
-      const primeiroNome = (usuario.nome || "").split(" ")[0];
-      const telefoneNumeros = usuario.celular ? usuario.celular.replace(/\D/g, "") : "";
-      return [primeiroNome, usuario.email || "", telefoneNumeros];
+      const telefoneFormatado = usuario.celular ? aplicarMascaraTelefone(usuario.celular) : "";
+      return [
+        usuario.nome || "",
+        usuario.email || "",
+        telefoneFormatado,
+        formatarPlanoTexto(usuario.plano_tipo),
+      ];
     });
 
     const escapeCsvValue = (value: string) => {
@@ -127,12 +131,13 @@ export function TabelaUsuariosAdmin({
       ...rows.map(row => row.map(escapeCsvValue).join(","))
     ].join("\n");
 
+    const nomeArquivo = nomeArquivoExportar || `usuarios_${format(new Date(), "yyyy-MM-dd_HH-mm")}`;
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `usuarios_${format(new Date(), "yyyy-MM-dd_HH-mm")}.csv`;
+    link.download = `${nomeArquivo}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -297,7 +302,7 @@ export function TabelaUsuariosAdmin({
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={exportarCSV}>
           <Download className="h-4 w-4 mr-2" />
-          Exportar CSV
+          {labelExportar || "Exportar CSV"}
         </Button>
       </div>
       <div className="overflow-x-auto -mx-4 sm:mx-0">

@@ -598,7 +598,16 @@ export default function AdminUsuarios() {
                   <p className="text-sm text-muted-foreground mt-1">Usuários com assinatura ativa e pagamento em dia</p>
                 </CardHeader>
                 <CardContent>
-                  <TabelaUsuariosAdmin usuarios={assinantes} isLoading={isLoading} onBloquear={handleAbrirBloqueio} onDeletar={handleAbrirDeletar} onConcederAcesso={handleAbrirConcederAcesso} getMensagemFormatada={getMensagemFormatada} />
+                  <TabelaUsuariosAdmin
+                    usuarios={assinantes}
+                    isLoading={isLoading}
+                    labelExportar="Exportar Pagantes (CSV)"
+                    nomeArquivoExportar={`pagantes_${new Date().toISOString().slice(0, 10)}`}
+                    onBloquear={handleAbrirBloqueio}
+                    onDeletar={handleAbrirDeletar}
+                    onConcederAcesso={handleAbrirConcederAcesso}
+                    getMensagemFormatada={getMensagemFormatada}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
