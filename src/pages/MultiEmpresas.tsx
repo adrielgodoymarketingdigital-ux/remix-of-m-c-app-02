@@ -612,7 +612,20 @@ export default function MultiEmpresas() {
       if (gerenteSenha) body.senha = gerenteSenha;
 
       const { data, error } = await supabase.functions.invoke("gerente-filial", { body });
-      if (error || data?.error) throw new Error(data?.error || error?.message);
+      if (error) {
+        let msg = "Erro ao salvar";
+        try {
+          const ctx = (error as any)?.context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            msg = body?.error || msg;
+          } else {
+            msg = error.message || msg;
+          }
+        } catch { msg = error.message || msg; }
+        throw new Error(msg);
+      }
+      if (data?.error) throw new Error(data.error);
       toast.success("Dados do gerente atualizados com sucesso!");
       setDialogGerente(false);
     } catch (e: any) {
