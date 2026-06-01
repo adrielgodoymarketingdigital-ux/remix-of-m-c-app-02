@@ -1520,6 +1520,7 @@ export const DialogOrdemServico = ({
               {localizacoes.length > 0 && (
                 <div>
                   <Label htmlFor="localizacaoFisica">Localização Física</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Onde o aparelho está fisicamente armazenado ou em reparo.</p>
                   <Select
                     value={formData.localizacaoFisica || "__nenhuma__"}
                     onValueChange={(value) =>
