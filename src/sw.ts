@@ -23,11 +23,7 @@ self.addEventListener('activate', (event) => {
   console.log('[SW] Service Worker ativado - assumindo controle');
   event.waitUntil(
     caches.keys().then(cacheNames =>
-      Promise.all(
-        cacheNames
-          .filter(name => name.startsWith('app-assets-cache'))
-          .map(name => caches.delete(name))
-      )
+      Promise.all(cacheNames.map(name => caches.delete(name)))
     ).then(() => self.clients.claim())
   );
 });
