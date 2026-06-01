@@ -11,15 +11,16 @@ export function useLocalizacoesOS() {
   const [localizacoes, setLocalizacoes] = useState<LocalizacaoOS[]>([]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
-      supabase
+    async function carregar() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data } = await supabase
         .from("os_localizacoes")
         .select("id, nome, ordem")
-        .eq("user_id", data.user.id)
-        .order("ordem", { ascending: true })
-        .then(({ data: rows }) => setLocalizacoes(rows || []));
-    });
+        .order("ordem", { ascending: true });
+      setLocalizacoes(data || []);
+    }
+    carregar();
   }, []);
 
   return { localizacoes };
