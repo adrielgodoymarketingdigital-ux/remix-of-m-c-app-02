@@ -108,11 +108,33 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
 
   const atualizarFuncionario = useMutation({
     mutationFn: async ({ id, dados }: { id: string; dados: Partial<FuncionarioFormData> }) => {
+      // Se o email mudou, atualiza via edge function (precisa atualizar no Supabase Auth também)
+      if (dados.email !== undefined) {
+        const response = await supabase.functions.invoke("atualizar-funcionario", {
+          body: { funcionario_id: id, email: dados.email },
+        });
+        let errMsg = "Erro ao atualizar email";
+        if (response.error || response.data?.error) {
+          try {
+            const ctx = (response.error as any)?.context;
+            if (ctx && typeof ctx.json === "function") {
+              const body = await ctx.json();
+              errMsg = body?.error || errMsg;
+            } else {
+              errMsg = response.data?.error || response.error?.message || errMsg;
+            }
+          } catch {
+            errMsg = response.data?.error || response.error?.message || errMsg;
+          }
+          throw new Error(errMsg);
+        }
+      }
+
+      // Atualiza demais campos direto na tabela
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
       };
       if (dados.nome !== undefined) updateData.nome = dados.nome;
-      if (dados.email !== undefined) updateData.email = dados.email?.toLowerCase();
       if (dados.permissoes !== undefined) updateData.permissoes = JSON.parse(JSON.stringify(dados.permissoes)) as Json;
       if (dados.cargo !== undefined) updateData.cargo = dados.cargo || null;
       if (dados.comissao_tipo !== undefined) updateData.comissao_tipo = dados.comissao_tipo || null;
