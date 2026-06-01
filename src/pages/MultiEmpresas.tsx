@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Lock, Plus, Building2, Home, TrendingUp, Target, Bell, Info, X,
-  ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw, Pencil, UserCog,
+  ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw, Pencil, UserCog, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -255,10 +255,10 @@ function PainelVendas({ ultimas, porTipo, onVerTodas }: {
 
 // ─── Card de Empresa ──────────────────────────────────────────────────────────
 
-function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar, onEditarNome, onEditarGerente }: {
+function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar, onEditarNome, onEditarGerente, onExcluir }: {
   empresa: EmpresaCard; isMatriz: boolean; cor: string; fatTotal: number;
   onMetas: () => void; onNotificacoes: () => void; onVerVendas: () => void; onAcessar: () => void;
-  onEditarNome: () => void; onEditarGerente?: () => void;
+  onEditarNome: () => void; onEditarGerente?: () => void; onExcluir?: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
   const metaFat = empresa.metas.find(m => m.tipo === "faturamento");
@@ -389,6 +389,11 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
               <UserCog className="h-4 w-4" />
             </Button>
           )}
+          {!isMatriz && onExcluir && (
+            <Button size="sm" variant="outline" className="text-xs h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30" onClick={onExcluir} title="Excluir filial">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -440,6 +445,11 @@ export default function MultiEmpresas() {
   const [gerenteConfirmarSenha, setGerenteConfirmarSenha] = useState("");
   const [carregandoGerente, setCarregandoGerente] = useState(false);
   const [salvandoGerente, setSalvandoGerente] = useState(false);
+
+  const [dialogExcluir, setDialogExcluir] = useState(false);
+  const [empresaExcluindo, setEmpresaExcluindo] = useState<EmpresaCard | null>(null);
+  const [confirmacaoNome, setConfirmacaoNome] = useState("");
+  const [excluindo, setExcluindo] = useState(false);
 
   const [bannerFechado, setBannerFechado] = useState(() =>
     localStorage.getItem("multiempresas_banner_fechado") === "1"
@@ -632,6 +642,48 @@ export default function MultiEmpresas() {
       toast.error("Erro ao salvar: " + e.message);
     } finally {
       setSalvandoGerente(false);
+    }
+  };
+
+  const abrirExcluir = (empresa: EmpresaCard) => {
+    setEmpresaExcluindo(empresa);
+    setConfirmacaoNome("");
+    setDialogExcluir(true);
+  };
+
+  const handleExcluir = async () => {
+    if (!empresaExcluindo) return;
+    if (confirmacaoNome !== empresaExcluindo.nome) {
+      toast.error("Nome digitado não confere com o nome da filial");
+      return;
+    }
+    setExcluindo(true);
+    try {
+      const response = await supabase.functions.invoke("excluir-filial", {
+        body: { empresa_id: empresaExcluindo.id },
+      });
+      if (response.error) {
+        let msg = "Erro ao excluir filial";
+        try {
+          const ctx = (response.error as any)?.context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            msg = body?.error || msg;
+          } else {
+            msg = response.error.message || msg;
+          }
+        } catch { msg = response.error.message || msg; }
+        toast.error(msg);
+        return;
+      }
+      if (response.data?.error) { toast.error(response.data.error); return; }
+      toast.success(response.data.mensagem || "Filial excluída com sucesso!");
+      setDialogExcluir(false);
+      await Promise.all([carregarDados(), carregarEmpresas()]);
+    } catch (e: any) {
+      toast.error("Erro ao excluir filial: " + e.message);
+    } finally {
+      setExcluindo(false);
     }
   };
 
@@ -878,6 +930,7 @@ export default function MultiEmpresas() {
                 onAcessar={() => { setEmpresaAtiva(empresa.id); navigate("/os"); }}
                 onEditarNome={() => abrirEditarNome(empresa)}
                 onEditarGerente={() => abrirGerente(empresa)}
+                onExcluir={() => abrirExcluir(empresa)}
               />
             ))}
 
@@ -1031,6 +1084,53 @@ export default function MultiEmpresas() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogMetasAberto(false)}>Cancelar</Button>
             <Button onClick={salvarTodasMetas}>Salvar Metas</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Excluir Filial */}
+      <Dialog open={dialogExcluir} onOpenChange={v => { setDialogExcluir(v); if (!v) setConfirmacaoNome(""); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-4 w-4" />
+              Excluir Filial
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. Todos os dados de configuração da filial serão removidos e o acesso do gerente será revogado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-sm font-semibold">{empresaExcluindo?.nome}</p>
+              {empresaExcluindo?.cidade && (
+                <p className="text-xs text-muted-foreground">{empresaExcluindo.cidade}{empresaExcluindo.estado ? ` — ${empresaExcluindo.estado}` : ""}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmar-nome" className="text-sm">
+                Digite <strong>{empresaExcluindo?.nome}</strong> para confirmar:
+              </Label>
+              <Input
+                id="confirmar-nome"
+                value={confirmacaoNome}
+                onChange={e => setConfirmacaoNome(e.target.value)}
+                placeholder={empresaExcluindo?.nome}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogExcluir(false)} disabled={excluindo}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleExcluir}
+              disabled={excluindo || confirmacaoNome !== empresaExcluindo?.nome}
+            >
+              {excluindo ? "Excluindo..." : "Excluir Filial"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
