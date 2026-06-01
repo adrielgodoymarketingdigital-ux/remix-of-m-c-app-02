@@ -57,12 +57,9 @@ export const DialogAssinaturaSaida = ({
   const checklistSaida = avariasData?.checklist?.saida || {};
   const formaPagamentoAtual = avariasData?.dados_pagamento?.forma || (ordem as any).forma_pagamento || "";
 
-  // Data padrão: data de criação da OS (para o recebimento cair no caixa do mês correto)
-  const dataDefaultRecebimento = ordem.created_at
-    ? new Date(ordem.created_at).toISOString().split("T")[0]
-    : new Date().toISOString().split("T")[0];
-
-  const [dataRecebimento, setDataRecebimento] = useState<string>(dataDefaultRecebimento);
+  const [dataRecebimento, setDataRecebimento] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
 
   const handleSalvarAssinatura = async () => {
     // Se for digital, precisa ter assinatura
@@ -230,6 +227,16 @@ export const DialogAssinaturaSaida = ({
                   {formatCurrency(ordem.total || 0)}
                 </span>
               </div>
+              <div className="flex justify-between items-center pt-1">
+                <Label htmlFor="data-recebimento" className="text-muted-foreground font-normal">Data no caixa:</Label>
+                <Input
+                  id="data-recebimento"
+                  type="date"
+                  value={dataRecebimento}
+                  onChange={(e) => setDataRecebimento(e.target.value)}
+                  className="w-auto text-right h-7 text-sm px-2"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -265,32 +272,6 @@ export const DialogAssinaturaSaida = ({
                   })}
                 </SelectContent>
               </Select>
-            </CardContent>
-          </Card>
-
-          {/* Data de Recebimento */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Data de Recebimento no Caixa
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              <Label htmlFor="data-recebimento" className="text-xs text-muted-foreground">
-                Escolha em qual data este recebimento deve entrar no caixa
-              </Label>
-              <Input
-                id="data-recebimento"
-                type="date"
-                value={dataRecebimento}
-                onChange={(e) => setDataRecebimento(e.target.value)}
-              />
-              {ordem.created_at && new Date(ordem.created_at).toISOString().split("T")[0] !== dataRecebimento && (
-                <p className="text-xs text-amber-600 mt-1">
-                  Atenção: data diferente da criação da OS ({new Date(ordem.created_at).toLocaleDateString("pt-BR")})
-                </p>
-              )}
             </CardContent>
           </Card>
 
