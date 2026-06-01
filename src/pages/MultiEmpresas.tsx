@@ -376,24 +376,26 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
         )}
 
         {/* Ações */}
-        <div className="flex gap-2 pt-1">
-          <Button size="sm" variant="outline" className="flex-1 text-xs h-8" onClick={onAcessar}>
+        <div className="flex flex-col gap-2 pt-1">
+          <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={onAcessar}>
             Acessar empresa
           </Button>
-          <Button size="sm" className="text-xs h-8 px-3" onClick={onMetas}>Metas</Button>
-          <Button size="sm" variant="outline" className="text-xs h-8 px-2" onClick={onNotificacoes}>
-            <Bell className="h-4 w-4" />
-          </Button>
-          {!isMatriz && onEditarGerente && (
-            <Button size="sm" variant="outline" className="text-xs h-8 px-2" onClick={onEditarGerente} title="Dados de acesso do gerente">
-              <UserCog className="h-4 w-4" />
+          <div className="flex gap-2">
+            <Button size="sm" className="flex-1 text-xs h-8" onClick={onMetas}>Metas</Button>
+            <Button size="sm" variant="outline" className="text-xs h-8 px-2" onClick={onNotificacoes} title="Notificações">
+              <Bell className="h-4 w-4" />
             </Button>
-          )}
-          {!isMatriz && onExcluir && (
-            <Button size="sm" variant="outline" className="text-xs h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30" onClick={onExcluir} title="Excluir filial">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+            {!isMatriz && onEditarGerente && (
+              <Button size="sm" variant="outline" className="text-xs h-8 px-2" onClick={onEditarGerente} title="Dados de acesso do gerente">
+                <UserCog className="h-4 w-4" />
+              </Button>
+            )}
+            {!isMatriz && onExcluir && (
+              <Button size="sm" variant="outline" className="text-xs h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30" onClick={onExcluir} title="Excluir filial">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
