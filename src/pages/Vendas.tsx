@@ -21,6 +21,7 @@ import { TabelaVendas } from "@/components/vendas/TabelaVendas";
 import { DashboardAReceber } from "@/components/vendas/DashboardAReceber";
 import { DashboardResumoTipos } from "@/components/vendas/DashboardResumoTipos";
 import { useVendas } from "@/hooks/useVendas";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Filter, Calendar, Layout, Settings, Search, TrendingUp } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -43,6 +44,7 @@ const MESES = [
 
 export default function Vendas() {
   const { vendas, todasVendas, loading, carregarVendas, cancelarVenda, editarVenda, marcarComoRecebido, marcarComoPendente, excluirVenda } = useVendas();
+  const { podeVerTotalVendas } = useFuncionarioPermissoes();
   const [dialogLayoutAberto, setDialogLayoutAberto] = useState(false);
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
@@ -331,7 +333,7 @@ export default function Vendas() {
           </Card>
 
           {/* Card Total Vendido no Período */}
-          <Card className="border-primary/20 bg-primary/5">
+          {podeVerTotalVendas && <Card className="border-primary/20 bg-primary/5">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -363,7 +365,7 @@ export default function Vendas() {
                 )}
               </div>
             </CardContent>
-          </Card>
+          </Card>}
 
           {/* Resumo por Tipo */}
           <div className="space-y-4">

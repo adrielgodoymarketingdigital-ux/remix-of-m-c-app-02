@@ -84,6 +84,7 @@ const RECURSOS_OUTROS: Array<{ recurso: keyof PermissoesRecursos; label: string 
   { recurso: "ver_tecnicos_os", label: "Ver lista de técnicos na Ordem de Serviço" },
   { recurso: "ver_inventario", label: "Ver cards de inventário (estoque valorizado)" },
   { recurso: "ver_todas_os", label: "Ver todas as ordens de serviço (desativado = apenas as próprias)" },
+  { recurso: "ver_total_vendas", label: "Ver card de total vendido no período (Vendas)" },
 ];
 
 export function SeletorPermissoes({ permissoes, onChange }: SeletorPermissoesProps) {

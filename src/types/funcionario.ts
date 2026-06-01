@@ -67,6 +67,7 @@ export interface PermissoesRecursos {
   ver_todas_os: boolean;
   ver_contas_pagar_receber: boolean;
   ver_analise_lucros: boolean;
+  ver_total_vendas: boolean;
 }
 
 export interface PermissoesDados {
@@ -157,6 +158,7 @@ export const PERMISSOES_DEFAULT: Permissoes = {
     ver_todas_os: false,
     ver_contas_pagar_receber: false,
     ver_analise_lucros: false,
+    ver_total_vendas: false,
   },
   dados: {
     produtos_pecas: false,
@@ -204,6 +206,7 @@ export const RECURSOS_LABELS: Record<keyof PermissoesRecursos, string> = {
   ver_todas_os: "Ver todas as ordens de serviço (desativado = apenas as próprias)",
   ver_contas_pagar_receber: "Ver seção de Contas a Pagar e Receber (dentro do Financeiro)",
   ver_analise_lucros: "Ver seção de Análise de Lucros e Custos (dentro do Financeiro)",
+  ver_total_vendas: "Ver card de total vendido no período (Vendas)",
 };
 
 export const DADOS_LABELS: Record<keyof PermissoesDados, string> = {

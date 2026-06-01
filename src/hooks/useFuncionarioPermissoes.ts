@@ -233,5 +233,6 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
     podeSincronizarClientes,
     podeVerContasPagarReceber: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_contas_pagar_receber ?? false),
     podeVerAnaliseLucros: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_analise_lucros ?? false),
+    podeVerTotalVendas: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_total_vendas ?? false),
   };
 }
