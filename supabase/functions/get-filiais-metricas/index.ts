@@ -14,12 +14,29 @@ const TIPOS_LABEL: Record<string, string> = {
   servico_avulso: "Serviço Avulso",
 };
 
+const FORMA_LABEL: Record<string, string> = {
+  dinheiro: "Dinheiro", pix: "Pix", cartao_credito: "Crédito",
+  cartao_debito: "Débito", a_receber: "A receber", a_prazo: "A prazo",
+};
+
 function calcularVendaLiquida(v: any): number {
   return (Number(v.total) || 0) - (Number(v.valor_desconto_manual) || 0) - (Number(v.valor_desconto_cupom) || 0);
 }
 
-async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: string, inicioMes: Date, isMatriz: boolean) {
-  // Para a matriz: inclui registros com empresa_id = empresaId OU empresa_id = null (dados legados sem empresa vinculada)
+const STATUS_FINAIS = ["finalizado", "entregue", "concluido", "pago", "concluída", "entregue ao cliente"];
+const isStatusFinal = (status: string) =>
+  STATUS_FINAIS.some(f => (status || "").toLowerCase().includes(f));
+const isItemOS = (v: any) =>
+  v.peca_id != null || (typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS"));
+
+async function buscarMetricasEmpresa(
+  supabase: any,
+  userId: string,
+  empresaId: string,
+  dataInicio: Date,
+  dataFim: Date,
+  isMatriz: boolean,
+) {
   const buildVendasQuery = (select: string) => {
     const base = supabase.from("vendas").select(select).eq("user_id", userId).eq("cancelada", false);
     if (isMatriz) return base.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
@@ -33,26 +50,19 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
   };
 
   const [vendasRes, osRes, ultimasVendasRes] = await Promise.all([
-    buildVendasQuery("total, valor_desconto_manual, valor_desconto_cupom, tipo, peca_id, observacoes")
-      .gte("data", inicioMes.toISOString()),
+    buildVendasQuery("total, valor_desconto_manual, valor_desconto_cupom, tipo, peca_id, observacoes, forma_pagamento, produto_id, quantidade")
+      .gte("data", dataInicio.toISOString())
+      .lte("data", dataFim.toISOString()),
     buildOsQuery("total, status")
-      .gte("created_at", inicioMes.toISOString())
+      .gte("created_at", dataInicio.toISOString())
+      .lte("created_at", dataFim.toISOString())
       .is("deleted_at", null),
-    buildVendasQuery("id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id")
+    buildVendasQuery("id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id, observacoes")
       .order("data", { ascending: false })
       .limit(5),
   ]);
 
-  // Status que indicam OS finalizada
-  const STATUS_FINAIS = ["finalizado", "entregue", "concluido", "pago", "concluída", "entregue ao cliente"];
   const osData = osRes.data || [];
-  const isStatusFinal = (status: string) =>
-    STATUS_FINAIS.some(f => (status || "").toLowerCase().includes(f));
-
-  // Excluir peças/itens internos de OS (mesmo critério do Dashboard)
-  const isItemOS = (v: any) =>
-    v.peca_id != null || (typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS"));
-
   const vendasFaturamento = (vendasRes.data || []).filter((v: any) => !isItemOS(v));
   const faturamentoVendas = vendasFaturamento.reduce((sum: number, v: any) => sum + calcularVendaLiquida(v), 0);
   const faturamentoOS = osData
@@ -60,6 +70,7 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
     .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
   const faturamento = faturamentoVendas + faturamentoOS;
 
+  // Por tipo
   const porTipo: Record<string, { tipo: string; label: string; total: number; quantidade: number }> = {};
   for (const v of vendasFaturamento) {
     const tipo = v.tipo || "outros";
@@ -68,25 +79,66 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
     porTipo[tipo].quantidade += 1;
   }
 
+  // Por forma de pagamento
+  const porForma: Record<string, { forma: string; label: string; total: number; quantidade: number }> = {};
+  for (const v of vendasFaturamento) {
+    const forma = v.forma_pagamento || "outros";
+    if (!porForma[forma]) porForma[forma] = { forma, label: FORMA_LABEL[forma] || forma, total: 0, quantidade: 0 };
+    porForma[forma].total += calcularVendaLiquida(v);
+    porForma[forma].quantidade += 1;
+  }
+
+  // Top produtos/peças
+  const topMap: Record<string, { id: string; tipo: string; total: number; quantidade: number }> = {};
+  for (const v of vendasFaturamento) {
+    const key = v.produto_id || v.peca_id;
+    if (!key) continue;
+    if (!topMap[key]) topMap[key] = { id: key, tipo: v.tipo, total: 0, quantidade: 0 };
+    topMap[key].total += calcularVendaLiquida(v);
+    topMap[key].quantidade += v.quantidade || 1;
+  }
+
+  // Resolver nomes dos top produtos
+  const topIds = Object.keys(topMap);
+  let topItens: { id: string; nome: string; tipo: string; label: string; total: number; quantidade: number }[] = [];
+  if (topIds.length > 0) {
+    const produtoIds = topIds.filter(id => topMap[id].tipo === "produto" || topMap[id].tipo === "dispositivo");
+    const pecaIds = topIds.filter(id => topMap[id].tipo === "peca" || topMap[id].tipo === "servico_avulso");
+    const [prodRes, pecRes] = await Promise.all([
+      produtoIds.length ? supabase.from("produtos").select("id, nome").in("id", produtoIds) : { data: [] },
+      pecaIds.length ? supabase.from("pecas").select("id, nome").in("id", pecaIds) : { data: [] },
+    ]);
+    const nomeMap: Record<string, string> = {};
+    for (const p of (prodRes.data || [])) nomeMap[p.id] = p.nome;
+    for (const p of (pecRes.data || [])) nomeMap[p.id] = p.nome;
+    topItens = Object.entries(topMap)
+      .map(([id, item]) => ({
+        id,
+        nome: nomeMap[id] || "Item",
+        tipo: item.tipo,
+        label: TIPOS_LABEL[item.tipo] || item.tipo,
+        total: item.total,
+        quantidade: item.quantidade,
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+  }
+
+  // Últimas vendas
   const ultimas = ultimasVendasRes.data || [];
   const clienteIds = [...new Set(ultimas.map((v: any) => v.cliente_id).filter(Boolean))];
-  const produtoIds = [...new Set(ultimas.map((v: any) => v.produto_id).filter(Boolean))];
-  const pecaIds = [...new Set(ultimas.map((v: any) => v.peca_id).filter(Boolean))];
-
+  const produtoIds2 = [...new Set(ultimas.map((v: any) => v.produto_id).filter(Boolean))];
+  const pecaIds2 = [...new Set(ultimas.map((v: any) => v.peca_id).filter(Boolean))];
   const [clientesRes, produtosRes, pecasRes] = await Promise.all([
     clienteIds.length ? supabase.from("clientes").select("id, nome").in("id", clienteIds) : { data: [] },
-    produtoIds.length ? supabase.from("produtos").select("id, nome").in("id", produtoIds) : { data: [] },
-    pecaIds.length ? supabase.from("pecas").select("id, nome").in("id", pecaIds) : { data: [] },
+    produtoIds2.length ? supabase.from("produtos").select("id, nome").in("id", produtoIds2) : { data: [] },
+    pecaIds2.length ? supabase.from("pecas").select("id, nome").in("id", pecaIds2) : { data: [] },
   ]);
-
   const clienteMap = Object.fromEntries((clientesRes.data || []).map((c: any) => [c.id, c.nome]));
   const produtoMap = Object.fromEntries((produtosRes.data || []).map((p: any) => [p.id, p.nome]));
   const pecaMap = Object.fromEntries((pecasRes.data || []).map((p: any) => [p.id, p.nome]));
-
   const ultimasVendas = ultimas.map((v: any) => ({
-    id: v.id,
-    data: v.data,
-    tipo: v.tipo,
+    id: v.id, data: v.data, tipo: v.tipo,
     label: TIPOS_LABEL[v.tipo] || v.tipo,
     nome: produtoMap[v.produto_id] || pecaMap[v.peca_id] || (v.tipo === "servico_avulso" ? "Serviço Avulso" : "Item"),
     cliente: clienteMap[v.cliente_id] || null,
@@ -102,9 +154,11 @@ async function buscarMetricasEmpresa(supabase: any, userId: string, empresaId: s
     os_mes: osData.length,
     os_em_aberto: osData.filter((o: any) => !isStatusFinal(o.status)).length,
     os_finalizadas: osData.filter((o: any) => isStatusFinal(o.status)).length,
-    vendas_mes: vendasRes.data?.length || 0,
+    vendas_mes: vendasFaturamento.length,
     ultimas_vendas: ultimasVendas,
     vendas_por_tipo: Object.values(porTipo),
+    vendas_por_forma: Object.values(porForma).sort((a, b) => b.total - a.total),
+    top_produtos: topItens,
   };
 }
 
@@ -122,11 +176,39 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error("Token inválido");
 
-    const inicioMes = new Date();
-    inicioMes.setDate(1);
-    inicioMes.setHours(0, 0, 0, 0);
+    // Parsear filtro de data do body (POST) ou usar mês atual como padrão
+    let dataInicio: Date;
+    let dataFim: Date;
 
-    // Busca todas as empresas do proprietário (matriz + filiais)
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body.data_inicio && body.data_fim) {
+          dataInicio = new Date(body.data_inicio);
+          dataFim = new Date(body.data_fim);
+          dataFim.setHours(23, 59, 59, 999);
+        } else {
+          dataInicio = new Date();
+          dataInicio.setDate(1);
+          dataInicio.setHours(0, 0, 0, 0);
+          dataFim = new Date();
+          dataFim.setHours(23, 59, 59, 999);
+        }
+      } catch {
+        dataInicio = new Date();
+        dataInicio.setDate(1);
+        dataInicio.setHours(0, 0, 0, 0);
+        dataFim = new Date();
+        dataFim.setHours(23, 59, 59, 999);
+      }
+    } else {
+      dataInicio = new Date();
+      dataInicio.setDate(1);
+      dataInicio.setHours(0, 0, 0, 0);
+      dataFim = new Date();
+      dataFim.setHours(23, 59, 59, 999);
+    }
+
     const { data: empresas, error: empresasError } = await supabase
       .from("empresas")
       .select("id, nome, cidade, estado, cnpj, telefone, endereco, ativa, tipo, created_at, proprietario_id")
@@ -136,47 +218,33 @@ serve(async (req) => {
 
     if (empresasError) throw new Error("Erro ao buscar empresas: " + empresasError.message);
 
-    // Se o usuário não tem empresa cadastrada, cria a matriz automaticamente
     if (!empresas || empresas.length === 0) {
       const { data: perfil } = await supabase
-        .from("profiles")
-        .select("nome")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
+        .from("profiles").select("nome").eq("user_id", user.id).maybeSingle();
       const nomeMatriz = perfil?.nome || user.email?.split("@")[0] || "Minha Empresa";
-
       const { data: novaMatriz, error: erroMatriz } = await supabase
         .from("empresas")
         .insert({ nome: nomeMatriz, proprietario_id: user.id, tipo: "matriz", ativa: true })
-        .select()
-        .single();
-
+        .select().single();
       if (erroMatriz || !novaMatriz) throw new Error("Erro ao criar empresa matriz: " + erroMatriz?.message);
-
-      // Vincula registros existentes sem empresa_id à nova matriz
       await Promise.all([
         supabase.from("ordens_servico").update({ empresa_id: novaMatriz.id }).eq("user_id", user.id).is("empresa_id", null),
         supabase.from("vendas").update({ empresa_id: novaMatriz.id }).eq("user_id", user.id).is("empresa_id", null),
       ]);
-
-      const metricas = await buscarMetricasEmpresa(supabase, user.id, novaMatriz.id, inicioMes, true);
-      const empresaCompleta = { ...novaMatriz, gerentes: [], metas: [], metricas: { ...metricas, clientes_ativos: 0 } };
-
+      const metricas = await buscarMetricasEmpresa(supabase, user.id, novaMatriz.id, dataInicio, dataFim, true);
+      const empresaCompleta = { ...novaMatriz, gerentes: [], metas: [], metricas };
       return new Response(
         JSON.stringify({ empresas: [], matrizMetricas: metricas, todasEmpresas: [empresaCompleta] }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Garante que exista exatamente uma empresa com tipo 'matriz'
     const temMatriz = empresas.some((e: any) => e.tipo === "matriz");
     if (!temMatriz) {
       await supabase.from("empresas").update({ tipo: "matriz" }).eq("id", empresas[0].id);
       empresas[0].tipo = "matriz";
     }
 
-    // Vincula registros sem empresa_id à empresa matriz
     const matrizExistente = empresas.find((e: any) => e.tipo === "matriz") || empresas[0];
     await Promise.all([
       supabase.from("ordens_servico").update({ empresa_id: matrizExistente.id }).eq("user_id", user.id).is("empresa_id", null),
@@ -184,26 +252,20 @@ serve(async (req) => {
     ]);
 
     const empresaIds = empresas.map((e: any) => e.id);
+    const { data: todasMetas } = await supabase.from("empresa_metas").select("*").in("empresa_id", empresaIds);
 
-    const { data: todasMetas } = await supabase
-      .from("empresa_metas")
-      .select("*")
-      .in("empresa_id", empresaIds);
-
-    // Busca métricas de cada empresa pelo empresa_id (correto)
     const empresasComMetricas = await Promise.all(
       empresas.map(async (empresa: any) => {
-        const metricas = await buscarMetricasEmpresa(supabase, user.id, empresa.id, inicioMes, empresa.tipo === "matriz");
+        const metricas = await buscarMetricasEmpresa(supabase, user.id, empresa.id, dataInicio, dataFim, empresa.tipo === "matriz");
         return {
           ...empresa,
           gerentes: [],
           metas: (todasMetas || []).filter((m: any) => m.empresa_id === empresa.id),
-          metricas: { ...metricas, clientes_ativos: 0 },
+          metricas,
         };
       })
     );
 
-    // Matriz = empresa com tipo 'matriz'
     const matriz = empresasComMetricas.find((e: any) => e.tipo === "matriz");
     const filiais = empresasComMetricas.filter((e: any) => e.tipo !== "matriz");
 

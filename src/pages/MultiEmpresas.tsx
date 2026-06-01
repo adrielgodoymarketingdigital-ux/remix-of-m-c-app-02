@@ -17,13 +17,34 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Lock, Plus, Building2, Home, TrendingUp, Target, Bell, Info, X,
-  ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw, Pencil, UserCog, Trash2,
+  Lock, Plus, Home, TrendingUp, Target, Bell, Info, X,
+  ChevronDown, ChevronUp, ExternalLink, AlertTriangle, RefreshCw,
+  Pencil, UserCog, Trash2, Calendar, Download, BarChart2, FileText,
+  CreditCard, Package, Trophy,
 } from "lucide-react";
 import { toast } from "sonner";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  PieChart, Pie, Legend,
+} from "recharts";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
+
+interface VendaPorForma {
+  forma: string;
+  label: string;
+  total: number;
+  quantidade: number;
+}
+
+interface TopProduto {
+  id: string;
+  nome: string;
+  tipo: string;
+  label: string;
+  total: number;
+  quantidade: number;
+}
 
 interface MetricasEmpresa {
   faturamento_mes: number;
@@ -35,6 +56,8 @@ interface MetricasEmpresa {
   vendas_mes: number;
   ultimas_vendas: VendaItem[];
   vendas_por_tipo: VendaTipo[];
+  vendas_por_forma: VendaPorForma[];
+  top_produtos: TopProduto[];
 }
 
 interface VendaItem {
@@ -77,9 +100,52 @@ interface EmpresaCard {
   metas: Meta[];
 }
 
+// ─── Tipos de período ─────────────────────────────────────────────────────────
+
+type TipoPeriodo = "mes_atual" | "mes_passado" | "trimestre" | "semestre" | "ano" | "customizado";
+
+interface Periodo {
+  tipo: TipoPeriodo;
+  data_inicio: string;
+  data_fim: string;
+}
+
+function calcularPeriodo(tipo: TipoPeriodo): { data_inicio: string; data_fim: string } {
+  const hoje = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  if (tipo === "mes_atual") {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return { data_inicio: fmt(ini), data_fim: fmt(hoje) };
+  }
+  if (tipo === "mes_passado") {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+    return { data_inicio: fmt(ini), data_fim: fmt(fim) };
+  }
+  if (tipo === "trimestre") {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth() - 2, 1);
+    return { data_inicio: fmt(ini), data_fim: fmt(hoje) };
+  }
+  if (tipo === "semestre") {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1);
+    return { data_inicio: fmt(ini), data_fim: fmt(hoje) };
+  }
+  if (tipo === "ano") {
+    const ini = new Date(hoje.getFullYear(), 0, 1);
+    return { data_inicio: fmt(ini), data_fim: fmt(hoje) };
+  }
+  return { data_inicio: fmt(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), data_fim: fmt(hoje) };
+}
+
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const CORES = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"];
+const COR_FORMA: Record<string, string> = {
+  pix: "#10b981", dinheiro: "#3b82f6", cartao_credito: "#8b5cf6",
+  cartao_debito: "#6366f1", a_receber: "#f59e0b", a_prazo: "#ef4444",
+};
 
 const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
   dinheiro: "Dinheiro", pix: "Pix", cartao_credito: "Crédito",
@@ -91,8 +157,97 @@ const TIPO_COR: Record<string, string> = {
   servico: "text-emerald-400", dispositivo: "text-amber-400", servico_avulso: "text-pink-400",
 };
 
+const PERIODOS_OPCOES: { valor: TipoPeriodo; label: string }[] = [
+  { valor: "mes_atual", label: "Mês atual" },
+  { valor: "mes_passado", label: "Mês passado" },
+  { valor: "trimestre", label: "Últimos 3 meses" },
+  { valor: "semestre", label: "Últimos 6 meses" },
+  { valor: "ano", label: "Este ano" },
+  { valor: "customizado", label: "Personalizado" },
+];
+
 const formatarMoeda = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+const formatarData = (iso: string) => {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+};
+
+// ─── Seletor de Período ───────────────────────────────────────────────────────
+
+function SeletorPeriodo({ periodo, onChange }: {
+  periodo: Periodo;
+  onChange: (p: Periodo) => void;
+}) {
+  const [customInicio, setCustomInicio] = useState(periodo.data_inicio);
+  const [customFim, setCustomFim] = useState(periodo.data_fim);
+
+  const handleTipo = (tipo: TipoPeriodo) => {
+    if (tipo === "customizado") {
+      onChange({ tipo, data_inicio: customInicio, data_fim: customFim });
+    } else {
+      const datas = calcularPeriodo(tipo);
+      onChange({ tipo, ...datas });
+    }
+  };
+
+  const aplicarCustom = () => {
+    if (!customInicio || !customFim) return;
+    if (customInicio > customFim) { toast.error("Data inicial não pode ser maior que a final"); return; }
+    onChange({ tipo: "customizado", data_inicio: customInicio, data_fim: customFim });
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Calendar className="h-3.5 w-3.5" />
+        <span>Período:</span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {PERIODOS_OPCOES.map(op => (
+          <button
+            key={op.valor}
+            onClick={() => handleTipo(op.valor)}
+            className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+              periodo.tipo === op.valor
+                ? "bg-blue-500 text-white border-blue-500"
+                : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border"
+            }`}
+          >
+            {op.label}
+          </button>
+        ))}
+      </div>
+      {periodo.tipo === "customizado" && (
+        <div className="flex items-center gap-1.5">
+          <Input
+            type="date"
+            value={customInicio}
+            onChange={e => setCustomInicio(e.target.value)}
+            className="h-7 text-xs w-36"
+          />
+          <span className="text-xs text-muted-foreground">até</span>
+          <Input
+            type="date"
+            value={customFim}
+            onChange={e => setCustomFim(e.target.value)}
+            className="h-7 text-xs w-36"
+          />
+          <Button size="sm" className="h-7 text-xs px-2" onClick={aplicarCustom}>
+            Aplicar
+          </Button>
+        </div>
+      )}
+      {periodo.tipo !== "customizado" && (
+        <span className="text-xs text-muted-foreground">
+          ({formatarData(periodo.data_inicio)} – {formatarData(periodo.data_fim)})
+        </span>
+      )}
+    </div>
+  );
+}
 
 // ─── Dialog Nova Filial ───────────────────────────────────────────────────────
 
@@ -204,11 +359,10 @@ function PainelVendas({ ultimas, porTipo, onVerTodas }: {
           </button>
         ))}
       </div>
-
       {aba === "recentes" && (
         <div className="space-y-1.5">
           {ultimas.length === 0
-            ? <p className="text-xs text-muted-foreground text-center py-2">Nenhuma venda este mês</p>
+            ? <p className="text-xs text-muted-foreground text-center py-2">Nenhuma venda no período</p>
             : ultimas.map(v => (
               <div key={v.id} className="flex items-center justify-between text-xs gap-2 py-1 border-b border-border/20 last:border-0">
                 <div className="flex-1 min-w-0">
@@ -226,11 +380,10 @@ function PainelVendas({ ultimas, porTipo, onVerTodas }: {
           }
         </div>
       )}
-
       {aba === "tipo" && (
         <div className="space-y-1.5">
           {porTipo.length === 0
-            ? <p className="text-xs text-muted-foreground text-center py-2">Nenhuma venda este mês</p>
+            ? <p className="text-xs text-muted-foreground text-center py-2">Nenhuma venda no período</p>
             : porTipo.map(t => (
               <div key={t.tipo} className="flex items-center justify-between text-xs py-1 border-b border-border/20 last:border-0">
                 <span className={`font-medium ${TIPO_COR[t.tipo] || "text-foreground"}`}>{t.label}</span>
@@ -243,7 +396,6 @@ function PainelVendas({ ultimas, porTipo, onVerTodas }: {
           }
         </div>
       )}
-
       <button onClick={onVerTodas}
         className="w-full flex items-center justify-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 transition-colors pt-1">
         <ExternalLink className="h-3 w-3" />
@@ -295,8 +447,6 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
         )}
       </CardHeader>
       <CardContent className="flex-1 space-y-4">
-
-        {/* Faturamento principal */}
         <div>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Faturamento total</p>
           <p className="text-2xl font-bold text-emerald-400">{formatarMoeda(empresa.metricas.faturamento_mes)}</p>
@@ -305,8 +455,6 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             <span>Vendas: {formatarMoeda(empresa.metricas.faturamento_vendas ?? 0)}</span>
           </div>
         </div>
-
-        {/* Métricas de OS */}
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-md bg-muted/40 p-2 text-center">
             <p className="text-[10px] text-muted-foreground">Total OS</p>
@@ -323,8 +471,6 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             <p className="text-lg font-semibold text-emerald-400">{empresa.metricas.os_finalizadas ?? 0}</p>
           </div>
         </div>
-
-        {/* Vendas e ticket médio */}
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-md bg-muted/40 p-2">
             <p className="text-[10px] text-muted-foreground">Vendas</p>
@@ -335,8 +481,6 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             <p className="text-sm font-semibold">{formatarMoeda(ticketMedio)}</p>
           </div>
         </div>
-
-        {/* Barra de participação no total */}
         <div>
           <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
             <span>Participação no faturamento total</span>
@@ -346,8 +490,6 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pctTotal}%`, backgroundColor: cor }} />
           </div>
         </div>
-
-        {/* Meta de faturamento */}
         {pctFat !== null && (
           <div>
             <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
@@ -357,8 +499,6 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             <Progress value={pctFat} className="h-1.5" />
           </div>
         )}
-
-        {/* Painel de vendas expansível */}
         <div className="flex items-center justify-center">
           <button onClick={() => setExpandido(v => !v)}
             className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
@@ -366,7 +506,6 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             {expandido ? "Ocultar vendas" : "Ver últimas vendas"}
           </button>
         </div>
-
         {expandido && (
           <PainelVendas
             ultimas={empresa.metricas.ultimas_vendas || []}
@@ -374,8 +513,6 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             onVerTodas={onVerVendas}
           />
         )}
-
-        {/* Ações */}
         <div className="flex flex-col gap-2 pt-1">
           <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={onAcessar}>
             Acessar empresa
@@ -402,28 +539,371 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
   );
 }
 
-// ─── Página Principal ─────────────────────────────────────────────────────────
+// ─── Comparativo entre Filiais ────────────────────────────────────────────────
 
-const PERMISSOES_PADRAO = {
-  pdv: true, os: true, clientes: true, produtos: true,
-  financeiro: false, relatorios: false, funcionarios: false, configuracoes: false, metas: false,
-};
+function ComparativoFiliais({ empresas, fatTotal }: {
+  empresas: EmpresaCard[];
+  fatTotal: number;
+}) {
+  const ranking = [...empresas].sort((a, b) => b.metricas.faturamento_mes - a.metricas.faturamento_mes);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <BarChart2 className="h-4 w-4 text-blue-500" />
+          Comparativo entre Empresas
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Tabela ranking */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border/40">
+                <th className="text-left py-2 pr-3 font-medium text-muted-foreground w-6">#</th>
+                <th className="text-left py-2 pr-3 font-medium text-muted-foreground">Empresa</th>
+                <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Faturamento</th>
+                <th className="text-right py-2 pr-3 font-medium text-muted-foreground">OS</th>
+                <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Vendas</th>
+                <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Ticket Médio</th>
+                <th className="text-right py-2 font-medium text-muted-foreground">Part. %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranking.map((emp, i) => {
+                const ticket = emp.metricas.os_mes > 0 ? emp.metricas.faturamento_mes / emp.metricas.os_mes : 0;
+                const pct = fatTotal > 0 ? (emp.metricas.faturamento_mes / fatTotal) * 100 : 0;
+                const cor = emp.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length];
+                return (
+                  <tr key={emp.id} className="border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="py-2.5 pr-3">
+                      {i === 0
+                        ? <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                        : <span className="text-muted-foreground">{i + 1}</span>
+                      }
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+                        <span className="font-medium">{emp.nome}</span>
+                        {emp.tipo === "matriz" && <Badge variant="outline" className="text-[10px] px-1 py-0 border-amber-500/30 text-amber-500">Matriz</Badge>}
+                      </div>
+                    </td>
+                    <td className="py-2.5 pr-3 text-right font-semibold text-emerald-400">
+                      {formatarMoeda(emp.metricas.faturamento_mes)}
+                    </td>
+                    <td className="py-2.5 pr-3 text-right text-blue-400">{emp.metricas.os_mes}</td>
+                    <td className="py-2.5 pr-3 text-right text-violet-400">{emp.metricas.vendas_mes}</td>
+                    <td className="py-2.5 pr-3 text-right">{formatarMoeda(ticket)}</td>
+                    <td className="py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <div className="w-16 bg-muted rounded-full h-1.5 hidden sm:block">
+                          <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, backgroundColor: cor }} />
+                        </div>
+                        <span className="text-muted-foreground">{pct.toFixed(1)}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Gráfico comparativo de barras */}
+        {empresas.length > 1 && (
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Faturamento por empresa</p>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={empresas.map((e, i) => ({
+                nome: e.nome.length > 10 ? e.nome.substring(0, 10) + "…" : e.nome,
+                "Faturamento": e.metricas.faturamento_mes,
+                cor: e.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length],
+              }))}>
+                <XAxis dataKey="nome" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v) => [formatarMoeda(Number(v)), "Faturamento"]} />
+                <Bar dataKey="Faturamento" radius={[4, 4, 0, 0]}>
+                  {empresas.map((e, i) => (
+                    <Cell key={i} fill={e.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Comparativo OS */}
+        {empresas.length > 1 && (
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">OS abertas vs finalizadas</p>
+            <div className="space-y-2">
+              {empresas.map((emp, i) => {
+                const total = emp.metricas.os_mes || 1;
+                const pctFin = Math.round((emp.metricas.os_finalizadas / total) * 100);
+                const cor = emp.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length];
+                return (
+                  <div key={emp.id}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-medium">{emp.nome}</span>
+                      <span className="text-muted-foreground">
+                        {emp.metricas.os_finalizadas} fin. / {emp.metricas.os_em_aberto} aberto(s)
+                      </span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pctFin}%`, backgroundColor: cor }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Relatórios por Filial ────────────────────────────────────────────────────
+
+function RelatoriosFilial({ empresa, periodo }: {
+  empresa: EmpresaCard;
+  periodo: Periodo;
+}) {
+  const [aba, setAba] = useState<"faturamento" | "produtos" | "pagamento">("faturamento");
+
+  const exportarCSV = () => {
+    const linhas: string[][] = [];
+
+    if (aba === "faturamento") {
+      linhas.push(["Tipo", "Faturamento (R$)", "Quantidade"]);
+      linhas.push(["OS Finalizadas", empresa.metricas.faturamento_os.toFixed(2), String(empresa.metricas.os_finalizadas)]);
+      for (const t of empresa.metricas.vendas_por_tipo) {
+        linhas.push([t.label, t.total.toFixed(2), String(t.quantidade)]);
+      }
+    } else if (aba === "produtos") {
+      linhas.push(["Produto/Peça", "Tipo", "Total (R$)", "Quantidade"]);
+      for (const p of (empresa.metricas.top_produtos || [])) {
+        linhas.push([p.nome, p.label, p.total.toFixed(2), String(p.quantidade)]);
+      }
+    } else {
+      linhas.push(["Forma de Pagamento", "Total (R$)", "Quantidade"]);
+      for (const f of (empresa.metricas.vendas_por_forma || [])) {
+        linhas.push([f.label, f.total.toFixed(2), String(f.quantidade)]);
+      }
+    }
+
+    const csv = linhas.map(l => l.join(";")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio_${empresa.nome.replace(/\s/g, "_")}_${periodo.data_inicio}_${periodo.data_fim}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const abas = [
+    { key: "faturamento" as const, label: "Faturamento", icon: FileText },
+    { key: "produtos" as const, label: "Top Produtos", icon: Package },
+    { key: "pagamento" as const, label: "Pagamentos", icon: CreditCard },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1">
+          {abas.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setAba(key)}
+              className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md transition-colors ${
+                aba === key
+                  ? "bg-blue-500/20 text-blue-400 font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+            </button>
+          ))}
+        </div>
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={exportarCSV}>
+          <Download className="h-3 w-3" />
+          CSV
+        </Button>
+      </div>
+
+      {aba === "faturamento" && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between py-1.5 border-b border-border/30 text-xs">
+            <span className="font-medium text-blue-400">OS Finalizadas</span>
+            <div className="text-right">
+              <span className="font-semibold">{formatarMoeda(empresa.metricas.faturamento_os)}</span>
+              <span className="text-muted-foreground ml-2">{empresa.metricas.os_finalizadas}x</span>
+            </div>
+          </div>
+          {(empresa.metricas.vendas_por_tipo || []).map(t => (
+            <div key={t.tipo} className="flex items-center justify-between py-1.5 border-b border-border/20 last:border-0 text-xs">
+              <span className={`font-medium ${TIPO_COR[t.tipo] || ""}`}>{t.label}</span>
+              <div className="text-right">
+                <span className="font-semibold">{formatarMoeda(t.total)}</span>
+                <span className="text-muted-foreground ml-2">{t.quantidade}x</span>
+              </div>
+            </div>
+          ))}
+          {empresa.metricas.vendas_por_tipo.length === 0 && empresa.metricas.faturamento_os === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-3">Nenhum faturamento no período</p>
+          )}
+        </div>
+      )}
+
+      {aba === "produtos" && (
+        <div className="space-y-1.5">
+          {(empresa.metricas.top_produtos || []).length === 0
+            ? <p className="text-xs text-muted-foreground text-center py-3">Nenhum produto vendido no período</p>
+            : (empresa.metricas.top_produtos || []).map((p, i) => (
+              <div key={p.id} className="flex items-center gap-2 py-1.5 border-b border-border/20 last:border-0 text-xs">
+                <span className="text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-medium">{p.nome}</p>
+                  <p className={`text-[10px] ${TIPO_COR[p.tipo] || "text-muted-foreground"}`}>{p.label}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-semibold">{formatarMoeda(p.total)}</p>
+                  <p className="text-[10px] text-muted-foreground">{p.quantidade}x</p>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      )}
+
+      {aba === "pagamento" && (
+        <div className="space-y-3">
+          {(empresa.metricas.vendas_por_forma || []).length === 0
+            ? <p className="text-xs text-muted-foreground text-center py-3">Nenhuma venda no período</p>
+            : (
+              <>
+                <div className="space-y-1.5">
+                  {(empresa.metricas.vendas_por_forma || []).map(f => {
+                    const totalGeral = empresa.metricas.faturamento_vendas || 1;
+                    const pct = Math.round((f.total / totalGeral) * 100);
+                    const cor = COR_FORMA[f.forma] || "#6b7280";
+                    return (
+                      <div key={f.forma} className="text-xs">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium">{f.label}</span>
+                          <div className="text-right">
+                            <span className="font-semibold">{formatarMoeda(f.total)}</span>
+                            <span className="text-muted-foreground ml-2">{f.quantidade}x · {pct}%</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: cor }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Mini pizza chart */}
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart>
+                    <Pie
+                      data={(empresa.metricas.vendas_por_forma || []).map(f => ({
+                        name: f.label,
+                        value: f.total,
+                        fill: COR_FORMA[f.forma] || "#6b7280",
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={60}
+                      dataKey="value"
+                    >
+                      {(empresa.metricas.vendas_por_forma || []).map((f, i) => (
+                        <Cell key={i} fill={COR_FORMA[f.forma] || "#6b7280"} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v) => [formatarMoeda(Number(v)), ""]} />
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </>
+            )
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Dialog Relatórios ────────────────────────────────────────────────────────
+
+function DialogRelatorios({ open, onClose, empresas, periodo }: {
+  open: boolean; onClose: () => void;
+  empresas: EmpresaCard[];
+  periodo: Periodo;
+}) {
+  const [empresaSel, setEmpresaSel] = useState<string>(empresas[0]?.id || "");
+  const empresa = empresas.find(e => e.id === empresaSel) || empresas[0];
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Relatórios por Filial
+          </DialogTitle>
+          <DialogDescription>
+            Período: {formatarData(periodo.data_inicio)} – {formatarData(periodo.data_fim)}
+          </DialogDescription>
+        </DialogHeader>
+
+        {empresas.length > 1 && (
+          <div className="flex flex-wrap gap-1">
+            {empresas.map(e => (
+              <button
+                key={e.id}
+                onClick={() => setEmpresaSel(e.id)}
+                className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
+                  empresaSel === e.id
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "border-border/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {e.nome}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {empresa && <RelatoriosFilial empresa={empresa} periodo={periodo} />}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Página Principal ─────────────────────────────────────────────────────────
 
 export default function MultiEmpresas() {
   const navigate = useNavigate();
   const { assinatura, carregando: carregandoAssinatura } = useAssinatura();
-  const { nomeMatriz, setEmpresaAtiva, carregarEmpresas } = useEmpresa();
+  const { setEmpresaAtiva, carregarEmpresas } = useEmpresa();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  // Dados
   const [todasEmpresas, setTodasEmpresas] = useState<EmpresaCard[]>([]);
-  const [matrizMetricas, setMatrizMetricas] = useState<MetricasEmpresa>({
-    faturamento_mes: 0, faturamento_os: 0, faturamento_vendas: 0,
-    os_mes: 0, os_em_aberto: 0, os_finalizadas: 0,
-    vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [],
-  });
+
+  // Período
+  const periodoInicial = calcularPeriodo("mes_atual");
+  const [periodo, setPeriodo] = useState<Periodo>({ tipo: "mes_atual", ...periodoInicial });
 
   // Dialogs
   const [dialogNova, setDialogNova] = useState(false);
@@ -438,7 +918,6 @@ export default function MultiEmpresas() {
   const [empresaEditando, setEmpresaEditando] = useState<EmpresaCard | null>(null);
   const [novoNome, setNovoNome] = useState("");
   const [salvandoNome, setSalvandoNome] = useState(false);
-
   const [dialogGerente, setDialogGerente] = useState(false);
   const [empresaGerente, setEmpresaGerente] = useState<EmpresaCard | null>(null);
   const [gerenteEmail, setGerenteEmail] = useState("");
@@ -447,12 +926,11 @@ export default function MultiEmpresas() {
   const [gerenteConfirmarSenha, setGerenteConfirmarSenha] = useState("");
   const [carregandoGerente, setCarregandoGerente] = useState(false);
   const [salvandoGerente, setSalvandoGerente] = useState(false);
-
   const [dialogExcluir, setDialogExcluir] = useState(false);
   const [empresaExcluindo, setEmpresaExcluindo] = useState<EmpresaCard | null>(null);
   const [confirmacaoNome, setConfirmacaoNome] = useState("");
   const [excluindo, setExcluindo] = useState(false);
-
+  const [dialogRelatorios, setDialogRelatorios] = useState(false);
   const [bannerFechado, setBannerFechado] = useState(() =>
     localStorage.getItem("multiempresas_banner_fechado") === "1"
   );
@@ -465,22 +943,25 @@ export default function MultiEmpresas() {
   const filiais = todasEmpresas.filter(e => e.tipo !== "matriz");
   const matriz = todasEmpresas.find(e => e.tipo === "matriz");
 
-  const carregarDados = useCallback(async () => {
+  const carregarDados = useCallback(async (p?: Periodo) => {
+    const periodoUsar = p || periodo;
     setIsLoading(true);
     setErro(null);
     try {
-      const { data, error } = await supabase.functions.invoke("get-filiais-metricas");
+      const { data, error } = await supabase.functions.invoke("get-filiais-metricas", {
+        body: { data_inicio: periodoUsar.data_inicio, data_fim: periodoUsar.data_fim },
+        method: "POST",
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setTodasEmpresas(data.todasEmpresas || []);
-      setMatrizMetricas(data.matrizMetricas || { faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [] });
     } catch (e: any) {
       setErro(e?.message || "Erro ao carregar dados");
       toast.error("Erro ao carregar Multi Empresas");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [periodo]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -492,6 +973,11 @@ export default function MultiEmpresas() {
 
   useEffect(() => { carregarDados(); }, [carregarDados]);
 
+  const handlePeriodoChange = (novoPeriodo: Periodo) => {
+    setPeriodo(novoPeriodo);
+    carregarDados(novoPeriodo);
+  };
+
   const isUltra = ["profissional_ultra_mensal", "profissional_ultra_anual"].includes(assinatura?.plano_tipo ?? "");
   const semAcesso = !carregandoAssinatura && assinatura !== null && !isAdmin && !isUltra;
 
@@ -500,21 +986,14 @@ export default function MultiEmpresas() {
     try {
       const response = await supabase.functions.invoke("criar-filial", { body: dados });
       if (response.error) {
-        // Quando a edge function retorna HTTP 4xx/5xx, o SDK popula response.error
-        // (FunctionsHttpError) e response.data fica null. O body real com a mensagem
-        // de erro está em response.error.context (o Response original).
         let msg = "Erro ao criar filial";
         try {
           const ctx = (response.error as any)?.context;
           if (ctx && typeof ctx.json === "function") {
             const body = await ctx.json();
             msg = body?.error || msg;
-          } else {
-            msg = response.error.message || msg;
-          }
-        } catch {
-          msg = response.error.message || msg;
-        }
+          } else { msg = response.error.message || msg; }
+        } catch { msg = response.error.message || msg; }
         toast.error(msg);
         return;
       }
@@ -584,10 +1063,7 @@ export default function MultiEmpresas() {
 
   const abrirGerente = async (empresa: EmpresaCard) => {
     setEmpresaGerente(empresa);
-    setGerenteEmail("");
-    setGerenteNome("");
-    setGerenteSenha("");
-    setGerenteConfirmarSenha("");
+    setGerenteEmail(""); setGerenteNome(""); setGerenteSenha(""); setGerenteConfirmarSenha("");
     setDialogGerente(true);
     setCarregandoGerente(true);
     try {
@@ -606,34 +1082,20 @@ export default function MultiEmpresas() {
 
   const salvarGerente = async () => {
     if (!empresaGerente) return;
-    if (gerenteSenha && gerenteSenha !== gerenteConfirmarSenha) {
-      toast.error("As senhas não conferem");
-      return;
-    }
-    if (gerenteSenha && gerenteSenha.length < 6) {
-      toast.error("Senha deve ter pelo menos 6 caracteres");
-      return;
-    }
+    if (gerenteSenha && gerenteSenha !== gerenteConfirmarSenha) { toast.error("As senhas não conferem"); return; }
+    if (gerenteSenha && gerenteSenha.length < 6) { toast.error("Senha deve ter pelo menos 6 caracteres"); return; }
     setSalvandoGerente(true);
     try {
-      const body: Record<string, string> = {
-        empresa_id: empresaGerente.id,
-        acao: "atualizar",
-      };
+      const body: Record<string, string> = { empresa_id: empresaGerente.id, acao: "atualizar" };
       if (gerenteEmail.trim()) body.email = gerenteEmail.trim();
       if (gerenteSenha) body.senha = gerenteSenha;
-
       const { data, error } = await supabase.functions.invoke("gerente-filial", { body });
       if (error) {
         let msg = "Erro ao salvar";
         try {
           const ctx = (error as any)?.context;
-          if (ctx && typeof ctx.json === "function") {
-            const body = await ctx.json();
-            msg = body?.error || msg;
-          } else {
-            msg = error.message || msg;
-          }
+          if (ctx && typeof ctx.json === "function") { const b = await ctx.json(); msg = b?.error || msg; }
+          else msg = error.message || msg;
         } catch { msg = error.message || msg; }
         throw new Error(msg);
       }
@@ -655,28 +1117,18 @@ export default function MultiEmpresas() {
 
   const handleExcluir = async () => {
     if (!empresaExcluindo) return;
-    if (confirmacaoNome !== empresaExcluindo.nome) {
-      toast.error("Nome digitado não confere com o nome da filial");
-      return;
-    }
+    if (confirmacaoNome !== empresaExcluindo.nome) { toast.error("Nome digitado não confere com o nome da filial"); return; }
     setExcluindo(true);
     try {
-      const response = await supabase.functions.invoke("excluir-filial", {
-        body: { empresa_id: empresaExcluindo.id },
-      });
+      const response = await supabase.functions.invoke("excluir-filial", { body: { empresa_id: empresaExcluindo.id } });
       if (response.error) {
         let msg = "Erro ao excluir filial";
         try {
           const ctx = (response.error as any)?.context;
-          if (ctx && typeof ctx.json === "function") {
-            const body = await ctx.json();
-            msg = body?.error || msg;
-          } else {
-            msg = response.error.message || msg;
-          }
+          if (ctx && typeof ctx.json === "function") { const body = await ctx.json(); msg = body?.error || msg; }
+          else msg = response.error.message || msg;
         } catch { msg = response.error.message || msg; }
-        toast.error(msg);
-        return;
+        toast.error(msg); return;
       }
       if (response.data?.error) { toast.error(response.data.error); return; }
       toast.success(response.data.mensagem || "Filial excluída com sucesso!");
@@ -737,15 +1189,13 @@ export default function MultiEmpresas() {
     );
   }
 
-  // ─── Render: erro ──────────────────────────────────────────────────────────
-
   if (erro && !isLoading) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8">
           <AlertTriangle className="h-12 w-12 text-destructive" />
           <p className="text-muted-foreground">{erro}</p>
-          <Button onClick={carregarDados} variant="outline">
+          <Button onClick={() => carregarDados()} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" /> Tentar novamente
           </Button>
         </div>
@@ -753,16 +1203,9 @@ export default function MultiEmpresas() {
     );
   }
 
-  // Dados consolidados (todas as empresas)
   const fatTotal = todasEmpresas.reduce((s, e) => s + e.metricas.faturamento_mes, 0);
   const osTotal = todasEmpresas.reduce((s, e) => s + e.metricas.os_mes, 0);
   const vendasTotal = todasEmpresas.reduce((s, e) => s + e.metricas.vendas_mes, 0);
-
-  const dadosGrafico = todasEmpresas.map((e, i) => ({
-    nome: e.nome.length > 12 ? e.nome.substring(0, 12) + "…" : e.nome,
-    faturamento: e.metricas.faturamento_mes,
-    cor: e.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length],
-  }));
 
   return (
     <AppLayout>
@@ -781,9 +1224,20 @@ export default function MultiEmpresas() {
               Gerencie todas as suas filiais em um único lugar.
             </p>
           </div>
-          <Button onClick={() => setDialogNova(true)} disabled={isLoading || filiais.length >= 3} className="shrink-0">
-            <Plus className="h-4 w-4 mr-2" /> Nova Filial
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" onClick={() => setDialogRelatorios(true)} disabled={isLoading || todasEmpresas.length === 0} className="text-sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Relatórios
+            </Button>
+            <Button onClick={() => setDialogNova(true)} disabled={isLoading || filiais.length >= 3}>
+              <Plus className="h-4 w-4 mr-2" /> Nova Filial
+            </Button>
+          </div>
+        </div>
+
+        {/* Filtro de Período */}
+        <div className="rounded-xl border border-border/40 bg-muted/20 p-3">
+          <SeletorPeriodo periodo={periodo} onChange={handlePeriodoChange} />
         </div>
 
         {/* Banner informativo */}
@@ -802,10 +1256,7 @@ export default function MultiEmpresas() {
                 <p className="font-semibold text-blue-400">Como funciona o Multi Empresas</p>
                 <p className="text-muted-foreground">
                   Cada empresa (matriz + filiais) tem seus próprios dados de OS, vendas e faturamento.
-                  Ao acessar uma empresa pelo botão <strong className="text-foreground">Acessar</strong>, o sistema muda o contexto e você opera dentro daquela empresa — as OS e vendas criadas ficam vinculadas a ela.
-                </p>
-                <p className="text-muted-foreground">
-                  <strong className="text-foreground">Primeira vez aqui?</strong> Sua empresa matriz foi criada automaticamente e todo o histórico de OS e vendas já existentes foi vinculado a ela. Os valores que você vê nos cards refletem os dados reais de cada empresa no mês atual.
+                  Ao acessar uma empresa pelo botão <strong className="text-foreground">Acessar</strong>, o sistema muda o contexto e você opera dentro daquela empresa.
                 </p>
               </div>
             </div>
@@ -821,7 +1272,7 @@ export default function MultiEmpresas() {
                   <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Faturamento Total Consolidado</div>
                   <div className="text-3xl font-bold text-blue-500">{formatarMoeda(fatTotal)}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {todasEmpresas.length} empresa(s) — mês atual
+                    {todasEmpresas.length} empresa(s) — {PERIODOS_OPCOES.find(p => p.valor === periodo.tipo)?.label || "período selecionado"}
                   </div>
                 </div>
                 <div className="flex gap-4 text-center">
@@ -834,28 +1285,9 @@ export default function MultiEmpresas() {
           </CardContent>
         </Card>
 
-        {/* Gráfico comparativo */}
-        {!isLoading && dadosGrafico.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-blue-500" />
-                Comparativo de Faturamento por Empresa
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={dadosGrafico}>
-                  <XAxis dataKey="nome" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `R$${v}`} />
-                  <Tooltip formatter={value => [formatarMoeda(Number(value)), "Faturamento"]} />
-                  <Bar dataKey="faturamento" radius={[4, 4, 0, 0]}>
-                    {dadosGrafico.map((item, i) => <Cell key={i} fill={item.cor} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {/* Comparativo entre filiais */}
+        {!isLoading && todasEmpresas.length > 1 && (
+          <ComparativoFiliais empresas={todasEmpresas} fatTotal={fatTotal} />
         )}
 
         {/* Progresso de metas */}
@@ -896,20 +1328,16 @@ export default function MultiEmpresas() {
           </Card>
         )}
 
-        {/* Grid de cards: Matriz + Filiais */}
+        {/* Grid de cards */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2].map(i => <Skeleton key={i} className="h-56 rounded-xl" />)}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Card da Matriz */}
             {matriz && (
               <CardEmpresa
-                empresa={matriz}
-                isMatriz={true}
-                cor="#f59e0b"
-                fatTotal={fatTotal}
+                empresa={matriz} isMatriz={true} cor="#f59e0b" fatTotal={fatTotal}
                 onMetas={() => abrirMetas(matriz)}
                 onNotificacoes={() => abrirNotificacoes(matriz)}
                 onVerVendas={() => navigate("/vendas")}
@@ -917,15 +1345,10 @@ export default function MultiEmpresas() {
                 onEditarNome={() => abrirEditarNome(matriz)}
               />
             )}
-
-            {/* Cards das Filiais */}
             {filiais.map((empresa, i) => (
               <CardEmpresa
                 key={empresa.id}
-                empresa={empresa}
-                isMatriz={false}
-                cor={CORES[i % CORES.length]}
-                fatTotal={fatTotal}
+                empresa={empresa} isMatriz={false} cor={CORES[i % CORES.length]} fatTotal={fatTotal}
                 onMetas={() => abrirMetas(empresa)}
                 onNotificacoes={() => abrirNotificacoes(empresa)}
                 onVerVendas={() => navigate("/vendas")}
@@ -935,8 +1358,6 @@ export default function MultiEmpresas() {
                 onExcluir={() => abrirExcluir(empresa)}
               />
             ))}
-
-            {/* Botão adicionar filial */}
             {filiais.length < 3 && (
               <button onClick={() => setDialogNova(true)}
                 className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-white/10 hover:border-blue-500/40 hover:bg-blue-500/5 transition-all min-h-[200px] text-muted-foreground hover:text-blue-400">
@@ -953,6 +1374,14 @@ export default function MultiEmpresas() {
       {/* Dialog Nova Filial */}
       <DialogNovaFilial open={dialogNova} onClose={() => setDialogNova(false)} onCriar={handleCriar} salvando={salvando} />
 
+      {/* Dialog Relatórios */}
+      <DialogRelatorios
+        open={dialogRelatorios}
+        onClose={() => setDialogRelatorios(false)}
+        empresas={todasEmpresas}
+        periodo={periodo}
+      />
+
       {/* Dialog Dados do Gerente */}
       <Dialog open={dialogGerente} onOpenChange={v => { setDialogGerente(v); if (!v) { setGerenteSenha(""); setGerenteConfirmarSenha(""); } }}>
         <DialogContent className="max-w-sm">
@@ -965,7 +1394,6 @@ export default function MultiEmpresas() {
               Visualize ou atualize o email e senha usados pelo gerente para fazer login.
             </DialogDescription>
           </DialogHeader>
-
           {carregandoGerente ? (
             <div className="space-y-3 py-2">
               <Skeleton className="h-9 w-full" />
@@ -979,45 +1407,22 @@ export default function MultiEmpresas() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="gerente-email">Email de login</Label>
-                <Input
-                  id="gerente-email"
-                  type="email"
-                  value={gerenteEmail}
-                  onChange={e => setGerenteEmail(e.target.value)}
-                  placeholder="email@gerente.com"
-                />
+                <Input id="gerente-email" type="email" value={gerenteEmail} onChange={e => setGerenteEmail(e.target.value)} placeholder="email@gerente.com" />
               </div>
               <Separator />
-              <p className="text-xs text-muted-foreground">
-                Preencha os campos abaixo somente se quiser alterar a senha.
-              </p>
+              <p className="text-xs text-muted-foreground">Preencha os campos abaixo somente se quiser alterar a senha.</p>
               <div className="space-y-1.5">
                 <Label htmlFor="gerente-senha">Nova senha</Label>
-                <Input
-                  id="gerente-senha"
-                  type="password"
-                  value={gerenteSenha}
-                  onChange={e => setGerenteSenha(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                />
+                <Input id="gerente-senha" type="password" value={gerenteSenha} onChange={e => setGerenteSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="gerente-confirmar">Confirmar nova senha</Label>
-                <Input
-                  id="gerente-confirmar"
-                  type="password"
-                  value={gerenteConfirmarSenha}
-                  onChange={e => setGerenteConfirmarSenha(e.target.value)}
-                  placeholder="Repita a senha"
-                />
+                <Input id="gerente-confirmar" type="password" value={gerenteConfirmarSenha} onChange={e => setGerenteConfirmarSenha(e.target.value)} placeholder="Repita a senha" />
               </div>
             </div>
           )}
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogGerente(false)} disabled={salvandoGerente}>
-              Cancelar
-            </Button>
+            <Button variant="outline" onClick={() => setDialogGerente(false)} disabled={salvandoGerente}>Cancelar</Button>
             <Button onClick={salvarGerente} disabled={salvandoGerente || carregandoGerente}>
               {salvandoGerente ? "Salvando..." : "Salvar"}
             </Button>
@@ -1035,9 +1440,7 @@ export default function MultiEmpresas() {
           <div>
             <Label htmlFor="novo-nome">Nome</Label>
             <Input
-              id="novo-nome"
-              className="mt-1"
-              value={novoNome}
+              id="novo-nome" className="mt-1" value={novoNome}
               onChange={e => setNovoNome(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") salvarNome(); }}
               autoFocus
@@ -1047,6 +1450,49 @@ export default function MultiEmpresas() {
             <Button variant="outline" onClick={() => setDialogEditarNome(false)} disabled={salvandoNome}>Cancelar</Button>
             <Button onClick={salvarNome} disabled={salvandoNome || !novoNome.trim()}>
               {salvandoNome ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Excluir Filial */}
+      <Dialog open={dialogExcluir} onOpenChange={v => { setDialogExcluir(v); if (!v) setConfirmacaoNome(""); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-4 w-4" />
+              Excluir Filial
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. Todos os dados de configuração da filial serão removidos e o acesso do gerente será revogado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-sm font-semibold">{empresaExcluindo?.nome}</p>
+              {empresaExcluindo?.cidade && (
+                <p className="text-xs text-muted-foreground">{empresaExcluindo.cidade}{empresaExcluindo.estado ? ` — ${empresaExcluindo.estado}` : ""}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmar-nome" className="text-sm">
+                Digite <strong>{empresaExcluindo?.nome}</strong> para confirmar:
+              </Label>
+              <Input
+                id="confirmar-nome" value={confirmacaoNome}
+                onChange={e => setConfirmacaoNome(e.target.value)}
+                placeholder={empresaExcluindo?.nome}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogExcluir(false)} disabled={excluindo}>Cancelar</Button>
+            <Button
+              variant="destructive" onClick={handleExcluir}
+              disabled={excluindo || confirmacaoNome !== empresaExcluindo?.nome}
+            >
+              {excluindo ? "Excluindo..." : "Excluir Filial"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1086,53 +1532,6 @@ export default function MultiEmpresas() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogMetasAberto(false)}>Cancelar</Button>
             <Button onClick={salvarTodasMetas}>Salvar Metas</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Excluir Filial */}
-      <Dialog open={dialogExcluir} onOpenChange={v => { setDialogExcluir(v); if (!v) setConfirmacaoNome(""); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-4 w-4" />
-              Excluir Filial
-            </DialogTitle>
-            <DialogDescription>
-              Esta ação é irreversível. Todos os dados de configuração da filial serão removidos e o acesso do gerente será revogado.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-              <p className="text-sm font-semibold">{empresaExcluindo?.nome}</p>
-              {empresaExcluindo?.cidade && (
-                <p className="text-xs text-muted-foreground">{empresaExcluindo.cidade}{empresaExcluindo.estado ? ` — ${empresaExcluindo.estado}` : ""}</p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="confirmar-nome" className="text-sm">
-                Digite <strong>{empresaExcluindo?.nome}</strong> para confirmar:
-              </Label>
-              <Input
-                id="confirmar-nome"
-                value={confirmacaoNome}
-                onChange={e => setConfirmacaoNome(e.target.value)}
-                placeholder={empresaExcluindo?.nome}
-                autoComplete="off"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogExcluir(false)} disabled={excluindo}>
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleExcluir}
-              disabled={excluindo || confirmacaoNome !== empresaExcluindo?.nome}
-            >
-              {excluindo ? "Excluindo..." : "Excluir Filial"}
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
