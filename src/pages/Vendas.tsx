@@ -21,7 +21,8 @@ import { TabelaVendas } from "@/components/vendas/TabelaVendas";
 import { DashboardAReceber } from "@/components/vendas/DashboardAReceber";
 import { DashboardResumoTipos } from "@/components/vendas/DashboardResumoTipos";
 import { useVendas } from "@/hooks/useVendas";
-import { Filter, Calendar, Layout, Settings, Search } from "lucide-react";
+import { Filter, Calendar, Layout, Settings, Search, TrendingUp } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DialogConfiguracaoLayoutVendas } from "@/components/vendas/DialogConfiguracaoLayoutVendas";
 
@@ -78,6 +79,18 @@ export default function Vendas() {
     setAnoSelecionado(new Date().getFullYear().toString());
     setBusca("");
     carregarVendas();
+  };
+
+  const getPeriodoLabel = () => {
+    if (tipoFiltroData === "mes" && mesSelecionado) {
+      const mes = MESES.find(m => m.value === mesSelecionado)?.label ?? mesSelecionado;
+      return `${mes}/${anoSelecionado}`;
+    }
+    if (tipoFiltroData === "periodo" && dataInicio && dataFim) {
+      if (dataInicio === dataFim) return dataInicio.split("-").reverse().join("/");
+      return `${dataInicio.split("-").reverse().join("/")} – ${dataFim.split("-").reverse().join("/")}`;
+    }
+    return "todos os períodos";
   };
 
   const vendasFiltradas = vendas.filter((venda) => {
@@ -313,6 +326,41 @@ export default function Vendas() {
                     Limpar
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card Total Vendido no Período */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total vendido</p>
+                    <p className="text-xs text-muted-foreground/70">{getPeriodoLabel()}</p>
+                  </div>
+                </div>
+                {loading ? (
+                  <div className="h-8 w-28 bg-muted animate-pulse rounded" />
+                ) : (
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">
+                    {formatCurrency(
+                      vendasFiltradas
+                        .filter(v => !v.cancelada)
+                        .reduce((acc, v) => {
+                          if (v.parcela_numero && Number(v.parcela_numero) > 1) return acc;
+                          const total = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
+                          if (v.total_parcelas && Number(v.total_parcelas) > 1 && Number(v.parcela_numero) === 1) {
+                            return acc + total * Number(v.total_parcelas);
+                          }
+                          return acc + total;
+                        }, 0)
+                    )}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
