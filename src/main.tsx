@@ -22,11 +22,10 @@ import { registerNotificationSoundListener } from "./lib/notification-sounds";
 
 console.log(`[Méc] Build ID: ${APP_BUILD_ID}`);
 
-// Registra SW — atualiza ao navegar (não força reload automático em background)
-registerSW({
+// Registra SW — ao detectar nova versão limpa caches e recarrega automaticamente
+const updateSW = registerSW({
   immediate: true,
   onRegisteredSW(_swUrl, registration) {
-    // Verifica atualização só quando a aba volta ao foco, não em loop contínuo
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         registration?.update();
@@ -34,9 +33,10 @@ registerSW({
     });
   },
   onNeedRefresh() {
-    // Nova versão disponível: limpa caches e recarrega só na próxima navegação do usuário
-    caches.keys().then(names => Promise.all(names.map(n => caches.delete(n))));
-    console.log("[PWA] Nova versão disponível — será aplicada na próxima abertura.");
+    console.log("[PWA] Nova versão detectada - limpando caches e recarregando");
+    caches.keys()
+      .then(names => Promise.all(names.map(n => caches.delete(n))))
+      .then(() => updateSW(true));
   },
   onOfflineReady() {
     console.log("[PWA] Offline pronto");
