@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CheckCircle2, XCircle, Smartphone, Loader2, Banknote, CreditCard, Wallet, Calendar, DollarSign } from "lucide-react";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { AvariasOS, TipoAssinatura } from "@/types/ordem-servico";
@@ -54,6 +56,13 @@ export const DialogAssinaturaSaida = ({
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistSaida = avariasData?.checklist?.saida || {};
   const formaPagamentoAtual = avariasData?.dados_pagamento?.forma || (ordem as any).forma_pagamento || "";
+
+  // Data padrão: data de criação da OS (para o recebimento cair no caixa do mês correto)
+  const dataDefaultRecebimento = ordem.created_at
+    ? new Date(ordem.created_at).toISOString().split("T")[0]
+    : new Date().toISOString().split("T")[0];
+
+  const [dataRecebimento, setDataRecebimento] = useState<string>(dataDefaultRecebimento);
 
   const handleSalvarAssinatura = async () => {
     // Se for digital, precisa ter assinatura
@@ -160,7 +169,7 @@ export const DialogAssinaturaSaida = ({
         if (contaId) {
           await supabase
             .from("contas")
-            .update({ status: "recebido" })
+            .update({ status: "recebido", data: dataRecebimento })
             .eq("id", contaId);
         }
       }
@@ -256,6 +265,32 @@ export const DialogAssinaturaSaida = ({
                   })}
                 </SelectContent>
               </Select>
+            </CardContent>
+          </Card>
+
+          {/* Data de Recebimento */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Data de Recebimento no Caixa
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <Label htmlFor="data-recebimento" className="text-xs text-muted-foreground">
+                Escolha em qual data este recebimento deve entrar no caixa
+              </Label>
+              <Input
+                id="data-recebimento"
+                type="date"
+                value={dataRecebimento}
+                onChange={(e) => setDataRecebimento(e.target.value)}
+              />
+              {ordem.created_at && new Date(ordem.created_at).toISOString().split("T")[0] !== dataRecebimento && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Atenção: data diferente da criação da OS ({new Date(ordem.created_at).toLocaleDateString("pt-BR")})
+                </p>
+              )}
             </CardContent>
           </Card>
 
