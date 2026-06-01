@@ -50,16 +50,15 @@ export const DialogAssinaturaSaida = ({
   const [assinaturaSaida, setAssinaturaSaida] = useState<string | null>(null);
   const [tipoAssinaturaSaida, setTipoAssinaturaSaida] = useState<TipoAssinatura>("digital");
   const [formaPagamento, setFormaPagamento] = useState<string>("");
+  const [dataRecebimento, setDataRecebimento] = useState<string>(
+    new Date().toISOString().split("T")[0]
+  );
 
   if (!ordem) return null;
 
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistSaida = avariasData?.checklist?.saida || {};
   const formaPagamentoAtual = avariasData?.dados_pagamento?.forma || (ordem as any).forma_pagamento || "";
-
-  const [dataRecebimento, setDataRecebimento] = useState<string>(
-    new Date().toISOString().split("T")[0]
-  );
 
   const handleSalvarAssinatura = async () => {
     // Se for digital, precisa ter assinatura
