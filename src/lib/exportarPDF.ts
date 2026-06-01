@@ -27,7 +27,7 @@ export const exportarRelatorioPDF = async (
     `Período: ${dataInicio} a ${dataFim}`
   );
 
-  // Cards de resumo
+  // Cards de resumo geral
   y = adicionarCardsPDF(doc, y, [
     {
       label: "Receita Total",
@@ -52,6 +52,39 @@ export const exportarRelatorioPDF = async (
       value: formatCurrencyPDF(resumo.lucroLiquido),
       sub: `Op.: ${formatCurrencyPDF(resumo.custoOperacional)}`,
       color: [20, 130, 60],
+    },
+  ]);
+
+  // Faturamento por tipo (calculado a partir dos itens de lucro)
+  const faturamentoDispositivos = lucros
+    .filter(i => i.tipo === "dispositivo")
+    .reduce((acc, i) => acc + i.receitaTotal, 0);
+  const faturamentoProdutos = lucros
+    .filter(i => i.tipo === "produto")
+    .reduce((acc, i) => acc + i.receitaTotal, 0);
+  const faturamentoServicos = lucros
+    .filter(i => i.tipo === "servico")
+    .reduce((acc, i) => acc + i.receitaTotal, 0);
+
+  y = adicionarTituloSecao(doc, y, "Faturamento por Tipo");
+  y = adicionarCardsPDF(doc, y, [
+    {
+      label: "Dispositivos",
+      value: formatCurrencyPDF(faturamentoDispositivos),
+      sub: `${lucros.filter(i => i.tipo === "dispositivo").reduce((acc, i) => acc + i.quantidadeVendida, 0)} un. vendidas`,
+      color: [80, 60, 200],
+    },
+    {
+      label: "Produtos",
+      value: formatCurrencyPDF(faturamentoProdutos),
+      sub: `${lucros.filter(i => i.tipo === "produto").reduce((acc, i) => acc + i.quantidadeVendida, 0)} un. vendidas`,
+      color: [200, 120, 30],
+    },
+    {
+      label: "Serviços (OS)",
+      value: formatCurrencyPDF(faturamentoServicos),
+      sub: `${lucros.filter(i => i.tipo === "servico").length} serviços`,
+      color: [20, 150, 140],
     },
   ]);
 
