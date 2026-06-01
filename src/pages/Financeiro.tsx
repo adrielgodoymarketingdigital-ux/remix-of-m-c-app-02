@@ -30,6 +30,7 @@ export default function Financeiro() {
   const { podeVerContasPagarReceber, podeVerAnaliseLucros, isDonoLoja } = useFuncionarioPermissoes();
   const {
     loading,
+    identidadeCarregando,
     calcularLucroPorItem,
     calcularEvolucaoMensal,
     calcularResumo,
@@ -147,7 +148,7 @@ export default function Financeiro() {
               {/* PDF Export with date filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="default" disabled={loading}>
+                  <Button variant="default" disabled={loading || identidadeCarregando}>
                     <FileDown className="h-4 w-4 mr-2" />
                     Exportar PDF
                   </Button>
@@ -199,7 +200,7 @@ export default function Financeiro() {
                     <Button
                       className="w-full"
                       onClick={handleExportarPDF}
-                      disabled={loading}
+                      disabled={loading || identidadeCarregando}
                     >
                       <FileDown className="h-4 w-4 mr-2" />
                       Gerar PDF

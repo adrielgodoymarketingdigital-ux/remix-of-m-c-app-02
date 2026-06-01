@@ -17,11 +17,13 @@ import { useIdentidade } from "./useResolvedUserId";
 export const useRelatorios = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: identidadeCarregando } = useIdentidade();
   const empresaFiltroRef = useRef(empresaFiltro);
   const resolvedUserIdRef = useRef(resolvedUserId);
+  const identidadeCarregandoRef = useRef(identidadeCarregando);
   useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
   useEffect(() => { resolvedUserIdRef.current = resolvedUserId; }, [resolvedUserId]);
+  useEffect(() => { identidadeCarregandoRef.current = identidadeCarregando; }, [identidadeCarregando]);
 
   const parseFiltroDate = (date: string, endOfDay = false) => {
     const [year, month, day] = date.split("-").map(Number);
@@ -49,6 +51,7 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return [];
+      if (identidadeCarregandoRef.current) return [] as any;
       const userId = resolvedUserIdRef.current ?? user.id;
 
       const inicioPeriodo = filtros.dataInicio ? parseFiltroDate(filtros.dataInicio) : null;
@@ -463,6 +466,7 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return { agrupados: [], detalhes: [] };
+      if (identidadeCarregandoRef.current) return { agrupados: [], detalhes: [] };
       const userId = resolvedUserIdRef.current ?? user.id;
 
       let query = supabase
@@ -557,6 +561,7 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return { total: 0, detalhes: [] };
+      if (identidadeCarregandoRef.current) return { total: 0, detalhes: [] };
       const userId = resolvedUserIdRef.current ?? user.id;
 
       let query = supabase
@@ -613,6 +618,7 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return [];
+      if (identidadeCarregandoRef.current) return [] as any;
       const userId = resolvedUserIdRef.current ?? user.id;
 
       const inicioPeriodo = filtros.dataInicio ? parseFiltroDate(filtros.dataInicio) : null;
@@ -1002,6 +1008,7 @@ export const useRelatorios = () => {
       } = await supabase.auth.getSession();
       const user = session?.user;
       if (!user) return 0;
+      if (identidadeCarregandoRef.current) return 0;
       const userId = resolvedUserIdRef.current ?? user.id;
 
       let query = supabase
@@ -1085,6 +1092,7 @@ export const useRelatorios = () => {
 
   return {
     loading,
+    identidadeCarregando,
     calcularLucroPorItem,
     calcularCustosOperacionais,
     calcularEvolucaoMensal,
