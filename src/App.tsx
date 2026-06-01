@@ -129,6 +129,7 @@ function AppRoutes() {
           <Route path="/instalar-app" element={<InstalarApp />} />
           <Route path="/video-boas-vindas" element={<VideoBoasVindas />} />
           <Route path="/onboarding-inicial" element={<OnboardingObrigatorio />} />
+          <Route path="/team-onboarding" element={<OnboardingObrigatorio />} />
           {/* Rotas legadas - redirecionar para auth */}
           <Route path="/cadastro-trial" element={<Auth />} />
           <Route path="/ativar-trial" element={<Auth />} />
