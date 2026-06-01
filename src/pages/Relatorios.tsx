@@ -251,13 +251,16 @@ export default function Relatorios() {
       if (!user) return;
       const userId = identidadeUserId ?? user.id;
 
-      const vendasPromise = supabase
+      let vendasPromise = supabase
         .from("vendas")
         .select("*, dispositivos(marca, modelo), produtos(nome)")
         .eq("user_id", userId)
         .neq("cancelada", true)
+        .is("deleted_at", null)
+        .neq("observacoes", "pagamento_duplo_secundario")
         .gte("data", dataInicioFiltro || "2020-01-01")
         .lte("data", dataFimFiltro ? `${dataFimFiltro}T23:59:59` : "2099-12-31");
+      if (empresaFiltro) vendasPromise = vendasPromise.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
 
       const avulsasPromise = supabase
         .from("vendas_avulsas" as any)
