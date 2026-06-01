@@ -17,19 +17,34 @@ import {
   Camera,
   Wrench,
   Smartphone,
-  DollarSign,
   ListChecks,
   Sparkles,
   Tag,
   Gift,
   Copy,
   Check,
-  ChevronRight,
   Star,
   Zap,
   Shield,
 } from "lucide-react";
 import logoMec from "@/assets/logo-mec-auth.png";
+
+async function marcarOnboardingCompleto(): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+  await supabase
+    .from("user_onboarding")
+    .upsert(
+      {
+        user_id: session.user.id,
+        onboarding_obrigatorio_completed: true,
+        onboarding_obrigatorio_completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "user_id" }
+    );
+  try { sessionStorage.removeItem("mec_verificacao_cache"); } catch {}
+}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -139,7 +154,15 @@ export default function TeamOnboarding() {
     setEtapa("os-pronta");
   };
 
-  const irParaDashboard = () => navigate("/dashboard", { replace: true });
+  const irParaDashboard = async () => {
+    await marcarOnboardingCompleto();
+    navigate("/dashboard", { replace: true });
+  };
+
+  const irParaPlano = async () => {
+    await marcarOnboardingCompleto();
+    navigate("/plano?highlight=profissional_mensal", { replace: true });
+  };
 
   if (carregando) {
     return (
@@ -688,7 +711,7 @@ export default function TeamOnboarding() {
           {/* Botões */}
           <div className="space-y-3">
             <Button
-              onClick={() => navigate("/plano?highlight=profissional_mensal", { replace: true })}
+              onClick={irParaPlano}
               className="w-full h-12 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-bold border-0 rounded-xl gap-2 text-base shadow-[0_0_24px_-6px_rgba(234,179,8,0.5)]"
             >
               <Sparkles className="h-4 w-4" />

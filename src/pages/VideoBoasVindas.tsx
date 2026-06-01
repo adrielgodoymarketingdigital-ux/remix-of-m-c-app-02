@@ -8,7 +8,7 @@ export default function VideoBoasVindas() {
   const navigate = useNavigate();
 
   const handleContinuar = () => {
-    navigate("/instalar-app", { replace: true });
+    navigate("/team-onboarding", { replace: true });
   };
 
   return (
