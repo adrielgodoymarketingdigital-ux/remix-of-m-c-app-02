@@ -17,6 +17,28 @@ export function useCupom() {
   const [desconto, setDesconto] = useState<CupomDesconto | null>(null);
   const [mensagemErro, setMensagemErro] = useState("");
 
+  const validarCodigo = useCallback(async (codigoExterno: string) => {
+    const codigoTrimado = codigoExterno.trim();
+    if (!codigoTrimado) return;
+    setCodigo(codigoTrimado);
+    setStatus("loading");
+    setMensagemErro("");
+    setDesconto(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("validar-cupom", {
+        body: { codigo: codigoTrimado },
+      });
+      if (error) { setStatus("error"); setMensagemErro("Erro ao verificar cupom."); return; }
+      if (data?.valido) {
+        setDesconto({ cupomId: data.cupomId, codigo: data.codigo, tipo: data.tipo, valor: data.valor, descricao: data.descricao });
+        setStatus("valid");
+      } else {
+        setStatus("invalid");
+        setMensagemErro(data?.mensagem ?? "Cupom inválido ou expirado.");
+      }
+    } catch { setStatus("error"); setMensagemErro("Erro ao verificar cupom."); }
+  }, []);
+
   const validar = useCallback(async () => {
     const codigoTrimado = codigo.trim();
     if (!codigoTrimado) return;
@@ -89,6 +111,7 @@ export function useCupom() {
     desconto,
     mensagemErro,
     validar,
+    validarCodigo,
     limpar,
     calcularPrecoFinal,
   };

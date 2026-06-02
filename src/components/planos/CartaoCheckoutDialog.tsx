@@ -38,6 +38,7 @@ interface CartaoCheckoutDialogProps {
   planoKey: string;
   planoNome: string;
   planoPreco: number;
+  cupomInicial?: string;
   onSuccess?: () => void;
 }
 
@@ -96,13 +97,17 @@ export function CartaoCheckoutDialog({
   planoKey,
   planoNome,
   planoPreco,
+  cupomInicial,
   onSuccess,
 }: CartaoCheckoutDialogProps) {
   const { toast } = useToast();
   const cupom = useCupom();
 
   useEffect(() => {
-    if (open) trackInitiateCheckout({ value: planoPreco, planName: planoNome })
+    if (open) {
+      trackInitiateCheckout({ value: planoPreco, planName: planoNome });
+      if (cupomInicial) cupom.validarCodigo(cupomInicial);
+    }
   }, [open])
 
   const [loading, setLoading] = useState(false);

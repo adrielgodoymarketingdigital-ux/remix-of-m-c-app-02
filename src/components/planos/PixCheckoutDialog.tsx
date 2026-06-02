@@ -37,6 +37,7 @@ interface PixCheckoutDialogProps {
   planoKey: string;
   planoNome: string;
   planoPreco: number;
+  cupomInicial?: string;
   onSuccess?: () => void;
 }
 
@@ -60,6 +61,7 @@ export function PixCheckoutDialog({
   planoKey,
   planoNome,
   planoPreco,
+  cupomInicial,
   onSuccess,
 }: PixCheckoutDialogProps) {
   const [loading, setLoading] = useState(false);
@@ -72,6 +74,10 @@ export function PixCheckoutDialog({
   const [cpf, setCpf] = useState("");
   const { toast } = useToast();
   const cupom = useCupom();
+
+  useEffect(() => {
+    if (open && cupomInicial) cupom.validarCodigo(cupomInicial);
+  }, [open]);
 
   const cpfDigits = cpf.replace(/\D/g, "");
   const canGeneratePix = cpfDigits.length === 11;

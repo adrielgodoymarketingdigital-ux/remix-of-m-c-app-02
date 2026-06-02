@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { ChecklistDispositivo } from "@/components/ordens/ChecklistDispositivo";
+import { CartaoCheckoutDialog } from "@/components/planos/CartaoCheckoutDialog";
+import { PixCheckoutDialog } from "@/components/planos/PixCheckoutDialog";
+import { PLANOS } from "@/types/plano";
 import { Checklist } from "@/types/ordem-servico";
 import {
   ArrowRight,
@@ -22,10 +25,11 @@ import {
   Tag,
   Gift,
   Copy,
-  Check,
   Star,
   Zap,
   Shield,
+  CreditCard,
+  QrCode,
 } from "lucide-react";
 import logoMec from "@/assets/logo-mec-auth.png";
 
@@ -100,8 +104,15 @@ const OS_DEMO = {
   ],
 };
 
-const CUPOM_CODIGO = "BOASVINDAS15";
+const CUPOM_CODIGO = "BEMVINDO15";
 const CUPOM_DESCONTO = 15;
+
+// Planos exibidos na tela de cupom (apenas mensais)
+const PLANOS_CUPOM = [
+  { key: "basico_mensal", destaque: false },
+  { key: "intermediario_mensal", destaque: true },
+  { key: "profissional_mensal", destaque: false },
+] as const;
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
@@ -112,6 +123,11 @@ export default function TeamOnboarding() {
   const [salvando, setSalvando] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [osCriada, setOsCriada] = useState<OSTeste | null>(null);
+
+  // Checkout
+  const [planoSelecionado, setPlanoSelecionado] = useState<string | null>(null);
+  const [abrirCartao, setAbrirCartao] = useState(false);
+  const [abrirPix, setAbrirPix] = useState(false);
 
   // Form criação OS
   const [marca, setMarca] = useState("");
@@ -625,130 +641,207 @@ export default function TeamOnboarding() {
         </div>
       )}
 
-      {/* ── ETAPA 4: Cupom de Desconto ────────────────────────────────────── */}
+      {/* ── ETAPA 4: Cupom + Planos ──────────────────────────────────────── */}
       {etapa === "cupom" && (
-        <div className="w-full max-w-[440px] space-y-4">
-          {/* Card cupom principal */}
-          <div className="relative rounded-2xl overflow-hidden shadow-[0_0_60px_-10px_rgba(234,179,8,0.3)]">
-            {/* Fundo gradiente */}
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-yellow-600/10 to-orange-500/20" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(234,179,8,0.15),transparent_60%)]" />
-            <div className="absolute inset-0 border border-amber-500/30 rounded-2xl" />
+        <div className="w-full max-w-[480px] space-y-4">
 
-            {/* Partículas decorativas */}
-            <div className="absolute top-4 right-6 w-2 h-2 bg-amber-400/40 rounded-full" />
-            <div className="absolute top-12 right-16 w-1 h-1 bg-yellow-300/60 rounded-full" />
-            <div className="absolute bottom-8 left-8 w-1.5 h-1.5 bg-amber-400/30 rounded-full" />
-            <div className="absolute bottom-16 left-20 w-1 h-1 bg-yellow-300/40 rounded-full" />
+          {/* Banner cupom */}
+          <div className="relative rounded-2xl overflow-hidden shadow-[0_0_50px_-10px_rgba(234,179,8,0.25)]">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-yellow-600/10 to-orange-500/15" />
+            <div className="absolute inset-0 border border-amber-500/30 rounded-2xl pointer-events-none" />
+            <div className="absolute top-3 right-5 w-2 h-2 bg-amber-400/40 rounded-full" />
+            <div className="absolute top-10 right-14 w-1 h-1 bg-yellow-300/50 rounded-full" />
+            <div className="absolute bottom-5 left-6 w-1.5 h-1.5 bg-amber-400/25 rounded-full" />
 
-            <div className="relative px-6 py-8 text-center space-y-5">
-              {/* Ícone */}
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-amber-500/20 border-2 border-amber-500/40">
-                <Gift className="h-9 w-9 text-amber-400" />
-                <div className="absolute">
-                  <Sparkles className="h-4 w-4 text-yellow-300 opacity-80 -translate-x-6 -translate-y-5" />
-                  <Star className="h-3 w-3 text-amber-300 opacity-60 translate-x-6 -translate-y-3" />
-                </div>
+            <div className="relative px-5 py-6 flex items-center gap-5">
+              <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center">
+                <Gift className="h-8 w-8 text-amber-400" />
               </div>
-
-              {/* Headline */}
-              <div>
-                <p className="text-xs text-amber-400/80 font-mono uppercase tracking-widest mb-1">
-                  Exclusivo para você
-                </p>
-                <h2 className="text-3xl font-black text-white leading-tight">
-                  {CUPOM_DESCONTO}% OFF
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-amber-400/80 font-mono uppercase tracking-widest">Exclusivo para você</p>
+                <h2 className="text-2xl font-black text-white leading-tight mt-0.5">
+                  {CUPOM_DESCONTO}% OFF <span className="text-base font-semibold text-amber-200">no 1º mês</span>
                 </h2>
-                <p className="text-base font-semibold text-amber-200 mt-1">
-                  na primeira mensalidade
-                </p>
-              </div>
-
-              {/* Código do cupom */}
-              <div className="space-y-2">
-                <p className="text-xs text-slate-400">Seu cupom de desconto:</p>
+                {/* Código copiável */}
                 <button
                   onClick={copiarCupom}
-                  className="group w-full flex items-center justify-between gap-3 bg-slate-950/60 border-2 border-dashed border-amber-500/50 hover:border-amber-400 rounded-xl px-5 py-3.5 transition-all"
+                  className="group mt-2 inline-flex items-center gap-2 bg-slate-950/60 border border-dashed border-amber-500/50 hover:border-amber-400 rounded-lg px-3 py-1.5 transition-all"
                 >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Tag className="h-4 w-4 text-amber-400 flex-shrink-0" />
-                    <span className="text-lg font-black text-amber-300 tracking-widest font-mono truncate">
-                      {CUPOM_CODIGO}
-                    </span>
-                  </div>
-                  <div
-                    className={`flex items-center gap-1.5 text-xs font-semibold flex-shrink-0 transition-colors ${
-                      copiado ? "text-emerald-400" : "text-slate-400 group-hover:text-amber-400"
-                    }`}
-                  >
+                  <Tag className="h-3.5 w-3.5 text-amber-400 flex-shrink-0" />
+                  <span className="text-sm font-black text-amber-300 tracking-widest font-mono">{CUPOM_CODIGO}</span>
+                  <span className={`text-[11px] font-semibold transition-colors ${copiado ? "text-emerald-400" : "text-slate-500 group-hover:text-amber-400"}`}>
                     {copiado ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        Copiado!
-                      </>
+                      <><CheckCircle2 className="h-3.5 w-3.5 inline mr-0.5" />Copiado!</>
                     ) : (
-                      <>
-                        <Copy className="h-4 w-4" />
-                        Copiar
-                      </>
+                      <><Copy className="h-3.5 w-3.5 inline mr-0.5" />Copiar</>
                     )}
-                  </div>
+                  </span>
                 </button>
-                <p className="text-[11px] text-amber-400/60">
-                  ⚠️ Este cupom só está disponível nesta tela
-                </p>
               </div>
-
-              {/* Benefícios */}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                {[
-                  { icon: Zap, label: "OS ilimitadas" },
-                  { icon: Shield, label: "Sem fidelidade" },
-                  { icon: Star, label: "Cancele quando quiser" },
-                ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="rounded-xl bg-slate-950/40 border border-white/10 p-2.5">
-                    <Icon className="h-4 w-4 text-amber-400 mx-auto mb-1" />
-                    <p className="text-[10px] text-slate-400 leading-tight">{label}</p>
-                  </div>
-                ))}
-              </div>
+            </div>
+            <div className="px-5 pb-4">
+              <p className="text-[11px] text-amber-400/60">
+                ⚠️ Este cupom está disponível apenas nesta tela e válido somente no primeiro mês.
+              </p>
             </div>
           </div>
 
-          {/* Info preço */}
-          <div className="rounded-xl bg-slate-900/60 border border-white/10 px-5 py-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500">Plano Profissional</p>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-sm text-slate-500 line-through">R$ 79,90</span>
-                <span className="text-lg font-black text-white">R$ 67,92</span>
-                <span className="text-xs text-slate-400">/mês</span>
-              </div>
-            </div>
-            <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs font-bold">
-              -{CUPOM_DESCONTO}%
-            </Badge>
+          {/* Título seção planos */}
+          <div className="text-center pt-1">
+            <h3 className="text-base font-bold text-white">Escolha seu plano</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Desconto aplicado automaticamente no checkout</p>
           </div>
 
-          {/* Botões */}
+          {/* Cards de planos */}
           <div className="space-y-3">
-            <Button
-              onClick={irParaPlano}
-              className="w-full h-12 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-bold border-0 rounded-xl gap-2 text-base shadow-[0_0_24px_-6px_rgba(234,179,8,0.5)]"
-            >
-              <Sparkles className="h-4 w-4" />
-              Assinar com desconto
-            </Button>
-            <button
-              onClick={irParaDashboard}
-              className="w-full text-center text-sm text-slate-400 hover:text-slate-200 transition-colors py-1.5"
-            >
-              Assinar depois e continuar →
-            </button>
+            {PLANOS_CUPOM.map(({ key, destaque }) => {
+              const plano = PLANOS[key];
+              if (!plano) return null;
+              const precoComDesconto = plano.preco * (1 - CUPOM_DESCONTO / 100);
+              const selecionado = planoSelecionado === key;
+
+              return (
+                <div
+                  key={key}
+                  onClick={() => setPlanoSelecionado(key)}
+                  className={`relative rounded-2xl border-2 cursor-pointer transition-all overflow-hidden ${
+                    selecionado
+                      ? "border-amber-500 bg-amber-500/5 shadow-[0_0_20px_-5px_rgba(234,179,8,0.3)]"
+                      : destaque
+                      ? "border-blue-500/40 bg-slate-900/60 hover:border-blue-400/60"
+                      : "border-white/10 bg-slate-900/40 hover:border-white/20"
+                  }`}
+                >
+                  {destaque && !selecionado && (
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-violet-500" />
+                  )}
+                  {selecionado && (
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400 to-yellow-400" />
+                  )}
+
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-sm font-bold text-white">{plano.nome}</span>
+                          {destaque && (
+                            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-[10px] px-1.5 py-0">
+                              Popular
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-xs text-slate-500 line-through">
+                            R$ {plano.preco.toFixed(2).replace(".", ",")}
+                          </span>
+                          <span className="text-xl font-black text-white">
+                            R$ {precoComDesconto.toFixed(2).replace(".", ",")}
+                          </span>
+                          <span className="text-xs text-slate-400">/mês</span>
+                          <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px] px-1.5 py-0 ml-1">
+                            -{CUPOM_DESCONTO}%
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Depois R$ {plano.preco.toFixed(2).replace(".", ",")}/mês
+                        </p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+                        selecionado ? "border-amber-400 bg-amber-400" : "border-slate-600"
+                      }`}>
+                        {selecionado && <CheckCircle2 className="h-3.5 w-3.5 text-slate-900" />}
+                      </div>
+                    </div>
+
+                    {/* Recursos — top 4 */}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                      {plano.recursos.slice(0, 4).map((r) => (
+                        <div key={r} className="flex items-center gap-1.5">
+                          <Zap className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                          <span className="text-[11px] text-slate-300 leading-tight truncate">{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Botões de checkout — só aparecem quando selecionado */}
+                  {selecionado && (
+                    <div className="px-4 pb-4 pt-1 space-y-2 border-t border-white/10 mt-1">
+                      <p className="text-[11px] text-slate-400 text-center mb-2">Como quer pagar?</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          onClick={(e) => { e.stopPropagation(); setAbrirCartao(true); }}
+                          className="h-10 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-900 font-bold border-0 rounded-xl gap-1.5 text-sm"
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          Cartão
+                        </Button>
+                        <Button
+                          onClick={(e) => { e.stopPropagation(); setAbrirPix(true); }}
+                          variant="outline"
+                          className="h-10 border-white/20 text-white hover:bg-white/10 rounded-xl gap-1.5 text-sm"
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                          Pix
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+
+          {/* Garantias */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {[
+              { icon: Zap, label: "Sem limite de OS" },
+              { icon: Shield, label: "Sem fidelidade" },
+              { icon: Star, label: "Cancele quando quiser" },
+            ].map(({ icon: Icon, label }) => (
+              <div key={label} className="rounded-xl bg-slate-900/50 border border-white/10 p-2.5">
+                <Icon className="h-4 w-4 text-amber-400 mx-auto mb-1" />
+                <p className="text-[10px] text-slate-400 leading-tight">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={irParaDashboard}
+            className="w-full text-center text-sm text-slate-500 hover:text-slate-300 transition-colors py-1.5"
+          >
+            Assinar depois e continuar →
+          </button>
         </div>
       )}
+
+      {/* Dialogs de checkout — cupom pré-aplicado */}
+      {planoSelecionado && (() => {
+        const plano = PLANOS[planoSelecionado];
+        if (!plano) return null;
+        return (
+          <>
+            <CartaoCheckoutDialog
+              open={abrirCartao}
+              onOpenChange={setAbrirCartao}
+              planoKey={planoSelecionado}
+              planoNome={plano.nome}
+              planoPreco={plano.preco}
+              cupomInicial={CUPOM_CODIGO}
+              onSuccess={irParaDashboard}
+            />
+            <PixCheckoutDialog
+              open={abrirPix}
+              onOpenChange={setAbrirPix}
+              planoKey={planoSelecionado}
+              planoNome={plano.nome}
+              planoPreco={plano.preco}
+              cupomInicial={CUPOM_CODIGO}
+              onSuccess={irParaDashboard}
+            />
+          </>
+        );
+      })()}
     </div>
   );
 }
