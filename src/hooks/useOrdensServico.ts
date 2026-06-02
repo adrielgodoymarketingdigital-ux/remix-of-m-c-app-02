@@ -373,6 +373,14 @@ export const useOrdensServico = () => {
         return;
       }
 
+      // Buscar numero_os antes de excluir para limpar contas vinculadas
+      const { data: osData } = await supabase
+        .from("ordens_servico")
+        .select("numero_os")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .maybeSingle();
+
       // Soft delete: preencher deleted_at e deleted_by ao invés de excluir
       const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase
@@ -385,6 +393,16 @@ export const useOrdensServico = () => {
         .eq("user_id", userId);
 
       if (error) throw error;
+
+      // Remover contas a receber vinculadas à OS excluída
+      if (osData?.numero_os) {
+        await supabase
+          .from("contas")
+          .delete()
+          .eq("user_id", userId)
+          .eq("os_numero", osData.numero_os)
+          .eq("tipo", "receber");
+      }
 
       toast({
         title: "Ordem excluída",
