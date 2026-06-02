@@ -8,119 +8,123 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Phone, MessageCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
-import { Conta } from "@/types/conta";
+import { useResolvedUserId } from "@/hooks/useResolvedUserId";
 
 interface Inadimplente {
   clienteId: string;
   nome: string;
   telefone: string | null;
   totalDevido: number;
-  contas: Conta[];
+  qtdContas: number;
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contasVencidas: Conta[];
 }
 
-export function DialogInadimplentes({ open, onOpenChange, contasVencidas }: Props) {
+export function DialogInadimplentes({ open, onOpenChange }: Props) {
   const [inadimplentes, setInadimplentes] = useState<Inadimplente[]>([]);
   const [loading, setLoading] = useState(false);
+  const resolvedUserId = useResolvedUserId();
 
   useEffect(() => {
-    if (!open || contasVencidas.length === 0) {
-      setInadimplentes([]);
-      return;
-    }
+    if (!open) return;
     buscarInadimplentes();
-  }, [open, contasVencidas]);
+  }, [open, resolvedUserId]);
 
   const buscarInadimplentes = async () => {
     setLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const targetUserId = resolvedUserId ?? user.id;
+      const hoje = new Date().toISOString().split("T")[0];
+
       const mapa = new Map<string, Inadimplente>();
 
-      // Separar contas por origem
-      const contasOS = contasVencidas.filter(c => c.os_numero);
-      const contasVenda = contasVencidas.filter(c => c.id.startsWith("venda_"));
-      const contasDescricaoVenda = contasVencidas.filter(
-        c => !c.os_numero && !c.id.startsWith("venda_") && c.descricao?.startsWith("venda_id:")
-      );
+      // 1) Contas reais vencidas com os_numero → buscar cliente via ordens_servico
+      const { data: contasOS } = await supabase
+        .from("contas")
+        .select("id, nome, valor, data, os_numero")
+        .eq("user_id", targetUserId)
+        .eq("status", "pendente")
+        .not("os_numero", "is", null)
+        .lt("data", hoje);
 
-      // 1) Contas vinculadas a OS → buscar cliente via ordens_servico
-      if (contasOS.length > 0) {
-        const numerosOS = [...new Set(contasOS.map(c => c.os_numero!))];
+      if (contasOS && contasOS.length > 0) {
+        const numerosOS = [...new Set(contasOS.map((c: any) => c.os_numero))];
         const { data: ordensData } = await supabase
           .from("ordens_servico")
-          .select("numero_os, cliente_id, clientes(id, nome, telefone)")
+          .select("numero_os, clientes(id, nome, telefone)")
           .in("numero_os", numerosOS);
 
         if (ordensData) {
           const osParaCliente = new Map(
             ordensData.map((os: any) => [os.numero_os, os.clientes])
           );
-          contasOS.forEach(conta => {
-            const cliente = osParaCliente.get(conta.os_numero!) as any;
+          contasOS.forEach((conta: any) => {
+            const cliente = osParaCliente.get(conta.os_numero) as any;
             if (!cliente) return;
-            adicionarInadimplente(mapa, cliente.id, cliente.nome, cliente.telefone, conta);
+            adicionarInadimplente(mapa, cliente.id, cliente.nome, cliente.telefone, Number(conta.valor));
           });
         }
       }
 
-      // 2) Contas virtuais de venda (id = venda_xxx)
-      if (contasVenda.length > 0) {
-        const vendaIds = contasVenda.map(c => c.id.replace("venda_", ""));
+      // 2) Contas reais vencidas com descricao venda_id:xxx
+      const { data: contasVendaDesc } = await supabase
+        .from("contas")
+        .select("id, nome, valor, data, descricao")
+        .eq("user_id", targetUserId)
+        .eq("status", "pendente")
+        .like("descricao", "venda_id:%")
+        .lt("data", hoje);
+
+      if (contasVendaDesc && contasVendaDesc.length > 0) {
+        const vendaIds = contasVendaDesc.map((c: any) => c.descricao.replace("venda_id:", ""));
         const { data: vendasData } = await supabase
           .from("vendas")
-          .select("id, cliente_id, clientes!vendas_cliente_fkey(id, nome, telefone)")
+          .select("id, clientes!vendas_cliente_fkey(id, nome, telefone)")
           .in("id", vendaIds);
 
         if (vendasData) {
-          const vendaParaCliente = new Map(
-            vendasData.map((v: any) => [v.id, v.clientes])
-          );
-          contasVenda.forEach(conta => {
-            const vendaId = conta.id.replace("venda_", "");
+          const vendaParaCliente = new Map(vendasData.map((v: any) => [v.id, v.clientes]));
+          contasVendaDesc.forEach((conta: any) => {
+            const vendaId = conta.descricao.replace("venda_id:", "");
             const cliente = vendaParaCliente.get(vendaId) as any;
             if (!cliente) return;
-            adicionarInadimplente(mapa, cliente.id, cliente.nome, cliente.telefone, conta);
+            adicionarInadimplente(mapa, cliente.id, cliente.nome, cliente.telefone, Number(conta.valor));
           });
         }
       }
 
-      // 3) Contas reais com descricao venda_id:xxx
-      if (contasDescricaoVenda.length > 0) {
-        const vendaIds = contasDescricaoVenda.map(c => c.descricao!.replace("venda_id:", ""));
-        const { data: vendasData } = await supabase
-          .from("vendas")
-          .select("id, cliente_id, clientes!vendas_cliente_fkey(id, nome, telefone)")
-          .in("id", vendaIds);
+      // 3) Vendas a prazo/a receber vencidas sem conta correspondente
+      const { data: vendasVencidas } = await supabase
+        .from("vendas")
+        .select("id, total, data_prevista_recebimento, data, cliente_id, clientes!vendas_cliente_fkey(id, nome, telefone)")
+        .eq("user_id", targetUserId)
+        .in("forma_pagamento", ["a_receber", "a_prazo"])
+        .eq("recebido", false)
+        .eq("cancelada", false)
+        .lt("data_prevista_recebimento", hoje);
 
-        if (vendasData) {
-          const vendaParaCliente = new Map(
-            vendasData.map((v: any) => [v.id, v.clientes])
-          );
-          contasDescricaoVenda.forEach(conta => {
-            const vendaId = conta.descricao!.replace("venda_id:", "");
-            const cliente = vendaParaCliente.get(vendaId) as any;
-            if (!cliente) return;
-            adicionarInadimplente(mapa, cliente.id, cliente.nome, cliente.telefone, conta);
-          });
-        }
-      }
-
-      // Contas sem vínculo com cliente → agrupar como "Sem cliente"
-      const contasSemCliente = contasVencidas.filter(
-        c => !c.os_numero && !c.id.startsWith("venda_") && !c.descricao?.startsWith("venda_id:")
-      );
-      if (contasSemCliente.length > 0) {
-        contasSemCliente.forEach(conta => {
-          adicionarInadimplente(mapa, "__sem_cliente__", conta.nome, null, conta);
+      if (vendasVencidas && vendasVencidas.length > 0) {
+        // Excluir as que já têm conta criada (para não duplicar)
+        const idsComConta = new Set(
+          (contasVendaDesc || []).map((c: any) => c.descricao.replace("venda_id:", ""))
+        );
+        vendasVencidas.forEach((v: any) => {
+          if (idsComConta.has(v.id)) return;
+          const cliente = v.clientes as any;
+          if (!cliente) return;
+          adicionarInadimplente(mapa, cliente.id, cliente.nome, cliente.telefone, Number(v.total));
         });
       }
 
-      setInadimplentes(Array.from(mapa.values()).sort((a, b) => b.totalDevido - a.totalDevido));
+      setInadimplentes(
+        Array.from(mapa.values()).sort((a, b) => b.totalDevido - a.totalDevido)
+      );
     } finally {
       setLoading(false);
     }
@@ -131,39 +135,29 @@ export function DialogInadimplentes({ open, onOpenChange, contasVencidas }: Prop
     clienteId: string,
     nome: string,
     telefone: string | null,
-    conta: Conta
+    valor: number
   ) => {
     const existente = mapa.get(clienteId);
     if (existente) {
-      existente.totalDevido += Number(conta.valor);
-      existente.contas.push(conta);
+      existente.totalDevido += valor;
+      existente.qtdContas += 1;
     } else {
-      mapa.set(clienteId, {
-        clienteId,
-        nome,
-        telefone,
-        totalDevido: Number(conta.valor),
-        contas: [conta],
-      });
+      mapa.set(clienteId, { clienteId, nome, telefone, totalDevido: valor, qtdContas: 1 });
     }
   };
 
-  const abrirWhatsApp = (telefone: string, nome: string) => {
+  const abrirWhatsApp = (telefone: string, nome: string, totalDevido: number) => {
     const numero = telefone.replace(/\D/g, "");
     const numeroFormatado = numero.startsWith("55") ? numero : `55${numero}`;
+    const valorFormatado = totalDevido.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const mensagem = encodeURIComponent(
-      `Olá ${nome.split(" ")[0]}! Identificamos uma pendência financeira em nossa loja. Podemos conversar sobre isso?`
+      `Olá ${nome.split(" ")[0]}! Identificamos uma pendência de ${valorFormatado} em nossa loja. Podemos conversar sobre isso?`
     );
     window.open(`https://wa.me/${numeroFormatado}?text=${mensagem}`, "_blank");
   };
 
-  const clientesComTelefone = inadimplentes.filter(
-    i => i.clienteId !== "__sem_cliente__" && i.telefone
-  );
-  const clientesSemTelefone = inadimplentes.filter(
-    i => i.clienteId !== "__sem_cliente__" && !i.telefone
-  );
-  const semCliente = inadimplentes.find(i => i.clienteId === "__sem_cliente__");
+  const comTelefone = inadimplentes.filter(i => i.telefone);
+  const semTelefone = inadimplentes.filter(i => !i.telefone);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,7 +168,11 @@ export function DialogInadimplentes({ open, onOpenChange, contasVencidas }: Prop
             Clientes Inadimplentes
           </DialogTitle>
           <DialogDescription>
-            {loading ? "Carregando..." : `${clientesComTelefone.length + clientesSemTelefone.length} cliente(s) com contas vencidas`}
+            {loading
+              ? "Buscando inadimplentes..."
+              : inadimplentes.length === 0
+              ? "Nenhum cliente inadimplente encontrado"
+              : `${inadimplentes.length} cliente(s) com contas vencidas`}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,16 +180,15 @@ export function DialogInadimplentes({ open, onOpenChange, contasVencidas }: Prop
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
+        ) : inadimplentes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+            <AlertCircle className="h-10 w-10 opacity-30" />
+            <p className="text-sm">Nenhum cliente inadimplente encontrado.</p>
+          </div>
         ) : (
           <ScrollArea className="flex-1 pr-2">
             <div className="space-y-3 pb-2">
-              {clientesComTelefone.length === 0 && clientesSemTelefone.length === 0 && !semCliente && (
-                <p className="text-center text-muted-foreground py-8 text-sm">
-                  Nenhum cliente identificado nas contas vencidas.
-                </p>
-              )}
-
-              {clientesComTelefone.map(inadimplente => (
+              {comTelefone.map(inadimplente => (
                 <div key={inadimplente.clienteId} className="border rounded-lg p-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -206,7 +203,7 @@ export function DialogInadimplentes({ open, onOpenChange, contasVencidas }: Prop
                         <ValorMonetario valor={inadimplente.totalDevido} />
                       </p>
                       <Badge variant="outline" className="text-xs">
-                        {inadimplente.contas.length} conta(s)
+                        {inadimplente.qtdContas} conta(s)
                       </Badge>
                     </div>
                   </div>
@@ -214,7 +211,7 @@ export function DialogInadimplentes({ open, onOpenChange, contasVencidas }: Prop
                     size="sm"
                     variant="outline"
                     className="w-full gap-2 text-green-700 border-green-300 hover:bg-green-50"
-                    onClick={() => abrirWhatsApp(inadimplente.telefone!, inadimplente.nome)}
+                    onClick={() => abrirWhatsApp(inadimplente.telefone!, inadimplente.nome, inadimplente.totalDevido)}
                   >
                     <MessageCircle className="h-4 w-4" />
                     Cobrar via WhatsApp
@@ -222,41 +219,27 @@ export function DialogInadimplentes({ open, onOpenChange, contasVencidas }: Prop
                 </div>
               ))}
 
-              {clientesSemTelefone.length > 0 && (
+              {semTelefone.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Sem telefone cadastrado
-                  </p>
-                  {clientesSemTelefone.map(inadimplente => (
+                  {comTelefone.length > 0 && (
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">
+                      Sem telefone cadastrado
+                    </p>
+                  )}
+                  {semTelefone.map(inadimplente => (
                     <div key={inadimplente.clienteId} className="border rounded-lg p-3 flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="font-semibold text-sm truncate">{inadimplente.nome}</p>
-                        <p className="text-xs text-muted-foreground">Sem telefone</p>
+                        <p className="text-xs text-muted-foreground">Sem telefone cadastrado</p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-bold text-destructive text-sm">
                           <ValorMonetario valor={inadimplente.totalDevido} />
                         </p>
                         <Badge variant="outline" className="text-xs">
-                          {inadimplente.contas.length} conta(s)
+                          {inadimplente.qtdContas} conta(s)
                         </Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {semCliente && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Contas sem cliente vinculado
-                  </p>
-                  {semCliente.contas.map(conta => (
-                    <div key={conta.id} className="border rounded-lg p-3 flex items-center justify-between gap-2 opacity-70">
-                      <p className="text-sm truncate">{conta.nome}</p>
-                      <p className="font-semibold text-destructive text-sm shrink-0">
-                        <ValorMonetario valor={conta.valor} />
-                      </p>
                     </div>
                   ))}
                 </div>

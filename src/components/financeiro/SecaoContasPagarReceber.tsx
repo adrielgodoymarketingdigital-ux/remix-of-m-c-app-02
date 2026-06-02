@@ -304,10 +304,7 @@ export function SecaoContasPagarReceber({
           valorColor="text-destructive"
           tipo="quantidade"
           ativo={cardAtivo === "vencidas"}
-          onClick={() => {
-            toggleCard("vencidas");
-            setDialogInadimplentesOpen(true);
-          }}
+          onClick={() => setDialogInadimplentesOpen(true)}
         />
         <CardFinanceiroClicavel
           titulo="Despesas Cartões"
@@ -411,7 +408,6 @@ export function SecaoContasPagarReceber({
       <DialogInadimplentes
         open={dialogInadimplentesOpen}
         onOpenChange={setDialogInadimplentesOpen}
-        contasVencidas={contasVencidas}
       />
 
       <DialogCadastroConta
