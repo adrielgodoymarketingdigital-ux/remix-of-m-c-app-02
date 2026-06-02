@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,12 +28,9 @@ const STATUS_PADRAO: Omit<OSStatusConfig, 'id' | 'user_id'>[] = [
 ];
 
 const resolverUserId = async (): Promise<string | null> => {
-  // getSession lê do cache local (não faz request) — mais confiável no mount inicial
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user;
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Funcionário comum → usa config do dono da loja
   const { data: funcData } = await supabase
     .from('loja_funcionarios')
     .select('loja_user_id')
@@ -42,7 +39,6 @@ const resolverUserId = async (): Promise<string | null> => {
     .maybeSingle();
   if (funcData?.loja_user_id) return funcData.loja_user_id;
 
-  // Gerente de filial → herda config do proprietário
   const { data: gerenteData } = await supabase
     .from('empresa_usuarios')
     .select('proprietario_id')
@@ -53,8 +49,6 @@ const resolverUserId = async (): Promise<string | null> => {
   return user.id;
 };
 
-// UUID fictício usado apenas para popular o estado inicial antes do DB carregar.
-// Será sobrescrito imediatamente quando carregarStatus() resolver.
 const PLACEHOLDER_ID = "00000000-0000-0000-0000-000000000000";
 const STATUS_INICIAL: OSStatusConfig[] = STATUS_PADRAO.map((s, i) => ({
   ...s,
@@ -65,6 +59,7 @@ const STATUS_INICIAL: OSStatusConfig[] = STATUS_PADRAO.map((s, i) => ({
 export const useOSStatusConfig = () => {
   const [statusList, setStatusList] = useState<OSStatusConfig[]>(STATUS_INICIAL);
   const [loading, setLoading] = useState(true);
+  const carregouRef = useRef(false);
   const { toast } = useToast();
 
   const carregarStatus = useCallback(async () => {
@@ -96,6 +91,7 @@ export const useOSStatusConfig = () => {
       } else {
         setStatusList(data as OSStatusConfig[]);
       }
+      carregouRef.current = true;
     } catch (error) {
       console.error("Erro ao carregar status config:", error);
     } finally {
@@ -104,15 +100,27 @@ export const useOSStatusConfig = () => {
   }, []);
 
   useEffect(() => {
+    // Tenta carregar imediatamente
     carregarStatus();
 
+    // Garante carregamento quando a sessão estiver pronta
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+      if (session) {
         carregarStatus();
       }
     });
 
     return () => subscription.unsubscribe();
+  }, [carregarStatus]);
+
+  // Retry: se após 3s ainda está com placeholders, tenta de novo
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!carregouRef.current) {
+        carregarStatus();
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
   }, [carregarStatus]);
 
   const criarStatus = async (dados: { nome: string; cor: string; gera_conta: boolean; tipo_conta: string; pedir_data_vencimento: boolean }) => {
