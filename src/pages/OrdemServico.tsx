@@ -236,6 +236,10 @@ export default function OrdemServicoPage() {
     setBusca,
     statusFiltro,
     setStatusFiltro,
+    origemFiltro,
+    setOrigemFiltro,
+    midiaFiltro,
+    setMidiaFiltro,
     dataInicio,
     setDataInicio,
     dataFim,
@@ -908,10 +912,14 @@ export default function OrdemServicoPage() {
                     </div>
                   )}
                   <BuscaOrdemServico
-                    busca={busca} 
+                    busca={busca}
                     onBuscaChange={setBusca}
                     statusFiltro={statusFiltro}
                     onStatusFiltroChange={setStatusFiltro}
+                    origemFiltro={origemFiltro}
+                    onOrigemFiltroChange={setOrigemFiltro}
+                    midiaFiltro={midiaFiltro}
+                    onMidiaFiltroChange={setMidiaFiltro}
                     dataInicio={dataInicio}
                     onDataInicioChange={setDataInicio}
                     dataFim={dataFim}

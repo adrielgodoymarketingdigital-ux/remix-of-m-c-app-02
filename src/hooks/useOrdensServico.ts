@@ -52,6 +52,8 @@ export const useOrdensServico = () => {
   const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState("todos");
+  const [origemFiltro, setOrigemFiltro] = useState("todos");
+  const [midiaFiltro, setMidiaFiltro] = useState("todos");
   const [dataInicio, setDataInicio] = useState<Date | undefined>(() => startOfMonth(new Date()));
   const [dataFim, setDataFim] = useState<Date | undefined>(() => endOfMonth(new Date()));
   const [mesFiltro, setMesFiltro] = useState(() => format(new Date(), "yyyy-MM"));
@@ -72,29 +74,41 @@ export const useOrdensServico = () => {
   const detalhesCacheRef = useRef<Record<string, OrdemServico>>({});
 
   const ordens = useMemo(() => {
+    let resultado = ordensBase;
+
     const termo = busca.trim().toLowerCase();
-    if (!termo) return ordensBase;
+    if (termo) {
+      resultado = resultado.filter((o: any) => {
+        const nome = o.cliente?.nome?.toLowerCase() || '';
+        const cpf = o.cliente?.cpf?.toLowerCase() || '';
+        const imei = o.dispositivo_imei?.toLowerCase() || '';
+        const modelo = o.dispositivo_modelo?.toLowerCase() || '';
+        const marca = o.dispositivo_marca?.toLowerCase() || '';
+        const numeroOs = o.numero_os?.toLowerCase() || '';
+        const defeito = o.defeito_relatado?.toLowerCase() || '';
 
-    return ordensBase.filter((o: any) => {
-      const nome = o.cliente?.nome?.toLowerCase() || '';
-      const cpf = o.cliente?.cpf?.toLowerCase() || '';
-      const imei = o.dispositivo_imei?.toLowerCase() || '';
-      const modelo = o.dispositivo_modelo?.toLowerCase() || '';
-      const marca = o.dispositivo_marca?.toLowerCase() || '';
-      const numeroOs = o.numero_os?.toLowerCase() || '';
-      const defeito = o.defeito_relatado?.toLowerCase() || '';
+        return (
+          nome.includes(termo) ||
+          cpf.includes(termo) ||
+          imei.includes(termo) ||
+          modelo.includes(termo) ||
+          marca.includes(termo) ||
+          numeroOs.includes(termo) ||
+          defeito.includes(termo)
+        );
+      });
+    }
 
-      return (
-        nome.includes(termo) ||
-        cpf.includes(termo) ||
-        imei.includes(termo) ||
-        modelo.includes(termo) ||
-        marca.includes(termo) ||
-        numeroOs.includes(termo) ||
-        defeito.includes(termo)
-      );
-    });
-  }, [busca, ordensBase]);
+    if (origemFiltro !== "todos") {
+      resultado = resultado.filter((o: any) => (o.origem_cliente || "") === origemFiltro);
+    }
+
+    if (midiaFiltro !== "todos") {
+      resultado = resultado.filter((o: any) => (o.tipo_midia || "") === midiaFiltro);
+    }
+
+    return resultado;
+  }, [busca, origemFiltro, midiaFiltro, ordensBase]);
 
   useEffect(() => { resolvedUserIdRef.current = resolvedUserIdFromContext; }, [resolvedUserIdFromContext]);
 
@@ -868,6 +882,10 @@ export const useOrdensServico = () => {
     setBusca,
     statusFiltro,
     setStatusFiltro,
+    origemFiltro,
+    setOrigemFiltro,
+    midiaFiltro,
+    setMidiaFiltro,
     dataInicio,
     setDataInicio: handleDataInicioChange,
     dataFim,

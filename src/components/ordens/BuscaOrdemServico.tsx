@@ -14,6 +14,10 @@ interface BuscaOrdemServicoProps {
   onBuscaChange: (value: string) => void;
   statusFiltro: string;
   onStatusFiltroChange: (value: string) => void;
+  origemFiltro: string;
+  onOrigemFiltroChange: (value: string) => void;
+  midiaFiltro: string;
+  onMidiaFiltroChange: (value: string) => void;
   dataInicio?: Date;
   onDataInicioChange: (value: Date | undefined) => void;
   dataFim?: Date;
@@ -65,11 +69,15 @@ const gerarOpcoesMeses = () => {
   return opcoes;
 };
 
-export const BuscaOrdemServico = ({ 
-  busca, 
+export const BuscaOrdemServico = ({
+  busca,
   onBuscaChange,
   statusFiltro,
   onStatusFiltroChange,
+  origemFiltro,
+  onOrigemFiltroChange,
+  midiaFiltro,
+  onMidiaFiltroChange,
   dataInicio,
   onDataInicioChange,
   dataFim,
@@ -79,14 +87,16 @@ export const BuscaOrdemServico = ({
 }: BuscaOrdemServicoProps) => {
   const opcoesMeses = gerarOpcoesMeses();
   const { statusList } = useOSStatusConfig();
-  
+
   const limparFiltros = () => {
     onDataInicioChange(undefined);
     onDataFimChange(undefined);
     onMesFiltroChange("todos");
+    onOrigemFiltroChange("todos");
+    onMidiaFiltroChange("todos");
   };
 
-  const temFiltro = dataInicio || dataFim || mesFiltro !== "todos";
+  const temFiltro = dataInicio || dataFim || mesFiltro !== "todos" || origemFiltro !== "todos" || midiaFiltro !== "todos";
 
   return (
     <div className="flex flex-col gap-4">
@@ -188,6 +198,39 @@ export const BuscaOrdemServico = ({
                   </div>
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Canal de Origem */}
+        <div className="w-full sm:w-[180px]">
+          <Select value={origemFiltro} onValueChange={onOrigemFiltroChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Canal de origem" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Canais</SelectItem>
+              <SelectItem value="instagram">Instagram</SelectItem>
+              <SelectItem value="tiktok">TikTok</SelectItem>
+              <SelectItem value="google">Google</SelectItem>
+              <SelectItem value="facebook">Facebook</SelectItem>
+              <SelectItem value="youtube">YouTube</SelectItem>
+              <SelectItem value="indicacao">Indicação</SelectItem>
+              <SelectItem value="outro">Outro</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Tipo de Mídia */}
+        <div className="w-full sm:w-[160px]">
+          <Select value={midiaFiltro} onValueChange={onMidiaFiltroChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Tipo de mídia" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as Mídias</SelectItem>
+              <SelectItem value="anuncio">Anúncio (pago)</SelectItem>
+              <SelectItem value="organico">Orgânico</SelectItem>
             </SelectContent>
           </Select>
         </div>
