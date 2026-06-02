@@ -272,36 +272,17 @@ function TeamOnboardingInner() {
               </div>
             </div>
 
-            {/* Fotos */}
+            {/* Fotos — placeholder sem imagens */}
             <div className="px-5 py-4 border-b border-white/10">
               <div className="flex items-center gap-1.5 mb-2.5">
                 <Camera className="h-3.5 w-3.5 text-slate-500" />
                 <span className="text-[11px] text-slate-500 uppercase tracking-wider font-mono">Fotos do dispositivo</span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {OS_DEMO.fotos.map((foto, i) => (
-                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-slate-800">
-                    <img
-                      src={foto.url}
-                      alt={foto.label}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                    <span className="absolute bottom-1 left-0 right-0 text-[9px] text-slate-200 text-center px-1 leading-tight">
-                      {foto.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-2.5 rounded-lg bg-slate-800/50 border border-white/10 px-3 py-2 flex items-start gap-2">
-                <Camera className="h-3.5 w-3.5 text-slate-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[10px] text-slate-500 italic">Imagem ilustrativa.</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Você pode adicionar as fotos reais na hora da criação da OS.
-                  </p>
-                </div>
+              <div className="rounded-lg bg-slate-800/50 border border-dashed border-white/20 px-4 py-3 flex items-center gap-3">
+                <Camera className="h-5 w-5 text-slate-500 flex-shrink-0" />
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Adicione fotos do dispositivo na hora de criar a OS.
+                </p>
               </div>
             </div>
 
@@ -792,8 +773,7 @@ function TeamOnboardingInner() {
                         </Button>
                         <Button
                           onClick={(e) => { e.stopPropagation(); setAbrirPix(true); }}
-                          variant="outline"
-                          className="h-10 border-white/20 text-white hover:bg-white/10 rounded-xl gap-1.5 text-sm"
+                          className="h-10 bg-slate-700 hover:bg-slate-600 text-white font-bold border-0 rounded-xl gap-1.5 text-sm"
                         >
                           <QrCode className="h-3.5 w-3.5" />
                           Pix
