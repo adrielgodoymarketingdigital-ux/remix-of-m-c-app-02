@@ -20,7 +20,7 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return [];
 
-        // Check if the current user is a staff member or gerente de filial
+        // Verifica se é funcionário comum
         const { data: funcionarioData } = await supabase
           .from("loja_funcionarios")
           .select("loja_user_id")
@@ -28,7 +28,18 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
           .eq("ativo", true)
           .maybeSingle();
 
-        lojaUserId = funcionarioData?.loja_user_id || user.id;
+        if (funcionarioData?.loja_user_id) {
+          lojaUserId = funcionarioData.loja_user_id;
+        } else {
+          // Verifica se é gerente de filial
+          const { data: gerenteData } = await supabase
+            .from("empresa_usuarios")
+            .select("proprietario_id")
+            .eq("gerente_id", user.id)
+            .maybeSingle();
+
+          lojaUserId = gerenteData?.proprietario_id || user.id;
+        }
       }
 
       let query = supabase
