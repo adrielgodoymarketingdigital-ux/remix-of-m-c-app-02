@@ -103,7 +103,7 @@ const formatarMoeda = (v: number) =>
 const formatarData = (iso: string) => { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 const formatarMoedaCompacta = (v: number) => {
   if (v >= 1000000) return `R$${(v / 1000000).toFixed(1)}M`;
-  if (v >= 1000) return `R$${(v / 1000).toFixed(1)}k`;
+  if (v >= 10000) return `R$${(v / 1000).toFixed(1)}k`;
   return formatarMoeda(v);
 };
 
