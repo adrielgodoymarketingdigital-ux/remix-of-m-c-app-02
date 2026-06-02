@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -45,14 +44,11 @@ export function ConfiguracaoStatusOS() {
   const [formData, setFormData] = useState({
     nome: '',
     cor: '#3b82f6',
-    gera_conta: false,
-    tipo_conta: 'receber',
-    pedir_data_vencimento: false,
   });
 
   const abrirNovo = () => {
     setEditando(null);
-    setFormData({ nome: '', cor: '#3b82f6', gera_conta: false, tipo_conta: 'receber', pedir_data_vencimento: false });
+    setFormData({ nome: '', cor: '#3b82f6' });
     setDialogAberto(true);
   };
 
@@ -61,9 +57,6 @@ export function ConfiguracaoStatusOS() {
     setFormData({
       nome: status.nome,
       cor: status.cor,
-      gera_conta: status.gera_conta,
-      tipo_conta: status.tipo_conta,
-      pedir_data_vencimento: status.pedir_data_vencimento,
     });
     setDialogAberto(true);
   };
@@ -72,9 +65,9 @@ export function ConfiguracaoStatusOS() {
     if (!formData.nome.trim()) return;
 
     if (editando) {
-      await atualizarStatusConfig(editando.id, formData);
+      await atualizarStatusConfig(editando.id, { nome: formData.nome, cor: formData.cor });
     } else {
-      await criarStatus(formData);
+      await criarStatus({ nome: formData.nome, cor: formData.cor, gera_conta: false, tipo_conta: 'receber', pedir_data_vencimento: false });
     }
     setDialogAberto(false);
   };
@@ -218,29 +211,6 @@ export function ConfiguracaoStatusOS() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Gerar lançamento financeiro</Label>
-                  <p className="text-xs text-muted-foreground">Cria conta a receber ao selecionar este status</p>
-                </div>
-                <Switch
-                  checked={formData.gera_conta}
-                  onCheckedChange={(checked) => setFormData({ ...formData, gera_conta: checked })}
-                />
-              </div>
-
-              {formData.gera_conta && (
-                <div className="flex items-center justify-between pl-4 border-l-2">
-                  <div className="space-y-0.5">
-                    <Label>Pedir data de vencimento</Label>
-                    <p className="text-xs text-muted-foreground">Exibe popup para escolher data ou "sem prazo"</p>
-                  </div>
-                  <Switch
-                    checked={formData.pedir_data_vencimento}
-                    onCheckedChange={(checked) => setFormData({ ...formData, pedir_data_vencimento: checked })}
-                  />
-                </div>
-              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogAberto(false)}>Cancelar</Button>
