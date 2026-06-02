@@ -74,16 +74,16 @@ const OS_DEMO = {
   status: "Em andamento",
   fotos: [
     {
-      label: "Frente do dispositivo",
+      label: "Traseira quebrada",
       url: "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=300&h=400&fit=crop&auto=format",
     },
     {
-      label: "Tela danificada",
-      url: "https://images.unsplash.com/photo-1592763124767-e3f842d4a8ed?w=300&h=400&fit=crop&auto=format",
+      label: "Câmera danificada",
+      url: "https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=300&h=400&fit=crop&auto=format",
     },
     {
-      label: "Interior aberto",
-      url: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=400&fit=crop&auto=format",
+      label: "Tela rachada",
+      url: "https://images.unsplash.com/photo-1592763124767-e3f842d4a8ed?w=300&h=400&fit=crop&auto=format",
     },
   ],
   checklist: [
@@ -260,6 +260,15 @@ export default function TeamOnboarding() {
                     </span>
                   </div>
                 ))}
+              </div>
+              <div className="mt-2.5 rounded-lg bg-slate-800/50 border border-white/10 px-3 py-2 flex items-start gap-2">
+                <Camera className="h-3.5 w-3.5 text-slate-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[10px] text-slate-500 italic">Imagem ilustrativa.</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Você pode adicionar as fotos reais na hora da criação da OS.
+                  </p>
+                </div>
               </div>
             </div>
 
