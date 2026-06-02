@@ -686,7 +686,7 @@ export const useOrdensServico = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Sessão expirada");
 
-    const userId = (isFuncionario && lojaUserId) ? lojaUserId : session.user.id;
+    const userId = await resolverUserId();
 
     let inseridas = 0;
     let clientesCriados = 0;
@@ -841,6 +841,11 @@ export const useOrdensServico = () => {
           status: statusFinal,
           total: (os.total != null && os.total > 0) ? os.total : null,
         };
+
+        // Incluir empresa_id para que a OS apareça na filial correta (gerente de filial ou empresa ativa)
+        if (empresaFiltroRef.current) {
+          insertPayload.empresa_id = empresaFiltroRef.current;
+        }
 
         // Incluir funcionario_id quando o usuário logado é funcionário
         if (isFuncionario && funcionarioId) {
