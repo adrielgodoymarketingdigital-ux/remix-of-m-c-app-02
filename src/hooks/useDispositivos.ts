@@ -107,8 +107,10 @@ export function useDispositivos() {
       const userId = (isFuncionario && podeSincronizarDispositivos && lojaUserId) ? lojaUserId : user.id;
 
       // Garantir compatibilidade entre foto_url e fotos + adicionar user_id
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { imeis: _imeis, ...dadosSemImeis } = dados;
       const dadosAjustados = {
-        ...dados,
+        ...dadosSemImeis,
         foto_url: dados.foto_url || dados.fotos?.[0] || null,
         fotos: dados.fotos || (dados.foto_url ? [dados.foto_url] : []),
         fornecedor_id: dados.fornecedor_id || null,
@@ -197,8 +199,10 @@ export function useDispositivos() {
       const userId = (isFuncionario && podeSincronizarDispositivos && lojaUserId) ? lojaUserId : user.id;
 
       // Garantir compatibilidade entre foto_url e fotos
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { imeis: _imeis2, ...dadosSemImeis2 } = dados;
       const dadosAjustados = {
-        ...dados,
+        ...dadosSemImeis2,
         foto_url: dados.foto_url || dados.fotos?.[0] || null,
         fotos: dados.fotos || (dados.foto_url ? [dados.foto_url] : []),
         fornecedor_id: dados.fornecedor_id || null,
