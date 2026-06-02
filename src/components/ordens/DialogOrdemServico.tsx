@@ -958,6 +958,7 @@ export const DialogOrdemServico = ({
             comissao_valor_snapshot: comissaoValorSnapshot,
             comissao_calculada_snapshot: comissaoCalculadaSnapshot,
             tipo_servico_nome_snapshot: tipoServicoNomeSnapshot,
+            status: formData.status || "aguardando_aprovacao",
             created_at: formData.dataEntrada.toISOString(),
             data_saida: formData.status === "entregue"
               ? (formData.dataSaida ? formData.dataSaida.toISOString() : new Date().toISOString())
