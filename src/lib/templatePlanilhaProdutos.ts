@@ -87,7 +87,7 @@ export const lerPlanilha = (file: File): Promise<{ headers: string[]; dados: any
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const primeiraAba = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData: any[][] = XLSX.utils.sheet_to_json(primeiraAba, { header: 1 });
+        const jsonData: any[][] = XLSX.utils.sheet_to_json(primeiraAba, { header: 1, defval: '' });
         
         if (jsonData.length === 0) {
           reject(new Error('Planilha vazia'));
