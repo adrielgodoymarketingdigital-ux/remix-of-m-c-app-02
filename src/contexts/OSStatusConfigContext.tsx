@@ -1,5 +1,6 @@
 import { createContext, useContext, ReactNode } from "react";
 import { useOSStatusConfig, OSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useResolvedUserId } from "@/hooks/useResolvedUserId";
 
 interface OSStatusConfigContextValue {
   statusList: OSStatusConfig[];
@@ -17,7 +18,10 @@ interface OSStatusConfigContextValue {
 const OSStatusConfigContext = createContext<OSStatusConfigContextValue | null>(null);
 
 export function OSStatusConfigProvider({ children }: { children: ReactNode }) {
-  const value = useOSStatusConfig();
+  // Usa o mesmo userId que todos os outros hooks do app — garante que funcionário
+  // e gerente de filial carreguem a config do dono da loja, não a própria.
+  const resolvedUserId = useResolvedUserId();
+  const value = useOSStatusConfig(resolvedUserId);
   return (
     <OSStatusConfigContext.Provider value={value}>
       {children}
@@ -29,7 +33,6 @@ export function OSStatusConfigProvider({ children }: { children: ReactNode }) {
 export function useOSStatusConfigContext(): OSStatusConfigContextValue {
   const ctx = useContext(OSStatusConfigContext);
   if (ctx) return ctx;
-  // Componentes fora do provider ainda funcionam, mas sem cache compartilhado
   // eslint-disable-next-line react-hooks/rules-of-hooks
   return useOSStatusConfig();
 }

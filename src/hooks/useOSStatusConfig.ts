@@ -27,33 +27,46 @@ const STATUS_PADRAO: Omit<OSStatusConfig, 'id' | 'user_id'>[] = [
   { slug: 'estornado', nome: 'Estornado', cor: '#be123c', ordem: 7, gera_conta: false, tipo_conta: 'receber', pedir_data_vencimento: false, ativo: true, is_sistema: true },
 ];
 
-export const useOSStatusConfig = () => {
+// Fallback: resolve o userId sem depender de React context (para uso fora do Provider)
+const resolverUserIdFallback = async (): Promise<string | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Funcionário comum
+  const { data: funcData } = await supabase
+    .from('loja_funcionarios')
+    .select('loja_user_id')
+    .eq('funcionario_user_id', user.id)
+    .eq('ativo', true)
+    .maybeSingle();
+  if (funcData?.loja_user_id) return funcData.loja_user_id;
+
+  // Gerente de filial: usa proprietario_id para herdar a config do dono
+  const { data: gerenteData } = await supabase
+    .from('empresa_usuarios')
+    .select('proprietario_id')
+    .eq('gerente_id', user.id)
+    .maybeSingle();
+  if (gerenteData?.proprietario_id) return gerenteData.proprietario_id;
+
+  return user.id;
+};
+
+// Hook aceita userId externo (do Provider) para evitar dupla resolução
+export const useOSStatusConfig = (externalUserId?: string | null) => {
   const [statusList, setStatusList] = useState<OSStatusConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Resolve sempre direto no banco: funcionário → loja_user_id, gerente → proprietario_id, dono → user.id
-  const resolverUserId = async (): Promise<string | null> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    // Funcionário comum
-    const { data: funcData } = await supabase
-      .from('loja_funcionarios')
-      .select('loja_user_id')
-      .eq('funcionario_user_id', user.id)
-      .eq('ativo', true)
-      .maybeSingle();
-    if (funcData?.loja_user_id) return funcData.loja_user_id;
-
-    // Gerente de filial — usa config própria (não herda do proprietário)
-    return user.id;
-  };
-
   const carregarStatus = useCallback(async () => {
     try {
       setLoading(true);
-      const userId = await resolverUserId();
+
+      // Se vier userId do Provider (já resolvido), usa. Senão resolve internamente.
+      const userId = externalUserId !== undefined
+        ? externalUserId
+        : await resolverUserIdFallback();
+
       if (!userId) return;
 
       const { data, error } = await supabase
@@ -82,20 +95,27 @@ export const useOSStatusConfig = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [externalUserId]);
 
   useEffect(() => {
+    // Se userId externo ainda não resolveu (null = carregando), aguarda
+    if (externalUserId === null) return;
     carregarStatus();
-  }, [carregarStatus]);
+  }, [carregarStatus, externalUserId]);
+
+  const getTargetUserId = async (): Promise<string | null> => {
+    if (externalUserId !== undefined) return externalUserId;
+    return resolverUserIdFallback();
+  };
 
   const criarStatus = async (dados: { nome: string; cor: string; gera_conta: boolean; tipo_conta: string; pedir_data_vencimento: boolean }) => {
     try {
-      const userId = await resolverUserId();
+      const userId = await getTargetUserId();
       if (!userId) return false;
 
       const slug = dados.nome
         .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_|_$/g, '');
 
