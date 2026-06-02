@@ -88,6 +88,19 @@ const queryClient = new QueryClient({
   },
 });
 
+// Rotas que não precisam aguardar restauração de sessão
+const PUBLIC_ROUTES_NO_WAIT = [
+  "/team-onboarding",
+  "/instalar-app",
+  "/video-boas-vindas",
+  "/onboarding-inicial",
+  "/auth",
+  "/reset-password",
+  "/obrigado",
+  "/completar-cadastro",
+  "/cadastro-plano",
+];
+
 function AppRoutes() {
   const { isRestoring } = useSessionRestore();
   const location = useLocation();
@@ -100,7 +113,9 @@ function AppRoutes() {
     trackPageView(window.location.href)
   }, [location.pathname])
 
-  if (isRestoring) {
+  const skipWait = PUBLIC_ROUTES_NO_WAIT.some(r => location.pathname.startsWith(r));
+
+  if (isRestoring && !skipWait) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
