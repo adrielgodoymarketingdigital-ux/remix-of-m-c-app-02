@@ -1,7 +1,7 @@
 import { Package, DollarSign, TrendingUp, Wrench } from "lucide-react";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
-import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 
 interface OrdemServico {
   id: string;

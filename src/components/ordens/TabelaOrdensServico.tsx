@@ -18,7 +18,7 @@ import { OrdemServico } from "@/hooks/useOrdensServico";
 import { Check, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { useIsMobile, useIsMobileOrTablet } from "@/hooks/use-mobile";
-import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSColunas } from "@/hooks/useOSColunas";
 
 const fallbackColors: Record<string, string> = {

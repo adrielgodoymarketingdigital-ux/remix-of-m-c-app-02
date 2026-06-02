@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Smartphone } from "lucide-react";
 import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
-import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import type { OrdemServico } from "@/hooks/useOrdensServico";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
 

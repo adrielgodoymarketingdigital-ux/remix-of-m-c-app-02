@@ -16,7 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { RotateCcw, Save, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 
 interface DialogConfiguracaoMensagensWhatsAppProps {
   open: boolean;

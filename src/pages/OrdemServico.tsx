@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useOrdensServico, type OrdemServico } from "@/hooks/useOrdensServico";
 import { useAssinatura } from "@/hooks/useAssinatura";
-import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSTracking } from "@/hooks/useOSTracking";
 import { BuscaOrdemServico } from "@/components/ordens/BuscaOrdemServico";
 import { TabelaOrdensServico } from "@/components/ordens/TabelaOrdensServico";

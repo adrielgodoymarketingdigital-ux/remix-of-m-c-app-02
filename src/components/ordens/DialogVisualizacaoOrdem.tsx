@@ -19,7 +19,7 @@ import {
 import { checklistIcons } from "@/lib/checklist-icons";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSTracking } from "@/hooks/useOSTracking";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";

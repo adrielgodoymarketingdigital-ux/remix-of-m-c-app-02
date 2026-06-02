@@ -16,7 +16,7 @@ import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns
 import { ptBR } from "date-fns/locale";
 import type { Funcionario } from "@/types/funcionario";
 import { useDesempenhoFuncionario, type OSFuncionario } from "@/hooks/useDesempenhoFuncionario";
-import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 
 interface PerfilDesempenhoFuncionarioProps {
   funcionario: Funcionario | null;

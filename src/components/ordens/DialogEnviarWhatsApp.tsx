@@ -10,7 +10,7 @@ import { ConfiguracaoLoja, MensagensWhatsAppOS } from "@/types/configuracao-loja
 import { gerarOrdemServicoPDF } from "@/lib/gerarOrdemServicoPDF";
 import { toast } from "sonner";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
-import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 
 interface DialogEnviarWhatsAppProps {
   open: boolean;

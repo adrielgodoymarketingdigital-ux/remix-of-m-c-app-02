@@ -24,7 +24,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, GripVertical, Lock, Eye, EyeOff, Info } from "lucide-react";
-import { useOSStatusConfig, OSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { OSStatusConfig } from "@/hooks/useOSStatusConfig";
+import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 
 const DESCRICAO_STATUS: Record<string, string> = {
   aguardando_aprovacao: "OS recém-criada, aguardando o cliente aprovar o orçamento.",
