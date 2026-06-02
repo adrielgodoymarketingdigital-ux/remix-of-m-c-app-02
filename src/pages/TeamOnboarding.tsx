@@ -681,7 +681,7 @@ export default function TeamOnboarding() {
             </div>
             <div className="px-5 pb-4">
               <p className="text-[11px] text-amber-400/60">
-                ⚠️ Este cupom está disponível apenas nesta tela e válido somente no primeiro mês.
+                ⚠️ Este cupom está disponível apenas nesta tela.
               </p>
             </div>
           </div>
@@ -730,7 +730,7 @@ export default function TeamOnboarding() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-baseline gap-1.5">
+                        <div className="flex items-baseline gap-1.5 flex-wrap">
                           <span className="text-xs text-slate-500 line-through">
                             R$ {plano.preco.toFixed(2).replace(".", ",")}
                           </span>
@@ -738,12 +738,9 @@ export default function TeamOnboarding() {
                             R$ {precoComDesconto.toFixed(2).replace(".", ",")}
                           </span>
                           <span className="text-xs text-slate-400">/mês</span>
-                          <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px] px-1.5 py-0 ml-1">
-                            -{CUPOM_DESCONTO}%
-                          </Badge>
                         </div>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          Depois R$ {plano.preco.toFixed(2).replace(".", ",")}/mês
+                        <p className="text-[10px] text-amber-400 font-semibold mt-0.5">
+                          {CUPOM_DESCONTO}% OFF no 1º mês · depois R$ {plano.preco.toFixed(2).replace(".", ",")}/mês
                         </p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
