@@ -15,6 +15,7 @@ import { Checklist } from "@/types/ordem-servico";
 import {
   ArrowRight,
   Loader2,
+  Check,
   CheckCircle2,
   ClipboardList,
   TrendingUp,
@@ -22,7 +23,6 @@ import {
   Wrench,
   Smartphone,
   ListChecks,
-  Sparkles,
   Tag,
   Gift,
   Copy,
