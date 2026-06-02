@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 
 export interface OSStatusConfig {
   id: string;
@@ -32,17 +31,23 @@ export const useOSStatusConfig = () => {
   const [statusList, setStatusList] = useState<OSStatusConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
 
+  // Resolve sempre direto no banco: funcionário → loja_user_id, gerente → proprietario_id, dono → user.id
   const resolverUserId = async (): Promise<string | null> => {
-    const { data, error } = await supabase.rpc('get_loja_owner_id');
-    if (error) {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) return null;
-      return (isFuncionario && lojaUserId) ? lojaUserId : user.id;
-    }
-    return data;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Funcionário comum
+    const { data: funcData } = await supabase
+      .from('loja_funcionarios')
+      .select('loja_user_id')
+      .eq('funcionario_user_id', user.id)
+      .eq('ativo', true)
+      .maybeSingle();
+    if (funcData?.loja_user_id) return funcData.loja_user_id;
+
+    // Gerente de filial — usa config própria (não herda do proprietário)
+    return user.id;
   };
 
   const carregarStatus = useCallback(async () => {
