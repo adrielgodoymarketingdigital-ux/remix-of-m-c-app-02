@@ -27,7 +27,12 @@ const STATUS_FINAIS = ["finalizado", "entregue"];
 const isStatusFinal = (status: string) =>
   STATUS_FINAIS.includes((status || "").toLowerCase());
 const isItemOS = (v: any) =>
-  v.peca_id != null || (typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS"));
+  v.peca_id != null ||
+  v.tipo === "servico" ||
+  (typeof v.observacoes === "string" && (
+    v.observacoes.includes("utilizado na OS") ||
+    v.observacoes === "pagamento_duplo_secundario"
+  ));
 
 async function buscarMetricasEmpresa(
   supabase: any,
@@ -69,6 +74,8 @@ async function buscarMetricasEmpresa(
     .filter((o: any) => isStatusFinal(o.status))
     .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
   const faturamento = faturamentoVendas + faturamentoOS;
+
+
 
   // Por tipo
   const porTipo: Record<string, { tipo: string; label: string; total: number; quantidade: number }> = {};
