@@ -24,8 +24,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, GripVertical, Lock, Eye, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, Lock, Eye, EyeOff, Info } from "lucide-react";
 import { useOSStatusConfig, OSStatusConfig } from "@/hooks/useOSStatusConfig";
+
+const DESCRICAO_STATUS: Record<string, string> = {
+  aguardando_aprovacao: "OS recém-criada, aguardando o cliente aprovar o orçamento.",
+  em_andamento: "Serviço em execução. Cria automaticamente uma conta a receber no financeiro.",
+  finalizado: "Técnico concluiu o serviço. Aparece nos relatórios de faturamento.",
+  aguardando_retirada: "Serviço pronto, aguardando o cliente retirar. Também cria conta a receber.",
+  entregue: "Dispositivo entregue ao cliente. Marca a conta como recebida no financeiro e registra a data de saída.",
+  cancelada: "OS cancelada. Apenas visual — não gera nem remove lançamentos financeiros.",
+  garantia: "Dispositivo retornou para garantia. Apenas visual.",
+  estornado: "Reverte o lançamento financeiro e devolve as peças usadas ao estoque.",
+};
 
 export function ConfiguracaoStatusOS() {
   const { statusList, loading, criarStatus, atualizarStatusConfig, excluirStatus } = useOSStatusConfig();
@@ -85,7 +96,17 @@ export function ConfiguracaoStatusOS() {
           Novo Status
         </Button>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-3">
+        {/* Aviso geral */}
+        <div className="rounded-md border border-blue-500/30 bg-blue-500/8 px-3 py-2.5 flex gap-2.5 text-xs text-blue-600 dark:text-blue-400">
+          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-medium">Como funcionam os status</p>
+            <p className="text-muted-foreground">Os status marcados com <span className="font-medium">Sistema</span> possuem comportamentos automáticos (financeiro, estoque, notificações). Você pode renomear e mudar a cor deles à vontade — o comportamento não muda.</p>
+            <p className="text-muted-foreground">Status novos criados por você são <span className="font-medium">apenas visuais</span>: aparecem no Kanban e na lista, mas não disparam nenhuma ação automática no sistema.</p>
+          </div>
+        </div>
+
         {statusList.map((status) => (
           <div
             key={status.id}
@@ -111,18 +132,12 @@ export function ConfiguracaoStatusOS() {
                   </Badge>
                 )}
               </div>
-              <div className="flex gap-2 mt-1 flex-wrap">
-                {status.gera_conta && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    Gera conta a {status.tipo_conta}
-                  </Badge>
-                )}
-                {status.pedir_data_vencimento && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    Pede data de vencimento
-                  </Badge>
-                )}
-              </div>
+              {status.is_sistema && DESCRICAO_STATUS[status.slug] && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">{DESCRICAO_STATUS[status.slug]}</p>
+              )}
+              {!status.is_sistema && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">Status visual — sem ações automáticas.</p>
+              )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <Button
