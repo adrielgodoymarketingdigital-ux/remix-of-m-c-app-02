@@ -77,8 +77,8 @@ export function useResolvedUserId(): string | null {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Gerente de filial: dados salvos com user_id = proprietario_id
-  if (!isProprietario && gerenteData?.proprietario_id) {
+  // Gerente de filial tem prioridade — mesmo que tenha empresa própria
+  if (gerenteData?.proprietario_id) {
     return gerenteData.proprietario_id;
   }
 
@@ -101,12 +101,16 @@ export function useEmpresaFiltro(): string | null {
   const { isProprietario, empresaAtiva, matrizId } = useEmpresa();
   const gerenteData = useGerenteFilialData();
 
+  // Gerente de filial tem prioridade sobre isProprietario
+  if (gerenteData?.empresa_id) {
+    return gerenteData.empresa_id;
+  }
+
   if (isProprietario) {
     return empresaAtiva ?? matrizId ?? null;
   }
 
-  // undefined = ainda carregando, retorna null provisoriamente
-  return gerenteData?.empresa_id ?? null;
+  return null;
 }
 
 /**
@@ -128,13 +132,14 @@ export function useIdentidade(): { userId: string | null; empresaId: string | nu
     return () => subscription.unsubscribe();
   }, []);
 
-  // Ainda aguardando resposta da query de gerente de filial
-  const carregando = !isProprietario && gerenteData === undefined;
+  // Gerente de filial tem prioridade — mesmo que tenha empresa própria (isProprietario = true)
+  const carregando = gerenteData === undefined;
 
   let userId: string | null = selfId;
   let empresaId: string | null = null;
 
-  if (!isProprietario && gerenteData?.proprietario_id) {
+  if (gerenteData?.proprietario_id) {
+    // Gerente de filial de outro proprietário → usa dados do proprietário
     userId = gerenteData.proprietario_id;
     empresaId = gerenteData.empresa_id;
   } else if (isFuncionario && lojaUserId) {
