@@ -94,7 +94,7 @@ export const TabelaOrdensServico = ({
     ? Object.fromEntries(statusList.map(s => [s.slug, s.nome]))
     : fallbackLabels;
 
-  const opcoesStatus = (statusList.length > 0 ? activeStatusList : []).map(s => ({
+  const opcoesStatus = activeStatusList.map(s => ({
     value: s.slug,
     label: s.nome,
   }));
@@ -181,7 +181,7 @@ export const TabelaOrdensServico = ({
                           <CommandGroup>
                             {opcoesStatus.map((opcao) => (
                               <CommandItem key={opcao.value} value={opcao.value}
-                                onSelect={(value) => { onAtualizarStatus(ordem.id, value); setPopoverAberto(null); }}
+                                onSelect={() => { onAtualizarStatus(ordem.id, opcao.value); setPopoverAberto(null); }}
                                 className="flex items-center gap-2 cursor-pointer"
                               >
                                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusColors[opcao.value] || "#3b82f6" }} />
@@ -428,7 +428,7 @@ export const TabelaOrdensServico = ({
                                 <CommandItem
                                   key={opcao.value}
                                   value={opcao.value}
-                                  onSelect={(value) => { onAtualizarStatus(ordem.id, value); setPopoverAberto(null); }}
+                                  onSelect={() => { onAtualizarStatus(ordem.id, opcao.value); setPopoverAberto(null); }}
                                   className="flex items-center gap-2 cursor-pointer"
                                 >
                                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: statusColors[opcao.value] || "#3b82f6" }} />
