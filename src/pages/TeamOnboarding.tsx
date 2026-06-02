@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component } from "react";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -114,9 +115,41 @@ const PLANOS_CUPOM = [
   { key: "profissional_mensal", destaque: false },
 ] as const;
 
+// ─── Error Boundary ───────────────────────────────────────────────────────────
+
+class TeamOnboardingErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+          <p className="text-white text-lg font-bold mb-2">Erro ao carregar</p>
+          <p className="text-slate-400 text-sm mb-4">{this.state.error.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm"
+          >
+            Recarregar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export default function TeamOnboarding() {
+function TeamOnboardingInner() {
   const navigate = useNavigate();
   const [etapa, setEtapa] = useState<Etapa>("demo");
   const [salvando, setSalvando] = useState(false);
@@ -824,5 +857,13 @@ export default function TeamOnboarding() {
         );
       })()}
     </div>
+  );
+}
+
+export default function TeamOnboarding() {
+  return (
+    <TeamOnboardingErrorBoundary>
+      <TeamOnboardingInner />
+    </TeamOnboardingErrorBoundary>
   );
 }
