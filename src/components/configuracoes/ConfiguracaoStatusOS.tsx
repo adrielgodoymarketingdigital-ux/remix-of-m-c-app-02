@@ -171,13 +171,17 @@ export function ConfiguracaoStatusOS() {
               <DialogTitle>{editando ? 'Editar Status' : 'Novo Status'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {editando?.is_sistema && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+                  Este é um status do sistema. Você pode renomear e mudar a cor, mas o comportamento (financeiro, notificações) permanece o mesmo.
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Nome do Status</Label>
                 <Input
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                  placeholder="Ex: Entregue sem receber"
-                  disabled={editando?.is_sistema}
+                  placeholder="Ex: Faturado"
                 />
               </div>
 
