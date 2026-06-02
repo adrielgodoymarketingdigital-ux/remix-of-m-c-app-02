@@ -101,11 +101,7 @@ function calcularPeriodo(tipo: TipoPeriodo): { data_inicio: string; data_fim: st
 const formatarMoeda = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 const formatarData = (iso: string) => { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
-const formatarMoedaCompacta = (v: number) => {
-  if (v >= 1000000) return `R$${(v / 1000000).toFixed(1)}M`;
-  if (v >= 10000) return `R$${(v / 1000).toFixed(1)}k`;
-  return formatarMoeda(v);
-};
+const formatarMoedaCompacta = (v: number) => formatarMoeda(v);
 
 // ─── Seletor de Período ───────────────────────────────────────────────────────
 
