@@ -1,17 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
-import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 
 export function useConfiguracaoLoja() {
   const [config, setConfig] = useState<ConfiguracaoLoja | null>(null);
   const [loading, setLoading] = useState(true);
-  const { isFuncionario, lojaUserId, carregando: funcionarioCarregando } = useFuncionarioPermissoes();
 
   useEffect(() => {
-    if (funcionarioCarregando) return;
     buscarConfiguracao();
-  }, [funcionarioCarregando, isFuncionario, lojaUserId]);
+  }, []);
 
   const criarConfiguracaoPadrao = async (userId: string, userEmail: string) => {
     try {
@@ -64,8 +61,21 @@ export function useConfiguracaoLoja() {
         return;
       }
 
-      // Funcionários usam a configuração da loja do proprietário
-      const targetUserId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
+      // Resolver o user_id correto: funcionário → dono da loja, gerente → proprietário, dono → próprio id
+      let targetUserId = user.id;
+
+      // Verifica se é funcionário comum
+      const { data: funcData } = await supabase
+        .from("loja_funcionarios")
+        .select("loja_user_id")
+        .eq("funcionario_user_id", user.id)
+        .eq("ativo", true)
+        .maybeSingle();
+
+      if (funcData?.loja_user_id) {
+        targetUserId = funcData.loja_user_id;
+      }
+      // Gerente de filial usa config própria (user.id) — não herda config do proprietário
 
       const { data, error } = await supabase
         .from("configuracoes_loja")
@@ -78,8 +88,8 @@ export function useConfiguracaoLoja() {
       if (error) {
         console.error("Erro ao buscar configurações:", error);
       } else if (!data) {
-        // Só criar configuração padrão para o próprio usuário (não para funcionários)
-        if (!isFuncionario) {
+        // Só criar config padrão para o próprio usuário logado (não para o dono da loja quando é funcionário)
+        if (targetUserId === user.id) {
           await criarConfiguracaoPadrao(user.id, user.email || "");
         }
       } else {
