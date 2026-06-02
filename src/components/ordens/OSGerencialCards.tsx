@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatCurrency } from "@/lib/formatters";
 import { useOSGerencial } from "@/hooks/useOSGerencial";
+import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
 
 interface Props {
   dataInicio?: Date;
@@ -125,27 +126,15 @@ function corTextoStatus(status: string) {
   return map[status] ?? "text-muted-foreground";
 }
 
-function labelStatus(status: string) {
-  const map: Record<string, string> = {
-    pendente: "Pendente",
-    aguardando_aprovacao: "Aguard. aprovação",
-    em_andamento: "Em andamento",
-    concluida: "Concluída",
-    finalizado: "Finalizado",
-    entregue: "Entregue",
-    aguardando_retirada: "Aguard. retirada",
-    cancelada: "Cancelada",
-    garantia: "Garantia",
-    estornado: "Estornado",
-  };
-  return map[status] ?? status;
-}
 
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS, onExcluirOS }: Props) {
   const { data, diasUteis, meta, carregando, erro, carregar, salvarMeta } =
     useOSGerencial(dataInicio, dataFim);
+  const { statusList } = useOSStatusConfig();
+  const labelStatus = (slug: string) =>
+    statusList.find(s => s.slug === slug)?.nome ?? slug;
 
   const [editandoMeta, setEditandoMeta] = useState(false);
   const [inputMeta, setInputMeta] = useState("");

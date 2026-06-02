@@ -10,6 +10,7 @@ import { ConfiguracaoLoja, MensagensWhatsAppOS } from "@/types/configuracao-loja
 import { gerarOrdemServicoPDF } from "@/lib/gerarOrdemServicoPDF";
 import { toast } from "sonner";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
+import { useOSStatusConfig } from "@/hooks/useOSStatusConfig";
 
 interface DialogEnviarWhatsAppProps {
   open: boolean;
@@ -17,19 +18,6 @@ interface DialogEnviarWhatsAppProps {
   ordem: OrdemServico | null;
   loja?: ConfiguracaoLoja;
 }
-
-const formatarStatus = (status: string): string => {
-  const statusMap: Record<string, string> = {
-    pendente: "Pendente",
-    em_andamento: "Em Andamento",
-    aguardando_aprovacao: "Aguardando Aprovação",
-    aguardando_retirada: "Aguardando Retirada",
-    finalizado: "Finalizado",
-    entregue: "Entregue",
-    cancelada: "Cancelada",
-  };
-  return statusMap[status] || status;
-};
 
 const MENSAGEM_FALLBACK = `Olá{{cliente}}! 👋
 
@@ -39,12 +27,12 @@ Qualquer dúvida, estamos à disposição!
 
 *{{loja}}* 📱`;
 
-const gerarMensagemPadrao = (ordem: OrdemServico, loja?: ConfiguracaoLoja): string => {
+const gerarMensagemPadrao = (ordem: OrdemServico, loja?: ConfiguracaoLoja, nomeStatus?: string): string => {
   const nomeLoja = loja?.nome_loja || "Nossa Loja";
   const dispositivo = `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`;
   const nomeCliente = ordem.cliente?.nome?.split(" ")[0] || "";
   const status = ordem.status || "pendente";
-  
+
   // Buscar template personalizado baseado no status
   const templates = loja?.mensagens_whatsapp_os as MensagensWhatsAppOS | undefined;
   let template = templates?.[status as keyof MensagensWhatsAppOS];
@@ -61,7 +49,7 @@ const gerarMensagemPadrao = (ordem: OrdemServico, loja?: ConfiguracaoLoja): stri
     .replace(/{{dispositivo}}/g, dispositivo)
     .replace(/{{loja}}/g, nomeLoja)
     .replace(/{{total}}/g, ordem.total ? `R$ ${ordem.total.toFixed(2).replace('.', ',')}` : "")
-    .replace(/{{status}}/g, formatarStatus(status));
+    .replace(/{{status}}/g, nomeStatus ?? status);
 };
 
 const isMobile = (): boolean => {
@@ -79,6 +67,7 @@ export const DialogEnviarWhatsApp = ({
   const [gerando, setGerando] = useState(false);
   const [pdfBaixado, setPdfBaixado] = useState(false);
   const mobile = isMobile();
+  const { statusList } = useOSStatusConfig();
 
   // Preencher telefone e mensagem quando abrir
   useEffect(() => {
@@ -88,10 +77,11 @@ export const DialogEnviarWhatsApp = ({
       } else {
         setTelefone("");
       }
-      setMensagem(gerarMensagemPadrao(ordem, loja));
+      const nomeStatus = statusList.find(s => s.slug === ordem.status)?.nome;
+      setMensagem(gerarMensagemPadrao(ordem, loja, nomeStatus));
       setPdfBaixado(false);
     }
-  }, [open, ordem, loja]);
+  }, [open, ordem, loja, statusList]);
 
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTelefone(aplicarMascaraTelefone(e.target.value));
