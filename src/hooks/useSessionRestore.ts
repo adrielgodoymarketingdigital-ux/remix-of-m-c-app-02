@@ -27,14 +27,22 @@ export function useSessionRestore(): SessionRestoreState {
   useEffect(() => {
     let cancelled = false;
 
+    // Timeout máximo de 3s — nunca deixar o app travado em tela branca
+    const maxTimer = setTimeout(() => {
+      if (!cancelled) {
+        console.warn("[useSessionRestore] Timeout — liberando sem sessão.");
+        setState({ isRestoring: false, hasSession: false });
+      }
+    }, 3000);
+
     const restore = async () => {
       try {
         // 1. Tentar obter sessão existente (sem network — apenas localStorage)
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
-          // Sessão válida encontrada
           if (!cancelled) {
+            clearTimeout(maxTimer);
             saveSessionMeta(session.user.id);
             setState({ isRestoring: false, hasSession: true });
             setTimeout(() => {
@@ -48,40 +56,40 @@ export function useSessionRestore(): SessionRestoreState {
         const isOffline = !navigator.onLine;
 
         if (isOffline) {
-          // Offline: verificar se existe janela de longa duração válida
           const withinWindow = isSessionWithinLongTermWindow();
-          console.log("[useSessionRestore] Offline — usando sessão cached:", withinWindow);
           if (!cancelled) {
+            clearTimeout(maxTimer);
             setState({ isRestoring: false, hasSession: withinWindow });
           }
           return;
         }
 
-        // 3. Online mas sem sessão — tentar refresh (access_token expirado, refresh_token válido)
-        console.log("[useSessionRestore] Tentando refreshSession...");
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        // 3. Online mas sem sessão — tentar refresh com timeout de 5s
+        const refreshPromise = supabase.auth.refreshSession();
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
 
-        if (refreshData.session && !refreshError) {
-          console.log("[useSessionRestore] Sessão restaurada via refresh!");
+        const result = await Promise.race([refreshPromise, timeoutPromise]);
+
+        if (result && 'data' in result && result.data.session && !result.error) {
           if (!cancelled) {
-            saveSessionMeta(refreshData.session.user.id);
+            clearTimeout(maxTimer);
+            saveSessionMeta(result.data.session.user.id);
             setState({ isRestoring: false, hasSession: true });
             setTimeout(() => {
-              inicializarOneSignal(refreshData.session!.user.id).catch(console.error);
+              inicializarOneSignal(result.data.session!.user.id).catch(console.error);
             }, 2000);
           }
           return;
         }
 
-        // 4. Sem sessão possível — redirecionar para login
-        console.log("[useSessionRestore] Nenhuma sessão válida encontrada.");
         if (!cancelled) {
+          clearTimeout(maxTimer);
           setState({ isRestoring: false, hasSession: false });
         }
       } catch (e) {
         console.warn("[useSessionRestore] Erro na restauração:", e);
-        // Em caso de erro (ex: offline sem cache), liberar o app para não travar
         if (!cancelled) {
+          clearTimeout(maxTimer);
           setState({ isRestoring: false, hasSession: false });
         }
       }
@@ -91,6 +99,7 @@ export function useSessionRestore(): SessionRestoreState {
 
     return () => {
       cancelled = true;
+      clearTimeout(maxTimer);
     };
   }, []);
 

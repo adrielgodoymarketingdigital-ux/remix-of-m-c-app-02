@@ -119,7 +119,6 @@ const PLANOS_CUPOM = [
 export default function TeamOnboarding() {
   const navigate = useNavigate();
   const [etapa, setEtapa] = useState<Etapa>("demo");
-  const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [osCriada, setOsCriada] = useState<OSTeste | null>(null);
@@ -143,13 +142,6 @@ export default function TeamOnboarding() {
     parseFloat(valor) > 0
       ? Math.round(((parseFloat(valor) - (parseFloat(custo) || 0)) / parseFloat(valor)) * 100)
       : 0;
-
-  useEffect(() => {
-    // useSessionRestore no App.tsx já garantiu a sessão antes desta página montar.
-    // Apenas liberamos o carregando imediatamente — sem nova verificação de sessão,
-    // que pode retornar null momentaneamente no iOS Safari (race condition).
-    setCarregando(false);
-  }, []);
 
   const copiarCupom = async () => {
     try {
@@ -188,14 +180,6 @@ export default function TeamOnboarding() {
     await marcarOnboardingCompleto();
     navigate("/plano?highlight=profissional_mensal", { replace: true });
   };
-
-  if (carregando) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-start py-8 px-4 relative overflow-hidden">
