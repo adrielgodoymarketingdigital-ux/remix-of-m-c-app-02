@@ -139,7 +139,7 @@ export const DialogOrdemServico = ({
   const { trackOSCriada } = useEventTracking();
   const { disparar: dispararConfetti } = useConfetti();
   const { dispatchEvent } = useEventDispatcher();
-  const { funcionarioId, lojaUserId, isFuncionario, podeSincronizarOS, permissoes, isDonoLoja } = useFuncionarioPermissoes();
+  const { funcionarioId, lojaUserId, isFuncionario, permissoes, isDonoLoja } = useFuncionarioPermissoes();
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const navigate = useNavigate();
   const podeVerTecnicos = isDonoLoja || (permissoes?.recursos?.ver_tecnicos_os ?? false);
@@ -223,8 +223,8 @@ export const DialogOrdemServico = ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         
-        // Usar ID do dono se funcionário tem permissão
-        const userId = (isFuncionario && podeSincronizarOS && lojaUserId) ? lojaUserId : user.id;
+        // Funcionário sempre usa lojaUserId para ver clientes do proprietário
+        const userId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
         
         const { data } = await supabase
           .from("clientes")
@@ -547,7 +547,8 @@ export const DialogOrdemServico = ({
         .maybeSingle();
 
       // Usar ID do dono: proprietário da filial (gerente) > dono da loja (funcionário) > próprio ID
-      const effectiveUserId = gerenteFilialOS?.proprietario_id || ((isFuncionario && podeSincronizarOS && lojaUserId) ? lojaUserId : user.id);
+      // Nota: funcionário sempre usa lojaUserId para manter numeração e dados unificados com o proprietário
+      const effectiveUserId = gerenteFilialOS?.proprietario_id || ((isFuncionario && lojaUserId) ? lojaUserId : user.id);
 
       // Empresa ID: filial do gerente > empresa ativa no contexto (proprietário trocou de empresa) > empresa matriz
       let empresaId: string | null = gerenteFilialOS?.empresa_id ?? null;
