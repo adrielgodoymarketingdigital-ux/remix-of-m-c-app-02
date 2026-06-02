@@ -28,7 +28,9 @@ const STATUS_PADRAO: Omit<OSStatusConfig, 'id' | 'user_id'>[] = [
 ];
 
 const resolverUserId = async (): Promise<string | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
+  // getSession lê do cache local (não faz request) — mais confiável no mount inicial
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return null;
 
   // Funcionário comum → usa config do dono da loja
@@ -69,7 +71,6 @@ export const useOSStatusConfig = () => {
     try {
       setLoading(true);
       const userId = await resolverUserId();
-      console.log('[OSStatus] userId resolvido:', userId);
       if (!userId) {
         setLoading(false);
         return;
@@ -81,12 +82,9 @@ export const useOSStatusConfig = () => {
         .eq('user_id', userId)
         .order('ordem', { ascending: true });
 
-      console.log('[OSStatus] data do banco:', data, 'error:', error);
-
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        console.log('[OSStatus] nenhum registro, inserindo padrão...');
         const inserts = STATUS_PADRAO.map(s => ({ ...s, user_id: userId }));
         const { data: inserted, error: insertError } = await supabase
           .from('os_status_config')
@@ -96,7 +94,6 @@ export const useOSStatusConfig = () => {
         if (insertError) throw insertError;
         setStatusList((inserted || []) as OSStatusConfig[]);
       } else {
-        console.log('[OSStatus] nomes carregados:', data.map((d: any) => `${d.slug}=${d.nome}`));
         setStatusList(data as OSStatusConfig[]);
       }
     } catch (error) {
