@@ -56,8 +56,11 @@ const STATUS_INICIAL: OSStatusConfig[] = STATUS_PADRAO.map((s, i) => ({
   user_id: PLACEHOLDER_ID,
 }));
 
+// Cache de módulo — persiste entre remounts do Provider, elimina flash de nomes padrão
+let _statusCache: { userId: string; list: OSStatusConfig[] } | null = null;
+
 export const useOSStatusConfig = () => {
-  const [statusList, setStatusList] = useState<OSStatusConfig[]>(STATUS_INICIAL);
+  const [statusList, setStatusList] = useState<OSStatusConfig[]>(_statusCache?.list ?? STATUS_INICIAL);
   const [loading, setLoading] = useState(true);
   const carregouRef = useRef(false);
   const { toast } = useToast();
@@ -87,9 +90,13 @@ export const useOSStatusConfig = () => {
           .select();
 
         if (insertError) throw insertError;
-        setStatusList((inserted || []) as OSStatusConfig[]);
+        const list = (inserted || []) as OSStatusConfig[];
+        _statusCache = { userId, list };
+        setStatusList(list);
       } else {
-        setStatusList(data as OSStatusConfig[]);
+        const list = data as OSStatusConfig[];
+        _statusCache = { userId, list };
+        setStatusList(list);
       }
       carregouRef.current = true;
     } catch (error) {
@@ -105,7 +112,10 @@ export const useOSStatusConfig = () => {
 
     // Garante carregamento quando a sessão estiver pronta
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+      if (event === 'SIGNED_OUT') {
+        _statusCache = null;
+        setStatusList(STATUS_INICIAL);
+      } else if (session) {
         carregarStatus();
       }
     });
