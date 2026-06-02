@@ -73,9 +73,18 @@ const OS_DEMO = {
   valor: 220.0,
   status: "Em andamento",
   fotos: [
-    { label: "Frente do dispositivo", cor: "from-slate-700 to-slate-600", icon: "📱" },
-    { label: "Tela danificada", cor: "from-red-900/40 to-slate-700", icon: "🔴" },
-    { label: "Interior aberto", cor: "from-slate-600 to-slate-500", icon: "🔧" },
+    {
+      label: "Frente do dispositivo",
+      url: "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=300&h=400&fit=crop&auto=format",
+    },
+    {
+      label: "Tela danificada",
+      url: "https://images.unsplash.com/photo-1592763124767-e3f842d4a8ed?w=300&h=400&fit=crop&auto=format",
+    },
+    {
+      label: "Interior aberto",
+      url: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=400&fit=crop&auto=format",
+    },
   ],
   checklist: [
     { item: "Tela", ok: true },
@@ -238,12 +247,17 @@ export default function TeamOnboarding() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {OS_DEMO.fotos.map((foto, i) => (
-                  <div
-                    key={i}
-                    className={`aspect-square rounded-xl bg-gradient-to-br ${foto.cor} border border-white/10 flex flex-col items-center justify-center gap-1`}
-                  >
-                    <span className="text-2xl">{foto.icon}</span>
-                    <span className="text-[9px] text-slate-400 text-center px-1 leading-tight">{foto.label}</span>
+                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-slate-800">
+                    <img
+                      src={foto.url}
+                      alt={foto.label}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                    <span className="absolute bottom-1 left-0 right-0 text-[9px] text-slate-200 text-center px-1 leading-tight">
+                      {foto.label}
+                    </span>
                   </div>
                 ))}
               </div>
