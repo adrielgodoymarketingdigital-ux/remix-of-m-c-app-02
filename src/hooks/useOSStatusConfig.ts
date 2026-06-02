@@ -69,7 +69,10 @@ export const useOSStatusConfig = () => {
     try {
       setLoading(true);
       const userId = await resolverUserId();
-      if (!userId) return;
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('os_status_config')
@@ -100,6 +103,14 @@ export const useOSStatusConfig = () => {
 
   useEffect(() => {
     carregarStatus();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        carregarStatus();
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [carregarStatus]);
 
   const criarStatus = async (dados: { nome: string; cor: string; gera_conta: boolean; tipo_conta: string; pedir_data_vencimento: boolean }) => {
