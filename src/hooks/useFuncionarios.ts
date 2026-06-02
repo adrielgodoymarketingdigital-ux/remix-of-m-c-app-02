@@ -109,7 +109,9 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
   const atualizarFuncionario = useMutation({
     mutationFn: async ({ id, dados }: { id: string; dados: Partial<FuncionarioFormData> }) => {
       // Se o email mudou, atualiza via edge function (precisa atualizar no Supabase Auth também)
-      if (dados.email !== undefined) {
+      const funcionarioAtual = funcionarios.find(f => f.id === id);
+      const emailMudou = dados.email !== undefined && dados.email !== funcionarioAtual?.email;
+      if (emailMudou) {
         const response = await supabase.functions.invoke("atualizar-funcionario", {
           body: { funcionario_id: id, email: dados.email },
         });
