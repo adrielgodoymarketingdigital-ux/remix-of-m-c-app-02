@@ -23,9 +23,9 @@ function calcularVendaLiquida(v: any): number {
   return (Number(v.total) || 0) - (Number(v.valor_desconto_manual) || 0) - (Number(v.valor_desconto_cupom) || 0);
 }
 
-const STATUS_FINAIS = ["finalizado", "entregue", "concluido", "pago", "concluída", "entregue ao cliente"];
+const STATUS_FINAIS = ["finalizado", "entregue"];
 const isStatusFinal = (status: string) =>
-  STATUS_FINAIS.some(f => (status || "").toLowerCase().includes(f));
+  STATUS_FINAIS.includes((status || "").toLowerCase());
 const isItemOS = (v: any) =>
   v.peca_id != null || (typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS"));
 
