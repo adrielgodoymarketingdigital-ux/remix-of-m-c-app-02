@@ -1,6 +1,5 @@
 import { createContext, useContext, ReactNode } from "react";
 import { useOSStatusConfig, OSStatusConfig } from "@/hooks/useOSStatusConfig";
-import { useResolvedUserId } from "@/hooks/useResolvedUserId";
 
 interface OSStatusConfigContextValue {
   statusList: OSStatusConfig[];
@@ -18,10 +17,7 @@ interface OSStatusConfigContextValue {
 const OSStatusConfigContext = createContext<OSStatusConfigContextValue | null>(null);
 
 export function OSStatusConfigProvider({ children }: { children: ReactNode }) {
-  // Usa o mesmo userId que todos os outros hooks do app — garante que funcionário
-  // e gerente de filial carreguem a config do dono da loja, não a própria.
-  const resolvedUserId = useResolvedUserId();
-  const value = useOSStatusConfig(resolvedUserId);
+  const value = useOSStatusConfig();
   return (
     <OSStatusConfigContext.Provider value={value}>
       {children}
@@ -29,7 +25,6 @@ export function OSStatusConfigProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Hook que usa o context se disponível, senão instancia direto (fallback seguro)
 export function useOSStatusConfigContext(): OSStatusConfigContextValue {
   const ctx = useContext(OSStatusConfigContext);
   if (ctx) return ctx;

@@ -27,12 +27,11 @@ const STATUS_PADRAO: Omit<OSStatusConfig, 'id' | 'user_id'>[] = [
   { slug: 'estornado', nome: 'Estornado', cor: '#be123c', ordem: 7, gera_conta: false, tipo_conta: 'receber', pedir_data_vencimento: false, ativo: true, is_sistema: true },
 ];
 
-// Fallback: resolve o userId sem depender de React context (para uso fora do Provider)
-const resolverUserIdFallback = async (): Promise<string | null> => {
+const resolverUserId = async (): Promise<string | null> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Funcionário comum
+  // Funcionário comum → usa config do dono da loja
   const { data: funcData } = await supabase
     .from('loja_funcionarios')
     .select('loja_user_id')
@@ -41,7 +40,7 @@ const resolverUserIdFallback = async (): Promise<string | null> => {
     .maybeSingle();
   if (funcData?.loja_user_id) return funcData.loja_user_id;
 
-  // Gerente de filial: usa proprietario_id para herdar a config do dono
+  // Gerente de filial → herda config do proprietário
   const { data: gerenteData } = await supabase
     .from('empresa_usuarios')
     .select('proprietario_id')
@@ -52,21 +51,24 @@ const resolverUserIdFallback = async (): Promise<string | null> => {
   return user.id;
 };
 
-// Hook aceita userId externo (do Provider) para evitar dupla resolução
-export const useOSStatusConfig = (externalUserId?: string | null) => {
-  const [statusList, setStatusList] = useState<OSStatusConfig[]>([]);
+// UUID fictício usado apenas para popular o estado inicial antes do DB carregar.
+// Será sobrescrito imediatamente quando carregarStatus() resolver.
+const PLACEHOLDER_ID = "00000000-0000-0000-0000-000000000000";
+const STATUS_INICIAL: OSStatusConfig[] = STATUS_PADRAO.map((s, i) => ({
+  ...s,
+  id: `${PLACEHOLDER_ID}-${i}`,
+  user_id: PLACEHOLDER_ID,
+}));
+
+export const useOSStatusConfig = () => {
+  const [statusList, setStatusList] = useState<OSStatusConfig[]>(STATUS_INICIAL);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const carregarStatus = useCallback(async () => {
     try {
       setLoading(true);
-
-      // Se vier userId do Provider (já resolvido), usa. Senão resolve internamente.
-      const userId = externalUserId !== undefined
-        ? externalUserId
-        : await resolverUserIdFallback();
-
+      const userId = await resolverUserId();
       if (!userId) return;
 
       const { data, error } = await supabase
@@ -78,7 +80,6 @@ export const useOSStatusConfig = (externalUserId?: string | null) => {
       if (error) throw error;
 
       if (!data || data.length === 0) {
-        // Seed com status padrão
         const inserts = STATUS_PADRAO.map(s => ({ ...s, user_id: userId }));
         const { data: inserted, error: insertError } = await supabase
           .from('os_status_config')
@@ -95,22 +96,15 @@ export const useOSStatusConfig = (externalUserId?: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [externalUserId]);
+  }, []);
 
   useEffect(() => {
-    // Se userId externo ainda não resolveu (null = carregando), aguarda
-    if (externalUserId === null) return;
     carregarStatus();
-  }, [carregarStatus, externalUserId]);
-
-  const getTargetUserId = async (): Promise<string | null> => {
-    if (externalUserId !== undefined) return externalUserId;
-    return resolverUserIdFallback();
-  };
+  }, [carregarStatus]);
 
   const criarStatus = async (dados: { nome: string; cor: string; gera_conta: boolean; tipo_conta: string; pedir_data_vencimento: boolean }) => {
     try {
-      const userId = await getTargetUserId();
+      const userId = await resolverUserId();
       if (!userId) return false;
 
       const slug = dados.nome
@@ -178,7 +172,6 @@ export const useOSStatusConfig = (externalUserId?: string | null) => {
     }
   };
 
-  // Helpers para uso em componentes
   const activeStatusList = statusList.filter(s => s.ativo);
   const getStatusBySlug = (slug: string) => statusList.find(s => s.slug === slug);
   const getStatusColors = () => Object.fromEntries(activeStatusList.map(s => [s.slug, s.cor]));

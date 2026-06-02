@@ -87,12 +87,8 @@ export const TabelaOrdensServico = ({
   const colunasAtivas = config.colunas;
   const acoesAtivas = config.acoes_principais;
 
-  const statusColors = statusList.length > 0
-    ? Object.fromEntries(statusList.map(s => [s.slug, s.cor]))
-    : fallbackColors;
-  const statusLabels = statusList.length > 0
-    ? Object.fromEntries(statusList.map(s => [s.slug, s.nome]))
-    : fallbackLabels;
+  const statusColors = Object.fromEntries(statusList.map(s => [s.slug, s.cor]));
+  const statusLabels = Object.fromEntries(statusList.map(s => [s.slug, s.nome]));
 
   const opcoesStatus = activeStatusList.map(s => ({
     value: s.slug,
