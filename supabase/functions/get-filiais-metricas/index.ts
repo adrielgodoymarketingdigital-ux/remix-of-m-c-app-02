@@ -42,15 +42,24 @@ async function buscarMetricasEmpresa(
   dataInicio: Date,
   dataFim: Date,
   isMatriz: boolean,
+  todasEmpresaIds?: string[],
 ) {
   const buildVendasQuery = (select: string) => {
     const base = supabase.from("vendas").select(select).eq("user_id", userId).eq("cancelada", false);
+    if (isMatriz && todasEmpresaIds && todasEmpresaIds.length > 0) {
+      // Matriz: inclui todas as filiais + registros sem empresa_id
+      return base.or(`empresa_id.in.(${todasEmpresaIds.join(",")}),empresa_id.is.null`);
+    }
     if (isMatriz) return base.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
     return base.eq("empresa_id", empresaId);
   };
 
   const buildOsQuery = (select: string) => {
     const base = supabase.from("ordens_servico").select(select).eq("user_id", userId);
+    if (isMatriz && todasEmpresaIds && todasEmpresaIds.length > 0) {
+      // Matriz: inclui todas as filiais + registros sem empresa_id
+      return base.or(`empresa_id.in.(${todasEmpresaIds.join(",")}),empresa_id.is.null`);
+    }
     if (isMatriz) return base.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
     return base.eq("empresa_id", empresaId);
   };
@@ -237,7 +246,7 @@ serve(async (req) => {
         supabase.from("ordens_servico").update({ empresa_id: novaMatriz.id }).eq("user_id", user.id).is("empresa_id", null),
         supabase.from("vendas").update({ empresa_id: novaMatriz.id }).eq("user_id", user.id).is("empresa_id", null),
       ]);
-      const metricas = await buscarMetricasEmpresa(supabase, user.id, novaMatriz.id, dataInicio, dataFim, true);
+      const metricas = await buscarMetricasEmpresa(supabase, user.id, novaMatriz.id, dataInicio, dataFim, true, [novaMatriz.id]);
       const empresaCompleta = { ...novaMatriz, gerentes: [], metas: [], metricas };
       return new Response(
         JSON.stringify({ empresas: [], matrizMetricas: metricas, todasEmpresas: [empresaCompleta] }),
@@ -262,7 +271,7 @@ serve(async (req) => {
 
     const empresasComMetricas = await Promise.all(
       empresas.map(async (empresa: any) => {
-        const metricas = await buscarMetricasEmpresa(supabase, user.id, empresa.id, dataInicio, dataFim, empresa.tipo === "matriz");
+        const metricas = await buscarMetricasEmpresa(supabase, user.id, empresa.id, dataInicio, dataFim, empresa.tipo === "matriz", empresaIds);
         return {
           ...empresa,
           gerentes: [],
