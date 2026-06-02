@@ -7,6 +7,7 @@ import { CardFinanceiroClicavel } from "./CardFinanceiroClicavel";
 import { FiltroPeriodoAvancado, FiltrosPeriodo } from "./FiltroPeriodoAvancado";
 import { TabelaContas } from "@/components/contas/TabelaContas";
 import { DialogCadastroConta } from "@/components/contas/DialogCadastroConta";
+import { DialogInadimplentes } from "./DialogInadimplentes";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
 import { Conta, FormularioConta } from "@/types/conta";
@@ -69,6 +70,7 @@ export function SecaoContasPagarReceber({
 
   const [filtros, setFiltros] = useState<FiltrosPeriodo>(getInitialMonthFilter);
   const [cardAtivo, setCardAtivo] = useState<CardAtivo>(null);
+  const [dialogInadimplentesOpen, setDialogInadimplentesOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tipoLancamento, setTipoLancamento] = useState<"pagar" | "receber">("pagar");
   const [contaEditando, setContaEditando] = useState<Conta | null>(null);
@@ -296,13 +298,16 @@ export function SecaoContasPagarReceber({
         <CardFinanceiroClicavel
           titulo="Contas Vencidas"
           quantidade={contasVencidas.length}
-          subtitulo="Requer atenção"
+          subtitulo="Ver inadimplentes"
           icon={AlertCircle}
           iconColor="text-destructive"
           valorColor="text-destructive"
           tipo="quantidade"
           ativo={cardAtivo === "vencidas"}
-          onClick={() => toggleCard("vencidas")}
+          onClick={() => {
+            toggleCard("vencidas");
+            setDialogInadimplentesOpen(true);
+          }}
         />
         <CardFinanceiroClicavel
           titulo="Despesas Cartões"
@@ -402,6 +407,12 @@ export function SecaoContasPagarReceber({
           </Card>
         </Collapsible>
       )}
+
+      <DialogInadimplentes
+        open={dialogInadimplentesOpen}
+        onOpenChange={setDialogInadimplentesOpen}
+        contasVencidas={contasVencidas}
+      />
 
       <DialogCadastroConta
         open={dialogOpen}
