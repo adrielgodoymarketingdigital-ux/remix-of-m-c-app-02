@@ -539,16 +539,28 @@ export const DialogOrdemServico = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
       
-      // Verificar se é gerente de filial
-      const { data: gerenteFilialOS } = await supabase
-        .from("empresa_usuarios")
-        .select("proprietario_id, empresa_id")
-        .eq("gerente_id", user.id)
-        .maybeSingle();
+      // Resolver effectiveUserId diretamente no banco (não depende de estado React que pode estar null)
+      // Prioridade: gerente de filial → proprietário | funcionário comum → dono da loja | proprietário → próprio id
+      const [gerenteFilialOS, funcData] = await Promise.all([
+        supabase
+          .from("empresa_usuarios")
+          .select("proprietario_id, empresa_id")
+          .eq("gerente_id", user.id)
+          .maybeSingle()
+          .then(r => r.data),
+        supabase
+          .from("loja_funcionarios")
+          .select("loja_user_id")
+          .eq("funcionario_user_id", user.id)
+          .eq("ativo", true)
+          .maybeSingle()
+          .then(r => r.data),
+      ]);
 
-      // Usar ID do dono: proprietário da filial (gerente) > dono da loja (funcionário) > próprio ID
-      // Nota: funcionário sempre usa lojaUserId para manter numeração e dados unificados com o proprietário
-      const effectiveUserId = gerenteFilialOS?.proprietario_id || ((isFuncionario && lojaUserId) ? lojaUserId : user.id);
+      const effectiveUserId =
+        gerenteFilialOS?.proprietario_id ||
+        funcData?.loja_user_id ||
+        user.id;
 
       // Empresa ID: filial do gerente > empresa ativa no contexto (proprietário trocou de empresa) > empresa matriz
       let empresaId: string | null = gerenteFilialOS?.empresa_id ?? null;
