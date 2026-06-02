@@ -221,6 +221,8 @@ export const useOrdensServico = () => {
             tipo_servico_id,
             tempo_garantia,
             is_teste,
+            origem_cliente,
+            tipo_midia,
             cliente:clientes!ordens_servico_cliente_fkey(id, nome, telefone, cpf)
           `)
           .eq("user_id", userId)
