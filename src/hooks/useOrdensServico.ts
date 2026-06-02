@@ -706,6 +706,20 @@ export const useOrdensServico = () => {
 
     const userId = await resolverUserId();
 
+    // Garantir empresa_id correto para gerentes de filial, mesmo se o ref ainda não carregou
+    let empresaIdParaImport = empresaFiltroRef.current;
+    if (!empresaIdParaImport) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: gerenteData } = await supabase
+          .from('empresa_usuarios')
+          .select('empresa_id')
+          .eq('gerente_id', user.id)
+          .maybeSingle();
+        if (gerenteData?.empresa_id) empresaIdParaImport = gerenteData.empresa_id;
+      }
+    }
+
     let inseridas = 0;
     let clientesCriados = 0;
     let erros = 0;
@@ -861,8 +875,8 @@ export const useOrdensServico = () => {
         };
 
         // Incluir empresa_id para que a OS apareça na filial correta (gerente de filial ou empresa ativa)
-        if (empresaFiltroRef.current) {
-          insertPayload.empresa_id = empresaFiltroRef.current;
+        if (empresaIdParaImport) {
+          insertPayload.empresa_id = empresaIdParaImport;
         }
 
         // Incluir funcionario_id quando o usuário logado é funcionário

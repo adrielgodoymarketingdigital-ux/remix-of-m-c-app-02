@@ -102,9 +102,7 @@ export function useEmpresaFiltro(): string | null {
   const gerenteData = useGerenteFilialData();
 
   if (isProprietario) {
-    // filial selecionada → filtrar por essa filial
-    // sem seleção (visão geral) → null = sem filtro de empresa (ver todas)
-    return empresaAtiva ?? null;
+    return empresaAtiva ?? matrizId ?? null;
   }
 
   // undefined = ainda carregando, retorna null provisoriamente
@@ -142,8 +140,7 @@ export function useIdentidade(): { userId: string | null; empresaId: string | nu
   } else if (isFuncionario && lojaUserId) {
     userId = lojaUserId;
   } else if (isProprietario) {
-    // filial selecionada → filtrar por essa filial; sem seleção → null (ver todas)
-    empresaId = empresaAtiva ?? null;
+    empresaId = empresaAtiva ?? matrizId ?? null;
   }
 
   return { userId, empresaId, carregando };
