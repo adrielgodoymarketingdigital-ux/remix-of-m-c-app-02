@@ -145,44 +145,10 @@ export default function TeamOnboarding() {
       : 0;
 
   useEffect(() => {
-    let redirectTimer: ReturnType<typeof setTimeout>;
-    let resolved = false;
-
-    const resolver = (hasSession: boolean) => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(redirectTimer);
-      if (hasSession) {
-        setCarregando(false);
-      } else {
-        navigate("/auth", { replace: true });
-      }
-    };
-
-    // onAuthStateChange captura INITIAL_SESSION (sessão restaurada do storage)
-    // e qualquer mudança posterior — registra ANTES de chamar getSession
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      resolver(!!session);
-    });
-
-    // getSession é síncrono quando o token já está no storage
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        resolver(true);
-      }
-      // se não tiver sessão aqui, aguarda onAuthStateChange por até 4s
-      if (!resolved) {
-        redirectTimer = setTimeout(() => resolver(false), 4000);
-      }
-    }).catch(() => {
-      resolver(false);
-    });
-
-    return () => {
-      clearTimeout(redirectTimer);
-      subscription.unsubscribe();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // useSessionRestore no App.tsx já garantiu a sessão antes desta página montar.
+    // Apenas liberamos o carregando imediatamente — sem nova verificação de sessão,
+    // que pode retornar null momentaneamente no iOS Safari (race condition).
+    setCarregando(false);
   }, []);
 
   const copiarCupom = async () => {
