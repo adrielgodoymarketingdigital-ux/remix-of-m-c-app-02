@@ -145,28 +145,37 @@ export default function TeamOnboarding() {
       : 0;
 
   useEffect(() => {
-    // Tenta getSession primeiro; se falhar ou não tiver sessão,
-    // aguarda onAuthStateChange por até 3s antes de redirecionar
     let redirectTimer: ReturnType<typeof setTimeout>;
+    let resolved = false;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
+    const resolver = (hasSession: boolean) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(redirectTimer);
+      if (hasSession) {
         setCarregando(false);
-        return;
-      }
-      // Sem sessão imediata — aguarda evento de auth (ex: token na URL)
-      redirectTimer = setTimeout(() => {
+      } else {
         navigate("/auth", { replace: true });
-      }, 3000);
-    }).catch(() => {
-      setCarregando(false);
+      }
+    };
+
+    // onAuthStateChange captura INITIAL_SESSION (sessão restaurada do storage)
+    // e qualquer mudança posterior — registra ANTES de chamar getSession
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      resolver(!!session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        clearTimeout(redirectTimer);
-        setCarregando(false);
+    // getSession é síncrono quando o token já está no storage
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        resolver(true);
       }
+      // se não tiver sessão aqui, aguarda onAuthStateChange por até 4s
+      if (!resolved) {
+        redirectTimer = setTimeout(() => resolver(false), 4000);
+      }
+    }).catch(() => {
+      resolver(false);
     });
 
     return () => {
