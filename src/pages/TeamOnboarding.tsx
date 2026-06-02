@@ -145,11 +145,36 @@ export default function TeamOnboarding() {
       : 0;
 
   useEffect(() => {
+    // Tenta getSession primeiro; se falhar ou não tiver sessão,
+    // aguarda onAuthStateChange por até 3s antes de redirecionar
+    let redirectTimer: ReturnType<typeof setTimeout>;
+
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) navigate("/auth", { replace: true });
-      else setCarregando(false);
+      if (data.session) {
+        setCarregando(false);
+        return;
+      }
+      // Sem sessão imediata — aguarda evento de auth (ex: token na URL)
+      redirectTimer = setTimeout(() => {
+        navigate("/auth", { replace: true });
+      }, 3000);
+    }).catch(() => {
+      setCarregando(false);
     });
-  }, [navigate]);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        clearTimeout(redirectTimer);
+        setCarregando(false);
+      }
+    });
+
+    return () => {
+      clearTimeout(redirectTimer);
+      subscription.unsubscribe();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const copiarCupom = async () => {
     try {
