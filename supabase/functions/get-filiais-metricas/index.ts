@@ -26,13 +26,14 @@ function calcularVendaLiquida(v: any): number {
 const STATUS_FINAIS = ["finalizado", "entregue"];
 const isStatusFinal = (status: string) =>
   STATUS_FINAIS.includes((status || "").toLowerCase());
-const isItemOS = (v: any) =>
-  v.peca_id != null ||
-  v.tipo === "servico" ||
-  (typeof v.observacoes === "string" && (
-    v.observacoes.includes("utilizado na OS") ||
-    v.observacoes === "pagamento_duplo_secundario"
-  ));
+const isItemOS = (v: any) => {
+  if (v.peca_id != null) return true;
+  if (v.tipo === "servico") return true;
+  const obs = typeof v.observacoes === "string" ? v.observacoes : "";
+  if (obs.includes("utilizado na OS")) return true;
+  if (obs === "pagamento_duplo_secundario") return true;
+  return false;
+};
 
 async function buscarMetricasEmpresa(
   supabase: any,
@@ -74,8 +75,6 @@ async function buscarMetricasEmpresa(
     .filter((o: any) => isStatusFinal(o.status))
     .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
   const faturamento = faturamentoVendas + faturamentoOS;
-
-
 
   // Por tipo
   const porTipo: Record<string, { tipo: string; label: string; total: number; quantidade: number }> = {};
