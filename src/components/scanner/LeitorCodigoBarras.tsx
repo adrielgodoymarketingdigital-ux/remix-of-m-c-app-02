@@ -35,6 +35,8 @@ interface LeitorCodigoBarrasProps {
   onChange?: (valor: string) => void;
   className?: string;
   mostrarInput?: boolean;
+  scannerId?: string;
+  titulo?: string;
 }
 
 export const LeitorCodigoBarras = ({
@@ -45,6 +47,8 @@ export const LeitorCodigoBarras = ({
   onChange,
   className = "",
   mostrarInput = true,
+  scannerId = "barcode-reader",
+  titulo = "Escanear Código de Barras",
 }: LeitorCodigoBarrasProps) => {
   const [dialogAberto, setDialogAberto] = useState(false);
   const [escaneando, setEscaneando] = useState(false);
@@ -103,14 +107,14 @@ export const LeitorCodigoBarras = ({
       // Aguardar um pouco para garantir que o DOM está pronto
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      const readerElement = document.getElementById("barcode-reader");
+      const readerElement = document.getElementById(scannerId);
       if (!readerElement) {
-        console.error("Elemento barcode-reader não encontrado");
+        console.error(`Elemento ${scannerId} não encontrado`);
         return;
       }
 
       // Criar scanner com configurações otimizadas
-      const scanner = new Html5Qrcode("barcode-reader", {
+      const scanner = new Html5Qrcode(scannerId, {
         formatsToSupport: FORMATOS_SUPORTADOS,
         verbose: false,
       });
@@ -210,7 +214,7 @@ export const LeitorCodigoBarras = ({
       toast.error("Erro ao acessar câmera", { description: mensagemErro });
       setDialogAberto(false);
     }
-  }, [onCodigoLido, onChange, pararScanner]);
+  }, [onCodigoLido, onChange, pararScanner, scannerId]);
 
   const alternarFlash = async () => {
     if (!scannerRef.current) return;
@@ -297,7 +301,7 @@ export const LeitorCodigoBarras = ({
           <DialogHeader className="p-4 pb-2">
             <DialogTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />
-              Escanear Código de Barras
+              {titulo}
             </DialogTitle>
           </DialogHeader>
 
@@ -305,7 +309,7 @@ export const LeitorCodigoBarras = ({
             {/* Container do scanner */}
             <div
               ref={containerRef}
-              id="barcode-reader"
+              id={scannerId}
               className="w-full rounded-lg overflow-hidden bg-black min-h-[350px] relative"
               style={{ maxHeight: "50vh" }}
             />

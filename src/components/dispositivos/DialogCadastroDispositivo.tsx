@@ -522,11 +522,20 @@ export function DialogCadastroDispositivo({
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
                             <div className="flex-1 space-y-1">
                               <label className="text-sm font-medium">IMEI</label>
-                              <Input
-                                placeholder="Ex: 123456789012345"
-                                value={unidade.imei}
-                                onChange={(e) => atualizarUnidade(idx, "imei", e.target.value)}
-                              />
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder="Ex: 123456789012345"
+                                  value={unidade.imei}
+                                  onChange={(e) => atualizarUnidade(idx, "imei", e.target.value)}
+                                  className="flex-1"
+                                />
+                                <LeitorCodigoBarras
+                                  mostrarInput={false}
+                                  scannerId={`scanner-imei-unidade-${idx}`}
+                                  titulo="Escanear IMEI"
+                                  onCodigoLido={(v) => atualizarUnidade(idx, "imei", v)}
+                                />
+                              </div>
                             </div>
                             <Button
                               type="button"
@@ -543,11 +552,20 @@ export function DialogCadastroDispositivo({
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
                             <div className="flex-1 space-y-1">
                               <label className="text-sm font-medium">Número de Série</label>
-                              <Input
-                                placeholder="Ex: ABC123XYZ"
-                                value={unidade.numero_serie}
-                                onChange={(e) => atualizarUnidade(idx, "numero_serie", e.target.value)}
-                              />
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder="Ex: ABC123XYZ"
+                                  value={unidade.numero_serie}
+                                  onChange={(e) => atualizarUnidade(idx, "numero_serie", e.target.value)}
+                                  className="flex-1"
+                                />
+                                <LeitorCodigoBarras
+                                  mostrarInput={false}
+                                  scannerId={`scanner-serie-unidade-${idx}`}
+                                  titulo="Escanear Número de Série"
+                                  onCodigoLido={(v) => atualizarUnidade(idx, "numero_serie", v)}
+                                />
+                              </div>
                             </div>
                             <Button
                               type="button"
@@ -852,7 +870,15 @@ export function DialogCadastroDispositivo({
                           <FormItem className="flex-1">
                             <FormLabel>IMEI</FormLabel>
                             <FormControl>
-                              <Input placeholder="Ex: 123456789012345" {...field} />
+                              <div className="flex gap-2">
+                                <Input placeholder="Ex: 123456789012345" {...field} className="flex-1" />
+                                <LeitorCodigoBarras
+                                  mostrarInput={false}
+                                  scannerId="scanner-imei-simples"
+                                  titulo="Escanear IMEI"
+                                  onCodigoLido={(v) => form.setValue("imei", v, { shouldDirty: true, shouldTouch: true })}
+                                />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -878,7 +904,15 @@ export function DialogCadastroDispositivo({
                           <FormItem className="flex-1">
                             <FormLabel>Número de Série</FormLabel>
                             <FormControl>
-                              <Input placeholder="Ex: ABC123XYZ" {...field} />
+                              <div className="flex gap-2">
+                                <Input placeholder="Ex: ABC123XYZ" {...field} className="flex-1" />
+                                <LeitorCodigoBarras
+                                  mostrarInput={false}
+                                  scannerId="scanner-serie-simples"
+                                  titulo="Escanear Número de Série"
+                                  onCodigoLido={(v) => form.setValue("numero_serie", v, { shouldDirty: true, shouldTouch: true })}
+                                />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
