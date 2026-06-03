@@ -232,9 +232,32 @@ export function DialogReciboVenda({
   const imprimirRecibo = () => {
     if (!reciboRef.current) return;
 
-    const conteudo = reciboRef.current.innerHTML;
+    // O reciboRef fica display:none — imagens não carregam nesse estado.
+    // O cabeçalho (logo + dados loja) é injetado diretamente no HTML de impressão.
+    const conteudoSemHeader = reciboRef.current.innerHTML;
+
+    const cabecalho = `
+      <div class="recibo-header">
+        ${showLogo && configLoja?.logo_url
+          ? `<div style="text-align:center;margin-bottom:15px"><img src="${configLoja.logo_url}" alt="Logo da Loja" class="logo-loja" /></div>`
+          : ''}
+        <h1>${configLoja?.nome_loja || ''}</h1>
+        ${showDadosLoja ? `
+        <div class="dados-loja">
+          ${configLoja?.cnpj ? `<p>CNPJ: ${configLoja.cnpj}</p>` : ''}
+          ${configLoja?.endereco ? `<p>Endereço: ${configLoja.endereco}</p>` : ''}
+          ${configLoja?.telefone ? `<p>Telefone: ${configLoja.telefone}</p>` : ''}
+          ${configLoja?.email ? `<p>E-mail: ${configLoja.email}</p>` : ''}
+        </div>` : ''}
+        <div style="margin-top:15px;padding-top:15px;border-top:2px solid #000">
+          <h2>RECIBO DE VENDA</h2>
+          <p>Data: ${dataAtual}</p>
+        </div>
+      </div>
+    `;
+
     const janelaImpressao = window.open("", "_blank");
-    
+
     if (janelaImpressao) {
       const paper = resolvePaperSize(formatoPapel, dispConfig?.largura_mm, dispConfig?.altura_mm);
       const estilos80mm = getThermalPrintCSS(paper);
@@ -324,7 +347,8 @@ export function DialogReciboVenda({
             </style>
           </head>
           <body>
-            ${conteudo}
+            ${cabecalho}
+            ${conteudoSemHeader}
             <script>
               (function() {
                 var printed = false;
@@ -500,34 +524,9 @@ export function DialogReciboVenda({
             </div>
 
             {/* Preview do Recibo (oculto, só para impressão) */}
+            {/* O cabeçalho (logo + dados loja) é injetado diretamente na janela de impressão
+                para garantir que a imagem seja carregada corretamente. */}
             <div ref={reciboRef} style={{ display: "none" }}>
-              <div className="recibo-header">
-                {showLogo && configLoja?.logo_url && (
-                  <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                    <img 
-                      src={configLoja.logo_url} 
-                      alt="Logo da Loja" 
-                      className="logo-loja"
-                    />
-                  </div>
-                )}
-                
-                <h1>{configLoja?.nome_loja || 'G360 System'}</h1>
-                
-                {showDadosLoja && (
-                  <div className="dados-loja">
-                    {configLoja?.cnpj && <p>CNPJ: {configLoja.cnpj}</p>}
-                    {configLoja?.endereco && <p>Endereço: {configLoja.endereco}</p>}
-                    {configLoja?.telefone && <p>Telefone: {configLoja.telefone}</p>}
-                    {configLoja?.email && <p>E-mail: {configLoja.email}</p>}
-                  </div>
-                )}
-                
-                <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '2px solid #000' }}>
-                  <h2>RECIBO DE VENDA</h2>
-                  <p>Data: {dataAtual}</p>
-                </div>
-              </div>
 
               {showDadosCliente && (
                 <div className="recibo-section">
