@@ -8,6 +8,31 @@ import { toast } from "sonner";
 import { Hash, Save, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+// Resolve o user_id do dono da loja: funcionário → lojaUserId, gerente → proprietário, dono → próprio id
+async function resolverTargetUserId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Funcionário comum
+  const { data: funcData } = await supabase
+    .from("loja_funcionarios")
+    .select("loja_user_id")
+    .eq("funcionario_user_id", user.id)
+    .eq("ativo", true)
+    .maybeSingle();
+  if (funcData?.loja_user_id) return funcData.loja_user_id;
+
+  // Gerente de filial
+  const { data: gerenteData } = await supabase
+    .from("empresa_usuarios")
+    .select("proprietario_id")
+    .eq("gerente_id", user.id)
+    .maybeSingle();
+  if (gerenteData?.proprietario_id) return gerenteData.proprietario_id;
+
+  return user.id;
+}
+
 export const ConfiguracaoNumeracaoOS = () => {
   const [proximoNumero, setProximoNumero] = useState<number | null>(null);
   const [novoNumero, setNovoNumero] = useState("");
@@ -16,10 +41,10 @@ export const ConfiguracaoNumeracaoOS = () => {
 
   const carregarProximoNumero = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data, error } = await supabase.rpc("get_next_os_number", { p_user_id: user.id });
+      const targetUserId = await resolverTargetUserId();
+      if (!targetUserId) return;
+
+      const { data, error } = await supabase.rpc("get_next_os_number", { p_user_id: targetUserId });
       if (error) throw error;
       setProximoNumero(data);
     } catch (error) {
@@ -35,7 +60,7 @@ export const ConfiguracaoNumeracaoOS = () => {
 
   const handleSalvar = async () => {
     const numero = parseInt(novoNumero);
-    
+
     if (isNaN(numero) || numero <= 0) {
       toast.error("Digite um número válido maior que zero");
       return;
@@ -48,14 +73,14 @@ export const ConfiguracaoNumeracaoOS = () => {
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const targetUserId = await resolverTargetUserId();
+      if (!targetUserId) {
         toast.error("Usuário não autenticado");
         return;
       }
-      
+
       const { error } = await supabase.rpc("set_os_sequence_start", {
-        p_user_id: user.id,
+        p_user_id: targetUserId,
         novo_inicio: numero,
       });
 
