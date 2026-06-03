@@ -301,6 +301,21 @@ export function useClientes(options: UseClientesOptions = {}) {
     carregarClientes();
   }, [carregarClientes]);
 
+  // Recarrega automaticamente quando clientes são inseridos/deletados em outra aba ou via importação
+  useEffect(() => {
+    const channel = supabase
+      .channel("clientes-changes")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "clientes" }, () => {
+        carregarClientes();
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "clientes" }, () => {
+        carregarClientes();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [carregarClientes]);
+
   const importarEmLote = async (lista: FormularioCliente[]): Promise<{ inseridos: number; erros: number }> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
