@@ -31,8 +31,12 @@ async function resolveGerenteFilial(): Promise<GerenteFilialData | null> {
   return gerenteCache;
 }
 
-// Limpa o cache quando o usuário troca de sessão
-supabase.auth.onAuthStateChange(() => { gerenteCache = undefined; });
+// Limpa o cache apenas quando o usuário realmente troca (não em TOKEN_REFRESHED)
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+    gerenteCache = undefined;
+  }
+});
 
 function useGerenteFilialData(): GerenteFilialData | null | undefined {
   const { isProprietario } = useEmpresa();
@@ -70,8 +74,11 @@ export function useResolvedUserId(): string | null {
       setSelfId(user?.id ?? null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSelfId(session?.user?.id ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Só atualiza em troca real de usuário, não em renovação de token
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+        setSelfId(session?.user?.id ?? null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -126,8 +133,10 @@ export function useIdentidade(): { userId: string | null; empresaId: string | nu
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setSelfId(user?.id ?? null));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSelfId(session?.user?.id ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+        setSelfId(session?.user?.id ?? null);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);

@@ -97,8 +97,15 @@ export function useAssinatura() {
       if (error) throw error;
 
       console.log("📦 Assinatura carregada:", data?.plano_tipo, data?.status);
+      // Só atualiza estado se os dados mudaram (evita re-render desnecessário no TOKEN_REFRESHED)
+      const prev = assinaturaRef.current;
+      const changed = !prev || !data ||
+        prev.status !== data.status ||
+        prev.plano_tipo !== data.plano_tipo ||
+        prev.data_fim !== data.data_fim ||
+        prev.bloqueado_admin !== (data as any).bloqueado_admin;
       assinaturaRef.current = data;
-      setAssinatura(data);
+      if (changed) setAssinatura(data);
       return data;
     } catch (error) {
       console.error("Erro ao carregar assinatura:", error);
