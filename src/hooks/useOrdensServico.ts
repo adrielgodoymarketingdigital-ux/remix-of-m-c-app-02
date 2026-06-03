@@ -759,6 +759,15 @@ export const useOrdensServico = () => {
       return isNaN(d.getTime()) ? null : d.toISOString();
     };
 
+    // Buscar empresa_id da matriz para associar clientes novos (mesmo padrão do useClientes)
+    const { data: empresaMatriz } = await supabase
+      .from("empresas")
+      .select("id")
+      .eq("proprietario_id", userId)
+      .eq("tipo", "matriz")
+      .maybeSingle();
+    const empresaIdCliente = empresaMatriz?.id ?? null;
+
     // Cache de clientes existentes
     const { data: clientesExistentes } = await supabase
       .from("clientes")
@@ -783,6 +792,7 @@ export const useOrdensServico = () => {
               nome: os.cliente_nome,
               telefone: os.cliente_telefone || null,
               user_id: userId,
+              empresa_id: empresaIdCliente,
             })
             .select("id")
             .single();
