@@ -31,11 +31,13 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormularioCompraDispositivo } from "@/types/origem";
 import { dataHoje } from "@/lib/formatters";
+import { supabase } from "@/integrations/supabase/client";
 import { useOrigemPessoas } from "@/hooks/useOrigemPessoas";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { useDispositivos } from "@/hooks/useDispositivos";
 import { DialogCadastroPessoa } from "./DialogCadastroPessoa";
 import { DialogCadastroDispositivo } from "@/components/dispositivos/DialogCadastroDispositivo";
+import { DialogCadastroFornecedor } from "@/components/fornecedores/DialogCadastroFornecedor";
 import { UploadFotosCompra } from "./UploadFotosCompra";
 import { UploadDocumentosVendedor } from "./UploadDocumentosVendedor";
 import { AssinaturaCompra } from "./AssinaturaCompra";
@@ -85,6 +87,7 @@ export function DialogCadastroCompra({
 }: DialogCadastroCompraProps) {
   const [dialogPessoaAberto, setDialogPessoaAberto] = useState(false);
   const [dialogDispositivoAberto, setDialogDispositivoAberto] = useState(false);
+  const [dialogFornecedorAberto, setDialogFornecedorAberto] = useState(false);
   const [gerarPDF, setGerarPDF] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -98,7 +101,7 @@ export function DialogCadastroCompra({
   const [assinaturaClienteIP, setAssinaturaClienteIP] = useState<string>('');
   
   const { pessoas, carregarPessoas, criarPessoa } = useOrigemPessoas();
-  const { fornecedores } = useFornecedores();
+  const { fornecedores, criarFornecedor } = useFornecedores();
   const { dispositivos, criarDispositivo, carregarDispositivos } = useDispositivos();
 
   const formSchema = createFormSchema(modoInline);
@@ -208,6 +211,29 @@ export function DialogCadastroCompra({
     }
   };
 
+  const handleNovoFornecedor = async (dadosFornecedor: any): Promise<boolean> => {
+    const ok = await criarFornecedor(dadosFornecedor);
+    if (ok) {
+      // Buscar o id do fornecedor recém-criado diretamente do DB
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from("fornecedores")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .eq("nome", dadosFornecedor.nome)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data?.id) form.setValue("fornecedor_id", data.id);
+      }
+      setDialogFornecedorAberto(false);
+      return true;
+    }
+    return false;
+  };
+
   const handleNovoDispositivo = async (dadosDispositivo: any) => {
     const dispositivo = await criarDispositivo(dadosDispositivo);
     if (dispositivo) {
@@ -309,30 +335,43 @@ export function DialogCadastroCompra({
                   />
                 </div>
               ) : (
-                <FormField
-                  control={form.control}
-                  name="fornecedor_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fornecedor *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um fornecedor" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {fornecedores.map(fornecedor => (
-                            <SelectItem key={fornecedor.id} value={fornecedor.id}>
-                              {fornecedor.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label>Fornecedor *</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDialogFornecedorAberto(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Fornecedor
+                    </Button>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="fornecedor_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um fornecedor" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {fornecedores.map(fornecedor => (
+                              <SelectItem key={fornecedor.id} value={fornecedor.id}>
+                                {fornecedor.nome}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
 
               {/* Dispositivo */}
@@ -619,6 +658,12 @@ export function DialogCadastroCompra({
         open={dialogPessoaAberto}
         onOpenChange={setDialogPessoaAberto}
         onSubmit={handleNovaPessoa}
+      />
+
+      <DialogCadastroFornecedor
+        open={dialogFornecedorAberto}
+        onOpenChange={setDialogFornecedorAberto}
+        onSubmit={handleNovoFornecedor}
       />
 
       <DialogCadastroDispositivo
