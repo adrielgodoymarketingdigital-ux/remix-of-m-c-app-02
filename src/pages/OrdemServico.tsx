@@ -183,7 +183,7 @@ export default function OrdemServicoPage() {
   const [linkCompartilhamento, setLinkCompartilhamento] = useState('');
   const [ordemCompartilhar, setOrdemCompartilhar] = useState<OrdemServico | null>(null);
   const { config: configuracaoLoja, refetch: refetchConfig } = useConfiguracaoLoja();
-  const { obterContagemOSMes, abrirPaginaPagamento, limites } = useAssinatura();
+  const { obterContagemOSMes, abrirPaginaPagamento, limites, carregando: assinaturaCarregando } = useAssinatura();
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
   const { compartilharWhatsApp, gerarLink } = useOSTracking();
@@ -294,6 +294,12 @@ export default function OrdemServicoPage() {
   }, [limites.ordens_servico_mes, ordens.length]);
 
   const handleNovaOrdem = async () => {
+    // Aguardar assinatura carregar antes de verificar limite
+    if (assinaturaCarregando) {
+      setOrdemSelecionada(null);
+      setDialogAberto(true);
+      return;
+    }
     // Verificar se pode criar nova OS
     if (!contadorOS.ilimitado && contadorOS.usadas >= contadorOS.limite) {
       setDialogLimiteAtingido(true);
