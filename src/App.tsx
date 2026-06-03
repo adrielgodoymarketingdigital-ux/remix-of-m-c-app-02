@@ -16,6 +16,7 @@ import { ComVerificacaoPlano } from "./components/auth/ComVerificacaoPlano";
 import { ComVerificacaoFuncionario } from "./components/auth/ComVerificacaoFuncionario";
 import { ProtectedAppRoute } from "./components/auth/ProtectedAppRoute";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
+import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import AuthCallback from "@/components/AuthCallback";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import { OSStatusConfigProvider } from "@/contexts/OSStatusConfigContext";
@@ -131,6 +132,7 @@ function AppRoutes() {
   return (
     <>
       <InstallPrompt />
+      <PWAUpdateBanner />
       <TrialEndWarning />
       <Suspense fallback={<RouteFallback />}>
       <Routes>

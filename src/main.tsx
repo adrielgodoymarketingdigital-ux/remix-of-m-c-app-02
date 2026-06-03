@@ -22,7 +22,7 @@ import { registerNotificationSoundListener } from "./lib/notification-sounds";
 
 console.log(`[Méc] Build ID: ${APP_BUILD_ID}`);
 
-// Registra SW — ao detectar nova versão limpa caches e recarrega automaticamente
+// Registra SW — ao detectar nova versão notifica o usuário (NÃO recarrega automaticamente)
 const updateSW = registerSW({
   immediate: true,
   onRegisteredSW(_swUrl, registration) {
@@ -33,10 +33,15 @@ const updateSW = registerSW({
     });
   },
   onNeedRefresh() {
-    console.log("[PWA] Nova versão detectada - limpando caches e recarregando");
-    caches.keys()
-      .then(names => Promise.all(names.map(n => caches.delete(n))))
-      .then(() => updateSW(true));
+    console.log("[PWA] Nova versão disponível - aguardando confirmação do usuário");
+    // Expõe função de atualização globalmente para o banner React chamar
+    (window as any).__pwaNeedRefresh = true;
+    (window as any).__pwaDoUpdate = () => {
+      caches.keys()
+        .then(names => Promise.all(names.map(n => caches.delete(n))))
+        .then(() => updateSW(true));
+    };
+    window.dispatchEvent(new CustomEvent("pwa-update-available"));
   },
   onOfflineReady() {
     console.log("[PWA] Offline pronto");

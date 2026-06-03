@@ -301,20 +301,31 @@ export function useClientes(options: UseClientesOptions = {}) {
     carregarClientes();
   }, [carregarClientes]);
 
-  // Recarrega automaticamente quando clientes são inseridos/deletados em outra aba ou via importação
+  // Recarrega quando clientes do usuário atual são inseridos/deletados em outra aba ou via importação
   useEffect(() => {
+    let targetUserId: string | null = null;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      targetUserId = resolvedUserIdFromContext
+        ?? ((isFuncionario && podeSincronizarClientes && lojaUserId) ? lojaUserId : session?.user?.id ?? null);
+    });
+
     const channel = supabase
       .channel("clientes-changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "clientes" }, () => {
-        carregarClientes();
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "clientes" }, (payload) => {
+        if (!targetUserId || (payload.new as any)?.user_id === targetUserId) {
+          carregarClientes();
+        }
       })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "clientes" }, () => {
-        carregarClientes();
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "clientes" }, (payload) => {
+        if (!targetUserId || (payload.old as any)?.user_id === targetUserId) {
+          carregarClientes();
+        }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [carregarClientes]);
+  }, [carregarClientes, resolvedUserIdFromContext, isFuncionario, podeSincronizarClientes, lojaUserId]);
 
   const importarEmLote = async (lista: FormularioCliente[]): Promise<{ inseridos: number; erros: number }> => {
     try {
