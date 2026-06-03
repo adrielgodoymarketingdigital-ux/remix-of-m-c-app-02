@@ -1,7 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench } from 'lucide-react';
+import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { useCategoriasProdutos } from '@/hooks/useCategoriasProdutos';
@@ -37,12 +39,46 @@ const Produtos = () => {
   const [contadorProdutos, setContadorProdutos] = useState({ usados: 0, limite: -1, ilimitado: true });
   const [itemParaEditar, setItemParaEditar] = useState<ItemEstoque | null>(null);
   const [itemParaRepor, setItemParaRepor] = useState<ItemEstoque | null>(null);
+  type OrdemFiltro = 'padrao' | 'menos_estoque' | 'mais_vendido';
+  const [ordemFiltro, setOrdemFiltro] = useState<OrdemFiltro>('padrao');
+  const [contagemVendas, setContagemVendas] = useState<Record<string, number>>({});
+
+  const carregarContagemVendas = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const [{ data: vendasProdutos }, { data: vendasPecas }] = await Promise.all([
+      supabase
+        .from('vendas')
+        .select('produto_id')
+        .eq('user_id', session.user.id)
+        .not('produto_id', 'is', null),
+      supabase
+        .from('vendas')
+        .select('peca_id')
+        .eq('user_id', session.user.id)
+        .not('peca_id', 'is', null),
+    ]);
+
+    const contagem: Record<string, number> = {};
+    (vendasProdutos || []).forEach(v => {
+      if (v.produto_id) contagem[v.produto_id] = (contagem[v.produto_id] ?? 0) + 1;
+    });
+    (vendasPecas || []).forEach(v => {
+      if (v.peca_id) contagem[v.peca_id] = (contagem[v.peca_id] ?? 0) + 1;
+    });
+    setContagemVendas(contagem);
+  }, []);
 
   useEffect(() => {
     carregarTodos();
     carregarCategorias();
     carregarContador();
   }, [carregarTodos, carregarCategorias]);
+
+  useEffect(() => {
+    if (ordemFiltro === 'mais_vendido') carregarContagemVendas();
+  }, [ordemFiltro, carregarContagemVendas]);
 
   const carregarContador = async () => {
     const dados = await obterContagemProdutosMes();
@@ -70,19 +106,26 @@ const Produtos = () => {
     };
   }, [items]);
 
-  const itemsFiltrados = items.filter((item) => {
-    if (categoriaFiltro && item.categoria_id !== categoriaFiltro) return false;
+  const itemsFiltrados = useMemo(() => {
+    const filtrados = items.filter((item) => {
+      if (categoriaFiltro && item.categoria_id !== categoriaFiltro) return false;
+      const termoBusca = busca.toLowerCase().trim();
+      if (!termoBusca) return true;
+      const matchNome = item.nome.toLowerCase().includes(termoBusca);
+      const matchCodigo = item.tipo === 'produto' && item.sku?.toLowerCase().includes(termoBusca);
+      const matchCodigoBarras = item.codigo_barras?.toLowerCase().includes(termoBusca);
+      const matchTipo = item.tipo.includes(termoBusca);
+      return matchNome || matchCodigo || matchCodigoBarras || matchTipo;
+    });
 
-    const termoBusca = busca.toLowerCase().trim();
-    if (!termoBusca) return true;
-
-    const matchNome = item.nome.toLowerCase().includes(termoBusca);
-    const matchCodigo = item.tipo === 'produto' && item.sku?.toLowerCase().includes(termoBusca);
-    const matchCodigoBarras = item.codigo_barras?.toLowerCase().includes(termoBusca);
-    const matchTipo = item.tipo.includes(termoBusca);
-
-    return matchNome || matchCodigo || matchCodigoBarras || matchTipo;
-  });
+    if (ordemFiltro === 'menos_estoque') {
+      return [...filtrados].sort((a, b) => a.quantidade - b.quantidade);
+    }
+    if (ordemFiltro === 'mais_vendido') {
+      return [...filtrados].sort((a, b) => (contagemVendas[b.id] ?? 0) - (contagemVendas[a.id] ?? 0));
+    }
+    return filtrados;
+  }, [items, busca, categoriaFiltro, ordemFiltro, contagemVendas]);
 
   const handleSubmit = async (dados: FormularioProduto) => {
     if (itemParaEditar) {
@@ -176,6 +219,39 @@ const Produtos = () => {
               />
             </div>
             <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={ordemFiltro !== 'padrao' ? 'default' : 'outline'}
+                  size="icon"
+                  title="Ordenar"
+                >
+                  {ordemFiltro === 'menos_estoque' ? (
+                    <TrendingDown className="w-4 h-4" />
+                  ) : ordemFiltro === 'mais_vendido' ? (
+                    <TrendingUp className="w-4 h-4" />
+                  ) : (
+                    <ListFilter className="w-4 h-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuRadioGroup value={ordemFiltro} onValueChange={(v) => setOrdemFiltro(v as OrdemFiltro)}>
+                  <DropdownMenuRadioItem value="padrao">
+                    <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
+                    Padrão
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="menos_estoque">
+                    <TrendingDown className="w-4 h-4 mr-2 text-orange-500" />
+                    Menor estoque primeiro
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="mais_vendido">
+                    <TrendingUp className="w-4 h-4 mr-2 text-green-500" />
+                    Mais vendidos primeiro
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Cards de Inventário */}
