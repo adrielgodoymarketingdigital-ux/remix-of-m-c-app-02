@@ -111,6 +111,7 @@ const adminMenuItems = [
   { title: "Chat Suporte", url: "/admin/chat", icon: MessageCircle, badgeKey: 'chatsAbertos' as const },
   { title: "Avisos", url: "/admin/avisos", icon: Megaphone, badgeKey: null },
   { title: "Notificações", url: "/admin/notificacoes", icon: Bell, badgeKey: null },
+  { title: "Alterações/Correções", url: "/admin/alteracoes-correcoes", icon: ClipboardList, badgeKey: null },
 ];
 
 export function AppSidebar() {

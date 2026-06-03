@@ -54,6 +54,7 @@ const AdminPushNotifications = lazy(() => import("./pages/AdminPushNotifications
 const AdminNovidades = lazy(() => import("./pages/AdminNovidades"));
 const AdminFinanceiro = lazy(() => import("./pages/AdminFinanceiro"));
 const AdminCupons = lazy(() => import("./pages/AdminCupons"));
+const AdminAlteracoesCorrecoes = lazy(() => import("./pages/AdminAlteracoesCorrecoes"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const CadastroPlano = lazy(() => import("./pages/CadastroPlano"));
 const Novidades = lazy(() => import("./pages/Novidades"));
@@ -413,7 +414,12 @@ function AppRoutes() {
               <AdminCupons />
             </ProtectedAppRoute>
           } />
-          
+          <Route path="/admin/alteracoes-correcoes" element={
+            <ProtectedAppRoute>
+              <AdminAlteracoesCorrecoes />
+            </ProtectedAppRoute>
+          } />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
