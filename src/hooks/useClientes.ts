@@ -306,9 +306,21 @@ export function useClientes(options: UseClientesOptions = {}) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão expirada");
 
-      const targetUserId = (isFuncionario && podeSincronizarClientes && lojaUserId)
-        ? lojaUserId
-        : session.user.id;
+      // Usa resolvedUserIdFromContext que já resolve gerente/funcionário corretamente.
+      // Fallback direto ao DB caso o hook ainda não tenha carregado.
+      let targetUserId = resolvedUserIdFromContext ?? session.user.id;
+      if (!resolvedUserIdFromContext) {
+        const { data: gerenteData } = await supabase
+          .from('empresa_usuarios')
+          .select('proprietario_id')
+          .eq('gerente_id', session.user.id)
+          .maybeSingle();
+        if (gerenteData?.proprietario_id) {
+          targetUserId = gerenteData.proprietario_id;
+        } else if (isFuncionario && podeSincronizarClientes && lojaUserId) {
+          targetUserId = lojaUserId;
+        }
+      }
 
       let inseridos = 0;
       let erros = 0;
@@ -323,6 +335,7 @@ export function useClientes(options: UseClientesOptions = {}) {
           endereco: c.endereco?.trim() || null,
           data_nascimento: c.data_nascimento?.trim() || null,
           user_id: targetUserId,
+          empresa_id: empresaFiltro ?? null,
         }));
 
         const { data, error } = await supabase.from("clientes").insert(lote).select("id");
