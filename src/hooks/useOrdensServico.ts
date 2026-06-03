@@ -768,22 +768,34 @@ export const useOrdensServico = () => {
       .maybeSingle();
     const empresaIdCliente = empresaMatriz?.id ?? null;
 
-    // Cache de clientes existentes
+    // Cache de clientes existentes — indexado por nome normalizado e por telefone limpo
     const { data: clientesExistentes } = await supabase
       .from("clientes")
       .select("id, nome, telefone")
       .eq("user_id", userId);
 
-    const cacheClientes = new Map<string, string>();
+    const normNome = (s: string) =>
+      s.toLowerCase().trim()
+       .normalize("NFD").replace(/[̀-ͯ]/g, "")
+       .replace(/\s+/g, " ");
+    const normTel = (s?: string | null) =>
+      s ? s.replace(/\D/g, "") : null;
+
+    const cacheNome = new Map<string, string>();
+    const cacheTel  = new Map<string, string>();
     clientesExistentes?.forEach(c => {
-      cacheClientes.set(c.nome.toLowerCase().trim(), c.id);
+      cacheNome.set(normNome(c.nome), c.id);
+      const tel = normTel(c.telefone);
+      if (tel && tel.length >= 8) cacheTel.set(tel, c.id);
     });
 
     for (const os of ordens) {
       try {
-        // Buscar ou criar cliente
-        const nomeNorm = os.cliente_nome.toLowerCase().trim();
-        let clienteId = cacheClientes.get(nomeNorm);
+        // Buscar cliente existente por nome normalizado ou por telefone
+        const nomeKey = normNome(os.cliente_nome);
+        const telKey  = normTel(os.cliente_telefone);
+        let clienteId = cacheNome.get(nomeKey)
+          ?? (telKey && telKey.length >= 8 ? cacheTel.get(telKey) : undefined);
 
         if (!clienteId) {
           const { data: novoCliente, error: errCliente } = await supabase
@@ -803,7 +815,8 @@ export const useOrdensServico = () => {
             continue;
           }
           clienteId = novoCliente.id;
-          cacheClientes.set(nomeNorm, clienteId);
+          cacheNome.set(nomeKey, clienteId);
+          if (telKey && telKey.length >= 8) cacheTel.set(telKey, clienteId);
           clientesCriados++;
         }
 
