@@ -111,13 +111,14 @@ export const useOSStatusConfig = () => {
     carregarStatus();
 
     // Garante carregamento quando a sessão estiver pronta
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         _statusCache = null;
         setStatusList(STATUS_INICIAL);
-      } else if (session) {
+      } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         carregarStatus();
       }
+      // TOKEN_REFRESHED ignorado — não recarrega dados
     });
 
     return () => subscription.unsubscribe();

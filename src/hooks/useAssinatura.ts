@@ -195,9 +195,6 @@ export function useAssinatura() {
 
         jaInicializouRef.current = true;
         await carregarAssinatura(session);
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log("🔄 Token renovado, recarregando assinatura...");
-        await carregarAssinatura(session);
       } else if (event === 'SIGNED_OUT') {
         console.log("👋 Usuário deslogou, limpando assinatura...");
         jaInicializouRef.current = false;
@@ -274,18 +271,7 @@ export function useAssinatura() {
     };
   }, [userId, carregarAssinatura]);
 
-  // Listener para visibility change - recarrega assinatura quando aba volta ao foco
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && userId) {
-        console.log("👀 Aba voltou ao foco, verificando assinatura...");
-        await carregarAssinatura();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [userId, carregarAssinatura]);
+  // visibilitychange removido — recarregar assinatura ao voltar à aba causava re-renders desnecessários
 
   // Verificar se trial expirou - LÓGICA RIGOROSA
   const trialExpirado = useMemo(() => {

@@ -53,13 +53,14 @@ export function useServicosAvulsos() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
         carregarServicosAvulsos();
       }
       if (event === 'SIGNED_OUT') {
         setServicosAvulsos([]);
         setLoading(false);
       }
+      // TOKEN_REFRESHED ignorado — não recarrega dados
     });
 
     return () => subscription.unsubscribe();

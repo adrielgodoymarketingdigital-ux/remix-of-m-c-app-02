@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface EmpresaContextType {
@@ -34,6 +34,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
   const [matrizId, setMatrizId] = useState<string | null>(null);
   const [empresas, setEmpresas] = useState<{ id: string; nome: string; gerente_id: string | null }[]>([]);
   const [nomeMatriz, setNomeMatriz] = useState("Minha Empresa");
+  const jaCarregouRef = useRef(false);
 
   const setEmpresaAtiva = (id: string | null) => {
     setEmpresaAtivaState(id);
@@ -129,10 +130,11 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     carregarEmpresas();
+    jaCarregouRef.current = true;
 
-    // Ao trocar de usuário ou fazer logout, limpar estado de empresa
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        jaCarregouRef.current = false;
         localStorage.removeItem('empresa_ativa');
         setEmpresaAtivaState(null);
         setIsProprietario(false);
@@ -141,8 +143,11 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         setProprietarioId(null);
         setNomeMatriz("Minha Empresa");
       }
-      if (event === 'SIGNED_IN') {
+      // SIGNED_IN só recarrega se ainda não carregou (evita dupla chamada na inicialização)
+      // TOKEN_REFRESHED e demais eventos são ignorados
+      if (event === 'SIGNED_IN' && !jaCarregouRef.current) {
         carregarEmpresas();
+        jaCarregouRef.current = true;
       }
     });
 
