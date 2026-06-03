@@ -28,6 +28,7 @@ export default function Clientes() {
     criarCliente,
     atualizarCliente,
     excluirCliente,
+    excluirEmMassa,
     importarEmLote,
   } = useClientes();
 
@@ -72,6 +73,10 @@ export default function Clientes() {
 
   const handleExcluir = async (id: string) => {
     await excluirCliente(id);
+  };
+
+  const handleExcluirEmMassa = async (ids: string[]) => {
+    await excluirEmMassa(ids);
   };
 
   const handleVerHistorico = (cliente: Cliente) => {
@@ -138,6 +143,7 @@ export default function Clientes() {
             clientes={clientesFiltrados}
             onEditar={handleEditar}
             onExcluir={handleExcluir}
+            onExcluirEmMassa={handleExcluirEmMassa}
             onVerHistorico={handleVerHistorico}
           />
         )}

@@ -355,12 +355,26 @@ export function useClientes(options: UseClientesOptions = {}) {
     }
   };
 
+  const excluirEmMassa = async (ids: string[]): Promise<{ excluidos: number; erros: number }> => {
+    let excluidos = 0;
+    let erros = 0;
+    await Promise.all(
+      ids.map(async (id) => {
+        const ok = await excluirCliente(id);
+        if (ok) excluidos++;
+        else erros++;
+      })
+    );
+    return { excluidos, erros };
+  };
+
   return {
     clientes,
     loading,
     criarCliente,
     atualizarCliente,
     excluirCliente,
+    excluirEmMassa,
     importarEmLote,
     refetch: carregarClientes,
   };
