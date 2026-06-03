@@ -152,7 +152,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
         const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe'];
         if (modulosSoPorFuncionario.includes(item.modulo)) return true;
         // Módulos sempre visíveis no menu (bloqueio acontece dentro da página via ComVerificacaoPlano)
-        const modulosSempreVisiveis: string[] = ['pedidos'];
+        const modulosSempreVisiveis: string[] = ['pedidos', 'fornecedores'];
         if (modulosSempreVisiveis.includes(item.modulo)) return true;
         return temAcessoModuloPlano(item.modulo as Parameters<typeof temAcessoModuloPlano>[0]);
       });

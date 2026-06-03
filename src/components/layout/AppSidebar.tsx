@@ -161,7 +161,7 @@ export function AppSidebar() {
         const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe'];
         if (modulosSoPorFuncionario.includes(item.modulo)) return true;
         // Módulos sempre visíveis no menu (bloqueio acontece dentro da página via ComVerificacaoPlano)
-        const modulosSempreVisiveis: string[] = ['pedidos'];
+        const modulosSempreVisiveis: string[] = ['pedidos', 'fornecedores'];
         if (modulosSempreVisiveis.includes(item.modulo)) return true;
         // Verificar se o plano libera este módulo
         return temAcessoModuloPlano(item.modulo as Parameters<typeof temAcessoModuloPlano>[0]);

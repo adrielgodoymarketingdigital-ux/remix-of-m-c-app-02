@@ -68,6 +68,9 @@ export function MobileBottomNav() {
         // Módulos que existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano)
         const modulosSoPorFuncionario = ["origem_dispositivos", "relatorios", "equipe", "novidades"];
         if (modulosSoPorFuncionario.includes(modulo)) return true;
+        // Módulos sempre visíveis no menu (bloqueio acontece dentro da página)
+        const modulosSempreVisiveis = ["fornecedores", "pedidos"];
+        if (modulosSempreVisiveis.includes(modulo)) return true;
         return temAcessoModuloPlano(modulo as Parameters<typeof temAcessoModuloPlano>[0]);
       });
     }
