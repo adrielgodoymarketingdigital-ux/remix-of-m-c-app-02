@@ -44,9 +44,6 @@ export function BannerVencimentoPlano() {
 
       // past_due/unpaid: sempre mostrar banner urgente, independente de dias restantes
       if (!isProblem) {
-        // Admin sempre vê o banner para fins de teste
-        if (planoTipo !== "admin" && diasRestantes > 15) return null;
-
         // Cartão ativo = renovação automática. Só mostra banner se já venceu
         // (cobrança automática falhou e precisa de ação do usuário).
         if (isCartaoAutomatico && planoTipo !== "admin" && diasRestantes > 0) {
