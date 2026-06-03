@@ -18,7 +18,18 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-const TERMOS_GARANTIA_CDC = (tempoGarantia?: number) => `
+function formatarGarantia(meses: number): string {
+  const m = meses >= 360 ? Math.round(meses / 30) : meses;
+  if (m % 12 === 0 && m >= 12) {
+    const anos = m / 12;
+    return anos === 1 ? "1 ano" : `${anos} anos`;
+  }
+  return `${m} ${m === 1 ? "mês" : "meses"}`;
+}
+
+const TERMOS_GARANTIA_CDC = (tempoGarantia?: number) => {
+  const label = tempoGarantia ? formatarGarantia(tempoGarantia) : null;
+  return `
 TERMOS DE GARANTIA
 
 1. GARANTIA LEGAL (Código de Defesa do Consumidor - Lei 8.078/90)
@@ -26,9 +37,9 @@ TERMOS DE GARANTIA
    • A garantia legal é oferecida pelo fabricante e tem início na data da compra.
    • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento do produto.
 
-2. GARANTIA CONTRATUAL${tempoGarantia ? ` (${tempoGarantia} meses)` : ''}
-   ${tempoGarantia
-     ? `• Este produto possui garantia contratual adicional de ${tempoGarantia} meses a partir da data desta venda.
+2. GARANTIA CONTRATUAL${label ? ` (${label})` : ''}
+   ${label
+     ? `• Este produto possui garantia contratual adicional de ${label} a partir da data desta venda.
    • A garantia contratual é complementar à garantia legal, conforme Art. 50 do CDC.
    • Cobre defeitos de fabricação, excluindo danos causados por mau uso, quedas ou oxidação.`
      : '• Este produto não possui garantia contratual adicional.'}
@@ -46,6 +57,7 @@ TERMOS DE GARANTIA
 5. ATENDIMENTO
    Para exercer seus direitos de garantia, entre em contato através dos dados desta loja.
 `;
+};
 
 interface DialogReimpressaoReciboProps {
   open: boolean;

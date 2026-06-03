@@ -15,6 +15,15 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatarTermoDispositivo } from "@/lib/termo-garantia-utils";
 
+function formatarGarantia(meses: number): string {
+  const m = meses >= 360 ? Math.round(meses / 30) : meses;
+  if (m % 12 === 0 && m >= 12) {
+    const anos = m / 12;
+    return anos === 1 ? "1 ano" : `${anos} anos`;
+  }
+  return `${m} ${m === 1 ? "mês" : "meses"}`;
+}
+
 interface VendaDispositivo {
   id: string;
   quantidade: number;
@@ -164,7 +173,7 @@ export function DialogReimprimirReciboVenda({
     cor: venda.dispositivo_cor,
     capacidade: venda.dispositivo_capacidade_gb ? `${venda.dispositivo_capacidade_gb} GB` : undefined,
     condicao: CONDICAO_LABEL[venda.dispositivo_condicao || ''] || venda.dispositivo_condicao,
-    garantia_meses: venda.dispositivo_tempo_garantia?.toString(),
+    garantia_meses: venda.dispositivo_tempo_garantia != null ? formatarGarantia(venda.dispositivo_tempo_garantia) : undefined,
     valor: formatCurrency(venda.total),
     data_venda: dataVendaCurta,
     loja: configLoja?.nome_loja,
@@ -365,7 +374,7 @@ export function DialogReimprimirReciboVenda({
               <span className="text-muted-foreground">Garantia:</span>
               <p className="font-medium">
                 {venda.dispositivo_garantia
-                  ? `${venda.dispositivo_tempo_garantia || '—'} meses`
+                  ? (venda.dispositivo_tempo_garantia != null ? formatarGarantia(venda.dispositivo_tempo_garantia) : '—')
                   : 'Sem garantia contratual'}
               </p>
             </div>
@@ -419,7 +428,7 @@ export function DialogReimprimirReciboVenda({
               {showValor && <div className="recibo-info"><span>Valor Unitário:</span><span>{formatCurrency(valorUnitario)}</span></div>}
               {showFormaPagamento && <div className="recibo-info"><span>Forma de Pagamento:</span><span>{FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento}</span></div>}
               {venda.dispositivo_garantia && venda.dispositivo_tempo_garantia && (
-                <div className="recibo-info"><span>Garantia:</span><span>{venda.dispositivo_tempo_garantia} meses</span></div>
+                <div className="recibo-info"><span>Garantia:</span><span>{formatarGarantia(venda.dispositivo_tempo_garantia)}</span></div>
               )}
             </div>
           )}
