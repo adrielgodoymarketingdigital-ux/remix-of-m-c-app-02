@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
@@ -16,7 +16,7 @@ import { ItemEstoque, FormularioProduto } from '@/types/produto';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BotaoScanner } from '@/components/scanner/LeitorCodigoBarras';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { exportarProdutosPDF } from '@/lib/exportarProdutosPDF';
+import { exportarProdutosPDF, exportarMenosEstoquePDF, exportarMaisVendidosPDF } from '@/lib/exportarProdutosPDF';
 import { useConfiguracaoLoja } from '@/hooks/useConfiguracaoLoja';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -185,21 +185,51 @@ const Produtos = () => {
                 <Upload className="w-4 h-4 mr-2" />
                 Importar
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={async () => {
-                  if (items.length === 0) {
-                    toast.error('Nenhum item para exportar');
-                    return;
-                  }
-                  await exportarProdutosPDF(items, configLoja);
-                  toast.success('PDF exportado com sucesso!');
-                }}
-                disabled={loading}
-              >
-                <FileDown className="w-4 h-4 mr-2" />
-                Exportar PDF
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" disabled={loading}>
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Exportar PDF
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (items.length === 0) { toast.error('Nenhum item para exportar'); return; }
+                      await exportarProdutosPDF(items, configLoja);
+                      toast.success('PDF exportado com sucesso!');
+                    }}
+                  >
+                    <Package className="w-4 h-4 mr-2 text-muted-foreground" />
+                    Relatório completo
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (items.length === 0) { toast.error('Nenhum item para exportar'); return; }
+                      await exportarMenosEstoquePDF(items, configLoja);
+                      toast.success('PDF de menor estoque exportado!');
+                    }}
+                  >
+                    <TrendingDown className="w-4 h-4 mr-2 text-orange-500" />
+                    Menor estoque
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (items.length === 0) { toast.error('Nenhum item para exportar'); return; }
+                      if (ordemFiltro !== 'mais_vendido' && Object.keys(contagemVendas).length === 0) {
+                        await carregarContagemVendas();
+                      }
+                      await exportarMaisVendidosPDF(items, contagemVendas, configLoja);
+                      toast.success('PDF de mais vendidos exportado!');
+                    }}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2 text-green-500" />
+                    Mais vendidos
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button onClick={handleNovoItem}>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Item

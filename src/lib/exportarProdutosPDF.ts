@@ -53,6 +53,158 @@ function agruparPorCategoria(items: ItemEstoque[]): CategoriaAgrupada[] {
   });
 }
 
+export const exportarMenosEstoquePDF = async (
+  items: ItemEstoque[],
+  config?: ConfiguracaoLoja | null
+) => {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const margin = 15;
+  const dataGerado = new Date().toLocaleDateString("pt-BR");
+
+  const ordenados = [...items].sort((a, b) => a.quantidade - b.quantidade);
+  const semEstoque = ordenados.filter((i) => i.quantidade === 0).length;
+  const estoquebaixo = ordenados.filter((i) => i.quantidade > 0 && i.quantidade <= 3).length;
+
+  let y = await adicionarCabecalhoPDF(
+    doc,
+    config || null,
+    "Produtos com Menor Estoque",
+    `Gerado em ${dataGerado} • ${ordenados.length} itens ordenados por quantidade`
+  );
+
+  y = adicionarCardsPDF(doc, y, [
+    { label: "Total de Itens", value: ordenados.length.toString(), sub: "analisados", color: [50, 50, 50] },
+    { label: "Sem Estoque", value: semEstoque.toString(), sub: "quantidade = 0", color: [200, 50, 50] },
+    { label: "Estoque Baixo", value: estoquebaixo.toString(), sub: "quantidade 1 a 3", color: [210, 120, 30] },
+    {
+      label: "Qtd Média",
+      value: ordenados.length > 0 ? (ordenados.reduce((s, i) => s + i.quantidade, 0) / ordenados.length).toFixed(1) : "0",
+      sub: "unidades",
+      color: [40, 100, 210],
+    },
+  ]);
+
+  y = adicionarTituloSecao(doc, y, "Itens em ordem crescente de estoque");
+
+  const rows = ordenados.map((item, idx) => [
+    (idx + 1).toString(),
+    item.nome,
+    item.tipo === "produto" ? "Produto" : "Peça",
+    item.categoria_nome || "—",
+    item.quantidade.toString(),
+    formatCurrencyPDF(item.preco),
+  ]);
+
+  autoTable(doc, {
+    startY: y,
+    head: [["#", "Nome", "Tipo", "Categoria", "Qtd em Estoque", "Preço Unit."]],
+    body: rows,
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 7.5, cellPadding: 2.5 },
+    headStyles: { fillColor: [180, 50, 30], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7.5 },
+    alternateRowStyles: { fillColor: [255, 248, 246] },
+    bodyStyles: { textColor: [30, 30, 30] },
+    didParseCell(data) {
+      if (data.section === "body" && data.column.index === 4) {
+        const qtd = parseInt(data.cell.text[0] ?? "0", 10);
+        if (qtd === 0) data.cell.styles.textColor = [200, 30, 30];
+        else if (qtd <= 3) data.cell.styles.textColor = [180, 100, 0];
+      }
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: "center" },
+      1: { cellWidth: "auto" },
+      2: { cellWidth: 20, halign: "center" },
+      3: { cellWidth: 35 },
+      4: { cellWidth: 28, halign: "center" },
+      5: { cellWidth: 28, halign: "right" },
+    },
+  });
+
+  adicionarRodapePDF(doc, config);
+  const dataAtual = new Date().toISOString().split("T")[0];
+  doc.save(`menos-estoque-${dataAtual}.pdf`);
+};
+
+export const exportarMaisVendidosPDF = async (
+  items: ItemEstoque[],
+  contagemVendas: Record<string, number>,
+  config?: ConfiguracaoLoja | null
+) => {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const margin = 15;
+  const dataGerado = new Date().toLocaleDateString("pt-BR");
+
+  const ordenados = [...items]
+    .sort((a, b) => (contagemVendas[b.id] ?? 0) - (contagemVendas[a.id] ?? 0))
+    .filter((i) => (contagemVendas[i.id] ?? 0) > 0);
+
+  const semVendas = items.length - ordenados.length;
+  const totalVendas = Object.values(contagemVendas).reduce((s, v) => s + v, 0);
+  const maisVendido = ordenados[0];
+
+  let y = await adicionarCabecalhoPDF(
+    doc,
+    config || null,
+    "Produtos Mais Vendidos",
+    `Gerado em ${dataGerado} • ${ordenados.length} itens com histórico de vendas`
+  );
+
+  y = adicionarCardsPDF(doc, y, [
+    { label: "Com Vendas", value: ordenados.length.toString(), sub: "itens vendidos", color: [30, 150, 80] },
+    { label: "Sem Vendas", value: semVendas.toString(), sub: "nenhuma venda", color: [130, 130, 130] },
+    { label: "Total de Vendas", value: totalVendas.toString(), sub: "registros no histórico", color: [40, 100, 210] },
+    {
+      label: "1° Lugar",
+      value: maisVendido ? (contagemVendas[maisVendido.id] ?? 0).toString() : "—",
+      sub: maisVendido ? maisVendido.nome.slice(0, 18) : "nenhum",
+      color: [180, 130, 20],
+    },
+  ]);
+
+  y = adicionarTituloSecao(doc, y, "Itens em ordem decrescente de vendas");
+
+  const rows = ordenados.map((item, idx) => [
+    (idx + 1).toString(),
+    item.nome,
+    item.tipo === "produto" ? "Produto" : "Peça",
+    item.categoria_nome || "—",
+    (contagemVendas[item.id] ?? 0).toString(),
+    item.quantidade.toString(),
+    formatCurrencyPDF(item.preco),
+  ]);
+
+  autoTable(doc, {
+    startY: y,
+    head: [["#", "Nome", "Tipo", "Categoria", "Qtd Vendida", "Estoque Atual", "Preço Unit."]],
+    body: rows,
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 7.5, cellPadding: 2.5 },
+    headStyles: { fillColor: [30, 120, 60], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7.5 },
+    alternateRowStyles: { fillColor: [245, 255, 248] },
+    bodyStyles: { textColor: [30, 30, 30] },
+    didParseCell(data) {
+      if (data.section === "body" && data.column.index === 0) {
+        const rank = parseInt(data.cell.text[0] ?? "0", 10);
+        if (rank === 1) data.cell.styles.fontStyle = "bold";
+      }
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: "center" },
+      1: { cellWidth: "auto" },
+      2: { cellWidth: 18, halign: "center" },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 24, halign: "center" },
+      5: { cellWidth: 24, halign: "center" },
+      6: { cellWidth: 26, halign: "right" },
+    },
+  });
+
+  adicionarRodapePDF(doc, config);
+  const dataAtual = new Date().toISOString().split("T")[0];
+  doc.save(`mais-vendidos-${dataAtual}.pdf`);
+};
+
 export const exportarProdutosPDF = async (
   items: ItemEstoque[],
   config?: ConfiguracaoLoja | null
