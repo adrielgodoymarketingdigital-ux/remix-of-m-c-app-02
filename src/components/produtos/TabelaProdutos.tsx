@@ -433,7 +433,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
               if (!open) setSelecionados(new Set());
             }}
             itensSelecionados={items.filter((i) => selecionados.has(i.id))}
-            todosItems={todosItems ?? items}
+
             onConfirmar={onAlterarPrecoEmMassa}
           />
         )}

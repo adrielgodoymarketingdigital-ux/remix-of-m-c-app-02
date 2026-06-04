@@ -19,7 +19,6 @@ interface DialogAlterarPrecoEmMassaProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itensSelecionados: ItemEstoque[];
-  todosItems: ItemEstoque[];
   onConfirmar: (
     itens: { id: string; tipo: 'produto' | 'peca' }[],
     novoPreco: number,
@@ -31,33 +30,14 @@ export const DialogAlterarPrecoEmMassa = ({
   open,
   onOpenChange,
   itensSelecionados,
-  todosItems,
   onConfirmar,
 }: DialogAlterarPrecoEmMassaProps) => {
   const [novoPreco, setNovoPreco] = useState('');
   const [novoPrecoAtacado, setNovoPrecoAtacado] = useState('');
   const [salvando, setSalvando] = useState(false);
 
-  // Itens que serão afetados: todos com mesmo código (SKU ou código de barras) dos selecionados
-  const itensAfetados = (() => {
-    const codigosSelecionados = new Set<string>();
-    const codigosBarrasSelecionados = new Set<string>();
-
-    for (const item of itensSelecionados) {
-      if (item.tipo === 'produto' && item.sku) codigosSelecionados.add(item.sku);
-      if (item.codigo_barras) codigosBarrasSelecionados.add(item.codigo_barras);
-    }
-
-    // Se nenhum item tem código, usa apenas os selecionados
-    const temCodigo = codigosSelecionados.size > 0 || codigosBarrasSelecionados.size > 0;
-    if (!temCodigo) return itensSelecionados;
-
-    return todosItems.filter((item) => {
-      const matchSku = item.tipo === 'produto' && item.sku && codigosSelecionados.has(item.sku);
-      const matchBarras = item.codigo_barras && codigosBarrasSelecionados.has(item.codigo_barras);
-      return matchSku || matchBarras;
-    });
-  })();
+  // Aplica apenas nos itens explicitamente selecionados
+  const itensAfetados = itensSelecionados;
 
   // Verificar se todos os selecionados têm o mesmo preço atual (para pré-preencher)
   useEffect(() => {
