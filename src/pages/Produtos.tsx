@@ -25,7 +25,7 @@ import { DialogReporEstoque } from '@/components/produtos/DialogReporEstoque';
 import { CardInventario } from '@/components/produtos/CardInventario';
 
 const Produtos = () => {
-  const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, importarEmLote, reporEstoque } = useProdutos();
+  const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, importarEmLote, reporEstoque } = useProdutos();
   const { categorias, carregarCategorias, criarCategoria, atualizarCategoria, excluirCategoria } = useCategoriasProdutos();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
   const { obterContagemProdutosMes, assinatura } = useAssinatura();
@@ -348,12 +348,14 @@ const Produtos = () => {
           ) : (
             <TabelaProdutos
               items={itemsFiltrados}
+              todosItems={items}
               categorias={categorias}
               onEdit={handleEdit}
               onDelete={excluir}
               onDeleteBulk={excluirEmMassa}
               onCategorizarEmMassa={categorizarEmMassa}
               onAlterarTipoEmMassa={alterarTipoEmMassa}
+              onAlterarPrecoEmMassa={alterarPrecoEmMassa}
               onReporEstoque={(item) => setItemParaRepor(item)}
             />
           )}

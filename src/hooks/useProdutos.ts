@@ -658,6 +658,61 @@ export const useProdutos = () => {
     }
   }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
+  const alterarPrecoEmMassa = useCallback(async (
+    itens: { id: string; tipo: 'produto' | 'peca' }[],
+    novoPreco: number,
+    novoPrecoAtacado: number | null
+  ) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const userId = resolvedUserId ?? user.id;
+
+      const produtoIds = itens.filter(i => i.tipo === 'produto').map(i => i.id);
+      const pecaIds = itens.filter(i => i.tipo === 'peca').map(i => i.id);
+
+      const atualizacao: Record<string, any> = { preco: novoPreco };
+      if (novoPrecoAtacado !== null) atualizacao.preco_atacado = novoPrecoAtacado;
+
+      const promises: Promise<any>[] = [];
+
+      if (produtoIds.length > 0) {
+        const lucro = novoPreco; // será recalculado por custo no Supabase; aqui só enviamos o preco
+        promises.push(
+          supabase
+            .from('produtos')
+            .update(atualizacao as any)
+            .in('id', produtoIds)
+            .eq('user_id', userId)
+        );
+      }
+
+      if (pecaIds.length > 0) {
+        promises.push(
+          supabase
+            .from('pecas')
+            .update(atualizacao as any)
+            .in('id', pecaIds)
+            .eq('user_id', userId)
+        );
+      }
+
+      const results = await Promise.all(promises);
+      for (const result of results) {
+        if (result.error) throw result.error;
+      }
+
+      const total = produtoIds.length + pecaIds.length;
+      toast.success(`Preço atualizado em ${total} ${total === 1 ? 'item' : 'itens'}!`);
+      await carregarTodos();
+      return true;
+    } catch (error: any) {
+      toast.error('Erro ao alterar preço', { description: error.message });
+      return false;
+    }
+  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+
   const reporEstoque = useCallback(async (id: string, tipo: 'produto' | 'peca', quantidadeAdicional: number) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -718,6 +773,7 @@ export const useProdutos = () => {
     excluirEmMassa,
     categorizarEmMassa,
     alterarTipoEmMassa,
+    alterarPrecoEmMassa,
     importarEmLote,
     reporEstoque,
   };

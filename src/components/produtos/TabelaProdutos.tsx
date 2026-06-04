@@ -22,21 +22,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Package, Wrench, ImageOff, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft } from 'lucide-react';
+import { Pencil, Trash2, Package, Wrench, ImageOff, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft, DollarSign } from 'lucide-react';
 import { ItemEstoque } from '@/types/produto';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ValorMonetario } from '@/components/ui/valor-monetario';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
+import { DialogAlterarPrecoEmMassa } from './DialogAlterarPrecoEmMassa';
 
 interface TabelaProdutosProps {
   items: ItemEstoque[];
+  todosItems?: ItemEstoque[];
   categorias?: CategoriaProduto[];
   onEdit: (item: ItemEstoque) => void;
   onDelete: (id: string, tipo: 'produto' | 'peca') => void;
   onDeleteBulk?: (itens: { id: string; tipo: 'produto' | 'peca' }[]) => Promise<{ excluidos: number; erros: number }>;
   onCategorizarEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], categoriaId: string | null) => Promise<boolean>;
   onAlterarTipoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], novoTipo: 'produto' | 'peca') => Promise<boolean>;
+  onAlterarPrecoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], novoPreco: number, novoPrecoAtacado: number | null) => Promise<boolean>;
   onReporEstoque?: (item: ItemEstoque) => void;
 }
 
@@ -63,7 +66,7 @@ const FotoProduto = ({ fotos, tamanho = 'sm' }: { fotos?: string[]; tamanho?: 's
   );
 };
 
-export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onReporEstoque }: TabelaProdutosProps) => {
+export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onReporEstoque }: TabelaProdutosProps) => {
   const [itemParaExcluir, setItemParaExcluir] = useState<ItemEstoque | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [confirmarExclusaoMassa, setConfirmarExclusaoMassa] = useState(false);
@@ -71,6 +74,7 @@ export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBu
   const [categorizando, setCategorizando] = useState(false);
   const [mostrarSeletorCategoria, setMostrarSeletorCategoria] = useState(false);
   const [alterandoTipo, setAlterandoTipo] = useState(false);
+  const [dialogPrecoAberto, setDialogPrecoAberto] = useState(false);
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
 
@@ -192,6 +196,16 @@ export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBu
                 Tornar Peça
               </Button>
             </>
+          )}
+          {onAlterarPrecoEmMassa && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDialogPrecoAberto(true)}
+            >
+              <DollarSign className="w-4 h-4 mr-1" />
+              Alterar Preço ({selecionados.size})
+            </Button>
           )}
           {onCategorizarEmMassa && categorias && categorias.length > 0 && (
             <Button
@@ -400,8 +414,8 @@ export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBu
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <AlertDialogCancel disabled={excluindoMassa} className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={handleExcluirEmMassa} 
+              <AlertDialogAction
+                onClick={handleExcluirEmMassa}
                 disabled={excluindoMassa}
                 className="w-full sm:w-auto bg-destructive text-destructive-foreground"
               >
@@ -410,6 +424,19 @@ export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBu
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {onAlterarPrecoEmMassa && (
+          <DialogAlterarPrecoEmMassa
+            open={dialogPrecoAberto}
+            onOpenChange={(open) => {
+              setDialogPrecoAberto(open);
+              if (!open) setSelecionados(new Set());
+            }}
+            itensSelecionados={items.filter((i) => selecionados.has(i.id))}
+            todosItems={todosItems ?? items}
+            onConfirmar={onAlterarPrecoEmMassa}
+          />
+        )}
       </>
     );
   }
@@ -613,8 +640,8 @@ export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBu
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={excluindoMassa}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleExcluirEmMassa} 
+            <AlertDialogAction
+              onClick={handleExcluirEmMassa}
               disabled={excluindoMassa}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -623,6 +650,19 @@ export const TabelaProdutos = ({ items, categorias, onEdit, onDelete, onDeleteBu
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {onAlterarPrecoEmMassa && (
+        <DialogAlterarPrecoEmMassa
+          open={dialogPrecoAberto}
+          onOpenChange={(open) => {
+            setDialogPrecoAberto(open);
+            if (!open) setSelecionados(new Set());
+          }}
+          itensSelecionados={items.filter((i) => selecionados.has(i.id))}
+          todosItems={todosItems ?? items}
+          onConfirmar={onAlterarPrecoEmMassa}
+        />
+      )}
     </>
   );
 };
