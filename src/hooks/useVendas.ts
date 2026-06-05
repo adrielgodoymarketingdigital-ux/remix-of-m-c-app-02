@@ -51,6 +51,9 @@ export const useVendas = () => {
         queryVendas = isFilial
           ? queryVendas.eq("empresa_id", empresaFiltro)
           : queryVendas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      } else if (!isFilial) {
+        // Sem contexto de empresa: exclui registros de filiais (empresa_id preenchido)
+        queryVendas = queryVendas.is("empresa_id", null);
       }
 
       // O campo `data` em vendas é TIMESTAMP WITH TIME ZONE — usar offset local para filtrar corretamente.
@@ -83,6 +86,8 @@ export const useVendas = () => {
         queryOrdens = isFilial
           ? queryOrdens.eq("empresa_id", empresaFiltro)
           : queryOrdens.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      } else if (!isFilial) {
+        queryOrdens = queryOrdens.is("empresa_id", null);
       }
 
       // OS usam timestamps (data_saida, created_at) — manter offset local para comparação correta
@@ -248,20 +253,36 @@ export const useVendas = () => {
 
       // Se houve filtro de data, carregar também todas as vendas para o dashboard de recebíveis
       if (dataInicio || dataFim) {
-        const { data: allVendasData } = await supabase
+        let allVendasQuery = supabase
           .from("vendas")
           .select(`*, clientes!vendas_cliente_fkey (nome, telefone), dispositivos (tipo, marca, modelo), produtos (nome, sku), pecas (nome)`)
           .eq("user_id", resolvedUserId)
           .is("deleted_at", null)
           .order("data", { ascending: false });
+        if (empresaFiltro) {
+          allVendasQuery = isFilial
+            ? allVendasQuery.eq("empresa_id", empresaFiltro)
+            : allVendasQuery.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        } else if (!isFilial) {
+          allVendasQuery = allVendasQuery.is("empresa_id", null);
+        }
+        const { data: allVendasData } = await allVendasQuery;
 
-        const { data: allOrdensData } = await supabase
+        let allOrdensQuery = supabase
           .from("ordens_servico")
           .select(`*, clientes!ordens_servico_cliente_fkey (nome, telefone), servicos (nome)`)
           .eq("user_id", resolvedUserId)
           .is("deleted_at", null)
           .in("status", ["finalizado", "entregue"])
           .order("updated_at", { ascending: false });
+        if (empresaFiltro) {
+          allOrdensQuery = isFilial
+            ? allOrdensQuery.eq("empresa_id", empresaFiltro)
+            : allOrdensQuery.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        } else if (!isFilial) {
+          allOrdensQuery = allOrdensQuery.is("empresa_id", null);
+        }
+        const { data: allOrdensData } = await allOrdensQuery;
 
         const allOrdensComoVendas: Venda[] = (allOrdensData || []).map((ordem) => {
           const avarias = ordem.avarias as any;

@@ -197,8 +197,9 @@ export function useIdentidade(): { userId: string | null; empresaId: string | nu
   } else if (isFuncionario && lojaUserId) {
     userId = lojaUserId;
   } else if (isProprietario) {
+    // Sempre aplica filtro de empresa quando há matrizId — garante que vendas
+    // de filiais (empresa_id = filial_id) não apareçam na visão da matriz
     empresaId = empresaAtiva ?? matrizId ?? null;
-    // Proprietário com uma filial selecionada explicitamente
     isFilial = empresaAtiva !== null;
   }
 
