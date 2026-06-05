@@ -231,13 +231,14 @@ export const useOrdensServico = () => {
           .is("deleted_at", null);
 
         if (empresaFiltro) {
-          // Filial: mostrar apenas OS desta filial (sem incluir registros sem empresa_id)
-          // Matriz: incluir IS NULL para capturar OS legadas criadas antes do multiempresas
           if (isFilial) {
             query = query.eq("empresa_id", empresaFiltro);
           } else {
             query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
           }
+        } else if (!isFilial) {
+          // Proprietário sem MultiEmpresas: excluir OS de filiais (empresa_id não nulo)
+          query = query.is("empresa_id", null);
         }
 
         // Se é funcionário e NÃO tem permissão de ver todas as OS, filtrar apenas as dele
@@ -335,7 +336,15 @@ export const useOrdensServico = () => {
         .eq("is_teste", false)
         .is("deleted_at", null);
 
-      if (empresaFiltroRef.current) query = (query as any).or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
+      if (empresaFiltroRef.current) {
+        if (isFilialRef.current) {
+          query = (query as any).eq("empresa_id", empresaFiltroRef.current);
+        } else {
+          query = (query as any).or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
+        }
+      } else if (!isFilialRef.current) {
+        query = (query as any).is("empresa_id", null);
+      }
 
       if (dataInicio) {
         const inicioISO = dataInicio.toISOString().split('T')[0];
@@ -454,7 +463,15 @@ export const useOrdensServico = () => {
         `)
         .eq("id", id)
         .eq("user_id", userId);
-      if (empresaId) qSelect = (qSelect as any).or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      if (empresaId) {
+        if (isFilialRef.current) {
+          qSelect = (qSelect as any).eq("empresa_id", empresaId);
+        } else {
+          qSelect = (qSelect as any).or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+        }
+      } else if (!isFilialRef.current) {
+        qSelect = (qSelect as any).is("empresa_id", null);
+      }
       const { data: ordem, error: ordemError } = await (qSelect as any).single();
 
       if (ordemError) throw ordemError;
@@ -480,7 +497,15 @@ export const useOrdensServico = () => {
         .update(updateData)
         .eq("id", id)
         .eq("user_id", userId);
-      if (empresaId) qUpdate = (qUpdate as any).or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      if (empresaId) {
+        if (isFilialRef.current) {
+          qUpdate = (qUpdate as any).eq("empresa_id", empresaId);
+        } else {
+          qUpdate = (qUpdate as any).or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+        }
+      } else if (!isFilialRef.current) {
+        qUpdate = (qUpdate as any).is("empresa_id", null);
+      }
       const { error: updateError, data: updateResult } = await (qUpdate as any).select("id");
 
       if (updateError) throw updateError;
