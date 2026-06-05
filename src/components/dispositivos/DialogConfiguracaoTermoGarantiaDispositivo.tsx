@@ -27,7 +27,7 @@ import {
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, ChevronDown, ChevronUp, Eye, Pencil, Plus, Trash2, BookOpen, Check } from "lucide-react";
+import { Loader2, RotateCcw, ChevronDown, ChevronUp, Eye, Pencil, Plus, Trash2, BookOpen, Check, X } from "lucide-react";
 
 export interface SecaoTermo {
   id: string;
@@ -328,6 +328,11 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
   const [modelos, setModelos] = useState<ModeloGarantia[]>(MODELOS_PADRAO);
   const [novoModeloNome, setNovoModeloNome] = useState("");
   const [modeloParaExcluir, setModeloParaExcluir] = useState<string | null>(null);
+  const [modeloEditandoId, setModeloEditandoId] = useState<string | null>(null);
+  const [modeloEditNome, setModeloEditNome] = useState("");
+  const [modeloEditSecoesComGarantia, setModeloEditSecoesComGarantia] = useState<SecaoTermo[]>([]);
+  const [modeloEditSecoesSemGarantia, setModeloEditSecoesSemGarantia] = useState<SecaoTermo[]>([]);
+  const [modeloEditSecaoEditando, setModeloEditSecaoEditando] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [mostrarVariaveis, setMostrarVariaveis] = useState(false);
   const [secaoEditando, setSecaoEditando] = useState<string | null>(null);
@@ -427,6 +432,38 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
   const excluirModelo = (id: string) => {
     setModelos((prev) => prev.filter((m) => m.id !== id));
     setModeloParaExcluir(null);
+    if (modeloEditandoId === id) setModeloEditandoId(null);
+  };
+
+  const abrirEdicaoModelo = (modelo: ModeloGarantia) => {
+    setModeloEditandoId(modelo.id);
+    setModeloEditNome(modelo.nome);
+    setModeloEditSecoesComGarantia(modelo.secoes_com_garantia);
+    setModeloEditSecoesSemGarantia(modelo.secoes_sem_garantia);
+    setModeloEditSecaoEditando(null);
+  };
+
+  const confirmarEdicaoModelo = () => {
+    if (!modeloEditandoId) return;
+    setModelos((prev) =>
+      prev.map((m) =>
+        m.id === modeloEditandoId
+          ? {
+              ...m,
+              nome: modeloEditNome.trim() || m.nome,
+              secoes_com_garantia: modeloEditSecoesComGarantia,
+              secoes_sem_garantia: modeloEditSecoesSemGarantia,
+            }
+          : m
+      )
+    );
+    setModeloEditandoId(null);
+    toast({ title: "Modelo atualizado", description: "As alterações foram salvas no modelo." });
+  };
+
+  const cancelarEdicaoModelo = () => {
+    setModeloEditandoId(null);
+    setModeloEditSecaoEditando(null);
   };
 
   const toggleSecao = (lista: SecaoTermo[], setLista: (v: SecaoTermo[]) => void, id: string) => {
@@ -690,42 +727,195 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
                     Nenhum modelo salvo. Crie o primeiro modelo acima.
                   </p>
                 )}
-                {modelos.map((modelo) => (
-                  <div
-                    key={modelo.id}
-                    className="border rounded-lg flex items-center justify-between px-4 py-3 gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{modelo.nome}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {modelo.secoes_com_garantia.filter((s) => s.visivel).length} seções c/ garantia
-                        {" · "}
-                        {modelo.secoes_sem_garantia.filter((s) => s.visivel).length} seções s/ garantia
-                      </p>
+                {modelos.map((modelo) => {
+                  const editando = modeloEditandoId === modelo.id;
+                  return (
+                    <div key={modelo.id} className="border rounded-lg overflow-hidden">
+                      {/* Cabeçalho do card */}
+                      <div className="flex items-center justify-between px-4 py-3 gap-3 bg-muted/20">
+                        {editando ? (
+                          <Input
+                            value={modeloEditNome}
+                            onChange={(e) => setModeloEditNome(e.target.value)}
+                            className="text-sm h-8 flex-1"
+                            autoFocus
+                          />
+                        ) : (
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{modelo.nome}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {modelo.secoes_com_garantia.filter((s) => s.visivel).length} seções c/ garantia
+                              {" · "}
+                              {modelo.secoes_sem_garantia.filter((s) => s.visivel).length} seções s/ garantia
+                            </p>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {editando ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="default"
+                                size="sm"
+                                className="gap-1.5 h-8"
+                                onClick={confirmarEdicaoModelo}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                                Salvar
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground"
+                                onClick={cancelarEdicaoModelo}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5 h-8"
+                                onClick={() => aplicarModelo(modelo)}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                                Aplicar
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground"
+                                onClick={() => abrirEdicaoModelo(modelo)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                                onClick={() => setModeloParaExcluir(modelo.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Painel de edição das seções */}
+                      {editando && (
+                        <div className="border-t p-4 space-y-4 bg-background">
+                          <Tabs defaultValue="edit_com">
+                            <TabsList className="w-full">
+                              <TabsTrigger value="edit_com" className="flex-1 text-xs">Com Garantia</TabsTrigger>
+                              <TabsTrigger value="edit_sem" className="flex-1 text-xs">Sem Garantia</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="edit_com" className="mt-3 space-y-2">
+                              {modeloEditSecoesComGarantia.map((secao) => (
+                                <div key={secao.id} className="border rounded-lg overflow-hidden">
+                                  <div className="flex items-center justify-between px-3 py-2 bg-muted/30">
+                                    <div className="flex items-center gap-2">
+                                      <Switch
+                                        checked={secao.visivel}
+                                        onCheckedChange={() =>
+                                          setModeloEditSecoesComGarantia((prev) =>
+                                            prev.map((s) => s.id === secao.id ? { ...s, visivel: !s.visivel } : s)
+                                          )
+                                        }
+                                      />
+                                      <span className="text-xs font-medium">{secao.titulo}</span>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-muted-foreground"
+                                      onClick={() =>
+                                        setModeloEditSecaoEditando(
+                                          modeloEditSecaoEditando === `editcom-${secao.id}` ? null : `editcom-${secao.id}`
+                                        )
+                                      }
+                                    >
+                                      <Pencil className="h-3 w-3 mr-1" />
+                                      <span className="text-xs">Editar</span>
+                                    </Button>
+                                  </div>
+                                  {modeloEditSecaoEditando === `editcom-${secao.id}` && (
+                                    <div className="p-2 border-t">
+                                      <Textarea
+                                        value={secao.conteudo}
+                                        onChange={(e) =>
+                                          setModeloEditSecoesComGarantia((prev) =>
+                                            prev.map((s) => s.id === secao.id ? { ...s, conteudo: e.target.value } : s)
+                                          )
+                                        }
+                                        rows={Math.min(Math.max(secao.conteudo.split("\n").length + 1, 3), 8)}
+                                        className="text-xs font-mono"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </TabsContent>
+                            <TabsContent value="edit_sem" className="mt-3 space-y-2">
+                              {modeloEditSecoesSemGarantia.map((secao) => (
+                                <div key={secao.id} className="border rounded-lg overflow-hidden">
+                                  <div className="flex items-center justify-between px-3 py-2 bg-muted/30">
+                                    <div className="flex items-center gap-2">
+                                      <Switch
+                                        checked={secao.visivel}
+                                        onCheckedChange={() =>
+                                          setModeloEditSecoesSemGarantia((prev) =>
+                                            prev.map((s) => s.id === secao.id ? { ...s, visivel: !s.visivel } : s)
+                                          )
+                                        }
+                                      />
+                                      <span className="text-xs font-medium">{secao.titulo}</span>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-muted-foreground"
+                                      onClick={() =>
+                                        setModeloEditSecaoEditando(
+                                          modeloEditSecaoEditando === `editsem-${secao.id}` ? null : `editsem-${secao.id}`
+                                        )
+                                      }
+                                    >
+                                      <Pencil className="h-3 w-3 mr-1" />
+                                      <span className="text-xs">Editar</span>
+                                    </Button>
+                                  </div>
+                                  {modeloEditSecaoEditando === `editsem-${secao.id}` && (
+                                    <div className="p-2 border-t">
+                                      <Textarea
+                                        value={secao.conteudo}
+                                        onChange={(e) =>
+                                          setModeloEditSecoesSemGarantia((prev) =>
+                                            prev.map((s) => s.id === secao.id ? { ...s, conteudo: e.target.value } : s)
+                                          )
+                                        }
+                                        rows={Math.min(Math.max(secao.conteudo.split("\n").length + 1, 3), 8)}
+                                        className="text-xs font-mono"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </TabsContent>
+                          </Tabs>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 h-8"
-                        onClick={() => aplicarModelo(modelo)}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        Aplicar
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                        onClick={() => setModeloParaExcluir(modelo.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </TabsContent>
           </Tabs>
