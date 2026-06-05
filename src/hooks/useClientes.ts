@@ -7,7 +7,7 @@ import { useEventTracking } from "./useEventTracking";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useConfetti } from "./useConfetti";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
-import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
+import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 
 interface UseClientesOptions {
   /** Se true, evita navegação automática e efeitos visuais após criar cliente (útil para PDV) */
@@ -24,7 +24,7 @@ export function useClientes(options: UseClientesOptions = {}) {
   const navigate = useNavigate();
   const { isFuncionario, lojaUserId, podeSincronizarClientes } = useFuncionarioPermissoes();
   const resolvedUserIdFromContext = useResolvedUserId();
-  const empresaFiltro = useEmpresaFiltro();
+  const { empresaId: empresaFiltro, isFilial } = useEmpresaInfo();
 
   const carregarClientes = useCallback(async () => {
     try {
@@ -45,7 +45,11 @@ export function useClientes(options: UseClientesOptions = {}) {
           .eq("user_id", targetUserId)
           .is("deleted_at", null)
           .order("nome");
-        if (empresaFiltro) query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        if (empresaFiltro) {
+          query = isFilial
+            ? query.eq("empresa_id", empresaFiltro)
+            : query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        }
         const { data, error } = await query;
         if (error) throw error;
         return data;

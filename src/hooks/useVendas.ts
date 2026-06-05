@@ -15,7 +15,7 @@ export const useVendas = () => {
   const { toast } = useToast();
   const { dispatchEvent } = useEventDispatcher();
   const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
-  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando } = useIdentidade();
+  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
 
   const carregarVendas = async (dataInicio?: string, dataFim?: string) => {
     if (identidadeCarregando) return;
@@ -48,7 +48,9 @@ export const useVendas = () => {
         .order("data", { ascending: false });
 
       if (empresaFiltro) {
-        queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        queryVendas = isFilial
+          ? queryVendas.eq("empresa_id", empresaFiltro)
+          : queryVendas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
       }
 
       // O campo `data` em vendas é TIMESTAMP WITH TIME ZONE — usar offset local para filtrar corretamente.
@@ -78,7 +80,9 @@ export const useVendas = () => {
         .order("data_saida", { ascending: false, nullsFirst: false });
 
       if (empresaFiltro) {
-        queryOrdens = queryOrdens.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        queryOrdens = isFilial
+          ? queryOrdens.eq("empresa_id", empresaFiltro)
+          : queryOrdens.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
       }
 
       // OS usam timestamps (data_saida, created_at) — manter offset local para comparação correta

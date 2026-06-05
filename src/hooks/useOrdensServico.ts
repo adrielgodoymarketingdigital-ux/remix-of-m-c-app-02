@@ -67,10 +67,11 @@ export const useOrdensServico = () => {
   const { toast } = useToast();
   const { lojaUserId, isFuncionario, funcionarioId, permissoes } = useFuncionarioPermissoes();
   const { dispatchEvent } = useEventDispatcher();
-  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando } = useIdentidade();
+  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
   const resolvedUserIdRef = useRef<string | null>(null);
   const empresaFiltroRef = useRef(empresaFiltro);
-  useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
+  const isFilialRef = useRef(isFilial);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; isFilialRef.current = isFilial; }, [empresaFiltro, isFilial]);
   const detalhesCacheRef = useRef<Record<string, OrdemServico>>({});
 
   const ordens = useMemo(() => {
@@ -230,7 +231,13 @@ export const useOrdensServico = () => {
           .is("deleted_at", null);
 
         if (empresaFiltro) {
-          query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+          // Filial: mostrar apenas OS desta filial (sem incluir registros sem empresa_id)
+          // Matriz: incluir IS NULL para capturar OS legadas criadas antes do multiempresas
+          if (isFilial) {
+            query = query.eq("empresa_id", empresaFiltro);
+          } else {
+            query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+          }
         }
 
         // Se é funcionário e NÃO tem permissão de ver todas as OS, filtrar apenas as dele
@@ -277,7 +284,7 @@ export const useOrdensServico = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando]);
+  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, isFilial]);
 
   const buscarOrdemCompleta = useCallback(async (id: string): Promise<OrdemServico | null> => {
     if (detalhesCacheRef.current[id]) {

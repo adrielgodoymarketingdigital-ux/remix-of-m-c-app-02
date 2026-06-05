@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Orcamento, StatusOrcamento } from "@/types/orcamento";
-import { useEmpresaFiltro, useResolvedUserId } from "./useResolvedUserId";
+import { useEmpresaInfo, useResolvedUserId } from "./useResolvedUserId";
 
 export function useOrcamentos() {
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [carregando, setCarregando] = useState(true);
   const { toast } = useToast();
-  const empresaFiltro = useEmpresaFiltro();
+  const { empresaId: empresaFiltro, isFilial } = useEmpresaInfo();
   const resolvedUserId = useResolvedUserId();
 
   const carregarOrcamentos = async () => {
@@ -26,7 +26,11 @@ export function useOrcamentos() {
         .eq("user_id", userId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
-      if (empresaFiltro) query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      if (empresaFiltro) {
+        query = isFilial
+          ? query.eq("empresa_id", empresaFiltro)
+          : query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      }
       const { data, error } = await query;
 
       if (error) throw error;

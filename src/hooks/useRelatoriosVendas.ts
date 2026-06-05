@@ -13,10 +13,11 @@ import { useIdentidade } from "./useResolvedUserId";
 export const useRelatoriosVendas = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, isFilial } = useIdentidade();
   const empresaFiltroRef = useRef(empresaFiltro);
+  const isFilialRef = useRef(isFilial);
   const resolvedUserIdRef = useRef(resolvedUserId);
-  useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; isFilialRef.current = isFilial; }, [empresaFiltro, isFilial]);
   useEffect(() => { resolvedUserIdRef.current = resolvedUserId; }, [resolvedUserId]);
 
   const buscarRelatorioDispositivos = async (
@@ -47,7 +48,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         query = query.lte("data", filtros.dataFim);
       }
-      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
+      if (empresaFiltroRef.current) { query = isFilialRef.current ? query.eq("empresa_id", empresaFiltroRef.current) : query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`); }
 
       const { data: vendas, error } = await query;
       if (error) throw error;
@@ -137,7 +138,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         queryVendas = queryVendas.lte("data", filtros.dataFim);
       }
-      if (empresaFiltroRef.current) queryVendas = queryVendas.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
+      if (empresaFiltroRef.current) { queryVendas = isFilialRef.current ? queryVendas.eq("empresa_id", empresaFiltroRef.current) : queryVendas.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`); }
 
       const { data: vendas, error } = await queryVendas;
       if (error) throw error;
@@ -223,7 +224,7 @@ export const useRelatoriosVendas = () => {
       if (filtros.dataFim) {
         query = query.lte("updated_at", filtros.dataFim);
       }
-      if (empresaFiltroRef.current) query = query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
+      if (empresaFiltroRef.current) { query = isFilialRef.current ? query.eq("empresa_id", empresaFiltroRef.current) : query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`); }
 
       const { data: ordens, error } = await query;
       if (error) throw error;

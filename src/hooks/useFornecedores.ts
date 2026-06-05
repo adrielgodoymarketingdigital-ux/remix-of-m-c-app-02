@@ -9,7 +9,7 @@ export function useFornecedores() {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, isFilial } = useIdentidade();
 
   const carregarFornecedores = useCallback(async () => {
     try {
@@ -30,7 +30,11 @@ export function useFornecedores() {
           .eq("user_id", userId)
           .is("deleted_at", null)
           .order("nome");
-        if (ef) query = query.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+        if (ef) {
+          query = isFilial
+            ? query.eq("empresa_id", ef)
+            : query.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+        }
         const { data, error } = await query;
         if (error) throw error;
         return data;

@@ -3,14 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Conta, FormularioConta } from "@/types/conta";
 import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
-import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
+import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 
 export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
   const [contas, setContas] = useState<Conta[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const resolvedUserIdFromContext = useResolvedUserId();
-  const empresaFiltro = useEmpresaFiltro();
+  const { empresaId: empresaFiltro, isFilial } = useEmpresaInfo();
 
   const carregarContas = useCallback(async () => {
     try {
@@ -28,7 +28,11 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         .select("*")
         .eq("user_id", targetUserId)
         .order("data", { ascending: false });
-      if (empresaFiltro) query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      if (empresaFiltro) {
+        query = isFilial
+          ? query.eq("empresa_id", empresaFiltro)
+          : query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      }
 
       if (filtros?.inicio) {
         query = query.gte("data", filtros.inicio.toISOString().split("T")[0]);

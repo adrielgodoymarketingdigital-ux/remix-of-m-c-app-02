@@ -11,7 +11,7 @@ export const useProdutos = () => {
   const [loading, setLoading] = useState(false);
   const { lojaUserId, podeSincronizarProdutos, isFuncionario } = useFuncionarioPermissoes();
   const { podeCadastrarProduto, limites } = useAssinatura();
-  const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: identidadeCarregando } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
 
   const carregarTodos = useCallback(async () => {
     if (identidadeCarregando) return;
@@ -33,9 +33,13 @@ export const useProdutos = () => {
       let qProdutos = supabase.from('produtos').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
       let qPecas = supabase.from('pecas').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
       if (empresaFiltro) {
-        // Inclui registros da empresa selecionada E registros sem empresa (cadastrados antes do multi-empresas)
-        qProdutos = qProdutos.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
-        qPecas = qPecas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        if (isFilial) {
+          qProdutos = qProdutos.eq('empresa_id', empresaFiltro);
+          qPecas = qPecas.eq('empresa_id', empresaFiltro);
+        } else {
+          qProdutos = qProdutos.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+          qPecas = qPecas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        }
       }
 
       const [
