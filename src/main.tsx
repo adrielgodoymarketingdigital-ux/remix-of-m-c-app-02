@@ -24,7 +24,6 @@ console.log(`[Méc] Build ID: ${APP_BUILD_ID}`);
 
 // Registra SW — ao detectar nova versão notifica o usuário (NÃO recarrega automaticamente)
 const updateSW = registerSW({
-  immediate: true,
   onRegisteredSW(_swUrl, registration) {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {

@@ -13,19 +13,20 @@ declare const self: ServiceWorkerGlobalScope & {
   }>;
 };
 
-// Forçar atualização imediata do Service Worker quando há nova versão
+// Aguarda não haver abas abertas antes de ativar a nova versão.
+// skipWaiting() automático causa reload forçado enquanto o usuário está preenchendo
+// formulários (OS, clientes, etc), perdendo dados em andamento.
+// O banner PWAUpdateBanner.tsx permite ao usuário escolher quando atualizar.
 self.addEventListener('install', (event) => {
-  console.log('[SW] Nova versão instalada - ativando imediatamente');
-  self.skipWaiting();
+  console.log('[SW] Nova versão instalada - aguardando sem abas abertas para ativar');
+  // NÃO chamamos skipWaiting() aqui — o update é controlado pelo usuário via banner
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Service Worker ativado - assumindo controle');
-  event.waitUntil(
-    caches.keys().then(cacheNames =>
-      Promise.all(cacheNames.map(name => caches.delete(name)))
-    ).then(() => self.clients.claim())
-  );
+  console.log('[SW] Service Worker ativado');
+  // cleanupOutdatedCaches() abaixo já remove caches de versões antigas de forma segura.
+  // Não deletamos caches manualmente para não interromper o app em uso.
+  event.waitUntil(self.clients.claim());
 });
 
 // Precache (gerenciado pelo vite-plugin-pwa)
