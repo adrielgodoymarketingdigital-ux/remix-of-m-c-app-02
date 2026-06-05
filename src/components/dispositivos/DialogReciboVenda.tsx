@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -133,8 +133,12 @@ export function DialogReciboVenda({
   const [gerando, setGerando] = useState(false);
   const reciboRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { config: configLoja } = useConfiguracaoLoja();
+  const { config: configLoja, refetch } = useConfiguracaoLoja();
   const { funcionarioId } = useFuncionarioPermissoes();
+
+  useEffect(() => {
+    if (open) refetch();
+  }, [open]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

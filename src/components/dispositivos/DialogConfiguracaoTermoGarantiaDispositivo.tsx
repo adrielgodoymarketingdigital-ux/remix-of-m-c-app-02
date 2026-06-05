@@ -341,7 +341,7 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
     if (!open) return;
     const termoConfig = config?.termo_garantia_dispositivo_config as TermoGarantiaDispositivoConfig | undefined;
     if (termoConfig) {
-      const modoSalvo = termoConfig.modo || "livre";
+      const modoSalvo = termoConfig.modo || "secoes";
       setModo(modoSalvo);
       if (modoSalvo === "secoes") {
         setSecoesComGarantia(termoConfig.secoes_com_garantia || SECOES_PADRAO_COM_GARANTIA);

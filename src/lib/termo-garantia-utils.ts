@@ -47,17 +47,27 @@ export const resolverTextoTermoDispositivo = (
     return temGarantia ? textoPadraoComGarantia : textoPadraoSemGarantia;
   }
 
+  // Modo explicitamente "livre" → sempre usa texto livre
+  if (termoConfig.modo === "livre") {
+    const textoLivre = temGarantia
+      ? termoConfig.termo_com_garantia
+      : termoConfig.termo_sem_garantia;
+    return textoLivre || (temGarantia ? textoPadraoComGarantia : textoPadraoSemGarantia);
+  }
+
+  // Modo "secoes" (explícito ou padrão quando há seções salvas)
   const secoes = temGarantia
     ? termoConfig.secoes_com_garantia
     : termoConfig.secoes_sem_garantia;
 
-  if (termoConfig.modo === "secoes" && secoes?.length) {
+  if (secoes?.length) {
     return secoes
       .filter((s) => s.visivel)
       .map((s) => s.conteudo.trim())
       .join("\n\n");
   }
 
+  // Fallback: texto livre se não há seções
   const textoLivre = temGarantia
     ? termoConfig.termo_com_garantia
     : termoConfig.termo_sem_garantia;

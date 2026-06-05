@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 import {
   Dialog,
@@ -141,7 +141,11 @@ export function DialogReimprimirReciboVenda({
 }: DialogReimprimirReciboVendaProps) {
   const reciboRef = useRef<HTMLDivElement>(null);
   const garantiaRef = useRef<HTMLDivElement>(null);
-  const { config: configLoja } = useConfiguracaoLoja();
+  const { config: configLoja, refetch } = useConfiguracaoLoja();
+
+  useEffect(() => {
+    if (open) refetch();
+  }, [open]);
 
   if (!venda) return null;
 
