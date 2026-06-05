@@ -7,7 +7,7 @@ import { useEventTracking } from "./useEventTracking";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useConfetti } from "./useConfetti";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
-import { useResolvedUserId } from "./useResolvedUserId";
+import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 
 interface UseClientesOptions {
   /** Se true, evita navegação automática e efeitos visuais após criar cliente (útil para PDV) */
@@ -24,6 +24,7 @@ export function useClientes(options: UseClientesOptions = {}) {
   const navigate = useNavigate();
   const { isFuncionario, lojaUserId, podeSincronizarClientes } = useFuncionarioPermissoes();
   const resolvedUserIdFromContext = useResolvedUserId();
+  const { empresaId: empresaAtiva, isFilial } = useEmpresaInfo();
 
   const carregarClientes = useCallback(async () => {
     try {
@@ -44,6 +45,11 @@ export function useClientes(options: UseClientesOptions = {}) {
           .eq("user_id", targetUserId)
           .is("deleted_at", null)
           .order("nome");
+        // Filial selecionada: só clientes dessa filial
+        // Matriz / sem empresa: todos os clientes do proprietário
+        if (isFilial && empresaAtiva) {
+          query = query.eq("empresa_id", empresaAtiva);
+        }
         const { data, error } = await query;
         if (error) throw error;
         return data;
@@ -62,7 +68,7 @@ export function useClientes(options: UseClientesOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [toast, isFuncionario, lojaUserId, podeSincronizarClientes, resolvedUserIdFromContext]);
+  }, [toast, isFuncionario, lojaUserId, podeSincronizarClientes, resolvedUserIdFromContext, empresaAtiva, isFilial]);
 
   const criarCliente = async (dados: FormularioCliente): Promise<Cliente | null> => {
     try {
@@ -92,17 +98,23 @@ export function useClientes(options: UseClientesOptions = {}) {
       // Se é funcionário, usa o ID do dono da loja
       const targetUserId = (isFuncionario && podeSincronizarClientes && lojaUserId) ? lojaUserId : user.id;
 
-      const { data: empresaPrincipal } = await supabase
-        .from("empresas")
-        .select("id")
-        .eq("proprietario_id", targetUserId)
-        .eq("tipo", "matriz")
-        .maybeSingle();
+      // empresa_id: usa a empresa ativa no contexto (filial se estiver selecionada,
+      // caso contrário busca a matriz do proprietário para manter consistência)
+      let empresaIdParaSalvar: string | null = empresaAtiva;
+      if (!empresaIdParaSalvar) {
+        const { data: empresaPrincipal } = await supabase
+          .from("empresas")
+          .select("id")
+          .eq("proprietario_id", targetUserId)
+          .eq("tipo", "matriz")
+          .maybeSingle();
+        empresaIdParaSalvar = empresaPrincipal?.id ?? null;
+      }
 
       const dadosSanitizados = {
         ...dados,
         user_id: targetUserId,
-        empresa_id: empresaPrincipal?.id ?? null,
+        empresa_id: empresaIdParaSalvar,
         cpf: dados.cpf?.trim() || null,
         cnpj: dados.cnpj?.trim() || null,
         telefone: dados.telefone?.trim() || null,
@@ -359,7 +371,7 @@ export function useClientes(options: UseClientesOptions = {}) {
           endereco: c.endereco?.trim() || null,
           data_nascimento: c.data_nascimento?.trim() || null,
           user_id: targetUserId,
-          empresa_id: null,
+          empresa_id: empresaAtiva ?? null,
         }));
 
         const { data, error } = await supabase.from("clientes").insert(lote).select("id");
