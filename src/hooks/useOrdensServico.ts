@@ -766,20 +766,30 @@ export const useOrdensServico = () => {
       return isNaN(d.getTime()) ? null : d.toISOString();
     };
 
-    // Buscar empresa_id da matriz para associar clientes novos (mesmo padrão do useClientes)
-    const { data: empresaMatriz } = await supabase
-      .from("empresas")
-      .select("id")
-      .eq("proprietario_id", userId)
-      .eq("tipo", "matriz")
-      .maybeSingle();
-    const empresaIdCliente = empresaMatriz?.id ?? null;
+    // empresa_id para clientes novos: filial se ativa, senão busca a matriz
+    let empresaIdCliente: string | null = null;
+    if (isFilialRef.current && empresaIdParaImport) {
+      empresaIdCliente = empresaIdParaImport;
+    } else {
+      const { data: empresaMatriz } = await supabase
+        .from("empresas")
+        .select("id")
+        .eq("proprietario_id", userId)
+        .eq("tipo", "matriz")
+        .maybeSingle();
+      empresaIdCliente = empresaMatriz?.id ?? null;
+    }
 
-    // Cache de clientes existentes — indexado por nome normalizado e por telefone limpo
-    const { data: clientesExistentes } = await supabase
+    // Cache de clientes existentes — filtrado pela empresa se em contexto de filial
+    let queryClientes = supabase
       .from("clientes")
       .select("id, nome, telefone")
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .is("deleted_at", null);
+    if (isFilialRef.current && empresaIdCliente) {
+      queryClientes = queryClientes.eq("empresa_id", empresaIdCliente);
+    }
+    const { data: clientesExistentes } = await queryClientes;
 
     const normNome = (s: string) =>
       s.toLowerCase().trim()
