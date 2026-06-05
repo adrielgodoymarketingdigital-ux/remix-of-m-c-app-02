@@ -29,6 +29,7 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { checklistLabels } from "@/lib/checklist-templates";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatarTermoDispositivo } from "@/lib/termo-garantia-utils";
 
 // Normaliza tempo_garantia (sempre em meses) para exibição legível.
 // Valores >= 360 são tratados como dias por engano de cadastro e convertidos para meses.
@@ -41,36 +42,68 @@ function formatarGarantia(meses: number): string {
   return `${m} ${m === 1 ? "mês" : "meses"}`;
 }
 
-const TERMOS_GARANTIA_CDC = (tempoGarantia?: number) => {
-  const label = tempoGarantia ? formatarGarantia(tempoGarantia) : null;
-  return `
-TERMOS DE GARANTIA
+const TERMOS_GARANTIA_PADRAO = {
+  termo_com_garantia: `TERMO DE GARANTIA
 
-1. GARANTIA LEGAL (Código de Defesa do Consumidor - Lei 8.078/90)
-   • Este produto possui garantia legal de 90 (noventa) dias, conforme Art. 26, II do CDC.
-   • A garantia legal é oferecida pelo fabricante e tem início na data da compra.
-   • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento do produto.
+Loja: {{loja}}
+CNPJ: {{loja_cnpj}}
+Endereço: {{loja_endereco}}
+Telefone: {{loja_telefone}}
 
-2. GARANTIA CONTRATUAL${label ? ` (${label})` : ''}
-   ${label
-     ? `• Este produto possui garantia contratual adicional de ${label} a partir da data desta venda.
-   • A garantia contratual é complementar à garantia legal, conforme Art. 50 do CDC.
-   • Cobre defeitos de fabricação, excluindo danos causados por mau uso, quedas ou oxidação.`
-     : '• Este produto não possui garantia contratual adicional.'}
+COMPRADOR
+Nome: {{cliente}}
+CPF: {{cpf}}
+Telefone: {{telefone}}
+
+PRODUTO
+Aparelho: {{dispositivo}}
+IMEI: {{imei}}
+Nº Série: {{numero_serie}}
+Cor: {{cor}}  |  Capacidade: {{capacidade}}
+Condição: {{condicao}}
+Data da venda: {{data_venda}}
+Valor pago: {{valor}}
+
+1. GARANTIA LEGAL (CDC - Lei 8.078/90)
+   • Garantia legal de 90 (noventa) dias, conforme Art. 26, II do CDC.
+   • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento.
+
+2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
+   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
+   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.
 
 3. DIREITOS DO CONSUMIDOR
-   • Em caso de vício do produto, o consumidor pode exigir: substituição, devolução do valor pago ou abatimento proporcional do preço (Art. 18 CDC).
-   • O prazo de garantia é suspenso durante o período de reparo (Art. 26, §2º CDC).
-   • Conserve este recibo como comprovante de compra.
+   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).
+   • Prazo suspenso durante reparo (Art. 26, §2º CDC).
+   • Conserve este documento como comprovante.
 
 4. EXCLUSÕES
-   • Danos causados por quedas, impactos, contato com líquidos, uso inadequado ou modificações não autorizadas.
-   • Violação de lacres ou tentativa de reparo por terceiros não autorizados.
-   • Desgaste natural decorrente do uso normal do produto.
+   • Quedas, impactos, contato com líquidos, uso inadequado.
+   • Violação de lacres ou reparo por terceiros não autorizados.
+   • Desgaste natural de uso.
 
-5. ATENDIMENTO
-   Para exercer seus direitos de garantia, entre em contato através dos dados desta loja.
-`;
+Para acionamento da garantia, apresente este termo na loja.`,
+
+  termo_sem_garantia: `DECLARAÇÃO DE VENDA SEM GARANTIA CONTRATUAL
+
+Loja: {{loja}}
+CNPJ: {{loja_cnpj}}
+
+COMPRADOR
+Nome: {{cliente}}
+CPF: {{cpf}}
+
+PRODUTO
+Aparelho: {{dispositivo}}
+IMEI: {{imei}}
+Condição: {{condicao}}
+Data da venda: {{data_venda}}
+Valor pago: {{valor}}
+
+AVISO: Este produto é vendido sem garantia contratual adicional.
+A garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme a legislação.
+O cliente declara estar ciente das condições do equipamento.`,
 };
 
 const formSchema = z.object({
@@ -115,7 +148,8 @@ export function DialogReciboVenda({
     },
   });
 
-  const valorTotal = form.watch("quantidade_vendida") * form.watch("valor_unitario");
+  const watchedValues = form.watch();
+  const valorTotal = watchedValues.quantidade_vendida * watchedValues.valor_unitario;
 
   const onSubmit = async (data: FormValues) => {
     if (!dispositivo) return;
@@ -228,6 +262,37 @@ export function DialogReciboVenda({
   const showAssinaturas = dispConfig?.mostrar_assinaturas !== false;
   const showValor = dispConfig?.mostrar_valor !== false;
   const showFormaPagamento = dispConfig?.mostrar_forma_pagamento !== false;
+
+  const dataAtualFormatada = format(new Date(), "dd/MM/yyyy", { locale: ptBR });
+
+  const obterTextoTermo = (formValues: FormValues): string => {
+    const termoConfig = configLoja?.termo_garantia_dispositivo_config as any;
+    const config = termoConfig || TERMOS_GARANTIA_PADRAO;
+    const textoBase = dispositivo?.garantia
+      ? (config.termo_com_garantia || TERMOS_GARANTIA_PADRAO.termo_com_garantia)
+      : (config.termo_sem_garantia || TERMOS_GARANTIA_PADRAO.termo_sem_garantia);
+
+    const condicaoLabels: Record<string, string> = { novo: "Novo", semi_novo: "Semi Novo", usado: "Usado" };
+
+    return formatarTermoDispositivo(textoBase, {
+      cliente: formValues.cliente_nome,
+      cpf: formValues.cliente_cpf,
+      telefone: formValues.cliente_telefone,
+      dispositivo: [dispositivo?.marca, dispositivo?.modelo].filter(Boolean).join(' '),
+      imei: dispositivo?.imei,
+      numero_serie: dispositivo?.numero_serie,
+      cor: dispositivo?.cor,
+      capacidade: dispositivo?.capacidade_gb ? `${dispositivo.capacidade_gb} GB` : undefined,
+      condicao: condicaoLabels[dispositivo?.condicao || ''] || dispositivo?.condicao,
+      garantia_meses: dispositivo?.tempo_garantia != null ? formatarGarantia(dispositivo.tempo_garantia) : undefined,
+      valor: formatCurrency(formValues.quantidade_vendida * formValues.valor_unitario),
+      data_venda: dataAtualFormatada,
+      loja: configLoja?.nome_loja,
+      loja_telefone: configLoja?.telefone,
+      loja_cnpj: configLoja?.cnpj,
+      loja_endereco: configLoja?.endereco,
+    });
+  };
 
   const imprimirRecibo = () => {
     if (!reciboRef.current) return;
@@ -384,6 +449,7 @@ export function DialogReciboVenda({
   if (!dispositivo) return null;
 
   const dataAtual = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  const textoTermo = obterTextoTermo(watchedValues);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -533,24 +599,24 @@ export function DialogReciboVenda({
                   <h3>Dados do Comprador</h3>
                   <div className="recibo-info">
                     <span>Nome:</span>
-                    <span>{form.watch("cliente_nome")}</span>
+                    <span>{watchedValues.cliente_nome}</span>
                   </div>
-                  {form.watch("cliente_cpf") && (
+                  {watchedValues.cliente_cpf && (
                     <div className="recibo-info">
                       <span>CPF:</span>
-                      <span>{form.watch("cliente_cpf")}</span>
+                      <span>{watchedValues.cliente_cpf}</span>
                     </div>
                   )}
-                  {form.watch("cliente_telefone") && (
+                  {watchedValues.cliente_telefone && (
                     <div className="recibo-info">
                       <span>Telefone:</span>
-                      <span>{form.watch("cliente_telefone")}</span>
+                      <span>{watchedValues.cliente_telefone}</span>
                     </div>
                   )}
-                  {form.watch("cliente_endereco") && (
+                  {watchedValues.cliente_endereco && (
                     <div className="recibo-info">
                       <span>Endereço:</span>
-                      <span>{form.watch("cliente_endereco")}</span>
+                      <span>{watchedValues.cliente_endereco}</span>
                     </div>
                   )}
                 </div>
@@ -581,12 +647,12 @@ export function DialogReciboVenda({
                   )}
                   <div className="recibo-info">
                     <span>Quantidade:</span>
-                    <span>{form.watch("quantidade_vendida")}</span>
+                    <span>{watchedValues.quantidade_vendida}</span>
                   </div>
                   {showValor && (
                     <div className="recibo-info">
                       <span>Valor Unitário:</span>
-                      <span>{formatCurrency(form.watch("valor_unitario"))}</span>
+                      <span>{formatCurrency(watchedValues.valor_unitario)}</span>
                     </div>
                   )}
                   {showFormaPagamento && (
@@ -622,7 +688,7 @@ export function DialogReciboVenda({
                 <div className="recibo-section">
                   <h3>Termos de Garantia e Direitos do Consumidor</h3>
                   <div className="termos-garantia">
-                    {TERMOS_GARANTIA_CDC(dispositivo.garantia ? dispositivo.tempo_garantia : undefined)}
+                    {textoTermo}
                   </div>
                 </div>
               )}
