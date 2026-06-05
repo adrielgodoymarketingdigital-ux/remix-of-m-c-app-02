@@ -13,7 +13,7 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { checklistLabels } from "@/lib/checklist-templates";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { formatarTermoDispositivo } from "@/lib/termo-garantia-utils";
+import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "@/lib/termo-garantia-utils";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -184,10 +184,12 @@ export function DialogReimprimirReciboVenda({
 
   const obterTextoTermo = (): string => {
     const termoConfig = configLoja?.termo_garantia_dispositivo_config as any;
-    const config = termoConfig || TERMOS_GARANTIA_PADRAO;
-    const textoBase = venda.dispositivo_garantia
-      ? (config.termo_com_garantia || TERMOS_GARANTIA_PADRAO.termo_com_garantia)
-      : (config.termo_sem_garantia || TERMOS_GARANTIA_PADRAO.termo_sem_garantia);
+    const textoBase = resolverTextoTermoDispositivo(
+      termoConfig,
+      !!venda.dispositivo_garantia,
+      TERMOS_GARANTIA_PADRAO.termo_com_garantia,
+      TERMOS_GARANTIA_PADRAO.termo_sem_garantia
+    );
     return formatarTermoDispositivo(textoBase, varsTermos);
   };
 

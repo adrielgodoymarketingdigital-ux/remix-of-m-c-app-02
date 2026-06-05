@@ -29,7 +29,7 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { checklistLabels } from "@/lib/checklist-templates";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { formatarTermoDispositivo } from "@/lib/termo-garantia-utils";
+import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "@/lib/termo-garantia-utils";
 
 // Normaliza tempo_garantia (sempre em meses) para exibição legível.
 // Valores >= 360 são tratados como dias por engano de cadastro e convertidos para meses.
@@ -267,10 +267,12 @@ export function DialogReciboVenda({
 
   const obterTextoTermo = (formValues: FormValues): string => {
     const termoConfig = configLoja?.termo_garantia_dispositivo_config as any;
-    const config = termoConfig || TERMOS_GARANTIA_PADRAO;
-    const textoBase = dispositivo?.garantia
-      ? (config.termo_com_garantia || TERMOS_GARANTIA_PADRAO.termo_com_garantia)
-      : (config.termo_sem_garantia || TERMOS_GARANTIA_PADRAO.termo_sem_garantia);
+    const textoBase = resolverTextoTermoDispositivo(
+      termoConfig,
+      !!dispositivo?.garantia,
+      TERMOS_GARANTIA_PADRAO.termo_com_garantia,
+      TERMOS_GARANTIA_PADRAO.termo_sem_garantia
+    );
 
     const condicaoLabels: Record<string, string> = { novo: "Novo", semi_novo: "Semi Novo", usado: "Usado" };
 

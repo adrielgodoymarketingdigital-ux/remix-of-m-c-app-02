@@ -19,6 +19,52 @@ export interface TermoDispositivoVars {
   loja_endereco?: string;
 }
 
+interface SecaoTermoBasica {
+  visivel: boolean;
+  conteudo: string;
+}
+
+interface TermoGarantiaDispositivoConfigBasico {
+  modo?: "livre" | "secoes";
+  secoes_com_garantia?: SecaoTermoBasica[];
+  secoes_sem_garantia?: SecaoTermoBasica[];
+  termo_com_garantia?: string;
+  termo_sem_garantia?: string;
+}
+
+/**
+ * Resolve o texto base do termo de garantia para dispositivos.
+ * Prioridade: se modo === "secoes" (ou se há seções salvas), constrói o texto
+ * a partir das seções visíveis. Caso contrário, usa o texto livre.
+ */
+export const resolverTextoTermoDispositivo = (
+  termoConfig: TermoGarantiaDispositivoConfigBasico | null | undefined,
+  temGarantia: boolean,
+  textoPadraoComGarantia: string,
+  textoPadraoSemGarantia: string
+): string => {
+  if (!termoConfig) {
+    return temGarantia ? textoPadraoComGarantia : textoPadraoSemGarantia;
+  }
+
+  const secoes = temGarantia
+    ? termoConfig.secoes_com_garantia
+    : termoConfig.secoes_sem_garantia;
+
+  if (termoConfig.modo === "secoes" && secoes?.length) {
+    return secoes
+      .filter((s) => s.visivel)
+      .map((s) => s.conteudo.trim())
+      .join("\n\n");
+  }
+
+  const textoLivre = temGarantia
+    ? termoConfig.termo_com_garantia
+    : termoConfig.termo_sem_garantia;
+
+  return textoLivre || (temGarantia ? textoPadraoComGarantia : textoPadraoSemGarantia);
+};
+
 export const formatarTermoDispositivo = (texto: string, vars: TermoDispositivoVars): string => {
   return texto
     .replace(/\{\{cliente\}\}/g, vars.cliente || 'Cliente')
