@@ -75,7 +75,7 @@ const SECOES_FINANCEIRO: Array<{ recurso: keyof PermissoesRecursos; label: strin
   },
 ];
 
-// Outros recursos especiais (excluindo os de seção do financeiro)
+// Outros recursos especiais (excluindo os de seção do financeiro e configurações de OS)
 const RECURSOS_OUTROS: Array<{ recurso: keyof PermissoesRecursos; label: string }> = [
   { recurso: "ver_custos", label: "Ver custos dos produtos" },
   { recurso: "ver_lucros", label: "Ver lucros das vendas" },
@@ -85,6 +85,15 @@ const RECURSOS_OUTROS: Array<{ recurso: keyof PermissoesRecursos; label: string 
   { recurso: "ver_inventario", label: "Ver cards de inventário (estoque valorizado)" },
   { recurso: "ver_todas_os", label: "Ver todas as ordens de serviço (desativado = apenas as próprias)" },
   { recurso: "ver_total_vendas", label: "Ver card de total vendido no período (Vendas)" },
+];
+
+// Configurações de comportamento da OS
+const CONFIGS_OS: Array<{ recurso: keyof PermissoesRecursos; label: string; descricao: string }> = [
+  {
+    recurso: "tecnico_obrigatorio_os",
+    label: "Técnico/Funcionário obrigatório",
+    descricao: "Ao ativar, não será possível salvar uma OS sem selecionar um técnico responsável.",
+  },
 ];
 
 export function SeletorPermissoes({ permissoes, onChange }: SeletorPermissoesProps) {
@@ -235,6 +244,34 @@ export function SeletorPermissoes({ permissoes, onChange }: SeletorPermissoesPro
         </p>
         <div className="space-y-2">
           {SECOES_FINANCEIRO.map(({ recurso, label, descricao }) => (
+            <div key={recurso} className="flex items-start space-x-2">
+              <Checkbox
+                id={`recurso-${recurso}`}
+                checked={permissoesCompletas.recursos[recurso] ?? false}
+                onCheckedChange={(checked) => handleRecursoChange(recurso, !!checked)}
+                className="mt-0.5"
+              />
+              <div>
+                <Label htmlFor={`recurso-${recurso}`} className="text-sm cursor-pointer">
+                  {label}
+                </Label>
+                <p className="text-xs text-muted-foreground">{descricao}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* CONFIGURAÇÕES DE ORDEM DE SERVIÇO */}
+      <div>
+        <h4 className="font-medium mb-1">Configurações de OS</h4>
+        <p className="text-xs text-muted-foreground mb-3">
+          Controla o comportamento do formulário de Ordem de Serviço para todos os usuários da loja.
+        </p>
+        <div className="space-y-2">
+          {CONFIGS_OS.map(({ recurso, label, descricao }) => (
             <div key={recurso} className="flex items-start space-x-2">
               <Checkbox
                 id={`recurso-${recurso}`}

@@ -139,7 +139,7 @@ export const DialogOrdemServico = ({
   const { trackOSCriada } = useEventTracking();
   const { disparar: dispararConfetti } = useConfetti();
   const { dispatchEvent } = useEventDispatcher();
-  const { funcionarioId, lojaUserId, isFuncionario, permissoes, isDonoLoja } = useFuncionarioPermissoes();
+  const { funcionarioId, lojaUserId, isFuncionario, permissoes, isDonoLoja, tecnicoObrigatorioOS } = useFuncionarioPermissoes();
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const navigate = useNavigate();
   const podeVerTecnicos = isDonoLoja || (permissoes?.recursos?.ver_tecnicos_os ?? false);
@@ -533,6 +533,17 @@ export const DialogOrdemServico = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Validar técnico obrigatório antes de qualquer operação
+    if (tecnicoObrigatorioOS && !tecnicoId && !funcionarioId) {
+      toast({
+        title: "Técnico obrigatório",
+        description: "Selecione um técnico responsável antes de salvar a OS.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
 
     try {
       // Obter usuário autenticado
@@ -1622,12 +1633,13 @@ export const DialogOrdemServico = ({
                   <Label htmlFor="tecnicoId" className="flex items-center gap-1.5">
                     <Wrench className="h-3.5 w-3.5" />
                     Técnico Principal
+                    {tecnicoObrigatorioOS && <span className="text-destructive">*</span>}
                   </Label>
                   <Select
                     value={tecnicoId || "nenhum"}
                     onValueChange={(value) => setTecnicoId(value === "nenhum" ? null : value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={tecnicoObrigatorioOS && !tecnicoId ? "border-destructive" : ""}>
                       <SelectValue placeholder="Selecione o técnico" />
                     </SelectTrigger>
                     <SelectContent>

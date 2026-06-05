@@ -23,6 +23,7 @@ interface FuncionarioPermissoesResult {
   podeSincronizarClientes: boolean;
   podeVerContasPagarReceber: boolean;
   podeVerAnaliseLucros: boolean;
+  tecnicoObrigatorioOS: boolean;
 }
 
 const PERMISSOES_DONO: Permissoes = {
@@ -62,6 +63,7 @@ const PERMISSOES_DONO: Permissoes = {
     ver_todas_os: true,
     ver_contas_pagar_receber: true,
     ver_analise_lucros: true,
+    tecnico_obrigatorio_os: false,
   },
   dados: {
     produtos_pecas: true,
@@ -234,5 +236,7 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
     podeVerContasPagarReceber: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_contas_pagar_receber ?? false),
     podeVerAnaliseLucros: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_analise_lucros ?? false),
     podeVerTotalVendas: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_total_vendas ?? false),
+    // Proprietário controla via permissões — não é automático para ele mesmo
+    tecnicoObrigatorioOS: data?.permissoes?.recursos?.tecnico_obrigatorio_os ?? false,
   };
 }
