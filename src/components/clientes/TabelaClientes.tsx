@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -21,11 +21,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, Eye, X } from "lucide-react";
+import { Pencil, Trash2, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Cliente } from "@/types/cliente";
 import { formatCPF, formatPhone } from "@/lib/formatters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isAniversarioHoje, isAniversarioEsteMes, formatarDiaAniversario } from "@/hooks/useAniversariantes";
+
+const POR_PAGINA = 50;
 
 interface TabelaClientesProps {
   clientes: Cliente[];
@@ -45,6 +47,27 @@ export function TabelaClientes({
   const isMobile = useIsMobile();
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [confirmandoMassa, setConfirmandoMassa] = useState(false);
+  const [pagina, setPagina] = useState(1);
+
+  // Volta para página 1 quando a lista de clientes muda (busca ou filtro)
+  useEffect(() => { setPagina(1); }, [clientes]);
+
+  const totalPaginas = Math.max(1, Math.ceil(clientes.length / POR_PAGINA));
+  const clientesPagina = clientes.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+
+  const Paginacao = () => (
+    <div className="flex items-center justify-between px-1 py-2 text-sm text-muted-foreground">
+      <span>{clientes.length} cliente{clientes.length !== 1 ? "s" : ""} · página {pagina} de {totalPaginas}</span>
+      <div className="flex items-center gap-1">
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 
   const toggleSelecionado = (id: string) => {
     setSelecionados(prev => {
@@ -56,11 +79,17 @@ export function TabelaClientes({
   };
 
   const toggleTodos = () => {
-    if (selecionados.size === clientes.length) {
-      setSelecionados(new Set());
-    } else {
-      setSelecionados(new Set(clientes.map(c => c.id)));
-    }
+    const idsPagina = clientesPagina.map(c => c.id);
+    const todosDaPaginaSelecionados = idsPagina.every(id => selecionados.has(id));
+    setSelecionados(prev => {
+      const next = new Set(prev);
+      if (todosDaPaginaSelecionados) {
+        idsPagina.forEach(id => next.delete(id));
+      } else {
+        idsPagina.forEach(id => next.add(id));
+      }
+      return next;
+    });
   };
 
   const limparSelecao = () => setSelecionados(new Set());
@@ -73,8 +102,9 @@ export function TabelaClientes({
     setConfirmandoMassa(false);
   };
 
-  const todosSelecionados = clientes.length > 0 && selecionados.size === clientes.length;
-  const algunsSelecionados = selecionados.size > 0 && selecionados.size < clientes.length;
+  const idsPagina = clientesPagina.map(c => c.id);
+  const todosSelecionados = idsPagina.length > 0 && idsPagina.every(id => selecionados.has(id));
+  const algunsSelecionados = idsPagina.some(id => selecionados.has(id)) && !todosSelecionados;
 
   if (clientes.length === 0) {
     return (
@@ -140,7 +170,8 @@ export function TabelaClientes({
     return (
       <div className="space-y-3">
         <BarraSelecao />
-        {clientes.map((cliente) => (
+        <Paginacao />
+        {clientesPagina.map((cliente) => (
           <Card key={cliente.id} className={`p-4 transition-colors ${selecionados.has(cliente.id) ? "border-primary bg-primary/5" : ""}`}>
             <div className="flex items-start gap-3 mb-2">
               <Checkbox
@@ -218,6 +249,7 @@ export function TabelaClientes({
             </div>
           </Card>
         ))}
+        <Paginacao />
       </div>
     );
   }
@@ -245,7 +277,7 @@ export function TabelaClientes({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clientes.map((cliente) => (
+            {clientesPagina.map((cliente) => (
               <TableRow
                 key={cliente.id}
                 className={selecionados.has(cliente.id) ? "bg-primary/5" : ""}
@@ -328,6 +360,7 @@ export function TabelaClientes({
           </TableBody>
         </Table>
       </div>
+      <Paginacao />
     </div>
   );
 }
