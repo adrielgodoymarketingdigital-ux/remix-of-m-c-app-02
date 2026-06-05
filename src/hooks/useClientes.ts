@@ -39,20 +39,29 @@ export function useClientes(options: UseClientesOptions = {}) {
         ?? ((isFuncionario && podeSincronizarClientes && lojaUserId) ? lojaUserId : user.id);
 
       const data = await withRetry(async () => {
-        let query = supabase
-          .from("clientes")
-          .select("*")
-          .eq("user_id", targetUserId)
-          .is("deleted_at", null)
-          .order("nome");
-        // Filial selecionada: só clientes dessa filial
-        // Matriz / sem empresa: todos os clientes do proprietário
-        if (isFilial && empresaAtiva) {
-          query = query.eq("empresa_id", empresaAtiva);
+        const PAGE_SIZE = 1000;
+        let todos: any[] = [];
+        let from = 0;
+
+        while (true) {
+          let query = supabase
+            .from("clientes")
+            .select("*")
+            .eq("user_id", targetUserId)
+            .is("deleted_at", null)
+            .order("nome")
+            .range(from, from + PAGE_SIZE - 1);
+          if (isFilial && empresaAtiva) {
+            query = query.eq("empresa_id", empresaAtiva);
+          }
+          const { data: pagina, error } = await query;
+          if (error) throw error;
+          todos = todos.concat(pagina || []);
+          if (!pagina || pagina.length < PAGE_SIZE) break;
+          from += PAGE_SIZE;
         }
-        const { data, error } = await query;
-        if (error) throw error;
-        return data;
+
+        return todos;
       }, 'useClientes.carregarClientes');
 
       setClientes((data || []) as Cliente[]);
