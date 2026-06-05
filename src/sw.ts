@@ -13,19 +13,23 @@ declare const self: ServiceWorkerGlobalScope & {
   }>;
 };
 
-// Aguarda não haver abas abertas antes de ativar a nova versão.
-// skipWaiting() automático causa reload forçado enquanto o usuário está preenchendo
-// formulários (OS, clientes, etc), perdendo dados em andamento.
-// O banner PWAUpdateBanner.tsx permite ao usuário escolher quando atualizar.
+// O SW responde a skipWaiting() enviado pelo cliente (main.tsx via updateSW(true)).
+// Isso só é chamado quando o app está em background (visibilityState === 'hidden'),
+// nunca enquanto o usuário está preenchendo formulários.
 self.addEventListener('install', (event) => {
-  console.log('[SW] Nova versão instalada - aguardando sem abas abertas para ativar');
-  // NÃO chamamos skipWaiting() aqui — o update é controlado pelo usuário via banner
+  console.log('[SW] Nova versão instalada - aguardando sinal do cliente para ativar');
+  // Não chama skipWaiting() automaticamente — espera o cliente decidir o momento certo
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    console.log('[SW] Recebido SKIP_WAITING - ativando nova versão');
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
   console.log('[SW] Service Worker ativado');
-  // cleanupOutdatedCaches() abaixo já remove caches de versões antigas de forma segura.
-  // Não deletamos caches manualmente para não interromper o app em uso.
   event.waitUntil(self.clients.claim());
 });
 

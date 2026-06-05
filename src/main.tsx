@@ -22,25 +22,38 @@ import { registerNotificationSoundListener } from "./lib/notification-sounds";
 
 console.log(`[Méc] Build ID: ${APP_BUILD_ID}`);
 
-// Registra SW — ao detectar nova versão notifica o usuário (NÃO recarrega automaticamente)
+// Registra SW — atualiza automaticamente só quando o usuário não está usando o app:
+// ao retornar ao app (volta de outra aba/app) ou na próxima abertura do browser/PWA.
+let pendingUpdate = false;
+
 const updateSW = registerSW({
   onRegisteredSW(_swUrl, registration) {
+    // Verificar update quando o usuário voltar ao app (de outra aba ou do celular)
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         registration?.update();
       }
+      // Se saiu do app com update pendente, o próximo acesso já terá o SW novo instalado
+      // (sem abas abertas o SW ativa sozinho)
     });
   },
   onNeedRefresh() {
-    console.log("[PWA] Nova versão disponível - aguardando confirmação do usuário");
-    // Expõe função de atualização globalmente para o banner React chamar
-    (window as any).__pwaNeedRefresh = true;
-    (window as any).__pwaDoUpdate = () => {
-      caches.keys()
-        .then(names => Promise.all(names.map(n => caches.delete(n))))
-        .then(() => updateSW(true));
+    console.log("[PWA] Nova versão disponível - será aplicada na próxima reabertura do app");
+    pendingUpdate = true;
+    // Aplicar imediatamente SE o usuário não está com o app visível (ex: aba em background)
+    if (document.visibilityState === "hidden") {
+      updateSW(true);
+      return;
+    }
+    // Com o app visível: aguardar o usuário sair e voltar para aplicar sem interromper
+    const applyOnReturn = () => {
+      if (document.visibilityState === "hidden" && pendingUpdate) {
+        pendingUpdate = false;
+        updateSW(true);
+        document.removeEventListener("visibilitychange", applyOnReturn);
+      }
     };
-    window.dispatchEvent(new CustomEvent("pwa-update-available"));
+    document.addEventListener("visibilitychange", applyOnReturn);
   },
   onOfflineReady() {
     console.log("[PWA] Offline pronto");
