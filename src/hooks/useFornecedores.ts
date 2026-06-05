@@ -3,13 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Fornecedor, FormularioFornecedor } from "@/types/fornecedor";
 import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
-import { useEmpresaFiltro } from "./useResolvedUserId";
+import { useIdentidade } from "./useResolvedUserId";
 
 export function useFornecedores() {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const empresaFiltro = useEmpresaFiltro();
+  const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
 
   const carregarFornecedores = useCallback(async () => {
     try {
@@ -20,15 +20,17 @@ export function useFornecedores() {
         return;
       }
 
+      const userId = resolvedUserId ?? user.id;
       const ef = empresaFiltro;
+
       const data = await withRetry(async () => {
         let query = supabase
           .from("fornecedores")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .is("deleted_at", null)
           .order("nome");
-        if (ef) query = query.eq("empresa_id", ef);
+        if (ef) query = query.or(`empresa_id.eq.${ef},empresa_id.is.null`);
         const { data, error } = await query;
         if (error) throw error;
         return data;
@@ -47,7 +49,7 @@ export function useFornecedores() {
     } finally {
       setLoading(false);
     }
-  }, [toast, empresaFiltro]);
+  }, [toast, resolvedUserId, empresaFiltro]);
 
   const criarFornecedor = async (dados: FormularioFornecedor) => {
     try {
@@ -72,8 +74,8 @@ export function useFornecedores() {
         });
         return false;
       }
-      
-      const user = session.user;
+
+      const userId = resolvedUserId ?? session.user.id;
 
       // Converter strings vazias para null para evitar conflitos de unicidade
       const dadosLimpos = {
@@ -93,7 +95,8 @@ export function useFornecedores() {
 
       const { error } = await supabase.from("fornecedores").insert({
         ...dadosLimpos,
-        user_id: user.id,
+        user_id: userId,
+        empresa_id: empresaFiltro ?? null,
       });
 
       if (error) throw error;
