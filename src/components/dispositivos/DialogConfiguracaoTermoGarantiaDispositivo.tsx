@@ -9,20 +9,38 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, RotateCcw, ChevronDown, ChevronUp, Eye, Pencil } from "lucide-react";
+import { Loader2, RotateCcw, ChevronDown, ChevronUp, Eye, Pencil, Plus, Trash2, BookOpen, Check } from "lucide-react";
 
 export interface SecaoTermo {
   id: string;
   titulo: string;
   conteudo: string;
   visivel: boolean;
+}
+
+export interface ModeloGarantia {
+  id: string;
+  nome: string;
+  secoes_com_garantia: SecaoTermo[];
+  secoes_sem_garantia: SecaoTermo[];
 }
 
 export interface TermoGarantiaDispositivoConfig {
@@ -33,6 +51,8 @@ export interface TermoGarantiaDispositivoConfig {
   modo?: "livre" | "secoes";
   secoes_com_garantia?: SecaoTermo[];
   secoes_sem_garantia?: SecaoTermo[];
+  // Modelos de garantia salvos
+  modelos?: ModeloGarantia[];
 }
 
 const VARIAVEIS_DISPONIVEIS = [
@@ -230,6 +250,61 @@ A garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme a l
 O cliente declara estar ciente das condições do equipamento.`,
 };
 
+const MODELOS_PADRAO: ModeloGarantia[] = [
+  {
+    id: "padrao_90dias",
+    nome: "Garantia 90 dias",
+    secoes_com_garantia: SECOES_PADRAO_COM_GARANTIA.map((s) =>
+      s.id === "garantia_contratual"
+        ? {
+            ...s,
+            conteudo: `2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
+   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
+   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.`,
+          }
+        : s
+    ),
+    secoes_sem_garantia: SECOES_PADRAO_SEM_GARANTIA,
+  },
+  {
+    id: "padrao_6meses",
+    nome: "Garantia 6 meses",
+    secoes_com_garantia: SECOES_PADRAO_COM_GARANTIA.map((s) =>
+      s.id === "garantia_contratual"
+        ? {
+            ...s,
+            conteudo: `2. GARANTIA CONTRATUAL (6 meses)
+   • Garantia adicional de 6 (seis) meses a partir da data desta venda.
+   • Complementar à garantia legal de 90 dias (CDC Art. 26, II).
+   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.`,
+          }
+        : s
+    ),
+    secoes_sem_garantia: SECOES_PADRAO_SEM_GARANTIA,
+  },
+  {
+    id: "padrao_1ano",
+    nome: "Garantia 1 ano",
+    secoes_com_garantia: SECOES_PADRAO_COM_GARANTIA.map((s) =>
+      s.id === "garantia_contratual"
+        ? {
+            ...s,
+            conteudo: `2. GARANTIA CONTRATUAL (12 meses)
+   • Garantia adicional de 12 (doze) meses a partir da data desta venda.
+   • Complementar à garantia legal de 90 dias (CDC Art. 26, II).
+   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.`,
+          }
+        : s
+    ),
+    secoes_sem_garantia: SECOES_PADRAO_SEM_GARANTIA,
+  },
+];
+
+function gerarIdModelo(): string {
+  return `modelo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
 function secoesParaTexto(secoes: SecaoTermo[]): string {
   return secoes
     .filter((s) => s.visivel)
@@ -250,6 +325,9 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
   const [textoLivreSemGarantia, setTextoLivreSemGarantia] = useState(TEXTO_LIVRE_PADRAO.termo_sem_garantia);
   const [secoesComGarantia, setSecoesComGarantia] = useState<SecaoTermo[]>(SECOES_PADRAO_COM_GARANTIA);
   const [secoesSemGarantia, setSecoesSemGarantia] = useState<SecaoTermo[]>(SECOES_PADRAO_SEM_GARANTIA);
+  const [modelos, setModelos] = useState<ModeloGarantia[]>(MODELOS_PADRAO);
+  const [novoModeloNome, setNovoModeloNome] = useState("");
+  const [modeloParaExcluir, setModeloParaExcluir] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [mostrarVariaveis, setMostrarVariaveis] = useState(false);
   const [secaoEditando, setSecaoEditando] = useState<string | null>(null);
@@ -272,7 +350,9 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
       setSecoesComGarantia(SECOES_PADRAO_COM_GARANTIA);
       setSecoesSemGarantia(SECOES_PADRAO_SEM_GARANTIA);
     }
+    setModelos(termoConfig?.modelos?.length ? termoConfig.modelos : MODELOS_PADRAO);
     setSecaoEditando(null);
+    setNovoModeloNome("");
   }, [config, open]);
 
   const handleSalvar = async () => {
@@ -281,7 +361,7 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const payload: TermoGarantiaDispositivoConfig = { modo };
+      const payload: TermoGarantiaDispositivoConfig = { modo, modelos };
 
       if (modo === "secoes") {
         payload.secoes_com_garantia = secoesComGarantia;
@@ -321,6 +401,32 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
       setTextoLivreSemGarantia(TEXTO_LIVRE_PADRAO.termo_sem_garantia);
     }
     setSecaoEditando(null);
+  };
+
+  const aplicarModelo = (modelo: ModeloGarantia) => {
+    setSecoesComGarantia(modelo.secoes_com_garantia);
+    setSecoesSemGarantia(modelo.secoes_sem_garantia);
+    setSecaoEditando(null);
+    toast({ title: `Modelo "${modelo.nome}" aplicado`, description: "Revise e salve para confirmar." });
+  };
+
+  const salvarComoModelo = () => {
+    const nome = novoModeloNome.trim();
+    if (!nome) return;
+    const novoModelo: ModeloGarantia = {
+      id: gerarIdModelo(),
+      nome,
+      secoes_com_garantia: secoesComGarantia,
+      secoes_sem_garantia: secoesSemGarantia,
+    };
+    setModelos((prev) => [...prev, novoModelo]);
+    setNovoModeloNome("");
+    toast({ title: "Modelo salvo", description: `"${nome}" adicionado à lista de modelos.` });
+  };
+
+  const excluirModelo = (id: string) => {
+    setModelos((prev) => prev.filter((m) => m.id !== id));
+    setModeloParaExcluir(null);
   };
 
   const toggleSecao = (lista: SecaoTermo[], setLista: (v: SecaoTermo[]) => void, id: string) => {
@@ -478,10 +584,14 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
           <Tabs defaultValue="com_garantia">
             <TabsList className="w-full">
               <TabsTrigger value="com_garantia" className="flex-1">
-                Com Garantia Contratual
+                Com Garantia
               </TabsTrigger>
               <TabsTrigger value="sem_garantia" className="flex-1">
-                Sem Garantia Contratual
+                Sem Garantia
+              </TabsTrigger>
+              <TabsTrigger value="modelos" className="flex-1 gap-1.5">
+                <BookOpen className="h-3.5 w-3.5" />
+                Modelos
               </TabsTrigger>
             </TabsList>
 
@@ -536,8 +646,111 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
                 </div>
               )}
             </TabsContent>
+
+            {/* ABA MODELOS */}
+            <TabsContent value="modelos" className="space-y-4 mt-4">
+              <p className="text-xs text-muted-foreground">
+                Modelos salvam as seções de Com Garantia e Sem Garantia atuais. Ao aplicar um modelo, as seções ativas serão substituídas pelo modelo escolhido.
+              </p>
+
+              {/* Salvar seções atuais como modelo */}
+              <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
+                <p className="text-sm font-medium">Salvar configuração atual como modelo</p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nome do modelo (ex: Garantia 6 meses)"
+                    value={novoModeloNome}
+                    onChange={(e) => setNovoModeloNome(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && salvarComoModelo()}
+                    className="text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={salvarComoModelo}
+                    disabled={!novoModeloNome.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Salvar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  As seções editadas nas abas "Com Garantia" e "Sem Garantia" serão salvas neste modelo.
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Lista de modelos */}
+              <div className="space-y-2">
+                {modelos.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhum modelo salvo. Crie o primeiro modelo acima.
+                  </p>
+                )}
+                {modelos.map((modelo) => (
+                  <div
+                    key={modelo.id}
+                    className="border rounded-lg flex items-center justify-between px-4 py-3 gap-3"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{modelo.nome}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {modelo.secoes_com_garantia.filter((s) => s.visivel).length} seções c/ garantia
+                        {" · "}
+                        {modelo.secoes_sem_garantia.filter((s) => s.visivel).length} seções s/ garantia
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 h-8"
+                        onClick={() => aplicarModelo(modelo)}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Aplicar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setModeloParaExcluir(modelo.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
+
+        {/* Confirmação exclusão de modelo */}
+        <AlertDialog open={!!modeloParaExcluir} onOpenChange={(open) => !open && setModeloParaExcluir(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir modelo?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O modelo "{modelos.find((m) => m.id === modeloParaExcluir)?.nome}" será removido permanentemente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => modeloParaExcluir && excluirModelo(modeloParaExcluir)}
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button type="button" variant="ghost" onClick={restaurarPadrao} className="gap-2">
