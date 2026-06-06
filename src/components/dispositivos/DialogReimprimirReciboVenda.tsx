@@ -299,9 +299,14 @@ export function DialogReimprimirReciboVenda({
                 font-size: ${is80mm ? '8pt' : '11px'};
                 color: #555;
               }
+              .assinaturas-container {
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
               @media print {
                 body { margin: 0; }
-                .recibo-checklist { page-break-inside: avoid; }
+                .recibo-checklist { page-break-inside: avoid; break-inside: avoid; }
+                .assinaturas-container { page-break-inside: avoid; break-inside: avoid; }
               }
               ${estilos80mm}
             </style>
@@ -469,7 +474,7 @@ export function DialogReimprimirReciboVenda({
           )}
 
           {showAssinaturas && (
-            <>
+            <div className="assinaturas-container">
               <div className="assinatura-bloco">
                 <div className="assinatura-linha" />
                 <p className="assinatura-label">Assinatura do Vendedor</p>
@@ -478,7 +483,7 @@ export function DialogReimprimirReciboVenda({
                 <div className="assinatura-linha" />
                 <p className="assinatura-label">Assinatura do Comprador</p>
               </div>
-            </>
+            </div>
           )}
 
           <div className="recibo-reimpressao">
@@ -510,13 +515,15 @@ export function DialogReimprimirReciboVenda({
             <div className="termos-garantia">{textoTermo}</div>
           </div>
 
-          <div className="assinatura-bloco">
-            <div className="assinatura-linha" />
-            <p className="assinatura-label">Assinatura do Vendedor</p>
-          </div>
-          <div className="assinatura-bloco">
-            <div className="assinatura-linha" />
-            <p className="assinatura-label">Assinatura do Comprador — {venda.cliente_nome || ''}</p>
+          <div className="assinaturas-container">
+            <div className="assinatura-bloco">
+              <div className="assinatura-linha" />
+              <p className="assinatura-label">Assinatura do Vendedor</p>
+            </div>
+            <div className="assinatura-bloco">
+              <div className="assinatura-linha" />
+              <p className="assinatura-label">Assinatura do Comprador — {venda.cliente_nome || ''}</p>
+            </div>
           </div>
         </div>
 

@@ -408,11 +408,14 @@ export function DialogReciboVenda({
               .recibo-checklist-label {
                 color: #333;
               }
+              .assinaturas-container {
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
               @media print {
                 body { margin: 0; }
-                .recibo-checklist {
-                  page-break-inside: avoid;
-                }
+                .recibo-checklist { page-break-inside: avoid; break-inside: avoid; }
+                .assinaturas-container { page-break-inside: avoid; break-inside: avoid; }
               }
               ${estilos80mm}
             </style>
@@ -706,7 +709,7 @@ export function DialogReciboVenda({
               )}
 
               {showAssinaturas && (
-                <>
+                <div className="assinaturas-container">
                   <div style={{ marginTop: "40px", textAlign: "center" }}>
                     <p>_________________________________________</p>
                     <p>Assinatura do Vendedor</p>
@@ -715,7 +718,7 @@ export function DialogReciboVenda({
                     <p>_________________________________________</p>
                     <p>Assinatura do Comprador</p>
                   </div>
-                </>
+                </div>
               )}
             </div>
 
