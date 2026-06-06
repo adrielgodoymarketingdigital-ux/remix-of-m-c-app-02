@@ -110,17 +110,33 @@ export function useConfiguracaoLoja() {
         return false;
       }
 
-      // Buscar configuração atual
+      // Resolver o user_id correto: funcionário → dono da loja, dono → próprio id
+      let targetUserId = user.id;
+      const { data: funcData } = await supabase
+        .from("loja_funcionarios")
+        .select("loja_user_id")
+        .eq("funcionario_user_id", user.id)
+        .eq("ativo", true)
+        .maybeSingle();
+      if (funcData?.loja_user_id) {
+        targetUserId = funcData.loja_user_id;
+      }
+
+      // Buscar configuração atual do proprietário correto
       const { data: configAtual, error: errorBusca } = await supabase
         .from("configuracoes_loja")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", targetUserId)
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
 
-      // Se não existe, criar primeiro
+      // Se não existe, criar primeiro (apenas para o próprio usuário)
       if (errorBusca || !configAtual) {
+        if (targetUserId !== user.id) {
+          console.error("Configuração do proprietário não encontrada");
+          return false;
+        }
         console.log("Configuração não encontrada, criando...");
         const criado = await criarConfiguracaoPadrao(user.id, user.email || "");
         if (!criado) {
@@ -135,13 +151,12 @@ export function useConfiguracaoLoja() {
           .order("created_at", { ascending: false })
           .limit(1)
           .single();
-        
+
         if (errorNova || !novaConfig) {
           console.error("Erro ao buscar configuração recém-criada:", errorNova);
           return false;
         }
 
-        // Atualizar com os dados fornecidos
         const { error: errorUpdate } = await supabase
           .from("configuracoes_loja")
           .update(dados as Record<string, unknown>)

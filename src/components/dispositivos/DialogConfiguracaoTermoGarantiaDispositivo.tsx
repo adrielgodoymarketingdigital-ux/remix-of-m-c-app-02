@@ -25,7 +25,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, RotateCcw, ChevronDown, ChevronUp, Eye, Pencil, Plus, Trash2, BookOpen, Check, X } from "lucide-react";
 
@@ -319,7 +318,7 @@ interface Props {
 }
 
 export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange, onSave }: Props) {
-  const { config } = useConfiguracaoLoja();
+  const { config, atualizarConfiguracao } = useConfiguracaoLoja();
   const [modo, setModo] = useState<"livre" | "secoes">("secoes");
   const [textoLivreComGarantia, setTextoLivreComGarantia] = useState(TEXTO_LIVRE_PADRAO.termo_com_garantia);
   const [textoLivreSemGarantia, setTextoLivreSemGarantia] = useState(TEXTO_LIVRE_PADRAO.termo_sem_garantia);
@@ -363,8 +362,6 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
   const handleSalvar = async () => {
     try {
       setSalvando(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
       const payload: TermoGarantiaDispositivoConfig = { modo, modelos };
 
@@ -379,12 +376,8 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
         payload.termo_sem_garantia = textoLivreSemGarantia;
       }
 
-      const { error } = await supabase
-        .from("configuracoes_loja")
-        .update({ termo_garantia_dispositivo_config: payload as any })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
+      const sucesso = await atualizarConfiguracao({ termo_garantia_dispositivo_config: payload as any });
+      if (!sucesso) throw new Error("Falha ao salvar");
 
       toast({ title: "Termos salvos", description: "Termos de garantia do dispositivo atualizados." });
       onSave?.();

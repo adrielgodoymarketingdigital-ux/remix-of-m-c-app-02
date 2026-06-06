@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -57,7 +56,7 @@ interface Props {
 }
 
 export function DialogConfiguracaoLayoutDispositivos({ open, onOpenChange, onSave }: Props) {
-  const { config } = useConfiguracaoLoja();
+  const { config, atualizarConfiguracao } = useConfiguracaoLoja();
   const [layout, setLayout] = useState<LayoutDispositivosConfig>(LAYOUT_PADRAO);
   const [salvando, setSalvando] = useState(false);
 
@@ -72,16 +71,8 @@ export function DialogConfiguracaoLayoutDispositivos({ open, onOpenChange, onSav
   const handleSalvar = async () => {
     try {
       setSalvando(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("configuracoes_loja")
-        .update({ layout_dispositivos_config: layout as any })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
+      const sucesso = await atualizarConfiguracao({ layout_dispositivos_config: layout as any });
+      if (!sucesso) throw new Error("Falha ao salvar");
       toast({ title: "Layout salvo", description: "Configurações de layout do recibo atualizadas." });
       onSave?.();
       onOpenChange(false);
