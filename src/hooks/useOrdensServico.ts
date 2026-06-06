@@ -66,7 +66,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
   });
   const [lucroOrdensEntregues, setLucroOrdensEntregues] = useState<number | null>(null);
   const { toast } = useToast();
-  const { lojaUserId, isFuncionario, funcionarioId, permissoes } = useFuncionarioPermissoes();
+  const { lojaUserId, isFuncionario, funcionarioId, permissoes, carregando: funcionarioCarregando } = useFuncionarioPermissoes();
   const { dispatchEvent } = useEventDispatcher();
   const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
   const resolvedUserIdRef = useRef<string | null>(null);
@@ -190,8 +190,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
 
   const carregarOrdens = useCallback(async () => {
     try {
-      // Aguardar identidade resolver antes de carregar (evita busca sem empresa_id para gerente de filial)
-      if (identidadeCarregando) return;
+      // Aguardar identidade e permissões de funcionário resolverem antes de carregar
+      if (identidadeCarregando || funcionarioCarregando) return;
 
       setLoading(true);
 
@@ -291,7 +291,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
     } finally {
       setLoading(false);
     }
-  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, isFilial, mostrarOsFiliais]);
+  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, funcionarioCarregando, isFilial, mostrarOsFiliais]);
 
   const buscarOrdemCompleta = useCallback(async (id: string): Promise<OrdemServico | null> => {
     if (detalhesCacheRef.current[id]) {
