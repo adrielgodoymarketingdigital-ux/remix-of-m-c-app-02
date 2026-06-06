@@ -238,15 +238,14 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           } else {
             query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
           }
-        } else if (!isFilial && !isFuncionario) {
+        } else if (!isFilial) {
           if (mostrarOsFiliais) {
             // Mostrar todas as OS (matriz + filiais) — não aplica filtro por empresa_id
           } else {
-            // Padrão para proprietário sem empresa selecionada: excluir OS de filiais
+            // Padrão: excluir OS de filiais (empresa_id não nulo)
             query = query.is("empresa_id", null);
           }
         }
-        // Funcionário sem empresa_id definido: vê todas as OS da loja (sem filtro por empresa_id)
 
         // Se é funcionário e NÃO tem permissão de ver todas as OS, filtrar apenas as dele
         if (isFuncionario && !permissoes?.recursos?.ver_todas_os && funcionarioId) {

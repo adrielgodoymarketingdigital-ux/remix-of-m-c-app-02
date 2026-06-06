@@ -168,7 +168,7 @@ export function useEmpresaInfo(): { empresaId: string | null; isFilial: boolean 
  */
 export function useIdentidade(): { userId: string | null; empresaId: string | null; carregando: boolean; isFilial: boolean } {
   const { isProprietario, empresaAtiva, matrizId } = useEmpresa();
-  const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
+  const { lojaUserId, isFuncionario, funcionarioEmpresaId } = useFuncionarioPermissoes();
   const gerenteData = useGerenteFilialData();
   const [selfId, setSelfId] = useState<string | null>(null);
 
@@ -196,6 +196,10 @@ export function useIdentidade(): { userId: string | null; empresaId: string | nu
     isFilial = true;
   } else if (isFuncionario && lojaUserId) {
     userId = lojaUserId;
+    // Funcionário vinculado a uma empresa específica → filtrar por ela
+    if (funcionarioEmpresaId) {
+      empresaId = funcionarioEmpresaId;
+    }
   } else if (isProprietario) {
     // Sempre aplica filtro de empresa quando há matrizId — garante que vendas
     // de filiais (empresa_id = filial_id) não apareçam na visão da matriz

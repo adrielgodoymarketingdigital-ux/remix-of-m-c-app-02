@@ -9,6 +9,7 @@ interface FuncionarioPermissoesResult {
   permissoes: Permissoes | null;
   lojaUserId: string | null;
   funcionarioId: string | null;
+  funcionarioEmpresaId: string | null;
   carregando: boolean;
   temAcessoModulo: (modulo: keyof PermissoesModulos) => boolean;
   temAcessoRota: (rota: string) => boolean;
@@ -156,6 +157,7 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
           isDonoLoja: false,
           lojaUserId: funcionarioData.loja_user_id,
           funcionarioId: funcionarioData.id,
+          funcionarioEmpresaId: funcionarioData.empresa_id ?? null,
           permissoes: permissoes as Permissoes,
         };
       }
@@ -166,6 +168,7 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
         isDonoLoja: true,
         lojaUserId: user.id,
         funcionarioId: null,
+        funcionarioEmpresaId: null,
         permissoes: PERMISSOES_DONO,
       };
     },
@@ -221,6 +224,7 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
     permissoes: data?.permissoes ?? null,
     lojaUserId: data?.lojaUserId ?? null,
     funcionarioId: data?.funcionarioId ?? null,
+    funcionarioEmpresaId: data?.funcionarioEmpresaId ?? null,
     carregando: isLoading,
     temAcessoModulo,
     temAcessoRota,
