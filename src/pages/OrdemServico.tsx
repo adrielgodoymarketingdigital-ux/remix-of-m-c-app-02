@@ -43,6 +43,7 @@ import { useOSTracking } from "@/hooks/useOSTracking";
 import { BuscaOrdemServico } from "@/components/ordens/BuscaOrdemServico";
 import { TabelaOrdensServico } from "@/components/ordens/TabelaOrdensServico";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { DashboardOrdensServico } from "@/components/ordens/DashboardOrdensServico";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TermoResponsabilidadeConfig } from "@/types/configuracao-loja";
@@ -183,6 +184,8 @@ export default function OrdemServicoPage() {
   const [linkCompartilhamento, setLinkCompartilhamento] = useState('');
   const [ordemCompartilhar, setOrdemCompartilhar] = useState<OrdemServico | null>(null);
   const { config: configuracaoLoja, refetch: refetchConfig } = useConfiguracaoLoja();
+  const { empresas: empresasFiliais, nomeMatriz } = useEmpresa();
+  const [lojaFiltro, setLojaFiltro] = useState("todos");
   const { obterContagemOSMes, abrirPaginaPagamento, limites, carregando: assinaturaCarregando } = useAssinatura();
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
@@ -229,8 +232,10 @@ export default function OrdemServicoPage() {
     buscarUso();
   }, []);
 
+  const mostrarOsFiliais = !!(configuracaoLoja?.permissoes_multiempresa?.mostrar_os_filiais_na_matriz);
+
   const {
-    ordens,
+    ordens: ordensRaw,
     loading,
     busca,
     setBusca,
@@ -253,7 +258,19 @@ export default function OrdemServicoPage() {
     lucroOrdensEntregues,
     carregarLucroOrdensEntregues,
     importarOSEmLote,
-  } = useOrdensServico();
+  } = useOrdensServico(mostrarOsFiliais);
+
+  const resolverNomeLoja = (empresaId: string | null | undefined): string => {
+    if (!empresaId) return nomeMatriz || "Matriz";
+    const filial = empresasFiliais.find(e => e.id === empresaId);
+    return filial?.nome ?? "Filial";
+  };
+
+  const ordens = useMemo(() => {
+    if (!mostrarOsFiliais || lojaFiltro === "todos") return ordensRaw;
+    if (lojaFiltro === "matriz") return ordensRaw.filter(o => !(o as any).empresa_id);
+    return ordensRaw.filter(o => (o as any).empresa_id === lojaFiltro);
+  }, [ordensRaw, mostrarOsFiliais, lojaFiltro]);
 
   // ── Dados gerenciais (instanciado após useOrdensServico para ter dataInicio/dataFim) ──
   const { data: gerencialData, diasUteis: gerencialDiasUteis, meta: gerencialMeta, carregando: gerencialCarregando, salvarMeta: gerencialSalvarMeta } =
@@ -932,6 +949,9 @@ export default function OrdemServicoPage() {
                     onDataFimChange={setDataFim}
                     mesFiltro={mesFiltro}
                     onMesFiltroChange={aplicarFiltroMes}
+                    lojaFiltro={mostrarOsFiliais ? lojaFiltro : undefined}
+                    onLojaFiltroChange={mostrarOsFiliais ? setLojaFiltro : undefined}
+                    empresasDisponiveis={mostrarOsFiliais ? empresasFiliais : undefined}
                   />
                   <TabelaOrdensServico
                     selecaoAtiva={selecaoAtiva}
@@ -987,6 +1007,8 @@ export default function OrdemServicoPage() {
                     onImprimirTermo={handleImprimirTermo}
                     onImprimirEtiqueta={handleImprimirEtiqueta}
                     termoAtivo={(configuracaoLoja?.termo_responsabilidade_config as TermoResponsabilidadeConfig)?.ativo}
+                    mostrarColunaLoja={mostrarOsFiliais}
+                    resolverNomeLoja={mostrarOsFiliais ? resolverNomeLoja : undefined}
                   />
                 </>
               )}

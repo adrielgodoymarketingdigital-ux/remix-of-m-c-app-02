@@ -15,7 +15,7 @@ import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
 import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { OrdemServico } from "@/hooks/useOrdensServico";
-import { Check, ClipboardList } from "lucide-react";
+import { Check, ClipboardList, Building2 } from "lucide-react";
 import { useState } from "react";
 import { useIsMobile, useIsMobileOrTablet } from "@/hooks/use-mobile";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
@@ -60,6 +60,8 @@ interface TabelaOrdensServicoProps {
   itensSelecionados?: Set<string>;
   onToggleSelecionado?: (id: string) => void;
   onToggleTodos?: (ids: string[]) => void;
+  mostrarColunaLoja?: boolean;
+  resolverNomeLoja?: (empresaId: string | null | undefined) => string;
 }
 
 export const TabelaOrdensServico = ({
@@ -79,6 +81,8 @@ export const TabelaOrdensServico = ({
   itensSelecionados = new Set(),
   onToggleSelecionado,
   onToggleTodos,
+  mostrarColunaLoja = false,
+  resolverNomeLoja,
 }: TabelaOrdensServicoProps) => {
   const [popoverAberto, setPopoverAberto] = useState<string | null>(null);
   const isMobileOrTablet = useIsMobileOrTablet();
@@ -211,6 +215,12 @@ export const TabelaOrdensServico = ({
                     <p className="text-[10px] font-mono text-muted-foreground">
                       {formatDate(ordem.created_at)} <span className="opacity-60">{formatTime(ordem.created_at)}</span>
                     </p>
+                    {mostrarColunaLoja && resolverNomeLoja && (
+                      <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
+                        <Building2 className="h-2.5 w-2.5" />
+                        {resolverNomeLoja((ordem as any).empresa_id)}
+                      </p>
+                    )}
                     <p className="text-sm font-bold font-mono">
                       <ValorMonetario valor={ordem.total} tipo="preco" />
                     </p>
@@ -253,6 +263,7 @@ export const TabelaOrdensServico = ({
     defeito: 18,
     status: 12,
     valor: 7,
+    loja: 10,
     acoes: 15,
   };
 
@@ -261,7 +272,8 @@ export const TabelaOrdensServico = ({
   const activeOptionalBaseWidth = optionalCols
     .filter(c => colunasAtivas.includes(c))
     .reduce((acc, c) => acc + baseWidths[c], 0);
-  const totalBaseWidth = fixedWidth + activeOptionalBaseWidth;
+  const lojaWidth = mostrarColunaLoja ? baseWidths.loja : 0;
+  const totalBaseWidth = fixedWidth + activeOptionalBaseWidth + lojaWidth;
   const scale = 100 / totalBaseWidth;
   const w = (col: string) => `${(baseWidths[col] * scale).toFixed(2)}%`;
 
@@ -313,6 +325,11 @@ export const TabelaOrdensServico = ({
             {colunasAtivas.includes("valor") && (
               <TableHead style={{ width: w("valor") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30 text-right">
                 Valor
+              </TableHead>
+            )}
+            {mostrarColunaLoja && (
+              <TableHead style={{ width: w("loja") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30">
+                Loja
               </TableHead>
             )}
             <TableHead style={{ width: w("acoes") }} className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 bg-muted/30 text-right">
@@ -460,6 +477,18 @@ export const TabelaOrdensServico = ({
                         <div className="font-mono text-[9px] text-green-500/80">+<ValorMonetario valor={entrada} tipo="preco" /></div>
                       ) : null;
                     })()}
+                  </TableCell>
+                )}
+
+                {/* Loja */}
+                {mostrarColunaLoja && (
+                  <TableCell className="px-3 py-2 overflow-hidden">
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Building2 className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {resolverNomeLoja ? resolverNomeLoja((ordem as any).empresa_id) : "—"}
+                      </span>
+                    </div>
                   </TableCell>
                 )}
 

@@ -1,4 +1,4 @@
-import { Search, CalendarIcon, X } from "lucide-react";
+import { Search, CalendarIcon, X, Building2 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,9 @@ interface BuscaOrdemServicoProps {
   onDataFimChange: (value: Date | undefined) => void;
   mesFiltro: string;
   onMesFiltroChange: (value: string) => void;
+  lojaFiltro?: string;
+  onLojaFiltroChange?: (value: string) => void;
+  empresasDisponiveis?: { id: string; nome: string }[];
 }
 
 const gerarOpcoesMeses = () => {
@@ -83,7 +86,10 @@ export const BuscaOrdemServico = ({
   dataFim,
   onDataFimChange,
   mesFiltro,
-  onMesFiltroChange
+  onMesFiltroChange,
+  lojaFiltro,
+  onLojaFiltroChange,
+  empresasDisponiveis,
 }: BuscaOrdemServicoProps) => {
   const opcoesMeses = gerarOpcoesMeses();
   const { statusList } = useOSStatusConfig();
@@ -94,9 +100,10 @@ export const BuscaOrdemServico = ({
     onMesFiltroChange("todos");
     onOrigemFiltroChange("todos");
     onMidiaFiltroChange("todos");
+    onLojaFiltroChange?.("todos");
   };
 
-  const temFiltro = dataInicio || dataFim || mesFiltro !== "todos" || origemFiltro !== "todos" || midiaFiltro !== "todos";
+  const temFiltro = dataInicio || dataFim || mesFiltro !== "todos" || origemFiltro !== "todos" || midiaFiltro !== "todos" || (lojaFiltro && lojaFiltro !== "todos");
 
   return (
     <div className="flex flex-col gap-4">
@@ -234,6 +241,27 @@ export const BuscaOrdemServico = ({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Filtro por Loja (apenas quando mostrarOsFiliais está ativo) */}
+        {onLojaFiltroChange && empresasDisponiveis && empresasDisponiveis.length > 0 && (
+          <div className="w-full sm:w-[180px]">
+            <Select value={lojaFiltro ?? "todos"} onValueChange={onLojaFiltroChange}>
+              <SelectTrigger>
+                <Building2 className="h-4 w-4 mr-1 shrink-0" />
+                <SelectValue placeholder="Filtrar por loja" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas as Lojas</SelectItem>
+                <SelectItem value="matriz">Matriz</SelectItem>
+                {empresasDisponiveis.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Botão Limpar Filtros */}
         {temFiltro && (

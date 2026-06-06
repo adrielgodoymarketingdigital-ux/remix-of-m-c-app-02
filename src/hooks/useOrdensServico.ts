@@ -30,6 +30,7 @@ export interface OrdemServico {
   tempo_garantia: number | null;
   localizacao_fisica?: string | null;
   is_teste?: boolean;
+  empresa_id?: string | null;
   cliente?: {
     id: string;
     nome: string;
@@ -47,7 +48,7 @@ export interface ContadorOSMes {
   ilimitado: boolean;
 }
 
-export const useOrdensServico = () => {
+export const useOrdensServico = (mostrarOsFiliais = false) => {
   const [ordensBase, setOrdensBase] = useState<OrdemServico[]>([]);
   const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState("");
@@ -224,6 +225,7 @@ export const useOrdensServico = () => {
             is_teste,
             origem_cliente,
             tipo_midia,
+            empresa_id,
             cliente:clientes!ordens_servico_cliente_fkey(id, nome, telefone, cpf)
           `)
           .eq("user_id", userId)
@@ -237,8 +239,12 @@ export const useOrdensServico = () => {
             query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
           }
         } else if (!isFilial) {
-          // Proprietário sem MultiEmpresas: excluir OS de filiais (empresa_id não nulo)
-          query = query.is("empresa_id", null);
+          if (mostrarOsFiliais) {
+            // Mostrar todas as OS (matriz + filiais) — não aplica filtro por empresa_id
+          } else {
+            // Padrão: excluir OS de filiais (empresa_id não nulo)
+            query = query.is("empresa_id", null);
+          }
         }
 
         // Se é funcionário e NÃO tem permissão de ver todas as OS, filtrar apenas as dele
@@ -285,7 +291,7 @@ export const useOrdensServico = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, isFilial]);
+  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, isFilial, mostrarOsFiliais]);
 
   const buscarOrdemCompleta = useCallback(async (id: string): Promise<OrdemServico | null> => {
     if (detalhesCacheRef.current[id]) {

@@ -7,6 +7,7 @@ import { SeletorTema } from "@/components/configuracoes/SeletorTema";
 import { PersonalizacaoCores } from "@/components/configuracoes/PersonalizacaoCores";
 import { NotificationSettings } from "@/components/pwa/NotificationSettings";
 import { ConfiguracaoNumeracaoOS } from "@/components/configuracoes/ConfiguracaoNumeracaoOS";
+import { ConfiguracaoPermissoes } from "@/components/configuracoes/ConfiguracaoPermissoes";
 
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useToast } from "@/hooks/use-toast";
@@ -98,7 +99,7 @@ export default function Configuracoes() {
           </Card>
 
           <Tabs defaultValue="perfil" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 h-auto">
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8 h-auto">
               <TabsTrigger value="perfil" className="text-xs sm:text-sm py-2 sm:py-1.5">
                 Perfil
               </TabsTrigger>
@@ -116,6 +117,9 @@ export default function Configuracoes() {
               </TabsTrigger>
               <TabsTrigger value="notificacoes" className="text-xs sm:text-sm py-2 sm:py-1.5">
                 Notificações
+              </TabsTrigger>
+              <TabsTrigger value="permissoes" className="text-xs sm:text-sm py-2 sm:py-1.5">
+                Permissões
               </TabsTrigger>
               <TabsTrigger value="preview" className="text-xs sm:text-sm py-2 sm:py-1.5">
                 Preview
@@ -150,6 +154,10 @@ export default function Configuracoes() {
 
             <TabsContent value="notificacoes" className="space-y-4 mt-4 sm:mt-6">
               <NotificationSettings />
+            </TabsContent>
+
+            <TabsContent value="permissoes" className="space-y-4 mt-4 sm:mt-6">
+              <ConfiguracaoPermissoes />
             </TabsContent>
 
             <TabsContent value="preview" className="space-y-4 mt-4 sm:mt-6">

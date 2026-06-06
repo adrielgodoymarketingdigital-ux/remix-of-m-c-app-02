@@ -207,6 +207,11 @@ export interface ConfiguracaoLoja {
   layout_dispositivos_config?: Record<string, any>;
   termo_garantia_dispositivo_config?: Record<string, any>;
   tracking_config?: TrackingPageConfig;
+  permissoes_multiempresa?: PermissoesMultiempresa;
   created_at: string;
   updated_at: string;
+}
+
+export interface PermissoesMultiempresa {
+  mostrar_os_filiais_na_matriz?: boolean;
 }
