@@ -722,7 +722,19 @@ export const useVendas = () => {
         description: "A forma de pagamento foi alterada com sucesso.",
       });
 
-      await carregarVendas();
+      // Atualiza localmente sem precisar recarregar (preserva filtro de data ativo)
+      setVendas(prev => prev.map(v =>
+        v.id === vendaId
+          ? {
+              ...v,
+              forma_pagamento: dados.forma_pagamento as Venda["forma_pagamento"],
+              data_prevista_recebimento: dados.data_prevista_recebimento ?? v.data_prevista_recebimento,
+              parcela_numero: dados.parcela_numero ?? v.parcela_numero,
+              total_parcelas: dados.total_parcelas ?? v.total_parcelas,
+              recebido: dados.forma_pagamento !== "a_receber" && dados.forma_pagamento !== "a_prazo" ? false : v.recebido,
+            }
+          : v
+      ));
       return true;
     } catch (error: any) {
       console.error("❌ Erro ao editar venda:", error);
