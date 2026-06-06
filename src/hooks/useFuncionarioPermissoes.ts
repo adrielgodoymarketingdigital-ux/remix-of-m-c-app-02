@@ -103,11 +103,13 @@ const ROTA_MODULO_MAP: Record<string, keyof PermissoesModulos> = {
 export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
   const queryClient = useQueryClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [usuarioResolvido, setUsuarioResolvido] = useState(false);
 
   // Busca o usuário atual ao montar (uma vez)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUserId(session?.user?.id ?? null);
+      setUsuarioResolvido(true);
     });
   }, []);
 
@@ -225,7 +227,7 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
     lojaUserId: data?.lojaUserId ?? null,
     funcionarioId: data?.funcionarioId ?? null,
     funcionarioEmpresaId: data?.funcionarioEmpresaId ?? null,
-    carregando: isLoading,
+    carregando: !usuarioResolvido || isLoading,
     temAcessoModulo,
     temAcessoRota,
     temAcessoDados,
