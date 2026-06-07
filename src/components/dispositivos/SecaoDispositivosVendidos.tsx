@@ -3,9 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Printer, Search, ImageIcon, Package, Calendar as CalendarIcon, X, ShieldCheck, Pencil } from "lucide-react";
+import { Printer, Search, ImageIcon, Package, Calendar as CalendarIcon, X, ShieldCheck, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency } from "@/lib/formatters";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useEmpresaFiltro } from "@/hooks/useResolvedUserId";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface VendaDispositivo {
   id: string;
@@ -68,6 +69,9 @@ export function SecaoDispositivosVendidos() {
   const [dataFim, setDataFim] = useState<Date | undefined>();
   const [vendaParaEditar, setVendaParaEditar] = useState<VendaDispositivoParaEditar | null>(null);
   const [dialogEdicaoAberto, setDialogEdicaoAberto] = useState(false);
+  const [vendaParaExcluir, setVendaParaExcluir] = useState<VendaDispositivo | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const { toast } = useToast();
 
   // Gerar lista dos últimos 12 meses
   const mesesDisponiveis = useMemo(() => {
@@ -291,6 +295,76 @@ export function SecaoDispositivosVendidos() {
     setDialogEdicaoAberto(true);
   };
 
+  const confirmarExclusao = async () => {
+    if (!vendaParaExcluir) return;
+    setExcluindo(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) throw new Error("Usuário não autenticado");
+
+      // Cancelar a venda e estornar o dispositivo para o estoque
+      const { error: cancelError } = await supabase
+        .from("vendas")
+        .update({
+          cancelada: true,
+          data_cancelamento: new Date().toISOString(),
+          motivo_cancelamento: "Excluído pelo usuário via dispositivos vendidos",
+          estorno_estoque: true,
+        })
+        .eq("id", vendaParaExcluir.id);
+
+      if (cancelError) throw cancelError;
+
+      // Cancelar registros secundários do mesmo grupo_venda (pagamento duplo)
+      if (vendaParaExcluir.grupo_venda) {
+        await supabase
+          .from("vendas")
+          .update({
+            cancelada: true,
+            data_cancelamento: new Date().toISOString(),
+          })
+          .eq("grupo_venda", vendaParaExcluir.grupo_venda)
+          .neq("id", vendaParaExcluir.id);
+      }
+
+      // Estornar o dispositivo para o estoque (marcar como não vendido)
+      await supabase
+        .from("dispositivos")
+        .update({ vendido: false, quantidade: 1 })
+        .eq("id", vendaParaExcluir.dispositivo_id);
+
+      // Soft delete da venda
+      const { error: deleteError } = await supabase
+        .from("vendas")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", vendaParaExcluir.id);
+
+      if (deleteError) throw deleteError;
+
+      // Soft delete dos registros secundários também
+      if (vendaParaExcluir.grupo_venda) {
+        await supabase
+          .from("vendas")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("grupo_venda", vendaParaExcluir.grupo_venda)
+          .neq("id", vendaParaExcluir.id);
+      }
+
+      toast({ title: "Venda excluída", description: "A venda foi removida e o estoque foi estornado." });
+      setVendaParaExcluir(null);
+      await carregarVendas();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir venda",
+        description: error.message || "Não foi possível excluir a venda.",
+        variant: "destructive",
+      });
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -468,7 +542,7 @@ export function SecaoDispositivosVendidos() {
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-1 justify-end">
+                  <div className="flex gap-1 justify-end flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => handleEditar(venda)} title="Editar venda">
                       <Pencil className="h-4 w-4 mr-1" />
                       Editar
@@ -480,6 +554,10 @@ export function SecaoDispositivosVendidos() {
                     <Button size="sm" onClick={() => handleImprimir(venda)}>
                       <Printer className="h-4 w-4 mr-1" />
                       Recibo
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => setVendaParaExcluir(venda)} title="Excluir venda">
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Excluir
                     </Button>
                   </div>
                 </div>
@@ -502,6 +580,35 @@ export function SecaoDispositivosVendidos() {
         venda={vendaParaEditar}
         onSalvo={carregarVendas}
       />
+
+      <AlertDialog open={!!vendaParaExcluir} onOpenChange={(open) => { if (!open) setVendaParaExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir venda</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a venda de{" "}
+              <strong>{vendaParaExcluir?.dispositivo_marca} {vendaParaExcluir?.dispositivo_modelo}</strong>?
+              <br /><br />
+              Esta ação irá:
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Remover a venda da lista de vendas</li>
+                <li>Estornar o lançamento no financeiro</li>
+                <li>Devolver o dispositivo ao estoque</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmarExclusao}
+              disabled={excluindo}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindo ? "Excluindo..." : "Excluir venda"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
