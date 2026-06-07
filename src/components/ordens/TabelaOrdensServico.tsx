@@ -206,9 +206,14 @@ export const TabelaOrdensServico = ({
                 <p className="text-sm font-medium leading-tight truncate mb-0.5">
                   {isAvulso ? ordem.defeito_relatado : (ordem.cliente?.nome || "N/A")}
                 </p>
-                <p className="text-xs text-muted-foreground truncate mb-2.5">
+                <p className={`text-xs text-muted-foreground truncate ${(!isAvulso && colunasAtivas.includes("defeito") && ordem.defeito_relatado) ? "" : "mb-2.5"}`}>
                   {isAvulso ? "Serviço Avulso" : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
                 </p>
+                {!isAvulso && colunasAtivas.includes("defeito") && ordem.defeito_relatado && (
+                  <p className="text-xs text-muted-foreground/80 truncate mb-2.5 italic">
+                    {ordem.defeito_relatado}
+                  </p>
+                )}
 
                 <div className="flex items-center justify-between pt-2.5 border-t border-border/40">
                   <div className="space-y-0.5">
