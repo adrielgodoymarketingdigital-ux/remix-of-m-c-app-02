@@ -62,6 +62,7 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useEmpresaInfo } from "@/hooks/useResolvedUserId";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { formatCurrency, dataHoje } from "@/lib/formatters";
 import { useLocalizacoesOS } from "@/hooks/useLocalizacoesOS";
@@ -142,6 +143,7 @@ export const DialogOrdemServico = ({
   const { dispatchEvent } = useEventDispatcher();
   const { funcionarioId, lojaUserId, isFuncionario, permissoes, isDonoLoja, tecnicoObrigatorioOS } = useFuncionarioPermissoes();
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
+  const { empresaId: empresaInfoId, isFilial: isFilialCtx } = useEmpresaInfo();
   const { temAcessoModulo } = useAssinatura();
   const navigate = useNavigate();
   const podeVerTecnicos = isDonoLoja || (permissoes?.recursos?.ver_tecnicos_os ?? false);
@@ -224,20 +226,28 @@ export const DialogOrdemServico = ({
       const carregarClientes = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        
+
         // Funcionário sempre usa lojaUserId para ver clientes do proprietário
         const userId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
-        
-        const { data } = await supabase
+
+        let query = supabase
           .from("clientes")
           .select("*")
           .eq("user_id", userId)
+          .is("deleted_at", null)
           .order("nome");
+
+        // Filial: filtrar exatamente pela empresa da filial
+        if (isFilialCtx && empresaInfoId) {
+          query = query.eq("empresa_id", empresaInfoId);
+        }
+
+        const { data } = await query;
         setClientes(data || []);
       };
       carregarClientes();
     }
-  }, [open]);
+  }, [open, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
 
   // Buscar clientes por termo
   const buscarClientes = (termo: string, campo: 'nome' | 'cpf') => {
