@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
-import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock, Phone } from "lucide-react";
 import { SecaoDesempenhoSistema } from "@/components/admin/SecaoDesempenhoSistema";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -38,6 +38,10 @@ export default function AdminFinanceiro() {
 
   const [buscaAssinantes, setBuscaAssinantes] = useState("");
   const [buscaExpirados, setBuscaExpirados] = useState("");
+  const [mostrarInadimplentes, setMostrarInadimplentes] = useState(false);
+  const inadimplentesSectionRef = useRef<HTMLDivElement>(null);
+
+  const inadimplenteIds = (data?.inadimplentes_detalhes ?? []).map((u) => u.user_id);
 
   const { data: cancelamentos } = useQuery({
     queryKey: ["admin-cancelamentos"],
@@ -114,6 +118,19 @@ export default function AdminFinanceiro() {
         return { ...d, profile, diasVencido, diasParaCancelar };
       });
     },
+  });
+
+  const { data: inadimplenteProfiles } = useQuery({
+    queryKey: ["admin-inadimplentes-profiles", inadimplenteIds],
+    queryFn: async () => {
+      if (inadimplenteIds.length === 0) return [];
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, nome, celular")
+        .in("user_id", inadimplenteIds);
+      return data ?? [];
+    },
+    enabled: inadimplenteIds.length > 0,
   });
 
   const { data: whatsappTemplate } = useQuery({
@@ -254,6 +271,12 @@ export default function AdminFinanceiro() {
             value={isLoading ? null : String(data?.assinantes_inadimplentes ?? 0)}
             description="Plano ativo com cobrança vencida"
             accent="red"
+            onClick={() => {
+              setMostrarInadimplentes(true);
+              setTimeout(() => {
+                inadimplentesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 50);
+            }}
           />
           <KpiCard
             icon={<TrendingUp className="h-4 w-4" />}
@@ -757,63 +780,87 @@ export default function AdminFinanceiro() {
         </Card>
 
         {/* Inadimplentes */}
-        <Card className="border-amber-500/40">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <UserX className="h-5 w-5 text-amber-600" />
-              Assinantes inadimplentes
-            </CardTitle>
-            <CardDescription>
-              Assinaturas com status "ativo" no banco, mas com data de cobrança vencida (acesso já bloqueado pelo sistema)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Plano</TableHead>
-                      <TableHead>Provedor</TableHead>
-                      <TableHead>Vencido em</TableHead>
-                      <TableHead className="text-right">Valor mensal</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data?.inadimplentes_detalhes.map((u) => (
-                      <TableRow key={u.user_id}>
-                        <TableCell>
-                          <div className="font-medium text-sm">{u.nome || "—"}</div>
-                          <div className="text-xs text-muted-foreground">{u.email || "—"}</div>
-                        </TableCell>
-                        <TableCell className="text-sm">{u.plano_nome}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {u.payment_provider || "—"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {u.data_vencimento ? formatDate(u.data_vencimento) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">{formatBRL(u.valor_mensal)}</TableCell>
-                      </TableRow>
-                    ))}
-                    {(!data || data.inadimplentes_detalhes.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
-                          Nenhum inadimplente 🎉
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {mostrarInadimplentes && (
+          <div ref={inadimplentesSectionRef}>
+            <Card className="border-red-500/40">
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <UserX className="h-5 w-5 text-red-500" />
+                      Inadimplentes
+                      <Badge variant="destructive" className="ml-1">{data?.inadimplentes_detalhes.length ?? 0}</Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Plano ativo com cobrança vencida — acesso bloqueado pelo sistema
+                    </CardDescription>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setMostrarInadimplentes(false)}>
+                    Fechar
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <Skeleton className="h-32 w-full" />
+                ) : (data?.inadimplentes_detalhes.length ?? 0) === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum inadimplente 🎉</p>
+                ) : (
+                  <div className="space-y-2">
+                    {data?.inadimplentes_detalhes.map((u) => {
+                      const profile = inadimplenteProfiles?.find((p) => p.user_id === u.user_id);
+                      const celular = profile?.celular?.replace(/\D/g, "");
+                      const mensagemWa = encodeURIComponent(
+                        `Olá ${u.nome ?? ""}! Seu plano no Méc App está com pagamento em atraso. Regularize para continuar usando o sistema sem interrupções. Podemos te ajudar?`
+                      );
+                      const waUrl = celular ? `https://wa.me/55${celular}?text=${mensagemWa}` : null;
+                      return (
+                        <div key={u.user_id} className="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50/30 dark:bg-red-950/10 gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{u.nome || "Sem nome"}</span>
+                              <Badge variant="secondary" className="text-[10px]">
+                                {u.plano_nome}
+                              </Badge>
+                              <Badge variant="outline" className="text-[10px] capitalize">
+                                {u.payment_provider || "—"}
+                              </Badge>
+                              {u.data_vencimento && (
+                                <Badge variant="outline" className="text-red-600 border-red-400 text-[10px]">
+                                  Venceu {formatDate(u.data_vencimento)}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{u.email || "—"}</p>
+                            {profile?.celular && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Phone className="h-3 w-3" />
+                                {profile.celular}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm font-semibold text-red-600">{formatBRL(u.valor_mensal)}</span>
+                            {waUrl ? (
+                              <Button asChild size="sm" variant="outline" className="text-green-600 border-green-400 hover:bg-green-50 dark:hover:bg-green-950">
+                                <a href={waUrl} target="_blank" rel="noopener noreferrer">
+                                  <MessageCircle className="h-4 w-4 mr-1" />
+                                  WhatsApp
+                                </a>
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">Sem celular</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Lista completa de assinantes vigentes */}
         <Card>
@@ -988,12 +1035,14 @@ function KpiCard({
   value,
   description,
   accent = "blue",
+  onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   value: string | null;
   description?: string;
   accent?: "blue" | "red" | "green" | "purple";
+  onClick?: () => void;
 }) {
   const accents = {
     blue:   { glow: "before:from-blue-500/20",   iconBg: "bg-blue-500/10 text-blue-400",   bar: "from-blue-500 to-blue-400",   border: "border-blue-500/20"   },
@@ -1003,7 +1052,11 @@ function KpiCard({
   };
   const a = accents[accent];
   return (
-    <div className={`relative rounded-xl border ${a.border} bg-card overflow-hidden group hover:shadow-lg hover:shadow-black/20 transition-all duration-300`}>
+    <div
+      className={`relative rounded-xl border ${a.border} bg-card overflow-hidden group hover:shadow-lg hover:shadow-black/20 transition-all duration-300 ${onClick ? "cursor-pointer" : ""}`}
+      onClick={onClick}
+      title={onClick ? "Clique para ver detalhes" : undefined}
+    >
       {/* barra superior colorida */}
       <div className={`h-0.5 w-full bg-gradient-to-r ${a.bar}`} />
       <div className="p-5">
@@ -1019,6 +1072,7 @@ function KpiCard({
           <p className="text-3xl font-bold tracking-tight">{value}</p>
         )}
         {description && <p className="text-xs text-muted-foreground mt-1.5">{description}</p>}
+        {onClick && <p className="text-xs text-primary mt-2 font-medium">Clique para ver →</p>}
       </div>
     </div>
   );
