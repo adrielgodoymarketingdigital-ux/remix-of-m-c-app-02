@@ -8,6 +8,7 @@ import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { TabelaFuncionarios } from "@/components/equipe/TabelaFuncionarios";
 import { DialogCadastroFuncionario } from "@/components/equipe/DialogCadastroFuncionario";
 import { DashboardEquipe } from "@/components/equipe/DashboardEquipe";
+import { ConfiguracaoOSEquipe } from "@/components/equipe/ConfiguracaoOSEquipe";
 import type { Funcionario, FuncionarioFormData } from "@/types/funcionario";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -152,6 +153,8 @@ export default function Equipe() {
             </TabsList>
 
             <TabsContent value="funcionarios">
+              <div className="space-y-4">
+              <ConfiguracaoOSEquipe />
               <Card>
                 <CardHeader>
                   <CardTitle>Funcionários</CardTitle>
@@ -177,6 +180,7 @@ export default function Equipe() {
                   )}
                 </CardContent>
               </Card>
+              </div>
             </TabsContent>
 
             <TabsContent value="desempenho">

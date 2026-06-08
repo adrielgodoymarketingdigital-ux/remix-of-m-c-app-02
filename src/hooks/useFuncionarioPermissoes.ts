@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Permissoes, PermissoesModulos, PermissoesDados, PermissoesRecursos } from "@/types/funcionario";
+import type { Permissoes, PermissoesModulos, PermissoesDados } from "@/types/funcionario";
+import { useOSBehaviorConfig } from "@/hooks/useOSBehaviorConfig";
 
 interface FuncionarioPermissoesResult {
   isFuncionario: boolean;
@@ -24,6 +25,7 @@ interface FuncionarioPermissoesResult {
   podeSincronizarClientes: boolean;
   podeVerContasPagarReceber: boolean;
   podeVerAnaliseLucros: boolean;
+  podeVerTotalVendas: boolean;
   tecnicoObrigatorioOS: boolean;
 }
 
@@ -64,6 +66,7 @@ const PERMISSOES_DONO: Permissoes = {
     ver_todas_os: true,
     ver_contas_pagar_receber: true,
     ver_analise_lucros: true,
+    ver_total_vendas: true,
     tecnico_obrigatorio_os: false,
   },
   dados: {
@@ -220,6 +223,9 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
   const podeSincronizarServicos = temAcessoDados('servicos');
   const podeSincronizarClientes = temAcessoDados('clientes');
 
+  // Config global da loja (salva em configuracoes_loja.layout_os_config)
+  const { tecnicoObrigatorioOS: tecnicoObrigatorioOSGlobal } = useOSBehaviorConfig();
+
   return {
     isFuncionario: data?.isFuncionario ?? false,
     isDonoLoja: data?.isDonoLoja ?? false,
@@ -242,7 +248,7 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
     podeVerContasPagarReceber: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_contas_pagar_receber ?? false),
     podeVerAnaliseLucros: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_analise_lucros ?? false),
     podeVerTotalVendas: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_total_vendas ?? false),
-    // Proprietário controla via permissões — não é automático para ele mesmo
-    tecnicoObrigatorioOS: data?.permissoes?.recursos?.tecnico_obrigatorio_os ?? false,
+    // Lê da config global da loja (configuracoes_loja.layout_os_config.tecnico_obrigatorio_os)
+    tecnicoObrigatorioOS: tecnicoObrigatorioOSGlobal,
   };
 }

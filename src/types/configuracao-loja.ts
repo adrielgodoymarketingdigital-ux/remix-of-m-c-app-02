@@ -73,6 +73,7 @@ export interface EtiquetaOSConfig {
 }
 
 export interface LayoutOSConfig {
+  tecnico_obrigatorio_os?: boolean;
   mostrar_logo_impressao?: boolean;
   mostrar_logo_whatsapp?: boolean;
   mostrar_checklist?: boolean;
