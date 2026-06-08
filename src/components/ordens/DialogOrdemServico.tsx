@@ -59,6 +59,7 @@ import {
 import { encryptSenhaDesbloqueio, decryptSenhaDesbloqueio, encryptValue } from "@/lib/password-encryption";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useAssinatura } from "@/hooks/useAssinatura";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
@@ -141,6 +142,7 @@ export const DialogOrdemServico = ({
   const { dispatchEvent } = useEventDispatcher();
   const { funcionarioId, lojaUserId, isFuncionario, permissoes, isDonoLoja, tecnicoObrigatorioOS } = useFuncionarioPermissoes();
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
+  const { temAcessoModulo } = useAssinatura();
   const navigate = useNavigate();
   const podeVerTecnicos = isDonoLoja || (permissoes?.recursos?.ver_tecnicos_os ?? false);
   const { funcionarios } = useFuncionarios();
@@ -440,6 +442,7 @@ export const DialogOrdemServico = ({
         dispositivoFabricante: "",
         dispositivoSubtipo: "",
         fotosDispositivo: [],
+        localizacaoFisica: "",
         defeitoRelatado: "",
         observacoesInternas: "",
         mostrarObsInternasImpressao: false,
@@ -1180,8 +1183,8 @@ export const DialogOrdemServico = ({
           clienteNome: formData.clienteNome,
         });
 
-        // Navegar para próximo passo se ainda não visualizou lucro
-        if (!onboardingData?.step_lucro_visualizado) {
+        // Navegar para próximo passo se ainda não visualizou lucro e tem acesso ao módulo
+        if (!onboardingData?.step_lucro_visualizado && temAcessoModulo('financeiro')) {
           setTimeout(() => navigate('/financeiro'), 1000);
         }
       }
