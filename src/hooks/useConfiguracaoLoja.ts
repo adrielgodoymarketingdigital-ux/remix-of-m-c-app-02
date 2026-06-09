@@ -83,7 +83,7 @@ export function useConfiguracaoLoja() {
         .eq("user_id", targetUserId)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Erro ao buscar configurações:", error);
@@ -129,7 +129,7 @@ export function useConfiguracaoLoja() {
         .eq("user_id", targetUserId)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // Se não existe, criar primeiro (apenas para o próprio usuário)
       if (errorBusca || !configAtual) {
@@ -150,7 +150,7 @@ export function useConfiguracaoLoja() {
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (errorNova || !novaConfig) {
           console.error("Erro ao buscar configuração recém-criada:", errorNova);
