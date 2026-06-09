@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Download, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, Download, CheckCircle2, FileText, Shield, Files } from "lucide-react";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { ConfiguracaoLoja, MensagensWhatsAppOS } from "@/types/configuracao-loja";
-import { gerarOrdemServicoPDF } from "@/lib/gerarOrdemServicoPDF";
+import { gerarOrdemServicoPDF, TipoPDFOS } from "@/lib/gerarOrdemServicoPDF";
 import { toast } from "sonner";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
@@ -66,8 +66,30 @@ export const DialogEnviarWhatsApp = ({
   const [mensagem, setMensagem] = useState("");
   const [gerando, setGerando] = useState(false);
   const [pdfBaixado, setPdfBaixado] = useState(false);
+  const [tipoPDF, setTipoPDF] = useState<TipoPDFOS>('completo');
   const mobile = isMobile();
   const { statusList } = useOSStatusConfig();
+
+  const opcoesPDF: { valor: TipoPDFOS; label: string; descricao: string; icone: React.ReactNode }[] = [
+    {
+      valor: 'primeira_parte',
+      label: 'Primeira parte',
+      descricao: 'Dados, checklist e serviços (sem o termo)',
+      icone: <FileText className="h-4 w-4" />,
+    },
+    {
+      valor: 'termo_garantia',
+      label: 'Termo de Garantia',
+      descricao: 'Apenas o termo de garantia do serviço',
+      icone: <Shield className="h-4 w-4" />,
+    },
+    {
+      valor: 'completo',
+      label: 'OS Completa',
+      descricao: 'Documento completo com tudo',
+      icone: <Files className="h-4 w-4" />,
+    },
+  ];
 
   // Preencher telefone e mensagem quando abrir
   useEffect(() => {
@@ -80,11 +102,18 @@ export const DialogEnviarWhatsApp = ({
       const nomeStatus = statusList.find(s => s.slug === ordem.status)?.nome;
       setMensagem(gerarMensagemPadrao(ordem, loja, nomeStatus));
       setPdfBaixado(false);
+      setTipoPDF('completo');
     }
   }, [open, ordem, loja, statusList]);
 
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTelefone(aplicarMascaraTelefone(e.target.value));
+  };
+
+  const nomePDF = () => {
+    if (tipoPDF === 'primeira_parte') return `OS-${ordem?.numero_os}-parte1.pdf`;
+    if (tipoPDF === 'termo_garantia') return `OS-${ordem?.numero_os}-termo-garantia.pdf`;
+    return `OS-${ordem?.numero_os}.pdf`;
   };
 
   const handleBaixarPDF = async () => {
@@ -93,13 +122,13 @@ export const DialogEnviarWhatsApp = ({
     setGerando(true);
 
     try {
-      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja);
+      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja, tipoPDF);
       const urlPDF = URL.createObjectURL(pdfBlob);
-      
+
       // Tentar download
       const linkPDF = document.createElement("a");
       linkPDF.href = urlPDF;
-      linkPDF.download = `OS-${ordem.numero_os}.pdf`;
+      linkPDF.download = nomePDF();
       linkPDF.style.display = "none";
       document.body.appendChild(linkPDF);
       linkPDF.click();
@@ -170,12 +199,12 @@ export const DialogEnviarWhatsApp = ({
     setGerando(true);
 
     try {
-      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja);
+      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja, tipoPDF);
       const urlPDF = URL.createObjectURL(pdfBlob);
-      
+
       const linkPDF = document.createElement("a");
       linkPDF.href = urlPDF;
-      linkPDF.download = `OS-${ordem.numero_os}.pdf`;
+      linkPDF.download = nomePDF();
       linkPDF.style.display = "none";
       document.body.appendChild(linkPDF);
       linkPDF.click();
@@ -202,7 +231,7 @@ export const DialogEnviarWhatsApp = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Enviar OS via WhatsApp</DialogTitle>
           <DialogDescription>
@@ -211,6 +240,36 @@ export const DialogEnviarWhatsApp = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Seletor de tipo de PDF */}
+          <div className="space-y-2">
+            <Label>Qual documento enviar?</Label>
+            <div className="grid grid-cols-1 gap-2">
+              {opcoesPDF.map((opcao) => (
+                <button
+                  key={opcao.valor}
+                  type="button"
+                  onClick={() => { setTipoPDF(opcao.valor); setPdfBaixado(false); }}
+                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                    tipoPDF === opcao.valor
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-border hover:bg-muted/50'
+                  }`}
+                >
+                  <span className={tipoPDF === opcao.valor ? 'text-primary' : 'text-muted-foreground'}>
+                    {opcao.icone}
+                  </span>
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium">{opcao.label}</span>
+                    <span className="block text-xs text-muted-foreground">{opcao.descricao}</span>
+                  </span>
+                  {tipoPDF === opcao.valor && (
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="telefone">Número do WhatsApp</Label>
             <Input

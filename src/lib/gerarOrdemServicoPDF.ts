@@ -47,9 +47,12 @@ const formatarCPFCNPJ = (doc?: string) => {
   return doc;
 };
 
+export type TipoPDFOS = 'completo' | 'primeira_parte' | 'termo_garantia';
+
 export async function gerarOrdemServicoPDF(
   ordem: OrdemServico,
-  loja?: ConfiguracaoLoja
+  loja?: ConfiguracaoLoja,
+  tipo: TipoPDFOS = 'completo'
 ): Promise<Blob> {
   const doc = new jsPDF();
   const margemEsquerda = 15;
@@ -693,7 +696,97 @@ export async function gerarOrdemServicoPDF(
     yPos += 8;
   }
 
+  // Se só a primeira parte, finalizar aqui
+  if (tipo === 'primeira_parte') {
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(`Documento gerado em: ${formatarDataHoraBrasil(new Date().toISOString())}`, 105, yPos, { align: 'center' });
+    return doc.output('blob');
+  }
+
   // ===== TERMO DE GARANTIA =====
+  if (tipo === 'termo_garantia') {
+    // Reiniciar página limpa para o termo
+    const docTermo = new jsPDF();
+    let yT = 20;
+    const mE = 15;
+    const mD = 195;
+    const lU = mD - mE;
+
+    docTermo.setFontSize(16);
+    docTermo.setFont('helvetica', 'bold');
+    docTermo.text('TERMO DE GARANTIA DO SERVIÇO', 105, yT, { align: 'center' });
+    yT += 8;
+    docTermo.setFontSize(10);
+    docTermo.setFont('helvetica', 'normal');
+    docTermo.text(`OS #${ordem.numero_os} — ${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, 105, yT, { align: 'center' });
+    yT += 4;
+    if (ordem.cliente?.nome) {
+      docTermo.text(`Cliente: ${ordem.cliente.nome}`, 105, yT, { align: 'center' });
+      yT += 4;
+    }
+    yT += 4;
+    docTermo.setDrawColor(200);
+    docTermo.setLineWidth(0.3);
+    docTermo.line(mE, yT, mD, yT);
+    yT += 8;
+
+    const verificarNovaPaginaTermo = (esp: number = 20) => {
+      if (yT + esp > 280) { docTermo.addPage(); yT = 20; }
+    };
+
+    docTermo.setFontSize(9);
+    docTermo.setFont('helvetica', 'normal');
+
+    const termoGarantiaSolo = obterTermoGarantia({
+      tempoGarantia: ordem.tempo_garantia,
+      termoConfig: loja?.termo_garantia_config,
+      nomeLoja: loja?.nome_loja,
+      nomeCliente: ordem.cliente?.nome,
+      dispositivo: `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`,
+    });
+
+    const linhasTermoSolo = docTermo.splitTextToSize(termoGarantiaSolo, lU);
+    linhasTermoSolo.forEach((linha: string) => {
+      verificarNovaPaginaTermo(5);
+      docTermo.text(linha, mE, yT);
+      yT += 4;
+    });
+
+    yT += 6;
+    docTermo.setFont('helvetica', 'bold');
+    docTermo.text('TERMOS GERAIS:', mE, yT);
+    yT += 5;
+    docTermo.setFont('helvetica', 'normal');
+
+    const termosGeraisSolo = [
+      '• O cliente é responsável por realizar backup de seus dados antes da entrega do dispositivo.',
+      '• A assistência técnica não se responsabiliza por perda de dados durante o processo de reparo.',
+      '• O cliente deve retirar o dispositivo em até 30 dias após a conclusão do serviço.',
+      '• Dispositivos não retirados em até 90 dias serão considerados abandonados.',
+    ];
+    termosGeraisSolo.forEach(t => {
+      verificarNovaPaginaTermo(8);
+      const ls = docTermo.splitTextToSize(t, lU - 5);
+      ls.forEach((l: string) => { docTermo.text(l, mE, yT); yT += 4; });
+    });
+
+    yT += 10;
+    verificarNovaPaginaTermo(40);
+    docTermo.setFontSize(9);
+    docTermo.line(mE, yT, 90, yT);
+    docTermo.text('Assinatura do Cliente', mE + 15, yT + 5);
+    docTermo.line(110, yT, mD, yT);
+    docTermo.text('Assinatura do Responsável', 130, yT + 5);
+    yT += 20;
+
+    docTermo.setFontSize(8);
+    docTermo.setTextColor(100);
+    docTermo.text(`Documento gerado em: ${formatarDataHoraBrasil(new Date().toISOString())}`, 105, yT, { align: 'center' });
+
+    return docTermo.output('blob');
+  }
+
   if (layoutConfig.mostrar_termos_condicoes) {
     verificarNovaPagina(50);
     doc.setFontSize(11);
