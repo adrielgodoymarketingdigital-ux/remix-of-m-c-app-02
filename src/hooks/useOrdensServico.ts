@@ -232,19 +232,25 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           .eq("is_teste", false)
           .is("deleted_at", null);
 
-        if (empresaFiltro) {
-          if (isFilial) {
-            query = query.eq("empresa_id", empresaFiltro);
-          } else {
-            query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+        // Funcionários comuns não têm filtro de empresa_id — veem todas as OS do dono
+        if (!isFuncionario) {
+          if (empresaFiltro) {
+            if (isFilial) {
+              query = query.eq("empresa_id", empresaFiltro);
+            } else {
+              query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+            }
+          } else if (!isFilial) {
+            if (mostrarOsFiliais) {
+              // Mostrar todas as OS (matriz + filiais) — não aplica filtro por empresa_id
+            } else {
+              // Padrão: excluir OS de filiais (empresa_id não nulo)
+              query = query.is("empresa_id", null);
+            }
           }
-        } else if (!isFilial) {
-          if (mostrarOsFiliais) {
-            // Mostrar todas as OS (matriz + filiais) — não aplica filtro por empresa_id
-          } else {
-            // Padrão: excluir OS de filiais (empresa_id não nulo)
-            query = query.is("empresa_id", null);
-          }
+        } else if (isFuncionario && empresaFiltro) {
+          // Funcionário vinculado a uma empresa específica (filial) → filtrar por ela
+          query = query.eq("empresa_id", empresaFiltro);
         }
 
         // Se é funcionário e NÃO tem permissão de ver todas as OS, filtrar apenas as dele
