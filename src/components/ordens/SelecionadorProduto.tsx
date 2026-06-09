@@ -43,11 +43,6 @@ export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProp
   const handleAdicionarProduto = (itemId: string) => {
     const item = items.find(i => i.id === itemId);
     if (item && !value.find(p => p.id === item.id)) {
-      // Verificar se há estoque disponível
-      if ((item.quantidade || 0) < 1) {
-        return; // Não permitir adicionar item sem estoque
-      }
-      
       const novoProduto: ProdutoUtilizado = {
         id: item.id,
         nome: item.nome,
@@ -70,26 +65,18 @@ export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProp
 
   const handleAlterarQuantidade = (id: string, novaQuantidade: number) => {
     if (novaQuantidade < 1) return;
-    
-    // Verificar estoque disponível
-    const item = items.find(i => i.id === id);
-    const estoqueDisponivel = item?.quantidade || 0;
-    
-    // Limitar quantidade ao estoque disponível
-    const quantidadeFinal = Math.min(novaQuantidade, estoqueDisponivel);
-    
-    onChange(value.map(p => 
-      p.id === id 
-        ? { ...p, quantidade: quantidadeFinal, preco_total: p.preco_unitario * quantidadeFinal }
+    onChange(value.map(p =>
+      p.id === id
+        ? { ...p, quantidade: novaQuantidade, preco_total: p.preco_unitario * novaQuantidade }
         : p
     ));
   };
 
   const total = value.reduce((sum, p) => sum + p.preco_total, 0);
 
-  // Filtrar itens já adicionados e com estoque > 0
-  const itensDisponiveis = items.filter(item => 
-    !value.find(p => p.id === item.id) && (item.quantidade || 0) > 0
+  // Filtrar apenas itens já adicionados (estoque zero não bloqueia na OS)
+  const itensDisponiveis = items.filter(item =>
+    !value.find(p => p.id === item.id)
   );
 
   return (
@@ -218,7 +205,7 @@ export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProp
                     variant="outline"
                     className="h-8 w-8"
                     onClick={() => handleAlterarQuantidade(produto.id, produto.quantidade + 1)}
-                    disabled={produto.quantidade >= (produto.estoque_disponivel || 999)}
+                    disabled={false}
                   >
                     <Plus className="w-3 h-3" />
                   </Button>
