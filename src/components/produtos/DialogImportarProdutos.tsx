@@ -400,205 +400,209 @@ export const DialogImportarProdutos = ({
 
         {/* Etapa: Mapeamento */}
         {etapa === 'mapeamento' && (
-          <div className="flex-1 overflow-hidden flex flex-col space-y-3">
-            <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={resetar}
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Voltar
-              </Button>
-              <Badge variant="outline">
-                {arquivo?.name}
-              </Badge>
-            </div>
-
-            <p className="text-sm text-muted-foreground">
-              Encontradas <strong>{dados.length}</strong> linhas de dados
-            </p>
-
-            {/* Mapeamento de colunas */}
-            <div className="grid grid-cols-2 gap-3">
-              {CAMPOS_SISTEMA.map(campo => (
-                <div key={campo.id} className="space-y-1">
-                  <Label className="text-xs">
-                    {campo.label}
-                  </Label>
-                  <Select
-                    value={mapeamento[campo.id]?.toString() ?? '__nao_importar__'}
-                    onValueChange={(v) => handleMapeamentoChange(campo.id, v)}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__nao_importar__">
-                        {campo.obrigatorio ? '-- Selecione --' : '-- Não importar --'}
-                      </SelectItem>
-                      {headers.map((header, idx) => (
-                        <SelectItem key={idx} value={idx.toString()}>
-                          {header || `Coluna ${idx + 1}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
-            </div>
-
-            {/* Seletor de categoria global */}
-            {categorias.length > 0 && (
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
-                <Tag className="w-4 h-4 text-muted-foreground shrink-0" />
-                <Label className="text-sm font-medium shrink-0">Categoria para todos:</Label>
-                <Select value={categoriaGlobal} onValueChange={handleCategoriaGlobalChange}>
-                  <SelectTrigger className="h-8 flex-1">
-                    <SelectValue placeholder="Sem categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__sem_categoria__">Sem categoria</SelectItem>
-                    {categorias.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: cat.cor }}
-                          />
-                          {cat.nome}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {Object.keys(categoriasPorItem).length > 0 && (
+          <div className="flex-1 overflow-hidden flex flex-col gap-3">
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-3 pb-2">
+                <div className="flex items-center justify-between">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-xs h-8 shrink-0"
-                    onClick={() => setCategoriasPorItem({})}
+                    onClick={resetar}
                   >
-                    Limpar individuais
+                    <ArrowLeft className="w-4 h-4 mr-1" />
+                    Voltar
                   </Button>
+                  <Badge variant="outline">
+                    {arquivo?.name}
+                  </Badge>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  Encontradas <strong>{dados.length}</strong> linhas de dados
+                </p>
+
+                {/* Mapeamento de colunas */}
+                <div className="grid grid-cols-2 gap-3">
+                  {CAMPOS_SISTEMA.map(campo => (
+                    <div key={campo.id} className="space-y-1">
+                      <Label className="text-xs">
+                        {campo.label}
+                      </Label>
+                      <Select
+                        value={mapeamento[campo.id]?.toString() ?? '__nao_importar__'}
+                        onValueChange={(v) => handleMapeamentoChange(campo.id, v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__nao_importar__">
+                            {campo.obrigatorio ? '-- Selecione --' : '-- Não importar --'}
+                          </SelectItem>
+                          {headers.map((header, idx) => (
+                            <SelectItem key={idx} value={idx.toString()}>
+                              {header || `Coluna ${idx + 1}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Seletor de categoria global */}
+                {categorias.length > 0 && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                    <Tag className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <Label className="text-sm font-medium shrink-0">Categoria para todos:</Label>
+                    <Select value={categoriaGlobal} onValueChange={handleCategoriaGlobalChange}>
+                      <SelectTrigger className="h-8 flex-1">
+                        <SelectValue placeholder="Sem categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__sem_categoria__">Sem categoria</SelectItem>
+                        {categorias.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: cat.cor }}
+                              />
+                              {cat.nome}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {Object.keys(categoriasPorItem).length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-8 shrink-0"
+                        onClick={() => setCategoriasPorItem({})}
+                      >
+                        Limpar individuais
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Status */}
+                <div className="flex flex-wrap gap-2">
+                  {itensOk.length > 0 && (
+                    <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      {itensOk.length} OK
+                    </Badge>
+                  )}
+                  {itensComAviso.length > 0 && (
+                    <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      {itensComAviso.length} com avisos
+                    </Badge>
+                  )}
+                  {itensComErro.length > 0 && (
+                    <Badge variant="outline" className="text-red-600 border-red-300 bg-red-50">
+                      <XCircle className="w-3 h-3 mr-1" />
+                      {itensComErro.length} com erros
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Preview */}
+                <div className="border rounded-lg overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead className="w-20">Tipo</TableHead>
+                        <TableHead className="w-16 text-right">Qtd</TableHead>
+                        <TableHead className="w-24 text-right">Custo</TableHead>
+                        <TableHead className="w-24 text-right">Preço</TableHead>
+                        {categorias.length > 0 && (
+                          <TableHead className="w-36">Categoria</TableHead>
+                        )}
+                        <TableHead className="w-28">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {itensValidados.slice(0, 50).map((item, idx) => (
+                        <TableRow
+                          key={idx}
+                          className={item._erro ? 'bg-red-50' : item._avisos.length > 0 ? 'bg-yellow-50' : ''}
+                        >
+                          <TableCell className="text-muted-foreground">{item._linha}</TableCell>
+                          <TableCell className="font-medium truncate max-w-[200px]">
+                            {item.nome || <span className="text-red-500 italic">Vazio</span>}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {item.tipo}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{item.quantidade}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.custo)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.preco)}</TableCell>
+                          {categorias.length > 0 && (
+                            <TableCell>
+                              <Select
+                                value={categoriasPorItem[idx] ?? categoriaGlobal}
+                                onValueChange={(v) => handleCategoriaItemChange(idx, v)}
+                              >
+                                <SelectTrigger className="h-7 text-xs w-full">
+                                  <SelectValue placeholder="Sem categoria" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__sem_categoria__">Sem categoria</SelectItem>
+                                  {categorias.map(cat => (
+                                    <SelectItem key={cat.id} value={cat.id}>
+                                      <span className="flex items-center gap-1.5">
+                                        <span
+                                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                                          style={{ backgroundColor: cat.cor }}
+                                        />
+                                        {cat.nome}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            {item._erro ? (
+                              <span className="text-xs text-red-600">{item._erro}</span>
+                            ) : item._avisos.length > 0 ? (
+                              <span className="text-xs text-yellow-600" title={item._avisos.join(', ')}>
+                                {item._avisos.length} aviso(s)
+                              </span>
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {itensValidados.length > 50 && (
+                    <p className="p-2 text-center text-xs text-muted-foreground">
+                      Mostrando 50 de {itensValidados.length} itens
+                    </p>
+                  )}
+                </div>
+
+                {erro && (
+                  <Alert variant="destructive">
+                    <XCircle className="h-4 w-4" />
+                    <AlertDescription>{erro}</AlertDescription>
+                  </Alert>
                 )}
               </div>
-            )}
-
-            {/* Status */}
-            <div className="flex flex-wrap gap-2">
-              {itensOk.length > 0 && (
-                <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  {itensOk.length} OK
-                </Badge>
-              )}
-              {itensComAviso.length > 0 && (
-                <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  {itensComAviso.length} com avisos
-                </Badge>
-              )}
-              {itensComErro.length > 0 && (
-                <Badge variant="outline" className="text-red-600 border-red-300 bg-red-50">
-                  <XCircle className="w-3 h-3 mr-1" />
-                  {itensComErro.length} com erros
-                </Badge>
-              )}
-            </div>
-
-            {/* Preview */}
-            <ScrollArea className="flex-1 border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="w-20">Tipo</TableHead>
-                    <TableHead className="w-16 text-right">Qtd</TableHead>
-                    <TableHead className="w-24 text-right">Custo</TableHead>
-                    <TableHead className="w-24 text-right">Preço</TableHead>
-                    {categorias.length > 0 && (
-                      <TableHead className="w-36">Categoria</TableHead>
-                    )}
-                    <TableHead className="w-28">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {itensValidados.slice(0, 50).map((item, idx) => (
-                    <TableRow
-                      key={idx}
-                      className={item._erro ? 'bg-red-50' : item._avisos.length > 0 ? 'bg-yellow-50' : ''}
-                    >
-                      <TableCell className="text-muted-foreground">{item._linha}</TableCell>
-                      <TableCell className="font-medium truncate max-w-[200px]">
-                        {item.nome || <span className="text-red-500 italic">Vazio</span>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs">
-                          {item.tipo}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{item.quantidade}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.custo)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.preco)}</TableCell>
-                      {categorias.length > 0 && (
-                        <TableCell>
-                          <Select
-                            value={categoriasPorItem[idx] ?? categoriaGlobal}
-                            onValueChange={(v) => handleCategoriaItemChange(idx, v)}
-                          >
-                            <SelectTrigger className="h-7 text-xs w-full">
-                              <SelectValue placeholder="Sem categoria" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__sem_categoria__">Sem categoria</SelectItem>
-                              {categorias.map(cat => (
-                                <SelectItem key={cat.id} value={cat.id}>
-                                  <span className="flex items-center gap-1.5">
-                                    <span
-                                      className="inline-block w-2 h-2 rounded-full shrink-0"
-                                      style={{ backgroundColor: cat.cor }}
-                                    />
-                                    {cat.nome}
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        {item._erro ? (
-                          <span className="text-xs text-red-600">{item._erro}</span>
-                        ) : item._avisos.length > 0 ? (
-                          <span className="text-xs text-yellow-600" title={item._avisos.join(', ')}>
-                            {item._avisos.length} aviso(s)
-                          </span>
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {itensValidados.length > 50 && (
-                <p className="p-2 text-center text-xs text-muted-foreground">
-                  Mostrando 50 de {itensValidados.length} itens
-                </p>
-              )}
             </ScrollArea>
 
-            {erro && (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>{erro}</AlertDescription>
-              </Alert>
-            )}
-
-            {/* Botões */}
-            <div className="flex justify-end gap-3 pt-2">
+            {/* Botões fixos no rodapé */}
+            <div className="flex justify-end gap-3 pt-2 border-t">
               <Button variant="outline" onClick={() => handleClose(false)}>
                 Cancelar
               </Button>
