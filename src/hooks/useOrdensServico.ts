@@ -201,17 +201,6 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         return;
       }
 
-      console.log('[OS DEBUG]', {
-        isFuncionario,
-        funcionarioId,
-        empresaFiltro,
-        isFilial,
-        ver_todas_os: permissoes?.recursos?.ver_todas_os,
-        userId,
-        dataInicio: dataInicio?.toISOString(),
-        dataFim: dataFim?.toISOString(),
-      });
-
       const resultado = await withRetry(async () => {
         let query = supabase
           .from("ordens_servico")
@@ -291,7 +280,6 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
 
         const { data, error } = await query;
         if (error) throw error;
-        console.log('[OS DEBUG] total retornado:', data?.length, 'primeiro:', data?.[0]?.numero_os, 'último:', data?.[data?.length - 1]?.numero_os);
         return data || [];
       }, 'useOrdensServico.carregarOrdens');
 

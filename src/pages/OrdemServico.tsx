@@ -37,8 +37,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useOrdensServico, type OrdemServico } from "@/hooks/useOrdensServico";
-import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
-import { useIdentidade } from "@/hooks/useResolvedUserId";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSTracking } from "@/hooks/useOSTracking";
@@ -235,10 +233,6 @@ export default function OrdemServicoPage() {
   }, []);
 
   const mostrarOsFiliais = !!(configuracaoLoja?.permissoes_multiempresa?.mostrar_os_filiais_na_matriz);
-
-  // DEBUG TEMPORÁRIO
-  const { isFuncionario, funcionarioId, permissoes } = useFuncionarioPermissoes();
-  const { userId: debugUserId, empresaId: debugEmpresaId, isFilial: debugIsFilial } = useIdentidade();
 
   const {
     ordens: ordensRaw,
@@ -855,20 +849,6 @@ export default function OrdemServicoPage() {
             </TabsList>
 
             <TabsContent value="minhas" className="mt-0">
-          {/* PAINEL DEBUG TEMPORÁRIO */}
-          <div className="mb-3 p-3 rounded-lg border border-orange-400 bg-orange-50 text-xs font-mono space-y-1 text-orange-900">
-            <p className="font-bold text-orange-700">🔍 DEBUG (temporário)</p>
-            <p>isFuncionario: <b>{String(isFuncionario)}</b></p>
-            <p>funcionarioId: <b>{funcionarioId ?? 'null'}</b></p>
-            <p>ver_todas_os: <b>{String(permissoes?.recursos?.ver_todas_os)}</b></p>
-            <p>userId usado: <b>{debugUserId ?? 'null'}</b></p>
-            <p>empresaId: <b>{debugEmpresaId ?? 'null'}</b></p>
-            <p>isFilial: <b>{String(debugIsFilial)}</b></p>
-            <p>mesFiltro: <b>{mesFiltro}</b></p>
-            <p>dataInicio: <b>{dataInicio?.toISOString() ?? 'null'}</b></p>
-            <p>dataFim: <b>{dataFim?.toISOString() ?? 'null'}</b></p>
-            <p>OS carregadas: <b>{ordensRaw.length}</b></p>
-          </div>
           <DashboardOrdensServico ordens={ordens} servicosAvulsos={servicosAvulsosFiltrados} lucroOrdensEntregues={lucroOrdensEntregues} />
 
           <Card className="min-w-0 overflow-hidden border-border/40 shadow-sm">
