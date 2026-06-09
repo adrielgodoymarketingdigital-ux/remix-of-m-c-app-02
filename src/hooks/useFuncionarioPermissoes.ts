@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Permissoes, PermissoesModulos, PermissoesDados } from "@/types/funcionario";
+import { PERMISSOES_DEFAULT } from "@/types/funcionario";
 import { useOSBehaviorConfig } from "@/hooks/useOSBehaviorConfig";
 
 interface FuncionarioPermissoesResult {
@@ -153,17 +154,26 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
 
       if (funcionarioData) {
         // É funcionário
-        const permissoes = typeof funcionarioData.permissoes === 'string'
+        const raw = typeof funcionarioData.permissoes === 'string'
           ? JSON.parse(funcionarioData.permissoes)
           : funcionarioData.permissoes;
-          
+
+        // Merge com defaults garante que campos adicionados após o cadastro do funcionário existam
+        const permissoes: Permissoes = {
+          ...PERMISSOES_DEFAULT,
+          ...raw,
+          modulos: { ...PERMISSOES_DEFAULT.modulos, ...(raw?.modulos ?? {}) },
+          recursos: { ...PERMISSOES_DEFAULT.recursos, ...(raw?.recursos ?? {}) },
+          dados: { ...PERMISSOES_DEFAULT.dados, ...(raw?.dados ?? {}) },
+        };
+
         return {
           isFuncionario: true,
           isDonoLoja: false,
           lojaUserId: funcionarioData.loja_user_id,
           funcionarioId: funcionarioData.id,
           funcionarioEmpresaId: funcionarioData.empresa_id ?? null,
-          permissoes: permissoes as Permissoes,
+          permissoes,
         };
       }
 
