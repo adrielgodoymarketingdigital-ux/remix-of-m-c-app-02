@@ -73,7 +73,10 @@ export const DialogSelecionarItem = ({
       d.marca.toLowerCase().includes(busca.toLowerCase()) ||
       d.modelo.toLowerCase().includes(busca.toLowerCase()) ||
       d.tipo.toLowerCase().includes(busca.toLowerCase()) ||
-      d.codigo_barras?.toLowerCase().includes(busca.toLowerCase())
+      d.codigo_barras?.toLowerCase().includes(busca.toLowerCase()) ||
+      (d.imeis as string[])?.some((imei) =>
+        imei.toLowerCase().includes(busca.toLowerCase())
+      )
   );
 
   const filtrarProdutos = produtosVenda.filter((p) =>

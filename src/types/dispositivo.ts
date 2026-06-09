@@ -31,6 +31,7 @@ export interface Dispositivo {
   origem_tipo?: 'terceiro' | 'fornecedor' | 'estoque_proprio';
   codigo_barras?: string;
   created_at: string;
+  imeis?: string[];
 }
 
 export interface FormularioDispositivo {
