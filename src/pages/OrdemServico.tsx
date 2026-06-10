@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
@@ -78,6 +78,7 @@ const ConfiguracaoLocalizacaoOS = lazy(() => import("@/components/configuracoes/
 const DialogLimiteAtingido = lazy(() => import("@/components/planos/DialogLimiteAtingido").then((m) => ({ default: m.DialogLimiteAtingido })));
 const DialogServicoAvulso = lazy(() => import("@/components/ordens/DialogServicoAvulso").then((m) => ({ default: m.DialogServicoAvulso })));
 const DialogImportarOS = lazy(() => import("@/components/ordens/DialogImportarOS").then((m) => ({ default: m.DialogImportarOS })));
+const DialogExportarRelatorio = lazy(() => import("@/components/ordens/DialogExportarRelatorio").then((m) => ({ default: m.DialogExportarRelatorio })));
 const DialogConfiguracaoEtiqueta = lazy(() => import("@/components/ordens/DialogConfiguracaoEtiqueta").then((m) => ({ default: m.DialogConfiguracaoEtiqueta })));
 const ImpressaoEtiqueta = lazy(() => import("@/components/ordens/ImpressaoEtiqueta").then((m) => ({ default: m.ImpressaoEtiqueta })));
 const DialogPersonalizarColunas = lazy(() => import("@/components/ordens/DialogPersonalizarColunas").then((m) => ({ default: m.DialogPersonalizarColunas })));
@@ -166,6 +167,7 @@ export default function OrdemServicoPage() {
   const [dialogServicoAvulso, setDialogServicoAvulso] = useState(false);
   const [avulsoParaExcluir, setAvulsoParaExcluir] = useState<string | null>(null);
   const [dialogImportarOS, setDialogImportarOS] = useState(false);
+  const [dialogExportarRelatorio, setDialogExportarRelatorio] = useState(false);
   const [visualizacao, setVisualizacao] = useState<"tabela" | "kanban">("tabela");
   const [dialogEtiqueta, setDialogEtiqueta] = useState(false);
   const [ordemParaEtiqueta, setOrdemParaEtiqueta] = useState<OrdemServico | null>(null);
@@ -700,6 +702,10 @@ export default function OrdemServicoPage() {
                 <Upload className="h-3.5 w-3.5" />
                 Importar
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setDialogExportarRelatorio(true)} className="h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 hover:border-border">
+                <Download className="h-3.5 w-3.5" />
+                Exportar
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setDialogServicoAvulso(true)} className="h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 hover:border-border">
                 <Wrench className="h-3.5 w-3.5" />
                 Avulso
@@ -912,6 +918,15 @@ export default function OrdemServicoPage() {
                         >
                           <X className="h-3.5 w-3.5 mr-1" />
                           Cancelar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDialogExportarRelatorio(true)}
+                          className="h-7 text-xs px-3 gap-1.5"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Exportar
                         </Button>
                         <Button
                           variant="outline"
@@ -1498,6 +1513,17 @@ export default function OrdemServicoPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {dialogExportarRelatorio && (
+        <Suspense fallback={null}>
+          <DialogExportarRelatorio
+            aberto={dialogExportarRelatorio}
+            onFechar={() => setDialogExportarRelatorio(false)}
+            ordens={ordens}
+            itensSelecionados={selecaoAtiva ? itensSelecionados : undefined}
+          />
+        </Suspense>
+      )}
     </AppLayout>
   );
 }
