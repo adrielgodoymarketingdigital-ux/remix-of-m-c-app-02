@@ -33,6 +33,8 @@ import {
   QrCode,
 } from "lucide-react";
 import logoMec from "@/assets/logo-mec-auth.png";
+import fotoDispositivo1 from "@/assets/IMG_4811.JPG";
+import fotoDispositivo2 from "@/assets/IMG_4812.JPG";
 
 async function marcarOnboardingCompleto(): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -272,17 +274,33 @@ function TeamOnboardingInner() {
               </div>
             </div>
 
-            {/* Fotos — placeholder sem imagens */}
+            {/* Fotos do dispositivo */}
             <div className="px-5 py-4 border-b border-white/10">
               <div className="flex items-center gap-1.5 mb-2.5">
                 <Camera className="h-3.5 w-3.5 text-slate-500" />
                 <span className="text-[11px] text-slate-500 uppercase tracking-wider font-mono">Fotos do dispositivo</span>
               </div>
-              <div className="rounded-lg bg-slate-800/50 border border-dashed border-white/20 px-4 py-3 flex items-center gap-3">
-                <Camera className="h-5 w-5 text-slate-500 flex-shrink-0" />
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Adicione fotos do dispositivo na hora de criar a OS.
-                </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative rounded-xl overflow-hidden aspect-[3/4] bg-slate-800/60 border border-white/10">
+                  <img
+                    src={fotoDispositivo1}
+                    alt="Foto do dispositivo 1"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
+                    <p className="text-[10px] text-white/80 font-medium">Frente</p>
+                  </div>
+                </div>
+                <div className="relative rounded-xl overflow-hidden aspect-[3/4] bg-slate-800/60 border border-white/10">
+                  <img
+                    src={fotoDispositivo2}
+                    alt="Foto do dispositivo 2"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
+                    <p className="text-[10px] text-white/80 font-medium">Traseira</p>
+                  </div>
+                </div>
               </div>
             </div>
 
