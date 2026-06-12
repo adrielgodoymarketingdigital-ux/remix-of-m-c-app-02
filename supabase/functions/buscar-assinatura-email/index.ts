@@ -23,13 +23,22 @@ serve(async (req: Request) => {
       { auth: { persistSession: false } }
     );
 
-    // Buscar usuário pelo email em auth.users via listUsers
-    const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
-    if (usersError) throw usersError;
+    // Buscar usuário pelo email via API Admin REST (listUsers com filtro)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-    const authUser = usersData.users.find(
-      (u) => u.email?.toLowerCase() === email.trim().toLowerCase()
+    const searchRes = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(email.trim().toLowerCase())}&page=1&per_page=1`,
+      {
+        headers: {
+          "apikey": serviceKey,
+          "Authorization": `Bearer ${serviceKey}`,
+        },
+      }
     );
+
+    const searchData = await searchRes.json();
+    const authUser = searchData?.users?.[0];
 
     if (!authUser) {
       return new Response(
