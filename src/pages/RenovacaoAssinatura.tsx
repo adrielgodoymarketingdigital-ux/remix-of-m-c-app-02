@@ -16,8 +16,6 @@ import {
   Zap,
   RefreshCw,
   TrendingUp,
-  ChevronDown,
-  ChevronUp,
   Search,
   AlertCircle,
 } from "lucide-react";
@@ -87,6 +85,133 @@ interface DadosAssinatura {
   dataProximaCobranca?: string;
   nomeUsuario?: string;
   email: string;
+}
+
+// Grupos de planos: cada grupo tem mensal e anual (anual pode não existir para alguns)
+const GRUPOS_PLANOS = [
+  { base: "basico",            mensal: "basico_mensal",            anual: "basico_anual" },
+  { base: "intermediario",     mensal: "intermediario_mensal",     anual: "intermediario_anual" },
+  { base: "profissional",      mensal: "profissional_mensal",      anual: "profissional_anual" },
+  { base: "ultra",             mensal: "profissional_ultra_mensal", anual: "profissional_ultra_anual" },
+] as const;
+
+function GruposUpgrade({
+  disponiveis,
+  planoSelecionado,
+  onSelecionar,
+}: {
+  disponiveis: PlanoTipo[];
+  planoSelecionado: string | null;
+  onSelecionar: (key: string) => void;
+}) {
+  // Período ativo por grupo: "mensal" | "anual"
+  const [periodos, setPeriodos] = useState<Record<string, "mensal" | "anual">>({});
+
+  const gruposFiltrados = GRUPOS_PLANOS.filter(
+    (g) => disponiveis.includes(g.mensal as PlanoTipo) || disponiveis.includes(g.anual as PlanoTipo)
+  );
+
+  return (
+    <div className="space-y-3">
+      {gruposFiltrados.map((grupo) => {
+        const periodo = periodos[grupo.base] ?? "mensal";
+        const keyAtivo = periodo === "mensal" ? grupo.mensal : grupo.anual;
+        const plano = PLANOS[keyAtivo];
+        if (!plano) return null;
+
+        const sel = planoSelecionado === keyAtivo;
+        const temAnual = disponiveis.includes(grupo.anual as PlanoTipo) && !!PLANOS[grupo.anual];
+
+        const setPeriodo = (p: "mensal" | "anual") => {
+          setPeriodos((prev) => ({ ...prev, [grupo.base]: p }));
+          // Se esse grupo já estava selecionado, atualiza a seleção para o novo período
+          if (planoSelecionado === grupo.mensal || planoSelecionado === grupo.anual) {
+            onSelecionar(p === "mensal" ? grupo.mensal : grupo.anual);
+          }
+        };
+
+        return (
+          <div
+            key={grupo.base}
+            onClick={() => onSelecionar(keyAtivo)}
+            className={`rounded-2xl border-2 cursor-pointer transition-all overflow-hidden ${
+              sel
+                ? "border-violet-500 bg-violet-500/10 shadow-[0_0_20px_-5px_rgba(139,92,246,0.3)]"
+                : "border-white/10 bg-slate-900/60 hover:border-white/20"
+            }`}
+          >
+            <div className="p-4">
+              {/* Header: nome + badge + radio */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-bold text-white">{plano.nome}</span>
+                    {plano.popular && (
+                      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-[10px] px-1.5 py-0">Popular</Badge>
+                    )}
+                    {plano.novo && (
+                      <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 text-[10px] px-1.5 py-0">Novo</Badge>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-black text-white">
+                      R$ {plano.preco.toFixed(2).replace(".", ",")}
+                    </span>
+                    <span className="text-xs text-slate-400">{plano.periodo}</span>
+                  </div>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${
+                  sel ? "border-violet-400 bg-violet-400" : "border-slate-600"
+                }`}>
+                  {sel && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
+                </div>
+              </div>
+
+              {/* Toggle mensal / anual */}
+              {temAnual && (
+                <div
+                  className="flex rounded-lg overflow-hidden border border-white/10 mb-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => setPeriodo("mensal")}
+                    className={`flex-1 py-1.5 text-[11px] font-semibold transition-colors ${
+                      periodo === "mensal"
+                        ? "bg-white/10 text-white"
+                        : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    Mensal
+                  </button>
+                  <button
+                    onClick={() => setPeriodo("anual")}
+                    className={`flex-1 py-1.5 text-[11px] font-semibold transition-colors ${
+                      periodo === "anual"
+                        ? "bg-white/10 text-white"
+                        : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    Anual
+                    <span className="ml-1 text-emerald-400 text-[10px]">economize</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Recursos */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                {plano.recursos.slice(0, 4).map((r) => (
+                  <div key={r} className="flex items-center gap-1.5">
+                    <Zap className="h-3 w-3 text-violet-400 flex-shrink-0" />
+                    <span className="text-[11px] text-slate-300 truncate">{r}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function RenovacaoAssinatura() {
@@ -371,79 +496,25 @@ export default function RenovacaoAssinatura() {
           {/* ── Upgrade ── */}
           {modo === "upgrade" && (
             <div className="space-y-3">
-              <button
-                onClick={() => setMostrarUpgrades((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/50 border border-white/10 text-sm text-slate-300 hover:border-white/20 transition-all"
-              >
-                <span>{planoSelecionado ? (PLANOS[planoSelecionado]?.nome ?? planoSelecionado) : "Escolha um plano"}</span>
-                {mostrarUpgrades ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
-              </button>
-
-              {mostrarUpgrades && upgradesDisponiveis.length > 0 && (
-                <div className="space-y-2">
-                  {upgradesDisponiveis.map((key) => {
-                    const plano = PLANOS[key];
-                    if (!plano) return null;
-                    const sel = planoSelecionado === key;
-                    return (
-                      <div
-                        key={key}
-                        onClick={() => { setPlanoSelecionado(key); setMostrarUpgrades(false); }}
-                        className={`rounded-2xl border-2 cursor-pointer transition-all overflow-hidden ${
-                          sel
-                            ? "border-violet-500 bg-violet-500/10 shadow-[0_0_20px_-5px_rgba(139,92,246,0.3)]"
-                            : "border-white/10 bg-slate-900/60 hover:border-white/20"
-                        }`}
-                      >
-                        <div className="p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <span className="text-sm font-bold text-white">{plano.nome}</span>
-                                {plano.popular && (
-                                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-[10px] px-1.5 py-0">
-                                    Popular
-                                  </Badge>
-                                )}
-                                {plano.novo && (
-                                  <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 text-[10px] px-1.5 py-0">
-                                    Novo
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-baseline gap-1.5">
-                                <span className="text-xl font-black text-white">
-                                  R$ {plano.preco.toFixed(2).replace(".", ",")}
-                                </span>
-                                <span className="text-xs text-slate-400">{plano.periodo}</span>
-                              </div>
-                            </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${
-                              sel ? "border-violet-400 bg-violet-400" : "border-slate-600"
-                            }`}>
-                              {sel && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-3">
-                            {plano.recursos.slice(0, 4).map((r) => (
-                              <div key={r} className="flex items-center gap-1.5">
-                                <Zap className="h-3 w-3 text-violet-400 flex-shrink-0" />
-                                <span className="text-[11px] text-slate-300 truncate">{r}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+              {upgradesDisponiveis.length === 0 ? (
+                <div className="rounded-xl bg-slate-800/50 border border-white/10 px-4 py-3 text-center">
+                  <p className="text-sm text-slate-400">Você já está no plano mais alto disponível.</p>
                 </div>
+              ) : (
+                <GruposUpgrade
+                  disponiveis={upgradesDisponiveis}
+                  planoSelecionado={planoSelecionado}
+                  onSelecionar={setPlanoSelecionado}
+                />
               )}
 
-              {/* Botões de pagamento para upgrade */}
-              {planoSelecionado && !mostrarUpgrades && planoSelecionadoInfo && (
+              {/* Botões de pagamento */}
+              {planoSelecionado && planoSelecionadoInfo && (
                 <div className="rounded-2xl bg-slate-900/80 border border-violet-500/20 overflow-hidden">
                   <div className="px-5 py-4 border-b border-white/10">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider font-mono mb-1">Upgrade para</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider font-mono mb-1">
+                      {isPlanoGratuito ? "Assinar" : "Upgrade para"}
+                    </p>
                     <div className="flex items-baseline gap-2">
                       <p className="text-xl font-black text-white">
                         R$ {planoSelecionadoInfo.preco.toFixed(2).replace(".", ",")}
@@ -471,12 +542,6 @@ export default function RenovacaoAssinatura() {
                       </Button>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {upgradesDisponiveis.length === 0 && (
-                <div className="rounded-xl bg-slate-800/50 border border-white/10 px-4 py-3 text-center">
-                  <p className="text-sm text-slate-400">Você já está no plano mais alto disponível.</p>
                 </div>
               )}
             </div>
