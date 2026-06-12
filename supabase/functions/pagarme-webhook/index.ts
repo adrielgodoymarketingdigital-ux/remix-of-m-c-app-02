@@ -415,6 +415,32 @@ serve(async (req) => {
     // 🎯 Meta CAPI Purchase (server-side)
     await dispararMetaCapiPurchase(supabaseAdmin, userId, pagamento.valor_centavos, planoTipo);
 
+    // 📣 Notificar n8n — confirmação de pagamento PIX renovação (fire-and-forget)
+    // Só dispara se a order veio pelo fluxo de renovação (metadata.origem = "renovacao")
+    if (order?.metadata?.origem === "renovacao") {
+      const { data: profileN8n } = await supabaseAdmin
+        .from("profiles")
+        .select("nome, email, celular")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      fetch("https://n8n.appmec.in/webhook/renovacao-pix-confirmado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          evento: "pagamento_confirmado",
+          user_id: userId,
+          pagarme_order_id: orderId,
+          valor_pago: pagamento.valor_centavos / 100,
+          plano_tipo: planoTipo,
+          email: profileN8n?.email ?? "",
+          nome: profileN8n?.nome ?? "",
+          telefone: profileN8n?.celular ?? "",
+        }),
+      }).catch(() => {});
+      log("📣 n8n renovacao-pix-confirmado disparado", { userId, orderId });
+    }
+
     // ── 4. Notificação admin ─────────────────────────────────────────
     const isRenovacaoPix = !!assinaturaExistente;
     await supabaseAdmin.from("admin_notifications").insert({

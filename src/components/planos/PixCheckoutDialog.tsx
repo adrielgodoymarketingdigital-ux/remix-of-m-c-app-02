@@ -39,6 +39,8 @@ interface PixCheckoutDialogProps {
   planoPreco: number;
   cupomInicial?: string;
   onSuccess?: () => void;
+  // Quando fornecido, usa a edge function de renovação (sem autenticação)
+  userId?: string;
 }
 
 interface PixData {
@@ -63,6 +65,7 @@ export function PixCheckoutDialog({
   planoPreco,
   cupomInicial,
   onSuccess,
+  userId,
 }: PixCheckoutDialogProps) {
   const [loading, setLoading] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
@@ -103,29 +106,40 @@ export function PixCheckoutDialog({
     setPaymentConfirmed(false);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke(
-        "create-pix-order",
-        { body: { plan_code: planoKey, cpf: cpfDigits, coupon_id: cupom.desconto?.cupomId ?? null } }
-      );
+      let data: Record<string, unknown>;
 
-      if (fnError) {
-        // supabase.functions.invoke coloca a resposta HTTP em fnError.context
-        // quando a edge function retorna status não-2xx — extrair a mensagem real
-        let message = fnError.message;
-        const errorWithContext = fnError as Error & { context?: Response };
-        if (errorWithContext.context) {
-          try {
-            const errorBody = await errorWithContext.context.json();
-            if (typeof errorBody?.error === "string") {
-              message = errorBody.error;
-            }
-          } catch {
-            // noop — mantém fnError.message
+      if (userId) {
+        // Fluxo renovação: sem autenticação, usa edge function dedicada
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-pix-order-renovacao`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, plan_code: planoKey, cpf: cpfDigits }),
+        });
+        data = await res.json();
+        if (!res.ok || data?.error) throw new Error((data?.error as string) ?? "Erro ao criar PIX.");
+      } else {
+        // Fluxo normal: usuário autenticado
+        const { data: fnData, error: fnError } = await supabase.functions.invoke(
+          "create-pix-order",
+          { body: { plan_code: planoKey, cpf: cpfDigits, coupon_id: cupom.desconto?.cupomId ?? null } }
+        );
+        if (fnError) {
+          let message = fnError.message;
+          const errorWithContext = fnError as Error & { context?: Response };
+          if (errorWithContext.context) {
+            try {
+              const errorBody = await errorWithContext.context.json();
+              if (typeof errorBody?.error === "string") message = errorBody.error;
+            } catch { /* noop */ }
           }
+          throw new Error(message);
         }
-        throw new Error(message);
+        if (fnData?.error) throw new Error(fnData.error);
+        data = fnData;
       }
-      if (data?.error) throw new Error(data.error);
+
+      if (data?.error) throw new Error(data.error as string);
 
       setPixData(data);
     } catch (err: unknown) {

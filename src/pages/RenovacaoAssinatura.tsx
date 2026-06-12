@@ -596,6 +596,7 @@ export default function RenovacaoAssinatura() {
             planoNome={planoSelecionadoInfo.nome}
             planoPreco={planoSelecionadoInfo.preco}
             onSuccess={handleSucesso}
+            userId={dados?.userId}
           />
         </>
       )}
