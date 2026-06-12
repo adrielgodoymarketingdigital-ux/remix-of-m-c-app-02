@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,14 +109,19 @@ export default function RenovacaoAssinatura() {
     setErroEmail(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("buscar-assinatura-email", {
-        body: { email: email.trim().toLowerCase() },
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/buscar-assinatura-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        }
+      );
 
-      if (error) throw error;
+      const data = await res.json();
 
-      if (data?.error) {
-        setErroEmail(data.error);
+      if (!res.ok || data?.error) {
+        setErroEmail(data?.error ?? "Erro ao buscar assinatura.");
         return;
       }
 
