@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TrialBanner } from "@/components/trial/TrialBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,8 +43,11 @@ export default function CatalogoDispositivos() {
   const [modoEdicao, setModoEdicao] = useState(false);
   const [mostrarSeletorOnline, setMostrarSeletorOnline] = useState(false);
   const [salvandoLP, setSalvandoLP] = useState(false);
+  const [salvandoCatalogo, setSalvandoCatalogo] = useState(false);
   const [lpAlterada, setLpAlterada] = useState(false);
   const [configLPOriginal, setConfigLPOriginal] = useState<string>("");
+  const configCatalogoRef = useRef(configCatalogo);
+  configCatalogoRef.current = configCatalogo;
   
   const temAcessoLandingPage = temAcessoModulo('landing_page');
 
@@ -113,6 +116,27 @@ export default function CatalogoDispositivos() {
     }
   };
 
+  const handleSalvarCatalogo = async () => {
+    setSalvandoCatalogo(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+      const { error } = await supabase
+        .from('configuracoes_loja')
+        .update({
+          catalogo_config: JSON.parse(JSON.stringify(configCatalogo)),
+        })
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast({ title: "Catálogo salvo com sucesso!" });
+    } catch (error) {
+      console.error("Erro ao salvar catálogo:", error);
+      toast({ title: "Erro ao salvar", description: "Tente novamente.", variant: "destructive" });
+    } finally {
+      setSalvandoCatalogo(false);
+    }
+  };
+
   const getPreviewWidth = () => {
     switch (previewDevice) {
       case "mobile": return "375px";
@@ -139,13 +163,13 @@ export default function CatalogoDispositivos() {
     if (itensCatalogo.length === 0) return;
 
     const idsDisponiveis = itensCatalogo.map((item) => item.id);
-    const { idsValidos } = sanitizarSelecaoCatalogo(configCatalogo.itensSelecionadosIds, idsDisponiveis);
-    const categoriasSanitizadas = sanitizarCategoriasCatalogo(configCatalogo.categoriasCatalogo, idsDisponiveis);
+    const current = configCatalogoRef.current;
 
-    const selecaoAtual = configCatalogo.itensSelecionadosIds || [];
-    const categoriasAtuais = configCatalogo.categoriasCatalogo || [];
-    const selecaoMudou = JSON.stringify(selecaoAtual) !== JSON.stringify(idsValidos);
-    const categoriasMudaram = JSON.stringify(categoriasAtuais) !== JSON.stringify(categoriasSanitizadas || []);
+    const { idsValidos } = sanitizarSelecaoCatalogo(current.itensSelecionadosIds, idsDisponiveis);
+    const categoriasSanitizadas = sanitizarCategoriasCatalogo(current.categoriasCatalogo, idsDisponiveis);
+
+    const selecaoMudou = JSON.stringify(current.itensSelecionadosIds || []) !== JSON.stringify(idsValidos);
+    const categoriasMudaram = JSON.stringify(current.categoriasCatalogo || []) !== JSON.stringify(categoriasSanitizadas || []);
     const estadoLocalMudou = JSON.stringify(selecionados) !== JSON.stringify(idsValidos);
 
     if (!selecaoMudou && !categoriasMudaram && !estadoLocalMudou) return;
@@ -156,7 +180,8 @@ export default function CatalogoDispositivos() {
       itensSelecionadosIds: idsValidos,
       categoriasCatalogo: categoriasSanitizadas,
     }));
-  }, [itensCatalogo, configCatalogo.itensSelecionadosIds, configCatalogo.categoriasCatalogo, selecionados]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itensCatalogo]);
 
   const itensSelecionados = useMemo(() => {
     if (selecionados.length === 0) return itensCatalogo;
@@ -365,10 +390,26 @@ export default function CatalogoDispositivos() {
                   {/* Gerenciador de categorias */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Categorias do Catálogo</CardTitle>
-                      <CardDescription className="text-xs">
-                        Organize os itens em categorias para exibição agrupada no catálogo público.
-                      </CardDescription>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-sm">Categorias do Catálogo</CardTitle>
+                          <CardDescription className="text-xs">
+                            Organize os itens em categorias para exibição agrupada no catálogo público.
+                          </CardDescription>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={handleSalvarCatalogo}
+                          disabled={salvandoCatalogo}
+                        >
+                          {salvandoCatalogo ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4 mr-2" />
+                          )}
+                          Salvar
+                        </Button>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <GerenciadorCategoriasCatalogo
@@ -393,10 +434,26 @@ export default function CatalogoDispositivos() {
                   <div className="grid gap-6 lg:grid-cols-2">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Personalizar Catálogo</CardTitle>
-                        <CardDescription>
-                          Escolha templates, personalize textos e configure as opções de exibição
-                        </CardDescription>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>Personalizar Catálogo</CardTitle>
+                            <CardDescription>
+                              Escolha templates, personalize textos e configure as opções de exibição
+                            </CardDescription>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={handleSalvarCatalogo}
+                            disabled={salvandoCatalogo}
+                          >
+                            {salvandoCatalogo ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="w-4 h-4 mr-2" />
+                            )}
+                            Salvar
+                          </Button>
+                        </div>
                       </CardHeader>
                       <CardContent>
                         <ConfiguracaoTemplates

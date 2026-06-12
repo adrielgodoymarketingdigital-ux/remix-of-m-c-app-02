@@ -412,6 +412,17 @@ serve(async (req) => {
       log("Assinatura criada", { userId, planoTipo });
     }
 
+    // Limpar followup_control após renovação confirmada
+    const { error: followupError } = await supabaseAdmin
+      .from("followup_control")
+      .delete()
+      .eq("user_id", userId);
+    if (followupError) {
+      log("⚠️ Erro ao deletar followup_control (não crítico)", { userId, error: followupError.message });
+    } else {
+      log("🧹 followup_control limpo", { userId });
+    }
+
     // 🎯 Meta CAPI Purchase (server-side)
     await dispararMetaCapiPurchase(supabaseAdmin, userId, pagamento.valor_centavos, planoTipo);
 
@@ -439,6 +450,34 @@ serve(async (req) => {
         }),
       }).catch(() => {});
       log("📣 n8n renovacao-pix-confirmado disparado", { userId, orderId });
+    }
+
+    // 📣 Notificar n8n — novo assinante via PIX (fire-and-forget)
+    // Só dispara quando NÃO é renovação
+    if (order?.metadata?.origem !== "renovacao") {
+      try {
+        const { data: profileNovoAssinante } = await supabaseAdmin
+          .from("profiles")
+          .select("nome, celular")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        const novoAssinanteRes = await fetch("https://n8n.appmec.in/webhook/novo-assinante", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            evento: "novo_assinante",
+            user_id: userId,
+            nome: profileNovoAssinante?.nome ?? "",
+            telefone: profileNovoAssinante?.celular ?? "",
+            plano_tipo: planoTipo,
+            valor_pago: pagamento.valor_centavos / 100,
+          }),
+        });
+        log("📣 n8n novo-assinante disparado", { userId, orderId, status: novoAssinanteRes.status });
+      } catch (err) {
+        log("⚠️ Erro ao notificar n8n novo-assinante (não crítico)", { userId, error: String(err) });
+      }
     }
 
     // ── 4. Notificação admin ─────────────────────────────────────────
