@@ -72,6 +72,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const AcompanharOS = lazy(() => import("./pages/AcompanharOS"));
 const BaixarApp = lazy(() => import("./pages/BaixarApp"));
 const TeamOnboarding = lazy(() => import("./pages/TeamOnboarding"));
+const RenovacaoAssinatura = lazy(() => import("./pages/RenovacaoAssinatura"));
 
 const RouteFallback = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -150,6 +151,7 @@ function AppRoutes() {
           <Route path="/video-boas-vindas" element={<VideoBoasVindas />} />
           <Route path="/onboarding-inicial" element={<OnboardingObrigatorio />} />
           <Route path="/team-onboarding" element={<TeamOnboarding />} />
+          <Route path="/renovar" element={<RenovacaoAssinatura />} />
           {/* Rotas legadas - redirecionar para auth */}
           <Route path="/cadastro-trial" element={<Auth />} />
           <Route path="/ativar-trial" element={<Auth />} />
