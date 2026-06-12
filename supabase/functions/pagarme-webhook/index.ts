@@ -721,6 +721,34 @@ async function handleSubscriptionCharged(
     log("⚠️ Erro ao disparar dispatch-event (cartão)", { error: String(err) });
   }
 
+  // 📣 Notificar n8n — novo assinante via cartão (fire-and-forget)
+  // Só dispara quando é nova venda (não renovação)
+  if (eraNovaVenda) {
+    try {
+      const { data: profileNovoAssinante } = await supabaseAdmin
+        .from("profiles")
+        .select("nome, celular")
+        .eq("user_id", assinatura.user_id)
+        .maybeSingle();
+
+      const novoAssinanteRes = await fetch("https://n8n.appmec.in/webhook/novo-assinante", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          evento: "novo_assinante",
+          user_id: assinatura.user_id,
+          nome: profileNovoAssinante?.nome ?? "",
+          telefone: profileNovoAssinante?.celular ?? "",
+          plano_tipo: assinatura.plano_tipo,
+          valor_pago: Number(valorCentavosCard) / 100,
+        }),
+      });
+      log("📣 n8n novo-assinante disparado (cartão)", { userId: assinatura.user_id, status: novoAssinanteRes.status });
+    } catch (err) {
+      log("⚠️ Erro ao notificar n8n novo-assinante (cartão, não crítico)", { userId: assinatura.user_id, error: String(err) });
+    }
+  }
+
   return ok({ processed: true, renewed: true, user_id: assinatura.user_id });
 }
 
