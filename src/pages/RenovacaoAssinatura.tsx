@@ -110,42 +110,25 @@ export default function RenovacaoAssinatura() {
     setErroEmail(null);
 
     try {
-      // Buscar user_id via profiles pelo email
-      const { data: profile, error: errProfile } = await supabase
-        .from("profiles")
-        .select("user_id, nome_completo, email")
-        .eq("email", email.trim().toLowerCase())
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke("buscar-assinatura-email", {
+        body: { email: email.trim().toLowerCase() },
+      });
 
-      if (errProfile) throw errProfile;
+      if (error) throw error;
 
-      if (!profile) {
-        setErroEmail("Nenhuma conta encontrada com este email.");
-        return;
-      }
-
-      // Buscar assinatura do usuário
-      const { data: assinatura, error: errAss } = await supabase
-        .from("assinaturas")
-        .select("plano_tipo, status, data_fim, data_proxima_cobranca")
-        .eq("user_id", profile.user_id)
-        .maybeSingle();
-
-      if (errAss) throw errAss;
-
-      if (!assinatura) {
-        setErroEmail("Nenhuma assinatura encontrada para este email.");
+      if (data?.error) {
+        setErroEmail(data.error);
         return;
       }
 
       setDados({
-        userId: profile.user_id,
-        planoTipo: assinatura.plano_tipo as PlanoTipo,
-        status: assinatura.status,
-        dataFim: assinatura.data_fim ?? undefined,
-        dataProximaCobranca: assinatura.data_proxima_cobranca ?? undefined,
-        nomeUsuario: profile.nome_completo ?? undefined,
-        email: email.trim().toLowerCase(),
+        userId: data.userId,
+        planoTipo: data.planoTipo as PlanoTipo,
+        status: data.status,
+        dataFim: data.dataFim ?? undefined,
+        dataProximaCobranca: data.dataProximaCobranca ?? undefined,
+        nomeUsuario: data.nome ?? undefined,
+        email: data.email ?? email.trim().toLowerCase(),
       });
 
       setEtapa("escolha");
