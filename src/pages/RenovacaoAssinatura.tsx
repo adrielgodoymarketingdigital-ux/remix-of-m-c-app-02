@@ -46,10 +46,12 @@ const LABEL_PLANO: Record<string, string> = {
   profissional_ultra_anual: "Ultra Anual",
 };
 
+const PLANOS_GRATUITOS: PlanoTipo[] = ["free", "trial", "demonstracao"];
+
 // Planos disponíveis para upgrade dado o plano atual
 function getUpgradePlanos(planoAtual: PlanoTipo): PlanoTipo[] {
   const idx = HIERARQUIA_PLANOS.indexOf(planoAtual);
-  if (idx === -1) return HIERARQUIA_PLANOS;
+  if (idx === -1) return HIERARQUIA_PLANOS; // gratuitos: mostrar todos
   return HIERARQUIA_PLANOS.slice(idx + 1);
 }
 
@@ -125,15 +127,23 @@ export default function RenovacaoAssinatura() {
         return;
       }
 
+      const planoTipo = data.planoTipo as PlanoTipo;
+
       setDados({
         userId: data.userId,
-        planoTipo: data.planoTipo as PlanoTipo,
+        planoTipo,
         status: data.status,
         dataFim: data.dataFim ?? undefined,
         dataProximaCobranca: data.dataProximaCobranca ?? undefined,
         nomeUsuario: data.nome ?? undefined,
         email: data.email ?? email.trim().toLowerCase(),
       });
+
+      // Planos gratuitos vão direto para seleção de upgrade
+      if (PLANOS_GRATUITOS.includes(planoTipo)) {
+        setModo("upgrade");
+        setMostrarUpgrades(true);
+      }
 
       setEtapa("escolha");
     } catch (err: unknown) {
@@ -164,6 +174,7 @@ export default function RenovacaoAssinatura() {
   const planoAtualInfo = dados ? PLANOS[dados.planoTipo] : null;
   const planoSelecionadoInfo = planoSelecionado ? PLANOS[planoSelecionado] : null;
   const upgradesDisponiveis = dados ? getUpgradePlanos(dados.planoTipo) : [];
+  const isPlanoGratuito = dados ? PLANOS_GRATUITOS.includes(dados.planoTipo) : false;
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-start py-8 px-4 relative overflow-hidden">
@@ -280,33 +291,39 @@ export default function RenovacaoAssinatura() {
           </div>
 
           {/* Opções: renovar ou upgrade */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => selecionarModo("renovar")}
-              className={`rounded-2xl border-2 p-4 text-left transition-all ${
-                modo === "renovar"
-                  ? "border-blue-500 bg-blue-500/10 shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)]"
-                  : "border-white/10 bg-slate-900/50 hover:border-white/20"
-              }`}
-            >
-              <RefreshCw className={`h-5 w-5 mb-2 ${modo === "renovar" ? "text-blue-400" : "text-slate-400"}`} />
-              <p className="text-sm font-bold text-white">Renovar plano</p>
-              <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">Manter o plano atual</p>
-            </button>
+          {isPlanoGratuito ? (
+            <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-3 text-center">
+              <p className="text-sm text-blue-300">Seu plano atual é gratuito. Escolha um plano pago abaixo para assinar.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => selecionarModo("renovar")}
+                className={`rounded-2xl border-2 p-4 text-left transition-all ${
+                  modo === "renovar"
+                    ? "border-blue-500 bg-blue-500/10 shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)]"
+                    : "border-white/10 bg-slate-900/50 hover:border-white/20"
+                }`}
+              >
+                <RefreshCw className={`h-5 w-5 mb-2 ${modo === "renovar" ? "text-blue-400" : "text-slate-400"}`} />
+                <p className="text-sm font-bold text-white">Renovar plano</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">Manter o plano atual</p>
+              </button>
 
-            <button
-              onClick={() => selecionarModo("upgrade")}
-              className={`rounded-2xl border-2 p-4 text-left transition-all ${
-                modo === "upgrade"
-                  ? "border-violet-500 bg-violet-500/10 shadow-[0_0_20px_-5px_rgba(139,92,246,0.3)]"
-                  : "border-white/10 bg-slate-900/50 hover:border-white/20"
-              }`}
-            >
-              <TrendingUp className={`h-5 w-5 mb-2 ${modo === "upgrade" ? "text-violet-400" : "text-slate-400"}`} />
-              <p className="text-sm font-bold text-white">Fazer upgrade</p>
-              <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">Mudar para plano superior</p>
-            </button>
-          </div>
+              <button
+                onClick={() => selecionarModo("upgrade")}
+                className={`rounded-2xl border-2 p-4 text-left transition-all ${
+                  modo === "upgrade"
+                    ? "border-violet-500 bg-violet-500/10 shadow-[0_0_20px_-5px_rgba(139,92,246,0.3)]"
+                    : "border-white/10 bg-slate-900/50 hover:border-white/20"
+                }`}
+              >
+                <TrendingUp className={`h-5 w-5 mb-2 ${modo === "upgrade" ? "text-violet-400" : "text-slate-400"}`} />
+                <p className="text-sm font-bold text-white">Fazer upgrade</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">Mudar para plano superior</p>
+              </button>
+            </div>
+          )}
 
           {/* ── Renovar mesmo plano ── */}
           {modo === "renovar" && planoSelecionadoInfo && (
