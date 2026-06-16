@@ -2283,6 +2283,7 @@ export type Database = {
           status: string | null
           tempo_garantia: number | null
           tipo_midia: string | null
+          tipo_os: string
           tipo_servico_id: string | null
           tipo_servico_nome_snapshot: string | null
           total: number | null
@@ -2323,6 +2324,7 @@ export type Database = {
           status?: string | null
           tempo_garantia?: number | null
           tipo_midia?: string | null
+          tipo_os?: string
           tipo_servico_id?: string | null
           tipo_servico_nome_snapshot?: string | null
           total?: number | null
@@ -2363,6 +2365,7 @@ export type Database = {
           status?: string | null
           tempo_garantia?: number | null
           tipo_midia?: string | null
+          tipo_os?: string
           tipo_servico_id?: string | null
           tipo_servico_nome_snapshot?: string | null
           total?: number | null

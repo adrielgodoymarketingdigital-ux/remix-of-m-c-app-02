@@ -98,6 +98,9 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">Ordem de Serviço</span>
+                  {(ordem as any).tipo_os === "simplificada" && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 font-mono">Simplificada</span>
+                  )}
                 </div>
                 <h2 className="text-xl font-black font-mono tracking-tight">#{ordem.numero_os}</h2>
               </div>

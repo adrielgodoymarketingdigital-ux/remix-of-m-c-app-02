@@ -161,6 +161,9 @@ export const TabelaOrdensServico = ({
                     {(ordem as any).is_teste && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 font-mono">Teste</span>
                     )}
+                    {(ordem as any).tipo_os === "simplificada" && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 font-mono">Simplificada</span>
+                    )}
                   </div>
 
                   {onAtualizarStatus ? (
@@ -371,6 +374,9 @@ export const TabelaOrdensServico = ({
                   )}
                   {(ordem as any).is_teste && (
                     <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-600">T</span>
+                  )}
+                  {(ordem as any).tipo_os === "simplificada" && (
+                    <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-sky-500/15 text-sky-600">S</span>
                   )}
                 </TableCell>
 

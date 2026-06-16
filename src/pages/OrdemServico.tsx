@@ -61,6 +61,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { KanbanOrdensServico } from "@/components/ordens/KanbanOrdensServico";
 
 const DialogOrdemServico = lazy(() => import("@/components/ordens/DialogOrdemServico").then((m) => ({ default: m.DialogOrdemServico })));
+const DialogOrdemServicoSimplificada = lazy(() => import("@/components/ordens/DialogOrdemServicoSimplificada").then((m) => ({ default: m.DialogOrdemServicoSimplificada })));
 const DialogVisualizacaoOrdem = lazy(() => import("@/components/ordens/DialogVisualizacaoOrdem").then((m) => ({ default: m.DialogVisualizacaoOrdem })));
 const DialogAssinaturaSaida = lazy(() => import("@/components/ordens/DialogAssinaturaSaida").then((m) => ({ default: m.DialogAssinaturaSaida })));
 const DialogEnviarWhatsApp = lazy(() => import("@/components/ordens/DialogEnviarWhatsApp").then((m) => ({ default: m.DialogEnviarWhatsApp })));
@@ -143,6 +144,7 @@ export default function OrdemServicoPage() {
   }, []);
 
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [dialogSimplificadaAberto, setDialogSimplificadaAberto] = useState(false);
   const [dialogVisualizacao, setDialogVisualizacao] = useState(false);
   const [ordemSelecionada, setOrdemSelecionada] = useState<OrdemServico | null>(null);
   const [ordemParaExcluir, setOrdemParaExcluir] = useState<OrdemServico | null>(null);
@@ -312,20 +314,26 @@ export default function OrdemServicoPage() {
     carregarContador();
   }, [limites.ordens_servico_mes, ordens.length]);
 
-  const handleNovaOrdem = async () => {
+  const podeAbrirNovaOrdem = () => {
     // Aguardar assinatura carregar antes de verificar limite
-    if (assinaturaCarregando) {
-      setOrdemSelecionada(null);
-      setDialogAberto(true);
-      return;
-    }
+    if (assinaturaCarregando) return true;
     // Verificar se pode criar nova OS
     if (!contadorOS.ilimitado && contadorOS.usadas >= contadorOS.limite) {
       setDialogLimiteAtingido(true);
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleNovaOrdem = async () => {
+    if (!podeAbrirNovaOrdem()) return;
     setOrdemSelecionada(null);
     setDialogAberto(true);
+  };
+
+  const handleNovaOrdemSimplificada = async () => {
+    if (!podeAbrirNovaOrdem()) return;
+    setDialogSimplificadaAberto(true);
   };
 
   const servicosAvulsosFiltrados = useMemo(() => {
@@ -711,14 +719,25 @@ export default function OrdemServicoPage() {
                 Avulso
               </Button>
 
-              <Button
-                size="sm"
-                onClick={handleNovaOrdem}
-                className="os-nova-btn h-8 text-xs flex-1 sm:flex-none gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Nova OS
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="os-nova-btn h-8 text-xs flex-1 sm:flex-none gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Nova OS
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleNovaOrdem}>
+                    Completa
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleNovaOrdemSimplificada}>
+                    Simplificada
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
 
             </div>
@@ -1154,6 +1173,12 @@ export default function OrdemServicoPage() {
             open={dialogAberto}
             onOpenChange={setDialogAberto}
             ordem={ordemSelecionada}
+            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); }}
+          />
+
+          <DialogOrdemServicoSimplificada
+            open={dialogSimplificadaAberto}
+            onOpenChange={setDialogSimplificadaAberto}
             onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); }}
           />
 

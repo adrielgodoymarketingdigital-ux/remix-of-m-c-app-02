@@ -66,6 +66,10 @@ import { useEmpresaInfo } from "@/hooks/useResolvedUserId";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { formatCurrency, dataHoje } from "@/lib/formatters";
 import { useLocalizacoesOS } from "@/hooks/useLocalizacoesOS";
+import { resolverIdentidadeOS } from "@/lib/ordemServico/resolverIdentidadeOS";
+import { criarOuAtualizarCliente } from "@/lib/ordemServico/criarOuAtualizarCliente";
+import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
+import { criarContaAReceberOS } from "@/lib/ordemServico/criarContaAReceberOS";
 
 interface DialogOrdemServicoProps {
   open: boolean;
@@ -562,100 +566,26 @@ export const DialogOrdemServico = ({
       // Obter usuário autenticado
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
-      
-      // Resolver effectiveUserId diretamente no banco (não depende de estado React que pode estar null)
-      // Prioridade: gerente de filial → proprietário | funcionário comum → dono da loja | proprietário → próprio id
-      const [gerenteFilialOS, funcData] = await Promise.all([
-        supabase
-          .from("empresa_usuarios")
-          .select("proprietario_id, empresa_id")
-          .eq("gerente_id", user.id)
-          .maybeSingle()
-          .then(r => r.data),
-        supabase
-          .from("loja_funcionarios")
-          .select("loja_user_id")
-          .eq("funcionario_user_id", user.id)
-          .eq("ativo", true)
-          .maybeSingle()
-          .then(r => r.data),
-      ]);
 
-      const effectiveUserId =
-        gerenteFilialOS?.proprietario_id ||
-        funcData?.loja_user_id ||
-        user.id;
-
-      // Empresa ID: filial do gerente > empresa ativa no contexto (proprietário trocou de empresa) > empresa matriz
-      let empresaId: string | null = gerenteFilialOS?.empresa_id ?? null;
-
-      if (!empresaId) {
-        // Se o proprietário selecionou uma filial no contexto, usar ela
-        if (isProprietario && empresaAtivaCtx) {
-          empresaId = empresaAtivaCtx;
-        } else {
-          const { data: empresaPrincipal } = await supabase
-            .from("empresas")
-            .select("id")
-            .eq("proprietario_id", effectiveUserId)
-            .eq("tipo", "matriz")
-            .maybeSingle();
-          empresaId = empresaPrincipal?.id ?? null;
-        }
-      }
+      const { effectiveUserId, empresaId } = await resolverIdentidadeOS(
+        user.id,
+        isProprietario,
+        empresaAtivaCtx
+      );
 
       // Usar cliente existente selecionado ou criar/atualizar
-      let clienteId = clienteSelecionadoId || ordem?.cliente_id;
-
-      if (clienteSelecionadoId && !ordem) {
-        // Cliente existente foi selecionado - atualizar dados do cliente com isolamento por user_id
-        const { error: clienteError } = await supabase
-          .from("clientes")
-          .update({
-            nome: formData.clienteNome,
-            telefone: formData.clienteTelefone,
-            cpf: formData.clienteCPF,
-            endereco: formData.clienteEndereco,
-            data_nascimento: formData.clienteDataNascimento || null,
-          })
-          .eq("id", clienteSelecionadoId)
-          .eq("user_id", effectiveUserId);
-
-        if (clienteError) throw clienteError;
-        clienteId = clienteSelecionadoId;
-      } else if (ordem?.cliente_id) {
-        // Editando ordem existente - atualizar cliente com isolamento por user_id
-        const { error: clienteError } = await supabase
-          .from("clientes")
-          .update({
-            nome: formData.clienteNome,
-            telefone: formData.clienteTelefone,
-            cpf: formData.clienteCPF,
-            endereco: formData.clienteEndereco,
-            data_nascimento: formData.clienteDataNascimento || null,
-          })
-          .eq("id", ordem.cliente_id)
-          .eq("user_id", effectiveUserId);
-
-        if (clienteError) throw clienteError;
-      } else {
-        // Criar novo cliente
-        const { data: clienteData, error: clienteError } = await supabase
-          .from("clientes")
-          .insert({
-            nome: formData.clienteNome,
-            telefone: formData.clienteTelefone,
-            cpf: formData.clienteCPF,
-            endereco: formData.clienteEndereco,
-            data_nascimento: formData.clienteDataNascimento || null,
-            user_id: effectiveUserId,
-          })
-          .select()
-          .single();
-
-        if (clienteError) throw clienteError;
-        clienteId = clienteData.id;
-      }
+      const clienteId = await criarOuAtualizarCliente(
+        effectiveUserId,
+        {
+          nome: formData.clienteNome,
+          telefone: formData.clienteTelefone,
+          cpf: formData.clienteCPF,
+          endereco: formData.clienteEndereco,
+          dataNascimento: formData.clienteDataNascimento,
+        },
+        clienteSelecionadoId,
+        ordem?.cliente_id
+      );
 
       // Preparar dados de avarias com senha criptografada, serviços realizados, produtos e assinatura
       const ordemAvarias = (ordem?.avarias as AvariasOS) || {};
@@ -942,23 +872,9 @@ export const DialogOrdemServico = ({
         window.dispatchEvent(new Event("os-salva"));
       } else {
         // Criar nova ordem
-
-        // Loop de retry para gerar número único da OS (evita erro 23505 de duplicidade)
-        let numeroOS: string | null = null;
-        let insertError: any = null;
-        const maxTentativas = 5;
-        
-        for (let tentativa = 0; tentativa < maxTentativas; tentativa++) {
-          // Usar a função do banco para gerar número único da OS (por usuário)
-          const { data: novoNumeroOS, error: numeroError } = await supabase
-            .rpc("generate_os_number", { p_user_id: effectiveUserId });
-
-          if (numeroError) throw numeroError;
-          
-          numeroOS = novoNumeroOS;
-
-          const { error } = await supabase.from("ordens_servico").insert([{
-            numero_os: numeroOS,
+        const numeroOS = await gerarNumeroOSComRetry(effectiveUserId, (numero) =>
+          supabase.from("ordens_servico").insert([{
+            numero_os: numero,
             cliente_id: clienteId!,
             user_id: effectiveUserId,
             dispositivo_tipo: formData.dispositivoTipo,
@@ -992,29 +908,8 @@ export const DialogOrdemServico = ({
             empresa_id: empresaId,
             origem_cliente: formData.origemCliente || null,
             tipo_midia: formData.tipoMidia || null,
-          }]);
-
-          // Se não houve erro, sair do loop
-          if (!error) {
-            insertError = null;
-            break;
-          }
-          
-          // Se for erro de duplicidade (23505), tentar novamente
-          if (error.code === "23505") {
-            console.log(`⚠️ [OS] Tentativa ${tentativa + 1}: número ${numeroOS} já existe, gerando novo...`);
-            insertError = error;
-            continue;
-          }
-          
-          // Qualquer outro erro, lançar imediatamente
-          throw error;
-        }
-        
-        // Se após todas as tentativas ainda houver erro, lançar
-        if (insertError) {
-          throw insertError;
-        }
+          }])
+        );
 
         // === SALVAR TÉCNICOS DA OS (INSERT) ===
         // Buscar o ID da OS recém-criada
@@ -1087,25 +982,15 @@ export const DialogOrdemServico = ({
           const dadosPag = avariasData.dados_pagamento;
           const temEntrada = formData.mostrarEntrada && formData.valorEntrada > 0;
           const entradaPaga = temEntrada ? formData.valorEntrada : 0;
-          const saldoRestante = Math.max(0, total - entradaPaga);
 
-          const descricaoConta = temEntrada 
-            ? `OS ${numeroOS} - ${formData.defeitoRelatado} (Entrada paga: R$ ${entradaPaga.toFixed(2)})`
-            : `Ordem de Serviço ${numeroOS} - ${formData.defeitoRelatado}`;
-
-          await supabase.from("contas").insert({
-            nome: `OS ${numeroOS} - ${formData.clienteNome}`,
-            tipo: "receber",
-            valor: saldoRestante > 0 ? saldoRestante : total,
-            data: dadosPag?.data_vencimento_prazo || dataHoje(),
-            data_vencimento: dadosPag?.data_vencimento_prazo || null,
-            valor_pago: entradaPaga > 0 ? entradaPaga : null,
-            os_numero: numeroOS,
-            status: "pendente",
-            recorrente: false,
-            categoria: "Serviços",
-            descricao: descricaoConta,
-            user_id: effectiveUserId,
+          await criarContaAReceberOS({
+            numeroOS,
+            clienteNome: formData.clienteNome,
+            defeitoRelatado: formData.defeitoRelatado,
+            total,
+            entradaPaga,
+            dataVencimentoPrazo: dadosPag?.data_vencimento_prazo,
+            effectiveUserId,
           });
         }
 

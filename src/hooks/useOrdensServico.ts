@@ -32,6 +32,7 @@ export interface OrdemServico {
   localizacao_fisica?: string | null;
   is_teste?: boolean;
   empresa_id?: string | null;
+  tipo_os?: string;
   cliente?: {
     id: string;
     nome: string;
@@ -228,6 +229,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             is_teste,
             origem_cliente,
             tipo_midia,
+            tipo_os,
             empresa_id,
             cliente:clientes!ordens_servico_cliente_fkey(id, nome, telefone, cpf)
           `)

@@ -69,6 +69,11 @@ function KanbanCard({
             Teste
           </Badge>
         )}
+        {(ordem as any).tipo_os === "simplificada" && (
+          <Badge variant="outline" className="text-[10px] shrink-0">
+            Simplificada
+          </Badge>
+        )}
       </div>
 
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
