@@ -189,7 +189,7 @@ serve(async (req) => {
 
     // Notificação admin
     await supabaseAdmin.from("admin_notifications").insert({
-      tipo: "nova_assinatura_pix",
+      tipo: "nova_assinatura",
       titulo: "Nova assinatura via PIX!",
       mensagem: `Pagamento PIX confirmado para plano ${planoTipo} (verificação manual)`,
       dados: {

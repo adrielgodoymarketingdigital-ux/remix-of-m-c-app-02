@@ -7,6 +7,7 @@ import { useEventDispatcher } from "./useEventDispatcher";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { dataHoje } from "@/lib/formatters";
 import { useIdentidade } from "./useResolvedUserId";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 export interface OrdemServico {
   id: string;
@@ -69,10 +70,12 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
   const { lojaUserId, isFuncionario, funcionarioId, permissoes, carregando: funcionarioCarregando } = useFuncionarioPermissoes();
   const { dispatchEvent } = useEventDispatcher();
   const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
+  const { isProprietario } = useEmpresa();
   const resolvedUserIdRef = useRef<string | null>(null);
   const empresaFiltroRef = useRef(empresaFiltro);
   const isFilialRef = useRef(isFilial);
-  useEffect(() => { empresaFiltroRef.current = empresaFiltro; isFilialRef.current = isFilial; }, [empresaFiltro, isFilial]);
+  const isProprietarioRef = useRef(isProprietario);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; isFilialRef.current = isFilial; isProprietarioRef.current = isProprietario; }, [empresaFiltro, isFilial, isProprietario]);
   const detalhesCacheRef = useRef<Record<string, OrdemServico>>({});
 
   const ordens = useMemo(() => {
@@ -240,14 +243,14 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             } else {
               query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
             }
-          } else if (!isFilial) {
-            if (mostrarOsFiliais) {
-              // Mostrar todas as OS (matriz + filiais) — não aplica filtro por empresa_id
-            } else {
-              // Padrão: excluir OS de filiais (empresa_id não nulo)
+          } else if (isProprietario && !isFilial) {
+            // Proprietário com multiempresas mas sem filial selecionada:
+            // mostrar só OS sem empresa_id (matriz) ou todas se mostrarOsFiliais
+            if (!mostrarOsFiliais) {
               query = query.is("empresa_id", null);
             }
           }
+          // Usuário sem multiempresas (isProprietario=false): sem filtro por empresa_id
         } else if (isFuncionario && empresaFiltro) {
           // Funcionário vinculado a uma empresa específica (filial) → filtrar por ela
           query = query.eq("empresa_id", empresaFiltro);
@@ -297,7 +300,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
     } finally {
       setLoading(false);
     }
-  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, funcionarioCarregando, isFilial, mostrarOsFiliais]);
+  }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, funcionarioCarregando, isFilial, isProprietario, mostrarOsFiliais]);
 
   const buscarOrdemCompleta = useCallback(async (id: string): Promise<OrdemServico | null> => {
     if (detalhesCacheRef.current[id]) {
@@ -354,7 +357,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         } else {
           query = (query as any).or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
         }
-      } else if (!isFilialRef.current) {
+      } else if (isProprietarioRef.current && !isFilialRef.current) {
         query = (query as any).is("empresa_id", null);
       }
 
@@ -481,7 +484,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         } else {
           qSelect = (qSelect as any).or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
         }
-      } else if (!isFilialRef.current) {
+      } else if (isProprietarioRef.current && !isFilialRef.current) {
         qSelect = (qSelect as any).is("empresa_id", null);
       }
       const { data: ordem, error: ordemError } = await (qSelect as any).single();
@@ -515,7 +518,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         } else {
           qUpdate = (qUpdate as any).or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
         }
-      } else if (!isFilialRef.current) {
+      } else if (isProprietarioRef.current && !isFilialRef.current) {
         qUpdate = (qUpdate as any).is("empresa_id", null);
       }
       const { error: updateError, data: updateResult } = await (qUpdate as any).select("id");

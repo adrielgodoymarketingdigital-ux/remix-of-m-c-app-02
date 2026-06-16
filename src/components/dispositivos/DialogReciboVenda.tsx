@@ -17,11 +17,20 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Dispositivo } from "@/types/dispositivo";
 import { formatCurrency } from "@/lib/formatters";
-import { Printer, FileText } from "lucide-react";
+import { Printer, FileText, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
@@ -30,6 +39,7 @@ import { checklistLabels } from "@/lib/checklist-templates";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "@/lib/termo-garantia-utils";
+import { ModeloGarantia, TermoGarantiaDispositivoConfig, MODELOS_PADRAO_GARANTIA } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
 
 // Normaliza tempo_garantia (sempre em meses) para exibição legível.
 // Valores >= 360 são tratados como dias por engano de cadastro e convertidos para meses.
@@ -124,6 +134,15 @@ interface DialogReciboVendaProps {
   onVendaRealizada: () => void;
 }
 
+const OPCOES_MESES_GARANTIA = [
+  { value: "0", label: "Sem garantia contratual" },
+  { value: "3", label: "3 meses" },
+  { value: "6", label: "6 meses" },
+  { value: "12", label: "12 meses (1 ano)" },
+  { value: "24", label: "24 meses (2 anos)" },
+  { value: "custom", label: "Personalizado..." },
+];
+
 export function DialogReciboVenda({
   open,
   onOpenChange,
@@ -131,14 +150,36 @@ export function DialogReciboVenda({
   onVendaRealizada,
 }: DialogReciboVendaProps) {
   const [gerando, setGerando] = useState(false);
+  const [modeloSelecionadoId, setModeloSelecionadoId] = useState<string>("__global__");
+  const [mesesGarantia, setMesesGarantia] = useState<string>("3");
+  const [mesesCustom, setMesesCustom] = useState<string>("");
   const reciboRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { config: configLoja, refetch } = useConfiguracaoLoja();
   const { funcionarioId } = useFuncionarioPermissoes();
 
+  const termoConfig = configLoja?.termo_garantia_dispositivo_config as TermoGarantiaDispositivoConfig | undefined;
+  const modelosSalvos: ModeloGarantia[] = termoConfig?.modelos?.length ? termoConfig.modelos : MODELOS_PADRAO_GARANTIA;
+
   useEffect(() => {
-    if (open) refetch();
-  }, [open]);
+    if (open) {
+      refetch();
+      setModeloSelecionadoId("__global__");
+      const mesesDispositivo = dispositivo?.tempo_garantia ?? 3;
+      const mesesStr = String(mesesDispositivo);
+      const opcaoExiste = OPCOES_MESES_GARANTIA.some(o => o.value === mesesStr && o.value !== "custom");
+      if (opcaoExiste) {
+        setMesesGarantia(mesesStr);
+        setMesesCustom("");
+      } else if (mesesDispositivo > 0) {
+        setMesesGarantia("custom");
+        setMesesCustom(mesesStr);
+      } else {
+        setMesesGarantia("0");
+        setMesesCustom("");
+      }
+    }
+  }, [open, dispositivo?.tempo_garantia]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -269,14 +310,35 @@ export function DialogReciboVenda({
 
   const dataAtualFormatada = format(new Date(), "dd/MM/yyyy", { locale: ptBR });
 
+  const mesesEfetivos = mesesGarantia === "custom"
+    ? (parseInt(mesesCustom) || 0)
+    : parseInt(mesesGarantia);
+
+  const temGarantiaEfetiva = mesesEfetivos > 0;
+
   const obterTextoTermo = (formValues: FormValues): string => {
-    const termoConfig = configLoja?.termo_garantia_dispositivo_config as any;
-    const textoBase = resolverTextoTermoDispositivo(
-      termoConfig,
-      !!dispositivo?.garantia,
-      TERMOS_GARANTIA_PADRAO.termo_com_garantia,
-      TERMOS_GARANTIA_PADRAO.termo_sem_garantia
-    );
+    // Se um modelo específico foi selecionado, usar suas seções
+    const modeloEscolhido = modeloSelecionadoId !== "__global__"
+      ? modelosSalvos.find(m => m.id === modeloSelecionadoId)
+      : null;
+
+    let textoBase: string;
+    if (modeloEscolhido) {
+      const secoes = temGarantiaEfetiva
+        ? modeloEscolhido.secoes_com_garantia
+        : modeloEscolhido.secoes_sem_garantia;
+      textoBase = secoes
+        .filter(s => s.visivel)
+        .map(s => s.conteudo.trim())
+        .join("\n\n");
+    } else {
+      textoBase = resolverTextoTermoDispositivo(
+        termoConfig,
+        temGarantiaEfetiva,
+        TERMOS_GARANTIA_PADRAO.termo_com_garantia,
+        TERMOS_GARANTIA_PADRAO.termo_sem_garantia
+      );
+    }
 
     const condicaoLabels: Record<string, string> = { novo: "Novo", semi_novo: "Semi Novo", usado: "Usado" };
 
@@ -290,7 +352,7 @@ export function DialogReciboVenda({
       cor: dispositivo?.cor,
       capacidade: dispositivo?.capacidade_gb ? `${dispositivo.capacidade_gb} GB` : undefined,
       condicao: condicaoLabels[dispositivo?.condicao || ''] || dispositivo?.condicao,
-      garantia_meses: dispositivo?.tempo_garantia != null ? formatarGarantia(dispositivo.tempo_garantia) : undefined,
+      garantia_meses: temGarantiaEfetiva ? formatarGarantia(mesesEfetivos) : undefined,
       valor: formatCurrency(formValues.quantidade_vendida * formValues.valor_unitario),
       data_venda: dataAtualFormatada,
       loja: configLoja?.nome_loja,
@@ -596,6 +658,67 @@ export function DialogReciboVenda({
                 <p className="text-sm text-muted-foreground">Total</p>
                 <p className="text-2xl font-bold">{formatCurrency(valorTotal)}</p>
               </div>
+            </div>
+
+            {/* Garantia do Termo */}
+            <div className="space-y-4 p-4 border rounded-lg">
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold">Garantia no Termo</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Tempo de garantia</label>
+                  <Select value={mesesGarantia} onValueChange={setMesesGarantia}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OPCOES_MESES_GARANTIA.map(op => (
+                        <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {mesesGarantia === "custom" && (
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="Ex: 9"
+                      value={mesesCustom}
+                      onChange={e => setMesesCustom(e.target.value)}
+                      className="mt-2"
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Modelo do termo</label>
+                  <Select value={modeloSelecionadoId} onValueChange={setModeloSelecionadoId}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__global__">Configuração global</SelectItem>
+                      <Separator className="my-1" />
+                      {modelosSalvos.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {temGarantiaEfetiva ? (
+                <Badge variant="default" className="bg-green-600 gap-1.5">
+                  <Shield className="h-3 w-3" />
+                  Garantia de {formatarGarantia(mesesEfetivos)} será impressa no termo
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="gap-1.5">
+                  Termo sem garantia contratual
+                </Badge>
+              )}
             </div>
 
             {/* Preview do Recibo (oculto, só para impressão) */}

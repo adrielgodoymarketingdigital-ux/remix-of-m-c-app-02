@@ -269,7 +269,7 @@ serve(async (req) => {
             .eq("id", assinaturaFallback.id);
 
           await supabaseAdmin.from("admin_notifications").insert({
-            tipo: "nova_assinatura_pix",
+            tipo: "nova_assinatura",
             titulo: "Renovação via PIX (link externo)",
             mensagem: `Pagamento PIX externo confirmado para plano ${assinaturaFallback.plano_tipo}`,
             dados: { user_id: customerCode, plano_tipo: assinaturaFallback.plano_tipo, pagarme_order_id: orderId },
@@ -483,7 +483,7 @@ serve(async (req) => {
     // ── 4. Notificação admin ─────────────────────────────────────────
     const isRenovacaoPix = !!assinaturaExistente;
     await supabaseAdmin.from("admin_notifications").insert({
-      tipo: "nova_assinatura_pix",
+      tipo: "nova_assinatura",
       titulo: isRenovacaoPix ? "Renovação via PIX!" : "Nova assinatura via PIX!",
       mensagem: `Pagamento PIX confirmado para plano ${planoTipo}`,
       dados: {

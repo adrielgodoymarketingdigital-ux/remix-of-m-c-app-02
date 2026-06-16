@@ -249,7 +249,7 @@ A garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme a l
 O cliente declara estar ciente das condições do equipamento.`,
 };
 
-const MODELOS_PADRAO: ModeloGarantia[] = [
+export const MODELOS_PADRAO_GARANTIA: ModeloGarantia[] = [
   {
     id: "padrao_90dias",
     nome: "Garantia 90 dias",
@@ -324,7 +324,7 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
   const [textoLivreSemGarantia, setTextoLivreSemGarantia] = useState(TEXTO_LIVRE_PADRAO.termo_sem_garantia);
   const [secoesComGarantia, setSecoesComGarantia] = useState<SecaoTermo[]>(SECOES_PADRAO_COM_GARANTIA);
   const [secoesSemGarantia, setSecoesSemGarantia] = useState<SecaoTermo[]>(SECOES_PADRAO_SEM_GARANTIA);
-  const [modelos, setModelos] = useState<ModeloGarantia[]>(MODELOS_PADRAO);
+  const [modelos, setModelos] = useState<ModeloGarantia[]>(MODELOS_PADRAO_GARANTIA);
   const [novoModeloNome, setNovoModeloNome] = useState("");
   const [modeloParaExcluir, setModeloParaExcluir] = useState<string | null>(null);
   const [modeloEditandoId, setModeloEditandoId] = useState<string | null>(null);
@@ -354,7 +354,7 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
       setSecoesComGarantia(SECOES_PADRAO_COM_GARANTIA);
       setSecoesSemGarantia(SECOES_PADRAO_SEM_GARANTIA);
     }
-    setModelos(termoConfig?.modelos?.length ? termoConfig.modelos : MODELOS_PADRAO);
+    setModelos(termoConfig?.modelos?.length ? termoConfig.modelos : MODELOS_PADRAO_GARANTIA);
     setSecaoEditando(null);
     setNovoModeloNome("");
   }, [config, open]);

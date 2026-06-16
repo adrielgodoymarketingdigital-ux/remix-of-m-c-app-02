@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
-import { useEmpresaFiltro } from "./useResolvedUserId";
+import { useEmpresaInfo } from "./useResolvedUserId";
 
 export interface TaxaCartao {
   id: string;
@@ -18,7 +18,7 @@ export function useTaxasCartao() {
   const [taxas, setTaxas] = useState<TaxaCartao[]>([]);
   const [loading, setLoading] = useState(true);
   const { lojaUserId } = useFuncionarioPermissoes();
-  const empresaFiltro = useEmpresaFiltro();
+  const { empresaId, isFilial } = useEmpresaInfo();
 
   const carregarTaxas = async () => {
     try {
@@ -32,7 +32,11 @@ export function useTaxasCartao() {
         .select("*")
         .eq("user_id", userId)
         .order("bandeira");
-      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      if (empresaId) {
+        query = isFilial
+          ? query.eq("empresa_id", empresaId)
+          : query.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      }
       const { data, error } = await query;
 
       if (error) throw error;
@@ -56,7 +60,7 @@ export function useTaxasCartao() {
 
   useEffect(() => {
     carregarTaxas();
-  }, [lojaUserId, empresaFiltro]);
+  }, [lojaUserId, empresaId, isFilial]);
 
   const criarTaxa = async (dados: Omit<TaxaCartao, "id" | "user_id" | "created_at">) => {
     try {
@@ -67,6 +71,7 @@ export function useTaxasCartao() {
 
       const { error } = await supabase.from("taxas_cartao").insert({
         user_id: userId,
+        empresa_id: empresaId,
         bandeira: dados.bandeira,
         taxa_debito: dados.taxa_debito,
         taxa_credito: dados.taxa_credito,
