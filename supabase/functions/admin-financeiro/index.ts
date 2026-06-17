@@ -344,12 +344,6 @@ serve(async (req) => {
 
     // Stripe gerencia vigência internamente — assinatura active no banco = vigente
     // Para Pagar.me/manual, verificar se data_fim ainda não venceu
-    const isVigenteParaMRR = (a: any) => {
-      if (a.payment_provider === "stripe") return false; // MRR Stripe calculado separadamente
-      if (!a.data_fim) return true;
-      return new Date(a.data_fim).getTime() > agora.getTime();
-    };
-
     const isVigente = (a: any) => {
       if ((a.payment_provider || "").toLowerCase() === "stripe") return true; // Stripe: confiar no status
       if (!a.data_fim) return true;
@@ -361,9 +355,9 @@ serve(async (req) => {
     const dbTotal = vigentes.length;
     const dbInadimplentes = inadimplentes.length;
 
-    const vigentesParaMRR = assinaturas.filter((a) => isVigenteParaMRR(a));
+    const vigentesParaMRR = vigentes;
 
-    // MRR banco e detalhamento por plano: exclui Stripe (calculado separadamente).
+    // MRR banco e detalhamento por plano (todos os provedores).
     // Planos anuais já são mensalizados via PRECOS_MES.
     const planBreakdown: Record<string, { count: number; mrr: number; nome: string }> = {};
     let mrrBanco = 0;
