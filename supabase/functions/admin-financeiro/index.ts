@@ -289,19 +289,25 @@ serve(async (req) => {
     if (assErr) throw new Error(`DB assinaturas: ${assErr.message}`);
 
     // ─── 1b. Histórico de crescimento (cadastros + pagantes) ────────────
-    const { data: todasAssinaturas } = await supabaseAdmin
+    // Restrito a Pagar.me: é o único provedor com pagamento recorrente/renovação
+    // verificável hoje — Stripe/Ticto são residuais sem cobrança real.
+    const { data: todasAssinaturasRaw } = await supabaseAdmin
       .from("assinaturas")
-      .select("user_id, data_inicio, data_fim, cancelado_em, status")
+      .select("user_id, data_inicio, data_fim, cancelado_em, status, payment_provider")
       .in("plano_tipo", Object.keys(PRECOS_MES))
-      .in("status", ["active", "past_due"]) as { data: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null; status: string }> };
+      .in("status", ["active", "past_due"]) as { data: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null; status: string; payment_provider: string | null }> };
+    const todasAssinaturas = (todasAssinaturasRaw ?? []).filter(
+      (a) => (a.payment_provider || "").toLowerCase() === "pagarme"
+    );
 
     // Usar auth.users para contar cadastros reais (profiles pode não ser criado por falha de trigger)
     const { data: todosProfiles } = await supabaseAdmin.auth.admin.listUsers({ perPage: 10000 });
     const todosUsers = (todosProfiles?.users ?? []).map((u) => ({ user_id: u.id, created_at: u.created_at }));
 
-    // Total atual real: status active E dentro do prazo (data_fim no futuro ou nula)
+    // Total atual real: pagarme, status active E dentro do prazo (data_fim no futuro ou nula)
     const totalPagantesAgora = (assinaturasAtivas ?? []).filter((a) =>
-      !a.data_fim || new Date(a.data_fim) > agora
+      (a.payment_provider || "").toLowerCase() === "pagarme" &&
+      (!a.data_fim || new Date(a.data_fim) > agora)
     ).length;
 
     const mesAtualStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
@@ -342,22 +348,20 @@ serve(async (req) => {
     if (expErr) log("⚠️ Erro buscando expiradas", { err: expErr.message });
     const expiradas = assinaturasExpiradas || [];
 
-    // Stripe gerencia vigência internamente — assinatura active no banco = vigente
-    // Para Pagar.me/manual, verificar se data_fim ainda não venceu
-    const isVigente = (a: any) => {
-      if ((a.payment_provider || "").toLowerCase() === "stripe") return true; // Stripe: confiar no status
-      if (!a.data_fim) return true;
-      return new Date(a.data_fim).getTime() > agora.getTime();
-    };
+    // Único provedor com pagamento ativo hoje é Pagar.me — Stripe/Ticto/multi_empresa
+    // são residuais sem cobrança recorrente verificável e não contam como "assinante
+    // ativo" (pagou nos últimos 30/365 dias), mesmo que ainda tenham acesso liberado.
+    const isPagarme = (a: any) => (a.payment_provider || "").toLowerCase() === "pagarme";
+    const dentroDoPrazo = (a: any) => !a.data_fim || new Date(a.data_fim).getTime() > agora.getTime();
 
-    const vigentes = assinaturas.filter((a) => isVigente(a));
-    const inadimplentes = assinaturas.filter((a) => !isVigente(a));
+    const vigentes = assinaturas.filter((a) => isPagarme(a) && dentroDoPrazo(a));
+    const inadimplentes = assinaturas.filter((a) => isPagarme(a) && !dentroDoPrazo(a));
     const dbTotal = vigentes.length;
     const dbInadimplentes = inadimplentes.length;
 
     const vigentesParaMRR = vigentes;
 
-    // MRR banco e detalhamento por plano (todos os provedores).
+    // MRR banco e detalhamento por plano (somente Pagar.me, dentro do prazo pago).
     // Planos anuais já são mensalizados via PRECOS_MES.
     const planBreakdown: Record<string, { count: number; mrr: number; nome: string }> = {};
     let mrrBanco = 0;
@@ -521,7 +525,7 @@ serve(async (req) => {
       if (!valor) continue;
       const ref = a.data_proxima_cobranca || a.data_fim;
       if (!ref) {
-        // Sem data: considera já pago (ex: Stripe gerencia internamente)
+        // Sem data de referência: considera já pago
         recorrenciaEntrouMes += valor;
         continue;
       }
