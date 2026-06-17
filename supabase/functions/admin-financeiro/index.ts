@@ -202,28 +202,48 @@ async function pagarmeFetch(path: string, secretKey: string) {
   return await res.json();
 }
 
-// Busca todas as charges pagas da Pagar.me dentro do intervalo de datas (paginado)
-async function pagarmeChargesRecebidasNoPeriodo(
+// Busca as operações de saldo (balance operations) da Pagar.me dentro do mês.
+// Essa é a mesma fonte usada na tela "Financeiro > Extrato" do dashboard.
+// Tipo "payable" = entrada de pagamento (já líquida de taxa) — é o que bate
+// com o extrato. "transfer" (saque) e "external_settlement" (ajustes) não
+// são "recebido" e ficam de fora. A API não filtra de forma confiável por
+// created_since/until nesse endpoint, então paginamos e filtramos localmente,
+// parando quando a página trouxer apenas operações anteriores ao mês.
+async function pagarmeOperacoesRecebidasNoPeriodo(
   secretKey: string,
-  createdSince: string,
-  createdUntil: string,
+  mesInicio: Date,
+  mesFim: Date,
 ) {
-  const charges: any[] = [];
+  const operacoes: any[] = [];
   let page = 1;
   const size = 100;
   while (true) {
     const data = await pagarmeFetch(
-      `/charges?status=paid&created_since=${createdSince}&created_until=${createdUntil}&page=${page}&size=${size}`,
+      `/balance/operations?page=${page}&size=${size}`,
       secretKey,
     );
     const batch = data?.data || [];
-    charges.push(...batch);
+    if (batch.length === 0) break;
+    operacoes.push(...batch);
+    const ultimaData = batch[batch.length - 1]?.created_at ? new Date(batch[batch.length - 1].created_at) : null;
+    if (ultimaData && ultimaData < mesInicio) break; // já passou do início do mês, resultados ficam mais antigos
     if (batch.length < size) break;
     page += 1;
     if (page > 50) break; // salvaguarda contra loop infinito
   }
-  return charges;
+
+  // "payable" = venda processada direto na Pagar.me. "external_settlement" =
+  // liquidação de valores vindos de arranjos externos (ex: outro canal de
+  // cobrança), mas que entram no saldo disponível da conta — também é
+  // dinheiro recebido e aparece no extrato.
+  return operacoes.filter((o: any) => {
+    if (o.type !== "payable" && o.type !== "external_settlement") return false;
+    const createdAt = o.created_at ? new Date(o.created_at) : null;
+    if (!createdAt) return false;
+    return createdAt >= mesInicio && createdAt <= mesFim;
+  });
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -501,26 +521,24 @@ serve(async (req) => {
     const recebidoRealDetalhes: any[] = [];
     if (PAGARME_KEY) {
       try {
-        const createdSince = mesInicio.toISOString().slice(0, 10);
-        const createdUntil = mesFim.toISOString().slice(0, 10);
-        const chargesPagas = await pagarmeChargesRecebidasNoPeriodo(PAGARME_KEY, createdSince, createdUntil);
-        for (const c of chargesPagas) {
-          const valor = (c.amount || 0) / 100;
+        const operacoesPagas = await pagarmeOperacoesRecebidasNoPeriodo(PAGARME_KEY, mesInicio, mesFim);
+        for (const o of operacoesPagas) {
+          const valor = (o.amount || 0) / 100;
           recebidoRealMes += valor;
           recebidoRealMesCount += 1;
           recebidoRealDetalhes.push({
-            charge_id: c.id,
+            operation_id: o.id,
             valor,
-            paid_at: c.paid_at || c.updated_at,
-            payment_method: c.payment_method,
-            customer_name: c.customer?.name || null,
-            customer_email: c.customer?.email || null,
+            taxa: (o.fee || 0) / 100,
+            created_at: o.created_at,
+            payment_date: o.movement_object?.payment_date || null,
           });
         }
-        recebidoRealDetalhes.sort((a, b) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime());
+        recebidoRealDetalhes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        log("Operações recebidas Pagar.me", { count: operacoesPagas.length, total: recebidoRealMes });
       } catch (e) {
         recebidoRealError = e instanceof Error ? e.message : String(e);
-        log("Erro ao buscar charges reais Pagar.me", { error: recebidoRealError });
+        log("Erro ao buscar operações recebidas Pagar.me", { error: recebidoRealError });
       }
     } else {
       recebidoRealError = "PAGARME_SECRET_KEY não configurada";
