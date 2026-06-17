@@ -24,12 +24,11 @@ Deno.serve(async (req) => {
       dataCarencia: dataCarencia.toISOString(),
     });
 
-    // Buscar assinaturas Ticto vencidas há mais de 3 dias
+    // Buscar assinaturas vencidas há mais de 3 dias (qualquer provedor de pagamento)
     const { data: assinaturas, error } = await supabase
       .from("assinaturas")
       .select("id, user_id, plano_tipo, data_fim, payment_provider")
       .eq("status", "active")
-      .eq("payment_provider", "ticto")
       .lt("data_fim", dataCarencia.toISOString())
       .in("plano_tipo", [
         "basico_mensal", "basico_anual",

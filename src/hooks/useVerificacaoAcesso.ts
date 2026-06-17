@@ -138,7 +138,9 @@ export function useVerificacaoAcesso() {
       return false;
     }
     
-    // Planos pagos ativos nunca expiram
+    // Planos pagos ativos: liberados, MAS só se data_fim ainda não passou
+    // (status pode continuar 'active' no banco mesmo após vencer, se o
+    // webhook/cron de cobrança ainda não rodou ou falhou)
     const planosPagos = [
       'basico_mensal', 'basico_anual',
       'intermediario_mensal', 'intermediario_anual',
@@ -146,6 +148,18 @@ export function useVerificacaoAcesso() {
       'profissional_ultra_mensal', 'profissional_ultra_anual',
     ];
     if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active') {
+      if (assinatura.data_fim) {
+        const dataFim = new Date(assinatura.data_fim);
+        // 3 dias de carência após o vencimento, alinhado com o prazo do
+        // cron cancelar-assinaturas-vencidas que tenta a cobrança de novo
+        const dataFimComCarencia = new Date(dataFim.getTime() + 3 * 24 * 60 * 60 * 1000);
+        if (!Number.isNaN(dataFim.getTime()) && dataFimComCarencia < new Date()) {
+          console.log("⛔ [useVerificacaoAcesso] Plano pago com status 'active' mas data_fim + carência já passou - expirado", {
+            data_fim: assinatura.data_fim,
+          });
+          return true;
+        }
+      }
       return false;
     }
 
