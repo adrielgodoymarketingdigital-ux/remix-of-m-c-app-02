@@ -120,6 +120,44 @@ export default function AdminFinanceiro() {
     },
   });
 
+  const PLANOS_PAGOS_KEYS = [
+    "basico_mensal", "basico_anual",
+    "intermediario_mensal", "intermediario_anual",
+    "profissional_mensal", "profissional_anual",
+    "profissional_ultra_mensal", "profissional_ultra_anual",
+  ];
+
+  const { data: naoRenovados } = useQuery({
+    queryKey: ["admin-nao-renovados"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("assinaturas")
+        .select("user_id, plano_tipo, status, data_fim, payment_provider, updated_at")
+        .eq("status", "canceled")
+        .in("plano_tipo", PLANOS_PAGOS_KEYS)
+        .order("data_fim", { ascending: false });
+
+      const userIds = data?.map((d) => d.user_id) ?? [];
+      const { data: profiles } = userIds.length
+        ? await supabase.from("profiles").select("user_id, nome, email, celular").in("user_id", userIds)
+        : { data: [] };
+
+      const agora = new Date();
+      return (data ?? []).map((d) => {
+        const dataFim = d.data_fim ? new Date(d.data_fim) : null;
+        const diasVencido = dataFim ? Math.floor((agora.getTime() - dataFim.getTime()) / (1000 * 60 * 60 * 24)) : null;
+        return {
+          ...d,
+          profile: profiles?.find((p) => p.user_id === d.user_id),
+          diasVencido,
+        };
+      });
+    },
+  });
+
+  const naoRenovadosSectionRef = useRef<HTMLDivElement>(null);
+  const [mostrarNaoRenovados, setMostrarNaoRenovados] = useState(false);
+
   const { data: inadimplenteProfiles } = useQuery({
     queryKey: ["admin-inadimplentes-profiles", inadimplenteIds],
     queryFn: async () => {
@@ -291,6 +329,19 @@ export default function AdminFinanceiro() {
             value={isLoading ? null : formatBRL(data?.mrr_pagarme_liquido ?? 0)}
             description={data ? `Bruto: ${formatBRL(data.mrr_pagarme_bruto)}` : "Após taxas"}
             accent="purple"
+          />
+          <KpiCard
+            icon={<History className="h-4 w-4" />}
+            title="Não Renovados"
+            value={isLoading ? null : String(naoRenovados?.length ?? 0)}
+            description="Plano vencido sem renovação"
+            accent="red"
+            onClick={() => {
+              setMostrarNaoRenovados(true);
+              setTimeout(() => {
+                naoRenovadosSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 50);
+            }}
           />
         </div>
 
@@ -841,6 +892,87 @@ export default function AdminFinanceiro() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="text-sm font-semibold text-red-600">{formatBRL(u.valor_mensal)}</span>
+                            {waUrl ? (
+                              <Button asChild size="sm" variant="outline" className="text-green-600 border-green-400 hover:bg-green-50 dark:hover:bg-green-950">
+                                <a href={waUrl} target="_blank" rel="noopener noreferrer">
+                                  <MessageCircle className="h-4 w-4 mr-1" />
+                                  WhatsApp
+                                </a>
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">Sem celular</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {mostrarNaoRenovados && (
+          <div ref={naoRenovadosSectionRef}>
+            <Card className="border-red-500/40">
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <History className="h-5 w-5 text-red-500" />
+                      Não Renovados
+                      <Badge variant="destructive" className="ml-1">{naoRenovados?.length ?? 0}</Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Tinham plano pago, venceu há mais de 3 dias e não renovaram — acesso bloqueado
+                    </CardDescription>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setMostrarNaoRenovados(false)}>
+                    Fechar
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <Skeleton className="h-32 w-full" />
+                ) : (naoRenovados?.length ?? 0) === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum não renovado 🎉</p>
+                ) : (
+                  <div className="space-y-2">
+                    {naoRenovados?.map((u) => {
+                      const celular = u.profile?.celular?.replace(/\D/g, "");
+                      const mensagemWa = encodeURIComponent(
+                        `Olá ${u.profile?.nome ?? ""}! Notei que seu plano no Méc App venceu e não foi renovado. Posso te ajudar a reativar seu acesso?`
+                      );
+                      const waUrl = celular ? `https://wa.me/55${celular}?text=${mensagemWa}` : null;
+                      return (
+                        <div key={u.user_id} className="flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50/30 dark:bg-red-950/10 gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{u.profile?.nome || "Sem nome"}</span>
+                              <Badge variant="secondary" className="text-[10px] capitalize">
+                                {u.plano_tipo.replace(/_/g, " ")}
+                              </Badge>
+                              <Badge variant="outline" className="text-[10px] capitalize">
+                                {u.payment_provider || "—"}
+                              </Badge>
+                              {u.data_fim && (
+                                <Badge variant="outline" className="text-red-600 border-red-400 text-[10px]">
+                                  Venceu {formatDate(u.data_fim)}
+                                  {u.diasVencido !== null ? ` (${u.diasVencido}d)` : ""}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{u.profile?.email || "—"}</p>
+                            {u.profile?.celular && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Phone className="h-3 w-3" />
+                                {u.profile.celular}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
                             {waUrl ? (
                               <Button asChild size="sm" variant="outline" className="text-green-600 border-green-400 hover:bg-green-50 dark:hover:bg-green-950">
                                 <a href={waUrl} target="_blank" rel="noopener noreferrer">
