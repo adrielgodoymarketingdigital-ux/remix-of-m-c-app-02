@@ -369,6 +369,30 @@ export default function AdminFinanceiro() {
                 <CardDescription>Receita recorrente que já entrou e o que ainda falta receber dos assinantes vigentes</CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="relative rounded-xl border border-sky-500/20 bg-card overflow-hidden mb-4">
+                  <div className="h-0.5 w-full bg-gradient-to-r from-sky-500 to-cyan-400" />
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Recebido real este mês (Pagar.me)</span>
+                      <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-sky-500/10 text-sky-400">
+                        <CreditCard className="h-4 w-4" />
+                      </div>
+                    </div>
+                    {isLoading ? (
+                      <Skeleton className="h-8 w-32" />
+                    ) : data?.recebido_real_error ? (
+                      <div className="text-sm text-amber-600">Indisponível: {data.recebido_real_error}</div>
+                    ) : (
+                      <div className="text-2xl font-bold tracking-tight text-sky-500">{formatBRL(data?.recebido_real_mes ?? 0)}</div>
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Valor bruto efetivamente cobrado/liquidado na Pagar.me — igual ao extrato
+                      {!isLoading && !data?.recebido_real_error && (
+                        <span className="ml-1 font-medium text-sky-500">· {data?.recebido_real_mes_count ?? 0} cobrança(s)</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div className="relative rounded-xl border border-emerald-500/20 bg-card overflow-hidden">
                     <div className="h-0.5 w-full bg-gradient-to-r from-emerald-500 to-green-400" />

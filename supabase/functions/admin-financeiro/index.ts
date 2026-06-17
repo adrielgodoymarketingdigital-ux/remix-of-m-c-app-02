@@ -202,6 +202,29 @@ async function pagarmeFetch(path: string, secretKey: string) {
   return await res.json();
 }
 
+// Busca todas as charges pagas da Pagar.me dentro do intervalo de datas (paginado)
+async function pagarmeChargesRecebidasNoPeriodo(
+  secretKey: string,
+  createdSince: string,
+  createdUntil: string,
+) {
+  const charges: any[] = [];
+  let page = 1;
+  const size = 100;
+  while (true) {
+    const data = await pagarmeFetch(
+      `/charges?status=paid&created_since=${createdSince}&created_until=${createdUntil}&page=${page}&size=${size}`,
+      secretKey,
+    );
+    const batch = data?.data || [];
+    charges.push(...batch);
+    if (batch.length < size) break;
+    page += 1;
+    if (page > 50) break; // salvaguarda contra loop infinito
+  }
+  return charges;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -471,6 +494,38 @@ serve(async (req) => {
     const mesInicio = new Date(agora.getFullYear(), agora.getMonth(), 1);
     const mesFim = new Date(agora.getFullYear(), agora.getMonth() + 1, 0, 23, 59, 59);
 
+    // ─── Valor real recebido na Pagar.me este mês (via API, bate com o extrato) ──
+    let recebidoRealMes = 0;
+    let recebidoRealMesCount = 0;
+    let recebidoRealError: string | null = null;
+    const recebidoRealDetalhes: any[] = [];
+    if (PAGARME_KEY) {
+      try {
+        const createdSince = mesInicio.toISOString().slice(0, 10);
+        const createdUntil = mesFim.toISOString().slice(0, 10);
+        const chargesPagas = await pagarmeChargesRecebidasNoPeriodo(PAGARME_KEY, createdSince, createdUntil);
+        for (const c of chargesPagas) {
+          const valor = (c.amount || 0) / 100;
+          recebidoRealMes += valor;
+          recebidoRealMesCount += 1;
+          recebidoRealDetalhes.push({
+            charge_id: c.id,
+            valor,
+            paid_at: c.paid_at || c.updated_at,
+            payment_method: c.payment_method,
+            customer_name: c.customer?.name || null,
+            customer_email: c.customer?.email || null,
+          });
+        }
+        recebidoRealDetalhes.sort((a, b) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime());
+      } catch (e) {
+        recebidoRealError = e instanceof Error ? e.message : String(e);
+        log("Erro ao buscar charges reais Pagar.me", { error: recebidoRealError });
+      }
+    } else {
+      recebidoRealError = "PAGARME_SECRET_KEY não configurada";
+    }
+
     const recebimentosCartaoMes: any[] = [];
     const renovacoesPendentesMes: any[] = [];
 
@@ -593,6 +648,10 @@ serve(async (req) => {
       recorrencia_falta_mes: recorrenciaFaltaMes,
       recorrencia_falta_ate: recorrenciaFaltaUltimaData,
       recorrencia_falta_detalhes: recorrenciaFaltaDetalhes,
+      recebido_real_mes: recebidoRealMes,
+      recebido_real_mes_count: recebidoRealMesCount,
+      recebido_real_mes_detalhes: recebidoRealDetalhes,
+      recebido_real_error: recebidoRealError,
       last_update: agora.toISOString(),
     };
 
