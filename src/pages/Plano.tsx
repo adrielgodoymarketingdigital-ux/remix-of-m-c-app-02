@@ -532,13 +532,29 @@ export default function Plano() {
                         </p>
                       </div>
                     </>
+                  ) : migracaoNecessaria ? (
+                    <>
+                      <AlertTriangle className="h-8 w-8 text-orange-500 mt-1" />
+                      <div className="flex-1">
+                        <h2 className="text-2xl font-bold mb-2">Assinatura Vencida</h2>
+                        <p className="text-muted-foreground mb-4">
+                          Sua assinatura venceu e não foi renovada.
+                          Renove um plano para continuar usando o sistema!
+                        </p>
+                        <Alert>
+                          <AlertDescription>
+                            <strong>Ação necessária:</strong> Escolha um plano abaixo para continuar usando todas as funcionalidades.
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <AlertTriangle className="h-8 w-8 text-orange-500 mt-1" />
                       <div className="flex-1">
                         <h2 className="text-2xl font-bold mb-2">Trial Expirado</h2>
                         <p className="text-muted-foreground mb-4">
-                          Seu período de teste gratuito expirou. 
+                          Seu período de teste gratuito expirou.
                           Assine um plano para continuar usando o sistema!
                         </p>
                         <Alert>
