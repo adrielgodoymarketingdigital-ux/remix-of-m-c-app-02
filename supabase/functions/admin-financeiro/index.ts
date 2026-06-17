@@ -155,18 +155,22 @@ const PRECOS_MES: Record<string, number> = {
   basico_mensal: 19.90,
   intermediario_mensal: 39.90,
   profissional_mensal: 79.90,
+  profissional_ultra_mensal: 129.90,
   basico_anual: 15.90,
   intermediario_anual: 31.90,
   profissional_anual: 74.90,
+  profissional_ultra_anual: 109.90,
 };
 
 const PLANO_NOMES: Record<string, string> = {
   basico_mensal: "Básico Mensal",
   intermediario_mensal: "Intermediário Mensal",
   profissional_mensal: "Profissional Mensal",
+  profissional_ultra_mensal: "Profissional Ultra Mensal",
   basico_anual: "Básico Anual",
   intermediario_anual: "Intermediário Anual",
   profissional_anual: "Profissional Anual",
+  profissional_ultra_anual: "Profissional Ultra Anual",
 };
 
 // Taxas Pagar.me padrão (configuráveis aqui)
