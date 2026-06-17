@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Dispositivo, FormularioDispositivo } from "@/types/dispositivo";
 import { UploadFotosDispositivo } from "./UploadFotosDispositivo";
+import { SeletorTempoGarantia } from "./SeletorTempoGarantia";
 import { ChecklistDispositivo } from "../ordens/ChecklistDispositivo";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
@@ -991,9 +992,9 @@ export function DialogCadastroDispositivo({
                       name="tempo_garantia"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tempo de Garantia (meses) *</FormLabel>
+                          <FormLabel>Tempo de Garantia *</FormLabel>
                           <FormControl>
-                            <Input type="number" min="1" placeholder="Ex: 12" {...field} value={field.value || ""} />
+                            <SeletorTempoGarantia value={field.value} onChange={field.onChange} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1123,9 +1124,9 @@ export function DialogCadastroDispositivo({
                   name="tempo_garantia"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tempo de Garantia (meses) *</FormLabel>
+                      <FormLabel>Tempo de Garantia *</FormLabel>
                       <FormControl>
-                        <Input type="number" min="1" placeholder="Ex: 12" {...field} value={field.value || ""} />
+                        <SeletorTempoGarantia value={field.value} onChange={field.onChange} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

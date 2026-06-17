@@ -3351,6 +3351,44 @@ export type Database = {
         }
         Relationships: []
       }
+      tipos_garantia: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string | null
+          id: string
+          meses: number
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          meses: number
+          nome: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          meses?: number
+          nome?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tipos_garantia_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tipos_servico: {
         Row: {
           ativo: boolean

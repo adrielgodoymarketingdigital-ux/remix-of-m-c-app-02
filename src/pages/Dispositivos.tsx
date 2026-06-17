@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Grid3x3, Table as TableIcon, Smartphone, ShoppingCart, Settings, Layout, FileText, Trash2 } from "lucide-react";
+import { Search, Plus, Grid3x3, Table as TableIcon, Smartphone, ShoppingCart, Settings, Layout, FileText, Trash2, ShieldCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DialogConfiguracaoLayoutDispositivos } from "@/components/dispositivos/DialogConfiguracaoLayoutDispositivos";
 import { DialogConfiguracaoTermoGarantiaDispositivo } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
+import { DialogGerenciarTiposGarantia } from "@/components/dispositivos/DialogGerenciarTiposGarantia";
 import { useDispositivos } from "@/hooks/useDispositivos";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
@@ -49,6 +50,7 @@ export default function Dispositivos() {
   const [dispositivoParaEditar, setDispositivoParaEditar] = useState<Dispositivo | null>(null);
   const [dialogLayoutDispositivos, setDialogLayoutDispositivos] = useState(false);
   const [dialogTermoGarantiaDispositivo, setDialogTermoGarantiaDispositivo] = useState(false);
+  const [dialogTiposGarantia, setDialogTiposGarantia] = useState(false);
 
   const {
     dispositivos,
@@ -215,6 +217,10 @@ export default function Dispositivos() {
                   <DropdownMenuItem onClick={() => setDialogTermoGarantiaDispositivo(true)}>
                     <FileText className="h-4 w-4 mr-2" />
                     Termo de Garantia
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDialogTiposGarantia(true)}>
+                    <ShieldCheck className="h-4 w-4 mr-2" />
+                    Tipos de Garantia
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -400,6 +406,11 @@ export default function Dispositivos() {
       <DialogConfiguracaoTermoGarantiaDispositivo
         open={dialogTermoGarantiaDispositivo}
         onOpenChange={setDialogTermoGarantiaDispositivo}
+      />
+
+      <DialogGerenciarTiposGarantia
+        open={dialogTiposGarantia}
+        onOpenChange={setDialogTiposGarantia}
       />
     </AppLayout>
   );
