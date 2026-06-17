@@ -520,6 +520,7 @@ serve(async (req) => {
     let recorrenciaEntrouMes = 0;
     let recorrenciaFaltaMes = 0;
     let recorrenciaFaltaUltimaData: string | null = null;
+    const recorrenciaFaltaDetalhes: any[] = [];
     for (const a of vigentes) {
       const valor = PRECOS_MES[a.plano_tipo as string] || 0;
       if (!valor) continue;
@@ -539,8 +540,22 @@ serve(async (req) => {
         if (!recorrenciaFaltaUltimaData || dtRef > new Date(recorrenciaFaltaUltimaData)) {
           recorrenciaFaltaUltimaData = ref;
         }
+        const prof = profileMap.get(a.user_id) as any;
+        recorrenciaFaltaDetalhes.push({
+          user_id: a.user_id,
+          nome: prof?.nome || null,
+          email: prof?.email || null,
+          plano_tipo: a.plano_tipo,
+          plano_nome: PLANO_NOMES[a.plano_tipo as string] || a.plano_tipo,
+          data_vencimento: ref,
+          payment_provider: a.payment_provider,
+          valor_mensal: valor,
+        });
       }
     }
+    recorrenciaFaltaDetalhes.sort((a, b) =>
+      new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
+    );
 
     const result = {
       // KPIs principais
@@ -577,6 +592,7 @@ serve(async (req) => {
       recorrencia_entrou_mes: recorrenciaEntrouMes,
       recorrencia_falta_mes: recorrenciaFaltaMes,
       recorrencia_falta_ate: recorrenciaFaltaUltimaData,
+      recorrencia_falta_detalhes: recorrenciaFaltaDetalhes,
       last_update: agora.toISOString(),
     };
 

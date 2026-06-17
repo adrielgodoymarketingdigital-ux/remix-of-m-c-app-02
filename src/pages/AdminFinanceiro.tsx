@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
 import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock, Phone } from "lucide-react";
 import { SecaoDesempenhoSistema } from "@/components/admin/SecaoDesempenhoSistema";
@@ -39,6 +40,7 @@ export default function AdminFinanceiro() {
   const [buscaAssinantes, setBuscaAssinantes] = useState("");
   const [buscaExpirados, setBuscaExpirados] = useState("");
   const [mostrarInadimplentes, setMostrarInadimplentes] = useState(false);
+  const [mostrarFaltaEntrar, setMostrarFaltaEntrar] = useState(false);
   const inadimplentesSectionRef = useRef<HTMLDivElement>(null);
 
   const inadimplenteIds = (data?.inadimplentes_detalhes ?? []).map((u) => u.user_id);
@@ -386,7 +388,11 @@ export default function AdminFinanceiro() {
                     </div>
                   </div>
 
-                  <div className="relative rounded-xl border border-amber-500/20 bg-card overflow-hidden">
+                  <div
+                    className={`relative rounded-xl border border-amber-500/20 bg-card overflow-hidden ${!isLoading ? "cursor-pointer hover:shadow-lg hover:shadow-black/20 transition-all duration-300" : ""}`}
+                    onClick={() => !isLoading && setMostrarFaltaEntrar(true)}
+                    title={!isLoading ? "Clique para ver quem falta pagar" : undefined}
+                  >
                     <div className="h-0.5 w-full bg-gradient-to-r from-amber-500 to-orange-400" />
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-2">
@@ -406,6 +412,9 @@ export default function AdminFinanceiro() {
                           <span className="ml-1 font-medium text-amber-500">· última renovação em {faltaAte}</span>
                         )}
                       </div>
+                      {!isLoading && (
+                        <p className="text-xs text-primary mt-2 font-medium">Clique para ver quem falta →</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1146,6 +1155,46 @@ export default function AdminFinanceiro() {
             )}
           </CardContent>
         </Card>
+
+        {/* Dialog: quem falta entrar este mês */}
+        <Dialog open={mostrarFaltaEntrar} onOpenChange={setMostrarFaltaEntrar}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-amber-500" />
+                Falta entrar este mês
+                <Badge variant="outline" className="ml-1 text-amber-600 border-amber-400">
+                  {data?.recorrencia_falta_detalhes?.length ?? 0}
+                </Badge>
+              </DialogTitle>
+              <DialogDescription>
+                Assinantes vigentes (Pagar.me, em dia) cuja renovação ainda está pendente neste mês
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              {(data?.recorrencia_falta_detalhes?.length ?? 0) === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Ninguém pendente este mês 🎉</p>
+              ) : (
+                data?.recorrencia_falta_detalhes.map((u) => (
+                  <div key={u.user_id} className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50/30 dark:bg-amber-950/10 gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{u.nome || "Sem nome"}</span>
+                        <Badge variant="secondary" className="text-[10px]">{u.plano_nome}</Badge>
+                        <Badge variant="outline" className="text-[10px] capitalize">{u.payment_provider || "—"}</Badge>
+                        <Badge variant="outline" className="text-amber-600 border-amber-400 text-[10px]">
+                          Vence {formatDate(u.data_vencimento)}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{u.email || "—"}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-amber-600 shrink-0">{formatBRL(u.valor_mensal)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Footer info */}
         {data && (

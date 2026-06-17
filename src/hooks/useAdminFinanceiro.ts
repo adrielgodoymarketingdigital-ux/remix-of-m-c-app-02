@@ -74,6 +74,16 @@ export interface AdminFinanceiroData {
   recorrencia_entrou_mes: number;
   recorrencia_falta_mes: number;
   recorrencia_falta_ate: string | null;
+  recorrencia_falta_detalhes: Array<{
+    user_id: string;
+    nome: string | null;
+    email: string | null;
+    plano_tipo: string;
+    plano_nome: string;
+    data_vencimento: string;
+    payment_provider: string | null;
+    valor_mensal: number;
+  }>;
   historico_crescimento: {
     snapshots: Array<{
       mes: string;
@@ -110,7 +120,7 @@ export interface AdminFinanceiroData {
 
 export function useAdminFinanceiro() {
   return useQuery({
-    queryKey: ["admin-financeiro", "subscribers-and-expired-v8"],
+    queryKey: ["admin-financeiro", "subscribers-and-expired-v9"],
     queryFn: async (): Promise<AdminFinanceiroData> => {
       const { data, error } = await supabase.functions.invoke("admin-financeiro");
       if (error) throw error;
