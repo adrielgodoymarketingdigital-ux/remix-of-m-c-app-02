@@ -201,6 +201,14 @@ const PDV = () => {
     );
   };
 
+  const atualizarPreco = (id: string, preco: number) => {
+    setItensCarrinho((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, preco: Math.max(0, preco) } : item
+      )
+    );
+  };
+
   const calcularSubtotal = () => {
     return itensCarrinho.reduce(
       (acc, item) => acc + item.preco * item.quantidade,
@@ -814,6 +822,7 @@ const PDV = () => {
                       item={item}
                       onRemover={removerItem}
                       onAtualizarQuantidade={atualizarQuantidade}
+                      onAtualizarPreco={atualizarPreco}
                     />
                   ))}
                 </div>

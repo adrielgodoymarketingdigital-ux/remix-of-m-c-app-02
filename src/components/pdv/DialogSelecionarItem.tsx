@@ -28,6 +28,7 @@ export interface ItemVenda {
   tipo: "dispositivo" | "produto" | "peca";
   nome: string;
   preco: number;
+  precoOriginal?: number;
   custo: number;
   quantidade: number;
   estoque: number;
@@ -100,6 +101,7 @@ export const DialogSelecionarItem = ({
       tipo: "dispositivo",
       nome: `${dispositivo.marca} ${dispositivo.modelo}`,
       preco: Number(dispositivo.preco || 0),
+      precoOriginal: Number(dispositivo.preco || 0),
       custo: Number(dispositivo.custo || 0),
       quantidade,
       estoque: dispositivo.quantidade,
@@ -120,6 +122,7 @@ export const DialogSelecionarItem = ({
       tipo: tipoReal,
       nome: produto.nome,
       preco: Number(produto.preco || 0),
+      precoOriginal: Number(produto.preco || 0),
       custo: Number(produto.custo || 0),
       quantidade,
       estoque: produto.quantidade,

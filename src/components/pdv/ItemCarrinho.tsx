@@ -1,22 +1,38 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/formatters";
-import { Trash2, Smartphone, Package } from "lucide-react";
+import { Trash2, Smartphone, Package, Pencil } from "lucide-react";
 import { ItemVenda } from "./DialogSelecionarItem";
 
 interface ItemCarrinhoProps {
   item: ItemVenda;
   onRemover: (id: string) => void;
   onAtualizarQuantidade: (id: string, quantidade: number) => void;
+  onAtualizarPreco: (id: string, preco: number) => void;
 }
 
 export const ItemCarrinho = ({
   item,
   onRemover,
   onAtualizarQuantidade,
+  onAtualizarPreco,
 }: ItemCarrinhoProps) => {
+  const [editandoPreco, setEditandoPreco] = useState(false);
+  const [precoInput, setPrecoInput] = useState(String(item.preco));
   const total = item.preco * item.quantidade;
+  const precoFoiAlterado = item.precoOriginal !== undefined && item.preco !== item.precoOriginal;
+
+  const confirmarPreco = () => {
+    const valor = parseFloat(precoInput.replace(",", "."));
+    if (!Number.isNaN(valor) && valor >= 0) {
+      onAtualizarPreco(item.id, valor);
+    } else {
+      setPrecoInput(String(item.preco));
+    }
+    setEditandoPreco(false);
+  };
 
   const getItemIcon = () => {
     if (item.tipo === "dispositivo") {
@@ -52,9 +68,42 @@ export const ItemCarrinho = ({
             <Badge variant="outline" className="text-xs">
               {getItemLabel()}
             </Badge>
-            <span className="text-xs sm:text-sm text-muted-foreground">
-              {formatCurrency(item.preco)} × {item.quantidade}
-            </span>
+            {editandoPreco ? (
+              <Input
+                type="text"
+                inputMode="decimal"
+                autoFocus
+                value={precoInput}
+                onChange={(e) => setPrecoInput(e.target.value)}
+                onBlur={confirmarPreco}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmarPreco();
+                  if (e.key === "Escape") {
+                    setPrecoInput(String(item.preco));
+                    setEditandoPreco(false);
+                  }
+                }}
+                className="w-20 h-6 text-xs px-1"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setPrecoInput(String(item.preco));
+                  setEditandoPreco(true);
+                }}
+                className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                title="Editar preço unitário"
+              >
+                {formatCurrency(item.preco)} × {item.quantidade}
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+            {precoFoiAlterado && (
+              <Badge variant="secondary" className="text-[10px]">
+                Preço alterado
+              </Badge>
+            )}
           </div>
         </div>
       </div>
