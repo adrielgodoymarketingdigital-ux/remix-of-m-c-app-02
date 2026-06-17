@@ -1114,7 +1114,7 @@ export const DialogOrdemServico = ({
       <DialogContent className="sm:max-w-4xl pb-20 sm:pb-6">
         <DialogHeader>
           <DialogTitle className="text-lg">
-            {ordem ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço"}
+            {ordem ? `Editar Ordem de Serviço — OS ${ordem.numero_os}` : "Nova Ordem de Serviço"}
           </DialogTitle>
         </DialogHeader>
 
