@@ -336,10 +336,19 @@ export default function Plano() {
 
 
             {/* Alerta de Trial Expirado */}
-            {(assinatura?.plano_tipo === 'trial' && trialExpirado) || trialStatus.trialExpired && (
+            {!migracaoNecessaria && ((assinatura?.plano_tipo === 'trial' && trialExpirado) || trialStatus.trialExpired) && (
               <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
                 <AlertDescription className="text-red-800 dark:text-red-200">
                   ⏰ <strong>Seu período de teste expirou!</strong> Assine agora para continuar usando todas as funções do sistema.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Alerta de Assinatura Vencida */}
+            {migracaoNecessaria && (
+              <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
+                <AlertDescription className="text-red-800 dark:text-red-200">
+                  ⏰ <strong>Sua assinatura venceu!</strong> Renove agora para continuar usando todas as funções do sistema.
                 </AlertDescription>
               </Alert>
             )}
@@ -659,8 +668,9 @@ export default function Plano() {
                 </Card>
                 {planosFiltrados.map(([key, plano]) => {
                   const tipoMudanca = determinarTipoMudanca(key);
-                  const planoAtivo = assinatura?.plano_tipo === key && 
+                  const planoAtivo = assinatura?.plano_tipo === key &&
                     (assinatura?.status === "active" || assinatura?.status === "trialing");
+                  const mesmoPlanoVencido = migracaoNecessaria && assinatura?.plano_tipo === key;
                   
                   return (
                     <Card
@@ -744,7 +754,7 @@ export default function Plano() {
 
                       <BotoesPagamentoPagarme
                         planoKey={key}
-                        planoAtual={planoAtivo}
+                        planoAtual={planoAtivo || mesmoPlanoVencido}
                         popular={plano.popular}
                         carregando={carregando}
                         onSuccess={() => recarregar()}
