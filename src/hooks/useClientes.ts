@@ -370,6 +370,21 @@ export function useClientes(options: UseClientesOptions = {}) {
       let inseridos = 0;
       let erros = 0;
 
+      // empresa_id: usa a empresa ativa no contexto (filial se estiver selecionada,
+      // caso contrário busca a matriz do proprietário para manter consistência
+      // com criarCliente — sem isso, clientes importados ficam com empresa_id
+      // null e não aparecem na busca de OS quando filtrada por empresa)
+      let empresaIdParaSalvar: string | null = empresaAtiva ?? null;
+      if (!empresaIdParaSalvar) {
+        const { data: empresaPrincipal } = await supabase
+          .from("empresas")
+          .select("id")
+          .eq("proprietario_id", targetUserId)
+          .eq("tipo", "matriz")
+          .maybeSingle();
+        empresaIdParaSalvar = empresaPrincipal?.id ?? null;
+      }
+
       // Inserir em lotes de 50
       for (let i = 0; i < lista.length; i += 50) {
         const lote = lista.slice(i, i + 50).map(c => ({
@@ -380,7 +395,7 @@ export function useClientes(options: UseClientesOptions = {}) {
           endereco: c.endereco?.trim() || null,
           data_nascimento: c.data_nascimento?.trim() || null,
           user_id: targetUserId,
-          empresa_id: empresaAtiva ?? null,
+          empresa_id: empresaIdParaSalvar,
         }));
 
         const { data, error } = await supabase.from("clientes").insert(lote).select("id");
