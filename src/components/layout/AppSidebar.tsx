@@ -68,6 +68,9 @@ import { useAssinatura } from "@/hooks/useAssinatura";
 // Menu destacado de Novidades
 const novidadesItem = { title: "Novidades", url: "/novidades", icon: Sparkles, modulo: "novidades" as keyof PermissoesModulos };
 
+// Menu de Ajuda: sempre visível para todos os usuários logados, sem restrição de permissão/plano
+const ajudaItem = { title: "Ajuda", url: "/ajuda", icon: HelpCircle };
+
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, modulo: "dashboard" as keyof PermissoesModulos },
   { title: "PDV", url: "/pdv", icon: ShoppingCart, modulo: "pdv" as keyof PermissoesModulos },
@@ -262,6 +265,18 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location.pathname.startsWith(ajudaItem.url)}>
+                  <NavLink
+                    to={ajudaItem.url}
+                    className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all"
+                    activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+                  >
+                    <ajudaItem.icon className="h-5 w-5 shrink-0" />
+                    {!collapsed && <span>{ajudaItem.title}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               {carregandoPermissoes ? (
                 // Skeleton loading para os menus
                 Array.from({ length: 6 }).map((_, i) => (

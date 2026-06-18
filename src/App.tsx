@@ -45,6 +45,8 @@ const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Vendas = lazy(() => import("./pages/Vendas"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const Suporte = lazy(() => import("./pages/Suporte"));
+const Ajuda = lazy(() => import("./pages/Ajuda"));
+const AjudaDetalhe = lazy(() => import("./pages/AjudaDetalhe"));
 const AdminUsuarios = lazy(() => import("./pages/AdminUsuarios"));
 const AdminNotificacoes = lazy(() => import("./pages/AdminNotificacoes"));
 const AdminAvisos = lazy(() => import("./pages/AdminAvisos"));
@@ -336,6 +338,16 @@ function AppRoutes() {
               <ComVerificacaoFuncionario modulo="suporte">
                 <Suporte />
               </ComVerificacaoFuncionario>
+            </ProtectedAppRoute>
+          } />
+          <Route path="/ajuda" element={
+            <ProtectedAppRoute>
+              <Ajuda />
+            </ProtectedAppRoute>
+          } />
+          <Route path="/ajuda/:slug" element={
+            <ProtectedAppRoute>
+              <AjudaDetalhe />
             </ProtectedAppRoute>
           } />
           <Route path="/equipe" element={
