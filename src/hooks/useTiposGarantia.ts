@@ -55,7 +55,7 @@ export function useTiposGarantia() {
 
       const { data, error } = await supabase
         .from("tipos_garantia")
-        .insert({ nome, meses, user_id: userId } as any)
+        .insert({ nome, meses, user_id: userId, empresa_id: empresaFiltro } as any)
         .select()
         .single();
 
