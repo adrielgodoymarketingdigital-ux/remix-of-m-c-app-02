@@ -40,7 +40,7 @@ export function useOSTracking() {
       const [{ data: assinatura }, { data: adminRole }] = await Promise.all([
         supabase
           .from('assinaturas')
-          .select('plano_tipo')
+          .select('plano_tipo, free_trial_ends_at')
           .eq('user_id', user.id)
           .eq('status', 'active')
           .maybeSingle(),
@@ -52,8 +52,11 @@ export function useOSTracking() {
           .maybeSingle(),
       ]);
 
+      const trialAtivo = !!(assinatura as any)?.free_trial_ends_at &&
+        new Date((assinatura as any).free_trial_ends_at) > new Date();
+
       const plano = adminRole ? 'admin' : (assinatura?.plano_tipo || 'free');
-      const limite = LIMITES_PLANO[plano] ?? 0;
+      const limite = trialAtivo ? Infinity : (LIMITES_PLANO[plano] ?? 0);
 
       if (limite === 0) {
         toast.error("Seu plano não inclui compartilhamento de OS. Faça upgrade para o Plano Intermediário ou superior.");
