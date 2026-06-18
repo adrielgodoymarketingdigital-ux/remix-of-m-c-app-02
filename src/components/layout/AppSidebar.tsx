@@ -265,18 +265,6 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location.pathname.startsWith(ajudaItem.url)}>
-                  <NavLink
-                    to={ajudaItem.url}
-                    className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all"
-                    activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                  >
-                    <ajudaItem.icon className="h-5 w-5 shrink-0" />
-                    {!collapsed && <span>{ajudaItem.title}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               {carregandoPermissoes ? (
                 // Skeleton loading para os menus
                 Array.from({ length: 6 }).map((_, i) => (
@@ -407,10 +395,18 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        <div className="mt-auto p-4 border-t border-white/5">
+        <div className="mt-auto p-4 border-t border-white/5 space-y-1">
           <Button
             variant="ghost"
-            className="w-full justify-start text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+            className={`w-full text-slate-400 hover:text-slate-200 hover:bg-white/5 ${collapsed ? "justify-center" : "justify-start"} ${location.pathname.startsWith(ajudaItem.url) ? "bg-blue-500/10 text-blue-400 font-medium" : ""}`}
+            onClick={() => navigate(ajudaItem.url)}
+          >
+            <ajudaItem.icon className="h-5 w-5" />
+            {!collapsed && <span className="ml-2">{ajudaItem.title}</span>}
+          </Button>
+          <Button
+            variant="ghost"
+            className={`w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10 ${collapsed ? "justify-center" : "justify-start"}`}
             onClick={handleLogout}
           >
             <LogOut className="h-5 w-5" />
