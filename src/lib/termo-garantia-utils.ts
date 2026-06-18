@@ -75,8 +75,24 @@ export const resolverTextoTermoDispositivo = (
   return textoLivre || (temGarantia ? textoPadraoComGarantia : textoPadraoSemGarantia);
 };
 
-export const formatarTermoDispositivo = (texto: string, vars: TermoDispositivoVars): string => {
+/**
+ * Remove o bloco fixo "1. GARANTIA LEGAL (CDC - Lei 8.078/90)... 90 dias..." do texto
+ * quando há garantia contratual ativa, para que apenas o prazo escolhido (garantia_meses)
+ * apareça no termo — evitando a impressão simultânea de "90 dias" e do prazo selecionado.
+ */
+const removerBlocoGarantiaLegal90Dias = (texto: string): string => {
   return texto
+    .replace(/1\.\s*GARANTIA LEGAL[\s\S]*?(?=\n\s*\n2\.|\n\s*\n[A-Z0-9])/i, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
+export const formatarTermoDispositivo = (texto: string, vars: TermoDispositivoVars): string => {
+  const textoBase = vars.garantia_meses
+    ? removerBlocoGarantiaLegal90Dias(texto)
+    : texto;
+
+  return textoBase
     .replace(/\{\{cliente\}\}/g, vars.cliente || 'Cliente')
     .replace(/\{\{cpf\}\}/g, vars.cpf || '—')
     .replace(/\{\{telefone\}\}/g, vars.telefone || '—')
