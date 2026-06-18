@@ -237,70 +237,74 @@ export const DialogImportarClientes = ({ open, onOpenChange, onImportar }: Props
         )}
 
         {etapa === 'mapeamento' && (
-          <div className="flex-1 overflow-hidden flex flex-col space-y-4">
-            <div className="flex items-center justify-between">
-              <Button variant="ghost" size="sm" onClick={resetar}><ArrowLeft className="w-4 h-4 mr-1" />Voltar</Button>
-              <Badge variant="outline">{arquivo?.name}</Badge>
-            </div>
-
-            <p className="text-sm text-muted-foreground">Encontradas <strong>{dados.length}</strong> linhas</p>
-
-            <div className="grid grid-cols-2 gap-3">
-              {CAMPOS.map(campo => (
-                <div key={campo.id} className="space-y-1">
-                  <Label className="text-xs">{campo.label}</Label>
-                  <Select value={mapeamento[campo.id]?.toString() ?? '__nao_importar__'} onValueChange={(v) => handleMapeamentoChange(campo.id, v)}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__nao_importar__">{campo.obrigatorio ? '-- Selecione --' : '-- Não importar --'}</SelectItem>
-                      {headers.map((h, idx) => <SelectItem key={idx} value={idx.toString()}>{h || `Coluna ${idx + 1}`}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Button variant="ghost" size="sm" onClick={resetar}><ArrowLeft className="w-4 h-4 mr-1" />Voltar</Button>
+                  <Badge variant="outline">{arquivo?.name}</Badge>
                 </div>
-              ))}
-            </div>
 
-            <div className="flex flex-wrap gap-2">
-              {itensOk.length > 0 && <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50"><CheckCircle2 className="w-3 h-3 mr-1" />{itensOk.length} OK</Badge>}
-              {itensComAviso.length > 0 && <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50"><AlertTriangle className="w-3 h-3 mr-1" />{itensComAviso.length} com avisos</Badge>}
-              {itensComErro.length > 0 && <Badge variant="outline" className="text-red-600 border-red-300 bg-red-50"><XCircle className="w-3 h-3 mr-1" />{itensComErro.length} com erros</Badge>}
-            </div>
+                <p className="text-sm text-muted-foreground">Encontradas <strong>{dados.length}</strong> linhas</p>
 
-            <ScrollArea className="flex-1 border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>CPF/CNPJ</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead className="w-28">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {itensValidados.slice(0, 50).map((item, idx) => (
-                    <TableRow key={idx} className={item._erro ? 'bg-red-50' : item._avisos.length > 0 ? 'bg-yellow-50' : ''}>
-                      <TableCell className="text-muted-foreground">{item._linha}</TableCell>
-                      <TableCell className="font-medium truncate max-w-[200px]">
-                        {item.nome || <span className="text-red-500 italic">Vazio</span>}
-                      </TableCell>
-                      <TableCell className="text-sm">{item.cpf || item.cnpj || '-'}</TableCell>
-                      <TableCell className="text-sm">{item.telefone || '-'}</TableCell>
-                      <TableCell>
-                        {item._erro ? <span className="text-xs text-red-600">{item._erro}</span>
-                          : item._avisos.length > 0 ? <span className="text-xs text-yellow-600">{item._avisos.join(', ')}</span>
-                          : <CheckCircle2 className="w-4 h-4 text-green-600" />}
-                      </TableCell>
-                    </TableRow>
+                <div className="grid grid-cols-2 gap-3">
+                  {CAMPOS.map(campo => (
+                    <div key={campo.id} className="space-y-1">
+                      <Label className="text-xs">{campo.label}</Label>
+                      <Select value={mapeamento[campo.id]?.toString() ?? '__nao_importar__'} onValueChange={(v) => handleMapeamentoChange(campo.id, v)}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__nao_importar__">{campo.obrigatorio ? '-- Selecione --' : '-- Não importar --'}</SelectItem>
+                          {headers.map((h, idx) => <SelectItem key={idx} value={idx.toString()}>{h || `Coluna ${idx + 1}`}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-              {itensValidados.length > 50 && <p className="p-2 text-center text-xs text-muted-foreground">Mostrando 50 de {itensValidados.length}</p>}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {itensOk.length > 0 && <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50"><CheckCircle2 className="w-3 h-3 mr-1" />{itensOk.length} OK</Badge>}
+                  {itensComAviso.length > 0 && <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50"><AlertTriangle className="w-3 h-3 mr-1" />{itensComAviso.length} com avisos</Badge>}
+                  {itensComErro.length > 0 && <Badge variant="outline" className="text-red-600 border-red-300 bg-red-50"><XCircle className="w-3 h-3 mr-1" />{itensComErro.length} com erros</Badge>}
+                </div>
+
+                <div className="border rounded-lg max-h-[40vh] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>CPF/CNPJ</TableHead>
+                        <TableHead>Telefone</TableHead>
+                        <TableHead className="w-28">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {itensValidados.slice(0, 50).map((item, idx) => (
+                        <TableRow key={idx} className={item._erro ? 'bg-red-50' : item._avisos.length > 0 ? 'bg-yellow-50' : ''}>
+                          <TableCell className="text-muted-foreground">{item._linha}</TableCell>
+                          <TableCell className="font-medium truncate max-w-[200px]">
+                            {item.nome || <span className="text-red-500 italic">Vazio</span>}
+                          </TableCell>
+                          <TableCell className="text-sm">{item.cpf || item.cnpj || '-'}</TableCell>
+                          <TableCell className="text-sm">{item.telefone || '-'}</TableCell>
+                          <TableCell>
+                            {item._erro ? <span className="text-xs text-red-600">{item._erro}</span>
+                              : item._avisos.length > 0 ? <span className="text-xs text-yellow-600">{item._avisos.join(', ')}</span>
+                              : <CheckCircle2 className="w-4 h-4 text-green-600" />}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {itensValidados.length > 50 && <p className="p-2 text-center text-xs text-muted-foreground">Mostrando 50 de {itensValidados.length}</p>}
+                </div>
+
+                {erro && <Alert variant="destructive"><XCircle className="h-4 w-4" /><AlertDescription>{erro}</AlertDescription></Alert>}
+              </div>
             </ScrollArea>
 
-            {erro && <Alert variant="destructive"><XCircle className="h-4 w-4" /><AlertDescription>{erro}</AlertDescription></Alert>}
-
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-3">
               <Button variant="outline" onClick={() => handleClose(false)}>Cancelar</Button>
               <Button onClick={handleImportar} disabled={importando || itensValidados.filter(i => !i._erro).length === 0 || mapeamento.nome === null}>
                 {importando ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Importando...</> : <>Importar {itensValidados.filter(i => !i._erro).length} clientes</>}
