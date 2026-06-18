@@ -3726,6 +3726,7 @@ export type Database = {
           quantidade: number | null
           recebido: boolean | null
           segunda_forma_pagamento: string | null
+          tempo_garantia: number | null
           tipo: Database["public"]["Enums"]["tipo_produto"]
           total: number
           total_parcelas: number | null
@@ -3760,6 +3761,7 @@ export type Database = {
           quantidade?: number | null
           recebido?: boolean | null
           segunda_forma_pagamento?: string | null
+          tempo_garantia?: number | null
           tipo: Database["public"]["Enums"]["tipo_produto"]
           total: number
           total_parcelas?: number | null
@@ -3794,6 +3796,7 @@ export type Database = {
           quantidade?: number | null
           recebido?: boolean | null
           segunda_forma_pagamento?: string | null
+          tempo_garantia?: number | null
           tipo?: Database["public"]["Enums"]["tipo_produto"]
           total?: number
           total_parcelas?: number | null

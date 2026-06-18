@@ -418,6 +418,7 @@ const PDV = () => {
             segunda_forma_pagamento: (pagamentoDuploAtivo && segundaFormaPagamento) ? segundaFormaPagamento : null,
             valor_segunda_forma: (pagamentoDuploAtivo && valorSegundaPagamento > 0) ? valorSegundaPagamento : null,
             imei_dispositivo: item.tipo === "dispositivo" ? (item.imei_dispositivo || null) : null,
+            tempo_garantia: item.tipo === "dispositivo" ? (item.tempo_garantia ?? null) : null,
           };
 
           const { data: venda, error: vendaError } = await supabase

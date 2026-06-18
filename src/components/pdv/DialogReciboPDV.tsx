@@ -16,6 +16,72 @@ import { ptBR } from "date-fns/locale";
 import { ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { Cliente } from "@/types/cliente";
 import { Cupom } from "@/types/cupom";
+import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "@/lib/termo-garantia-utils";
+import { TermoGarantiaDispositivoConfig } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
+
+// Normaliza tempo_garantia (sempre em meses) para exibição legível.
+function formatarGarantia(meses: number): string {
+  if (meses % 12 === 0 && meses >= 12) {
+    const anos = meses / 12;
+    return anos === 1 ? "1 ano" : `${anos} anos`;
+  }
+  return `${meses} ${meses === 1 ? "mês" : "meses"}`;
+}
+
+const TERMOS_GARANTIA_PADRAO = {
+  termo_com_garantia: `TERMO DE GARANTIA
+
+Loja: {{loja}}
+CNPJ: {{loja_cnpj}}
+
+COMPRADOR
+Nome: {{cliente}}
+
+PRODUTO
+Aparelho: {{dispositivo}}
+IMEI: {{imei}}
+Data da venda: {{data_venda}}
+Valor pago: {{valor}}
+
+1. GARANTIA LEGAL (CDC - Lei 8.078/90)
+   • Garantia legal de 90 (noventa) dias, conforme Art. 26, II do CDC.
+   • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento.
+
+2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
+   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
+   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.
+
+3. DIREITOS DO CONSUMIDOR
+   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).
+   • Prazo suspenso durante reparo (Art. 26, §2º CDC).
+   • Conserve este documento como comprovante.
+
+4. EXCLUSÕES
+   • Quedas, impactos, contato com líquidos, uso inadequado.
+   • Violação de lacres ou reparo por terceiros não autorizados.
+   • Desgaste natural de uso.
+
+Para acionamento da garantia, apresente este termo na loja.`,
+
+  termo_sem_garantia: `DECLARAÇÃO DE VENDA SEM GARANTIA CONTRATUAL
+
+Loja: {{loja}}
+CNPJ: {{loja_cnpj}}
+
+COMPRADOR
+Nome: {{cliente}}
+
+PRODUTO
+Aparelho: {{dispositivo}}
+IMEI: {{imei}}
+Data da venda: {{data_venda}}
+Valor pago: {{valor}}
+
+AVISO: Este produto é vendido sem garantia contratual adicional.
+A garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme a legislação.
+O cliente declara estar ciente das condições do equipamento.`,
+};
 
 export interface DadosReciboPDV {
   itens: ItemVenda[];
@@ -270,6 +336,33 @@ export function DialogReciboPDV({
   const dataFormatada = format(new Date(dados.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   const temDesconto = dados.descontoManual > 0 || dados.descontoCupom > 0;
 
+  const termoConfig = configLoja?.termo_garantia_dispositivo_config as TermoGarantiaDispositivoConfig | undefined;
+  const itensDispositivo = dados.itens.filter((item) => item.tipo === "dispositivo");
+
+  const gerarTextoTermo = (item: ItemVenda): string => {
+    const temGarantia = !!item.tempo_garantia && item.tempo_garantia > 0;
+    const textoBase = resolverTextoTermoDispositivo(
+      termoConfig,
+      temGarantia,
+      TERMOS_GARANTIA_PADRAO.termo_com_garantia,
+      TERMOS_GARANTIA_PADRAO.termo_sem_garantia
+    );
+    return formatarTermoDispositivo(textoBase, {
+      cliente: dados.cliente?.nome,
+      cpf: dados.cliente?.cpf,
+      telefone: dados.cliente?.telefone,
+      dispositivo: item.nome,
+      imei: item.imei_dispositivo,
+      garantia_meses: temGarantia ? formatarGarantia(item.tempo_garantia!) : undefined,
+      valor: formatCurrency(item.preco * item.quantidade),
+      data_venda: dataFormatada,
+      loja: configLoja?.nome_loja,
+      loja_telefone: configLoja?.telefone,
+      loja_cnpj: configLoja?.cnpj,
+      loja_endereco: configLoja?.endereco,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -459,6 +552,17 @@ export function DialogReciboPDV({
                 </div>
               )}
             </div>
+
+            {itensDispositivo.map((item) => (
+              <div key={item.id} className="recibo-section" style={{ marginTop: '20px', pageBreakInside: 'avoid' }}>
+                <h3 style={{ borderBottom: '1px solid #ccc', paddingBottom: '5px', marginBottom: '10px' }}>
+                  Termo de Garantia — {item.nome}
+                </h3>
+                <div style={{ fontSize: isThermal ? '9px' : '11px', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                  {gerarTextoTermo(item)}
+                </div>
+              </div>
+            ))}
 
             {showAssinaturas && (
               <>

@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
 
 export interface ItemVenda {
   id: string;
@@ -36,6 +37,7 @@ export interface ItemVenda {
   produto_id?: string;
   peca_id?: string;
   imei_dispositivo?: string;
+  tempo_garantia?: number;
 }
 
 interface DialogSelecionarItemProps {
@@ -54,6 +56,8 @@ export const DialogSelecionarItem = ({
   const [busca, setBusca] = useState("");
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [imeisSelecionados, setImeisSelecionados] = useState<Record<string, string>>({});
+  const [garantiaPendenteId, setGarantiaPendenteId] = useState<string | null>(null);
+  const [garantiaMeses, setGarantiaMeses] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (open) {
@@ -92,6 +96,11 @@ export const DialogSelecionarItem = ({
       setImeisSelecionados((prev) => ({ ...prev, [dispositivo.id]: "__pendente__" }));
       return;
     }
+    if (garantiaPendenteId !== dispositivo.id) {
+      setGarantiaPendenteId(dispositivo.id);
+      setGarantiaMeses(dispositivo.garantia ? dispositivo.tempo_garantia : undefined);
+      return;
+    }
     const imei = imeisSelecionados[dispositivo.id] !== "__pendente__"
       ? imeisSelecionados[dispositivo.id]
       : undefined;
@@ -107,9 +116,12 @@ export const DialogSelecionarItem = ({
       estoque: dispositivo.quantidade,
       dispositivo_id: dispositivo.id,
       imei_dispositivo: imei,
+      tempo_garantia: garantiaMeses,
     });
     setQuantidades((prev) => ({ ...prev, [dispositivo.id]: 1 }));
     setImeisSelecionados((prev) => { const n = { ...prev }; delete n[dispositivo.id]; return n; });
+    setGarantiaPendenteId(null);
+    setGarantiaMeses(undefined);
     onOpenChange(false);
   };
 
@@ -181,6 +193,7 @@ export const DialogSelecionarItem = ({
                   const temImeis = dispositivo.imeis && (dispositivo.imeis as string[]).length > 0;
                   const aguardandoImei = imeisSelecionados[dispositivo.id] === "__pendente__";
                   const imeiEscolhido = imeisSelecionados[dispositivo.id];
+                  const aguardandoGarantia = !aguardandoImei && garantiaPendenteId === dispositivo.id;
                   return (
                   <div
                     key={dispositivo.id}
@@ -258,6 +271,21 @@ export const DialogSelecionarItem = ({
                             onClick={() => handleAdicionarDispositivo(dispositivo)}
                             disabled={!imeiEscolhido || imeiEscolhido === "__pendente__"}
                           >
+                            Confirmar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Seleção de garantia — aparece após IMEI (se houver) e antes de adicionar ao carrinho */}
+                    {aguardandoGarantia && (
+                      <div className="mt-3 pt-3 border-t space-y-2">
+                        <Label className="text-sm font-medium">Tempo de garantia para o recibo</Label>
+                        <div className="flex gap-2 items-start">
+                          <div className="flex-1">
+                            <SeletorTempoGarantia value={garantiaMeses} onChange={setGarantiaMeses} />
+                          </div>
+                          <Button onClick={() => handleAdicionarDispositivo(dispositivo)}>
                             Confirmar
                           </Button>
                         </div>
