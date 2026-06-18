@@ -40,13 +40,15 @@ function AjudaDetalheContent() {
           </div>
         </div>
 
-        <div className="rounded-lg border overflow-hidden">
-          <img
-            src={modulo.imagem}
-            alt={`Tela de ${modulo.title}`}
-            className="w-full"
-          />
-        </div>
+        {modulo.imagem && (
+          <div className="rounded-lg border overflow-hidden">
+            <img
+              src={modulo.imagem}
+              alt={`Tela de ${modulo.title}`}
+              className="w-full"
+            />
+          </div>
+        )}
 
         <Card>
           <CardHeader>

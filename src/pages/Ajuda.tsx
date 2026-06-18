@@ -57,14 +57,16 @@ function AjudaContent() {
                 className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
                 onClick={() => navigate(`/ajuda/${modulo.slug}`)}
               >
-                <div className="aspect-video w-full overflow-hidden bg-muted border-b">
-                  <img
-                    src={modulo.imagem}
-                    alt={`Tela de ${modulo.title}`}
-                    className="w-full h-full object-cover object-top"
-                    loading="lazy"
-                  />
-                </div>
+                {modulo.imagem && (
+                  <div className="aspect-video w-full overflow-hidden bg-muted border-b">
+                    <img
+                      src={modulo.imagem}
+                      alt={`Tela de ${modulo.title}`}
+                      className="w-full h-full object-cover object-top"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
                 <CardHeader>
                   <div className="flex items-center gap-3 mb-1">
                     <div className="p-3 bg-primary/10 rounded-lg">

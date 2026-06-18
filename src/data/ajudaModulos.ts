@@ -29,14 +29,11 @@ import imgServicos from "@/assets/ajuda/servicos.png";
 import imgDispositivos from "@/assets/ajuda/dispositivos.png";
 import imgCatalogo from "@/assets/ajuda/catalogo.png";
 import imgOrigemDispositivos from "@/assets/ajuda/origem-dispositivos.png";
-import imgFornecedores from "@/assets/ajuda/fornecedores.png";
 import imgClientes from "@/assets/ajuda/clientes.png";
 import imgOrcamentos from "@/assets/ajuda/orcamentos.png";
 import imgPedidos from "@/assets/ajuda/pedidos.png";
 import imgVendas from "@/assets/ajuda/vendas.png";
 import imgFinanceiro from "@/assets/ajuda/financeiro.png";
-import imgEquipe from "@/assets/ajuda/equipe.png";
-import imgConfiguracoes from "@/assets/ajuda/configuracoes.png";
 import imgPlano from "@/assets/ajuda/plano.png";
 import imgMultiEmpresas from "@/assets/ajuda/multi-empresas.png";
 import imgPrecificador from "@/assets/ajuda/precificador.png";
@@ -47,7 +44,7 @@ export interface AjudaModulo {
   title: string;
   icon: LucideIcon;
   resumo: string;
-  imagem: string;
+  imagem?: string;
   conteudo: string[];
   passos: string[];
 }
@@ -201,7 +198,6 @@ export const ajudaModulos: AjudaModulo[] = [
     title: "Fornecedores",
     icon: Truck,
     resumo: "Cadastro de fornecedores de produtos e peças.",
-    imagem: imgFornecedores,
     conteudo: [
       "Cadastre seus fornecedores e vincule produtos/peças a eles para saber rapidamente onde comprar cada item.",
     ],
@@ -305,7 +301,6 @@ export const ajudaModulos: AjudaModulo[] = [
     title: "Equipe",
     icon: Users,
     resumo: "Cadastre funcionários e defina permissões de acesso.",
-    imagem: imgEquipe,
     conteudo: [
       "Adicione funcionários à sua loja e configure exatamente quais módulos e dados cada um pode acessar.",
       "Defina comissões por cargo (vendedor, técnico, estoque) sobre vendas e serviços realizados.",
@@ -323,7 +318,6 @@ export const ajudaModulos: AjudaModulo[] = [
     title: "Configurações",
     icon: Settings,
     resumo: "Personalize dados da loja e comportamento do sistema.",
-    imagem: imgConfiguracoes,
     conteudo: [
       "Ajuste dados da sua loja (nome, razão social, CNPJ, endereço), aparência, numeração de documentos e permissões padrão.",
       "O \"Status do Perfil\" indica se faltam dados para a emissão de recibos profissionais.",
