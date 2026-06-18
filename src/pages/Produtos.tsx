@@ -25,6 +25,7 @@ import { DialogGerenciarCategorias } from '@/components/produtos/DialogGerenciar
 import { DialogReporEstoque } from '@/components/produtos/DialogReporEstoque';
 import { CardInventario } from '@/components/produtos/CardInventario';
 import { TabelaTrocasGarantia } from '@/components/produtos/TabelaTrocasGarantia';
+import { RankingProdutosDefeito } from '@/components/produtos/RankingProdutosDefeito';
 import { DialogNovaTrocaGarantia } from '@/components/produtos/DialogNovaTrocaGarantia';
 import { useTrocasGarantia } from '@/hooks/useTrocasGarantia';
 
@@ -395,6 +396,7 @@ const Produtos = () => {
             </TabsContent>
 
             <TabsContent value="trocas" className="space-y-6 mt-6">
+              <RankingProdutosDefeito trocas={trocas} />
               <TabelaTrocasGarantia trocas={trocas} onExcluir={excluirTroca} />
             </TabsContent>
           </Tabs>
