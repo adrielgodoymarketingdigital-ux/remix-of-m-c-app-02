@@ -118,8 +118,7 @@ Valor pago: {{valor}}`,
     titulo: "2. Garantia Contratual",
     visivel: true,
     conteudo: `2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
-   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
-   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Garantia de {{garantia_meses}} meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).
    • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.`,
   },
   {
@@ -212,8 +211,7 @@ Valor pago: {{valor}}
    • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento.
 
 2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
-   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
-   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Garantia de {{garantia_meses}} meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).
    • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.
 
 3. DIREITOS DO CONSUMIDOR
@@ -258,8 +256,7 @@ export const MODELOS_PADRAO_GARANTIA: ModeloGarantia[] = [
         ? {
             ...s,
             conteudo: `2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
-   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
-   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Garantia de {{garantia_meses}} meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).
    • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.`,
           }
         : s
@@ -274,8 +271,7 @@ export const MODELOS_PADRAO_GARANTIA: ModeloGarantia[] = [
         ? {
             ...s,
             conteudo: `2. GARANTIA CONTRATUAL (6 meses)
-   • Garantia adicional de 6 (seis) meses a partir da data desta venda.
-   • Complementar à garantia legal de 90 dias (CDC Art. 26, II).
+   • Garantia de 6 (seis) meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).
    • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.`,
           }
         : s
@@ -290,8 +286,7 @@ export const MODELOS_PADRAO_GARANTIA: ModeloGarantia[] = [
         ? {
             ...s,
             conteudo: `2. GARANTIA CONTRATUAL (12 meses)
-   • Garantia adicional de 12 (doze) meses a partir da data desta venda.
-   • Complementar à garantia legal de 90 dias (CDC Art. 26, II).
+   • Garantia de 12 (doze) meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).
    • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.`,
           }
         : s

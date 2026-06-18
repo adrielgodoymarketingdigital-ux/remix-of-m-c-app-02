@@ -48,8 +48,7 @@ Valor pago: {{valor}}
    • Cobre defeitos de fabricação ou vícios que comprometam o funcionamento.
 
 2. GARANTIA CONTRATUAL ({{garantia_meses}} meses)
-   • Garantia adicional de {{garantia_meses}} meses a partir da data desta venda.
-   • Complementar à garantia legal, conforme Art. 50 do CDC.
+   • Garantia de {{garantia_meses}} meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).
    • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.
 
 3. DIREITOS DO CONSUMIDOR
