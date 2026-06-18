@@ -83,11 +83,11 @@ export default function BaixarApp() {
     <div className="p-4 sm:p-6 max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold text-white flex items-center gap-2">
-          <Smartphone className="h-5 w-5 text-blue-400" />
+        <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+          <Smartphone className="h-5 w-5 text-blue-500 dark:text-blue-400" />
           Baixar App
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Instale o Méc como aplicativo no seu celular ou computador — sem precisar de loja de apps.
         </p>
       </div>
@@ -101,7 +101,7 @@ export default function BaixarApp() {
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all ${
               so === id
                 ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20"
-                : "bg-slate-800/60 border-white/10 text-slate-400 hover:text-white hover:bg-slate-700/60"
+                : "bg-muted/60 border-border text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             <Icon className="h-4 w-4" />
@@ -111,8 +111,8 @@ export default function BaixarApp() {
       </div>
 
       {/* Card de passos */}
-      <div className="rounded-xl bg-slate-900/60 border border-white/10 p-5 space-y-5">
-        <p className="text-xs text-slate-500 uppercase tracking-wider font-mono">
+      <div className="rounded-xl bg-muted/40 border border-border p-5 space-y-5">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-mono">
           Passo a passo —{" "}
           {so === "ios" ? "iPhone / iPad" : so === "android" ? "Android (Chrome)" : "Computador (Chrome)"}
         </p>
@@ -123,14 +123,14 @@ export default function BaixarApp() {
             return (
               <div key={index} className="flex gap-4 items-start">
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-                  <Icon className="h-5 w-5 text-blue-400" />
+                  <Icon className="h-5 w-5 text-blue-500 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 pt-0.5">
-                  <p className="text-sm font-medium text-white">
-                    <span className="text-blue-400 mr-1.5">{index + 1}.</span>
+                  <p className="text-sm font-medium text-foreground">
+                    <span className="text-blue-500 dark:text-blue-400 mr-1.5">{index + 1}.</span>
                     {passo.titulo}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     {passo.descricao}
                   </p>
                 </div>
@@ -143,7 +143,7 @@ export default function BaixarApp() {
       {/* Dica iOS Safari */}
       {so === "ios" && (
         <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-3">
-          <p className="text-xs text-amber-300">
+          <p className="text-xs text-amber-700 dark:text-amber-300">
             <span className="font-semibold">Atenção:</span> No iPhone, a instalação só funciona pelo navegador <span className="font-semibold">Safari</span>. Se estiver usando Chrome ou outro browser, abra o site no Safari primeiro.
           </p>
         </div>
@@ -152,17 +152,17 @@ export default function BaixarApp() {
       {/* Dica Android */}
       {so === "android" && (
         <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 px-4 py-3">
-          <p className="text-xs text-blue-300">
+          <p className="text-xs text-blue-700 dark:text-blue-300">
             <span className="font-semibold">Dica:</span> A opção de instalar só aparece no <span className="font-semibold">Google Chrome</span>. Se não aparecer, tente acessar pelo Chrome e recarregue a página.
           </p>
         </div>
       )}
 
       {/* Suporte */}
-      <div className="rounded-xl bg-slate-800/40 border border-white/10 p-4 flex items-center justify-between gap-4">
+      <div className="rounded-xl bg-muted/30 border border-border p-4 flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-white">Precisando de ajuda?</p>
-          <p className="text-xs text-slate-400 mt-0.5">Chame no WhatsApp e te ajudamos a instalar.</p>
+          <p className="text-sm font-medium text-foreground">Precisando de ajuda?</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Chame no WhatsApp e te ajudamos a instalar.</p>
         </div>
         <a
           href="https://wa.me/5519971454829"
