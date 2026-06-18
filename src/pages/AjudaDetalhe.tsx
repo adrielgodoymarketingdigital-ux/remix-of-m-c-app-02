@@ -40,6 +40,14 @@ function AjudaDetalheContent() {
           </div>
         </div>
 
+        <div className="rounded-lg border overflow-hidden">
+          <img
+            src={modulo.imagem}
+            alt={`Tela de ${modulo.title}`}
+            className="w-full"
+          />
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Como funciona</CardTitle>
@@ -48,6 +56,19 @@ function AjudaDetalheContent() {
             {modulo.conteudo.map((paragrafo, i) => (
               <p key={i} className="text-sm text-muted-foreground leading-relaxed">
                 {paragrafo}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Passo a passo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {modulo.passos.map((passo, i) => (
+              <p key={i} className="text-sm text-muted-foreground leading-relaxed">
+                {passo}
               </p>
             ))}
           </CardContent>

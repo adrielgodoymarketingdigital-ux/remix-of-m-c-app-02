@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { HelpCircle, Search } from "lucide-react";
 import { ajudaModulos } from "@/data/ajudaModulos";
@@ -54,9 +54,17 @@ function AjudaContent() {
             {modulosFiltrados.map((modulo) => (
               <Card
                 key={modulo.slug}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
+                className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
                 onClick={() => navigate(`/ajuda/${modulo.slug}`)}
               >
+                <div className="aspect-video w-full overflow-hidden bg-muted border-b">
+                  <img
+                    src={modulo.imagem}
+                    alt={`Tela de ${modulo.title}`}
+                    className="w-full h-full object-cover object-top"
+                    loading="lazy"
+                  />
+                </div>
                 <CardHeader>
                   <div className="flex items-center gap-3 mb-1">
                     <div className="p-3 bg-primary/10 rounded-lg">
@@ -66,7 +74,6 @@ function AjudaContent() {
                   </div>
                   <CardDescription>{modulo.resumo}</CardDescription>
                 </CardHeader>
-                <CardContent />
               </Card>
             ))}
           </div>
