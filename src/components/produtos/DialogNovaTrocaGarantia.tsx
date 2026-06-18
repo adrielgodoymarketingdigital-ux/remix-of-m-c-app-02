@@ -11,10 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { ItemEstoque } from '@/types/produto';
 import { NovaTrocaGarantia } from '@/hooks/useTrocasGarantia';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DialogNovaTrocaGarantiaProps {
   open: boolean;
@@ -34,6 +36,7 @@ const ESTADO_INICIAL = {
 export const DialogNovaTrocaGarantia = ({ open, onOpenChange, produtos, onConfirmar }: DialogNovaTrocaGarantiaProps) => {
   const [form, setForm] = useState(ESTADO_INICIAL);
   const [salvando, setSalvando] = useState(false);
+  const [buscaProdutoAberta, setBuscaProdutoAberta] = useState(false);
 
   const produtosDisponiveis = produtos.filter((p) => p.tipo === 'produto');
   const produtoSelecionado = produtosDisponiveis.find((p) => p.id === form.produtoNovoId);
@@ -111,18 +114,60 @@ export const DialogNovaTrocaGarantia = ({ open, onOpenChange, produtos, onConfir
 
           <div>
             <Label htmlFor="produto-novo">Produto novo a entregar</Label>
-            <Select value={form.produtoNovoId} onValueChange={(v) => setForm((f) => ({ ...f, produtoNovoId: v }))}>
-              <SelectTrigger id="produto-novo">
-                <SelectValue placeholder="Selecione o produto" />
-              </SelectTrigger>
-              <SelectContent>
-                {produtosDisponiveis.map((p) => (
-                  <SelectItem key={p.id} value={p.id} disabled={p.quantidade <= 0}>
-                    {p.nome} ({p.quantidade} em estoque)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={buscaProdutoAberta} onOpenChange={setBuscaProdutoAberta}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="produto-novo"
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={buscaProdutoAberta}
+                  className="w-full justify-between font-normal"
+                >
+                  <span className="truncate">
+                    {produtoSelecionado
+                      ? `${produtoSelecionado.nome} (${produtoSelecionado.quantidade} em estoque)`
+                      : 'Buscar por nome ou código...'}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar por nome ou código..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {produtosDisponiveis.map((p) => (
+                        <CommandItem
+                          key={p.id}
+                          value={`${p.nome} ${p.sku ?? ''} ${p.codigo_barras ?? ''}`}
+                          disabled={p.quantidade <= 0}
+                          onSelect={() => {
+                            setForm((f) => ({ ...f, produtoNovoId: p.id }));
+                            setBuscaProdutoAberta(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              form.produtoNovoId === p.id ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span>{p.nome}</span>
+                            {p.sku && <span className="text-xs text-muted-foreground">Código: {p.sku}</span>}
+                          </div>
+                          <span className="text-muted-foreground text-xs ml-auto">
+                            ({p.quantidade} em estoque)
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div>
