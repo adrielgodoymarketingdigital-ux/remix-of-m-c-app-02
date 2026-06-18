@@ -167,7 +167,7 @@ export const DialogImportarClientes = ({ open, onOpenChange, onImportar }: Props
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col min-h-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5" />
@@ -181,7 +181,7 @@ export const DialogImportarClientes = ({ open, onOpenChange, onImportar }: Props
         </DialogHeader>
 
         {etapa === 'upload' && (
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="flex-1 min-h-0 pr-4">
           <div className="space-y-4">
             <div
               className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors"
@@ -237,8 +237,8 @@ export const DialogImportarClientes = ({ open, onOpenChange, onImportar }: Props
         )}
 
         {etapa === 'mapeamento' && (
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1 pr-4">
+          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+            <ScrollArea className="flex-1 min-h-0 pr-4">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Button variant="ghost" size="sm" onClick={resetar}><ArrowLeft className="w-4 h-4 mr-1" />Voltar</Button>
