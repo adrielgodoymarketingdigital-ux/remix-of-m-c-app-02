@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown } from 'lucide-react';
+import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -23,6 +24,9 @@ import { Badge } from '@/components/ui/badge';
 import { DialogGerenciarCategorias } from '@/components/produtos/DialogGerenciarCategorias';
 import { DialogReporEstoque } from '@/components/produtos/DialogReporEstoque';
 import { CardInventario } from '@/components/produtos/CardInventario';
+import { TabelaTrocasGarantia } from '@/components/produtos/TabelaTrocasGarantia';
+import { DialogNovaTrocaGarantia } from '@/components/produtos/DialogNovaTrocaGarantia';
+import { useTrocasGarantia } from '@/hooks/useTrocasGarantia';
 
 const Produtos = () => {
   const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, importarEmLote, reporEstoque } = useProdutos();
@@ -30,6 +34,9 @@ const Produtos = () => {
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
   const { obterContagemProdutosMes, assinatura } = useAssinatura();
   const { config: configLoja } = useConfiguracaoLoja();
+  const { trocas, criar: criarTroca, excluir: excluirTroca } = useTrocasGarantia();
+  const [abaAtiva, setAbaAtiva] = useState<'estoque' | 'trocas'>('estoque');
+  const [dialogTrocaAberto, setDialogTrocaAberto] = useState(false);
   const [busca, setBusca] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<string | null>(null);
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -230,144 +237,167 @@ const Produtos = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button onClick={handleNovoItem}>
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Item
-              </Button>
-            </div>
-          </div>
-
-          {/* Barra de Busca */}
-          <div className="relative flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, código ou tipo..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant={ordemFiltro !== 'padrao' ? 'default' : 'outline'}
-                  size="icon"
-                  title="Ordenar"
-                >
-                  {ordemFiltro === 'menos_estoque' ? (
-                    <TrendingDown className="w-4 h-4" />
-                  ) : ordemFiltro === 'mais_vendido' ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <ListFilter className="w-4 h-4" />
-                  )}
+              {abaAtiva === 'estoque' ? (
+                <Button onClick={handleNovoItem}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Item
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuRadioGroup value={ordemFiltro} onValueChange={(v) => setOrdemFiltro(v as OrdemFiltro)}>
-                  <DropdownMenuRadioItem value="padrao">
-                    <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
-                    Padrão
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="menos_estoque">
-                    <TrendingDown className="w-4 h-4 mr-2 text-orange-500" />
-                    Menor estoque primeiro
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="mais_vendido">
-                    <TrendingUp className="w-4 h-4 mr-2 text-green-500" />
-                    Mais vendidos primeiro
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Cards de Inventário */}
-          {(!isFuncionario || permissoes?.recursos?.ver_inventario) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <CardInventario
-                titulo="Estoque de Produtos"
-                icon={Package}
-                iconColor="text-blue-500"
-                totalItens={resumoInventario.produtos.totalItens}
-                totalQuantidade={resumoInventario.produtos.quantidade}
-                valorCusto={resumoInventario.produtos.custo}
-                valorVenda={resumoInventario.produtos.venda}
-                valorLucro={resumoInventario.produtos.lucro}
-              />
-              <CardInventario
-                titulo="Estoque de Peças"
-                icon={Wrench}
-                iconColor="text-orange-500"
-                totalItens={resumoInventario.pecas.totalItens}
-                totalQuantidade={resumoInventario.pecas.quantidade}
-                valorCusto={resumoInventario.pecas.custo}
-                valorVenda={resumoInventario.pecas.venda}
-                valorLucro={resumoInventario.pecas.lucro}
-              />
-            </div>
-          )}
-
-          {/* Filtro por Categoria */}
-          {categorias.length > 0 && (
-            <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-sm text-muted-foreground">Filtrar:</span>
-              {categorias.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategoriaFiltro(categoriaFiltro === cat.id ? null : cat.id)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    categoriaFiltro === cat.id
-                      ? 'border-foreground/30 bg-accent'
-                      : 'border-border hover:bg-muted'
-                  }`}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.cor }} />
-                  {cat.nome}
-                  {categoriaFiltro === cat.id && <X className="w-3 h-3" />}
-                </button>
-              ))}
-              {categoriaFiltro && (
-                <Button variant="ghost" size="sm" onClick={() => setCategoriaFiltro(null)} className="text-xs h-7">
-                  Limpar filtro
+              ) : (
+                <Button onClick={() => setDialogTrocaAberto(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Troca
                 </Button>
               )}
             </div>
-          )}
+          </div>
 
-          {/* Tabela */}
-          {loading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
-          ) : (
-            <TabelaProdutos
-              items={itemsFiltrados}
-              todosItems={items}
-              categorias={categorias}
-              onEdit={handleEdit}
-              onDelete={excluir}
-              onDeleteBulk={excluirEmMassa}
-              onCategorizarEmMassa={categorizarEmMassa}
-              onAlterarTipoEmMassa={alterarTipoEmMassa}
-              onAlterarPrecoEmMassa={alterarPrecoEmMassa}
-              onReporEstoque={(item) => setItemParaRepor(item)}
-            />
-          )}
+          <Tabs value={abaAtiva} onValueChange={(v) => setAbaAtiva(v as 'estoque' | 'trocas')}>
+            <TabsList>
+              <TabsTrigger value="estoque">Estoque</TabsTrigger>
+              <TabsTrigger value="trocas">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Trocas em Garantia
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Info de resultados */}
-          {!loading && busca && (
-            <p className="text-sm text-muted-foreground text-center">
-              {itemsFiltrados.length === 0
-                ? 'Nenhum item encontrado'
-                : `${itemsFiltrados.length} ${itemsFiltrados.length === 1 ? 'item encontrado' : 'itens encontrados'}`}
-            </p>
-          )}
+            <TabsContent value="estoque" className="space-y-6 mt-6">
+              {/* Barra de Busca */}
+              <div className="relative flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, código ou tipo..."
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant={ordemFiltro !== 'padrao' ? 'default' : 'outline'}
+                      size="icon"
+                      title="Ordenar"
+                    >
+                      {ordemFiltro === 'menos_estoque' ? (
+                        <TrendingDown className="w-4 h-4" />
+                      ) : ordemFiltro === 'mais_vendido' ? (
+                        <TrendingUp className="w-4 h-4" />
+                      ) : (
+                        <ListFilter className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuRadioGroup value={ordemFiltro} onValueChange={(v) => setOrdemFiltro(v as OrdemFiltro)}>
+                      <DropdownMenuRadioItem value="padrao">
+                        <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground" />
+                        Padrão
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="menos_estoque">
+                        <TrendingDown className="w-4 h-4 mr-2 text-orange-500" />
+                        Menor estoque primeiro
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="mais_vendido">
+                        <TrendingUp className="w-4 h-4 mr-2 text-green-500" />
+                        Mais vendidos primeiro
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Cards de Inventário */}
+              {(!isFuncionario || permissoes?.recursos?.ver_inventario) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <CardInventario
+                    titulo="Estoque de Produtos"
+                    icon={Package}
+                    iconColor="text-blue-500"
+                    totalItens={resumoInventario.produtos.totalItens}
+                    totalQuantidade={resumoInventario.produtos.quantidade}
+                    valorCusto={resumoInventario.produtos.custo}
+                    valorVenda={resumoInventario.produtos.venda}
+                    valorLucro={resumoInventario.produtos.lucro}
+                  />
+                  <CardInventario
+                    titulo="Estoque de Peças"
+                    icon={Wrench}
+                    iconColor="text-orange-500"
+                    totalItens={resumoInventario.pecas.totalItens}
+                    totalQuantidade={resumoInventario.pecas.quantidade}
+                    valorCusto={resumoInventario.pecas.custo}
+                    valorVenda={resumoInventario.pecas.venda}
+                    valorLucro={resumoInventario.pecas.lucro}
+                  />
+                </div>
+              )}
+
+              {/* Filtro por Categoria */}
+              {categorias.length > 0 && (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-sm text-muted-foreground">Filtrar:</span>
+                  {categorias.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setCategoriaFiltro(categoriaFiltro === cat.id ? null : cat.id)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        categoriaFiltro === cat.id
+                          ? 'border-foreground/30 bg-accent'
+                          : 'border-border hover:bg-muted'
+                      }`}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.cor }} />
+                      {cat.nome}
+                      {categoriaFiltro === cat.id && <X className="w-3 h-3" />}
+                    </button>
+                  ))}
+                  {categoriaFiltro && (
+                    <Button variant="ghost" size="sm" onClick={() => setCategoriaFiltro(null)} className="text-xs h-7">
+                      Limpar filtro
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Tabela */}
+              {loading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : (
+                <TabelaProdutos
+                  items={itemsFiltrados}
+                  todosItems={items}
+                  categorias={categorias}
+                  onEdit={handleEdit}
+                  onDelete={excluir}
+                  onDeleteBulk={excluirEmMassa}
+                  onCategorizarEmMassa={categorizarEmMassa}
+                  onAlterarTipoEmMassa={alterarTipoEmMassa}
+                  onAlterarPrecoEmMassa={alterarPrecoEmMassa}
+                  onReporEstoque={(item) => setItemParaRepor(item)}
+                />
+              )}
+
+              {/* Info de resultados */}
+              {!loading && busca && (
+                <p className="text-sm text-muted-foreground text-center">
+                  {itemsFiltrados.length === 0
+                    ? 'Nenhum item encontrado'
+                    : `${itemsFiltrados.length} ${itemsFiltrados.length === 1 ? 'item encontrado' : 'itens encontrados'}`}
+                </p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="trocas" className="space-y-6 mt-6">
+              <TabelaTrocasGarantia trocas={trocas} onExcluir={excluirTroca} />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 
@@ -413,6 +443,14 @@ const Produtos = () => {
         onOpenChange={(open) => !open && setItemParaRepor(null)}
         item={itemParaRepor}
         onConfirmar={reporEstoque}
+      />
+
+      {/* Dialog de Nova Troca em Garantia */}
+      <DialogNovaTrocaGarantia
+        open={dialogTrocaAberto}
+        onOpenChange={setDialogTrocaAberto}
+        produtos={items}
+        onConfirmar={criarTroca}
       />
     </AppLayout>
   );

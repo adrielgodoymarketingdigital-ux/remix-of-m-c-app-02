@@ -3424,6 +3424,70 @@ export type Database = {
           },
         ]
       }
+      trocas_garantia: {
+        Row: {
+          cliente_nome: string | null
+          created_at: string
+          empresa_id: string | null
+          id: string
+          motivo_defeito: string | null
+          observacao: string | null
+          produto_defeituoso_nome: string
+          produto_novo_id: string
+          produto_novo_nome: string
+          user_id: string
+          venda_id: string | null
+        }
+        Insert: {
+          cliente_nome?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          motivo_defeito?: string | null
+          observacao?: string | null
+          produto_defeituoso_nome: string
+          produto_novo_id: string
+          produto_novo_nome: string
+          user_id: string
+          venda_id?: string | null
+        }
+        Update: {
+          cliente_nome?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          motivo_defeito?: string | null
+          observacao?: string | null
+          produto_defeituoso_nome?: string
+          produto_novo_id?: string
+          produto_novo_nome?: string
+          user_id?: string
+          venda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trocas_garantia_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_garantia_produto_novo_id_fkey"
+            columns: ["produto_novo_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_garantia_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trial_emails_sent: {
         Row: {
           created_at: string | null
