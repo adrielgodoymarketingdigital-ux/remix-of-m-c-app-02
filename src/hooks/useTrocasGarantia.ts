@@ -3,13 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useIdentidade } from "./useResolvedUserId";
 
+export type TipoTrocaGarantia = "garantia" | "troca_comercial";
+
 export interface TrocaGarantia {
   id: string;
   user_id: string;
   empresa_id: string | null;
   venda_id: string | null;
   cliente_nome: string | null;
+  tipo: TipoTrocaGarantia;
   produto_defeituoso_nome: string;
+  produto_devolvido_id: string | null;
   motivo_defeito: string | null;
   produto_novo_id: string;
   produto_novo_nome: string;
@@ -20,7 +24,9 @@ export interface TrocaGarantia {
 export interface NovaTrocaGarantia {
   venda_id?: string | null;
   cliente_nome?: string | null;
-  produto_defeituoso_nome: string;
+  tipo: TipoTrocaGarantia;
+  produto_devolvido_id: string;
+  produto_devolvido_nome: string;
   motivo_defeito?: string | null;
   produto_novo_id: string;
   produto_novo_nome: string;
@@ -56,33 +62,62 @@ export function useTrocasGarantia() {
 
   const criar = async (dados: NovaTrocaGarantia) => {
     if (!resolvedUserId) return false;
+    if (dados.produto_devolvido_id === dados.produto_novo_id) {
+      toast.error("Selecione produtos diferentes para devolução e entrega");
+      return false;
+    }
     try {
-      const { data: produtoAtual, error: erroSelect } = await supabase
+      const { data: produtoNovoAtual, error: erroSelectNovo } = await supabase
         .from("produtos")
         .select("quantidade")
         .eq("id", dados.produto_novo_id)
         .single();
-      if (erroSelect) throw erroSelect;
+      if (erroSelectNovo) throw erroSelectNovo;
 
-      const quantidadeAtual = produtoAtual?.quantidade ?? 0;
-      if (quantidadeAtual <= 0) {
+      const quantidadeNovoAtual = produtoNovoAtual?.quantidade ?? 0;
+      if (quantidadeNovoAtual <= 0) {
         toast.error("Produto novo sem estoque disponível");
         return false;
       }
 
-      const { error: erroUpdate } = await supabase
+      const { error: erroUpdateNovo } = await supabase
         .from("produtos")
-        .update({ quantidade: quantidadeAtual - 1 } as any)
+        .update({ quantidade: quantidadeNovoAtual - 1 } as any)
         .eq("id", dados.produto_novo_id);
-      if (erroUpdate) throw erroUpdate;
+      if (erroUpdateNovo) throw erroUpdateNovo;
+
+      let quantidadeDevolvidoAtual: number | null = null;
+      if (dados.tipo === "troca_comercial") {
+        const { data: produtoDevolvidoAtual, error: erroSelectDevolvido } = await supabase
+          .from("produtos")
+          .select("quantidade")
+          .eq("id", dados.produto_devolvido_id)
+          .single();
+        if (erroSelectDevolvido) throw erroSelectDevolvido;
+
+        quantidadeDevolvidoAtual = produtoDevolvidoAtual?.quantidade ?? 0;
+        const { error: erroUpdateDevolvido } = await supabase
+          .from("produtos")
+          .update({ quantidade: quantidadeDevolvidoAtual + 1 } as any)
+          .eq("id", dados.produto_devolvido_id);
+        if (erroUpdateDevolvido) {
+          await supabase
+            .from("produtos")
+            .update({ quantidade: quantidadeNovoAtual } as any)
+            .eq("id", dados.produto_novo_id);
+          throw erroUpdateDevolvido;
+        }
+      }
 
       const { error: erroInsert } = await supabase.from("trocas_garantia").insert({
         user_id: resolvedUserId,
         empresa_id: empresaFiltro,
         venda_id: dados.venda_id ?? null,
         cliente_nome: dados.cliente_nome ?? null,
-        produto_defeituoso_nome: dados.produto_defeituoso_nome,
-        motivo_defeito: dados.motivo_defeito ?? null,
+        tipo: dados.tipo,
+        produto_defeituoso_nome: dados.produto_devolvido_nome,
+        produto_devolvido_id: dados.produto_devolvido_id,
+        motivo_defeito: dados.tipo === "garantia" ? (dados.motivo_defeito ?? null) : null,
         produto_novo_id: dados.produto_novo_id,
         produto_novo_nome: dados.produto_novo_nome,
         observacao: dados.observacao ?? null,
@@ -91,16 +126,22 @@ export function useTrocasGarantia() {
       if (erroInsert) {
         await supabase
           .from("produtos")
-          .update({ quantidade: quantidadeAtual } as any)
+          .update({ quantidade: quantidadeNovoAtual } as any)
           .eq("id", dados.produto_novo_id);
+        if (dados.tipo === "troca_comercial" && quantidadeDevolvidoAtual !== null) {
+          await supabase
+            .from("produtos")
+            .update({ quantidade: quantidadeDevolvidoAtual } as any)
+            .eq("id", dados.produto_devolvido_id);
+        }
         throw erroInsert;
       }
 
-      toast.success("Troca em garantia registrada! Estoque atualizado.");
+      toast.success("Troca registrada! Estoque atualizado.");
       await carregar();
       return true;
     } catch (error: any) {
-      toast.error("Erro ao registrar troca em garantia", { description: error.message });
+      toast.error("Erro ao registrar troca", { description: error.message });
       return false;
     }
   };
@@ -109,7 +150,7 @@ export function useTrocasGarantia() {
     try {
       const { error } = await supabase.from("trocas_garantia").delete().eq("id", id);
       if (error) throw error;
-      toast.success("Registro de troca excluído. O estoque não foi alterado.");
+      toast.success("Registro de troca excluído. Nenhum ajuste de estoque é revertido automaticamente.");
       await carregar();
     } catch (error) {
       toast.error("Erro ao excluir registro de troca");

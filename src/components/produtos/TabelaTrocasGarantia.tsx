@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
   AlertDialog,
@@ -56,8 +57,9 @@ export const TabelaTrocasGarantia = ({ trocas, onExcluir }: TabelaTrocasGarantia
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Cliente</TableHead>
-              <TableHead>Produto defeituoso</TableHead>
+              <TableHead>Produto devolvido</TableHead>
               <TableHead>Produto novo entregue</TableHead>
               <TableHead>Observação</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -67,6 +69,11 @@ export const TabelaTrocasGarantia = ({ trocas, onExcluir }: TabelaTrocasGarantia
             {trocas.map((troca) => (
               <TableRow key={troca.id}>
                 <TableCell className="whitespace-nowrap">{formatDate(troca.created_at)}</TableCell>
+                <TableCell>
+                  <Badge variant={troca.tipo === 'garantia' ? 'destructive' : 'outline'}>
+                    {troca.tipo === 'garantia' ? 'Garantia' : 'Troca comercial'}
+                  </Badge>
+                </TableCell>
                 <TableCell>{troca.cliente_nome || '—'}</TableCell>
                 <TableCell>
                   <p className="font-medium">{troca.produto_defeituoso_nome}</p>

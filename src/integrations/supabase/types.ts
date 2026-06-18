@@ -3433,8 +3433,10 @@ export type Database = {
           motivo_defeito: string | null
           observacao: string | null
           produto_defeituoso_nome: string
+          produto_devolvido_id: string | null
           produto_novo_id: string
           produto_novo_nome: string
+          tipo: string
           user_id: string
           venda_id: string | null
         }
@@ -3446,8 +3448,10 @@ export type Database = {
           motivo_defeito?: string | null
           observacao?: string | null
           produto_defeituoso_nome: string
+          produto_devolvido_id?: string | null
           produto_novo_id: string
           produto_novo_nome: string
+          tipo?: string
           user_id: string
           venda_id?: string | null
         }
@@ -3459,8 +3463,10 @@ export type Database = {
           motivo_defeito?: string | null
           observacao?: string | null
           produto_defeituoso_nome?: string
+          produto_devolvido_id?: string | null
           produto_novo_id?: string
           produto_novo_nome?: string
+          tipo?: string
           user_id?: string
           venda_id?: string | null
         }
@@ -3470,6 +3476,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_garantia_produto_devolvido_id_fkey"
+            columns: ["produto_devolvido_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
             referencedColumns: ["id"]
           },
           {

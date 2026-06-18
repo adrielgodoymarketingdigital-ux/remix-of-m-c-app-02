@@ -16,6 +16,7 @@ export const RankingProdutosDefeito = ({ trocas }: RankingProdutosDefeitoProps) 
   const ranking = useMemo(() => {
     const contagem = new Map<string, ItemRanking>();
     for (const troca of trocas) {
+      if (troca.tipo !== 'garantia') continue;
       const chave = troca.produto_defeituoso_nome.trim().toLowerCase();
       if (!chave) continue;
       const atual = contagem.get(chave);
