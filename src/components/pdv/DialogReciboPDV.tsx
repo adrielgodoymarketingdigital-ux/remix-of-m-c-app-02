@@ -17,7 +17,11 @@ import { ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { Cliente } from "@/types/cliente";
 import { Cupom } from "@/types/cupom";
 import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "@/lib/termo-garantia-utils";
-import { TermoGarantiaDispositivoConfig } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
+import {
+  TermoGarantiaDispositivoConfig,
+  ModeloGarantia,
+  MODELOS_PADRAO_GARANTIA,
+} from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
 
 // Normaliza tempo_garantia (sempre em meses) para exibição legível.
 function formatarGarantia(meses: number): string {
@@ -336,16 +340,28 @@ export function DialogReciboPDV({
   const temDesconto = dados.descontoManual > 0 || dados.descontoCupom > 0;
 
   const termoConfig = configLoja?.termo_garantia_dispositivo_config as TermoGarantiaDispositivoConfig | undefined;
+  const modelosSalvos: ModeloGarantia[] = termoConfig?.modelos?.length ? termoConfig.modelos : MODELOS_PADRAO_GARANTIA;
   const itensDispositivo = dados.itens.filter((item) => item.tipo === "dispositivo");
 
   const gerarTextoTermo = (item: ItemVenda): string => {
     const temGarantia = !!item.tempo_garantia && item.tempo_garantia > 0;
-    const textoBase = resolverTextoTermoDispositivo(
-      termoConfig,
-      temGarantia,
-      TERMOS_GARANTIA_PADRAO.termo_com_garantia,
-      TERMOS_GARANTIA_PADRAO.termo_sem_garantia
-    );
+    const modeloEscolhido = item.modelo_termo_garantia_id
+      ? modelosSalvos.find((m) => m.id === item.modelo_termo_garantia_id)
+      : null;
+
+    let textoBase: string;
+    if (modeloEscolhido) {
+      const secoes = temGarantia ? modeloEscolhido.secoes_com_garantia : modeloEscolhido.secoes_sem_garantia;
+      textoBase = secoes.filter((s) => s.visivel).map((s) => s.conteudo.trim()).join("\n\n");
+    } else {
+      textoBase = resolverTextoTermoDispositivo(
+        termoConfig,
+        temGarantia,
+        TERMOS_GARANTIA_PADRAO.termo_com_garantia,
+        TERMOS_GARANTIA_PADRAO.termo_sem_garantia
+      );
+    }
+
     return formatarTermoDispositivo(textoBase, {
       cliente: dados.cliente?.nome,
       cpf: dados.cliente?.cpf,

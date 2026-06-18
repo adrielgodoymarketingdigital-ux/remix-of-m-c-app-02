@@ -23,6 +23,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
+import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import {
+  ModeloGarantia,
+  TermoGarantiaDispositivoConfig,
+  MODELOS_PADRAO_GARANTIA,
+} from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
 
 export interface ItemVenda {
   id: string;
@@ -38,7 +44,10 @@ export interface ItemVenda {
   peca_id?: string;
   imei_dispositivo?: string;
   tempo_garantia?: number;
+  modelo_termo_garantia_id?: string;
 }
+
+export const MODELO_TERMO_GLOBAL = "__global__";
 
 interface DialogSelecionarItemProps {
   open: boolean;
@@ -53,11 +62,16 @@ export const DialogSelecionarItem = ({
 }: DialogSelecionarItemProps) => {
   const { dispositivos, carregarDispositivos } = useDispositivos();
   const { items: produtos, carregarTodos: carregarProdutos } = useProdutos();
+  const { config: configLoja } = useConfiguracaoLoja();
   const [busca, setBusca] = useState("");
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [imeisSelecionados, setImeisSelecionados] = useState<Record<string, string>>({});
   const [garantiaPendenteId, setGarantiaPendenteId] = useState<string | null>(null);
   const [garantiaMeses, setGarantiaMeses] = useState<number | undefined>(undefined);
+  const [modeloTermoId, setModeloTermoId] = useState<string>(MODELO_TERMO_GLOBAL);
+
+  const termoConfig = configLoja?.termo_garantia_dispositivo_config as TermoGarantiaDispositivoConfig | undefined;
+  const modelosSalvos: ModeloGarantia[] = termoConfig?.modelos?.length ? termoConfig.modelos : MODELOS_PADRAO_GARANTIA;
 
   useEffect(() => {
     if (open) {
@@ -99,6 +113,7 @@ export const DialogSelecionarItem = ({
     if (garantiaPendenteId !== dispositivo.id) {
       setGarantiaPendenteId(dispositivo.id);
       setGarantiaMeses(dispositivo.garantia ? dispositivo.tempo_garantia : undefined);
+      setModeloTermoId(MODELO_TERMO_GLOBAL);
       return;
     }
     const imei = imeisSelecionados[dispositivo.id] !== "__pendente__"
@@ -117,11 +132,13 @@ export const DialogSelecionarItem = ({
       dispositivo_id: dispositivo.id,
       imei_dispositivo: imei,
       tempo_garantia: garantiaMeses,
+      modelo_termo_garantia_id: modeloTermoId !== MODELO_TERMO_GLOBAL ? modeloTermoId : undefined,
     });
     setQuantidades((prev) => ({ ...prev, [dispositivo.id]: 1 }));
     setImeisSelecionados((prev) => { const n = { ...prev }; delete n[dispositivo.id]; return n; });
     setGarantiaPendenteId(null);
     setGarantiaMeses(undefined);
+    setModeloTermoId(MODELO_TERMO_GLOBAL);
     onOpenChange(false);
   };
 
@@ -279,12 +296,26 @@ export const DialogSelecionarItem = ({
 
                     {/* Seleção de garantia — aparece após IMEI (se houver) e antes de adicionar ao carrinho */}
                     {aguardandoGarantia && (
-                      <div className="mt-3 pt-3 border-t space-y-2">
-                        <Label className="text-sm font-medium">Tempo de garantia para o recibo</Label>
-                        <div className="flex gap-2 items-start">
-                          <div className="flex-1">
-                            <SeletorTempoGarantia value={garantiaMeses} onChange={setGarantiaMeses} />
-                          </div>
+                      <div className="mt-3 pt-3 border-t space-y-3">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Tempo de garantia para o recibo</Label>
+                          <SeletorTempoGarantia value={garantiaMeses} onChange={setGarantiaMeses} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Modelo do termo</Label>
+                          <Select value={modeloTermoId} onValueChange={setModeloTermoId}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={MODELO_TERMO_GLOBAL}>Configuração global</SelectItem>
+                              {modelosSalvos.map((m) => (
+                                <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex justify-end">
                           <Button onClick={() => handleAdicionarDispositivo(dispositivo)}>
                             Confirmar
                           </Button>
