@@ -40,9 +40,9 @@ export function useOSTracking() {
       const [{ data: assinatura }, { data: adminRole }] = await Promise.all([
         supabase
           .from('assinaturas')
-          .select('plano_tipo, free_trial_ends_at')
+          .select('plano_tipo, status, free_trial_ends_at, trial_end_at, data_fim')
           .eq('user_id', user.id)
-          .eq('status', 'active')
+          .in('status', ['active', 'trialing'])
           .maybeSingle(),
         supabase
           .from('user_roles')
@@ -52,8 +52,11 @@ export function useOSTracking() {
           .maybeSingle(),
       ]);
 
-      const trialAtivo = !!(assinatura as any)?.free_trial_ends_at &&
-        new Date((assinatura as any).free_trial_ends_at) > new Date();
+      const a = assinatura as any;
+      const freeTrialAtivo = !!a?.free_trial_ends_at && new Date(a.free_trial_ends_at) > new Date();
+      const trialComCartaoAtivo = a?.plano_tipo === 'trial' &&
+        new Date(a?.trial_end_at || a?.data_fim || 0) > new Date();
+      const trialAtivo = freeTrialAtivo || trialComCartaoAtivo;
 
       const plano = adminRole ? 'admin' : (assinatura?.plano_tipo || 'free');
       const limite = trialAtivo ? Infinity : (LIMITES_PLANO[plano] ?? 0);
