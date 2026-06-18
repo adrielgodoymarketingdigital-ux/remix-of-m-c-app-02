@@ -29,7 +29,6 @@ import imgServicos from "@/assets/ajuda/servicos.png";
 import imgDispositivos from "@/assets/ajuda/dispositivos.png";
 import imgCatalogo from "@/assets/ajuda/catalogo.png";
 import imgOrigemDispositivos from "@/assets/ajuda/origem-dispositivos.png";
-import imgClientes from "@/assets/ajuda/clientes.png";
 import imgOrcamentos from "@/assets/ajuda/orcamentos.png";
 import imgPedidos from "@/assets/ajuda/pedidos.png";
 import imgVendas from "@/assets/ajuda/vendas.png";
@@ -213,7 +212,6 @@ export const ajudaModulos: AjudaModulo[] = [
     title: "Clientes",
     icon: Users,
     resumo: "Cadastro e histórico completo de clientes.",
-    imagem: imgClientes,
     conteudo: [
       "Cadastre clientes com dados de contato e acompanhe o histórico de OS, vendas e orçamentos de cada um.",
       "A sub-seção Fidelidade permite acumular pontos ou benefícios para clientes recorrentes.",
