@@ -109,7 +109,7 @@ export function SecaoDispositivosVendidos() {
       // First fetch vendas filtered by user
       let queryVendas = supabase
         .from("vendas")
-        .select("id, dispositivo_id, cliente_id, quantidade, total, custo_unitario, forma_pagamento, data, grupo_venda, observacoes")
+        .select("id, dispositivo_id, cliente_id, quantidade, total, valor_desconto_manual, valor_desconto_cupom, custo_unitario, forma_pagamento, data, grupo_venda, observacoes")
         .eq("user_id", userId)
         .eq("tipo", "dispositivo")
         .not("dispositivo_id", "is", null)
@@ -163,8 +163,9 @@ export function SecaoDispositivosVendidos() {
       const vendasFormatadas: VendaDispositivo[] = vendasAgrupadas.map((v: any) => {
         const disp = dispMap.get(v.dispositivo_id);
         const cli = cliMap.get(v.cliente_id);
-        // O registro principal já carrega o total real da venda (valor completo)
-        const totalReal = Number(v.total || 0);
+        // Registro principal guarda o total BRUTO do item (sem desconto);
+        // o desconto fica em valor_desconto_manual/valor_desconto_cupom e é subtraído aqui
+        const totalReal = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
 
         return {
           id: v.id,
@@ -492,8 +493,10 @@ export function SecaoDispositivosVendidos() {
                   <h3 className="font-bold text-lg">
                     {venda.dispositivo_marca} {venda.dispositivo_modelo}
                   </h3>
-                  {venda.dispositivo_tipo && (
-                    <p className="text-sm text-muted-foreground">{venda.dispositivo_tipo}</p>
+                  {(venda.dispositivo_tipo || venda.dispositivo_cor) && (
+                    <p className="text-sm text-muted-foreground">
+                      {[venda.dispositivo_tipo, venda.dispositivo_cor].filter(Boolean).join(" • ")}
+                    </p>
                   )}
                 </div>
 
