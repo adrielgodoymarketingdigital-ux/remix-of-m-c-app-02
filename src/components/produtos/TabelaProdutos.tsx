@@ -78,58 +78,84 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
   const tabelaWrapperRef = useRef<HTMLDivElement>(null);
-  const barraFixaRef = useRef<HTMLDivElement>(null);
-  const barraFixaConteudoRef = useRef<HTMLDivElement>(null);
-  const [mostrarBarraFixa, setMostrarBarraFixa] = useState(false);
-  const [larguraVisivel, setLarguraVisivel] = useState(0);
-  const [larguraTotal, setLarguraTotal] = useState(0);
+  const barraHRef = useRef<HTMLDivElement>(null);
+  const barraVRef = useRef<HTMLDivElement>(null);
+  const [tabelaVisivel, setTabelaVisivel] = useState(false);
+  const [dimensoes, setDimensoes] = useState({ larguraVisivel: 0, larguraTotal: 0, alturaVisivel: 0, alturaTotal: 0 });
+  const [posicaoFlutuante, setPosicaoFlutuante] = useState({ left: 0, right: 0, top: 0, bottom: 0 });
+  const sincronizandoRef = useRef(false);
 
   useEffect(() => {
     const wrapper = tabelaWrapperRef.current;
     if (!wrapper) return;
 
     const medir = () => {
-      setLarguraVisivel(wrapper.clientWidth);
-      setLarguraTotal(wrapper.scrollWidth);
+      const rect = wrapper.getBoundingClientRect();
+      setDimensoes({
+        larguraVisivel: wrapper.clientWidth,
+        larguraTotal: wrapper.scrollWidth,
+        alturaVisivel: wrapper.clientHeight,
+        alturaTotal: wrapper.scrollHeight,
+      });
+      setPosicaoFlutuante({
+        left: rect.left,
+        right: window.innerWidth - rect.right,
+        top: rect.top,
+        bottom: window.innerHeight - rect.bottom,
+      });
     };
 
-    const verificarVisibilidade = () => {
-      const rect = wrapper.getBoundingClientRect();
-      // Mostra a barra fixa sempre que parte da tabela estiver visível na tela,
-      // independente de a base vertical dela estar visível ou não
-      const algumaParteVisivel = rect.top < window.innerHeight && rect.bottom > 0;
-      setMostrarBarraFixa(algumaParteVisivel);
-    };
+    const observer = new IntersectionObserver(
+      ([entry]) => setTabelaVisivel(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(wrapper);
 
     medir();
-    verificarVisibilidade();
-
-    const resizeObserver = new ResizeObserver(() => {
-      medir();
-      verificarVisibilidade();
-    });
+    const resizeObserver = new ResizeObserver(medir);
     resizeObserver.observe(wrapper);
 
     window.addEventListener('resize', medir);
-    window.addEventListener('scroll', verificarVisibilidade, { passive: true });
+    window.addEventListener('scroll', medir, { passive: true });
     return () => {
+      observer.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener('resize', medir);
-      window.removeEventListener('scroll', verificarVisibilidade);
+      window.removeEventListener('scroll', medir);
     };
   }, [items.length]);
 
   const sincronizarDaTabela = () => {
-    if (barraFixaRef.current && tabelaWrapperRef.current) {
-      barraFixaRef.current.scrollLeft = tabelaWrapperRef.current.scrollLeft;
+    if (sincronizandoRef.current) return;
+    sincronizandoRef.current = true;
+    const wrapper = tabelaWrapperRef.current;
+    if (wrapper) {
+      if (barraHRef.current) barraHRef.current.scrollLeft = wrapper.scrollLeft;
+      if (barraVRef.current) barraVRef.current.scrollTop = wrapper.scrollTop;
     }
+    sincronizandoRef.current = false;
   };
 
-  const sincronizarDaBarraFixa = () => {
-    if (barraFixaRef.current && tabelaWrapperRef.current) {
-      tabelaWrapperRef.current.scrollLeft = barraFixaRef.current.scrollLeft;
+  const sincronizarDaBarraH = () => {
+    if (sincronizandoRef.current) return;
+    sincronizandoRef.current = true;
+    if (barraHRef.current && tabelaWrapperRef.current) {
+      tabelaWrapperRef.current.scrollLeft = barraHRef.current.scrollLeft;
     }
+    sincronizandoRef.current = false;
   };
+
+  const sincronizarDaBarraV = () => {
+    if (sincronizandoRef.current) return;
+    sincronizandoRef.current = true;
+    if (barraVRef.current && tabelaWrapperRef.current) {
+      tabelaWrapperRef.current.scrollTop = barraVRef.current.scrollTop;
+    }
+    sincronizandoRef.current = false;
+  };
+
+  const precisaScrollH = dimensoes.larguraTotal > dimensoes.larguraVisivel + 1;
+  const precisaScrollV = dimensoes.alturaTotal > dimensoes.alturaVisivel + 1;
 
   const handleConfirmDelete = () => {
     if (itemParaExcluir) {
@@ -669,13 +695,33 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         </Table>
       </div>
 
-      {mostrarBarraFixa && larguraTotal > larguraVisivel && (
+      {tabelaVisivel && precisaScrollH && (
         <div
-          ref={barraFixaRef}
-          onScroll={sincronizarDaBarraFixa}
-          className="fixed bottom-0 left-0 right-0 z-30 overflow-x-auto overflow-y-hidden h-4 bg-background/95 border-t"
+          ref={barraHRef}
+          onScroll={sincronizarDaBarraH}
+          className="fixed z-30 overflow-x-auto overflow-y-hidden h-4 bg-background/95 border-t"
+          style={{
+            left: posicaoFlutuante.left,
+            right: Math.max(posicaoFlutuante.right, precisaScrollV ? 16 : 0),
+            bottom: 0,
+          }}
         >
-          <div ref={barraFixaConteudoRef} style={{ width: larguraTotal, height: 1 }} />
+          <div style={{ width: dimensoes.larguraTotal, height: 1 }} />
+        </div>
+      )}
+
+      {tabelaVisivel && precisaScrollV && (
+        <div
+          ref={barraVRef}
+          onScroll={sincronizarDaBarraV}
+          className="fixed z-30 overflow-y-auto overflow-x-hidden w-4 bg-background/95 border-l"
+          style={{
+            top: Math.max(posicaoFlutuante.top, 0),
+            right: Math.max(posicaoFlutuante.right, 0),
+            bottom: Math.max(posicaoFlutuante.bottom, precisaScrollH ? 16 : 0),
+          }}
+        >
+          <div style={{ height: dimensoes.alturaTotal, width: 1 }} />
         </div>
       )}
 
