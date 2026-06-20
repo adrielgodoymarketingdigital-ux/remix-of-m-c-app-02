@@ -445,7 +445,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   return (
     <>
       <BarraSelecao />
-      <div className="rounded-md border max-h-[70vh] overflow-auto">
+      <div className="rounded-md border max-h-[70vh] overflow-auto sticky top-4">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
