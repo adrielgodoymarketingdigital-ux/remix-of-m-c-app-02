@@ -30,33 +30,45 @@ export const useProdutos = () => {
 
       console.log('[useProdutos] userId:', userId, '| empresaFiltro:', empresaFiltro, '| resolvedUserId:', resolvedUserId);
 
-      let qProdutos = supabase.from('produtos').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
-      let qPecas = supabase.from('pecas').select('*').eq('user_id', userId).is('deleted_at', null).order('nome');
-      if (empresaFiltro) {
-        if (isFilial) {
-          qProdutos = qProdutos.eq('empresa_id', empresaFiltro);
-          qPecas = qPecas.eq('empresa_id', empresaFiltro);
-        } else {
-          qProdutos = qProdutos.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
-          qPecas = qPecas.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      const carregarPaginado = async (tabela: 'produtos' | 'pecas') => {
+        const linhas: any[] = [];
+        const tamanhoPagina = 1000;
+        let pagina = 0;
+        while (true) {
+          let q = supabase
+            .from(tabela)
+            .select('*')
+            .eq('user_id', userId)
+            .is('deleted_at', null)
+            .order('nome')
+            .range(pagina * tamanhoPagina, pagina * tamanhoPagina + tamanhoPagina - 1);
+          if (empresaFiltro) {
+            q = isFilial
+              ? q.eq('empresa_id', empresaFiltro)
+              : q.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+          }
+          const { data, error } = await q;
+          if (error) throw error;
+          linhas.push(...(data || []));
+          if (!data || data.length < tamanhoPagina) break;
+          pagina++;
         }
-      }
+        return linhas;
+      };
 
       const [
-        { data: produtos, error: erroProdutos },
-        { data: pecas, error: erroPecas },
+        produtos,
+        pecas,
         { data: fornecedoresData },
         { data: categoriasData }
       ] = await Promise.all([
-        qProdutos,
-        qPecas,
+        carregarPaginado('produtos'),
+        carregarPaginado('pecas'),
         supabase.from('fornecedores').select('id, nome').eq('user_id', userId),
         supabase.from('categorias_produtos').select('id, nome, cor').eq('user_id', userId)
       ]);
 
-      console.log('[useProdutos] produtos retornados:', produtos?.length, '| pecas retornadas:', pecas?.length, '| erros:', erroProdutos, erroPecas);
-      if (erroProdutos) throw erroProdutos;
-      if (erroPecas) throw erroPecas;
+      console.log('[useProdutos] produtos retornados:', produtos?.length, '| pecas retornadas:', pecas?.length);
 
       const fornecedoresMap = new Map((fornecedoresData || []).map(f => [f.id, f.nome]));
       const categoriasMap = new Map((categoriasData as any[] || []).map((c: any) => [c.id, { nome: c.nome, cor: c.cor }]));
