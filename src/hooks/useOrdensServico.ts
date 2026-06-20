@@ -454,7 +454,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
     }
   };
 
-  const atualizarStatus = async (id: string, novoStatus: string) => {
+  const atualizarStatus = async (id: string, novoStatus: string, dataRecebimento?: string) => {
     try {
       // Resolver userId via função do banco (mais confiável que estado React)
       const userId = await resolverUserId();
@@ -502,7 +502,9 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
 
       // Preencher data_saida quando status muda para "entregue"
       if (novoStatus === "entregue") {
-        updateData.data_saida = new Date().toISOString();
+        updateData.data_saida = dataRecebimento
+          ? `${dataRecebimento}T${new Date().toTimeString().split(" ")[0]}`
+          : new Date().toISOString();
       }
       // Limpar data_saida se sair de "entregue" para outro status
       if (statusAnterior === "entregue" && novoStatus !== "entregue") {
@@ -608,11 +610,13 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             contaExistente = contaPorNome;
           }
 
+          const dataRecebimentoFinal = dataRecebimento || dataHoje();
+
           if (contaExistente) {
             if (deveMarcarRecebido) {
               await supabase
                 .from("contas")
-                .update({ status: "recebido" })
+                .update({ status: "recebido", data: dataRecebimentoFinal, data_pagamento: dataRecebimentoFinal })
                 .eq("id", contaExistente.id);
             }
           } else if (deveMarcarRecebido) {
@@ -620,7 +624,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
               nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || 'Cliente'}`,
               tipo: "receber",
               valor: valorOrdem,
-              data: dataHoje(),
+              data: dataRecebimentoFinal,
+              data_pagamento: dataRecebimentoFinal,
               status: "recebido",
               recorrente: false,
               categoria: "Serviços",

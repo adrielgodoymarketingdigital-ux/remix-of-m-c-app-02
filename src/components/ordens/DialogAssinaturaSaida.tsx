@@ -113,7 +113,7 @@ export const DialogAssinaturaSaida = ({
       const updateData: any = {
         avarias: novasAvarias as any,
         status: "entregue",
-        data_saida: new Date().toISOString(),
+        data_saida: `${dataRecebimento}T${new Date().toTimeString().split(" ")[0]}`,
       };
 
       // Atualizar forma_pagamento na tabela principal também
@@ -165,8 +165,22 @@ export const DialogAssinaturaSaida = ({
         if (contaId) {
           await supabase
             .from("contas")
-            .update({ status: "recebido", data: dataRecebimento })
+            .update({ status: "recebido", data: dataRecebimento, data_pagamento: dataRecebimento })
             .eq("id", contaId);
+        } else {
+          await supabase.from("contas").insert({
+            nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
+            tipo: "receber",
+            valor: ordem.total || 0,
+            data: dataRecebimento,
+            data_pagamento: dataRecebimento,
+            os_numero: ordem.numero_os,
+            status: "recebido",
+            recorrente: false,
+            categoria: "Serviços",
+            user_id: effectiveUserId,
+            empresa_id: empresaIdParaUpdate,
+          });
         }
       }
 
