@@ -95,11 +95,10 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
 
     const verificarVisibilidade = () => {
       const rect = wrapper.getBoundingClientRect();
-      // Mostra a barra fixa quando o topo da tabela já apareceu na tela, mas a base
-      // (onde ficaria a barra de scroll nativa) ainda não está visível
-      const topoVisivel = rect.top < window.innerHeight;
-      const baseEscondida = rect.bottom > window.innerHeight;
-      setMostrarBarraFixa(topoVisivel && baseEscondida);
+      // Mostra a barra fixa sempre que parte da tabela estiver visível na tela,
+      // independente de a base vertical dela estar visível ou não
+      const algumaParteVisivel = rect.top < window.innerHeight && rect.bottom > 0;
+      setMostrarBarraFixa(algumaParteVisivel);
     };
 
     medir();
