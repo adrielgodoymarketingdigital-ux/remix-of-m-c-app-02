@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CategoriaProduto } from '@/types/categoria-produto';
 import {
   Table,
@@ -77,6 +77,25 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const [dialogPrecoAberto, setDialogPrecoAberto] = useState(false);
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
+  const tabelaWrapperRef = useRef<HTMLDivElement>(null);
+  const [alturaTabela, setAlturaTabela] = useState<number>(400);
+
+  useEffect(() => {
+    const calcularAltura = () => {
+      const el = tabelaWrapperRef.current;
+      if (!el) return;
+      const topo = el.getBoundingClientRect().top;
+      const margemInferior = 24;
+      setAlturaTabela(Math.max(window.innerHeight - topo - margemInferior, 240));
+    };
+    // Roda após o primeiro layout, com a página no topo (scroll inicial = 0)
+    const id = requestAnimationFrame(calcularAltura);
+    window.addEventListener('resize', calcularAltura);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener('resize', calcularAltura);
+    };
+  }, []);
 
   const handleConfirmDelete = () => {
     if (itemParaExcluir) {
@@ -445,7 +464,11 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   return (
     <>
       <BarraSelecao />
-      <div className="rounded-md border max-h-[70vh] overflow-auto sticky top-4">
+      <div
+        ref={tabelaWrapperRef}
+        className="rounded-md border overflow-auto"
+        style={{ maxHeight: alturaTabela }}
+      >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
