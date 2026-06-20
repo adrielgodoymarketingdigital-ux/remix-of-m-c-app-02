@@ -78,24 +78,59 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
   const tabelaWrapperRef = useRef<HTMLDivElement>(null);
-  const [alturaTabela, setAlturaTabela] = useState<number>(400);
+  const barraFixaRef = useRef<HTMLDivElement>(null);
+  const barraFixaConteudoRef = useRef<HTMLDivElement>(null);
+  const [mostrarBarraFixa, setMostrarBarraFixa] = useState(false);
+  const [larguraVisivel, setLarguraVisivel] = useState(0);
+  const [larguraTotal, setLarguraTotal] = useState(0);
 
   useEffect(() => {
-    const calcularAltura = () => {
-      const el = tabelaWrapperRef.current;
-      if (!el) return;
-      const topo = el.getBoundingClientRect().top;
-      const margemInferior = 24;
-      setAlturaTabela(Math.max(window.innerHeight - topo - margemInferior, 240));
+    const wrapper = tabelaWrapperRef.current;
+    if (!wrapper) return;
+
+    const medir = () => {
+      setLarguraVisivel(wrapper.clientWidth);
+      setLarguraTotal(wrapper.scrollWidth);
     };
-    // Roda após o primeiro layout, com a página no topo (scroll inicial = 0)
-    const id = requestAnimationFrame(calcularAltura);
-    window.addEventListener('resize', calcularAltura);
+
+    const verificarVisibilidade = () => {
+      const rect = wrapper.getBoundingClientRect();
+      // Mostra a barra fixa quando o topo da tabela já apareceu na tela, mas a base
+      // (onde ficaria a barra de scroll nativa) ainda não está visível
+      const topoVisivel = rect.top < window.innerHeight;
+      const baseEscondida = rect.bottom > window.innerHeight;
+      setMostrarBarraFixa(topoVisivel && baseEscondida);
+    };
+
+    medir();
+    verificarVisibilidade();
+
+    const resizeObserver = new ResizeObserver(() => {
+      medir();
+      verificarVisibilidade();
+    });
+    resizeObserver.observe(wrapper);
+
+    window.addEventListener('resize', medir);
+    window.addEventListener('scroll', verificarVisibilidade, { passive: true });
     return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener('resize', calcularAltura);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', medir);
+      window.removeEventListener('scroll', verificarVisibilidade);
     };
-  }, []);
+  }, [items.length]);
+
+  const sincronizarDaTabela = () => {
+    if (barraFixaRef.current && tabelaWrapperRef.current) {
+      barraFixaRef.current.scrollLeft = tabelaWrapperRef.current.scrollLeft;
+    }
+  };
+
+  const sincronizarDaBarraFixa = () => {
+    if (barraFixaRef.current && tabelaWrapperRef.current) {
+      tabelaWrapperRef.current.scrollLeft = barraFixaRef.current.scrollLeft;
+    }
+  };
 
   const handleConfirmDelete = () => {
     if (itemParaExcluir) {
@@ -467,7 +502,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
       <div
         ref={tabelaWrapperRef}
         className="rounded-md border overflow-auto"
-        style={{ maxHeight: alturaTabela }}
+        onScroll={sincronizarDaTabela}
       >
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background">
@@ -634,6 +669,16 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           </TableBody>
         </Table>
       </div>
+
+      {mostrarBarraFixa && larguraTotal > larguraVisivel && (
+        <div
+          ref={barraFixaRef}
+          onScroll={sincronizarDaBarraFixa}
+          className="fixed bottom-0 left-0 right-0 z-30 overflow-x-auto overflow-y-hidden h-4 bg-background/95 border-t"
+        >
+          <div ref={barraFixaConteudoRef} style={{ width: larguraTotal, height: 1 }} />
+        </div>
+      )}
 
       <AlertDialog open={!!itemParaExcluir} onOpenChange={(open) => !open && setItemParaExcluir(null)}>
         <AlertDialogContent>
