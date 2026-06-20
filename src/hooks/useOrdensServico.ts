@@ -363,6 +363,14 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         query = (query as any).is("empresa_id", null);
       }
 
+      if (origemFiltro !== "todos") {
+        query = (query as any).eq("origem_cliente", origemFiltro);
+      }
+
+      if (midiaFiltro !== "todos") {
+        query = (query as any).eq("tipo_midia", midiaFiltro);
+      }
+
       if (dataInicio) {
         const inicioISO = dataInicio.toISOString().split('T')[0];
         query = query.gte("created_at", inicioISO);
@@ -391,7 +399,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       console.error("Erro ao carregar lucro das ordens:", error);
       setLucroOrdensEntregues(null);
     }
-  }, [resolverUserId, dataInicio, dataFim]);
+  }, [resolverUserId, dataInicio, dataFim, origemFiltro, midiaFiltro]);
 
   const excluirOrdem = async (id: string) => {
     try {
