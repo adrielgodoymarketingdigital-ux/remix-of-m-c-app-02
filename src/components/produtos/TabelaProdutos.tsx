@@ -526,7 +526,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
       <BarraSelecao />
       <div
         ref={tabelaWrapperRef}
-        className="rounded-md border overflow-auto"
+        className="rounded-md border overflow-auto w-full min-w-0 max-w-full"
         onScroll={sincronizarDaTabela}
       >
         <Table>
