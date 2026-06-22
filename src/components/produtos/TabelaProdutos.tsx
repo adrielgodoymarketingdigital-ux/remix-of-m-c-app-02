@@ -702,7 +702,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           style={{
             left: posicaoFlutuante.left,
             right: Math.max(posicaoFlutuante.right, precisaScrollV ? 16 : 0),
-            bottom: 0,
+            bottom: Math.max(posicaoFlutuante.bottom, 0),
           }}
         >
           <div style={{ width: dimensoes.larguraTotal, height: 1 }} />
