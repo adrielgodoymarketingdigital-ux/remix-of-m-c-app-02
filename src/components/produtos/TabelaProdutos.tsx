@@ -724,7 +724,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         <div
           ref={barraHRef}
           onScroll={sincronizarDaBarraH}
-          className="fixed z-50 overflow-x-auto overflow-y-hidden h-4 bg-background/95 border-t"
+          className="fixed z-50 overflow-x-auto overflow-y-hidden h-4 bg-background/95 border-t scrollbar-always-visible"
           style={{
             left: posicaoFlutuante.left,
             right: Math.max(posicaoFlutuante.right, precisaScrollV ? 16 : 0),
@@ -741,7 +741,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         <div
           ref={barraVRef}
           onScroll={sincronizarDaBarraV}
-          className="fixed z-50 overflow-y-auto overflow-x-hidden w-4 bg-background/95 border-l"
+          className="fixed z-50 overflow-y-auto overflow-x-hidden w-4 bg-background/95 border-l scrollbar-always-visible"
           style={{
             top: Math.max(posicaoFlutuante.top, 0),
             right: Math.max(posicaoFlutuante.right, 0),
