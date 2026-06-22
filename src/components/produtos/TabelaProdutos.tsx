@@ -78,13 +78,12 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
   const tabelaWrapperRef = useRef<HTMLDivElement>(null);
   const tabelaRef = useRef<HTMLTableElement>(null);
-  const barraHRef = useRef<HTMLDivElement>(null);
-  const barraVRef = useRef<HTMLDivElement>(null);
   const [tabelaVisivel, setTabelaVisivel] = useState(false);
   const [dimensoes, setDimensoes] = useState({ larguraVisivel: 0, larguraTotal: 0, alturaVisivel: 0, alturaTotal: 0 });
   const [posicaoFlutuante, setPosicaoFlutuante] = useState({ left: 0, right: 0, top: 0, bottom: 0 });
-  const sincronizandoRef = useRef(false);
   const [navMobileVisivel, setNavMobileVisivel] = useState(false);
+  const [scrollTabela, setScrollTabela] = useState({ left: 0, top: 0 });
+  const arrastoRef = useRef<{ eixo: 'x' | 'y'; inicioMouse: number; inicioScroll: number } | null>(null);
 
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 1023px)');
@@ -151,36 +150,61 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   }, [items.length]);
 
   const sincronizarDaTabela = () => {
-    if (sincronizandoRef.current) return;
-    sincronizandoRef.current = true;
     const wrapper = tabelaWrapperRef.current;
     if (wrapper) {
-      if (barraHRef.current) barraHRef.current.scrollLeft = wrapper.scrollLeft;
-      if (barraVRef.current) barraVRef.current.scrollTop = wrapper.scrollTop;
+      setScrollTabela({ left: wrapper.scrollLeft, top: wrapper.scrollTop });
     }
-    sincronizandoRef.current = false;
-  };
-
-  const sincronizarDaBarraH = () => {
-    if (sincronizandoRef.current) return;
-    sincronizandoRef.current = true;
-    if (barraHRef.current && tabelaWrapperRef.current) {
-      tabelaWrapperRef.current.scrollLeft = barraHRef.current.scrollLeft;
-    }
-    sincronizandoRef.current = false;
-  };
-
-  const sincronizarDaBarraV = () => {
-    if (sincronizandoRef.current) return;
-    sincronizandoRef.current = true;
-    if (barraVRef.current && tabelaWrapperRef.current) {
-      tabelaWrapperRef.current.scrollTop = barraVRef.current.scrollTop;
-    }
-    sincronizandoRef.current = false;
   };
 
   const precisaScrollH = dimensoes.larguraTotal > dimensoes.larguraVisivel + 1;
   const precisaScrollV = dimensoes.alturaTotal > dimensoes.alturaVisivel + 1;
+
+  const larguraThumbH = precisaScrollH
+    ? Math.max((dimensoes.larguraVisivel / dimensoes.larguraTotal) * dimensoes.larguraVisivel, 30)
+    : 0;
+  const maxScrollLeft = Math.max(dimensoes.larguraTotal - dimensoes.larguraVisivel, 1);
+  const leftThumbH = (scrollTabela.left / maxScrollLeft) * Math.max(dimensoes.larguraVisivel - larguraThumbH, 0);
+
+  const alturaThumbV = precisaScrollV
+    ? Math.max((dimensoes.alturaVisivel / dimensoes.alturaTotal) * dimensoes.alturaVisivel, 30)
+    : 0;
+  const maxScrollTop = Math.max(dimensoes.alturaTotal - dimensoes.alturaVisivel, 1);
+  const topThumbV = (scrollTabela.top / maxScrollTop) * Math.max(dimensoes.alturaVisivel - alturaThumbV, 0);
+
+  const iniciarArrasto = (eixo: 'x' | 'y') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    arrastoRef.current = {
+      eixo,
+      inicioMouse: eixo === 'x' ? e.clientX : e.clientY,
+      inicioScroll: eixo === 'x' ? scrollTabela.left : scrollTabela.top,
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const arrasto = arrastoRef.current;
+      const wrapper = tabelaWrapperRef.current;
+      if (!arrasto || !wrapper) return;
+      if (arrasto.eixo === 'x') {
+        const delta = e.clientX - arrasto.inicioMouse;
+        const fator = maxScrollLeft / Math.max(dimensoes.larguraVisivel - larguraThumbH, 1);
+        wrapper.scrollLeft = arrasto.inicioScroll + delta * fator;
+      } else {
+        const delta = e.clientY - arrasto.inicioMouse;
+        const fator = maxScrollTop / Math.max(dimensoes.alturaVisivel - alturaThumbV, 1);
+        wrapper.scrollTop = arrasto.inicioScroll + delta * fator;
+      }
+    };
+    const handleMouseUp = () => {
+      arrastoRef.current = null;
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [maxScrollLeft, maxScrollTop, dimensoes.larguraVisivel, dimensoes.alturaVisivel, larguraThumbH, alturaThumbV]);
 
   const handleConfirmDelete = () => {
     if (itemParaExcluir) {
@@ -722,35 +746,55 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
 
       {tabelaVisivel && precisaScrollH && (
         <div
-          ref={barraHRef}
-          onScroll={sincronizarDaBarraH}
-          className="fixed z-50 overflow-x-auto overflow-y-hidden h-4 bg-background/95 border-t scrollbar-always-visible"
+          className="fixed z-50 h-3 bg-muted/80 border-t rounded-full"
           style={{
             left: posicaoFlutuante.left,
-            right: Math.max(posicaoFlutuante.right, precisaScrollV ? 16 : 0),
+            right: Math.max(posicaoFlutuante.right, precisaScrollV ? 14 : 0),
             bottom: navMobileVisivel
               ? `calc(${Math.max(posicaoFlutuante.bottom, 0)}px + 4rem + env(safe-area-inset-bottom))`
               : Math.max(posicaoFlutuante.bottom, 0),
           }}
+          onClick={(e) => {
+            const wrapper = tabelaWrapperRef.current;
+            const track = e.currentTarget;
+            if (!wrapper) return;
+            const rect = track.getBoundingClientRect();
+            const proporcao = (e.clientX - rect.left) / rect.width;
+            wrapper.scrollLeft = proporcao * dimensoes.larguraTotal - dimensoes.larguraVisivel / 2;
+          }}
         >
-          <div style={{ width: dimensoes.larguraTotal, height: 1 }} />
+          <div
+            onMouseDown={iniciarArrasto('x')}
+            className="absolute top-0 h-full bg-muted-foreground/60 hover:bg-muted-foreground/80 rounded-full cursor-pointer"
+            style={{ width: larguraThumbH, left: leftThumbH }}
+          />
         </div>
       )}
 
       {tabelaVisivel && precisaScrollV && (
         <div
-          ref={barraVRef}
-          onScroll={sincronizarDaBarraV}
-          className="fixed z-50 overflow-y-auto overflow-x-hidden w-4 bg-background/95 border-l scrollbar-always-visible"
+          className="fixed z-50 w-3 bg-muted/80 border-l rounded-full"
           style={{
             top: Math.max(posicaoFlutuante.top, 0),
             right: Math.max(posicaoFlutuante.right, 0),
             bottom: navMobileVisivel
-              ? `calc(${Math.max(posicaoFlutuante.bottom, precisaScrollH ? 16 : 0)}px + 4rem + env(safe-area-inset-bottom))`
-              : Math.max(posicaoFlutuante.bottom, precisaScrollH ? 16 : 0),
+              ? `calc(${Math.max(posicaoFlutuante.bottom, precisaScrollH ? 14 : 0)}px + 4rem + env(safe-area-inset-bottom))`
+              : Math.max(posicaoFlutuante.bottom, precisaScrollH ? 14 : 0),
+          }}
+          onClick={(e) => {
+            const wrapper = tabelaWrapperRef.current;
+            const track = e.currentTarget;
+            if (!wrapper) return;
+            const rect = track.getBoundingClientRect();
+            const proporcao = (e.clientY - rect.top) / rect.height;
+            wrapper.scrollTop = proporcao * dimensoes.alturaTotal - dimensoes.alturaVisivel / 2;
           }}
         >
-          <div style={{ height: dimensoes.alturaTotal, width: 1 }} />
+          <div
+            onMouseDown={iniciarArrasto('y')}
+            className="absolute left-0 w-full bg-muted-foreground/60 hover:bg-muted-foreground/80 rounded-full cursor-pointer"
+            style={{ height: alturaThumbV, top: topThumbV }}
+          />
         </div>
       )}
 
