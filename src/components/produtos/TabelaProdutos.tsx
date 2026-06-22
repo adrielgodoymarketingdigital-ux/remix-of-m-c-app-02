@@ -113,6 +113,16 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
 
     medir();
     const frameId = requestAnimationFrame(medir);
+    const timeoutId = setTimeout(medir, 300);
+
+    if ('fonts' in document) {
+      (document as Document & { fonts: { ready: Promise<unknown> } }).fonts.ready.then(medir);
+    }
+
+    const imagens = Array.from(wrapper.querySelectorAll('img'));
+    imagens.forEach((img) => {
+      if (!img.complete) img.addEventListener('load', medir);
+    });
 
     const resizeObserver = new ResizeObserver(medir);
     resizeObserver.observe(wrapper);
@@ -122,6 +132,8 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
     window.addEventListener('scroll', medir, { passive: true });
     return () => {
       cancelAnimationFrame(frameId);
+      clearTimeout(timeoutId);
+      imagens.forEach((img) => img.removeEventListener('load', medir));
       observer.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener('resize', medir);
