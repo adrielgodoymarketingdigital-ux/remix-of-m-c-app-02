@@ -84,6 +84,15 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const [dimensoes, setDimensoes] = useState({ larguraVisivel: 0, larguraTotal: 0, alturaVisivel: 0, alturaTotal: 0 });
   const [posicaoFlutuante, setPosicaoFlutuante] = useState({ left: 0, right: 0, top: 0, bottom: 0 });
   const sincronizandoRef = useRef(false);
+  const [navMobileVisivel, setNavMobileVisivel] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => setNavMobileVisivel(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     const wrapper = tabelaWrapperRef.current;
@@ -715,11 +724,13 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         <div
           ref={barraHRef}
           onScroll={sincronizarDaBarraH}
-          className="fixed z-30 overflow-x-auto overflow-y-hidden h-4 bg-background/95 border-t"
+          className="fixed z-50 overflow-x-auto overflow-y-hidden h-4 bg-background/95 border-t"
           style={{
             left: posicaoFlutuante.left,
             right: Math.max(posicaoFlutuante.right, precisaScrollV ? 16 : 0),
-            bottom: Math.max(posicaoFlutuante.bottom, 0),
+            bottom: navMobileVisivel
+              ? `calc(${Math.max(posicaoFlutuante.bottom, 0)}px + 4rem + env(safe-area-inset-bottom))`
+              : Math.max(posicaoFlutuante.bottom, 0),
           }}
         >
           <div style={{ width: dimensoes.larguraTotal, height: 1 }} />
@@ -730,11 +741,13 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         <div
           ref={barraVRef}
           onScroll={sincronizarDaBarraV}
-          className="fixed z-30 overflow-y-auto overflow-x-hidden w-4 bg-background/95 border-l"
+          className="fixed z-50 overflow-y-auto overflow-x-hidden w-4 bg-background/95 border-l"
           style={{
             top: Math.max(posicaoFlutuante.top, 0),
             right: Math.max(posicaoFlutuante.right, 0),
-            bottom: Math.max(posicaoFlutuante.bottom, precisaScrollH ? 16 : 0),
+            bottom: navMobileVisivel
+              ? `calc(${Math.max(posicaoFlutuante.bottom, precisaScrollH ? 16 : 0)}px + 4rem + env(safe-area-inset-bottom))`
+              : Math.max(posicaoFlutuante.bottom, precisaScrollH ? 16 : 0),
           }}
         >
           <div style={{ height: dimensoes.alturaTotal, width: 1 }} />
