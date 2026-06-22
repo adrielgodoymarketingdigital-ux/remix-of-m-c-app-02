@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CategoriaProduto } from '@/types/categoria-produto';
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -529,7 +528,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         className="rounded-md border overflow-auto w-full min-w-0 max-w-full"
         onScroll={sincronizarDaTabela}
       >
-        <Table>
+        <table className="w-full min-w-max caption-bottom text-sm">
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
               <TableHead className="w-10">
@@ -692,7 +691,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
               );
             })}
           </TableBody>
-        </Table>
+        </table>
       </div>
 
       {tabelaVisivel && precisaScrollH && (
