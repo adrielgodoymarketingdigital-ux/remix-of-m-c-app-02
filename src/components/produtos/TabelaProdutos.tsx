@@ -77,6 +77,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
   const tabelaWrapperRef = useRef<HTMLDivElement>(null);
+  const tabelaRef = useRef<HTMLTableElement>(null);
   const barraHRef = useRef<HTMLDivElement>(null);
   const barraVRef = useRef<HTMLDivElement>(null);
   const [tabelaVisivel, setTabelaVisivel] = useState(false);
@@ -111,12 +112,16 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
     observer.observe(wrapper);
 
     medir();
+    const frameId = requestAnimationFrame(medir);
+
     const resizeObserver = new ResizeObserver(medir);
     resizeObserver.observe(wrapper);
+    if (tabelaRef.current) resizeObserver.observe(tabelaRef.current);
 
     window.addEventListener('resize', medir);
     window.addEventListener('scroll', medir, { passive: true });
     return () => {
+      cancelAnimationFrame(frameId);
       observer.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener('resize', medir);
@@ -528,7 +533,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         className="rounded-md border overflow-auto w-full min-w-0 max-w-full"
         onScroll={sincronizarDaTabela}
       >
-        <table className="w-full min-w-max caption-bottom text-sm">
+        <table ref={tabelaRef} className="w-full min-w-max caption-bottom text-sm">
           <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
               <TableHead className="w-10">
