@@ -391,9 +391,14 @@ export const ImpressaoOrdemServico = ({
   </div>
   <script>
     (function() {
-      // Calcula e aplica escala dos slots de 2 OS dinamicamente,
+      // Calcula e aplica escala dos slots de 2 OS dinamicamente para a TELA,
       // pois CSS não permite calc() entre unidades absolutas (px) e relativas (vw) para transform.
+      // No contexto de impressão (matchMedia('print')), a escala correta já vem fixa
+      // via @media print (scale 0.539/0.763, calculada em mm reais do papel) — não
+      // sobrescrever aqui, senão o JS aplica a escala da tela do celular no papel,
+      // quebrando o layout e travando a geração da pré-visualização no Chrome Android.
       function applyDuasOsScale() {
+        if (window.matchMedia('print').matches) return;
         var slots = document.querySelectorAll('.impressao-duas-os-slot > *');
         if (!slots.length) return;
         var vw = window.innerWidth;
@@ -409,6 +414,12 @@ export const ImpressaoOrdemServico = ({
       // fallback caso DOMContentLoaded já tenha disparado
       setTimeout(applyDuasOsScale, 50);
       window.addEventListener('resize', applyDuasOsScale);
+      window.addEventListener('beforeprint', function() {
+        var slots = document.querySelectorAll('.impressao-duas-os-slot > *');
+        for (var i = 0; i < slots.length; i++) {
+          slots[i].style.transform = '';
+        }
+      });
 
       var printed = false;
       function doPrint() {
