@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ItemEstoque, Produto, Peca, FormularioProduto } from '@/types/produto';
+import { ItemEstoque, Produto, Peca, FormularioProduto, VariacaoInput } from '@/types/produto';
 import { useFuncionarioPermissoes } from './useFuncionarioPermissoes';
 import { useAssinatura } from './useAssinatura';
 import { useIdentidade } from './useResolvedUserId';
@@ -578,6 +578,56 @@ export const useProdutos = () => {
     }
   }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
+  // Cria N variações de um produto base de uma vez (ex: "Capa Space" para iPhone 11/12/13).
+  // Cada variação é um produto comum, independente; a primeira da lista é a "raiz" do
+  // grupo (produto_pai_id = null) e as demais apontam para ela — sem registro pai fictício.
+  const criarProdutoComVariacoes = useCallback(async (nomeBase: string, variacoes: VariacaoInput[], categoriaId?: string, fornecedorId?: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const userId = resolvedUserId ?? user.id;
+
+      if (variacoes.length === 0) {
+        toast.error('Informe ao menos uma variação');
+        return false;
+      }
+
+      const raizId = crypto.randomUUID();
+
+      const linhas = variacoes.map((v, index) => ({
+        id: index === 0 ? raizId : crypto.randomUUID(),
+        produto_pai_id: index === 0 ? null : raizId,
+        nome: `${nomeBase} - ${v.label}`,
+        variacao_label: v.label,
+        sku: v.sku || null,
+        codigo_barras: v.codigo_barras || null,
+        quantidade: v.quantidade,
+        custo: v.custo,
+        preco: v.preco,
+        preco_atacado: v.preco_atacado ?? null,
+        categoria_id: categoriaId || null,
+        fornecedor_id: fornecedorId || null,
+        user_id: userId,
+        empresa_id: empresaFiltro ?? null,
+        fotos: [],
+      }));
+
+      const { error } = await supabase.from('produtos').insert(linhas);
+      if (error) throw error;
+
+      toast.success(`${variacoes.length} variações cadastradas!`, {
+        description: `Produto "${nomeBase}" criado com ${variacoes.length} variação(ões).`
+      });
+
+      await carregarTodos();
+      return true;
+    } catch (error: any) {
+      toast.error('Erro ao cadastrar variações', { description: error.message });
+      return false;
+    }
+  }, [carregarTodos, resolvedUserId, empresaFiltro]);
+
   const alterarTipoEmMassa = useCallback(async (itensParaAlterar: { id: string; tipo: 'produto' | 'peca' }[], novoTipo: 'produto' | 'peca') => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -791,6 +841,7 @@ export const useProdutos = () => {
     alterarTipoEmMassa,
     alterarPrecoEmMassa,
     importarEmLote,
+    criarProdutoComVariacoes,
     reporEstoque,
   };
 };

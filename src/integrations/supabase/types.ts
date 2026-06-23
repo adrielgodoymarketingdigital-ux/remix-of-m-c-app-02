@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -13,33 +12,38 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      admin_alteracoes_correcoes: {
+        Row: {
+          concluido: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          prioridade: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          concluido?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          prioridade: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          concluido?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          prioridade?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_notifications: {
         Row: {
           created_at: string
@@ -2273,6 +2277,7 @@ export type Database = {
           funcionario_id: string | null
           id: string
           is_teste: boolean
+          localizacao_fisica: string | null
           numero_os: string
           origem_cliente: string | null
           senha_desbloqueio: string | null
@@ -2314,6 +2319,7 @@ export type Database = {
           funcionario_id?: string | null
           id?: string
           is_teste?: boolean
+          localizacao_fisica?: string | null
           numero_os: string
           origem_cliente?: string | null
           senha_desbloqueio?: string | null
@@ -2355,6 +2361,7 @@ export type Database = {
           funcionario_id?: string | null
           id?: string
           is_teste?: boolean
+          localizacao_fisica?: string | null
           numero_os?: string
           origem_cliente?: string | null
           senha_desbloqueio?: string | null
@@ -2523,6 +2530,30 @@ export type Database = {
           dados_depois?: Json | null
           id?: string
           os_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      os_localizacoes: {
+        Row: {
+          created_at: string | null
+          id: string
+          nome: string
+          ordem: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          nome: string
+          ordem?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          nome?: string
+          ordem?: number | null
           user_id?: string
         }
         Relationships: []
@@ -2916,9 +2947,11 @@ export type Database = {
           nome: string
           preco: number | null
           preco_atacado: number | null
+          produto_pai_id: string | null
           quantidade: number | null
           sku: string | null
           user_id: string
+          variacao_label: string | null
         }
         Insert: {
           categoria_id?: string | null
@@ -2934,9 +2967,11 @@ export type Database = {
           nome: string
           preco?: number | null
           preco_atacado?: number | null
+          produto_pai_id?: string | null
           quantidade?: number | null
           sku?: string | null
           user_id: string
+          variacao_label?: string | null
         }
         Update: {
           categoria_id?: string | null
@@ -2952,9 +2987,11 @@ export type Database = {
           nome?: string
           preco?: number | null
           preco_atacado?: number | null
+          produto_pai_id?: string | null
           quantidade?: number | null
           sku?: string | null
           user_id?: string
+          variacao_label?: string | null
         }
         Relationships: [
           {
@@ -2976,6 +3013,27 @@ export type Database = {
             columns: ["fornecedor_id"]
             isOneToOne: false
             referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_produto_pai_id_fkey"
+            columns: ["produto_pai_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_produto_pai_id_fkey"
+            columns: ["produto_pai_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_ativos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_produto_pai_id_fkey"
+            columns: ["produto_pai_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -3424,6 +3482,33 @@ export type Database = {
           },
         ]
       }
+      trial_emails_sent: {
+        Row: {
+          created_at: string | null
+          email_type: string
+          id: string
+          opened_at: string | null
+          sent_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_type: string
+          id?: string
+          opened_at?: string | null
+          sent_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_type?: string
+          id?: string
+          opened_at?: string | null
+          sent_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       trocas_garantia: {
         Row: {
           cliente_nome: string | null
@@ -3486,10 +3571,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "trocas_garantia_produto_devolvido_id_fkey"
+            columns: ["produto_devolvido_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_ativos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_garantia_produto_devolvido_id_fkey"
+            columns: ["produto_devolvido_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "trocas_garantia_produto_novo_id_fkey"
             columns: ["produto_novo_id"]
             isOneToOne: false
             referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_garantia_produto_novo_id_fkey"
+            columns: ["produto_novo_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_ativos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trocas_garantia_produto_novo_id_fkey"
+            columns: ["produto_novo_id"]
+            isOneToOne: false
+            referencedRelation: "produtos_catalogo"
             referencedColumns: ["id"]
           },
           {
@@ -3499,34 +3612,14 @@ export type Database = {
             referencedRelation: "vendas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "trocas_garantia_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas_ativas"
+            referencedColumns: ["id"]
+          },
         ]
-      }
-      trial_emails_sent: {
-        Row: {
-          created_at: string | null
-          email_type: string
-          id: string
-          opened_at: string | null
-          sent_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          email_type: string
-          id?: string
-          opened_at?: string | null
-          sent_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          email_type?: string
-          id?: string
-          opened_at?: string | null
-          sent_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       tutoriais_videos: {
         Row: {
@@ -4821,6 +4914,16 @@ export type Database = {
       }
       is_funcionario_of: { Args: { owner_user_id: string }; Returns: boolean }
       mark_as_client: { Args: { p_user_id: string }; Returns: boolean }
+      registrar_pontos_fidelidade: {
+        Args: {
+          p_cliente_id: string
+          p_referencia_id: string
+          p_tipo: string
+          p_user_id: string
+          p_valor: number
+        }
+        Returns: undefined
+      }
       set_os_sequence_start:
         | { Args: { novo_inicio: number }; Returns: undefined }
         | {
@@ -5019,9 +5122,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["admin", "tecnico", "vendedor"],
@@ -5085,5 +5185,3 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.102.0 (currently installed v2.90.0)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

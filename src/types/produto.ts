@@ -18,6 +18,8 @@ export interface Produto {
   categoria_id?: string | null;
   categoria_nome?: string | null;
   categoria_cor?: string | null;
+  produto_pai_id?: string | null;
+  variacao_label?: string | null;
 }
 
 export interface Peca {
@@ -52,4 +54,15 @@ export interface FormularioProduto {
   fotos?: string[];
   fornecedor_id?: string;
   categoria_id?: string;
+}
+
+// Uma linha de variação na tela de cadastro em lote (ex: "iPhone 11")
+export interface VariacaoInput {
+  label: string;
+  sku?: string;
+  codigo_barras?: string;
+  quantidade: number;
+  custo: number;
+  preco: number;
+  preco_atacado?: number | null;
 }

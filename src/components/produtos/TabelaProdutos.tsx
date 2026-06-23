@@ -415,7 +415,12 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                         className="mt-1"
                       />
                       <div>
-                        <p className="font-medium">{item.nome}</p>
+                        <p className="font-medium flex items-center gap-1.5">
+                          {item.nome}
+                          {item.tipo === 'produto' && item.produto_pai_id && (
+                            <Badge variant="outline" className="text-xs shrink-0">Variação</Badge>
+                          )}
+                        </p>
                         <p className="text-xs text-muted-foreground font-mono">
                           {item.tipo === 'produto' ? item.sku || '-' : '-'}
                         </p>
@@ -639,7 +644,14 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                   <TableCell className="font-mono text-sm">
                     {item.tipo === 'produto' ? item.sku || '-' : '-'}
                   </TableCell>
-                  <TableCell className="font-medium">{item.nome}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className="flex items-center gap-1.5">
+                      {item.nome}
+                      {item.tipo === 'produto' && item.produto_pai_id && (
+                        <Badge variant="outline" className="text-xs shrink-0">Variação</Badge>
+                      )}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     {item.categoria_nome ? (
                       <Badge variant="outline" className="text-xs" style={{ borderColor: item.categoria_cor || undefined, color: item.categoria_cor || undefined }}>
