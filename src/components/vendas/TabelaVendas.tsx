@@ -42,6 +42,7 @@ interface TabelaVendasProps {
     data_prevista_recebimento?: string | null;
     parcela_numero?: number | null;
     total_parcelas?: number | null;
+    total?: number;
   }) => Promise<boolean>;
 }
 

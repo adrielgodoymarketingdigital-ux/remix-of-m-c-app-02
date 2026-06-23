@@ -52,6 +52,7 @@ export interface Venda {
   segunda_forma_pagamento?: string | null;
   valor_segunda_forma?: number | null;
   observacoes?: string | null;
+  empresa_id?: string | null;
 }
 
 export interface ResumoVendas {

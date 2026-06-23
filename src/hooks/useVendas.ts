@@ -638,6 +638,7 @@ export const useVendas = () => {
     data_prevista_recebimento?: string | null;
     parcela_numero?: number | null;
     total_parcelas?: number | null;
+    total?: number;
   }): Promise<boolean> => {
     try {
       const vendaOriginal = vendas.find((v) => v.id === vendaId);
@@ -647,6 +648,24 @@ export const useVendas = () => {
         toast({
           title: "Não é possível editar serviços",
           description: "Serviços devem ser editados através das Ordens de Serviço.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (vendaOriginal.cancelada) {
+        toast({
+          title: "Não é possível editar venda cancelada",
+          description: "Vendas canceladas não podem ter seus dados alterados.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (dados.total !== undefined && (!Number.isFinite(dados.total) || dados.total <= 0)) {
+        toast({
+          title: "Valor inválido",
+          description: "O valor da venda deve ser maior que zero.",
           variant: "destructive",
         });
         return false;
@@ -665,6 +684,12 @@ export const useVendas = () => {
         updateData.data_recebimento = null;
       }
 
+      const totalAntigo = Number(vendaOriginal.total);
+      const totalMudou = dados.total !== undefined && Number(dados.total) !== totalAntigo;
+      if (totalMudou) {
+        updateData.total = dados.total;
+      }
+
       const { error } = await supabase
         .from("vendas")
         .update(updateData)
@@ -672,6 +697,86 @@ export const useVendas = () => {
         .eq("user_id", vendaOriginal.user_id);
 
       if (error) throw error;
+
+      let avisoFinanceiro = false;
+
+      if (totalMudou) {
+        const novoTotal = Number(dados.total);
+        const diferenca = novoTotal - totalAntigo;
+
+        // Conta real (financeiro) vinculada à venda — contas.valor é sempre cópia
+        // direta do total da venda na criação, então sobrescrevemos com o novo valor.
+        try {
+          const { data: contaVinculada } = await supabase
+            .from("contas")
+            .select("id")
+            .eq("user_id", vendaOriginal.user_id)
+            .ilike("descricao", `%venda_id:${vendaId}%`)
+            .maybeSingle();
+
+          if (contaVinculada) {
+            const { error: erroConta } = await supabase
+              .from("contas")
+              .update({ valor: novoTotal })
+              .eq("id", contaVinculada.id);
+            if (erroConta) throw erroConta;
+          }
+        } catch (erroConta) {
+          console.error("❌ Erro ao sincronizar conta da venda:", erroConta);
+          avisoFinanceiro = true;
+        }
+
+        // Caixa(s) já fechado(s) que englobam a data da venda — ajustar os totais
+        // congelados no fechamento pela diferença de valor.
+        try {
+          const userIdCaixa = vendaOriginal.user_id;
+          const caixasQuery = supabase
+            .from("caixas")
+            .select("*")
+            .eq("status", "fechado")
+            .or(`proprietario_id.eq.${userIdCaixa},user_id.eq.${userIdCaixa}`)
+            .lte("data_abertura", vendaOriginal.data)
+            .gte("data_fechamento", vendaOriginal.data);
+
+          const { data: caixasEncontrados, error: erroBuscaCaixa } = await caixasQuery;
+          if (erroBuscaCaixa) throw erroBuscaCaixa;
+
+          // Mesmo critério condicional de empresa_id usado em fecharCaixa
+          // (useCaixa.ts): só filtra quando o caixa tem empresa_id preenchido.
+          const caixasAfetados = (caixasEncontrados ?? []).filter((c: any) =>
+            !c.empresa_id || c.empresa_id === vendaOriginal.empresa_id
+          );
+
+          const formasCartao = ["debito", "credito", "credito_parcelado"];
+          const colunaPorForma = (forma: string | null) => {
+            if (forma === "dinheiro") return "total_dinheiro";
+            if (forma === "pix") return "total_pix";
+            if (forma && formasCartao.includes(forma)) return "total_cartao";
+            if (forma === "a_receber" || forma === "a_prazo") return "total_a_receber";
+            return null;
+          };
+
+          const coluna = colunaPorForma(vendaOriginal.forma_pagamento);
+
+          if (coluna) {
+            for (const caixa of caixasAfetados ?? []) {
+              const atualizacao: any = {
+                [coluna]: Number((caixa as any)[coluna] || 0) + diferenca,
+                total_vendas: Number((caixa as any).total_vendas || 0) + diferenca,
+                saldo_final: Number((caixa as any).saldo_final || 0) + diferenca,
+              };
+              const { error: erroCaixa } = await supabase
+                .from("caixas")
+                .update(atualizacao)
+                .eq("id", (caixa as any).id);
+              if (erroCaixa) throw erroCaixa;
+            }
+          }
+        } catch (erroCaixa) {
+          console.error("❌ Erro ao sincronizar caixa fechado:", erroCaixa);
+          avisoFinanceiro = true;
+        }
+      }
 
       // Gerenciar lançamento em Contas a Receber
       const eraAReceber = vendaOriginal.forma_pagamento === "a_receber" || vendaOriginal.forma_pagamento === "a_prazo";
@@ -689,7 +794,7 @@ export const useVendas = () => {
         await supabase.from("contas").insert({
           nome: `Venda - ${nomeItem} - ${nomeCliente}${sufixoParcela}`,
           tipo: "receber",
-          valor: vendaOriginal.total,
+          valor: totalMudou ? Number(dados.total) : vendaOriginal.total,
           data: dados.data_prevista_recebimento || dataHoje(),
           data_vencimento: dados.data_prevista_recebimento || null,
           status: "pendente",
@@ -719,8 +824,18 @@ export const useVendas = () => {
 
       toast({
         title: "Venda atualizada",
-        description: "A forma de pagamento foi alterada com sucesso.",
+        description: totalMudou
+          ? "O valor e a forma de pagamento foram atualizados com sucesso."
+          : "A forma de pagamento foi alterada com sucesso.",
       });
+
+      if (avisoFinanceiro) {
+        toast({
+          title: "Verifique o financeiro",
+          description: "A venda foi atualizada, mas não foi possível sincronizar automaticamente a conta ou o caixa vinculado. Verifique manualmente.",
+          variant: "destructive",
+        });
+      }
 
       // Atualiza localmente sem precisar recarregar (preserva filtro de data ativo)
       setVendas(prev => prev.map(v =>
@@ -732,6 +847,7 @@ export const useVendas = () => {
               parcela_numero: dados.parcela_numero ?? v.parcela_numero,
               total_parcelas: dados.total_parcelas ?? v.total_parcelas,
               recebido: dados.forma_pagamento !== "a_receber" && dados.forma_pagamento !== "a_prazo" ? false : v.recebido,
+              total: totalMudou ? Number(dados.total) : v.total,
             }
           : v
       ));

@@ -17,8 +17,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Venda } from "@/types/venda";
-import { formatCurrency } from "@/lib/formatters";
-import { ValorMonetario } from "@/components/ui/valor-monetario";
 
 interface DialogEditarVendaProps {
   open: boolean;
@@ -29,6 +27,7 @@ interface DialogEditarVendaProps {
     data_prevista_recebimento?: string | null;
     parcela_numero?: number | null;
     total_parcelas?: number | null;
+    total?: number;
   }) => Promise<boolean>;
   salvando?: boolean;
 }
@@ -53,6 +52,7 @@ export const DialogEditarVenda = ({
   const [dataPrevista, setDataPrevista] = useState<string>("");
   const [parcelaNumero, setParcelaNumero] = useState<string>("");
   const [totalParcelas, setTotalParcelas] = useState<string>("");
+  const [valorTotal, setValorTotal] = useState<string>("");
 
   useEffect(() => {
     if (venda && open) {
@@ -60,17 +60,25 @@ export const DialogEditarVenda = ({
       setDataPrevista(venda.data_prevista_recebimento || "");
       setParcelaNumero(venda.parcela_numero?.toString() || "");
       setTotalParcelas(venda.total_parcelas?.toString() || "");
+      setValorTotal(venda.total.toFixed(2));
     }
   }, [venda, open]);
+
+  const valorTotalNumero = parseFloat(valorTotal);
+  const valorTotalValido = Number.isFinite(valorTotalNumero) && valorTotalNumero > 0;
 
   const isAPrazo = formaPagamento === "a_receber";
 
   const handleSalvar = async () => {
-    if (!venda) return;
+    if (!venda || !valorTotalValido) return;
 
     const dados: any = {
       forma_pagamento: formaPagamento,
     };
+
+    if (valorTotalNumero !== venda.total) {
+      dados.total = valorTotalNumero;
+    }
 
     if (isAPrazo) {
       dados.data_prevista_recebimento = dataPrevista || null;
@@ -110,9 +118,22 @@ export const DialogEditarVenda = ({
             <p className="text-sm text-muted-foreground">
               Cliente: {venda.clientes?.nome || "Não informado"}
             </p>
-            <p className="text-sm font-semibold">
-              Valor: <ValorMonetario valor={venda.total} tipo="preco" />
-            </p>
+          </div>
+
+          {/* Valor da venda */}
+          <div className="space-y-2">
+            <Label htmlFor="valorTotal">Valor da Venda</Label>
+            <Input
+              id="valorTotal"
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={valorTotal}
+              onChange={(e) => setValorTotal(e.target.value)}
+            />
+            {!valorTotalValido && (
+              <p className="text-sm text-destructive">O valor deve ser maior que zero.</p>
+            )}
           </div>
 
           {/* Forma de pagamento */}
@@ -181,7 +202,7 @@ export const DialogEditarVenda = ({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={salvando}>
             Cancelar
           </Button>
-          <Button onClick={handleSalvar} disabled={salvando}>
+          <Button onClick={handleSalvar} disabled={salvando || !valorTotalValido}>
             {salvando ? "Salvando..." : "Salvar"}
           </Button>
         </DialogFooter>
