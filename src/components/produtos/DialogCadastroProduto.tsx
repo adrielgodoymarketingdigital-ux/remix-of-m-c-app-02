@@ -348,6 +348,86 @@ export const DialogCadastroProduto = ({
                 </div>
               )}
 
+              {temVariacoes && (
+                <div className="space-y-3 border rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Variações (modelos) *</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={adicionarVariacao} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Adicionar variação
+                    </Button>
+                  </div>
+
+                  {variacoes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma variação ainda. Clique em "Adicionar variação" para começar.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {variacoes.map((v, index) => (
+                        <div key={index} className="rounded-lg border p-3 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium text-muted-foreground">Variação {index + 1}</span>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button" variant="ghost" size="icon"
+                                onClick={() => usarValorDoPai(index)}
+                                title="Usar valor do produto pai"
+                              >
+                                <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                              <Button
+                                type="button" variant="ghost" size="icon"
+                                onClick={() => removerVariacao(index)}
+                                title="Remover variação"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Modelo</Label>
+                            <Input
+                              placeholder="Ex: iPhone 11"
+                              value={v.label}
+                              onChange={e => atualizarVariacao(index, { label: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Quantidade</Label>
+                              <Input
+                                type="number" min="0"
+                                value={v.quantidade}
+                                onChange={e => atualizarVariacao(index, { quantidade: Number(e.target.value) })}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Custo</Label>
+                              <Input
+                                type="number" step="0.01" min="0"
+                                value={v.custo}
+                                onChange={e => atualizarVariacao(index, { custo: Number(e.target.value) })}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Venda</Label>
+                              <Input
+                                type="number" step="0.01" min="0"
+                                value={v.preco}
+                                onChange={e => atualizarVariacao(index, { preco: Number(e.target.value) })}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Fornecedor */}
               <FormField
                 control={form.control}
@@ -524,86 +604,6 @@ export const DialogCadastroProduto = ({
                   )}
                 />
               </div>
-
-              {temVariacoes && (
-                <div className="space-y-3 border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <Label>Variações (modelos) *</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={adicionarVariacao} className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Adicionar variação
-                    </Button>
-                  </div>
-
-                  {variacoes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Nenhuma variação ainda. Clique em "Adicionar variação" para começar.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {variacoes.map((v, index) => (
-                        <div key={index} className="rounded-lg border p-3 space-y-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium text-muted-foreground">Variação {index + 1}</span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                type="button" variant="ghost" size="icon"
-                                onClick={() => usarValorDoPai(index)}
-                                title="Usar valor do produto pai"
-                              >
-                                <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                              <Button
-                                type="button" variant="ghost" size="icon"
-                                onClick={() => removerVariacao(index)}
-                                title="Remover variação"
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Modelo</Label>
-                            <Input
-                              placeholder="Ex: iPhone 11"
-                              value={v.label}
-                              onChange={e => atualizarVariacao(index, { label: e.target.value })}
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Quantidade</Label>
-                              <Input
-                                type="number" min="0"
-                                value={v.quantidade}
-                                onChange={e => atualizarVariacao(index, { quantidade: Number(e.target.value) })}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Custo</Label>
-                              <Input
-                                type="number" step="0.01" min="0"
-                                value={v.custo}
-                                onChange={e => atualizarVariacao(index, { custo: Number(e.target.value) })}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Venda</Label>
-                              <Input
-                                type="number" step="0.01" min="0"
-                                value={v.preco}
-                                onChange={e => atualizarVariacao(index, { preco: Number(e.target.value) })}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {podeVerLucros && !temVariacoes && (
                 <div className="p-4 bg-muted rounded-lg">
