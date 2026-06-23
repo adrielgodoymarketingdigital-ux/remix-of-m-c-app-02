@@ -81,7 +81,7 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+      <DialogContent className="sm:max-w-5xl sm:max-h-[90vh] overflow-y-auto p-0 gap-0">
         <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/40">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">

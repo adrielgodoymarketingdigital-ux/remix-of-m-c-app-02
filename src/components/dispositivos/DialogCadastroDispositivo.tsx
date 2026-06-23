@@ -379,7 +379,7 @@ export function DialogCadastroDispositivo({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {dispositivoParaEditar ? "Editar Dispositivo" : "Cadastrar Novo Dispositivo"}

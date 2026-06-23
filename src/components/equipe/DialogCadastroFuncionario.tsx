@@ -391,7 +391,7 @@ export function DialogCadastroFuncionario({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEdicao ? "Editar Funcionário" : "Cadastrar Funcionário"}

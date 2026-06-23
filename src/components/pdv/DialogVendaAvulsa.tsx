@@ -160,7 +160,7 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Venda Avulsa</DialogTitle>
           <DialogDescription>

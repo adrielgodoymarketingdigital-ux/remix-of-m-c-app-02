@@ -137,7 +137,7 @@ export function DialogVisualizarOrcamento({
   return (
     <>
       <Dialog open={aberto} onOpenChange={onFechar}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2">

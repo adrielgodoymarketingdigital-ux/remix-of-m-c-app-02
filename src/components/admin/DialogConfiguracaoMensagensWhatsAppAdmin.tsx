@@ -93,7 +93,7 @@ export function DialogConfiguracaoMensagensWhatsAppAdmin({ open, onOpenChange }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl sm:max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Mensagens do WhatsApp por Status</DialogTitle>
           <DialogDescription>

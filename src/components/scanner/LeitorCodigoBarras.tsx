@@ -297,7 +297,7 @@ export const LeitorCodigoBarras = ({
       </div>
 
       <Dialog open={dialogAberto} onOpenChange={handleDialogChange}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-lg sm:max-h-[90vh] p-0 overflow-hidden">
           <DialogHeader className="p-4 pb-2">
             <DialogTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />

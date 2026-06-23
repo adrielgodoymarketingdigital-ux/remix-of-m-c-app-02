@@ -540,7 +540,7 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Termo de Garantia — Dispositivos Vendidos</DialogTitle>
         </DialogHeader>

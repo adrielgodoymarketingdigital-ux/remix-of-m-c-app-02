@@ -167,7 +167,7 @@ export const DialogImportarClientes = ({ open, onOpenChange, onImportar }: Props
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col min-h-0">
+      <DialogContent className="sm:max-w-3xl sm:max-h-[90vh] overflow-hidden flex flex-col min-h-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5" />
