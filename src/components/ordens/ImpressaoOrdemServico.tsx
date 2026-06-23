@@ -119,15 +119,6 @@ export const ImpressaoOrdemServico = ({
   const handlePrintAndroid = async () => {
     if (!portalEl) return;
 
-    // Abrir a janela já dentro do gesto do usuário (clique), antes de qualquer await.
-    // Em iOS Safari, window.open() chamado após um await pode ser bloqueado pelo
-    // navegador, caindo no fallback window.print() que trava a pré-visualização.
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      window.print();
-      return;
-    }
-
     // Get the print content
     const contentEl = portalEl.querySelector('.impressao-ordem-container, .cupom-80mm-container, .impressao-duas-os-wrapper');
     let contentHtml = contentEl ? contentEl.outerHTML : portalEl.innerHTML;
@@ -425,8 +416,14 @@ export const ImpressaoOrdemServico = ({
       function doPrint() {
         if (printed) return;
         printed = true;
+        window.focus();
         window.print();
-        window.onafterprint = function() { window.close(); };
+        window.onafterprint = function() {
+          // Remove o iframe de impressão da página pai após o usuário concluir/cancelar
+          try {
+            window.parent.document.getElementById('print-iframe-android')?.remove();
+          } catch { /* ignore */ }
+        };
       }
       var images = document.querySelectorAll('img');
       if (images.length === 0) {
@@ -447,14 +444,29 @@ export const ImpressaoOrdemServico = ({
 </body>
 </html>`;
 
-    // Em Chrome Android, document.write() pode sofrer "intervention" do navegador
-    // (sobretudo com <img> externas), deixando a página num estado incompleto que
-    // trava a geração da pré-visualização nativa de impressão. Navegar a popup para
-    // uma Blob URL evita essa intervenção.
-    const blob = new Blob([htmlDoc], { type: 'text/html' });
-    const blobUrl = URL.createObjectURL(blob);
-    printWindow.location.href = blobUrl;
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    // window.print() chamado dentro de uma popup (window.open) navegada via Blob URL
+    // é um padrão cronicamente instável no Chrome Android — o Android Print Service
+    // fica "Preparing preview..." para sempre porque o documento nunca veio de uma
+    // navegação de rede real. Um <iframe> oculto na própria página, com srcdoc, é o
+    // padrão confiável: o conteúdo carrega no mesmo documento/processo, e
+    // iframe.contentWindow.print() é reconhecido normalmente pelo Android.
+    const iframeAnterior = document.getElementById('print-iframe-android');
+    iframeAnterior?.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe-android';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    // O próprio script embutido em htmlDoc chama window.print() (que dentro do
+    // iframe se refere ao seu próprio contentWindow) após aguardar as imagens
+    // carregarem, com fallback de 4s — não precisa de lógica adicional aqui.
+    iframe.srcdoc = htmlDoc;
   };
 
   // Trigger print
