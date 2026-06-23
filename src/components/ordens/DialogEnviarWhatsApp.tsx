@@ -150,25 +150,46 @@ export const DialogEnviarWhatsApp = ({
 
   const handleAbrirWhatsApp = () => {
     const telefoneNumeros = telefone.replace(/\D/g, "");
-    
+
     if (!telefoneNumeros || telefoneNumeros.length < 10) {
       toast.error("Informe um número de telefone válido");
       return;
     }
 
-    const numeroFormatado = telefoneNumeros.startsWith("55") 
-      ? telefoneNumeros 
+    const numeroFormatado = telefoneNumeros.startsWith("55")
+      ? telefoneNumeros
       : `55${telefoneNumeros}`;
 
     const mensagemCodificada = encodeURIComponent(mensagem);
     const urlWhatsApp = `https://wa.me/${numeroFormatado}?text=${mensagemCodificada}`;
-    
+
     window.open(urlWhatsApp, "_blank");
-    
+
     toast.success("WhatsApp aberto! Anexe o PDF baixado na conversa.", {
       duration: 6000,
     });
-    
+
+    onOpenChange(false);
+  };
+
+  // Apenas abre o WhatsApp com a mensagem, sem gerar/baixar PDF
+  const handleEnviarSoMensagem = () => {
+    const telefoneNumeros = telefone.replace(/\D/g, "");
+
+    if (!telefoneNumeros || telefoneNumeros.length < 10) {
+      toast.error("Informe um número de telefone válido");
+      return;
+    }
+
+    const numeroFormatado = telefoneNumeros.startsWith("55")
+      ? telefoneNumeros
+      : `55${telefoneNumeros}`;
+
+    const mensagemCodificada = encodeURIComponent(mensagem);
+    const urlWhatsApp = `https://wa.me/${numeroFormatado}?text=${mensagemCodificada}`;
+
+    window.open(urlWhatsApp, "_blank");
+
     onOpenChange(false);
   };
 
@@ -235,14 +256,14 @@ export const DialogEnviarWhatsApp = ({
         <DialogHeader>
           <DialogTitle>Enviar OS via WhatsApp</DialogTitle>
           <DialogDescription>
-            Enviar OS #{ordem.numero_os} com PDF anexado
+            Mande só a mensagem ou anexe o PDF da OS #{ordem.numero_os}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Seletor de tipo de PDF */}
+          {/* Seletor de tipo de PDF — só relevante se for enviar o PDF junto */}
           <div className="space-y-2">
-            <Label>Qual documento enviar?</Label>
+            <Label>Anexar PDF? (opcional)</Label>
             <div className="grid grid-cols-1 gap-2">
               {opcoesPDF.map((opcao) => (
                 <button
@@ -300,11 +321,10 @@ export const DialogEnviarWhatsApp = ({
           {mobile && (
             <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground space-y-2">
               <p className="font-medium">📱 Como enviar no celular:</p>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Baixe o PDF primeiro</li>
-                <li>Abra o WhatsApp</li>
-                <li>Anexe o PDF na conversa</li>
-              </ol>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>Só chamar no WhatsApp:</strong> abre a conversa direto com a mensagem, sem PDF.</li>
+                <li><strong>Enviar com PDF:</strong> baixe o PDF, depois abra o WhatsApp e anexe o arquivo na conversa.</li>
+              </ul>
             </div>
           )}
         </div>
@@ -313,13 +333,23 @@ export const DialogEnviarWhatsApp = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          
+
+          <Button
+            variant="secondary"
+            onClick={handleEnviarSoMensagem}
+            disabled={gerando}
+            className="gap-2"
+          >
+            <Send className="h-4 w-4" />
+            Só chamar no WhatsApp
+          </Button>
+
           {mobile ? (
             <>
-              <Button 
+              <Button
                 variant={pdfBaixado ? "outline" : "default"}
-                onClick={handleBaixarPDF} 
-                disabled={gerando} 
+                onClick={handleBaixarPDF}
+                disabled={gerando}
                 className="gap-2"
               >
                 {gerando ? (
@@ -339,8 +369,8 @@ export const DialogEnviarWhatsApp = ({
                   </>
                 )}
               </Button>
-              <Button 
-                onClick={handleAbrirWhatsApp} 
+              <Button
+                onClick={handleAbrirWhatsApp}
                 disabled={!pdfBaixado}
                 className="gap-2"
               >
@@ -358,7 +388,7 @@ export const DialogEnviarWhatsApp = ({
               ) : (
                 <>
                   <Send className="h-4 w-4" />
-                  Enviar WhatsApp
+                  Enviar com PDF
                 </>
               )}
             </Button>
