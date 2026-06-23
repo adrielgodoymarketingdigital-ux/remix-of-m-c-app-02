@@ -22,7 +22,7 @@ interface SelecionadorProdutoProps {
 }
 
 export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProps) => {
-  const { items, loading, carregarTodos, criar } = useProdutos();
+  const { items, loading, carregarTodos, criar, criarProdutoComVariacoes } = useProdutos();
   const [open, setOpen] = useState(false);
   const [itemSelecionado, setItemSelecionado] = useState("");
   const [dialogCadastroOpen, setDialogCadastroOpen] = useState(false);
@@ -234,6 +234,7 @@ export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProp
         open={dialogCadastroOpen}
         onOpenChange={setDialogCadastroOpen}
         onSubmit={handleCriarProduto}
+        onSubmitComVariacoes={criarProdutoComVariacoes}
       />
     </div>
   );

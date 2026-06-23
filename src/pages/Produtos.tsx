@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw, Layers } from 'lucide-react';
+import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +10,6 @@ import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { useCategoriasProdutos } from '@/hooks/useCategoriasProdutos';
 import { useAssinatura } from '@/hooks/useAssinatura';
 import { DialogCadastroProduto } from '@/components/produtos/DialogCadastroProduto';
-import { DialogCadastroProdutoComVariacoes } from '@/components/produtos/DialogCadastroProdutoComVariacoes';
 import { DialogImportarProdutos } from '@/components/produtos/DialogImportarProdutos';
 import { DialogLimiteAtingido } from '@/components/planos/DialogLimiteAtingido';
 import { TabelaProdutos } from '@/components/produtos/TabelaProdutos';
@@ -42,7 +41,6 @@ const Produtos = () => {
   const [busca, setBusca] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState<string | null>(null);
   const [dialogAberto, setDialogAberto] = useState(false);
-  const [dialogVariacoesAberto, setDialogVariacoesAberto] = useState(false);
   const [dialogImportarAberto, setDialogImportarAberto] = useState(false);
   const [dialogLimiteAtingido, setDialogLimiteAtingido] = useState(false);
   const [dialogCategoriasAberto, setDialogCategoriasAberto] = useState(false);
@@ -160,13 +158,6 @@ const Produtos = () => {
     setDialogAberto(true);
   };
 
-  const handleNovoComVariacoes = () => {
-    if (assinatura?.plano_tipo === 'free' && !contadorProdutos.ilimitado && contadorProdutos.usados >= contadorProdutos.limite) {
-      setDialogLimiteAtingido(true);
-      return;
-    }
-    setDialogVariacoesAberto(true);
-  };
 
   const handleDialogClose = (open: boolean) => {
     setDialogAberto(open);
@@ -249,16 +240,10 @@ const Produtos = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
               {abaAtiva === 'estoque' ? (
-                <>
-                  <Button variant="outline" onClick={handleNovoComVariacoes}>
-                    <Layers className="w-4 h-4 mr-2" />
-                    Variações
-                  </Button>
-                  <Button onClick={handleNovoItem}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Novo Item
-                  </Button>
-                </>
+                <Button onClick={handleNovoItem}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Item
+                </Button>
               ) : (
                 <Button onClick={() => setDialogTrocaAberto(true)}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -424,15 +409,8 @@ const Produtos = () => {
         open={dialogAberto}
         onOpenChange={handleDialogClose}
         onSubmit={handleSubmit}
+        onSubmitComVariacoes={criarProdutoComVariacoes}
         itemParaEditar={itemParaEditar}
-        categorias={categorias}
-      />
-
-      {/* Dialog de Cadastro com Variações */}
-      <DialogCadastroProdutoComVariacoes
-        open={dialogVariacoesAberto}
-        onOpenChange={setDialogVariacoesAberto}
-        onSubmit={criarProdutoComVariacoes}
         categorias={categorias}
       />
 

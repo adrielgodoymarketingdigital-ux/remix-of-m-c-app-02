@@ -27,7 +27,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ItemEstoque, FormularioProduto } from '@/types/produto';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ItemEstoque, FormularioProduto, VariacaoInput } from '@/types/produto';
 import { CategoriaProduto } from '@/types/categoria-produto';
 import { formatCurrency } from '@/lib/formatters';
 import { LeitorCodigoBarras } from '@/components/scanner/LeitorCodigoBarras';
@@ -35,8 +45,9 @@ import { UploadFotosProduto } from './UploadFotosProduto';
 import { useFornecedores } from '@/hooks/useFornecedores';
 import { DialogCadastroFornecedor } from '@/components/fornecedores/DialogCadastroFornecedor';
 import { FormularioFornecedor } from '@/types/fornecedor';
-import { Plus, Lock } from 'lucide-react';
+import { Plus, Lock, Trash2, ArrowDownToLine } from 'lucide-react';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
+import { toast } from 'sonner';
 
 const formSchema = z.object({
   tipo: z.enum(['produto', 'peca'], {
@@ -60,6 +71,7 @@ interface DialogCadastroProdutoProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (dados: FormularioProduto) => Promise<boolean>;
+  onSubmitComVariacoes: (nomeBase: string, variacoes: VariacaoInput[], categoriaId?: string, fornecedorId?: string) => Promise<boolean>;
   itemParaEditar?: ItemEstoque | null;
   categorias?: CategoriaProduto[];
 }
@@ -68,6 +80,7 @@ export const DialogCadastroProduto = ({
   open,
   onOpenChange,
   onSubmit,
+  onSubmitComVariacoes,
   itemParaEditar,
   categorias = [],
 }: DialogCadastroProdutoProps) => {
@@ -75,7 +88,11 @@ export const DialogCadastroProduto = ({
   const [dialogFornecedorAberto, setDialogFornecedorAberto] = useState(false);
   const { fornecedores, criarFornecedor, refetch: refetchFornecedores } = useFornecedores();
   const { podeVerCustos, podeVerLucros, podeEditarProdutos, isFuncionario } = useFuncionarioPermissoes();
-  
+  const [temVariacoes, setTemVariacoes] = useState(false);
+  const [variacoesTexto, setVariacoesTexto] = useState('');
+  const [variacoes, setVariacoes] = useState<VariacaoInput[]>([]);
+  const [enviando, setEnviando] = useState(false);
+
   const form = useForm<FormularioProduto>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -112,6 +129,9 @@ export const DialogCadastroProduto = ({
         categoria_id: itemParaEditar.categoria_id || undefined,
       });
       setFotos(itemParaEditar.fotos || []);
+      setTemVariacoes(false);
+      setVariacoesTexto('');
+      setVariacoes([]);
     } else {
       form.reset({
         tipo: 'produto',
@@ -126,14 +146,86 @@ export const DialogCadastroProduto = ({
         categoria_id: undefined,
       });
       setFotos([]);
+      setTemVariacoes(false);
+      setVariacoesTexto('');
+      setVariacoes([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemParaEditar, open]);
 
+  // Gera as linhas de variação a partir do texto digitado, preservando ajustes
+  // já feitos nas linhas existentes (por label) ao adicionar/remover modelos.
+  useEffect(() => {
+    if (!temVariacoes) return;
+    const labels = variacoesTexto
+      .split(/[,\n]/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    setVariacoes(prev => {
+      const porLabel = new Map(prev.map(v => [v.label, v]));
+      return labels.map(label => porLabel.get(label) || {
+        label,
+        sku: '',
+        codigo_barras: '',
+        quantidade: form.getValues('quantidade') || 0,
+        custo: form.getValues('custo') || 0,
+        preco: form.getValues('preco') || 0,
+        preco_atacado: form.getValues('preco_atacado') ?? null,
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variacoesTexto, temVariacoes]);
+
   const handleSubmit = async (dados: FormularioProduto) => {
+    if (temVariacoes && !itemParaEditar) {
+      if (variacoes.length === 0) {
+        toast.error('Informe ao menos uma variação (ex: iPhone 11, iPhone 12)');
+        return;
+      }
+      for (const v of variacoes) {
+        if (v.preco < v.custo) {
+          toast.error(`"${v.label}": preço de venda deve ser maior ou igual ao custo`);
+          return;
+        }
+      }
+      setEnviando(true);
+      const sucesso = await onSubmitComVariacoes(dados.nome, variacoes, dados.categoria_id, dados.fornecedor_id);
+      setEnviando(false);
+      if (sucesso) {
+        onOpenChange(false);
+      }
+      return;
+    }
+
     const sucesso = await onSubmit({ ...dados, fotos });
     if (sucesso) {
       onOpenChange(false);
+    }
+  };
+
+  const atualizarVariacao = (index: number, patch: Partial<VariacaoInput>) => {
+    setVariacoes(prev => prev.map((v, i) => i === index ? { ...v, ...patch } : v));
+  };
+
+  const usarValorDoPai = (index: number) => {
+    atualizarVariacao(index, {
+      quantidade: form.getValues('quantidade') || 0,
+      custo: form.getValues('custo') || 0,
+      preco: form.getValues('preco') || 0,
+      preco_atacado: form.getValues('preco_atacado') ?? null,
+    });
+  };
+
+  const removerVariacao = (index: number) => {
+    const removida = variacoes[index];
+    setVariacoes(prev => prev.filter((_, i) => i !== index));
+    if (removida) {
+      setVariacoesTexto(prev => prev
+        .split(/[,\n]/)
+        .map(s => s.trim())
+        .filter(s => s && s !== removida.label)
+        .join('\n'));
     }
   };
 
@@ -188,7 +280,7 @@ export const DialogCadastroProduto = ({
                 )}
               />
 
-              {form.watch('tipo') === 'produto' && (
+              {form.watch('tipo') === 'produto' && !temVariacoes && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -254,14 +346,35 @@ export const DialogCadastroProduto = ({
                 name="nome"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome *</FormLabel>
+                    <FormLabel>{temVariacoes ? 'Nome base *' : 'Nome *'}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nome do item" {...field} />
+                      <Input placeholder={temVariacoes ? 'Ex: Capa Space' : 'Nome do item'} {...field} />
                     </FormControl>
+                    {temVariacoes && (
+                      <p className="text-xs text-muted-foreground">
+                        Cada variação será criada como "{field.value || 'Nome base'} - Modelo"
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {!itemParaEditar && form.watch('tipo') === 'produto' && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="tem-variacoes"
+                    checked={temVariacoes}
+                    onCheckedChange={(checked) => setTemVariacoes(checked === true)}
+                  />
+                  <div>
+                    <Label htmlFor="tem-variacoes" className="cursor-pointer">Esse produto tem variações (ex: modelos)?</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Cadastre de uma vez várias variações do mesmo produto (ex: capinha para iPhone 11, 12, 13)
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Fornecedor */}
               <FormField
@@ -348,7 +461,7 @@ export const DialogCadastroProduto = ({
                 name="quantidade"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quantidade em Estoque</FormLabel>
+                    <FormLabel>{temVariacoes ? 'Quantidade (valor padrão)' : 'Quantidade em Estoque'}</FormLabel>
                     <FormControl>
                       <Input type="number" min="0" {...field} disabled={isFuncionario && !podeEditarProdutos} />
                     </FormControl>
@@ -369,7 +482,7 @@ export const DialogCadastroProduto = ({
                     name="custo"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Preço de Custo</FormLabel>
+                        <FormLabel>{temVariacoes ? 'Custo (valor padrão)' : 'Preço de Custo'}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -396,7 +509,7 @@ export const DialogCadastroProduto = ({
                   name="preco"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preço de Venda</FormLabel>
+                      <FormLabel>{temVariacoes ? 'Venda (valor padrão)' : 'Preço de Venda'}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -422,7 +535,7 @@ export const DialogCadastroProduto = ({
                   name="preco_atacado"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preço Atacado</FormLabel>
+                      <FormLabel>{temVariacoes ? 'Atacado (valor padrão)' : 'Preço Atacado'}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -440,7 +553,84 @@ export const DialogCadastroProduto = ({
                 />
               </div>
 
-              {podeVerLucros && (
+              {temVariacoes && (
+                <div className="space-y-3 border rounded-lg p-4">
+                  <div className="space-y-2">
+                    <Label>Variações (modelos) *</Label>
+                    <Textarea
+                      placeholder={'Separe por vírgula ou uma por linha. Ex:\niPhone 11\niPhone 12\niPhone 13'}
+                      value={variacoesTexto}
+                      onChange={e => setVariacoesTexto(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+
+                  {variacoes.length > 0 && (
+                    <div className="rounded-md border overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[140px]">Modelo</TableHead>
+                            <TableHead className="min-w-[110px]">Qtd</TableHead>
+                            <TableHead className="min-w-[110px]">Custo</TableHead>
+                            <TableHead className="min-w-[110px]">Venda</TableHead>
+                            <TableHead className="w-10" />
+                            <TableHead className="w-10" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {variacoes.map((v, index) => (
+                            <TableRow key={v.label}>
+                              <TableCell className="font-medium">{v.label}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number" min="0"
+                                  value={v.quantidade}
+                                  onChange={e => atualizarVariacao(index, { quantidade: Number(e.target.value) })}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number" step="0.01" min="0"
+                                  value={v.custo}
+                                  onChange={e => atualizarVariacao(index, { custo: Number(e.target.value) })}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number" step="0.01" min="0"
+                                  value={v.preco}
+                                  onChange={e => atualizarVariacao(index, { preco: Number(e.target.value) })}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button" variant="ghost" size="icon"
+                                  onClick={() => usarValorDoPai(index)}
+                                  title="Usar valor do produto pai"
+                                >
+                                  <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button" variant="ghost" size="icon"
+                                  onClick={() => removerVariacao(index)}
+                                  title="Remover variação"
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {podeVerLucros && !temVariacoes && (
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Lucro Calculado:</span>
@@ -460,8 +650,12 @@ export const DialogCadastroProduto = ({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" className="w-full sm:w-auto">
-                  {itemParaEditar ? 'Atualizar' : 'Cadastrar'}
+                <Button type="submit" className="w-full sm:w-auto" disabled={enviando}>
+                  {enviando
+                    ? 'Cadastrando...'
+                    : temVariacoes
+                      ? `Cadastrar ${variacoes.length || ''} variação(ões)`.replace('  ', ' ')
+                      : itemParaEditar ? 'Atualizar' : 'Cadastrar'}
                 </Button>
               </div>
             </form>
