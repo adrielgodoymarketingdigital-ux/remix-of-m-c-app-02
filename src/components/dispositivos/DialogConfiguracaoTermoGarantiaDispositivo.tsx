@@ -306,6 +306,96 @@ function secoesParaTexto(secoes: SecaoTermo[]): string {
     .join("\n\n");
 }
 
+function ListaSecoes({
+  secoes,
+  setSecoes,
+  prefixo,
+  secaoEditando,
+  setSecaoEditando,
+}: {
+  secoes: SecaoTermo[];
+  setSecoes: (v: SecaoTermo[]) => void;
+  prefixo: string;
+  secaoEditando: string | null;
+  setSecaoEditando: (v: string | null) => void;
+}) {
+  const toggleSecao = (id: string) => {
+    setSecoes(secoes.map((s) => s.id === id ? { ...s, visivel: !s.visivel } : s));
+  };
+
+  const editarConteudoSecao = (id: string, conteudo: string) => {
+    setSecoes(secoes.map((s) => s.id === id ? { ...s, conteudo } : s));
+  };
+
+  return (
+    <div className="space-y-3">
+      {secoes.map((secao) => (
+        <div
+          key={secao.id}
+          className={`border rounded-lg overflow-hidden transition-colors ${!secao.visivel ? "opacity-60" : ""}`}
+        >
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/40">
+            <div className="flex items-center gap-3">
+              <Switch
+                id={`${prefixo}-${secao.id}`}
+                checked={secao.visivel}
+                onCheckedChange={() => toggleSecao(secao.id)}
+              />
+              <Label htmlFor={`${prefixo}-${secao.id}`} className="text-sm font-medium cursor-pointer select-none">
+                {secao.titulo}
+              </Label>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-muted-foreground"
+              onClick={() => setSecaoEditando(secaoEditando === `${prefixo}-${secao.id}` ? null : `${prefixo}-${secao.id}`)}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1" />
+              Editar texto
+            </Button>
+          </div>
+
+          {secaoEditando === `${prefixo}-${secao.id}` && (
+            <div className="p-3 border-t bg-background">
+              <Textarea
+                value={secao.conteudo}
+                onChange={(e) => editarConteudoSecao(secao.id, e.target.value)}
+                rows={Math.min(Math.max(secao.conteudo.split("\n").length + 1, 3), 10)}
+                className="text-xs font-mono"
+              />
+            </div>
+          )}
+
+          {!secaoEditando?.startsWith(`${prefixo}-${secao.id}`) && secao.visivel && (
+            <div className="px-4 py-2 border-t bg-background/50">
+              <p className="text-xs text-muted-foreground font-mono whitespace-pre-line line-clamp-3">
+                {secao.conteudo}
+              </p>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PreviewTexto({ secoes }: { secoes: SecaoTermo[] }) {
+  const texto = secoesParaTexto(secoes);
+  return (
+    <div className="border rounded-lg p-4 bg-muted/30">
+      <div className="flex items-center gap-2 mb-3">
+        <Eye className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-muted-foreground">Pré-visualização do texto final</span>
+      </div>
+      <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 max-h-48 overflow-y-auto">
+        {texto || "(nenhuma seção ativa)"}
+      </pre>
+    </div>
+  );
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -454,90 +544,6 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
     setModeloEditSecaoEditando(null);
   };
 
-  const toggleSecao = (lista: SecaoTermo[], setLista: (v: SecaoTermo[]) => void, id: string) => {
-    setLista(lista.map((s) => s.id === id ? { ...s, visivel: !s.visivel } : s));
-  };
-
-  const editarConteudoSecao = (lista: SecaoTermo[], setLista: (v: SecaoTermo[]) => void, id: string, conteudo: string) => {
-    setLista(lista.map((s) => s.id === id ? { ...s, conteudo } : s));
-  };
-
-  const ListaSecoes = ({
-    secoes,
-    setSecoes,
-    prefixo,
-  }: {
-    secoes: SecaoTermo[];
-    setSecoes: (v: SecaoTermo[]) => void;
-    prefixo: string;
-  }) => (
-    <div className="space-y-3">
-      {secoes.map((secao) => (
-        <div
-          key={secao.id}
-          className={`border rounded-lg overflow-hidden transition-colors ${!secao.visivel ? "opacity-60" : ""}`}
-        >
-          <div className="flex items-center justify-between px-4 py-3 bg-muted/40">
-            <div className="flex items-center gap-3">
-              <Switch
-                id={`${prefixo}-${secao.id}`}
-                checked={secao.visivel}
-                onCheckedChange={() => toggleSecao(secoes, setSecoes, secao.id)}
-              />
-              <Label htmlFor={`${prefixo}-${secao.id}`} className="text-sm font-medium cursor-pointer select-none">
-                {secao.titulo}
-              </Label>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-muted-foreground"
-              onClick={() => setSecaoEditando(secaoEditando === `${prefixo}-${secao.id}` ? null : `${prefixo}-${secao.id}`)}
-            >
-              <Pencil className="h-3.5 w-3.5 mr-1" />
-              Editar texto
-            </Button>
-          </div>
-
-          {secaoEditando === `${prefixo}-${secao.id}` && (
-            <div className="p-3 border-t bg-background">
-              <Textarea
-                value={secao.conteudo}
-                onChange={(e) => editarConteudoSecao(secoes, setSecoes, secao.id, e.target.value)}
-                rows={Math.min(Math.max(secao.conteudo.split("\n").length + 1, 3), 10)}
-                className="text-xs font-mono"
-              />
-            </div>
-          )}
-
-          {!secaoEditando?.startsWith(`${prefixo}-${secao.id}`) && secao.visivel && (
-            <div className="px-4 py-2 border-t bg-background/50">
-              <p className="text-xs text-muted-foreground font-mono whitespace-pre-line line-clamp-3">
-                {secao.conteudo}
-              </p>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-
-  const PreviewTexto = ({ secoes }: { secoes: SecaoTermo[] }) => {
-    const texto = secoesParaTexto(secoes);
-    return (
-      <div className="border rounded-lg p-4 bg-muted/30">
-        <div className="flex items-center gap-2 mb-3">
-          <Eye className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Pré-visualização do texto final</span>
-        </div>
-        <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/80 max-h-48 overflow-y-auto">
-          {texto || "(nenhuma seção ativa)"}
-        </pre>
-      </div>
-    );
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto">
@@ -631,6 +637,8 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
                     secoes={secoesComGarantia}
                     setSecoes={setSecoesComGarantia}
                     prefixo="com"
+                    secaoEditando={secaoEditando}
+                    setSecaoEditando={setSecaoEditando}
                   />
                   <PreviewTexto secoes={secoesComGarantia} />
                 </>
@@ -657,6 +665,8 @@ export function DialogConfiguracaoTermoGarantiaDispositivo({ open, onOpenChange,
                     secoes={secoesSemGarantia}
                     setSecoes={setSecoesSemGarantia}
                     prefixo="sem"
+                    secaoEditando={secaoEditando}
+                    setSecaoEditando={setSecaoEditando}
                   />
                   <PreviewTexto secoes={secoesSemGarantia} />
                 </>
