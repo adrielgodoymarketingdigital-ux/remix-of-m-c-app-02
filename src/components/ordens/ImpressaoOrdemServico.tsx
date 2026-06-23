@@ -119,24 +119,38 @@ export const ImpressaoOrdemServico = ({
   const handlePrintAndroid = async () => {
     if (!portalEl) return;
 
+    // Abrir a janela já dentro do gesto do usuário (clique), antes de qualquer await.
+    // Em iOS Safari, window.open() chamado após um await pode ser bloqueado pelo
+    // navegador, caindo no fallback window.print() que trava a pré-visualização.
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
     // Get the print content
     const contentEl = portalEl.querySelector('.impressao-ordem-container, .cupom-80mm-container, .impressao-duas-os-wrapper');
     let contentHtml = contentEl ? contentEl.outerHTML : portalEl.innerHTML;
 
-    // Converter imagens externas (logo) para base64 para evitar bloqueio de CORS na nova janela
+    // Converter imagens externas (logo) para base64 para evitar bloqueio de CORS na nova janela.
+    // Timeout de 4s por imagem para não travar a impressão caso a rede esteja lenta/instável.
     if (contentEl) {
       const imgs = Array.from(contentEl.querySelectorAll('img'));
       await Promise.all(imgs.map(async (img) => {
         try {
-          const res = await fetch(img.src, { mode: 'cors' });
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+          const res = await fetch(img.src, { mode: 'cors', signal: controller.signal });
+          clearTimeout(timeoutId);
           const blob = await res.blob();
-          const b64 = await new Promise<string>((resolve) => {
+          const b64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
           contentHtml = contentHtml.replace(img.src, b64);
-        } catch { /* manter src original se falhar */ }
+        } catch { /* manter src original se falhar ou expirar */ }
       }));
     }
     const is80mmFormat = layoutConfig.formato_papel === '80mm';
@@ -422,13 +436,14 @@ export const ImpressaoOrdemServico = ({
 </body>
 </html>`;
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      window.print();
-      return;
-    }
-    printWindow.document.write(htmlDoc);
-    printWindow.document.close();
+    // Em Chrome Android, document.write() pode sofrer "intervention" do navegador
+    // (sobretudo com <img> externas), deixando a página num estado incompleto que
+    // trava a geração da pré-visualização nativa de impressão. Navegar a popup para
+    // uma Blob URL evita essa intervenção.
+    const blob = new Blob([htmlDoc], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    printWindow.location.href = blobUrl;
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
   };
 
   // Trigger print
