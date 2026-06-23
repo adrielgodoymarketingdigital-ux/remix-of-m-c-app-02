@@ -28,14 +28,6 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { ItemEstoque, FormularioProduto, VariacaoInput } from '@/types/produto';
 import { CategoriaProduto } from '@/types/categoria-produto';
 import { formatCurrency } from '@/lib/formatters';
@@ -548,71 +540,66 @@ export const DialogCadastroProduto = ({
                       Nenhuma variação ainda. Clique em "Adicionar variação" para começar.
                     </p>
                   ) : (
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="min-w-[160px]">Modelo</TableHead>
-                            <TableHead className="min-w-[110px]">Qtd</TableHead>
-                            <TableHead className="min-w-[110px]">Custo</TableHead>
-                            <TableHead className="min-w-[110px]">Venda</TableHead>
-                            <TableHead className="w-10" />
-                            <TableHead className="w-10" />
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {variacoes.map((v, index) => (
-                            <TableRow key={index}>
-                              <TableCell>
-                                <Input
-                                  placeholder="Ex: iPhone 11"
-                                  value={v.label}
-                                  onChange={e => atualizarVariacao(index, { label: e.target.value })}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number" min="0"
-                                  value={v.quantidade}
-                                  onChange={e => atualizarVariacao(index, { quantidade: Number(e.target.value) })}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number" step="0.01" min="0"
-                                  value={v.custo}
-                                  onChange={e => atualizarVariacao(index, { custo: Number(e.target.value) })}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number" step="0.01" min="0"
-                                  value={v.preco}
-                                  onChange={e => atualizarVariacao(index, { preco: Number(e.target.value) })}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  type="button" variant="ghost" size="icon"
-                                  onClick={() => usarValorDoPai(index)}
-                                  title="Usar valor do produto pai"
-                                >
-                                  <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
-                                </Button>
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  type="button" variant="ghost" size="icon"
-                                  onClick={() => removerVariacao(index)}
-                                  title="Remover variação"
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                    <div className="space-y-3">
+                      {variacoes.map((v, index) => (
+                        <div key={index} className="rounded-lg border p-3 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium text-muted-foreground">Variação {index + 1}</span>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button" variant="ghost" size="icon"
+                                onClick={() => usarValorDoPai(index)}
+                                title="Usar valor do produto pai"
+                              >
+                                <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                              <Button
+                                type="button" variant="ghost" size="icon"
+                                onClick={() => removerVariacao(index)}
+                                title="Remover variação"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Modelo</Label>
+                            <Input
+                              placeholder="Ex: iPhone 11"
+                              value={v.label}
+                              onChange={e => atualizarVariacao(index, { label: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Quantidade</Label>
+                              <Input
+                                type="number" min="0"
+                                value={v.quantidade}
+                                onChange={e => atualizarVariacao(index, { quantidade: Number(e.target.value) })}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Custo</Label>
+                              <Input
+                                type="number" step="0.01" min="0"
+                                value={v.custo}
+                                onChange={e => atualizarVariacao(index, { custo: Number(e.target.value) })}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Venda</Label>
+                              <Input
+                                type="number" step="0.01" min="0"
+                                value={v.preco}
+                                onChange={e => atualizarVariacao(index, { preco: Number(e.target.value) })}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
