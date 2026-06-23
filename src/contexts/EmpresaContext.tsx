@@ -25,9 +25,29 @@ const EmpresaContext = createContext<EmpresaContextType>({
   carregarEmpresas: async () => {},
 });
 
+// localStorage pode lançar em contextos com storage bloqueado/particionado
+// (modo privado restritivo, WebViews in-app do Instagram/Facebook etc.)
+function getEmpresaAtivaStorage(): string | null {
+  try {
+    return localStorage.getItem('empresa_ativa');
+  } catch {
+    return null;
+  }
+}
+
+function setEmpresaAtivaStorage(id: string | null) {
+  try {
+    if (id) {
+      localStorage.setItem('empresa_ativa', id);
+    } else {
+      localStorage.removeItem('empresa_ativa');
+    }
+  } catch { /* ignore */ }
+}
+
 export function EmpresaProvider({ children }: { children: ReactNode }) {
   const [empresaAtiva, setEmpresaAtivaState] = useState<string | null>(
-    localStorage.getItem('empresa_ativa')
+    getEmpresaAtivaStorage()
   );
   const [isProprietario, setIsProprietario] = useState(false);
   const [proprietarioId, setProprietarioId] = useState<string | null>(null);
@@ -38,11 +58,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
 
   const setEmpresaAtiva = (id: string | null) => {
     setEmpresaAtivaState(id);
-    if (id) {
-      localStorage.setItem('empresa_ativa', id);
-    } else {
-      localStorage.removeItem('empresa_ativa');
-    }
+    setEmpresaAtivaStorage(id);
   };
 
   const carregarEmpresas = async () => {
@@ -109,9 +125,9 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       setEmpresas(lista);
 
       // Limpar empresa ativa do localStorage se o ID não pertence a este proprietário
-      const empresaAtivaLocal = localStorage.getItem('empresa_ativa');
+      const empresaAtivaLocal = getEmpresaAtivaStorage();
       if (empresaAtivaLocal && !lista.some(e => e.id === empresaAtivaLocal)) {
-        localStorage.removeItem('empresa_ativa');
+        setEmpresaAtivaStorage(null);
         setEmpresaAtivaState(null);
       }
     } else {
@@ -119,7 +135,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
       setIsProprietario(false);
       setMatrizId(null);
       setEmpresas([]);
-      localStorage.removeItem('empresa_ativa');
+      setEmpresaAtivaStorage(null);
       setEmpresaAtivaState(null);
     }
 
@@ -135,7 +151,7 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
         jaCarregouRef.current = false;
-        localStorage.removeItem('empresa_ativa');
+        setEmpresaAtivaStorage(null);
         setEmpresaAtivaState(null);
         setIsProprietario(false);
         setMatrizId(null);

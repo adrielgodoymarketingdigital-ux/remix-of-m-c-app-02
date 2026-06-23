@@ -20,6 +20,7 @@ import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import AuthCallback from "@/components/AuthCallback";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import { OSStatusConfigProvider } from "@/contexts/OSStatusConfigContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Lazy-loaded pages — split into per-route bundles so o app inicial fica leve no mobile
 const LandingLP1 = lazy(() => import("./pages/LandingLP1"));
@@ -445,21 +446,23 @@ function AppRoutes() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <TooltipProvider>
-        <EmpresaProvider>
-          <OSStatusConfigProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </OSStatusConfigProvider>
-        </EmpresaProvider>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
+          <EmpresaProvider>
+            <OSStatusConfigProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </OSStatusConfigProvider>
+          </EmpresaProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
