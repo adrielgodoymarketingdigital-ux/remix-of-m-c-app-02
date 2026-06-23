@@ -28,7 +28,6 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -89,7 +88,6 @@ export const DialogCadastroProduto = ({
   const { fornecedores, criarFornecedor, refetch: refetchFornecedores } = useFornecedores();
   const { podeVerCustos, podeVerLucros, podeEditarProdutos, isFuncionario } = useFuncionarioPermissoes();
   const [temVariacoes, setTemVariacoes] = useState(false);
-  const [variacoesTexto, setVariacoesTexto] = useState('');
   const [variacoes, setVariacoes] = useState<VariacaoInput[]>([]);
   const [enviando, setEnviando] = useState(false);
 
@@ -130,7 +128,6 @@ export const DialogCadastroProduto = ({
       });
       setFotos(itemParaEditar.fotos || []);
       setTemVariacoes(false);
-      setVariacoesTexto('');
       setVariacoes([]);
     } else {
       form.reset({
@@ -147,43 +144,22 @@ export const DialogCadastroProduto = ({
       });
       setFotos([]);
       setTemVariacoes(false);
-      setVariacoesTexto('');
       setVariacoes([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemParaEditar, open]);
 
-  // Gera as linhas de variação a partir do texto digitado, preservando ajustes
-  // já feitos nas linhas existentes (por label) ao adicionar/remover modelos.
-  useEffect(() => {
-    if (!temVariacoes) return;
-    const labels = variacoesTexto
-      .split(/[,\n]/)
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    setVariacoes(prev => {
-      const porLabel = new Map(prev.map(v => [v.label, v]));
-      return labels.map(label => porLabel.get(label) || {
-        label,
-        sku: '',
-        codigo_barras: '',
-        quantidade: form.getValues('quantidade') || 0,
-        custo: form.getValues('custo') || 0,
-        preco: form.getValues('preco') || 0,
-        preco_atacado: form.getValues('preco_atacado') ?? null,
-      });
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variacoesTexto, temVariacoes]);
-
   const handleSubmit = async (dados: FormularioProduto) => {
     if (temVariacoes && !itemParaEditar) {
       if (variacoes.length === 0) {
-        toast.error('Informe ao menos uma variação (ex: iPhone 11, iPhone 12)');
+        toast.error('Adicione ao menos uma variação (ex: iPhone 11, iPhone 12)');
         return;
       }
       for (const v of variacoes) {
+        if (!v.label.trim()) {
+          toast.error('Todas as variações precisam de um nome/modelo');
+          return;
+        }
         if (v.preco < v.custo) {
           toast.error(`"${v.label}": preço de venda deve ser maior ou igual ao custo`);
           return;
@@ -204,6 +180,18 @@ export const DialogCadastroProduto = ({
     }
   };
 
+  const adicionarVariacao = () => {
+    setVariacoes(prev => [...prev, {
+      label: '',
+      sku: '',
+      codigo_barras: '',
+      quantidade: form.getValues('quantidade') || 0,
+      custo: form.getValues('custo') || 0,
+      preco: form.getValues('preco') || 0,
+      preco_atacado: form.getValues('preco_atacado') ?? null,
+    }]);
+  };
+
   const atualizarVariacao = (index: number, patch: Partial<VariacaoInput>) => {
     setVariacoes(prev => prev.map((v, i) => i === index ? { ...v, ...patch } : v));
   };
@@ -218,15 +206,7 @@ export const DialogCadastroProduto = ({
   };
 
   const removerVariacao = (index: number) => {
-    const removida = variacoes[index];
     setVariacoes(prev => prev.filter((_, i) => i !== index));
-    if (removida) {
-      setVariacoesTexto(prev => prev
-        .split(/[,\n]/)
-        .map(s => s.trim())
-        .filter(s => s && s !== removida.label)
-        .join('\n'));
-    }
   };
 
   const handleCriarFornecedor = async (dados: FormularioFornecedor) => {
@@ -555,22 +535,24 @@ export const DialogCadastroProduto = ({
 
               {temVariacoes && (
                 <div className="space-y-3 border rounded-lg p-4">
-                  <div className="space-y-2">
+                  <div className="flex items-center justify-between">
                     <Label>Variações (modelos) *</Label>
-                    <Textarea
-                      placeholder={'Separe por vírgula ou uma por linha. Ex:\niPhone 11\niPhone 12\niPhone 13'}
-                      value={variacoesTexto}
-                      onChange={e => setVariacoesTexto(e.target.value)}
-                      rows={3}
-                    />
+                    <Button type="button" variant="outline" size="sm" onClick={adicionarVariacao} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Adicionar variação
+                    </Button>
                   </div>
 
-                  {variacoes.length > 0 && (
+                  {variacoes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma variação ainda. Clique em "Adicionar variação" para começar.
+                    </p>
+                  ) : (
                     <div className="rounded-md border overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[140px]">Modelo</TableHead>
+                            <TableHead className="min-w-[160px]">Modelo</TableHead>
                             <TableHead className="min-w-[110px]">Qtd</TableHead>
                             <TableHead className="min-w-[110px]">Custo</TableHead>
                             <TableHead className="min-w-[110px]">Venda</TableHead>
@@ -580,8 +562,14 @@ export const DialogCadastroProduto = ({
                         </TableHeader>
                         <TableBody>
                           {variacoes.map((v, index) => (
-                            <TableRow key={v.label}>
-                              <TableCell className="font-medium">{v.label}</TableCell>
+                            <TableRow key={index}>
+                              <TableCell>
+                                <Input
+                                  placeholder="Ex: iPhone 11"
+                                  value={v.label}
+                                  onChange={e => atualizarVariacao(index, { label: e.target.value })}
+                                />
+                              </TableCell>
                               <TableCell>
                                 <Input
                                   type="number" min="0"
