@@ -24,7 +24,7 @@ import {
   Smartphone,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { trackInitiateCheckout, trackPurchase } from "@/lib/pixel";
+import { trackInitiateCheckout } from "@/lib/tracking";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
@@ -158,7 +158,9 @@ export function PixCheckoutDialog({
   // Reset ao abrir/fechar
   useEffect(() => {
     if (open) {
-      trackInitiateCheckout({ value: planoPreco, planName: planoNome });
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        trackInitiateCheckout(user?.email, planoPreco);
+      });
     } else {
       setPixData(null);
       setError(null);
@@ -223,8 +225,8 @@ export function PixCheckoutDialog({
       if (fnError) throw new Error(fnError.message);
 
       if (data?.paid) {
+        // Purchase é disparado server-side pelo webhook do Pagar.me (pagarme-webhook) via CAPI
         setPaymentConfirmed(true);
-        trackPurchase({ value: planoPreco, planName: planoNome });
         toast({
           title: "Pagamento confirmado! 🎉",
           description: "Sua assinatura foi ativada com sucesso.",

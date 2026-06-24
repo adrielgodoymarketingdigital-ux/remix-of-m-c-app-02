@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Loader2, Copy, CheckCircle2, RefreshCw, Clock, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { trackPurchase } from "@/lib/pixel";
 import { toast } from "sonner";
 import { useCupom } from "@/hooks/useCupom";
 import { CupomField } from "@/components/planos/CupomField";
@@ -146,29 +145,8 @@ export function PixCheckoutInline({ planoKey, planoPreco, onSuccess }: PixChecko
         .maybeSingle();
       if (queryError) throw queryError;
       if (data?.status === "paid") {
-        // Buscar purchase_event_id para deduplicação com CAPI
-        let purchaseEventId: string | undefined;
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("purchase_event_id")
-              .eq("user_id", user.id)
-              .maybeSingle();
-            purchaseEventId = profile?.purchase_event_id ?? undefined;
-          }
-        } catch {
-          // fire-and-forget
-        }
-
+        // Purchase é disparado server-side pelo webhook do Pagar.me (pagarme-webhook) via CAPI
         setPaymentConfirmed(true);
-        trackPurchase({
-          value: pixData.plan.amount_cents / 100,
-          orderId: pixData.order_id,
-          planName: pixData.plan.name,
-          eventId: purchaseEventId,
-        });
         toast.success("Pagamento confirmado! 🎉 Sua assinatura foi ativada.");
         onSuccess?.();
       } else {

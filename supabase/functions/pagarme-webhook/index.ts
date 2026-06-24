@@ -847,6 +847,15 @@ async function handleSubscriptionCanceled(
 
   if (error) throw new Error(`Erro cancel: ${error.message}`);
 
+  // Reseta purchase_event_id para que uma futura reassinatura conte como nova venda no Meta
+  const { error: resetError } = await supabaseAdmin
+    .from("profiles")
+    .update({ purchase_event_id: null })
+    .eq("user_id", assinatura.user_id);
+  if (resetError) {
+    log("⚠️ Erro ao resetar purchase_event_id (não crítico)", { userId: assinatura.user_id, error: resetError.message });
+  }
+
   await supabaseAdmin.from("admin_notifications").insert({
     tipo: "cancelamento",
     titulo: "Assinatura cancelada",

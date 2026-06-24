@@ -23,7 +23,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
-import { trackPurchase, trackInitiateCheckout } from "@/lib/pixel";
+import { trackInitiateCheckout } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useCupom } from "@/hooks/useCupom";
@@ -105,7 +105,9 @@ export function CartaoCheckoutDialog({
 
   useEffect(() => {
     if (open) {
-      trackInitiateCheckout({ value: planoPreco, planName: planoNome });
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        trackInitiateCheckout(user?.email, planoPreco);
+      });
       if (cupomInicial) cupom.validarCodigo(cupomInicial);
     }
   }, [open])
@@ -291,29 +293,8 @@ export function CartaoCheckoutDialog({
         throw new Error("Pagamento não aprovado pela operadora.");
       }
 
-      // Buscar purchase_event_id do profile para deduplicação com CAPI
-      let purchaseEventId: string | undefined;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("purchase_event_id")
-            .eq("user_id", user.id)
-            .maybeSingle();
-          purchaseEventId = profile?.purchase_event_id ?? undefined;
-        }
-      } catch {
-        // fire-and-forget: erro aqui não impede o fluxo
-      }
-
+      // Purchase é disparado server-side pelo webhook do Pagar.me (pagarme-webhook) via CAPI
       setSuccess(true);
-      trackPurchase({
-        value: planoPreco,
-        orderId: data?.subscription_id,
-        planName: planoNome,
-        eventId: purchaseEventId,
-      });
       toast({
         title: "Assinatura ativada!",
         description: `Seu plano ${planoNome} já está ativo.`,

@@ -62,25 +62,42 @@ export const LeitorCodigoBarras = ({
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
+  const iniciandoRef = useRef(false);
 
   const pararScanner = useCallback(async () => {
     if (scannerRef.current) {
       try {
         const state = scannerRef.current.getState();
-        if (state === 2) { // SCANNING state
+        // SCANNING (2) ou PAUSED (3): a lib ainda tem o stream aberto e precisa de stop()
+        if (state === 2 || state === 3) {
           await scannerRef.current.stop();
         }
         scannerRef.current.clear();
       } catch (error) {
-        console.log("Scanner já estava parado");
+        console.log("Erro ao parar scanner via lib, forçando stop do track", error);
       }
       scannerRef.current = null;
-      trackRef.current = null;
-      setEscaneando(false);
-      setFlashLigado(false);
-      setZoomLevel(1);
-      setZoomSupported(false);
     }
+
+    // Fallback: garante que o MediaStreamTrack é efetivamente parado, mesmo que
+    // scanner.stop() não tenha rodado (estado inesperado) ou tenha lançado erro.
+    // Sem isso a permissão de câmera fica "presa" e a próxima tentativa falha com
+    // "câmera em uso" mesmo sem nenhum outro app usando-a.
+    if (trackRef.current) {
+      try {
+        if (trackRef.current.readyState === "live") {
+          trackRef.current.stop();
+        }
+      } catch (error) {
+        console.log("Erro ao forçar stop do track", error);
+      }
+      trackRef.current = null;
+    }
+
+    setEscaneando(false);
+    setFlashLigado(false);
+    setZoomLevel(1);
+    setZoomSupported(false);
   }, []);
 
   const aplicarZoom = useCallback(async (nivel: number) => {
@@ -100,6 +117,10 @@ export const LeitorCodigoBarras = ({
   }, []);
 
   const iniciarScanner = useCallback(async (useCameraId?: string) => {
+    // Evita que chamadas concorrentes (abrir/fechar rápido, trocar câmera durante
+    // a inicialização) disputem a câmera ao mesmo tempo.
+    if (iniciandoRef.current) return;
+    iniciandoRef.current = true;
     try {
       // Parar scanner anterior se existir
       await pararScanner();
@@ -213,6 +234,8 @@ export const LeitorCodigoBarras = ({
       
       toast.error("Erro ao acessar câmera", { description: mensagemErro });
       setDialogAberto(false);
+    } finally {
+      iniciandoRef.current = false;
     }
   }, [onCodigoLido, onChange, pararScanner, scannerId]);
 
