@@ -21,6 +21,7 @@ import {
   Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { FunctionsFetchError, FunctionsRelayError } from "@supabase/functions-js";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
 import { trackInitiateCheckout } from "@/lib/tracking";
@@ -272,8 +273,20 @@ export function CartaoCheckoutDialog({
       );
 
       if (fnError) {
-        // supabase.functions.invoke coloca o body parseado em fnError.context
-        // quando a edge function retorna status não-2xx
+        // FunctionsFetchError/FunctionsRelayError: a requisição não chegou a ser
+        // respondida pela edge function (rede caiu, app foi para background, etc).
+        // Nesse caso fnError.context não tem o body de erro da function.
+        if (
+          fnError instanceof FunctionsFetchError ||
+          fnError instanceof FunctionsRelayError
+        ) {
+          throw new Error(
+            "Falha de conexão ao processar o pagamento. Verifique sua internet e tente novamente."
+          );
+        }
+
+        // FunctionsHttpError: supabase.functions.invoke coloca o body parseado
+        // em fnError.context quando a edge function retorna status não-2xx
         let errMsg = fnError.message || "Falha no pagamento.";
         try {
           const ctx = fnError.context as unknown;
