@@ -248,6 +248,15 @@ export function CartaoCheckoutDialog({
     setError(null);
 
     try {
+      // 0. Garante que a sessão está válida antes de chamar a edge function.
+      // Se o usuário ficou um tempo inativo na tela de checkout, o access_token
+      // pode ter expirado sem o autoRefreshToken renová-lo a tempo, fazendo a
+      // function rejeitar com 401 (sem nenhum log de negócio do lado dela).
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        throw new Error("Sua sessão expirou. Saia e entre novamente para continuar o pagamento.");
+      }
+
       // 1. Tokeniza no navegador (cartão NÃO passa pelo nosso servidor)
       const cardToken = await tokenizeCard();
 
