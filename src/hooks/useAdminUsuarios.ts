@@ -174,7 +174,9 @@ export function useAdminUsuarios() {
         ];
         const hasPaidPlan = planosPagos.includes(item.plano_tipo);
         const dataFimValida = !item.data_fim || new Date(item.data_fim) > new Date();
-        const isPagante = hasPaidPlan && item.status === "active" && !isTrial && dataFimValida;
+        // Ticto e Stripe não são mais usados (sem cobrança recorrente real) — só Pagar.me conta como pagante ativo
+        const isPagamentoVigente = (item.payment_provider || "").toLowerCase() === "pagarme";
+        const isPagante = hasPaidPlan && item.status === "active" && !isTrial && dataFimValida && isPagamentoVigente;
 
         let diasRestantesTrial: number | null = null;
         let horasRestantesTrial: number | null = null;
