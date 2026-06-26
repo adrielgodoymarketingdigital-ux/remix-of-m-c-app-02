@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
@@ -59,6 +59,7 @@ import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { KanbanOrdensServico } from "@/components/ordens/KanbanOrdensServico";
+import { KanbanTempoAberto } from "@/components/ordens/KanbanTempoAberto";
 
 const DialogOrdemServico = lazy(() => import("@/components/ordens/DialogOrdemServico").then((m) => ({ default: m.DialogOrdemServico })));
 const DialogOrdemServicoSimplificada = lazy(() => import("@/components/ordens/DialogOrdemServicoSimplificada").then((m) => ({ default: m.DialogOrdemServicoSimplificada })));
@@ -170,7 +171,7 @@ export default function OrdemServicoPage() {
   const [avulsoParaExcluir, setAvulsoParaExcluir] = useState<string | null>(null);
   const [dialogImportarOS, setDialogImportarOS] = useState(false);
   const [dialogExportarRelatorio, setDialogExportarRelatorio] = useState(false);
-  const [visualizacao, setVisualizacao] = useState<"tabela" | "kanban">("tabela");
+  const [visualizacao, setVisualizacao] = useState<"tabela" | "kanban" | "tempo">("tabela");
   const [dialogEtiqueta, setDialogEtiqueta] = useState(false);
   const [ordemParaEtiqueta, setOrdemParaEtiqueta] = useState<OrdemServico | null>(null);
   const [dialogPersonalizarColunas, setDialogPersonalizarColunas] = useState(false);
@@ -900,9 +901,9 @@ export default function OrdemServicoPage() {
                     value={visualizacao}
                     onValueChange={(v) => {
                       if (!v) return;
-                      const novaVis = v as "tabela" | "kanban";
-                      if (novaVis === "kanban" && statusFiltro !== "todos") setStatusFiltro("todos");
-                      if (novaVis === "kanban") handleCancelarSelecao();
+                      const novaVis = v as "tabela" | "kanban" | "tempo";
+                      if (novaVis !== "tabela" && statusFiltro !== "todos") setStatusFiltro("todos");
+                      if (novaVis !== "tabela") handleCancelarSelecao();
                       setVisualizacao(novaVis);
                     }}
                     className="rounded-lg bg-background border border-border/50 p-0.5 h-7"
@@ -914,6 +915,10 @@ export default function OrdemServicoPage() {
                     <ToggleGroupItem value="kanban" className="gap-1.5 text-xs px-3 h-6 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
                       <Columns3 className="h-3 w-3" />
                       Kanban
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="tempo" className="gap-1.5 text-xs px-3 h-6 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                      <Timer className="h-3 w-3" />
+                      Tempo Aberto
                     </ToggleGroupItem>
                   </ToggleGroup>
                 </div>
@@ -1086,6 +1091,53 @@ export default function OrdemServicoPage() {
                       }
                     }}
                     onAtualizarStatus={handleAtualizarStatus}
+                    onEnviarWhatsApp={handleEnviarWhatsApp}
+                    onCompartilhar={handleCompartilhar}
+                    onImprimirTermo={handleImprimirTermo}
+                    onImprimirEtiqueta={handleImprimirEtiqueta}
+                    termoAtivo={(configuracaoLoja?.termo_responsabilidade_config as TermoResponsabilidadeConfig)?.ativo}
+                  />
+                </div>
+              )}
+
+              {visualizacao === "tempo" && (
+                <div className="w-full max-w-full overflow-hidden">
+                  <KanbanTempoAberto
+                    ordens={(() => {
+                      const avulsosComoOrdens: OrdemServico[] = servicosAvulsosFiltrados.map((sa) => ({
+                        id: sa.id,
+                        numero_os: "AVULSO",
+                        created_at: sa.created_at,
+                        data_saida: sa.created_at,
+                        defeito_relatado: sa.nome + (sa.observacoes ? ` - ${sa.observacoes}` : ''),
+                        total: sa.preco,
+                        status: sa.status || "finalizado",
+                        dispositivo_modelo: "",
+                        dispositivo_imei: null,
+                        dispositivo_tipo: "Serviço Avulso",
+                        dispositivo_marca: "",
+                        dispositivo_cor: null,
+                        dispositivo_numero_serie: null,
+                        senha_desbloqueio: null,
+                        avarias: { is_avulso: true, custo: sa.custo, lucro: sa.lucro },
+                        cliente_id: "",
+                        funcionario_id: null,
+                        tempo_garantia: null,
+                        cliente: { id: "", nome: "—", telefone: null, cpf: null, endereco: null },
+                      } as OrdemServico));
+                      return [...ordens, ...avulsosComoOrdens];
+                    })()}
+                    loading={loading}
+                    onVisualizar={handleVisualizar}
+                    onEditar={handleEditar}
+                    onImprimir={handleImprimir}
+                    onExcluir={(ordem) => {
+                      if ((ordem.avarias as any)?.is_avulso) {
+                        setAvulsoParaExcluir(ordem.id);
+                      } else {
+                        handleExcluirClick(ordem);
+                      }
+                    }}
                     onEnviarWhatsApp={handleEnviarWhatsApp}
                     onCompartilhar={handleCompartilhar}
                     onImprimirTermo={handleImprimirTermo}
