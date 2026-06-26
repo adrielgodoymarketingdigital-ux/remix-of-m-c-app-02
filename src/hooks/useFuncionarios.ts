@@ -3,16 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Funcionario, FuncionarioFormData } from "@/types/funcionario";
 import type { Json } from "@/integrations/supabase/types";
-import { useEmpresa } from "@/contexts/EmpresaContext";
+import { applyEmpresaFilter, useEmpresaInfo } from "@/hooks/useResolvedUserId";
 
 export function useFuncionarios(lojaUserIdOverride?: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { empresas, empresaAtiva } = useEmpresa();
-  const empresaSelecionada = empresas.find(e => e.id === empresaAtiva);
+  const { empresaId, isFilial } = useEmpresaInfo();
 
   const { data: funcionarios = [], isLoading: carregando, refetch } = useQuery({
-    queryKey: ["funcionarios", lojaUserIdOverride, empresaAtiva],
+    queryKey: ["funcionarios", lojaUserIdOverride, empresaId, isFilial],
     queryFn: async () => {
       let lojaUserId = lojaUserIdOverride;
 
@@ -48,13 +47,7 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
         .eq("loja_user_id", lojaUserId)
         .order("created_at", { ascending: false });
 
-      if (empresaAtiva) {
-        // Filial selecionada: mostrar apenas funcionários dessa filial
-        query = query.eq("empresa_id", empresaAtiva);
-      } else {
-        // Sem filial selecionada: mostrar apenas funcionários da matriz (sem empresa_id)
-        query = query.is("empresa_id", null);
-      }
+      query = applyEmpresaFilter(query, empresaId, isFilial);
 
       const { data, error } = await query;
 
@@ -87,6 +80,7 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
           comissao_valor: dados.comissao_valor || 0,
           comissao_escopo: dados.comissao_escopo || null,
           comissoes_por_cargo: dados.comissoes_por_cargo || null,
+          empresa_id: isFilial ? empresaId : null,
         },
       });
 

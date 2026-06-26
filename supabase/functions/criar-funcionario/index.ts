@@ -17,6 +17,7 @@ interface CriarFuncionarioRequest {
   comissao_valor?: number;
   comissao_escopo?: string | null;
   comissoes_por_cargo?: Record<string, { tipo: string; valor: number; escopo: string }> | null;
+  empresa_id?: string | null;
 }
 
 serve(async (req: Request) => {
@@ -56,7 +57,6 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     const lojaUserIdEfetivo = gerenteFilial?.proprietario_id ?? usuarioLogado.id;
-    const empresaIdFuncionario = gerenteFilial?.empresa_id ?? null;
 
     const { data: assinatura, error: assinaturaError } = await supabaseAdmin
       .from("assinaturas").select("*").eq("user_id", lojaUserIdEfetivo).maybeSingle();
@@ -69,13 +69,31 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Assinatura inativa. Ative seu plano para cadastrar funcionários." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { nome, email, senha, permissoes, cargo, comissao_tipo, comissao_valor, comissao_escopo, comissoes_por_cargo }: CriarFuncionarioRequest = await req.json();
+    const { nome, email, senha, permissoes, cargo, comissao_tipo, comissao_valor, comissao_escopo, comissoes_por_cargo, empresa_id }: CriarFuncionarioRequest = await req.json();
 
     if (!nome || !email || !senha) {
       return new Response(JSON.stringify({ error: "Nome, email e senha são obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if (senha.length < 6) {
       return new Response(JSON.stringify({ error: "A senha deve ter pelo menos 6 caracteres" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Determina o empresa_id do novo funcionário:
+    // - Gerente de filial logado → sempre a filial que ele gerencia (ignora o que vier do client)
+    // - Dono logado → usa o empresa_id da filial ativa enviado pelo client,
+    //   validando que a empresa pertence mesmo a ele (matriz ou filial própria)
+    let empresaIdFuncionario: string | null = gerenteFilial?.empresa_id ?? null;
+    if (!gerenteFilial && empresa_id) {
+      const { data: empresaValida } = await supabaseAdmin
+        .from("empresas")
+        .select("id")
+        .eq("id", empresa_id)
+        .eq("proprietario_id", lojaUserIdEfetivo)
+        .maybeSingle();
+      if (!empresaValida) {
+        return new Response(JSON.stringify({ error: "Empresa inválida" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      empresaIdFuncionario = empresa_id;
     }
 
     const { data: funcionarioExistente } = await supabaseAdmin
