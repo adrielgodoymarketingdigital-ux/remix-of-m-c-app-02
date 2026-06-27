@@ -71,7 +71,8 @@ export interface CompraDispositivo {
   assinatura_cliente_data?: string;
   created_at: string;
   updated_at: string;
-  
+  empresa_id?: string | null;
+
   // Joins - campos parciais para evitar conflitos de tipos
   origem_pessoas?: Partial<OrigemPessoa> & { id: string; nome: string };
   fornecedores?: {

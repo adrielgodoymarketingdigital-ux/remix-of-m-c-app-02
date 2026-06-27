@@ -643,6 +643,7 @@ const PDV = () => {
           numeroParcelas: formaPagamento === "credito_parcelado" ? numeroParcelas : undefined,
           data: agora(),
           grupoVendaId: grupoVendaId,
+          empresaId: empresaIdPDV,
           pagamentoDuplo: pagamentoDuploAtivo && segundaFormaPagamento ? {
             valorPrimeira: valorPrimeiraPagamento,
             segundaForma: segundaFormaPagamento,

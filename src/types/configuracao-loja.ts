@@ -177,6 +177,7 @@ export const TRACKING_CONFIG_PADRAO: TrackingPageConfig = {
 
 export interface ConfiguracaoLoja {
   id: string;
+  empresa_id?: string | null;
   nome_loja: string;
   razao_social?: string;
   cnpj?: string;

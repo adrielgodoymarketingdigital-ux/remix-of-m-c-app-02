@@ -71,7 +71,7 @@ export function DialogReimpressaoRecibo({
   venda,
 }: DialogReimpressaoReciboProps) {
   const reciboRef = useRef<HTMLDivElement>(null);
-  const { config: configLoja } = useConfiguracaoLoja();
+  const { config: configLoja } = useConfiguracaoLoja(venda?.empresa_id);
   const { toast } = useToast();
   const [dispositivo, setDispositivo] = useState<Dispositivo | null>(null);
   const [clienteCompleto, setClienteCompleto] = useState<any>(null);

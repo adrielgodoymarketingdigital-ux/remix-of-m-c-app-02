@@ -11,15 +11,24 @@ import { ConfiguracaoPermissoes } from "@/components/configuracoes/ConfiguracaoP
 
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useToast } from "@/hooks/use-toast";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, Building2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 export default function Configuracoes() {
+  const { isProprietario, empresas, nomeMatriz, empresaAtiva, setEmpresaAtiva } = useEmpresa();
+
+  // empresaId usado para buscar/gravar a config: null = matriz/conta principal.
+  // Reaproveita o seletor de filial ativa já existente no app (EmpresaContext).
+  const empresaIdConfig = isProprietario ? empresaAtiva : null;
+
   const { config, loading, atualizarConfiguracao, validarParaRecibos } =
-    useConfiguracaoLoja();
+    useConfiguracaoLoja(empresaIdConfig);
   const { toast } = useToast();
 
   const statusRecibos = validarParaRecibos();
@@ -68,6 +77,39 @@ export default function Configuracoes() {
               Gerencie as configurações e dados da sua loja
             </p>
           </div>
+
+          {isProprietario && empresas.length > 0 && (
+            <Card>
+              <CardContent className="pt-4 sm:pt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Editando dados de</Label>
+                </div>
+                <Select
+                  value={empresaAtiva ?? "__matriz__"}
+                  onValueChange={(value) =>
+                    setEmpresaAtiva(value === "__matriz__" ? null : value)
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-80">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__matriz__">{nomeMatriz} (matriz)</SelectItem>
+                    {empresas.map((empresa) => (
+                      <SelectItem key={empresa.id} value={empresa.id}>
+                        {empresa.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Cada filial pode ter seus próprios dados (endereço, CNPJ, logo, etc.) para
+                  que apareçam corretamente na impressão dos recibos dela.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Card de Status */}
           <Card>

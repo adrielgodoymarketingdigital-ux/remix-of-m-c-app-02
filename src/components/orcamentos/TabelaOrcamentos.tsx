@@ -30,7 +30,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { gerarOrcamentoPDF } from "@/lib/gerarOrcamentoPDF";
-import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import { buscarConfiguracaoLojaPorEmpresa } from "@/hooks/useConfiguracaoLoja";
 import { Orcamento, StatusOrcamento } from "@/types/orcamento";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { useIsMobileOrTablet } from "@/hooks/use-mobile";
@@ -133,10 +133,10 @@ export function TabelaOrcamentos({
   onAtualizarStatus,
   onConverterOS,
 }: TabelaOrcamentosProps) {
-  const { config: lojaConfig } = useConfiguracaoLoja();
   const isMobileOrTablet = useIsMobileOrTablet();
 
   const handleImprimir = async (orcamento: Orcamento) => {
+    const lojaConfig = await buscarConfiguracaoLojaPorEmpresa(orcamento.empresa_id);
     await gerarOrcamentoPDF(orcamento, lojaConfig);
   };
 

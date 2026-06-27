@@ -28,7 +28,7 @@ const CONFIG_PADRAO: EtiquetaOSConfig = {
 };
 
 export function ImpressaoEtiqueta({ ordem, onFechar, printWindow }: ImpressaoEtiquetaProps) {
-  const { config } = useConfiguracaoLoja();
+  const { config } = useConfiguracaoLoja(ordem.empresa_id);
 
   const etiquetaConfig: EtiquetaOSConfig = {
     ...CONFIG_PADRAO,

@@ -823,9 +823,9 @@ function PainelVendas({ ultimas, porTipo, onVerTodas }: { ultimas: VendaItem[]; 
 
 // ─── Card de Empresa ──────────────────────────────────────────────────────────
 
-function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar, onEditarNome, onEditarGerente, onExcluir }: {
+function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes, onVerVendas, onAcessar, onConfigurarDados, onEditarNome, onEditarGerente, onExcluir }: {
   empresa: EmpresaCard; isMatriz: boolean; cor: string; fatTotal: number;
-  onMetas: () => void; onNotificacoes: () => void; onVerVendas: () => void; onAcessar: () => void;
+  onMetas: () => void; onNotificacoes: () => void; onVerVendas: () => void; onAcessar: () => void; onConfigurarDados: () => void;
   onEditarNome: () => void; onEditarGerente?: () => void; onExcluir?: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
@@ -908,6 +908,9 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
         {expandido && <PainelVendas ultimas={empresa.metricas.ultimas_vendas || []} porTipo={empresa.metricas.vendas_por_tipo || []} onVerTodas={onVerVendas} />}
         <div className="flex flex-col gap-2 pt-1">
           <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={onAcessar}>Acessar empresa</Button>
+          <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={onConfigurarDados}>
+            Configurar dados para recibos
+          </Button>
           <div className="flex gap-2">
             <Button size="sm" className="flex-1 text-xs h-8" onClick={onMetas}>Metas</Button>
             <Button size="sm" variant="outline" className="text-xs h-8 px-2" onClick={onNotificacoes} title="Notificações"><Bell className="h-4 w-4" /></Button>
@@ -1148,7 +1151,14 @@ export default function MultiEmpresas() {
         toast.error(msg); return;
       }
       if (response.data?.error) { toast.error(response.data.error); return; }
-      toast.success(response.data.mensagem || "Filial criada com sucesso!");
+      const novaEmpresaId = response.data?.empresa?.id as string | undefined;
+      toast.success(response.data.mensagem || "Filial criada com sucesso!", {
+        description: "Agora preencha o endereço, CNPJ e logo da filial para que apareçam nos recibos dela.",
+        action: novaEmpresaId
+          ? { label: "Configurar dados", onClick: () => { setEmpresaAtiva(novaEmpresaId); navigate("/configuracoes"); } }
+          : undefined,
+        duration: 8000,
+      });
       setDialogNova(false);
       await Promise.all([carregarDados(), carregarEmpresas()]);
     } catch (e: any) { toast.error("Erro ao criar filial: " + e.message); }
@@ -1370,12 +1380,14 @@ export default function MultiEmpresas() {
                   <CardEmpresa empresa={matriz} isMatriz={true} cor="#f59e0b" fatTotal={fatTotal}
                     onMetas={() => abrirMetas(matriz)} onNotificacoes={() => abrirNotificacoes(matriz)}
                     onVerVendas={() => navigate("/vendas")} onAcessar={() => { setEmpresaAtiva(matriz.id); navigate("/os"); }}
+                    onConfigurarDados={() => { setEmpresaAtiva(null); navigate("/configuracoes"); }}
                     onEditarNome={() => abrirEditarNome(matriz)} />
                 )}
                 {filiais.map((empresa, i) => (
                   <CardEmpresa key={empresa.id} empresa={empresa} isMatriz={false} cor={CORES[i % CORES.length]} fatTotal={fatTotal}
                     onMetas={() => abrirMetas(empresa)} onNotificacoes={() => abrirNotificacoes(empresa)}
                     onVerVendas={() => navigate("/vendas")} onAcessar={() => { setEmpresaAtiva(empresa.id); navigate("/os"); }}
+                    onConfigurarDados={() => { setEmpresaAtiva(empresa.id); navigate("/configuracoes"); }}
                     onEditarNome={() => abrirEditarNome(empresa)} onEditarGerente={() => abrirGerente(empresa)} onExcluir={() => abrirExcluir(empresa)} />
                 ))}
                 {filiais.length < 3 && (

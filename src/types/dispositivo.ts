@@ -32,6 +32,7 @@ export interface Dispositivo {
   codigo_barras?: string;
   created_at: string;
   imeis?: string[];
+  empresa_id?: string | null;
 }
 
 export interface FormularioDispositivo {

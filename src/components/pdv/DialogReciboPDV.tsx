@@ -98,6 +98,7 @@ export interface DadosReciboPDV {
   numeroParcelas?: number;
   data: string;
   grupoVendaId: string;
+  empresaId?: string | null;
   pagamentoDuplo?: {
     valorPrimeira: number;
     segundaForma: string;
@@ -126,7 +127,7 @@ export function DialogReciboPDV({
   dados,
 }: DialogReciboPDVProps) {
   const reciboRef = useRef<HTMLDivElement>(null);
-  const { config: configLoja } = useConfiguracaoLoja();
+  const { config: configLoja } = useConfiguracaoLoja(dados?.empresaId);
   const { toast } = useToast();
 
   const copiarTextoRecibo = async () => {

@@ -154,7 +154,7 @@ export function DialogReciboVenda({
   const [mesesCustom, setMesesCustom] = useState<string>("");
   const reciboRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { config: configLoja, refetch } = useConfiguracaoLoja();
+  const { config: configLoja, refetch } = useConfiguracaoLoja(dispositivo?.empresa_id);
   const { funcionarioId } = useFuncionarioPermissoes();
 
   const termoConfig = configLoja?.termo_garantia_dispositivo_config as TermoGarantiaDispositivoConfig | undefined;

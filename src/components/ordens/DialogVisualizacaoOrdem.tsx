@@ -35,7 +35,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
   const [dialogAssinaturaSaidaAberto, setDialogAssinaturaSaidaAberto] = useState(false);
   const [dialogWhatsAppAberto, setDialogWhatsAppAberto] = useState(false);
   const [linkAcompanhamento, setLinkAcompanhamento] = useState<string | null>(null);
-  const { config: configuracaoLoja } = useConfiguracaoLoja();
+  const { config: configuracaoLoja } = useConfiguracaoLoja(ordem?.empresa_id);
   const { statusList } = useOSStatusConfig();
   const { gerarLink, gerando } = useOSTracking();
 

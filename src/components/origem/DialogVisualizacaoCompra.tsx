@@ -16,7 +16,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
-import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
 
 interface DialogVisualizacaoCompraProps {
@@ -31,7 +31,6 @@ export function DialogVisualizacaoCompra({
   compra,
 }: DialogVisualizacaoCompraProps) {
   const { toast } = useToast();
-  const { config, validarParaRecibos } = useConfiguracaoLoja();
   const [gerandoPDF, setGerandoPDF] = useState(false);
 
   if (!compra) return null;
@@ -41,14 +40,10 @@ export function DialogVisualizacaoCompra({
 
     setGerandoPDF(true);
     try {
-      // Buscar configuração da loja com validação robusta
-      const { data: config, error: configError } = await supabase
-        .from("configuracoes_loja")
-        .select("*")
-        .limit(1)
-        .maybeSingle();
+      // Buscar configuração da loja (da filial da compra, com fallback para a matriz)
+      const config = await buscarConfiguracaoLojaPorEmpresa(compra.empresa_id);
 
-      if (configError || !config) {
+      if (!config) {
         toast({
           title: "Erro ao buscar configuração",
           description: "Não foi possível encontrar as configurações da loja. Configure os dados da loja primeiro.",
@@ -60,8 +55,8 @@ export function DialogVisualizacaoCompra({
 
       // Validar campos obrigatórios da loja
       // Usar validação robusta para recibos
-      const validacao = validarParaRecibos();
-      
+      const validacao = validarConfiguracaoParaRecibos(config);
+
       if (!validacao.valido) {
         toast({
           title: "Dados da loja incompletos",

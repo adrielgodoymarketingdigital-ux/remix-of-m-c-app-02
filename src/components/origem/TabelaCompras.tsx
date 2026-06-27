@@ -29,7 +29,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
 import { supabase } from "@/integrations/supabase/client";
-import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
 
 interface TabelaComprasProps {
@@ -53,12 +53,13 @@ export function TabelaCompras({
 }: TabelaComprasProps) {
   const [compraParaExcluir, setCompraParaExcluir] = useState<string | null>(null);
   const [gerandoRecibo, setGerandoRecibo] = useState<Record<string, boolean>>({});
-  const { config, validarParaRecibos } = useConfiguracaoLoja();
 
   const handleGerarRecibo = async (compra: CompraDispositivo) => {
     try {
       setGerandoRecibo(prev => ({ ...prev, [compra.id]: true }));
-      
+
+      const config = await buscarConfiguracaoLojaPorEmpresa(compra.empresa_id);
+
       // Validar configuração da loja
       if (!config) {
         toast.error("Configure os dados da loja primeiro");
@@ -66,8 +67,8 @@ export function TabelaCompras({
       }
 
       // Usar validação robusta para recibos
-      const validacao = validarParaRecibos();
-      
+      const validacao = validarConfiguracaoParaRecibos(config);
+
       if (!validacao.valido) {
         toast.error(
           `Complete os dados da loja antes de gerar recibos. Faltam: ${validacao.camposFaltando.join(", ")}`,

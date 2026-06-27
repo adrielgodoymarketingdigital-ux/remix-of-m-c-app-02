@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -691,6 +717,7 @@ export type Database = {
           cores_personalizadas: Json | null
           created_at: string | null
           email: string | null
+          empresa_id: string | null
           endereco: string | null
           estado: string | null
           facebook: string | null
@@ -733,6 +760,7 @@ export type Database = {
           cores_personalizadas?: Json | null
           created_at?: string | null
           email?: string | null
+          empresa_id?: string | null
           endereco?: string | null
           estado?: string | null
           facebook?: string | null
@@ -775,6 +803,7 @@ export type Database = {
           cores_personalizadas?: Json | null
           created_at?: string | null
           email?: string | null
+          empresa_id?: string | null
           endereco?: string | null
           estado?: string | null
           facebook?: string | null
@@ -805,7 +834,15 @@ export type Database = {
           user_id?: string
           whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "configuracoes_loja_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contas: {
         Row: {
@@ -5122,6 +5159,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "tecnico", "vendedor"],
@@ -5185,3 +5225,6 @@ export const Constants = {
     },
   },
 } as const
+posthog 2026/06/27 11:06:26 WARN: sending request - Post "https://eu.i.posthog.com/batch/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+A new version of Supabase CLI is available: v2.108.0 (currently installed v2.90.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

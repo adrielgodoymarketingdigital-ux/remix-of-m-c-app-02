@@ -41,6 +41,7 @@ export interface Orcamento {
   modelo_dispositivo?: string;
   cor_dispositivo?: string;
   checklist?: ChecklistOrcamento;
+  empresa_id?: string | null;
   created_at: string;
   updated_at: string;
 }

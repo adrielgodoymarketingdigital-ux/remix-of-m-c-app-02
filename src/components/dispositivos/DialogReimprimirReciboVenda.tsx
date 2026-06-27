@@ -45,6 +45,7 @@ interface VendaDispositivo {
   dispositivo_garantia?: boolean;
   dispositivo_tempo_garantia?: number;
   dispositivo_checklist?: any;
+  empresa_id?: string | null;
 }
 
 const FORMAS_PAGAMENTO_LABEL: Record<string, string> = {
@@ -140,7 +141,7 @@ export function DialogReimprimirReciboVenda({
 }: DialogReimprimirReciboVendaProps) {
   const reciboRef = useRef<HTMLDivElement>(null);
   const garantiaRef = useRef<HTMLDivElement>(null);
-  const { config: configLoja, refetch } = useConfiguracaoLoja();
+  const { config: configLoja, refetch } = useConfiguracaoLoja(venda?.empresa_id);
 
   useEffect(() => {
     if (open) refetch();

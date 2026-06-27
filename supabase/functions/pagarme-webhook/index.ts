@@ -218,7 +218,11 @@ serve(async (req) => {
     const charge = order.charges?.[0];
     const paidAt = charge?.paid_at || order.closed_at || new Date().toISOString();
 
-    log("Order paga", { orderId, chargeId: charge?.id, paidAt });
+    // A Pagar.me às vezes não ecoa order.metadata no payload de order.paid,
+    // mas costuma replicar a metadata da order no charge. Checamos os dois.
+    const orderOrigem = order?.metadata?.origem ?? charge?.metadata?.origem ?? null;
+
+    log("Order paga", { orderId, chargeId: charge?.id, paidAt, orderOrigem, orderMetadata: order?.metadata, chargeMetadata: charge?.metadata });
 
     // ── 1. Buscar pagamento PIX no banco ─────────────────────────────
     const { data: pagamento, error: fetchError } = await supabaseAdmin
@@ -427,8 +431,11 @@ serve(async (req) => {
     await dispararMetaCapiPurchase(supabaseAdmin, userId, pagamento.valor_centavos, planoTipo);
 
     // 📣 Notificar n8n — confirmação de pagamento PIX renovação (fire-and-forget)
-    // Só dispara se a order veio pelo fluxo de renovação (metadata.origem = "renovacao")
-    if (order?.metadata?.origem === "renovacao") {
+    // Dispara se a metadata indicar renovação OU se já existia assinatura prévia
+    // (fallback caso a Pagar.me não ecoe metadata.origem no webhook).
+    const isRenovacao = orderOrigem === "renovacao" || !!assinaturaExistente;
+
+    if (isRenovacao) {
       const { data: profileN8n } = await supabaseAdmin
         .from("profiles")
         .select("nome, email, celular")
@@ -454,7 +461,7 @@ serve(async (req) => {
 
     // 📣 Notificar n8n — novo assinante via PIX (fire-and-forget)
     // Só dispara quando NÃO é renovação
-    if (order?.metadata?.origem !== "renovacao") {
+    if (!isRenovacao) {
       try {
         const { data: profileNovoAssinante } = await supabaseAdmin
           .from("profiles")

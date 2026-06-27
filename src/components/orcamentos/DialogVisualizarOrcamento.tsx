@@ -64,7 +64,7 @@ export function DialogVisualizarOrcamento({
   orcamento,
   onConverter,
 }: DialogVisualizarOrcamentoProps) {
-  const { config: lojaConfig } = useConfiguracaoLoja();
+  const { config: lojaConfig } = useConfiguracaoLoja(orcamento?.empresa_id);
   const [imprimindo, setImprimindo] = useState(false);
   const [configImpressao, setConfigImpressao] = useState<typeof lojaConfig | null>(null);
   const [configLayoutAberto, setConfigLayoutAberto] = useState(false);

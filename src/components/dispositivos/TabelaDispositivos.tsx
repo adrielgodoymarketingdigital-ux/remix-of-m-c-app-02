@@ -35,7 +35,7 @@ import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
-import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import { buscarConfiguracaoLojaPorEmpresa } from "@/hooks/useConfiguracaoLoja";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 
@@ -65,7 +65,6 @@ export function TabelaDispositivos({
   const [recibosStatus, setRecibosStatus] = useState<Record<string, { temRecibo: boolean; compraId: string | null }>>({});
   const [gerandoRecibo, setGerandoRecibo] = useState<string | null>(null);
   const { toast } = useToast();
-  const { config, loading: loadingConfig, validarDadosObrigatorios } = useConfiguracaoLoja();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
 
   useEffect(() => {
@@ -107,20 +106,17 @@ export function TabelaDispositivos({
 
     setGerandoRecibo(dispositivo.id);
     try {
-      if (loadingConfig) {
-        toast({
-          title: "Aguarde",
-          description: "Carregando configurações da loja...",
-        });
-        setGerandoRecibo(null);
-        return;
-      }
-
-      const validacao = validarDadosObrigatorios();
-      if (!validacao.valido) {
+      const config = await buscarConfiguracaoLojaPorEmpresa(dispositivo.empresa_id);
+      const camposFaltando: string[] = [];
+      if (!config?.nome_loja) camposFaltando.push("Nome da loja");
+      if (!config?.razao_social) camposFaltando.push("Razão social");
+      if (!config?.cnpj) camposFaltando.push("CNPJ");
+      if (!config?.endereco) camposFaltando.push("Endereço");
+      if (!config?.telefone) camposFaltando.push("Telefone");
+      if (camposFaltando.length > 0) {
         toast({
           title: "Dados da loja incompletos",
-          description: `Por favor, complete os seguintes campos nas configurações: ${validacao.camposFaltando.join(", ")}`,
+          description: `Por favor, complete os seguintes campos nas configurações: ${camposFaltando.join(", ")}`,
           variant: "destructive",
         });
         setGerandoRecibo(null);

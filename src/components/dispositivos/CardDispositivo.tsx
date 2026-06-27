@@ -20,7 +20,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
-import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -51,7 +51,6 @@ export function CardDispositivo({
   const [temRecibo, setTemRecibo] = useState(false);
   const [compraId, setCompraId] = useState<string | null>(null);
   const [gerandoRecibo, setGerandoRecibo] = useState(false);
-  const { config, loading: loadingConfig, validarParaRecibos } = useConfiguracaoLoja();
 
   useEffect(() => {
     const verificarRecibo = async () => {
@@ -84,17 +83,9 @@ export function CardDispositivo({
 
     setGerandoRecibo(true);
     try {
-      // Validar configuração da loja
-      if (loadingConfig) {
-        toast({
-          title: "Aguarde",
-          description: "Carregando configurações da loja...",
-        });
-        setGerandoRecibo(false);
-        return;
-      }
-
-      const validacao = validarParaRecibos();
+      // Validar configuração da loja (da filial do dispositivo, com fallback para a matriz)
+      const config = await buscarConfiguracaoLojaPorEmpresa(dispositivo.empresa_id);
+      const validacao = validarConfiguracaoParaRecibos(config);
       if (!validacao.valido) {
         toast({
           title: "Dados da loja incompletos",

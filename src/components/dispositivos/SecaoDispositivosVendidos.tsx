@@ -46,6 +46,7 @@ interface VendaDispositivo {
   dispositivo_garantia?: boolean;
   dispositivo_tempo_garantia?: number;
   dispositivo_checklist?: any;
+  empresa_id?: string | null;
 }
 
 const FORMAS_PAGAMENTO_LABEL: Record<string, string> = {
@@ -109,7 +110,7 @@ export function SecaoDispositivosVendidos() {
       // First fetch vendas filtered by user
       let queryVendas = supabase
         .from("vendas")
-        .select("id, dispositivo_id, cliente_id, quantidade, total, valor_desconto_manual, valor_desconto_cupom, custo_unitario, forma_pagamento, data, grupo_venda, observacoes")
+        .select("id, dispositivo_id, cliente_id, quantidade, total, valor_desconto_manual, valor_desconto_cupom, custo_unitario, forma_pagamento, data, grupo_venda, observacoes, empresa_id")
         .eq("user_id", userId)
         .eq("tipo", "dispositivo")
         .not("dispositivo_id", "is", null)
@@ -194,6 +195,7 @@ export function SecaoDispositivosVendidos() {
           dispositivo_garantia: disp?.garantia,
           dispositivo_tempo_garantia: disp?.tempo_garantia,
           dispositivo_checklist: disp?.checklist,
+          empresa_id: v.empresa_id ?? null,
         };
       });
 
