@@ -197,32 +197,54 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════════
     // EVENTO PIX (order.paid)
     // ════════════════════════════════════════════════════════════════
-    if (eventType !== "order.paid") {
-      log("Evento ignorado", { type: eventType });
-      return new Response(JSON.stringify({ received: true, ignored: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (eventType === "order.paid") {
+      const order = body?.data;
+      if (!order?.id) {
+        log("Payload sem order id");
+        return new Response(JSON.stringify({ error: "Payload inválido" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const orderId = order.id as string;
+      const charge = order.charges?.[0];
+      const orderOrigem = order?.metadata?.origem ?? charge?.metadata?.origem ?? null;
+
+      return await handlePixOrderPaid(orderId, charge, orderOrigem, supabaseAdmin, order?.customer?.code ?? null);
     }
 
-    const order = body?.data;
-    if (!order?.id) {
-      log("Payload sem order id");
-      return new Response(JSON.stringify({ error: "Payload inválido" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    log("Evento ignorado", { type: eventType });
+    return new Response(JSON.stringify({ received: true, ignored: true }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    log("ERRO", { message: msg });
+    // Retorna 500 para Pagar.me retentar
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
 
-    const orderId = order.id as string;
-    const charge = order.charges?.[0];
-    const paidAt = charge?.paid_at || order.closed_at || new Date().toISOString();
+// ════════════════════════════════════════════════════════════════════
+// HANDLER PIX (order.paid OU fallback de charge.paid/charge.* por order_id)
+// ════════════════════════════════════════════════════════════════════
 
-    // A Pagar.me às vezes não ecoa order.metadata no payload de order.paid,
-    // mas costuma replicar a metadata da order no charge. Checamos os dois.
-    const orderOrigem = order?.metadata?.origem ?? charge?.metadata?.origem ?? null;
+// deno-lint-ignore no-explicit-any
+async function handlePixOrderPaid(
+  orderId: string,
+  charge: any,
+  orderOrigem: string | null,
+  supabaseAdmin: AdminClient,
+  customerCodeFromOrder: string | null,
+): Promise<Response> {
+    const paidAt = charge?.paid_at || new Date().toISOString();
 
-    log("Order paga", { orderId, chargeId: charge?.id, paidAt, orderOrigem, orderMetadata: order?.metadata, chargeMetadata: charge?.metadata });
+    log("Order paga", { orderId, chargeId: charge?.id, paidAt, orderOrigem });
 
     // ── 1. Buscar pagamento PIX no banco ─────────────────────────────
     const { data: pagamento, error: fetchError } = await supabaseAdmin
@@ -239,7 +261,7 @@ serve(async (req) => {
     if (!pagamento) {
       // Fallback: pagamento não veio pelo fluxo do app (ex: link externo Pagar.me/Ticto).
       // Tenta renovar pelo customer.code = user_id do pedido.
-      const customerCode = (order?.customer?.code as string) ?? null;
+      const customerCode = customerCodeFromOrder;
       log("Pagamento não encontrado — tentando fallback por customer.code", { orderId, customerCode });
 
       if (customerCode) {
@@ -544,16 +566,7 @@ serve(async (req) => {
       JSON.stringify({ received: true, processed: true, user_id: userId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    log("ERRO", { message: msg });
-    // Retorna 500 para Pagar.me retentar
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+}
 
 // ════════════════════════════════════════════════════════════════════
 // HANDLERS DE SUBSCRIPTION
@@ -581,6 +594,37 @@ async function handleSubscriptionCharged(
     ((data?.customer as Record<string, unknown>)?.code as string) ??
     ((data?.subscription as Record<string, unknown>)?.customer as Record<string, unknown>)?.code as string ??
     null;
+
+  // Fallback PIX: a Pagar.me pode notificar a confirmação de um PIX via charge.paid
+  // (em vez de order.paid). Nesse caso o evento não tem subscription_id nem
+  // customer.code útil para assinatura recorrente, mas o charge referencia o
+  // order_id — que é o mesmo order_id salvo em pagamentos_pix.pagarme_order_id.
+  // Sem este fallback, o evento cairia no "ignorando" abaixo e o pagamento PIX
+  // ficaria pending para sempre, mesmo já pago na Pagar.me.
+  if (!subscriptionId) {
+    const orderIdFromCharge =
+      (data?.order_id as string) ??
+      ((data?.order as Record<string, unknown>)?.id as string) ??
+      null;
+
+    if (orderIdFromCharge) {
+      const { data: pagamentoPix } = await supabaseAdmin
+        .from("pagamentos_pix")
+        .select("id")
+        .eq("pagarme_order_id", orderIdFromCharge)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (pagamentoPix) {
+        log("charge.paid identificado como PIX pendente — delegando para handlePixOrderPaid", {
+          orderIdFromCharge,
+          eventType,
+        });
+        const chargeOrigem = (data?.metadata as Record<string, unknown>)?.origem as string ?? null;
+        return await handlePixOrderPaid(orderIdFromCharge, data, chargeOrigem, supabaseAdmin, customerCode);
+      }
+    }
+  }
 
   if (!subscriptionId && !customerCode) {
     log("subscription.charged sem subscription_id e sem customer.code — ignorando", { data });
