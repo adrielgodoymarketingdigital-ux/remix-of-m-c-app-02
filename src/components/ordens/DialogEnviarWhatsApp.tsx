@@ -252,7 +252,7 @@ export const DialogEnviarWhatsApp = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg sm:max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>Enviar OS via WhatsApp</DialogTitle>
           <DialogDescription>
@@ -329,7 +329,7 @@ export const DialogEnviarWhatsApp = ({
           )}
         </div>
 
-        <DialogFooter className="gap-2 flex-col sm:flex-row">
+        <DialogFooter className="gap-2 flex-col">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
