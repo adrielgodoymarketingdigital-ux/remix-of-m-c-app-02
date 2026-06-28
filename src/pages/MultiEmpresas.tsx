@@ -1380,14 +1380,14 @@ export default function MultiEmpresas() {
                   <CardEmpresa empresa={matriz} isMatriz={true} cor="#f59e0b" fatTotal={fatTotal}
                     onMetas={() => abrirMetas(matriz)} onNotificacoes={() => abrirNotificacoes(matriz)}
                     onVerVendas={() => navigate("/vendas")} onAcessar={() => { setEmpresaAtiva(matriz.id); navigate("/os"); }}
-                    onConfigurarDados={() => { setEmpresaAtiva(null); navigate("/configuracoes"); }}
+                    onConfigurarDados={() => { setEmpresaAtiva(null); setTimeout(() => navigate("/configuracoes"), 50); }}
                     onEditarNome={() => abrirEditarNome(matriz)} />
                 )}
                 {filiais.map((empresa, i) => (
                   <CardEmpresa key={empresa.id} empresa={empresa} isMatriz={false} cor={CORES[i % CORES.length]} fatTotal={fatTotal}
                     onMetas={() => abrirMetas(empresa)} onNotificacoes={() => abrirNotificacoes(empresa)}
                     onVerVendas={() => navigate("/vendas")} onAcessar={() => { setEmpresaAtiva(empresa.id); navigate("/os"); }}
-                    onConfigurarDados={() => { setEmpresaAtiva(empresa.id); navigate("/configuracoes"); }}
+                    onConfigurarDados={() => { setEmpresaAtiva(empresa.id); setTimeout(() => navigate("/configuracoes"), 50); }}
                     onEditarNome={() => abrirEditarNome(empresa)} onEditarGerente={() => abrirGerente(empresa)} onExcluir={() => abrirExcluir(empresa)} />
                 ))}
                 {filiais.length < 3 && (
