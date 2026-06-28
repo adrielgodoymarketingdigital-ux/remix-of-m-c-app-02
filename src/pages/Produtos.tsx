@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw } from 'lucide-react';
+import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,9 +9,11 @@ import { useProdutos } from '@/hooks/useProdutos';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { useCategoriasProdutos } from '@/hooks/useCategoriasProdutos';
 import { useAssinatura } from '@/hooks/useAssinatura';
+import { useColunasVisiveis } from '@/hooks/useColunasVisiveis';
 import { DialogCadastroProduto } from '@/components/produtos/DialogCadastroProduto';
 import { DialogImportarProdutos } from '@/components/produtos/DialogImportarProdutos';
 import { DialogLimiteAtingido } from '@/components/planos/DialogLimiteAtingido';
+import { DialogConfiguracoesProdutos } from '@/components/produtos/DialogConfiguracoesProdutos';
 import { TabelaProdutos } from '@/components/produtos/TabelaProdutos';
 import { ItemEstoque, FormularioProduto } from '@/types/produto';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,7 +23,6 @@ import { exportarProdutosPDF, exportarMenosEstoquePDF, exportarMaisVendidosPDF }
 import { useConfiguracaoLoja } from '@/hooks/useConfiguracaoLoja';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { DialogGerenciarCategorias } from '@/components/produtos/DialogGerenciarCategorias';
 import { DialogReporEstoque } from '@/components/produtos/DialogReporEstoque';
 import { CardInventario } from '@/components/produtos/CardInventario';
 import { TabelaTrocasGarantia } from '@/components/produtos/TabelaTrocasGarantia';
@@ -36,6 +37,7 @@ const Produtos = () => {
   const { obterContagemProdutosMes, assinatura } = useAssinatura();
   const { config: configLoja } = useConfiguracaoLoja();
   const { trocas, criar: criarTroca, excluir: excluirTroca } = useTrocasGarantia();
+  const { colunasVisiveis, toggleColuna, resetarColunas } = useColunasVisiveis();
   const [abaAtiva, setAbaAtiva] = useState<'estoque' | 'trocas'>('estoque');
   const [dialogTrocaAberto, setDialogTrocaAberto] = useState(false);
   const [busca, setBusca] = useState('');
@@ -43,7 +45,7 @@ const Produtos = () => {
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dialogImportarAberto, setDialogImportarAberto] = useState(false);
   const [dialogLimiteAtingido, setDialogLimiteAtingido] = useState(false);
-  const [dialogCategoriasAberto, setDialogCategoriasAberto] = useState(false);
+  const [dialogConfiguracoesAberto, setDialogConfiguracoesAberto] = useState(false);
   const [contadorProdutos, setContadorProdutos] = useState({ usados: 0, limite: -1, ilimitado: true });
   const [itemParaEditar, setItemParaEditar] = useState<ItemEstoque | null>(null);
   const [itemParaRepor, setItemParaRepor] = useState<ItemEstoque | null>(null);
@@ -182,10 +184,10 @@ const Produtos = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setDialogCategoriasAberto(true)}
+                onClick={() => setDialogConfiguracoesAberto(true)}
               >
-                <Tag className="w-4 h-4 mr-2" />
-                Categorias
+                <Settings className="w-4 h-4 mr-2" />
+                Configurações
               </Button>
               <Button
                 variant="outline"
@@ -376,6 +378,7 @@ const Produtos = () => {
                   items={itemsFiltrados}
                   todosItems={items}
                   categorias={categorias}
+                  colunasVisiveis={colunasVisiveis}
                   onEdit={handleEdit}
                   onDelete={excluir}
                   onDeleteBulk={excluirEmMassa}
@@ -431,14 +434,17 @@ const Produtos = () => {
         limite={contadorProdutos.limite}
       />
 
-      {/* Dialog de Gerenciamento de Categorias */}
-      <DialogGerenciarCategorias
-        open={dialogCategoriasAberto}
-        onOpenChange={setDialogCategoriasAberto}
+      {/* Dialog de Configurações (Categorias e Colunas) */}
+      <DialogConfiguracoesProdutos
+        open={dialogConfiguracoesAberto}
+        onOpenChange={setDialogConfiguracoesAberto}
         categorias={categorias}
-        onCriar={criarCategoria}
-        onAtualizar={atualizarCategoria}
-        onExcluir={excluirCategoria}
+        onCriarCategoria={criarCategoria}
+        onAtualizarCategoria={atualizarCategoria}
+        onExcluirCategoria={excluirCategoria}
+        colunasVisiveis={colunasVisiveis}
+        onToggleColuna={toggleColuna}
+        onResetarColunas={resetarColunas}
       />
 
       {/* Dialog de Reposição de Estoque */}

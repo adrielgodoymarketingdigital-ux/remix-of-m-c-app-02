@@ -40,6 +40,7 @@ interface TabelaProdutosProps {
   onAlterarTipoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], novoTipo: 'produto' | 'peca') => Promise<boolean>;
   onAlterarPrecoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], novoPreco: number, novoPrecoAtacado: number | null) => Promise<boolean>;
   onReporEstoque?: (item: ItemEstoque) => void;
+  colunasVisiveis?: Set<string>;
 }
 
 // Componente para exibir thumbnail da foto
@@ -65,7 +66,7 @@ const FotoProduto = ({ fotos, tamanho = 'sm' }: { fotos?: string[]; tamanho?: 's
   );
 };
 
-export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onReporEstoque }: TabelaProdutosProps) => {
+export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onReporEstoque, colunasVisiveis }: TabelaProdutosProps) => {
   const [itemParaExcluir, setItemParaExcluir] = useState<ItemEstoque | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [confirmarExclusaoMassa, setConfirmarExclusaoMassa] = useState(false);
@@ -575,6 +576,8 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   }
 
   // Desktop: Table layout
+  const col = (id: string) => !colunasVisiveis || colunasVisiveis.has(id);
+
   return (
     <>
       <BarraSelecao />
@@ -597,18 +600,18 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                   onCheckedChange={toggleTodos}
                 />
               </TableHead>
-              <TableHead className="w-14">Foto</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Código</TableHead>
+              {col('foto') && <TableHead className="w-14">Foto</TableHead>}
+              {col('tipo') && <TableHead>Tipo</TableHead>}
+              {col('codigo') && <TableHead>Código</TableHead>}
               <TableHead>Nome</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Fornecedor</TableHead>
-              <TableHead>Cadastro</TableHead>
-              <TableHead className="text-center">Quantidade</TableHead>
-              <TableHead className="text-right">Custo</TableHead>
-              <TableHead className="text-right">Preço Venda</TableHead>
-              <TableHead className="text-right">Preço Atacado</TableHead>
-              <TableHead className="text-right">Lucro</TableHead>
+              {col('categoria') && <TableHead>Categoria</TableHead>}
+              {col('fornecedor') && <TableHead>Fornecedor</TableHead>}
+              {col('cadastro') && <TableHead>Cadastro</TableHead>}
+              {col('quantidade') && <TableHead className="text-center">Quantidade</TableHead>}
+              {col('custo') && <TableHead className="text-right">Custo</TableHead>}
+              {col('preco_venda') && <TableHead className="text-right">Preço Venda</TableHead>}
+              {col('preco_atacado') && <TableHead className="text-right">Preço Atacado</TableHead>}
+              {col('lucro') && <TableHead className="text-right">Lucro</TableHead>}
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -628,22 +631,28 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                       onCheckedChange={() => toggleSelecionado(item.id)}
                     />
                   </TableCell>
-                  <TableCell>
-                    <FotoProduto fotos={item.fotos} tamanho="sm" />
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={item.tipo === 'produto' ? 'default' : 'secondary'}>
-                      {item.tipo === 'produto' ? (
-                        <Package className="w-3 h-3 mr-1" />
-                      ) : (
-                        <Wrench className="w-3 h-3 mr-1" />
-                      )}
-                      {item.tipo === 'produto' ? 'Produto' : 'Peça'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {item.tipo === 'produto' ? item.sku || '-' : '-'}
-                  </TableCell>
+                  {col('foto') && (
+                    <TableCell>
+                      <FotoProduto fotos={item.fotos} tamanho="sm" />
+                    </TableCell>
+                  )}
+                  {col('tipo') && (
+                    <TableCell>
+                      <Badge variant={item.tipo === 'produto' ? 'default' : 'secondary'}>
+                        {item.tipo === 'produto' ? (
+                          <Package className="w-3 h-3 mr-1" />
+                        ) : (
+                          <Wrench className="w-3 h-3 mr-1" />
+                        )}
+                        {item.tipo === 'produto' ? 'Produto' : 'Peça'}
+                      </Badge>
+                    </TableCell>
+                  )}
+                  {col('codigo') && (
+                    <TableCell className="font-mono text-sm">
+                      {item.tipo === 'produto' ? item.sku || '-' : '-'}
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">
                     <span className="flex items-center gap-1.5">
                       {item.nome}
@@ -652,73 +661,89 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                       )}
                     </span>
                   </TableCell>
-                  <TableCell>
-                    {item.categoria_nome ? (
-                      <Badge variant="outline" className="text-xs" style={{ borderColor: item.categoria_cor || undefined, color: item.categoria_cor || undefined }}>
-                        <Tag className="w-3 h-3 mr-1" />
-                        {item.categoria_nome}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {item.fornecedor_nome ? (
-                      <span className="flex items-center gap-1 text-sm">
-                        <Truck className="w-3 h-3 text-muted-foreground" />
-                        {item.fornecedor_nome}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(item.created_at)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <span>{item.quantidade}</span>
-                      {estoqueNegativo && (
-                        <Badge variant="destructive" className="text-xs">
-                          Negativo
+                  {col('categoria') && (
+                    <TableCell>
+                      {item.categoria_nome ? (
+                        <Badge variant="outline" className="text-xs" style={{ borderColor: item.categoria_cor || undefined, color: item.categoria_cor || undefined }}>
+                          <Tag className="w-3 h-3 mr-1" />
+                          {item.categoria_nome}
                         </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
                       )}
-                      {semEstoque && (
-                        <Badge variant="outline" className="text-xs text-orange-500 border-orange-500">
-                          Sem estoque
-                        </Badge>
+                    </TableCell>
+                  )}
+                  {col('fornecedor') && (
+                    <TableCell>
+                      {item.fornecedor_nome ? (
+                        <span className="flex items-center gap-1 text-sm">
+                          <Truck className="w-3 h-3 text-muted-foreground" />
+                          {item.fornecedor_nome}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
                       )}
-                      {estoqueBaixo && (
-                        <Badge variant="secondary" className="text-xs">
-                          Baixo
-                        </Badge>
+                    </TableCell>
+                  )}
+                  {col('cadastro') && (
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(item.created_at)}
+                    </TableCell>
+                  )}
+                  {col('quantidade') && (
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <span>{item.quantidade}</span>
+                        {estoqueNegativo && (
+                          <Badge variant="destructive" className="text-xs">
+                            Negativo
+                          </Badge>
+                        )}
+                        {semEstoque && (
+                          <Badge variant="outline" className="text-xs text-orange-500 border-orange-500">
+                            Sem estoque
+                          </Badge>
+                        )}
+                        {estoqueBaixo && (
+                          <Badge variant="secondary" className="text-xs">
+                            Baixo
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                  {col('custo') && (
+                    <TableCell className="text-right">
+                      {podeVerCustos
+                        ? <ValorMonetario valor={item.custo} />
+                        : <span className="flex items-center justify-end gap-1 text-muted-foreground"><Lock className="h-3 w-3" /></span>
+                      }
+                    </TableCell>
+                  )}
+                  {col('preco_venda') && (
+                    <TableCell className="text-right">
+                      <ValorMonetario valor={item.preco} tipo="preco" />
+                    </TableCell>
+                  )}
+                  {col('preco_atacado') && (
+                    <TableCell className="text-right">
+                      {item.preco_atacado != null
+                        ? <ValorMonetario valor={item.preco_atacado} tipo="preco" />
+                        : <span className="text-muted-foreground">-</span>
+                      }
+                    </TableCell>
+                  )}
+                  {col('lucro') && (
+                    <TableCell className="text-right">
+                      {podeVerLucros ? (
+                        <span className={lucro >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                          <ValorMonetario valor={lucro} />
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-end gap-1 text-muted-foreground"><Lock className="h-3 w-3" /></span>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {podeVerCustos
-                      ? <ValorMonetario valor={item.custo} />
-                      : <span className="flex items-center justify-end gap-1 text-muted-foreground"><Lock className="h-3 w-3" /></span>
-                    }
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <ValorMonetario valor={item.preco} tipo="preco" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {item.preco_atacado != null
-                      ? <ValorMonetario valor={item.preco_atacado} tipo="preco" />
-                      : <span className="text-muted-foreground">-</span>
-                    }
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {podeVerLucros ? (
-                      <span className={lucro >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                        <ValorMonetario valor={lucro} />
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-end gap-1 text-muted-foreground"><Lock className="h-3 w-3" /></span>
-                    )}
-                  </TableCell>
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       {onReporEstoque && (
