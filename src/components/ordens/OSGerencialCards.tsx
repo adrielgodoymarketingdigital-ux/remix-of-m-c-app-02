@@ -127,6 +127,41 @@ function corTextoStatus(status: string) {
 }
 
 
+function SectionHeader({ titulo, subtitulo, expandido, onToggle, count }: {
+  titulo: string;
+  subtitulo?: string;
+  expandido: boolean;
+  onToggle: () => void;
+  count?: number;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center justify-between gap-3 py-2 px-3 rounded-lg hover:bg-muted/40 transition-colors group"
+    >
+      <div className="flex items-center gap-2.5">
+        <div className="h-3.5 w-0.5 rounded-full bg-primary/50 shrink-0" />
+        <div className="text-left">
+          <span className="text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors">
+            {titulo}
+          </span>
+          {subtitulo && (
+            <span className="text-[10px] text-muted-foreground/60 ml-2">{subtitulo}</span>
+          )}
+        </div>
+        {count !== undefined && count > 0 && (
+          <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+            {count}
+          </span>
+        )}
+      </div>
+      <div className="shrink-0 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+        {expandido ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </div>
+    </button>
+  );
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS, onExcluirOS }: Props) {
@@ -142,6 +177,9 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS, onExcluirOS }
     const salvo = localStorage.getItem("os_cards_gerenciais_expandido");
     return salvo === null ? true : salvo === "true";
   });
+  const [expandidoOsParadas, setExpandidoOsParadas] = useState(true);
+  const [expandidoMaioresOS, setExpandidoMaioresOS] = useState(true);
+  const [expandidoOsRecentes, setExpandidoOsRecentes] = useState(true);
 
   function toggleExpandido() {
     setExpandido((prev) => {
@@ -452,106 +490,195 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS, onExcluirOS }
 
       {/* ── Kanban por tempo parado ──────────────────────────────────────── */}
       {data.osParadas.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/50">
-            OS em aberto — mais antigas primeiro
-          </p>
-          <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {data.osParadas.map((os) => (
-              <div
-                key={os.id}
-                onClick={() => onAbrirOS?.(os.id)}
-                className={`relative overflow-hidden rounded-xl border-2 bg-card p-3 ${corBorda(os.diasParada)} ${onAbrirOS ? "cursor-pointer hover:brightness-110 transition-[filter]" : ""}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-foreground/90 truncate">
-                      #{os.numero_os} — {os.cliente_nome}
-                    </p>
-                    <p className={`text-[10px] font-medium mt-0.5 ${corTextoStatus(os.status)}`}>
-                      {labelStatus(os.status)}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-xs font-black font-mono text-foreground/80">
-                      {formatCurrency(os.total)}
-                    </p>
-                    <div className="flex items-center gap-1 justify-end mt-0.5">
-                      <Clock className="h-2.5 w-2.5 text-muted-foreground/50" />
-                      <p className="text-[10px] text-muted-foreground/60">
-                        {os.diasParada === 0
-                          ? "Hoje"
-                          : `${os.diasParada}d parada`}
+        <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
+          <SectionHeader
+            titulo="OS em aberto"
+            subtitulo="mais antigas primeiro"
+            expandido={expandidoOsParadas}
+            onToggle={() => setExpandidoOsParadas(p => !p)}
+            count={data.osParadas.length}
+          />
+          <div style={{
+            maxHeight: expandidoOsParadas ? "1000px" : "0px",
+            opacity: expandidoOsParadas ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 300ms ease-in-out, opacity 200ms ease-in-out",
+          }}>
+            <div className="border-t border-border/30 p-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {data.osParadas.map((os) => (
+                <div
+                  key={os.id}
+                  onClick={() => onAbrirOS?.(os.id)}
+                  className={`relative overflow-hidden rounded-xl border-2 bg-card p-3 ${corBorda(os.diasParada)} ${onAbrirOS ? "cursor-pointer hover:brightness-110 transition-[filter]" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground/90 truncate">
+                        #{os.numero_os} — {os.cliente_nome}
+                      </p>
+                      <p className={`text-[10px] font-medium mt-0.5 ${corTextoStatus(os.status)}`}>
+                        {labelStatus(os.status)}
                       </p>
                     </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs font-black font-mono text-foreground/80">
+                        {formatCurrency(os.total)}
+                      </p>
+                      <div className="flex items-center gap-1 justify-end mt-0.5">
+                        <Clock className="h-2.5 w-2.5 text-muted-foreground/50" />
+                        <p className="text-[10px] text-muted-foreground/60">
+                          {os.diasParada === 0
+                            ? "Hoje"
+                            : `${os.diasParada}d parada`}
+                        </p>
+                      </div>
+                    </div>
                   </div>
+                  {onExcluirOS && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onExcluirOS(os.id, os.numero_os); }}
+                      className="absolute bottom-2 right-2 p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      aria-label="Excluir OS"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
-                {onExcluirOS && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onExcluirOS(os.id, os.numero_os); }}
-                    className="absolute bottom-2 right-2 p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    aria-label="Excluir OS"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* ── Maiores OS abertas ────────────────────────────────────────────── */}
       {data.maioresOS.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/50">
-            Maiores OS pendentes — por valor
-          </p>
-          <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
-            {data.maioresOS.map((os, i) => (
-              <div
-                key={os.id}
-                onClick={() => onAbrirOS?.(os.id)}
-                className={`flex items-center justify-between gap-3 px-4 py-2.5 ${
-                  i < data.maioresOS.length - 1 ? "border-b border-border/30" : ""
-                } ${onAbrirOS ? "cursor-pointer hover:bg-muted/40 transition-colors" : ""}`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0 w-4 text-right">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-foreground/90 truncate">
-                      #{os.numero_os} — {os.cliente_nome}
-                    </p>
-                    <p className={`text-[10px] ${corTextoStatus(os.status)}`}>
-                      {labelStatus(os.status)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="text-right">
-                    <p className="text-xs font-black font-mono text-foreground/80">
-                      {formatCurrency(os.total)}
-                    </p>
-                    {os.diasParada > 0 && (
-                      <p className="text-[10px] text-muted-foreground/50">
-                        {os.diasParada}d parada
+        <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
+          <SectionHeader
+            titulo="Maiores OS pendentes"
+            subtitulo="por valor"
+            expandido={expandidoMaioresOS}
+            onToggle={() => setExpandidoMaioresOS(p => !p)}
+            count={data.maioresOS.length}
+          />
+          <div style={{
+            maxHeight: expandidoMaioresOS ? "1000px" : "0px",
+            opacity: expandidoMaioresOS ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 300ms ease-in-out, opacity 200ms ease-in-out",
+          }}>
+            <div className="border-t border-border/30">
+              {data.maioresOS.map((os, i) => (
+                <div
+                  key={os.id}
+                  onClick={() => onAbrirOS?.(os.id)}
+                  className={`flex items-center justify-between gap-3 px-4 py-2.5 ${
+                    i < data.maioresOS.length - 1 ? "border-b border-border/30" : ""
+                  } ${onAbrirOS ? "cursor-pointer hover:bg-muted/40 transition-colors" : ""}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0 w-4 text-right">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground/90 truncate">
+                        #{os.numero_os} — {os.cliente_nome}
                       </p>
+                      <p className={`text-[10px] ${corTextoStatus(os.status)}`}>
+                        {labelStatus(os.status)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="text-right">
+                      <p className="text-xs font-black font-mono text-foreground/80">
+                        {formatCurrency(os.total)}
+                      </p>
+                      {os.diasParada > 0 && (
+                        <p className="text-[10px] text-muted-foreground/50">
+                          {os.diasParada}d parada
+                        </p>
+                      )}
+                    </div>
+                    {onExcluirOS && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onExcluirOS(os.id, os.numero_os); }}
+                        className="p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        aria-label="Excluir OS"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     )}
                   </div>
-                  {onExcluirOS && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onExcluirOS(os.id, os.numero_os); }}
-                      className="p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      aria-label="Excluir OS"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── OS mais recentes ──────────────────────────────────────────────── */}
+      {data.osParadas.length > 0 && (
+        <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
+          <SectionHeader
+            titulo="OS mais recentes"
+            subtitulo="criadas recentemente"
+            expandido={expandidoOsRecentes}
+            onToggle={() => setExpandidoOsRecentes(p => !p)}
+            count={[...data.osParadas].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()).slice(0, 5).length}
+          />
+          <div style={{
+            maxHeight: expandidoOsRecentes ? "1000px" : "0px",
+            opacity: expandidoOsRecentes ? 1 : 0,
+            overflow: "hidden",
+            transition: "max-height 300ms ease-in-out, opacity 200ms ease-in-out",
+          }}>
+            <div className="border-t border-border/30">
+              {[...data.osParadas]
+                .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
+                .slice(0, 5)
+                .map((os, i, arr) => (
+                  <div
+                    key={os.id}
+                    onClick={() => onAbrirOS?.(os.id)}
+                    className={`flex items-center justify-between gap-3 px-4 py-2.5 ${
+                      i < arr.length - 1 ? "border-b border-border/30" : ""
+                    } ${onAbrirOS ? "cursor-pointer hover:bg-muted/40 transition-colors" : ""}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0 w-4 text-right">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-foreground/90 truncate">
+                          #{os.numero_os} — {os.cliente_nome}
+                        </p>
+                        <p className={`text-[10px] ${corTextoStatus(os.status)}`}>
+                          {labelStatus(os.status)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <p className="text-xs font-black font-mono text-foreground/80">
+                          {formatCurrency(os.total)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/50">
+                          {os.diasParada === 0 ? "Hoje" : `há ${os.diasParada}d`}
+                        </p>
+                      </div>
+                      {onExcluirOS && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onExcluirOS(os.id, os.numero_os); }}
+                          className="p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          aria-label="Excluir OS"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       )}
