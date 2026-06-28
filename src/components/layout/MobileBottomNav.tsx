@@ -103,10 +103,10 @@ export function MobileBottomNav() {
           background: "hsl(var(--background) / 0.97)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          paddingBottom: "env(safe-area-inset-bottom)",
+          paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
         }}
       >
-        <div className="flex items-stretch justify-around h-16 max-w-lg mx-auto">
+        <div className="flex items-stretch justify-around h-14 max-w-lg mx-auto">
           {navItems.map((item) => {
             const active = isActive(item.path);
             return (

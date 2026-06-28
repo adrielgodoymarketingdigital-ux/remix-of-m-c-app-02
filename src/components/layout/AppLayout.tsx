@@ -47,7 +47,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <div className="flex min-w-0 flex-1 flex-col min-h-screen overflow-x-hidden">
                 <MobileHeader />
                 <BannerVencimentoPlano />
-                <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-16 lg:pb-0">
+                <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
                   <div className="px-4 sm:px-6 pt-3">
                     <TrialBanner />
                     {showFreeTrialTimer && (
