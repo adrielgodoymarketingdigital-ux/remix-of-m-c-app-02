@@ -104,8 +104,6 @@ export function HeroSection() {
               🔥 Menos de R$1 real por dia · Descontos nos planos por tempo limitado!
             </div>
 
-            {/* App Store Banner */}
-            <FaixaLojas />
 
             {/* Headline */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1]">
@@ -185,6 +183,7 @@ saber onde está o lucro.
                 </div>
               )}
             </div>
+            <FaixaLojas />
           </div>
 
           {/* Hero Image */}
