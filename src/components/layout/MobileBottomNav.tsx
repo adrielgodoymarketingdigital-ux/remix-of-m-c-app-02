@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Menu, Settings2 } from "lucide-react";
+import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
 import { MobileMenuDrawer } from "./MobileMenuDrawer";
@@ -151,18 +151,9 @@ export function MobileBottomNav() {
             <span className="text-[10px] font-medium">Menu</span>
           </button>
         </div>
-
-        {/* Customize button - small floating button */}
-        <button
-          onClick={() => setCustomizeOpen(true)}
-          className="absolute -top-10 right-3 p-2 rounded-full bg-slate-800/80 backdrop-blur-sm border border-white/10 shadow-sm hover:bg-slate-700/80 transition-colors"
-          aria-label="Personalizar menu"
-        >
-          <Settings2 className="h-4 w-4 text-slate-400" />
-        </button>
       </nav>
 
-      <MobileMenuDrawer open={menuOpen} onOpenChange={setMenuOpen} />
+      <MobileMenuDrawer open={menuOpen} onOpenChange={setMenuOpen} onPersonalizarMenu={() => setCustomizeOpen(true)} />
       <MobileNavCustomizer 
         open={customizeOpen} 
         onOpenChange={setCustomizeOpen}
