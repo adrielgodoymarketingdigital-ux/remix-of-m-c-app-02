@@ -188,9 +188,10 @@ export function DialogReimprimirReciboVenda({
 
   const obterTextoTermo = (): string => {
     const termoConfig = configLoja?.termo_garantia_dispositivo_config as any;
+    const temGarantia = (venda.dispositivo_tempo_garantia != null && venda.dispositivo_tempo_garantia > 0) || !!venda.dispositivo_garantia;
     const textoBase = resolverTextoTermoDispositivo(
       termoConfig,
-      !!venda.dispositivo_garantia,
+      temGarantia,
       TERMOS_GARANTIA_PADRAO.termo_com_garantia,
       TERMOS_GARANTIA_PADRAO.termo_sem_garantia
     );

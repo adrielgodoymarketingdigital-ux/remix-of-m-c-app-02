@@ -192,7 +192,7 @@ export function SecaoDispositivosVendidos() {
           dispositivo_condicao: disp?.condicao,
           dispositivo_foto_url: disp?.foto_url,
           dispositivo_fotos: disp?.fotos as string[] | undefined,
-          dispositivo_garantia: disp?.garantia,
+          dispositivo_garantia: (v.tempo_garantia != null && v.tempo_garantia > 0) ? true : disp?.garantia,
           dispositivo_tempo_garantia: v.tempo_garantia ?? disp?.tempo_garantia,
           dispositivo_checklist: disp?.checklist,
           empresa_id: v.empresa_id ?? null,
