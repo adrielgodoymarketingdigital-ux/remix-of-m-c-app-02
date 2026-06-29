@@ -213,19 +213,42 @@ export function DialogReciboVenda({
 
       // 1. Criar/buscar cliente
       let clienteId: string;
-      
-      const { data: clienteExistente } = await supabase
-        .from("clientes")
-        .select("id")
-        .eq("cpf", data.cliente_cpf || "")
-        .maybeSingle();
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Buscar cliente existente: por CPF (se informado) ou, na ausência dele,
+      // por nome — evita criar duplicado sem CPF quando o cliente já existe
+      let clienteExistente: { id: string; cpf: string | null } | null = null;
+      if (data.cliente_cpf) {
+        const { data: porCpf } = await supabase
+          .from("clientes")
+          .select("id, cpf")
+          .eq("cpf", data.cliente_cpf)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        clienteExistente = porCpf;
+      }
+      if (!clienteExistente) {
+        const { data: porNome } = await supabase
+          .from("clientes")
+          .select("id, cpf")
+          .ilike("nome", data.cliente_nome.trim())
+          .eq("user_id", user.id)
+          .maybeSingle();
+        clienteExistente = porNome;
+      }
 
       if (clienteExistente) {
         clienteId = clienteExistente.id;
+        // Se o cliente já existia sem CPF e agora foi informado, atualizar o cadastro
+        if (data.cliente_cpf && !clienteExistente.cpf) {
+          await supabase
+            .from("clientes")
+            .update({ cpf: data.cliente_cpf })
+            .eq("id", clienteId);
+        }
       } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Usuário não autenticado");
-
         const { data: novoCliente, error: erroCliente } = await supabase
           .from("clientes")
           .insert({

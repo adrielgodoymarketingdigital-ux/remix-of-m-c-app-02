@@ -110,7 +110,7 @@ export function SecaoDispositivosVendidos() {
       // First fetch vendas filtered by user
       let queryVendas = supabase
         .from("vendas")
-        .select("id, dispositivo_id, cliente_id, quantidade, total, valor_desconto_manual, valor_desconto_cupom, custo_unitario, forma_pagamento, data, grupo_venda, observacoes, empresa_id")
+        .select("id, dispositivo_id, cliente_id, quantidade, total, valor_desconto_manual, valor_desconto_cupom, custo_unitario, forma_pagamento, data, grupo_venda, observacoes, empresa_id, imei_dispositivo")
         .eq("user_id", userId)
         .eq("tipo", "dispositivo")
         .not("dispositivo_id", "is", null)
@@ -185,7 +185,7 @@ export function SecaoDispositivosVendidos() {
           dispositivo_marca: disp?.marca,
           dispositivo_modelo: disp?.modelo,
           dispositivo_tipo: disp?.tipo,
-          dispositivo_imei: disp?.imei,
+          dispositivo_imei: v.imei_dispositivo || disp?.imei,
           dispositivo_numero_serie: disp?.numero_serie,
           dispositivo_cor: disp?.cor,
           dispositivo_capacidade_gb: disp?.capacidade_gb,
