@@ -214,102 +214,92 @@ export function DialogReimprimirReciboVenda({
           <head>
             <title>${modo === "garantia" ? "Termo de Garantia" : "Recibo de Venda"} - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
             <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              @page { size: A4 portrait; margin: 8mm 10mm; }
               body {
-                font-family: Arial, sans-serif;
-                padding: 20px;
-                max-width: ${is80mm ? '76mm' : '800px'};
-                margin: 0 auto;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 10px;
+                color: #111;
+                background: white;
+                line-height: 1.4;
               }
               .recibo-header {
-                text-align: center;
-                border-bottom: ${is80mm ? '1px dashed #000' : '2px solid #000'};
-                padding-bottom: ${is80mm ? '10px' : '20px'};
-                margin-bottom: ${is80mm ? '10px' : '20px'};
-              }
-              .recibo-section {
-                margin-bottom: ${is80mm ? '10px' : '20px'};
-                page-break-inside: avoid;
-              }
-              .recibo-section h3 {
-                border-bottom: ${is80mm ? '1px dashed #ccc' : '1px solid #ccc'};
-                padding-bottom: 2mm;
-                margin-bottom: 2mm;
-                font-size: ${is80mm ? '9pt' : '14px'};
-              }
-              .termos-garantia {
-                font-size: ${is80mm ? '7pt' : '11px'};
-                line-height: 1.7;
-                white-space: pre-line;
-              }
-              .logo-loja {
-                max-width: ${is80mm ? '30mm' : '150px'};
-                height: auto;
-                margin: 0 auto 3mm;
-              }
-              .dados-loja {
-                font-size: ${is80mm ? '9pt' : '12px'};
-                font-weight: ${is80mm ? '600' : '400'};
-                margin-top: 2mm;
-              }
-              .recibo-info {
                 display: flex;
+                align-items: center;
                 justify-content: space-between;
-                margin: 1mm 0;
-                font-size: ${is80mm ? '9pt' : 'inherit'};
+                border-bottom: 2px solid #111;
+                padding-bottom: 6px;
+                margin-bottom: 8px;
               }
-              .recibo-total {
-                font-size: ${is80mm ? '13pt' : '20px'};
-                font-weight: bold;
-                text-align: right;
-                margin-top: ${is80mm ? '3mm' : '20px'};
-                padding-top: ${is80mm ? '2mm' : '20px'};
-                border-top: ${is80mm ? '1px dashed #000' : '2px solid #000'};
+              .recibo-header-left { display: flex; align-items: center; gap: 8px; }
+              .logo-loja { max-width: 48px; max-height: 48px; object-fit: contain; }
+              .recibo-header h1 { font-size: 13px; font-weight: 900; margin: 0; }
+              .dados-loja { font-size: 8px; color: #444; margin-top: 2px; line-height: 1.4; }
+              .recibo-header-right { text-align: right; }
+              .recibo-header h2 { font-size: 11px; font-weight: 800; margin: 0; }
+              .recibo-header p { font-size: 8px; color: #555; margin-top: 1px; }
+              .recibo-section { margin-bottom: 6px; }
+              .recibo-section h3 {
+                font-size: 8px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #555;
+                border-bottom: 1px solid #ddd;
+                padding-bottom: 2px;
+                margin-bottom: 4px;
               }
+              .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+              .recibo-info { display: flex; gap: 4px; font-size: 9px; margin: 1px 0; }
+              .recibo-info span:first-child { color: #666; min-width: 80px; }
+              .recibo-info span:last-child { font-weight: 600; }
               .recibo-checklist {
                 display: grid;
-                grid-template-columns: ${is80mm ? '1fr' : '1fr 1fr'};
-                gap: ${is80mm ? '1mm' : '8px 16px'};
+                grid-template-columns: 1fr 1fr;
+                gap: 8px 16px;
                 margin-top: 2mm;
               }
               .recibo-checklist-item {
                 display: flex;
                 align-items: center;
                 gap: 6px;
-                font-size: ${is80mm ? '8pt' : '11px'};
+                font-size: 11px;
               }
               .recibo-checklist-icon { font-size: 12px; flex-shrink: 0; }
               .recibo-checklist-label { color: #333; }
-              .recibo-reimpressao {
-                text-align: center;
-                font-size: ${is80mm ? '7pt' : '10px'};
-                color: #999;
-                margin-top: 3mm;
-                font-style: italic;
+              .termos-garantia {
+                font-size: 8px;
+                line-height: 1.55;
+                white-space: pre-line;
+                color: #222;
               }
-              .assinatura-bloco {
-                margin-top: 10mm;
-                text-align: center;
-              }
-              .assinatura-linha {
-                border-bottom: 1px solid #333;
-                width: 70%;
-                margin: 0 auto 2mm;
-                min-height: ${is80mm ? '8mm' : '30px'};
-              }
-              .assinatura-label {
-                font-size: ${is80mm ? '8pt' : '11px'};
-                color: #555;
+              .recibo-total {
+                font-size: 13px;
+                font-weight: 900;
+                text-align: right;
+                margin-top: 6px;
+                padding-top: 6px;
+                border-top: 2px solid #111;
               }
               .assinaturas-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                margin-top: 10px;
                 page-break-inside: avoid;
-                break-inside: avoid;
               }
+              .assinatura-bloco { text-align: center; }
+              .assinatura-linha {
+                border-bottom: 1px solid #333;
+                height: 20px;
+                margin-bottom: 3px;
+              }
+              .assinatura-label { font-size: 8px; color: #555; }
+              .recibo-reimpressao { text-align: center; font-size: 7px; color: #aaa; margin-top: 6px; font-style: italic; }
               @media print {
-                body { margin: 0; }
-                .recibo-checklist { page-break-inside: avoid; break-inside: avoid; }
+                body { margin: 0 !important; }
                 .assinaturas-container { page-break-inside: avoid; break-inside: avoid; }
               }
-              ${estilos80mm}
             </style>
           </head>
           <body>
@@ -396,21 +386,23 @@ export function DialogReimprimirReciboVenda({
         {/* Conteúdo oculto — Recibo */}
         <div ref={reciboRef} style={{ display: "none" }}>
           <div className="recibo-header">
-            {showLogo && configLoja?.logo_url && (
-              <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+            <div className="recibo-header-left">
+              {showLogo && configLoja?.logo_url && (
                 <img src={configLoja.logo_url} alt="Logo da Loja" className="logo-loja" />
+              )}
+              <div>
+                <h1>{configLoja?.nome_loja || 'Loja'}</h1>
+                {showDadosLoja && (
+                  <div className="dados-loja">
+                    {configLoja?.cnpj && <span>CNPJ: {configLoja.cnpj}<br /></span>}
+                    {configLoja?.endereco && <span>Endereço: {configLoja.endereco}<br /></span>}
+                    {configLoja?.telefone && <span>Telefone: {configLoja.telefone}<br /></span>}
+                    {configLoja?.email && <span>E-mail: {configLoja.email}</span>}
+                  </div>
+                )}
               </div>
-            )}
-            <h1>{configLoja?.nome_loja || 'Loja'}</h1>
-            {showDadosLoja && (
-              <div className="dados-loja">
-                {configLoja?.cnpj && <p>CNPJ: {configLoja.cnpj}</p>}
-                {configLoja?.endereco && <p>Endereço: {configLoja.endereco}</p>}
-                {configLoja?.telefone && <p>Telefone: {configLoja.telefone}</p>}
-                {configLoja?.email && <p>E-mail: {configLoja.email}</p>}
-              </div>
-            )}
-            <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '2px solid #000' }}>
+            </div>
+            <div className="recibo-header-right">
               <h2>RECIBO DE VENDA</h2>
               <p>Data da venda: {dataVenda}</p>
             </div>
@@ -495,18 +487,19 @@ export function DialogReimprimirReciboVenda({
         {/* Conteúdo oculto — Termo de Garantia */}
         <div ref={garantiaRef} style={{ display: "none" }}>
           <div className="recibo-header">
-            {configLoja?.logo_url && (
-              <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+            <div className="recibo-header-left">
+              {configLoja?.logo_url && (
                 <img src={configLoja.logo_url} alt="Logo da Loja" className="logo-loja" />
+              )}
+              <div>
+                <h1>{configLoja?.nome_loja || 'Loja'}</h1>
+                <div className="dados-loja">
+                  {configLoja?.cnpj && <span>CNPJ: {configLoja.cnpj}<br /></span>}
+                  {configLoja?.telefone && <span>Tel: {configLoja.telefone}</span>}
+                </div>
               </div>
-            )}
-            <h1>{configLoja?.nome_loja || 'Loja'}</h1>
-            <div className="dados-loja">
-              {configLoja?.cnpj && <p>CNPJ: {configLoja.cnpj}</p>}
-              {configLoja?.endereco && <p>Endereço: {configLoja.endereco}</p>}
-              {configLoja?.telefone && <p>Telefone: {configLoja.telefone}</p>}
             </div>
-            <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '2px solid #000' }}>
+            <div className="recibo-header-right">
               <h2>TERMO DE GARANTIA</h2>
               <p>Data da venda: {dataVenda}</p>
             </div>

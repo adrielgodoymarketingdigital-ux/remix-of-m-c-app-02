@@ -298,6 +298,24 @@ export function DialogReciboPDV({
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { margin: 0 !important; padding: ${isThermal ? '0' : '0'} !important; }
     }
+    /* --- Termo de Garantia (estilo fixo, independente do formato do papel) --- */
+    .termo-garantia-pdv-section { margin-bottom: 6px; }
+    .termo-garantia-pdv-section h3 {
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 2px;
+      margin-bottom: 4px;
+    }
+    .termo-garantia-pdv-texto {
+      font-size: 8px;
+      line-height: 1.55;
+      white-space: pre-line;
+      color: #222;
+    }
     /* Sobrescreve @page e body para térmica (deve vir por último) */
     ${cssTermico}
   </style>
@@ -574,11 +592,11 @@ export function DialogReciboPDV({
             </div>
 
             {itensDispositivo.map((item) => (
-              <div key={item.id} className="recibo-section" style={{ marginTop: '20px', pageBreakInside: 'avoid' }}>
-                <h3 style={{ borderBottom: '1px solid #ccc', paddingBottom: '5px', marginBottom: '10px' }}>
+              <div key={item.id} className="termo-garantia-pdv-section" style={{ marginTop: '20px', pageBreakInside: 'avoid' }}>
+                <h3>
                   Termo de Garantia — {item.nome}
                 </h3>
-                <div style={{ fontSize: isThermal ? '9px' : '11px', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                <div className="termo-garantia-pdv-texto">
                   {gerarTextoTermo(item)}
                 </div>
               </div>
