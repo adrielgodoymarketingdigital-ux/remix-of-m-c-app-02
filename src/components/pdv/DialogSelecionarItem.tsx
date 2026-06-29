@@ -122,6 +122,12 @@ export const DialogSelecionarItem = ({
       ? imeisSelecionados[dispositivo.id]
       : (dispositivo.imei || undefined);
     const quantidade = quantidades[dispositivo.id] || 1;
+    console.log('[PDV DISPOSITIVO]', {
+      id: dispositivo.id,
+      imei: dispositivo.imei,
+      condicao: dispositivo.condicao,
+      imei_calculado: imei,
+    });
     onAdicionarItem({
       id: dispositivo.id,
       tipo: "dispositivo",
