@@ -655,27 +655,21 @@ export function useVerificacaoAcesso() {
 
       // 5. PRIORIDADE 1: Verificar se é usuário ativo (liberar imediatamente)
       if (isUsuarioAtivo(assinatura)) {
-        // 5.1 Verificar onboarding obrigatório para plano Free (não é funcionário)
-        // Usuários Free PRECISAM completar onboarding antes de acessar o app
+        // 5.1 Onboarding obrigatório desativado para novos usuários Free
+        // Usuários são liberados direto para o dashboard
+        // O onboarding_obrigatorio_completed será marcado automaticamente abaixo
         if (
           !isFuncionario &&
           assinatura?.plano_tipo === "free" &&
           !onboarding?.onboarding_obrigatorio_completed
         ) {
-          console.log("⏳ [useVerificacaoAcesso] Plano Free ativo - onboarding obrigatório pendente");
-          setState({
-            status: "onboarding_pendente",
-            assinatura,
-            onboarding,
-            userId,
-            error: null,
-            tentativas: state.tentativas + 1,
-            bloqueioAdmin: bloqueioInfo,
-            isFuncionario,
-            lojaUserId: funcionarioData?.loja_user_id || null,
-          });
-          verificandoRef.current = false;
-          return;
+          console.log("✅ [useVerificacaoAcesso] Plano Free - onboarding desativado, marcando como completo");
+          // Marcar onboarding como completo silenciosamente para não entrar nesse bloco de novo
+          supabase
+            .from("user_onboarding")
+            .upsert({ user_id: userId, onboarding_obrigatorio_completed: true }, { onConflict: "user_id" })
+            .then(() => console.log("✅ [useVerificacaoAcesso] onboarding_obrigatorio_completed marcado"));
+          // Continua o fluxo normal — não retorna aqui
         }
 
         setState({
@@ -748,19 +742,14 @@ export function useVerificacaoAcesso() {
       if (!isPaidOrTrialing) {
         // NOVO FLUXO: Primeiro pagamento, depois onboarding
         
-        // Etapa 1: Onboarding obrigatório pendente
+        // Etapa 1: Onboarding desativado — liberar direto
+        // Marcar como completo silenciosamente se ainda não foi
         if (!onboarding?.onboarding_obrigatorio_completed) {
-          console.log("⏳ [useVerificacaoAcesso] Usuário pagou - onboarding pendente");
-          setState(prev => ({
-            ...prev,
-            status: "onboarding_pendente",
-            assinatura,
-            onboarding,
-            userId,
-            error: null,
-          }));
-          verificandoRef.current = false;
-          return;
+          console.log("✅ [useVerificacaoAcesso] Onboarding desativado - marcando e liberando");
+          supabase
+            .from("user_onboarding")
+            .upsert({ user_id: userId, onboarding_obrigatorio_completed: true }, { onConflict: "user_id" })
+            .then(() => console.log("✅ [useVerificacaoAcesso] onboarding_obrigatorio_completed marcado"));
         }
       } else {
         // Usuário é pagante mas não foi pego pelo isUsuarioAtivo - liberar por segurança
