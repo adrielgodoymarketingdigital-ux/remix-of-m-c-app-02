@@ -1,0 +1,11 @@
+168:          quantidade: Number(v.quantidade || 1),
+198:        quantidade: 1,
+231:          quantidade: 1,
+305:            quantidade: 1,
+327:            quantidade: Number(v.quantidade || 1),
+350:          quantidade: 1,
+435:              quantidade: novaQuantidade,
+445:            .from("produtos")
+456:            .from("produtos")
+458:              quantidade: novaQuantidade,
+536:        acc[data] = { data, total: 0, quantidade: 0 };

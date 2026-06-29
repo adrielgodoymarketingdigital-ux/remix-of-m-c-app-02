@@ -1,0 +1,17 @@
+commit c05452e60bebdd2509cfcce8859087ad3201b39a
+Author: Adriel Godoy <adrielmktdigital01@gmail.com>
+Date:   Wed Jun 17 21:47:05 2026 -0300
+
+    feat: permitir escolher o modelo de termo de garantia no PDV
+    
+    O PDV so deixava escolher o prazo de garantia, sempre usando a
+    configuracao global do termo. Agora, ao adicionar um dispositivo
+    ao carrinho, tambem e possivel escolher entre os mesmos modelos
+    de termo cadastrados em Dispositivos -> Termo de Garantia -> Modelos,
+    e o recibo do PDV usa o modelo escolhido para montar o texto.
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+ src/components/pdv/DialogReciboPDV.tsx      | 30 +++++++++++++++-----
+ src/components/pdv/DialogSelecionarItem.tsx | 43 +++++++++++++++++++++++++----
+ 2 files changed, 60 insertions(+), 13 deletions(-)

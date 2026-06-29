@@ -1,0 +1,1 @@
+     863 /Users/adrielgodoy/remix-of-m-c-app-02/src/hooks/useVendas.ts

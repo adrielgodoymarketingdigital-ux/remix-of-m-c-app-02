@@ -1,0 +1,1 @@
+/Users/adrielgodoy/remix-of-m-c-app-02/supabase/migrations/20251109171221_d58a860d-6063-432b-b644-7280e1629dd0.sql

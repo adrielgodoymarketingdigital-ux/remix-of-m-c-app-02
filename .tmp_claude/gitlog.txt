@@ -1,0 +1,10 @@
+c05452e feat: permitir escolher o modelo de termo de garantia no PDV
+11f4b89 fix: deixar claro que o prazo de garantia contratual e o total
+b280bc4 fix: nao exibir garantia legal de 90 dias junto com garantia contratual
+1576524 feat: permitir escolher garantia da venda de dispositivo no PDV
+ea80970 fix: gravar empresa_id ao criar tipo de garantia
+08ff78a feat: permitir cadastrar tipos de garantia reutilizaveis para dispositivos
+5d64c8a fix: usar balance/operations da Pagar.me para bater com extrato real
+cdd09ff feat: adicionar card de valor real recebido na Pagar.me este mês
+a1d77ba feat: permitir visualizar quem falta pagar no card "Falta entrar este mês"
+51eafc4 fix: restringir "Assinantes Ativos" e MRR a pagamentos Pagar.me em dia

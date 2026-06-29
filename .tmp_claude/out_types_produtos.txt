@@ -1,0 +1,60 @@
+411:      categorias_produtos: {
+412-        Row: {
+413-          cor: string
+414-          created_at: string | null
+415-          id: string
+416-          nome: string
+417-          user_id: string
+418-        }
+419-        Insert: {
+420-          cor?: string
+421-          created_at?: string | null
+422-          id?: string
+423-          nome: string
+424-          user_id: string
+425-        }
+426-        Update: {
+427-          cor?: string
+428-          created_at?: string | null
+429-          id?: string
+430-          nome?: string
+431-          user_id?: string
+432-        }
+433-        Relationships: []
+434-      }
+435-      categorias_sistema_excluidas: {
+436-        Row: {
+437-          created_at: string
+438-          id: string
+439-          nome: string
+440-          user_id: string
+441-        }
+442-        Insert: {
+443-          created_at?: string
+444-          id?: string
+445-          nome: string
+446-          user_id: string
+447-        }
+448-        Update: {
+449-          created_at?: string
+450-          id?: string
+451-          nome?: string
+--
+2904:      produtos: {
+2905-        Row: {
+2906-          categoria_id: string | null
+2907-          codigo_barras: string | null
+2908-          created_at: string | null
+2909-          custo: number | null
+2910-          deleted_at: string | null
+2911-          empresa_id: string | null
+2912-          fornecedor_id: string | null
+2913-          fotos: Json | null
+2914-          id: string
+2915-          lucro: number | null
+2916-          nome: string
+2917-          preco: number | null
+2918-          preco_atacado: number | null
+2919-          quantidade: number | null
+2920-          sku: string | null
+2921-          user_id: string

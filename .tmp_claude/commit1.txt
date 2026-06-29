@@ -1,0 +1,20 @@
+commit 1576524b133c331bfee4f509007137cb7edd4a71
+Author: Adriel Godoy <adrielmktdigital01@gmail.com>
+Date:   Wed Jun 17 21:13:09 2026 -0300
+
+    feat: permitir escolher garantia da venda de dispositivo no PDV
+    
+    Ao adicionar um dispositivo ao carrinho do PDV, agora e possivel
+    escolher o tempo de garantia que sera usado no termo impresso no
+    recibo. A escolha e gravada na venda (vendas.tempo_garantia) e o
+    DialogReciboPDV passa a exibir/imprimir o termo de garantia
+    correspondente para cada dispositivo vendido.
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+ src/components/pdv/DialogReciboPDV.tsx             | 104 +++++++++++++++++++++
+ src/components/pdv/DialogSelecionarItem.tsx        |  28 ++++++
+ src/integrations/supabase/types.ts                 |   3 +
+ src/pages/PDV.tsx                                  |   1 +
+ .../20260617000002_add_tempo_garantia_vendas.sql   |   4 +
+ 5 files changed, 140 insertions(+)
