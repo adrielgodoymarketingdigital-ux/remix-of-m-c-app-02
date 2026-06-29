@@ -23,6 +23,8 @@ import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegal
 import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface CardDispositivoProps {
   dispositivo: Dispositivo;
@@ -185,11 +187,25 @@ export function CardDispositivo({
     }
   };
 
+  const [dialogGarantiaAberto, setDialogGarantiaAberto] = useState(false);
+  const [garantiaMeses, setGarantiaMeses] = useState<number | undefined>(
+    dispositivo.garantia ? dispositivo.tempo_garantia : undefined
+  );
+
   const handleVender = () => {
-    navigate('/pdv', { 
-      state: { 
-        dispositivoSelecionado: dispositivo 
-      } 
+    setGarantiaMeses(dispositivo.garantia ? dispositivo.tempo_garantia : undefined);
+    setDialogGarantiaAberto(true);
+  };
+
+  const handleConfirmarVenda = () => {
+    setDialogGarantiaAberto(false);
+    navigate('/pdv', {
+      state: {
+        dispositivoSelecionado: {
+          ...dispositivo,
+          tempo_garantia: garantiaMeses,
+        }
+      }
     });
   };
 
@@ -419,6 +435,31 @@ export function CardDispositivo({
           </AlertDialog>
         </div>
       </CardContent>
+
+      <Dialog open={dialogGarantiaAberto} onOpenChange={setDialogGarantiaAberto}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Garantia para o Recibo</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Selecione o tempo de garantia que aparecerá no termo de garantia do recibo.
+            </p>
+            <SeletorTempoGarantia
+              value={garantiaMeses}
+              onChange={setGarantiaMeses}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogGarantiaAberto(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmarVenda}>
+              Ir para o PDV
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
