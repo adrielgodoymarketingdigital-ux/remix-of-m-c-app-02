@@ -83,7 +83,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-4xl pb-safe sm:pb-4 no-print p-0 gap-0 overflow-hidden" data-print-hide="true">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[92dvh] no-print p-0 gap-0 overflow-hidden flex flex-col" data-print-hide="true">
 
         {/* Header */}
         <div className="relative px-3 sm:px-5 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-border/40 bg-gradient-to-r from-muted/30 to-background overflow-hidden">
@@ -138,9 +138,9 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
         </div>
 
         {/* Tabs */}
-        <div className="px-3 sm:px-5 pt-4 overflow-y-auto max-h-[52vh] sm:max-h-[60vh]">
+        <div className="px-3 sm:px-5 pt-3 overflow-y-auto flex-1 min-h-0">
           <Tabs defaultValue="cliente" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 h-8 mb-4 bg-muted/40 border border-border/40 p-0.5 rounded-lg">
+            <TabsList className="grid w-full grid-cols-7 h-auto mb-4 bg-muted/40 border border-border/40 p-0.5 rounded-lg">
               {[
                 { value: "cliente", icon: User, label: "Cliente" },
                 { value: "dispositivo", icon: Smartphone, label: "Dispositivo" },
@@ -153,13 +153,15 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="gap-1 text-[11px] h-7 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all"
+                  className="flex flex-col items-center justify-center gap-0.5 py-1.5 px-0.5 h-auto rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all min-w-0"
                 >
-                  <Icon className="h-3 w-3 shrink-0" />
-                  <span className="hidden sm:inline">{label}</span>
-                  {badge && badge > 0 ? (
-                    <span className="h-4 w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">{badge}</span>
-                  ) : null}
+                  <div className="relative">
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    {badge && badge > 0 ? (
+                      <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center">{badge}</span>
+                    ) : null}
+                  </div>
+                  <span className="text-[9px] font-medium leading-none truncate w-full text-center">{label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
