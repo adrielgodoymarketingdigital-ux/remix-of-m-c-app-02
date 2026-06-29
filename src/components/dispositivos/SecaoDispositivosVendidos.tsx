@@ -151,7 +151,7 @@ export function SecaoDispositivosVendidos() {
 
       const [dispRes, cliRes] = await Promise.all([
         dispositivoIds.length > 0
-          ? supabase.from("dispositivos").select("id, marca, modelo, tipo, imei, numero_serie, cor, capacidade_gb, condicao, foto_url, fotos, garantia, tempo_garantia, checklist, dispositivo_imeis(imei, venda_id)").in("id", dispositivoIds)
+          ? supabase.from("dispositivos").select("id, marca, modelo, tipo, imei, numero_serie, cor, capacidade_gb, condicao, foto_url, fotos, garantia, tempo_garantia, checklist").in("id", dispositivoIds)
           : { data: [], error: null },
         clienteIds.length > 0
           ? supabase.from("clientes").select("id, nome, telefone, cpf, endereco").in("id", clienteIds)
@@ -163,6 +163,9 @@ export function SecaoDispositivosVendidos() {
 
       const vendasFormatadas: VendaDispositivo[] = vendasAgrupadas.map((v: any) => {
         const disp = dispMap.get(v.dispositivo_id);
+        if (!v.imei_dispositivo && disp?.imei) {
+          console.log('[IMEI FALLBACK]', { venda_id: v.id, dispositivo_id: v.dispositivo_id, imei: disp.imei, disp_keys: Object.keys(disp || {}) });
+        }
         const cli = cliMap.get(v.cliente_id);
         // Registro principal guarda o total BRUTO do item (sem desconto);
         // o desconto fica em valor_desconto_manual/valor_desconto_cupom e é subtraído aqui
@@ -185,16 +188,7 @@ export function SecaoDispositivosVendidos() {
           dispositivo_marca: disp?.marca,
           dispositivo_modelo: disp?.modelo,
           dispositivo_tipo: disp?.tipo,
-          dispositivo_imei: v.imei_dispositivo || disp?.imei || (() => {
-            // Buscar IMEI na tabela dispositivo_imeis vinculado a esta venda
-            const imeis = (disp as any)?.dispositivo_imeis as { imei: string; venda_id: string | null }[] | undefined;
-            if (!imeis || imeis.length === 0) return undefined;
-            // Preferir IMEI vinculado ao grupo de venda atual
-            const vinculado = imeis.find(i => i.venda_id === v.id);
-            if (vinculado) return vinculado.imei;
-            // Fallback: qualquer IMEI disponível do dispositivo
-            return imeis[0]?.imei;
-          })(),
+          dispositivo_imei: v.imei_dispositivo || disp?.imei || undefined,
           dispositivo_numero_serie: disp?.numero_serie,
           dispositivo_cor: disp?.cor,
           dispositivo_capacidade_gb: disp?.capacidade_gb,
