@@ -139,8 +139,6 @@ export function DialogReimprimirReciboVenda({
   venda,
   modo = "recibo",
 }: DialogReimprimirReciboVendaProps) {
-  const reciboRef = useRef<HTMLDivElement>(null);
-  const garantiaRef = useRef<HTMLDivElement>(null);
   const { config: configLoja, refetch } = useConfiguracaoLoja(venda?.empresa_id);
 
   useEffect(() => {
@@ -199,141 +197,128 @@ export function DialogReimprimirReciboVenda({
   };
 
   const imprimirRecibo = () => {
-    const ref = modo === "garantia" ? garantiaRef : reciboRef;
-    if (!ref.current) return;
-
-    const conteudo = ref.current.innerHTML;
     const janelaImpressao = window.open("", "_blank");
+    if (!janelaImpressao) return;
 
-    if (janelaImpressao) {
-      const paper = resolvePaperSize(formatoPapel, dispConfig?.largura_mm, dispConfig?.altura_mm);
-      const estilos80mm = getThermalPrintCSS(paper);
+    const textoTermoAtual = obterTextoTermo();
 
-      janelaImpressao.document.write(`
-        <html>
-          <head>
-            <title>${modo === "garantia" ? "Termo de Garantia" : "Recibo de Venda"} - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
-            <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              @page { size: A4 portrait; margin: 8mm 10mm; }
-              body {
-                font-family: Arial, Helvetica, sans-serif;
-                font-size: 10px;
-                color: #111;
-                background: white;
-                line-height: 1.4;
-              }
-              .recibo-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                border-bottom: 2px solid #111;
-                padding-bottom: 6px;
-                margin-bottom: 8px;
-              }
-              .recibo-header-left { display: flex; align-items: center; gap: 8px; }
-              .logo-loja { max-width: 48px; max-height: 48px; object-fit: contain; }
-              .recibo-header h1 { font-size: 13px; font-weight: 900; margin: 0; }
-              .dados-loja { font-size: 8px; color: #444; margin-top: 2px; line-height: 1.4; }
-              .recibo-header-right { text-align: right; }
-              .recibo-header h2 { font-size: 11px; font-weight: 800; margin: 0; }
-              .recibo-header p { font-size: 8px; color: #555; margin-top: 1px; }
-              .recibo-section { margin-bottom: 6px; }
-              .recibo-section h3 {
-                font-size: 8px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-                color: #555;
-                border-bottom: 1px solid #ddd;
-                padding-bottom: 2px;
-                margin-bottom: 4px;
-              }
-              .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
-              .recibo-info { display: flex; gap: 4px; font-size: 9px; margin: 1px 0; }
-              .recibo-info span:first-child { color: #666; min-width: 80px; }
-              .recibo-info span:last-child { font-weight: 600; }
-              .recibo-checklist {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px 16px;
-                margin-top: 2mm;
-              }
-              .recibo-checklist-item {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                font-size: 11px;
-              }
-              .recibo-checklist-icon { font-size: 12px; flex-shrink: 0; }
-              .recibo-checklist-label { color: #333; }
-              .termos-garantia {
-                font-size: 8px;
-                line-height: 1.55;
-                white-space: pre-line;
-                color: #222;
-              }
-              .recibo-total {
-                font-size: 13px;
-                font-weight: 900;
-                text-align: right;
-                margin-top: 6px;
-                padding-top: 6px;
-                border-top: 2px solid #111;
-              }
-              .assinaturas-container {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 16px;
-                margin-top: 10px;
-                page-break-inside: avoid;
-              }
-              .assinatura-bloco { text-align: center; }
-              .assinatura-linha {
-                border-bottom: 1px solid #333;
-                height: 20px;
-                margin-bottom: 3px;
-              }
-              .assinatura-label { font-size: 8px; color: #555; }
-              .recibo-reimpressao { text-align: center; font-size: 7px; color: #aaa; margin-top: 6px; font-style: italic; }
-              @media print {
-                body { margin: 0 !important; }
-                .assinaturas-container { page-break-inside: avoid; break-inside: avoid; }
-              }
-            </style>
-          </head>
-          <body>
-            ${conteudo}
-            <script>
-              (function() {
-                var printed = false;
-                function doPrint() {
-                  if (printed) return;
-                  printed = true;
-                  window.print();
-                  window.onafterprint = function() { window.close(); };
-                }
-                var images = document.querySelectorAll('img');
-                if (images.length === 0) {
-                  setTimeout(doPrint, 300);
-                } else {
-                  var promises = Array.from(images).map(function(img) {
-                    if (img.complete) return Promise.resolve();
-                    return new Promise(function(resolve) {
-                      img.onload = resolve;
-                      img.onerror = function() { img.style.display = 'none'; resolve(); };
-                    });
-                  });
-                  Promise.all(promises).then(function() { setTimeout(doPrint, 300); });
-                }
-                setTimeout(doPrint, 3000);
-              })();
-            </script>
-          </body>
-        </html>
-      `);
-      janelaImpressao.document.close();
-    }
+    const cabecalho = `
+      <div class="recibo-header">
+        <div class="recibo-header-left">
+          ${configLoja?.logo_url ? `<img src="${configLoja.logo_url}" class="logo-loja" />` : ''}
+          <div>
+            <h1>${configLoja?.nome_loja || ''}</h1>
+            <div class="dados-loja">
+              ${configLoja?.cnpj ? `CNPJ: ${configLoja.cnpj}<br>` : ''}
+              ${configLoja?.telefone ? `Tel: ${configLoja.telefone}` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="recibo-header-right">
+          <h2>${modo === 'garantia' ? 'TERMO DE GARANTIA' : 'RECIBO DE VENDA'}</h2>
+          <p>Data da venda: ${dataVenda}</p>
+        </div>
+      </div>`;
+
+    const secaoComprador = `
+      <div class="recibo-section">
+        <h3>Comprador</h3>
+        <div class="grid-2">
+          <div class="recibo-info"><span>Nome:</span><span>${venda.cliente_nome || '—'}</span></div>
+          ${venda.cliente_cpf ? `<div class="recibo-info"><span>CPF:</span><span>${venda.cliente_cpf}</span></div>` : ''}
+          ${venda.cliente_telefone ? `<div class="recibo-info"><span>Telefone:</span><span>${venda.cliente_telefone}</span></div>` : ''}
+        </div>
+      </div>`;
+
+    const secaoProduto = `
+      <div class="recibo-section">
+        <h3>Produto</h3>
+        <div class="grid-2">
+          <div class="recibo-info"><span>Aparelho:</span><span>${venda.dispositivo_marca} ${venda.dispositivo_modelo}</span></div>
+          ${venda.dispositivo_imei ? `<div class="recibo-info"><span>IMEI:</span><span>${venda.dispositivo_imei}</span></div>` : ''}
+          ${venda.dispositivo_numero_serie ? `<div class="recibo-info"><span>Nº Série:</span><span>${venda.dispositivo_numero_serie}</span></div>` : ''}
+          ${venda.dispositivo_cor ? `<div class="recibo-info"><span>Cor:</span><span>${venda.dispositivo_cor}</span></div>` : ''}
+          ${venda.dispositivo_capacidade_gb ? `<div class="recibo-info"><span>Capacidade:</span><span>${venda.dispositivo_capacidade_gb} GB</span></div>` : ''}
+          ${venda.dispositivo_condicao ? `<div class="recibo-info"><span>Condição:</span><span>${CONDICAO_LABEL[venda.dispositivo_condicao] || venda.dispositivo_condicao}</span></div>` : ''}
+          <div class="recibo-info"><span>Valor:</span><span>${formatCurrency(venda.total)}</span></div>
+          ${venda.dispositivo_tempo_garantia ? `<div class="recibo-info"><span>Garantia:</span><span>${formatarGarantia(venda.dispositivo_tempo_garantia)}</span></div>` : ''}
+        </div>
+      </div>`;
+
+    const secaoTermo = `
+      <div class="recibo-section">
+        <h3>Termo de Garantia</h3>
+        <div class="termos-garantia">${textoTermoAtual.replace(/\n/g, '<br>')}</div>
+      </div>`;
+
+    const secaoAssinaturas = `
+      <div class="assinaturas-container">
+        <div class="assinatura-bloco">
+          <div class="assinatura-linha"></div>
+          <p class="assinatura-label">Assinatura do Vendedor</p>
+        </div>
+        <div class="assinatura-bloco">
+          <div class="assinatura-linha"></div>
+          <p class="assinatura-label">Assinatura do Comprador — ${venda.cliente_nome || ''}</p>
+        </div>
+      </div>`;
+
+    const conteudo = modo === 'garantia'
+      ? `${cabecalho}${secaoComprador}${secaoProduto}${secaoTermo}${secaoAssinaturas}`
+      : `${cabecalho}${secaoComprador}${secaoProduto}${secaoTermo}<div class="recibo-total">VALOR TOTAL: ${formatCurrency(venda.total)}</div>${secaoAssinaturas}`;
+
+    janelaImpressao.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${modo === 'garantia' ? 'Termo de Garantia' : 'Recibo de Venda'} - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: A4 portrait; margin: 8mm 10mm; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #111; background: white; line-height: 1.4; }
+    .recibo-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 8px; }
+    .recibo-header-left { display: flex; align-items: center; gap: 8px; }
+    .logo-loja { max-width: 48px; max-height: 48px; object-fit: contain; }
+    .recibo-header h1 { font-size: 13px; font-weight: 900; margin: 0; }
+    .dados-loja { font-size: 8px; color: #444; margin-top: 2px; line-height: 1.4; }
+    .recibo-header-right { text-align: right; }
+    .recibo-header h2 { font-size: 11px; font-weight: 800; margin: 0; }
+    .recibo-header p { font-size: 8px; color: #555; margin-top: 1px; }
+    .recibo-section { margin-bottom: 6px; }
+    .recibo-section h3 { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 2px; margin-bottom: 4px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+    .recibo-info { display: flex; gap: 4px; font-size: 9px; margin: 1px 0; }
+    .recibo-info span:first-child { color: #666; min-width: 80px; }
+    .recibo-info span:last-child { font-weight: 600; }
+    .termos-garantia { font-size: 8px; line-height: 1.55; color: #222; }
+    .recibo-total { font-size: 13px; font-weight: 900; text-align: right; margin-top: 6px; padding-top: 6px; border-top: 2px solid #111; }
+    .assinaturas-container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; page-break-inside: avoid; }
+    .assinatura-bloco { text-align: center; }
+    .assinatura-linha { border-bottom: 1px solid #333; height: 24px; margin-bottom: 3px; }
+    .assinatura-label { font-size: 8px; color: #555; }
+    @media print { body { margin: 0 !important; } .assinaturas-container { page-break-inside: avoid; break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  ${conteudo}
+  <script>
+    (function() {
+      var printed = false;
+      function doPrint() { if (printed) return; printed = true; window.print(); window.onafterprint = function() { window.close(); }; }
+      var images = document.querySelectorAll('img');
+      if (images.length === 0) { setTimeout(doPrint, 300); }
+      else {
+        Promise.all(Array.from(images).map(function(img) {
+          if (img.complete) return Promise.resolve();
+          return new Promise(function(r) { img.onload = r; img.onerror = function() { img.style.display='none'; r(); }; });
+        })).then(function() { setTimeout(doPrint, 300); });
+      }
+      setTimeout(doPrint, 3000);
+    })();
+  </script>
+</body>
+</html>`);
+    janelaImpressao.document.close();
   };
 
   const textoTermo = obterTextoTermo();
@@ -379,144 +364,6 @@ export function DialogReimprimirReciboVenda({
                   ? (venda.dispositivo_tempo_garantia != null ? formatarGarantia(venda.dispositivo_tempo_garantia) : '—')
                   : 'Sem garantia contratual'}
               </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Conteúdo oculto — Recibo */}
-        <div ref={reciboRef} style={{ display: "none" }}>
-          <div className="recibo-header">
-            <div className="recibo-header-left">
-              {showLogo && configLoja?.logo_url && (
-                <img src={configLoja.logo_url} alt="Logo da Loja" className="logo-loja" />
-              )}
-              <div>
-                <h1>{configLoja?.nome_loja || 'Loja'}</h1>
-                {showDadosLoja && (
-                  <div className="dados-loja">
-                    {configLoja?.cnpj && <span>CNPJ: {configLoja.cnpj}<br /></span>}
-                    {configLoja?.endereco && <span>Endereço: {configLoja.endereco}<br /></span>}
-                    {configLoja?.telefone && <span>Telefone: {configLoja.telefone}<br /></span>}
-                    {configLoja?.email && <span>E-mail: {configLoja.email}</span>}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="recibo-header-right">
-              <h2>RECIBO DE VENDA</h2>
-              <p>Data da venda: {dataVenda}</p>
-            </div>
-          </div>
-
-          {showDadosCliente && (
-            <div className="recibo-section">
-              <h3>Dados do Comprador</h3>
-              <div className="recibo-info"><span>Nome:</span><span>{venda.cliente_nome || "—"}</span></div>
-              {venda.cliente_cpf && <div className="recibo-info"><span>CPF:</span><span>{venda.cliente_cpf}</span></div>}
-              {venda.cliente_telefone && <div className="recibo-info"><span>Telefone:</span><span>{venda.cliente_telefone}</span></div>}
-              {venda.cliente_endereco && <div className="recibo-info"><span>Endereço:</span><span>{venda.cliente_endereco}</span></div>}
-            </div>
-          )}
-
-          {showDadosDispositivo && (
-            <div className="recibo-section">
-              <h3>Produto Vendido</h3>
-              <div className="recibo-info"><span>Produto:</span><span>{venda.dispositivo_marca} {venda.dispositivo_modelo}</span></div>
-              <div className="recibo-info"><span>Tipo:</span><span>{venda.dispositivo_tipo}</span></div>
-              {venda.dispositivo_cor && <div className="recibo-info"><span>Cor:</span><span>{venda.dispositivo_cor}</span></div>}
-              {venda.dispositivo_capacidade_gb && <div className="recibo-info"><span>Capacidade:</span><span>{venda.dispositivo_capacidade_gb} GB</span></div>}
-              {venda.dispositivo_imei && <div className="recibo-info"><span>IMEI:</span><span>{venda.dispositivo_imei}</span></div>}
-              {venda.dispositivo_numero_serie && <div className="recibo-info"><span>Nº Série:</span><span>{venda.dispositivo_numero_serie}</span></div>}
-              <div className="recibo-info"><span>Condição:</span><span>{CONDICAO_LABEL[venda.dispositivo_condicao || ''] || venda.dispositivo_condicao}</span></div>
-              <div className="recibo-info"><span>Quantidade:</span><span>{venda.quantidade}</span></div>
-              {showValor && <div className="recibo-info"><span>Valor Unitário:</span><span>{formatCurrency(valorUnitario)}</span></div>}
-              {showFormaPagamento && <div className="recibo-info"><span>Forma de Pagamento:</span><span>{FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento}</span></div>}
-              {venda.dispositivo_garantia && venda.dispositivo_tempo_garantia && (
-                <div className="recibo-info"><span>Garantia:</span><span>{formatarGarantia(venda.dispositivo_tempo_garantia)}</span></div>
-              )}
-            </div>
-          )}
-
-          {showChecklist && venda.dispositivo_checklist?.entrada && Object.entries(venda.dispositivo_checklist.entrada).filter(([_, v]) => v !== undefined).length > 0 && (
-            <div className="recibo-section">
-              <h3>Estado do Aparelho na Venda</h3>
-              <div className="recibo-checklist">
-                {Object.entries(venda.dispositivo_checklist.entrada)
-                  .filter(([_, funciona]) => funciona !== undefined)
-                  .map(([item, funciona]) => (
-                    <div key={item} className="recibo-checklist-item">
-                      <span className="recibo-checklist-icon">{funciona ? '✅' : '❌'}</span>
-                      <span className="recibo-checklist-label">{checklistLabels[item] || item}</span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {showGarantia && (
-            <div className="recibo-section">
-              <h3>Termos de Garantia e Direitos do Consumidor</h3>
-              <div className="termos-garantia">{textoTermo}</div>
-            </div>
-          )}
-
-          {showValor && (
-            <div className="recibo-total">
-              <div>VALOR TOTAL: {formatCurrency(venda.total)}</div>
-            </div>
-          )}
-
-          {showAssinaturas && (
-            <div className="assinaturas-container">
-              <div className="assinatura-bloco">
-                <div className="assinatura-linha" />
-                <p className="assinatura-label">Assinatura do Vendedor</p>
-              </div>
-              <div className="assinatura-bloco">
-                <div className="assinatura-linha" />
-                <p className="assinatura-label">Assinatura do Comprador</p>
-              </div>
-            </div>
-          )}
-
-          <div className="recibo-reimpressao">
-            2ª via — Reimpressão em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-          </div>
-        </div>
-
-        {/* Conteúdo oculto — Termo de Garantia */}
-        <div ref={garantiaRef} style={{ display: "none" }}>
-          <div className="recibo-header">
-            <div className="recibo-header-left">
-              {configLoja?.logo_url && (
-                <img src={configLoja.logo_url} alt="Logo da Loja" className="logo-loja" />
-              )}
-              <div>
-                <h1>{configLoja?.nome_loja || 'Loja'}</h1>
-                <div className="dados-loja">
-                  {configLoja?.cnpj && <span>CNPJ: {configLoja.cnpj}<br /></span>}
-                  {configLoja?.telefone && <span>Tel: {configLoja.telefone}</span>}
-                </div>
-              </div>
-            </div>
-            <div className="recibo-header-right">
-              <h2>TERMO DE GARANTIA</h2>
-              <p>Data da venda: {dataVenda}</p>
-            </div>
-          </div>
-
-          <div className="recibo-section">
-            <div className="termos-garantia">{textoTermo}</div>
-          </div>
-
-          <div className="assinaturas-container">
-            <div className="assinatura-bloco">
-              <div className="assinatura-linha" />
-              <p className="assinatura-label">Assinatura do Vendedor</p>
-            </div>
-            <div className="assinatura-bloco">
-              <div className="assinatura-linha" />
-              <p className="assinatura-label">Assinatura do Comprador — {venda.cliente_nome || ''}</p>
             </div>
           </div>
         </div>
