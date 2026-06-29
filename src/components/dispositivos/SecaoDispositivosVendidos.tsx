@@ -151,7 +151,7 @@ export function SecaoDispositivosVendidos() {
 
       const [dispRes, cliRes] = await Promise.all([
         dispositivoIds.length > 0
-          ? supabase.from("dispositivos").select("id, marca, modelo, tipo, imei, numero_serie, cor, capacidade_gb, condicao, foto_url, fotos, garantia, tempo_garantia, checklist").in("id", dispositivoIds)
+          ? supabase.from("dispositivos").select("id, marca, modelo, tipo, imei, numero_serie, cor, capacidade_gb, condicao, foto_url, fotos, garantia, tempo_garantia, checklist, dispositivo_imeis(imei, venda_id)").in("id", dispositivoIds)
           : { data: [], error: null },
         clienteIds.length > 0
           ? supabase.from("clientes").select("id, nome, telefone, cpf, endereco").in("id", clienteIds)
@@ -185,7 +185,16 @@ export function SecaoDispositivosVendidos() {
           dispositivo_marca: disp?.marca,
           dispositivo_modelo: disp?.modelo,
           dispositivo_tipo: disp?.tipo,
-          dispositivo_imei: v.imei_dispositivo || disp?.imei,
+          dispositivo_imei: v.imei_dispositivo || disp?.imei || (() => {
+            // Buscar IMEI na tabela dispositivo_imeis vinculado a esta venda
+            const imeis = (disp as any)?.dispositivo_imeis as { imei: string; venda_id: string | null }[] | undefined;
+            if (!imeis || imeis.length === 0) return undefined;
+            // Preferir IMEI vinculado ao grupo de venda atual
+            const vinculado = imeis.find(i => i.venda_id === v.id);
+            if (vinculado) return vinculado.imei;
+            // Fallback: qualquer IMEI disponível do dispositivo
+            return imeis[0]?.imei;
+          })(),
           dispositivo_numero_serie: disp?.numero_serie,
           dispositivo_cor: disp?.cor,
           dispositivo_capacidade_gb: disp?.capacidade_gb,
