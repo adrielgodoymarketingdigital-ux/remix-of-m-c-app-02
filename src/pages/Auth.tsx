@@ -60,7 +60,7 @@ const Auth = () => {
         });
 
         if (redirectTo === "onboarding-inicial") {
-          navigate(`/instalar-app`);
+          navigate(`/dashboard`);
         } else if (redirectTo.startsWith("/")) {
           navigate(redirectTo);
         } else {
@@ -131,7 +131,7 @@ const Auth = () => {
               utm_content: tracking.utm_content,
               utm_term: tracking.utm_term,
             },
-            emailRedirectTo: `${window.location.origin}/instalar-app`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
           },
         });
 
@@ -169,7 +169,7 @@ const Auth = () => {
         });
 
         setTimeout(() => {
-          window.location.href = '/instalar-app';
+          window.location.href = '/dashboard';
         }, 500);
       }
     } catch (error: any) {
