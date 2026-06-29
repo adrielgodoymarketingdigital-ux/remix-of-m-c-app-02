@@ -45,6 +45,9 @@ export interface ItemVenda {
   imei_dispositivo?: string;
   imei?: string;
   condicao?: string;
+  cor?: string;
+  capacidade_gb?: number;
+  numero_serie?: string;
   tempo_garantia?: number;
   modelo_termo_garantia_id?: string;
 }

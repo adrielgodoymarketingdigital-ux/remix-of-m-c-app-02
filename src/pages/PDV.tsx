@@ -140,9 +140,13 @@ const PDV = () => {
         quantidade: 1,
         estoque: dispositivo.quantidade,
         dispositivo_id: dispositivo.id,
+        imei_dispositivo: dispositivo.imei || undefined,
         imei: dispositivo.imei || undefined,
         condicao: dispositivo.condicao || undefined,
         tempo_garantia: dispositivo.tempo_garantia,
+        cor: (dispositivo as any).cor || undefined,
+        capacidade_gb: (dispositivo as any).capacidade_gb || undefined,
+        numero_serie: (dispositivo as any).numero_serie || undefined,
       };
       
       setItensCarrinho([itemVenda]);
