@@ -163,12 +163,6 @@ export function SecaoDispositivosVendidos() {
 
       const vendasFormatadas: VendaDispositivo[] = vendasAgrupadas.map((v: any) => {
         const disp = dispMap.get(v.dispositivo_id);
-        console.log('[DEBUG IMEI]', {
-          venda_id: v.id,
-          imei_dispositivo_venda: v.imei_dispositivo,
-          imei_dispositivo_direto: disp?.imei,
-          dispositivo_imeis: (disp as any)?.dispositivo_imeis,
-        });
         const cli = cliMap.get(v.cliente_id);
         // Registro principal guarda o total BRUTO do item (sem desconto);
         // o desconto fica em valor_desconto_manual/valor_desconto_cupom e é subtraído aqui
