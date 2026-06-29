@@ -368,7 +368,7 @@ export function DialogReciboPDV({
       cpf: dados.cliente?.cpf,
       telefone: dados.cliente?.telefone,
       dispositivo: item.nome,
-      imei: item.imei_dispositivo,
+      imei: item.imei_dispositivo || (item as any).imei || undefined,
       garantia_meses: temGarantia ? formatarGarantia(item.tempo_garantia!) : undefined,
       valor: formatCurrency(item.preco * item.quantidade),
       data_venda: dataFormatada,

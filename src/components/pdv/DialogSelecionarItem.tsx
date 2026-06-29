@@ -43,6 +43,7 @@ export interface ItemVenda {
   produto_id?: string;
   peca_id?: string;
   imei_dispositivo?: string;
+  imei?: string;
   tempo_garantia?: number;
   modelo_termo_garantia_id?: string;
 }
@@ -131,6 +132,7 @@ export const DialogSelecionarItem = ({
       estoque: dispositivo.quantidade,
       dispositivo_id: dispositivo.id,
       imei_dispositivo: imei,
+      imei: dispositivo.imei || undefined,
       tempo_garantia: garantiaMeses,
       modelo_termo_garantia_id: modeloTermoId !== MODELO_TERMO_GLOBAL ? modeloTermoId : undefined,
     });
