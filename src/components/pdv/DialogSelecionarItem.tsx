@@ -118,7 +118,7 @@ export const DialogSelecionarItem = ({
     }
     const imei = imeisSelecionados[dispositivo.id] !== "__pendente__"
       ? imeisSelecionados[dispositivo.id]
-      : undefined;
+      : (dispositivo.imei || undefined);
     const quantidade = quantidades[dispositivo.id] || 1;
     onAdicionarItem({
       id: dispositivo.id,
