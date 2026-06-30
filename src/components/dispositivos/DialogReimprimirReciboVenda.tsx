@@ -271,36 +271,208 @@ export function DialogReimprimirReciboVenda({
 <html>
 <head>
   <meta charset="utf-8">
-  <title>${modo === 'garantia' ? 'Termo de Garantia' : 'Recibo de Venda'} - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
+  <title>Termo de Garantia - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    @page { size: A4 portrait; margin: 8mm 10mm; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #111; background: white; line-height: 1.4; }
-    .recibo-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 8px; }
-    .recibo-header-left { display: flex; align-items: center; gap: 8px; }
-    .logo-loja { max-width: 48px; max-height: 48px; object-fit: contain; }
-    .recibo-header h1 { font-size: 13px; font-weight: 900; margin: 0; }
-    .dados-loja { font-size: 8px; color: #444; margin-top: 2px; line-height: 1.4; }
-    .recibo-header-right { text-align: right; }
-    .recibo-header h2 { font-size: 11px; font-weight: 800; margin: 0; }
-    .recibo-header p { font-size: 8px; color: #555; margin-top: 1px; }
-    .recibo-section { margin-bottom: 6px; }
-    .recibo-section h3 { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 2px; margin-bottom: 4px; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
-    .recibo-info { display: flex; gap: 4px; font-size: 9px; margin: 1px 0; }
-    .recibo-info span:first-child { color: #666; min-width: 80px; }
-    .recibo-info span:last-child { font-weight: 600; }
-    .termos-garantia { font-size: 8px; line-height: 1.55; color: #222; }
-    .recibo-total { font-size: 13px; font-weight: 900; text-align: right; margin-top: 6px; padding-top: 6px; border-top: 2px solid #111; }
-    .assinaturas-container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; page-break-inside: avoid; }
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1a1a1a; background: white; line-height: 1.5; }
+
+    /* HEADER */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a1a2e;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 6px 6px 0 0;
+      margin-bottom: 0;
+    }
+    .header-logo { display: flex; align-items: center; gap: 10px; }
+    .header-logo img { max-height: 36px; max-width: 80px; object-fit: contain; filter: brightness(0) invert(1); }
+    .header-loja h1 { font-size: 14px; font-weight: 900; letter-spacing: 0.03em; }
+    .header-loja p { font-size: 8px; color: #adb5bd; margin-top: 1px; }
+    .header-titulo { text-align: right; }
+    .header-titulo h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; color: #4cc9f0; }
+    .header-titulo p { font-size: 8px; color: #adb5bd; margin-top: 2px; }
+
+    /* FAIXA NÚMERO */
+    .faixa-data {
+      background: #f0f4ff;
+      border: 1px solid #d0d9f0;
+      border-top: none;
+      padding: 4px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9px;
+      color: #444;
+      margin-bottom: 8px;
+      border-radius: 0 0 4px 4px;
+    }
+    .faixa-data strong { color: #1a1a2e; }
+
+    /* GRID PRINCIPAL */
+    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+
+    /* CARDS */
+    .card {
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+      padding: 4px 10px;
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6c757d;
+    }
+    .card-body { padding: 8px 10px; }
+    .field { margin-bottom: 5px; }
+    .field-label { font-size: 8px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1px; }
+    .field-value { font-size: 11px; font-weight: 600; color: #1a1a1a; border-bottom: 1px solid #e9ecef; padding-bottom: 2px; }
+    .field-value.destaque { font-size: 13px; color: #1a1a2e; font-weight: 900; }
+
+    /* TERMO */
+    .termo-box {
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .termo-header {
+      background: #1a1a2e;
+      color: white;
+      padding: 5px 10px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .termo-body {
+      padding: 8px 10px;
+      font-size: 9px;
+      line-height: 1.6;
+      color: #333;
+      background: #fafafa;
+    }
+
+    /* ASSINATURAS */
+    .assinaturas {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 2px solid #1a1a2e;
+    }
     .assinatura-bloco { text-align: center; }
-    .assinatura-linha { border-bottom: 1px solid #333; height: 24px; margin-bottom: 3px; }
-    .assinatura-label { font-size: 8px; color: #555; }
-    @media print { body { margin: 0 !important; } .assinaturas-container { page-break-inside: avoid; break-inside: avoid; } }
+    .assinatura-linha {
+      border-bottom: 1.5px solid #333;
+      height: 28px;
+      margin-bottom: 4px;
+    }
+    .assinatura-nome { font-size: 9px; font-weight: 700; color: #1a1a1a; }
+    .assinatura-label { font-size: 8px; color: #888; }
+
+    @media print {
+      body { margin: 0 !important; }
+      .assinaturas { page-break-inside: avoid; break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
-  ${conteudo}
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-logo">
+      ${configLoja?.logo_url ? `<img src="${configLoja.logo_url}" alt="Logo" />` : ''}
+      <div class="header-loja">
+        <h1>${configLoja?.nome_loja || ''}</h1>
+        <p>${configLoja?.cnpj ? `CNPJ: ${configLoja.cnpj}` : ''} ${configLoja?.telefone ? `• Tel: ${configLoja.telefone}` : ''}</p>
+      </div>
+    </div>
+    <div class="header-titulo">
+      <h2>${modo === 'garantia' ? 'TERMO DE GARANTIA' : 'RECIBO DE VENDA'}</h2>
+      <p>${configLoja?.endereco || ''}</p>
+    </div>
+  </div>
+
+  <!-- FAIXA DATA -->
+  <div class="faixa-data">
+    <span>Data da venda: <strong>${dataVenda}</strong></span>
+    <span>Forma de pagamento: <strong>${FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento}</strong></span>
+    <span>Valor total: <strong>${formatCurrency(venda.total)}</strong></span>
+  </div>
+
+  <!-- GRID COMPRADOR + PRODUTO -->
+  <div class="grid-2col">
+    <div class="card">
+      <div class="card-header">Comprador</div>
+      <div class="card-body">
+        <div class="field">
+          <div class="field-label">Nome</div>
+          <div class="field-value">${venda.cliente_nome || '—'}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">CPF</div>
+          <div class="field-value">${venda.cliente_cpf || '—'}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Telefone</div>
+          <div class="field-value">${venda.cliente_telefone || '—'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Produto</div>
+      <div class="card-body">
+        <div class="field">
+          <div class="field-label">Aparelho</div>
+          <div class="field-value destaque">${venda.dispositivo_marca} ${venda.dispositivo_modelo}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">IMEI</div>
+          <div class="field-value">${venda.dispositivo_imei || '—'}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Cor / Capacidade / Condição</div>
+          <div class="field-value">${[venda.dispositivo_cor, venda.dispositivo_capacidade_gb ? venda.dispositivo_capacidade_gb + ' GB' : '', CONDICAO_LABEL[venda.dispositivo_condicao || ''] || venda.dispositivo_condicao].filter(Boolean).join(' • ') || '—'}</div>
+        </div>
+        ${venda.dispositivo_tempo_garantia ? `
+        <div class="field">
+          <div class="field-label">Garantia</div>
+          <div class="field-value destaque" style="color:#1a1a2e">${formatarGarantia(venda.dispositivo_tempo_garantia)}</div>
+        </div>` : ''}
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMO -->
+  <div class="termo-box">
+    <div class="termo-header">Termo de Garantia e Direitos do Consumidor</div>
+    <div class="termo-body">${textoTermoAtual.replace(/\n/g, '<br>')}</div>
+  </div>
+
+  <!-- ASSINATURAS -->
+  <div class="assinaturas">
+    <div class="assinatura-bloco">
+      <div class="assinatura-linha"></div>
+      <div class="assinatura-nome">${configLoja?.nome_loja || 'Vendedor'}</div>
+      <div class="assinatura-label">Assinatura do Vendedor</div>
+    </div>
+    <div class="assinatura-bloco">
+      <div class="assinatura-linha"></div>
+      <div class="assinatura-nome">${venda.cliente_nome || 'Comprador'}</div>
+      <div class="assinatura-label">Assinatura do Comprador</div>
+    </div>
+  </div>
+
   <script>
     (function() {
       var printed = false;
