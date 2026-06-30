@@ -357,10 +357,10 @@ export function CardDispositivo({
           </div>
         )}
 
-        <div className="flex gap-2 pt-2">
+        <div className="grid grid-cols-3 gap-1.5 pt-2">
           <Button
             onClick={handleVender}
-            className="flex-1"
+            className="w-full"
             size="sm"
             disabled={dispositivo.quantidade === 0}
           >
@@ -373,7 +373,7 @@ export function CardDispositivo({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 onClick={handleBaixarRecibo}
                 disabled={gerandoRecibo}
               >
@@ -384,7 +384,7 @@ export function CardDispositivo({
               <Button
                 variant="secondary"
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 onClick={handleGerarReciboLegal}
                 disabled={gerandoRecibo}
               >
@@ -402,14 +402,14 @@ export function CardDispositivo({
             onClick={() => onEditar(dispositivo)}
             variant="default"
             size="sm"
-            className="flex-1"
+            className="w-full"
           >
             <Pencil className="h-4 w-4 mr-2" />
             Editar
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="flex-1">
+              <Button variant="destructive" size="sm" className="w-full">
                 <Trash2 className="h-3 w-3 mr-1" />
                 Excluir
               </Button>
