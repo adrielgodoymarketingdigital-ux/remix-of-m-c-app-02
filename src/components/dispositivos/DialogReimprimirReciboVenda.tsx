@@ -271,7 +271,7 @@ export function DialogReimprimirReciboVenda({
 <html>
 <head>
   <meta charset="utf-8">
-  <link rel="icon" type="image/png" href="/logo-mec-sistema.png">
+  <link rel="icon" type="image/png" href="/pwa-192x192.png">
   <title>Termo de Garantia - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }

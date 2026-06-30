@@ -182,7 +182,7 @@ export function DialogReciboPDV({
 <html>
 <head>
   <meta charset="utf-8">
-  <link rel="icon" type="image/png" href="/logo-mec-sistema.png">
+  <link rel="icon" type="image/png" href="/pwa-192x192.png">
   <title>Recibo de Venda - PDV</title>
   <style>
     /* --- Reset e base --- */
