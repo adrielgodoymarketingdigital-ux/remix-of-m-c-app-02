@@ -193,9 +193,12 @@ export function DialogDispositivoEntrada({
         <div className="space-y-6 py-2">
           {/* Vendedor */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Vendedor
-            </h3>
+            <div>
+              <h3 className="font-semibold text-sm">Vendedor do Dispositivo</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Quem está entregando o dispositivo como parte do pagamento (seu cliente).
+              </p>
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="sm:col-span-3 space-y-1">
                 <Label htmlFor="vendedor-nome">Nome *</Label>
