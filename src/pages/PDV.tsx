@@ -18,7 +18,7 @@ import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag } from "lucide-react";
+import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
 import { DialogAberturaCaixa } from "@/components/pdv/DialogAberturaCaixa";
@@ -48,6 +48,7 @@ import { SeletorBandeiraCartao } from "@/components/pdv/SeletorBandeiraCartao";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogVendaAvulsa } from "@/components/pdv/DialogVendaAvulsa";
+import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
 
 /** Retorna a data de hoje no formato YYYY-MM-DD no timezone local do usuário.
  * Necessário porque new Date().toISOString() retorna UTC, o que pode salvar
@@ -84,6 +85,8 @@ const PDV = () => {
   const [dialogHistoricoCaixasAberto, setDialogHistoricoCaixasAberto] = useState(false);
   const [dialogStatusCaixaAberto, setDialogStatusCaixaAberto] = useState(false);
   const [dialogVendaAvulsaAberto, setDialogVendaAvulsaAberto] = useState(false);
+  const [dialogDispositivoEntradaAberto, setDialogDispositivoEntradaAberto] = useState(false);
+  const [valorDispositivoEntrada, setValorDispositivoEntrada] = useState(0);
   const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa, fecharCaixa } = useCaixa();
   const [pagamentoDuploAtivo, setPagamentoDuploAtivo] = useState(false);
   const [valorPrimeiraPagamento, setValorPrimeiraPagamento] = useState(0);
@@ -126,7 +129,7 @@ const PDV = () => {
     carregarClientes();
 
     // Verificar se há dispositivo selecionado
-    const state = location.state as { dispositivoSelecionado?: Dispositivo };
+    const state = location.state as { dispositivoSelecionado?: Dispositivo; valorEntradaInicial?: number };
     if (state?.dispositivoSelecionado) {
       const dispositivo = state.dispositivoSelecionado;
       
@@ -150,6 +153,9 @@ const PDV = () => {
       };
       
       setItensCarrinho([itemVenda]);
+      if (state.valorEntradaInicial && state.valorEntradaInicial > 0) {
+        setValorDispositivoEntrada(state.valorEntradaInicial);
+      }
       sonnerToast.success("Dispositivo adicionado ao carrinho!");
       
       // Limpar state
@@ -234,7 +240,13 @@ const PDV = () => {
 
   const calcularTotal = () => {
     const descontoManual = calcularDescontoReal();
-    return calcularSubtotal() - descontoManual;
+    return Math.max(0, calcularSubtotal() - descontoManual - valorDispositivoEntrada);
+  };
+
+  const handleConfirmarDispositivoEntrada = (valor: number) => {
+    setValorDispositivoEntrada(valor);
+    setDialogDispositivoEntradaAberto(false);
+    sonnerToast.success(`Dispositivo de entrada registrado: ${formatCurrency(valor)}`);
   };
 
   const validarVenda = () => {
@@ -684,6 +696,7 @@ const PDV = () => {
       setTipoRecebimentoSegunda("a_vista");
       setNumParcelasSegunda(2);
       setDatasParcelasSegunda([]);
+      setValorDispositivoEntrada(0);
     } catch (error: any) {
       console.error("Erro ao finalizar venda:", error);
       toast({
@@ -883,6 +896,13 @@ const PDV = () => {
                   )}
                 </div>
 
+                {valorDispositivoEntrada > 0 && (
+                  <div className="flex justify-between text-sm text-amber-600">
+                    <span>Dispositivo de entrada:</span>
+                    <span>- {formatCurrency(valorDispositivoEntrada)}</span>
+                  </div>
+                )}
+
                 <div className="border-t pt-3 flex justify-between items-center">
                   <span className="font-semibold">Total</span>
                   <span className="text-xl sm:text-2xl font-bold">
@@ -913,6 +933,20 @@ const PDV = () => {
                   </Select>
                 </div>
               )}
+
+              <div className="mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDialogDispositivoEntradaAberto(true)}
+                  className="gap-1.5 text-xs border-amber-500/40 text-amber-600 hover:bg-amber-500/5 w-full"
+                >
+                  <Smartphone className="h-3.5 w-3.5" />
+                  {valorDispositivoEntrada > 0
+                    ? `Entrada: ${formatCurrency(valorDispositivoEntrada)}`
+                    : "Dispositivo de Entrada"}
+                </Button>
+              </div>
 
               <div className="space-y-4 mb-6">
                 <div className="space-y-2">
@@ -1114,6 +1148,13 @@ const PDV = () => {
       <DialogVendaAvulsa
         open={dialogVendaAvulsaAberto}
         onOpenChange={setDialogVendaAvulsaAberto}
+      />
+
+      <DialogDispositivoEntrada
+        open={dialogDispositivoEntradaAberto}
+        onOpenChange={setDialogDispositivoEntradaAberto}
+        empresaId={empresaAtivaCtx || null}
+        onConfirmar={handleConfirmarDispositivoEntrada}
       />
 
       <DialogReciboPDV

@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShoppingCart, Pencil, Trash2, ImageIcon, FileText, Download, Loader2, Lock } from "lucide-react";
+import { ShoppingCart, Pencil, Trash2, ImageIcon, FileText, Download, Loader2, Lock, Smartphone } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Dispositivo } from "@/types/dispositivo";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
 
 interface CardDispositivoProps {
   dispositivo: Dispositivo;
@@ -191,6 +192,8 @@ export function CardDispositivo({
   const [garantiaMeses, setGarantiaMeses] = useState<number | undefined>(
     dispositivo.garantia ? dispositivo.tempo_garantia : undefined
   );
+  const [dialogEntradaAberto, setDialogEntradaAberto] = useState(false);
+  const [valorEntrada, setValorEntrada] = useState(0);
 
   const handleVender = () => {
     setGarantiaMeses(dispositivo.garantia ? dispositivo.tempo_garantia : undefined);
@@ -204,7 +207,8 @@ export function CardDispositivo({
         dispositivoSelecionado: {
           ...dispositivo,
           tempo_garantia: garantiaMeses,
-        }
+        },
+        valorEntradaInicial: valorEntrada,
       }
     });
   };
@@ -450,16 +454,39 @@ export function CardDispositivo({
               onChange={setGarantiaMeses}
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogGarantiaAberto(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleConfirmarVenda}>
-              Ir para o PDV
-            </Button>
+          <DialogFooter className="flex-col gap-2">
+            <div className="flex items-center justify-between w-full text-sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDialogEntradaAberto(true)}
+                className="gap-1.5 text-xs border-amber-500/40 text-amber-600 hover:bg-amber-500/5"
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+                {valorEntrada > 0 ? `Entrada: R$ ${valorEntrada.toFixed(2)}` : "Dispositivo de Entrada"}
+              </Button>
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={() => setDialogGarantiaAberto(false)}>
+                Cancelar
+              </Button>
+              <Button className="flex-1" onClick={handleConfirmarVenda}>
+                Ir para o PDV
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DialogDispositivoEntrada
+        open={dialogEntradaAberto}
+        onOpenChange={setDialogEntradaAberto}
+        empresaId={dispositivo.empresa_id || null}
+        onConfirmar={(valor) => {
+          setValorEntrada(valor);
+          setDialogEntradaAberto(false);
+        }}
+      />
     </Card>
   );
 }
