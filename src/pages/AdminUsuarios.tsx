@@ -33,6 +33,8 @@ import {
   UserMinus,
   Target,
   Activity,
+  UserPlus,
+  Calendar,
 } from "lucide-react";
 import { DialogConfiguracaoMensagensWhatsAppAdmin } from "@/components/admin/DialogConfiguracaoMensagensWhatsAppAdmin";
 import { FunilConversaoCompleto } from "@/components/admin/FunilConversaoCompleto";
@@ -63,6 +65,7 @@ export default function AdminUsuarios() {
   const [filtroPlano, setFiltroPlano] = useState<string>("todos");
   const [abaAtiva, setAbaAtiva] = useState("todos");
   const [periodoProjecao, setPeriodoProjecao] = useState("3");
+  const [periodoNovos, setPeriodoNovos] = useState<"dia" | "semana" | "mes">("semana");
   const [onlineCount, setOnlineCount] = useState(0);
 
   useOnlineUsersCount(
@@ -134,6 +137,29 @@ export default function AdminUsuarios() {
   const assinantesPerdidos = usuariosFiltrados.filter(u =>
     u.status === "canceled" && planosPagos.includes(u.plano_tipo)
   );
+
+  // Métricas de novos usuários por período
+  const agora2 = new Date();
+  const inicioPeriodoNovos = (() => {
+    if (periodoNovos === "dia") return new Date(agora2.getTime() - 24 * 60 * 60 * 1000);
+    if (periodoNovos === "semana") return new Date(agora2.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return new Date(agora2.getFullYear(), agora2.getMonth(), 1);
+  })();
+
+  // Novos cadastros: criados no período (qualquer plano, exceto admin)
+  const novosCadastros = usuariosFiltrados.filter(u => {
+    if (u.plano_tipo === "admin") return false;
+    const criado = u.created_at ? new Date(u.created_at) : null;
+    return criado && criado >= inicioPeriodoNovos;
+  });
+
+  // Novos assinantes: primeiro pagamento no período
+  // Considera quem tem plano pago ativo e foi criado no período (nunca pagou antes)
+  const novosAssinantes = usuariosFiltrados.filter(u => {
+    if (!u.is_pagante) return false;
+    const criado = u.created_at ? new Date(u.created_at) : null;
+    return criado && criado >= inicioPeriodoNovos;
+  });
 
   const planosUnicos = Array.from(new Set(usuarios.map(u => u.plano_tipo)));
 
@@ -392,6 +418,54 @@ export default function AdminUsuarios() {
                   <div className="text-2xl font-bold text-violet-600">{taxaConversaoSistema.toFixed(1)}%</div>
                   <div className="text-xs text-muted-foreground">Conversão</div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Card Novos Cadastros */}
+            <Card className="relative overflow-hidden border-violet-200 dark:border-violet-800">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4 text-violet-600" />
+                    <span className="text-sm font-medium text-muted-foreground">Novos Cadastros</span>
+                  </div>
+                  <Select value={periodoNovos} onValueChange={(v) => setPeriodoNovos(v as "dia" | "semana" | "mes")}>
+                    <SelectTrigger className="h-7 w-24 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dia">Hoje</SelectItem>
+                      <SelectItem value="semana">7 dias</SelectItem>
+                      <SelectItem value="mes">Este mês</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-3xl font-bold text-violet-600 dark:text-violet-400">{novosCadastros.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">usuários cadastrados no período</p>
+              </CardContent>
+            </Card>
+
+            {/* Card Novos Assinantes */}
+            <Card className="relative overflow-hidden border-amber-200 dark:border-amber-800">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm font-medium text-muted-foreground">Novos Assinantes</span>
+                  </div>
+                  <Select value={periodoNovos} onValueChange={(v) => setPeriodoNovos(v as "dia" | "semana" | "mes")}>
+                    <SelectTrigger className="h-7 w-24 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dia">Hoje</SelectItem>
+                      <SelectItem value="semana">7 dias</SelectItem>
+                      <SelectItem value="mes">Este mês</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">{novosAssinantes.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">primeiro pagamento no período</p>
               </CardContent>
             </Card>
 
