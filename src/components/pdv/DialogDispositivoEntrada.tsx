@@ -190,6 +190,16 @@ export function DialogDispositivoEntrada({
           <DialogTitle>Dispositivo de Entrada (Troca)</DialogTitle>
         </DialogHeader>
 
+        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-3 space-y-1.5">
+          <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">Como funciona o Dispositivo de Entrada?</p>
+          <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed">
+            Quando o cliente entrega um dispositivo como parte do pagamento (troca), preencha os dados abaixo. O aparelho entrará automaticamente no seu estoque e será registrado em Origem de Dispositivos.
+          </p>
+          <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed">
+            <strong>Financeiro:</strong> O <strong>valor de custo</strong> informado será descontado do total da venda — é o valor que você está "pagando" pelo aparelho ao aceitar na troca. O <strong>valor de venda</strong> é o preço que você pretende cobrar quando revender esse dispositivo.
+          </p>
+        </div>
+
         <div className="space-y-6 py-2">
           {/* Vendedor */}
           <div className="space-y-3">
