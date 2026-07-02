@@ -199,7 +199,14 @@ const PDV = () => {
   };
 
   const removerItem = (id: string) => {
-    setItensCarrinho((prev) => prev.filter((item) => item.id !== id));
+    setItensCarrinho((prev) => {
+      const novosItens = prev.filter((item) => item.id !== id);
+      const itemRemovido = prev.find(item => item.id === id);
+      if (itemRemovido?.tipo === "dispositivo" && !novosItens.some(i => i.tipo === "dispositivo")) {
+        setValorDispositivoEntrada(0);
+      }
+      return novosItens;
+    });
   };
 
   const atualizarQuantidade = (id: string, quantidade: number) => {
@@ -934,19 +941,26 @@ const PDV = () => {
                 </div>
               )}
 
-              <div className="mb-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDialogDispositivoEntradaAberto(true)}
-                  className="gap-1.5 text-xs border-amber-500/40 text-amber-600 hover:bg-amber-500/5 w-full"
-                >
-                  <Smartphone className="h-3.5 w-3.5" />
-                  {valorDispositivoEntrada > 0
-                    ? `Entrada: ${formatCurrency(valorDispositivoEntrada)}`
-                    : "Dispositivo de Entrada"}
-                </Button>
-              </div>
+              {itensCarrinho.some(item => item.tipo === "dispositivo") && (
+                <div className="mb-4 space-y-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogDispositivoEntradaAberto(true)}
+                    className="gap-1.5 text-xs border-amber-500/40 text-amber-600 hover:bg-amber-500/5 w-full"
+                  >
+                    <Smartphone className="h-3.5 w-3.5" />
+                    {valorDispositivoEntrada > 0
+                      ? `✓ Entrada: ${formatCurrency(valorDispositivoEntrada)}`
+                      : "+ Dispositivo de Entrada (Troca)"}
+                  </Button>
+                  {valorDispositivoEntrada > 0 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Restante a receber em dinheiro/pix/cartão: <strong>{formatCurrency(Math.max(0, total))}</strong>
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-4 mb-6">
                 <div className="space-y-2">
