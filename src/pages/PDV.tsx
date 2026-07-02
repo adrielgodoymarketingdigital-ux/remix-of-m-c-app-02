@@ -18,7 +18,7 @@ import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2 } from "lucide-react";
+import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2, Banknote, QrCode, Clock } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
 import { DialogAberturaCaixa } from "@/components/pdv/DialogAberturaCaixa";
@@ -64,6 +64,19 @@ const clienteSchema = z.object({
   cpf: z.string().trim().max(14).optional(),
   endereco: z.string().trim().max(200).optional(),
 });
+
+const FormasPagamentoIcones: Record<string, React.ReactNode> = {
+  dinheiro: <Banknote className="h-4 w-4 text-emerald-600" />,
+  pix: (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-teal-500" xmlns="http://www.w3.org/2000/svg">
+      <path d="M11.9999 0C5.3723 0 0 5.3723 0 12s5.3723 12 11.9999 12C18.6277 24 24 18.6277 24 12S18.6277 0 11.9999 0zm4.4284 14.7933l-2.4046 2.4046c-.6093.6093-1.6471.6093-2.2564 0L9.3633 14.793c-.1406-.1406-.3315-.2197-.5302-.2197H7.2384a.4688.4688 0 01-.4688-.4688v-4.209c0-.1241.0493-.243.1372-.3308l2.7735-2.7736c.6093-.6093 1.6471-.6093 2.2564 0l2.4046 2.4046c.1406.1406.3315.2197.5302.2197h1.4297c.1241 0 .243.0493.3308.1372l.7032.7031a.4688.4688 0 010 .6628l-.7032.7032a.4677.4677 0 01-.3308.1372h-1.4297c-.1987 0-.3896.0791-.5302.2197z"/>
+    </svg>
+  ),
+  debito: <CreditCard className="h-4 w-4 text-blue-500" />,
+  credito: <CreditCard className="h-4 w-4 text-violet-500" />,
+  credito_parcelado: <CreditCard className="h-4 w-4 text-violet-400" />,
+  a_receber: <Clock className="h-4 w-4 text-amber-500" />,
+};
 
 const PDV = () => {
   const navigate = useNavigate();
@@ -1015,12 +1028,21 @@ const PDV = () => {
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="debito">Débito</SelectItem>
-                      <SelectItem value="credito">Crédito</SelectItem>
-                      <SelectItem value="credito_parcelado">Crédito Parcelado</SelectItem>
-                      <SelectItem value="a_receber">A Receber</SelectItem>
+                      {[
+                        { value: "dinheiro", label: "Dinheiro" },
+                        { value: "pix", label: "PIX" },
+                        { value: "debito", label: "Débito" },
+                        { value: "credito", label: "Crédito" },
+                        { value: "credito_parcelado", label: "Crédito Parcelado" },
+                        { value: "a_receber", label: "A Receber" },
+                      ].map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                          <div className="flex items-center gap-2">
+                            {FormasPagamentoIcones[value]}
+                            <span>{label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
                       {formasCustomizadas.length > 0 && (
                         <>
                           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
