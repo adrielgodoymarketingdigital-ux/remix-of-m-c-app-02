@@ -44,7 +44,9 @@ export const DashboardOrdensServico = ({
   const aguardandoRetiradaOS = ordens.filter(o => o.status === "aguardando_retirada");
   const aguardandoRetiradaCount = aguardandoRetiradaOS.length;
   const aguardandoRetiradaValor = aguardandoRetiradaOS.reduce((acc, o) => acc + (o.total ?? 0), 0);
-  const aguardandoRetiradaNome = statusList.find(s => s.slug === "aguardando_retirada")?.nome ?? "Aguardando Retirada";
+  const aguardandoRetiradaStatus = statusList.find(s => s.slug === "aguardando_retirada");
+  const aguardandoRetiradaNome = aguardandoRetiradaStatus?.nome ?? "Aguardando Retirada";
+  const aguardandoRetiradaCor = aguardandoRetiradaStatus?.cor ?? "#f97316";
 
   const visibleStatuses = statusCounts.filter((s) => {
     const config = statusList.find((st) => st.slug === s.slug);
@@ -72,17 +74,20 @@ export const DashboardOrdensServico = ({
           </StatusCard>
         ))}
         {aguardandoRetiradaCount > 0 && (
-          <div className="rounded-xl border-2 border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/20 p-4 flex flex-col gap-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-orange-500/70">
+          <div
+            className="rounded-xl border-2 p-4 flex flex-col gap-1"
+            style={{ borderColor: aguardandoRetiradaCor, backgroundColor: `${aguardandoRetiradaCor}15` }}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: aguardandoRetiradaCor, opacity: 0.7 }}>
               A Receber — {aguardandoRetiradaNome}
             </p>
-            <p className="text-3xl sm:text-4xl font-black text-orange-500">
+            <p className="text-3xl sm:text-4xl font-black" style={{ color: aguardandoRetiradaCor }}>
               {aguardandoRetiradaCount}
             </p>
-            <p className="text-sm font-bold text-orange-600 font-mono">
+            <p className="text-sm font-bold font-mono" style={{ color: aguardandoRetiradaCor }}>
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(aguardandoRetiradaValor)}
             </p>
-            <p className="text-[10px] text-orange-400">OS {aguardandoRetiradaNome.toLowerCase()}</p>
+            <p className="text-[10px]" style={{ color: aguardandoRetiradaCor, opacity: 0.7 }}>OS {aguardandoRetiradaNome.toLowerCase()}</p>
           </div>
         )}
       </div>
