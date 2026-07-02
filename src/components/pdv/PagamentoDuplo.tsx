@@ -26,6 +26,7 @@ interface PagamentoDuploProps {
   valorTotal: number;
   formaPagamento: string;
   numeroParcelas: number;
+  formasCustomizadas?: { id: string; nome: string }[];
   onPagamentoDuploChange: (dados: {
     ativo: boolean;
     valorPrimeira: number;
@@ -42,6 +43,7 @@ export function PagamentoDuplo({
   valorTotal,
   formaPagamento,
   numeroParcelas,
+  formasCustomizadas,
   onPagamentoDuploChange,
 }: PagamentoDuploProps) {
   const [ativo, setAtivo] = useState(false);
@@ -202,6 +204,18 @@ export function PagamentoDuplo({
                     {LABELS_FORMA[f]}
                   </SelectItem>
                 ))}
+                {(formasCustomizadas || []).length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
+                      Personalizadas
+                    </div>
+                    {(formasCustomizadas || []).map((f) => (
+                      <SelectItem key={f.id} value={`custom_${f.id}`}>
+                        {f.nome}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>

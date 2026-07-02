@@ -18,7 +18,7 @@ import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone } from "lucide-react";
+import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2 } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
 import { DialogAberturaCaixa } from "@/components/pdv/DialogAberturaCaixa";
@@ -49,6 +49,8 @@ import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogVendaAvulsa } from "@/components/pdv/DialogVendaAvulsa";
 import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
+import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustomizadas";
+import { DialogFormasPagamentoConfig } from "@/components/pdv/DialogFormasPagamentoConfig";
 
 /** Retorna a data de hoje no formato YYYY-MM-DD no timezone local do usuário.
  * Necessário porque new Date().toISOString() retorna UTC, o que pode salvar
@@ -87,6 +89,8 @@ const PDV = () => {
   const [dialogVendaAvulsaAberto, setDialogVendaAvulsaAberto] = useState(false);
   const [dialogDispositivoEntradaAberto, setDialogDispositivoEntradaAberto] = useState(false);
   const [valorDispositivoEntrada, setValorDispositivoEntrada] = useState(0);
+  const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaAtivaCtx);
+  const [dialogFormasPagamentoAberto, setDialogFormasPagamentoAberto] = useState(false);
   const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa, fecharCaixa } = useCaixa();
   const [pagamentoDuploAtivo, setPagamentoDuploAtivo] = useState(false);
   const [valorPrimeiraPagamento, setValorPrimeiraPagamento] = useState(0);
@@ -248,6 +252,24 @@ const PDV = () => {
   const calcularTotal = () => {
     const descontoManual = calcularDescontoReal();
     return Math.max(0, calcularSubtotal() - descontoManual - valorDispositivoEntrada);
+  };
+
+  const labelFormaPagamento: Record<string, string> = {
+    dinheiro: "Dinheiro",
+    pix: "PIX",
+    debito: "Débito",
+    credito: "Crédito",
+    credito_parcelado: "Crédito Parcelado",
+    a_receber: "A Receber",
+  };
+
+  const getLabelFormaPagamento = (forma: string): string => {
+    if (labelFormaPagamento[forma]) return labelFormaPagamento[forma];
+    if (forma.startsWith("custom_")) {
+      const id = forma.replace("custom_", "");
+      return formasCustomizadas.find(f => f.id === id)?.nome || forma;
+    }
+    return forma;
   };
 
   const handleConfirmarDispositivoEntrada = (valor: number) => {
@@ -964,7 +986,18 @@ const PDV = () => {
 
               <div className="space-y-4 mb-6">
                 <div className="space-y-2">
-                  <Label>Forma de Pagamento *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Forma de Pagamento *</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDialogFormasPagamentoAberto(true)}
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+                    >
+                      <Settings2 className="h-3 w-3" />
+                      Configurar
+                    </Button>
+                  </div>
                   <Select value={formaPagamento} onValueChange={(value) => {
                     setFormaPagamento(value);
                     setBandeiraSelecionada("");
@@ -986,10 +1019,20 @@ const PDV = () => {
                       <SelectItem value="pix">PIX</SelectItem>
                       <SelectItem value="debito">Débito</SelectItem>
                       <SelectItem value="credito">Crédito</SelectItem>
-                      <SelectItem value="credito_parcelado">
-                        Crédito Parcelado
-                      </SelectItem>
+                      <SelectItem value="credito_parcelado">Crédito Parcelado</SelectItem>
                       <SelectItem value="a_receber">A Receber</SelectItem>
+                      {formasCustomizadas.length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
+                            Personalizadas
+                          </div>
+                          {formasCustomizadas.map((f) => (
+                            <SelectItem key={f.id} value={`custom_${f.id}`}>
+                              {f.nome}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1034,6 +1077,7 @@ const PDV = () => {
                     valorTotal={total}
                     formaPagamento={formaPagamento}
                     numeroParcelas={numeroParcelas}
+                    formasCustomizadas={formasCustomizadas}
                     onPagamentoDuploChange={(dados) => {
                       setPagamentoDuploAtivo(dados.ativo);
                       setValorPrimeiraPagamento(dados.valorPrimeira);
@@ -1169,6 +1213,12 @@ const PDV = () => {
         onOpenChange={setDialogDispositivoEntradaAberto}
         empresaId={empresaAtivaCtx || null}
         onConfirmar={handleConfirmarDispositivoEntrada}
+      />
+
+      <DialogFormasPagamentoConfig
+        open={dialogFormasPagamentoAberto}
+        onOpenChange={setDialogFormasPagamentoAberto}
+        empresaId={empresaAtivaCtx || null}
       />
 
       <DialogReciboPDV
