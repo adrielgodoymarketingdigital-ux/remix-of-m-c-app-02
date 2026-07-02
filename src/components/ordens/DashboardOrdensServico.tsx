@@ -44,6 +44,7 @@ export const DashboardOrdensServico = ({
   const aguardandoRetiradaOS = ordens.filter(o => o.status === "aguardando_retirada");
   const aguardandoRetiradaCount = aguardandoRetiradaOS.length;
   const aguardandoRetiradaValor = aguardandoRetiradaOS.reduce((acc, o) => acc + (o.total ?? 0), 0);
+  const aguardandoRetiradaNome = statusList.find(s => s.slug === "aguardando_retirada")?.nome ?? "Aguardando Retirada";
 
   const visibleStatuses = statusCounts.filter((s) => {
     const config = statusList.find((st) => st.slug === s.slug);
@@ -73,7 +74,7 @@ export const DashboardOrdensServico = ({
         {aguardandoRetiradaCount > 0 && (
           <div className="rounded-xl border-2 border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/20 p-4 flex flex-col gap-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-orange-500/70">
-              A Receber — Aguardando Retirada
+              A Receber — {aguardandoRetiradaNome}
             </p>
             <p className="text-3xl sm:text-4xl font-black text-orange-500">
               {aguardandoRetiradaCount}
@@ -81,7 +82,7 @@ export const DashboardOrdensServico = ({
             <p className="text-sm font-bold text-orange-600 font-mono">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(aguardandoRetiradaValor)}
             </p>
-            <p className="text-[10px] text-orange-400">OS aguardando retirada</p>
+            <p className="text-[10px] text-orange-400">OS {aguardandoRetiradaNome.toLowerCase()}</p>
           </div>
         )}
       </div>
