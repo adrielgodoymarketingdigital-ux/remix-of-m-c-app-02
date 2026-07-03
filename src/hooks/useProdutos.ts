@@ -104,6 +104,8 @@ export const useProdutos = () => {
         categoria_id: (p as any).categoria_id || null,
         categoria_nome: (p as any).categoria_id ? categoriasMap.get((p as any).categoria_id)?.nome || null : null,
         categoria_cor: (p as any).categoria_id ? categoriasMap.get((p as any).categoria_id)?.cor || null : null,
+        peca_pai_id: (p as any).peca_pai_id || null,
+        variacao_label: (p as any).variacao_label || null,
       }));
 
       const todosItems = [...produtosComTipo, ...pecasComTipo].sort((a, b) =>
@@ -628,6 +630,52 @@ export const useProdutos = () => {
     }
   }, [carregarTodos, resolvedUserId, empresaFiltro]);
 
+  const criarPecaComVariacoes = useCallback(async (nomeBase: string, variacoes: VariacaoInput[], categoriaId?: string, fornecedorId?: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const userId = resolvedUserId ?? user.id;
+
+      if (variacoes.length === 0) {
+        toast.error('Informe ao menos uma variação');
+        return false;
+      }
+
+      const raizId = crypto.randomUUID();
+
+      const linhas = variacoes.map((v, index) => ({
+        id: index === 0 ? raizId : crypto.randomUUID(),
+        peca_pai_id: index === 0 ? null : raizId,
+        nome: `${nomeBase} - ${v.label}`,
+        variacao_label: v.label,
+        codigo_barras: v.codigo_barras || null,
+        quantidade: v.quantidade,
+        custo: v.custo,
+        preco: v.preco,
+        preco_atacado: v.preco_atacado ?? null,
+        categoria_id: categoriaId || null,
+        fornecedor_id: fornecedorId || null,
+        user_id: userId,
+        empresa_id: empresaFiltro ?? null,
+        fotos: [],
+      }));
+
+      const { error } = await supabase.from('pecas').insert(linhas as any);
+      if (error) throw error;
+
+      toast.success(`${variacoes.length} variações cadastradas!`, {
+        description: `Peça "${nomeBase}" criada com ${variacoes.length} variação(ões).`
+      });
+
+      await carregarTodos();
+      return true;
+    } catch (error: any) {
+      toast.error('Erro ao cadastrar variações de peça', { description: error.message });
+      return false;
+    }
+  }, [carregarTodos, resolvedUserId, empresaFiltro]);
+
   const alterarTipoEmMassa = useCallback(async (itensParaAlterar: { id: string; tipo: 'produto' | 'peca' }[], novoTipo: 'produto' | 'peca') => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -842,6 +890,7 @@ export const useProdutos = () => {
     alterarPrecoEmMassa,
     importarEmLote,
     criarProdutoComVariacoes,
+    criarPecaComVariacoes,
     reporEstoque,
   };
 };

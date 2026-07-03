@@ -2863,10 +2863,12 @@ export type Database = {
           fotos: Json | null
           id: string
           nome: string
+          peca_pai_id: string | null
           preco: number | null
           preco_atacado: number | null
           quantidade: number | null
           user_id: string
+          variacao_label: string | null
         }
         Insert: {
           categoria_id?: string | null
@@ -2879,10 +2881,12 @@ export type Database = {
           fotos?: Json | null
           id?: string
           nome: string
+          peca_pai_id?: string | null
           preco?: number | null
           preco_atacado?: number | null
           quantidade?: number | null
           user_id: string
+          variacao_label?: string | null
         }
         Update: {
           categoria_id?: string | null
@@ -2895,10 +2899,12 @@ export type Database = {
           fotos?: Json | null
           id?: string
           nome?: string
+          peca_pai_id?: string | null
           preco?: number | null
           preco_atacado?: number | null
           quantidade?: number | null
           user_id?: string
+          variacao_label?: string | null
         }
         Relationships: [
           {

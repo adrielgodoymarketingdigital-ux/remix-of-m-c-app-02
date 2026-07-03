@@ -31,7 +31,7 @@ import { DialogNovaTrocaGarantia } from '@/components/produtos/DialogNovaTrocaGa
 import { useTrocasGarantia } from '@/hooks/useTrocasGarantia';
 
 const Produtos = () => {
-  const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, importarEmLote, criarProdutoComVariacoes, reporEstoque } = useProdutos();
+  const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque } = useProdutos();
   const { categorias, carregarCategorias, criarCategoria, atualizarCategoria, excluirCategoria } = useCategoriasProdutos();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
   const { obterContagemProdutosMes, assinatura } = useAssinatura();
@@ -413,6 +413,7 @@ const Produtos = () => {
         onOpenChange={handleDialogClose}
         onSubmit={handleSubmit}
         onSubmitComVariacoes={criarProdutoComVariacoes}
+        onSubmitPecaComVariacoes={criarPecaComVariacoes}
         itemParaEditar={itemParaEditar}
         categorias={categorias}
       />

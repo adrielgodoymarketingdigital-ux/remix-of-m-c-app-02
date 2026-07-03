@@ -418,7 +418,10 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                       <div>
                         <p className="font-medium flex items-center gap-1.5">
                           {item.nome}
-                          {item.tipo === 'produto' && item.produto_pai_id && (
+                          {item.tipo === 'produto' && (item as any).produto_pai_id && (
+                            <Badge variant="outline" className="text-xs shrink-0">Variação</Badge>
+                          )}
+                          {item.tipo === 'peca' && (item as any).peca_pai_id && (
                             <Badge variant="outline" className="text-xs shrink-0">Variação</Badge>
                           )}
                         </p>
@@ -656,7 +659,10 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                   <TableCell className="font-medium">
                     <span className="flex items-center gap-1.5">
                       {item.nome}
-                      {item.tipo === 'produto' && item.produto_pai_id && (
+                      {item.tipo === 'produto' && (item as any).produto_pai_id && (
+                        <Badge variant="outline" className="text-xs shrink-0">Variação</Badge>
+                      )}
+                      {item.tipo === 'peca' && (item as any).peca_pai_id && (
                         <Badge variant="outline" className="text-xs shrink-0">Variação</Badge>
                       )}
                     </span>

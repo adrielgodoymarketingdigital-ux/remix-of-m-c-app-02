@@ -38,6 +38,8 @@ export interface Peca {
   categoria_id?: string | null;
   categoria_nome?: string | null;
   categoria_cor?: string | null;
+  peca_pai_id?: string | null;
+  variacao_label?: string | null;
 }
 
 export type ItemEstoque = Produto | Peca;

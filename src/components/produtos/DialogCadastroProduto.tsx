@@ -63,6 +63,7 @@ interface DialogCadastroProdutoProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (dados: FormularioProduto) => Promise<boolean>;
   onSubmitComVariacoes: (nomeBase: string, variacoes: VariacaoInput[], categoriaId?: string, fornecedorId?: string) => Promise<boolean>;
+  onSubmitPecaComVariacoes?: (nomeBase: string, variacoes: VariacaoInput[], categoriaId?: string, fornecedorId?: string) => Promise<boolean>;
   itemParaEditar?: ItemEstoque | null;
   categorias?: CategoriaProduto[];
 }
@@ -72,6 +73,7 @@ export const DialogCadastroProduto = ({
   onOpenChange,
   onSubmit,
   onSubmitComVariacoes,
+  onSubmitPecaComVariacoes,
   itemParaEditar,
   categorias = [],
 }: DialogCadastroProdutoProps) => {
@@ -158,7 +160,10 @@ export const DialogCadastroProduto = ({
         }
       }
       setEnviando(true);
-      const sucesso = await onSubmitComVariacoes(dados.nome, variacoes, dados.categoria_id, dados.fornecedor_id);
+      const callbackVariacoes = dados.tipo === 'peca' && onSubmitPecaComVariacoes
+        ? onSubmitPecaComVariacoes
+        : onSubmitComVariacoes;
+      const sucesso = await callbackVariacoes(dados.nome, variacoes, dados.categoria_id, dados.fornecedor_id);
       setEnviando(false);
       if (sucesso) {
         onOpenChange(false);
@@ -232,7 +237,7 @@ export const DialogCadastroProduto = ({
                     <FormLabel>Tipo de Item</FormLabel>
                     <FormControl>
                       <RadioGroup
-                        onValueChange={field.onChange}
+                        onValueChange={(v) => { field.onChange(v); setTemVariacoes(false); setVariacoes([]); }}
                         value={field.value}
                         className="flex gap-4"
                         disabled={!!itemParaEditar}
@@ -292,7 +297,7 @@ export const DialogCadastroProduto = ({
                 </div>
               )}
 
-              {form.watch('tipo') === 'peca' && (
+              {form.watch('tipo') === 'peca' && !temVariacoes && (
                 <FormField
                   control={form.control}
                   name="codigo_barras"
@@ -332,7 +337,7 @@ export const DialogCadastroProduto = ({
                 )}
               />
 
-              {!itemParaEditar && form.watch('tipo') === 'produto' && (
+              {!itemParaEditar && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="tem-variacoes"
@@ -340,9 +345,15 @@ export const DialogCadastroProduto = ({
                     onCheckedChange={(checked) => setTemVariacoes(checked === true)}
                   />
                   <div>
-                    <Label htmlFor="tem-variacoes" className="cursor-pointer">Esse produto tem variações (ex: modelos)?</Label>
+                    <Label htmlFor="tem-variacoes" className="cursor-pointer">
+                      {form.watch('tipo') === 'peca'
+                        ? 'Essa peça tem variações (ex: modelos)?'
+                        : 'Esse produto tem variações (ex: modelos)?'}
+                    </Label>
                     <p className="text-xs text-muted-foreground">
-                      Cadastre de uma vez várias variações do mesmo produto (ex: capinha para iPhone 11, 12, 13)
+                      {form.watch('tipo') === 'peca'
+                        ? 'Cadastre de uma vez várias variações da mesma peça (ex: tela para iPhone 11, 12, 13)'
+                        : 'Cadastre de uma vez várias variações do mesmo produto (ex: capinha para iPhone 11, 12, 13)'}
                     </p>
                   </div>
                 </div>
