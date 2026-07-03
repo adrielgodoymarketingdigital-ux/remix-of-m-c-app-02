@@ -1,5 +1,7 @@
 export type ComissaoTipo = "porcentagem" | "valor_fixo";
 
+export type BaseComissao = "criacao" | "entrega";
+
 export type ComissaoEscopo = 
   | "vendas_produtos" 
   | "vendas_dispositivos" 
@@ -104,6 +106,7 @@ export interface Funcionario {
   comissao_valor: number;
   comissao_escopo: ComissaoEscopo | null;
   comissoes_por_cargo: Record<string, ComissaoCargo> | null;
+  base_comissao?: BaseComissao;
   convite_token: string | null;
   convite_expira_em: string | null;
   convite_aceito_em: string | null;
@@ -120,6 +123,7 @@ export interface FuncionarioFormData {
   comissao_valor?: number;
   comissao_escopo?: ComissaoEscopo | null;
   comissoes_por_cargo?: Record<string, ComissaoCargo> | null;
+  base_comissao?: BaseComissao;
 }
 
 export const PERMISSOES_DEFAULT: Permissoes = {

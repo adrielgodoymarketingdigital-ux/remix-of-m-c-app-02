@@ -119,6 +119,13 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { atual: [], anterior: [], totalComissoes: 0, totalVendido: 0 };
 
+      const idsCriacao = funcionarios
+        .filter((f) => !f.base_comissao || f.base_comissao === "criacao")
+        .map((f) => f.id);
+      const idsEntrega = funcionarios
+        .filter((f) => f.base_comissao === "entrega")
+        .map((f) => f.id);
+
       const { data: vendasMes } = await supabase
         .from("vendas")
         .select("funcionario_id, total, quantidade, tipo")
@@ -130,15 +137,35 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
         // Exclui registros auxiliares de pagamento duplo (não representam vendas reais)
         .or("observacoes.is.null,observacoes.neq.pagamento_duplo_secundario");
 
-      const { data: osMes } = await supabase
-        .from("ordens_servico")
-        .select("funcionario_id, total")
-        .eq("user_id", user.id)
-        .is("deleted_at", null)
-        .in("funcionario_id", funcionarioIds)
-        .in("status", ["finalizado", "entregue"])
-        .gte("updated_at", inicio)
-        .lte("updated_at", fim);
+      const [osCriacao, osEntrega] = await Promise.all([
+        idsCriacao.length > 0
+          ? supabase
+              .from("ordens_servico")
+              .select("funcionario_id, total")
+              .eq("user_id", user.id)
+              .is("deleted_at", null)
+              .in("funcionario_id", idsCriacao)
+              .in("status", ["finalizado", "entregue"])
+              .gte("created_at", inicio)
+              .lte("created_at", fim)
+              .then((r) => r.data || [])
+          : Promise.resolve([]),
+        idsEntrega.length > 0
+          ? supabase
+              .from("ordens_servico")
+              .select("funcionario_id, total")
+              .eq("user_id", user.id)
+              .is("deleted_at", null)
+              .in("funcionario_id", idsEntrega)
+              .in("status", ["finalizado", "entregue"])
+              .not("data_saida", "is", null)
+              .gte("data_saida", inicio)
+              .lte("data_saida", fim)
+              .then((r) => r.data || [])
+          : Promise.resolve([]),
+      ]);
+
+      const osMes = [...osCriacao, ...osEntrega];
 
       const { data: vendasAnterior } = await supabase
         .from("vendas")
@@ -191,7 +218,7 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
         });
       };
 
-      const atual = processar(vendasMes || [], osMes || []);
+      const atual = processar(vendasMes || [], osMes);
       const anterior = processar(vendasAnterior || [], []);
 
       return {

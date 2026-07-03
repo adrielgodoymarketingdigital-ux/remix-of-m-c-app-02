@@ -61,6 +61,7 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
         comissao_valor: Number(f.comissao_valor) || 0,
         comissao_escopo: f.comissao_escopo || null,
         comissoes_por_cargo: f.comissoes_por_cargo || null,
+        base_comissao: f.base_comissao || "criacao",
       })) as Funcionario[];
     },
   });
@@ -80,6 +81,7 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
           comissao_valor: dados.comissao_valor || 0,
           comissao_escopo: dados.comissao_escopo || null,
           comissoes_por_cargo: dados.comissoes_por_cargo || null,
+          base_comissao: dados.base_comissao || "criacao",
           empresa_id: isFilial ? empresaId : null,
         },
       });
@@ -148,6 +150,7 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
       if (dados.comissao_valor !== undefined) updateData.comissao_valor = dados.comissao_valor || 0;
       if (dados.comissao_escopo !== undefined) updateData.comissao_escopo = dados.comissao_escopo || null;
       if (dados.comissoes_por_cargo !== undefined) updateData.comissoes_por_cargo = dados.comissoes_por_cargo || null;
+      if (dados.base_comissao !== undefined) updateData.base_comissao = dados.base_comissao || "criacao";
 
       const { data, error } = await supabase
         .from("loja_funcionarios")

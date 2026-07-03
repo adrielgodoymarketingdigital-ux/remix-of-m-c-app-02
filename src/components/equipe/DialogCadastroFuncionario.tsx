@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SeletorPermissoes } from "./SeletorPermissoes";
 import { ComissoesTipoServicoEditor, ComissaoTipoServicoLocal } from "./ComissoesTipoServicoEditor";
-import type { Funcionario, FuncionarioFormData, Permissoes, ComissaoTipo, ComissaoEscopo, ComissaoCargo } from "@/types/funcionario";
+import type { Funcionario, FuncionarioFormData, Permissoes, ComissaoTipo, ComissaoEscopo, ComissaoCargo, BaseComissao } from "@/types/funcionario";
 import { PERMISSOES_DEFAULT, CARGOS_PADRAO, ESCOPOS_POR_CARGO } from "@/types/funcionario";
 import { Loader2, Eye, EyeOff, DollarSign, Percent, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +61,8 @@ export function DialogCadastroFuncionario({
   // Per-cargo commission state
   const [comissoesPorCargo, setComissoesPorCargo] = useState<Record<string, ComissaoCargoState>>({});
   const [cargoComissaoAtivo, setCargoComissaoAtivo] = useState<string>("");
+
+  const [baseComissao, setBaseComissao] = useState<BaseComissao>("criacao");
 
   // Comissões por tipo de serviço
   const [comissoesTipoServico, setComissoesTipoServico] = useState<ComissaoTipoServicoLocal[]>([]);
@@ -128,6 +130,8 @@ export function DialogCadastroFuncionario({
         setComissoesPorCargo({});
       }
 
+      setBaseComissao(funcionario.base_comissao || "criacao");
+
       // Load comissões por tipo de serviço
       if (funcionario.id) {
         carregarPorFuncionario(funcionario.id).then((data) => {
@@ -150,6 +154,7 @@ export function DialogCadastroFuncionario({
       setMostrarCargoPersonalizado(false);
       setCargoPersonalizado("");
       setComissoesPorCargo({});
+      setBaseComissao("criacao");
       setComissoesTipoServico([]);
     }
   }, [funcionario, open]);
@@ -266,6 +271,7 @@ export function DialogCadastroFuncionario({
       comissao_valor: primaryValor,
       comissao_escopo: primaryEscopo,
       comissoes_por_cargo: Object.keys(comissoesFinais).length > 0 ? comissoesFinais : null,
+      base_comissao: baseComissao,
     });
 
     // Salvar comissões por tipo de serviço
@@ -292,6 +298,7 @@ export function DialogCadastroFuncionario({
       setMostrarCargoPersonalizado(false);
       setCargoPersonalizado("");
       setComissoesPorCargo({});
+      setBaseComissao("criacao");
       setComissoesTipoServico([]);
     }
   };
@@ -527,6 +534,34 @@ export function DialogCadastroFuncionario({
                 <DollarSign className="h-4 w-4" />
                 Comissão
               </h3>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Base de cálculo da comissão</Label>
+                <RadioGroup
+                  value={baseComissao}
+                  onValueChange={(v) => setBaseComissao(v as BaseComissao)}
+                  className="grid gap-2"
+                >
+                  <div className="flex items-start space-x-3 rounded-md border p-3 hover:bg-muted/50 transition-colors">
+                    <RadioGroupItem value="criacao" id="base-criacao" className="mt-0.5" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="base-criacao" className="text-sm font-medium cursor-pointer">
+                        Data de criação da OS
+                      </Label>
+                      <p className="text-xs text-muted-foreground">A comissão entra no relatório na abertura da OS</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3 rounded-md border p-3 hover:bg-muted/50 transition-colors">
+                    <RadioGroupItem value="entrega" id="base-entrega" className="mt-0.5" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="base-entrega" className="text-sm font-medium cursor-pointer">
+                        Data de entrega da OS
+                      </Label>
+                      <p className="text-xs text-muted-foreground">A comissão entra no relatório na entrega da OS ao cliente</p>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
 
               {todosCargos.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
