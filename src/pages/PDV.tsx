@@ -285,6 +285,11 @@ const PDV = () => {
     return forma;
   };
 
+  const resolverFormaPagamentoBanco = (forma: string): string => {
+    if (forma.startsWith("custom_")) return "outro";
+    return forma;
+  };
+
   const handleConfirmarDispositivoEntrada = (valor: number) => {
     setValorDispositivoEntrada(valor);
     setDialogDispositivoEntradaAberto(false);
@@ -461,7 +466,7 @@ const PDV = () => {
             // Em parcelado a_receber: valor por parcela (bruto / número de parcelas)
             total: pagamentoDuploAtivo ? totalBrutoItem : valorPorParcela,
             custo_unitario: isParceladoReceber ? (item.custo || 0) / totalParcelas : item.custo,
-            forma_pagamento: formaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
+            forma_pagamento: resolverFormaPagamentoBanco(formaPagamento) as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber" | "outro",
             user_id: userIdParaVenda,
             empresa_id: empresaIdPDV,
             // Campo data é obrigatório para filtros de comissão/relatórios por período
@@ -474,9 +479,12 @@ const PDV = () => {
             parcela_numero: isParceladoReceber ? parcIdx + 1 : null,
             total_parcelas: isParceladoReceber ? totalParcelas : null,
             // Salva o nome do item como fallback (usado quando o join com dispositivos/produtos falha por RLS)
-            observacoes: item.nome || null,
+            // Quando forma customizada, sufixo "[forma:NomeDaForma]" preserva o nome real para exibição
+            observacoes: formaPagamento.startsWith("custom_")
+              ? `${item.nome || ""} [forma:${getLabelFormaPagamento(formaPagamento)}]`.trim()
+              : item.nome || null,
             // Se houver pagamento duplo, guarda a 2ª forma no registro principal para exibição
-            segunda_forma_pagamento: (pagamentoDuploAtivo && segundaFormaPagamento) ? segundaFormaPagamento : null,
+            segunda_forma_pagamento: (pagamentoDuploAtivo && segundaFormaPagamento) ? resolverFormaPagamentoBanco(segundaFormaPagamento) : null,
             valor_segunda_forma: (pagamentoDuploAtivo && valorSegundaPagamento > 0) ? valorSegundaPagamento : null,
             imei_dispositivo: item.tipo === "dispositivo" ? (item.imei_dispositivo || null) : null,
             tempo_garantia: item.tipo === "dispositivo" ? (item.tempo_garantia ?? null) : null,
@@ -605,7 +613,7 @@ const PDV = () => {
               quantidade: item.quantidade,
               total: valorItemSegundaParcela,
               custo_unitario: 0,
-              forma_pagamento: segundaFormaPagamento as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber",
+              forma_pagamento: resolverFormaPagamentoBanco(segundaFormaPagamento) as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber" | "outro",
               user_id: userIdParaVenda,
               empresa_id: empresaIdPDV,
               // Campo data obrigatório para filtros por período
@@ -701,6 +709,7 @@ const PDV = () => {
           descontoCupom: 0,
           total: calcularTotal(),
           formaPagamento: formaPagamento,
+          nomeFormaPagamento: getLabelFormaPagamento(formaPagamento),
           numeroParcelas: formaPagamento === "credito_parcelado" ? numeroParcelas : undefined,
           data: agora(),
           grupoVendaId: grupoVendaId,
@@ -708,6 +717,7 @@ const PDV = () => {
           pagamentoDuplo: pagamentoDuploAtivo && segundaFormaPagamento ? {
             valorPrimeira: valorPrimeiraPagamento,
             segundaForma: segundaFormaPagamento,
+            nomeSegundaForma: getLabelFormaPagamento(segundaFormaPagamento),
             valorSegunda: valorSegundaPagamento,
           } : undefined,
         };

@@ -95,6 +95,7 @@ export interface DadosReciboPDV {
   cupom?: Cupom;
   total: number;
   formaPagamento: string;
+  nomeFormaPagamento?: string;
   numeroParcelas?: number;
   data: string;
   grupoVendaId: string;
@@ -102,6 +103,7 @@ export interface DadosReciboPDV {
   pagamentoDuplo?: {
     valorPrimeira: number;
     segundaForma: string;
+    nomeSegundaForma?: string;
     valorSegunda: number;
   };
 }
@@ -561,14 +563,14 @@ export function DialogReciboPDV({
                     <span>1ª forma:</span>
                     <span>
                       {formatCurrency(dados.pagamentoDuplo.valorPrimeira)}{" "}
-                      em {labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
+                      em {dados.nomeFormaPagamento || labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
                     </span>
                   </div>
                   <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
                     <span>2ª forma:</span>
                     <span>
                       {formatCurrency(dados.pagamentoDuplo.valorSegunda)}{" "}
-                      em {labelFormaPagamento[dados.pagamentoDuplo.segundaForma] || dados.pagamentoDuplo.segundaForma}
+                      em {dados.pagamentoDuplo.nomeSegundaForma || labelFormaPagamento[dados.pagamentoDuplo.segundaForma] || dados.pagamentoDuplo.segundaForma}
                     </span>
                   </div>
                 </>
@@ -576,7 +578,7 @@ export function DialogReciboPDV({
                 <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
                   <span>Forma de Pagamento:</span>
                   <span>
-                    {labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
+                    {dados.nomeFormaPagamento || labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
                     {dados.formaPagamento === "credito_parcelado" && dados.numeroParcelas && (
                       <span> ({dados.numeroParcelas}x)</span>
                     )}
