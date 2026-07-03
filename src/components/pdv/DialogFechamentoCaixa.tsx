@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
-import { Users } from "lucide-react";
+import { Users, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 
 interface ResumoFechamento {
   total_dinheiro: number;
@@ -44,6 +44,8 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
   const [carregandoResumo, setCarregandoResumo] = useState(false);
   const [saldoFinalContado, setSaldoFinalContado] = useState<number>(0);
   const [vendaFuncionarios, setVendaFuncionarios] = useState<VendaFuncionario[]>([]);
+  const [totalSangrias, setTotalSangrias] = useState(0);
+  const [totalSuprimentos, setTotalSuprimentos] = useState(0);
 
   useEffect(() => {
     if (open && caixa) {
@@ -117,8 +119,25 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
 
       setVendaFuncionarios(breakdownFunc);
 
+      // Buscar movimentações do caixa
+      const { data: movimentacoes } = await supabase
+        .from("caixa_movimentacoes")
+        .select("tipo, valor")
+        .eq("caixa_id", caixa.id);
+
+      const sangrias = (movimentacoes ?? [])
+        .filter(m => m.tipo === "sangria")
+        .reduce((acc, m) => acc + Number(m.valor), 0);
+
+      const suprimentos = (movimentacoes ?? [])
+        .filter(m => m.tipo === "suprimento")
+        .reduce((acc, m) => acc + Number(m.valor), 0);
+
+      setTotalSangrias(sangrias);
+      setTotalSuprimentos(suprimentos);
+
       const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
-      const saldo_final = caixa.saldo_inicial + total_dinheiro;
+      const saldo_final = caixa.saldo_inicial + total_dinheiro + suprimentos - sangrias;
 
       setResumo({ total_dinheiro, total_pix, total_cartao, total_a_receber, total_vendas, saldo_final });
       setSaldoFinalContado(saldo_final);
@@ -159,6 +178,8 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       ]
     : [];
 
+  const temMovimentacoes = totalSangrias > 0 || totalSuprimentos > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -178,6 +199,28 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                   </div>
                 ))}
               </Card>
+
+              {temMovimentacoes && (
+                <Card className="p-4 space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Movimentações</p>
+                  {totalSangrias > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-red-600 flex items-center gap-1">
+                        <ArrowDownCircle className="h-3.5 w-3.5" /> Sangrias
+                      </span>
+                      <span className="text-red-600 font-medium">- {formatCurrency(totalSangrias)}</span>
+                    </div>
+                  )}
+                  {totalSuprimentos > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-green-600 flex items-center gap-1">
+                        <ArrowUpCircle className="h-3.5 w-3.5" /> Suprimentos
+                      </span>
+                      <span className="text-green-600 font-medium">+ {formatCurrency(totalSuprimentos)}</span>
+                    </div>
+                  )}
+                </Card>
+              )}
 
               {vendaFuncionarios.length > 0 && (
                 <Card className="p-4 space-y-2">

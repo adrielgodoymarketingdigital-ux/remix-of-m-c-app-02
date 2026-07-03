@@ -156,8 +156,24 @@ export function useCaixa() {
       else if (venda.forma_pagamento === "a_receber") total_a_receber += valor;
     }
 
+    // Buscar movimentações (sangrias e suprimentos)
+    const { data: movimentacoes } = await supabase
+      .from("caixa_movimentacoes")
+      .select("tipo, valor")
+      .eq("caixa_id", caixaId);
+
+    const totalSangrias = (movimentacoes ?? [])
+      .filter(m => m.tipo === "sangria")
+      .reduce((acc, m) => acc + Number(m.valor), 0);
+
+    const totalSuprimentos = (movimentacoes ?? [])
+      .filter(m => m.tipo === "suprimento")
+      .reduce((acc, m) => acc + Number(m.valor), 0);
+
     const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
-    const saldo_final = saldoFinalContado !== undefined ? saldoFinalContado : caixa.saldo_inicial + total_dinheiro;
+    const saldo_final = saldoFinalContado !== undefined
+      ? saldoFinalContado
+      : caixa.saldo_inicial + total_dinheiro + totalSuprimentos - totalSangrias;
 
     const { error: updateError } = await supabase
       .from("caixas")

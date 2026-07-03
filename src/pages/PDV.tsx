@@ -18,7 +18,7 @@ import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2, Banknote, QrCode, Clock } from "lucide-react";
+import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2, Banknote, QrCode, Clock, ArrowDownCircle } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
 import { DialogAberturaCaixa } from "@/components/pdv/DialogAberturaCaixa";
@@ -51,6 +51,7 @@ import { DialogVendaAvulsa } from "@/components/pdv/DialogVendaAvulsa";
 import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
 import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustomizadas";
 import { DialogFormasPagamentoConfig } from "@/components/pdv/DialogFormasPagamentoConfig";
+import { DialogSangria } from "@/components/pdv/DialogSangria";
 
 /** Retorna a data de hoje no formato YYYY-MM-DD no timezone local do usuário.
  * Necessário porque new Date().toISOString() retorna UTC, o que pode salvar
@@ -104,6 +105,7 @@ const PDV = () => {
   const [valorDispositivoEntrada, setValorDispositivoEntrada] = useState(0);
   const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaAtivaCtx);
   const [dialogFormasPagamentoAberto, setDialogFormasPagamentoAberto] = useState(false);
+  const [dialogSangriaAberto, setDialogSangriaAberto] = useState(false);
   const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa, fecharCaixa } = useCaixa();
   const [pagamentoDuploAtivo, setPagamentoDuploAtivo] = useState(false);
   const [valorPrimeiraPagamento, setValorPrimeiraPagamento] = useState(0);
@@ -801,15 +803,28 @@ const PDV = () => {
                 <span className="hidden sm:inline">Abrir Caixa</span>
               </Button>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-red-500 text-red-600 hover:bg-red-50"
-                onClick={() => setDialogFechamentoCaixaAberto(true)}
-              >
-                <XCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Fechar Caixa</span>
-              </Button>
+              <>
+                {caixaAtual && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogSangriaAberto(true)}
+                    className="gap-1.5 text-xs border-amber-500/40 text-amber-600 hover:bg-amber-500/5"
+                  >
+                    <ArrowDownCircle className="h-3.5 w-3.5" />
+                    Sangria / Suprimento
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-red-500 text-red-600 hover:bg-red-50"
+                  onClick={() => setDialogFechamentoCaixaAberto(true)}
+                >
+                  <XCircle className="h-4 w-4" />
+                  <span className="hidden sm:inline">Fechar Caixa</span>
+                </Button>
+              </>
             )}
             <Button
               variant="ghost"
@@ -1291,6 +1306,14 @@ const PDV = () => {
         open={dialogHistoricoCaixasAberto}
         onOpenChange={setDialogHistoricoCaixasAberto}
       />
+
+      {caixaAtual && (
+        <DialogSangria
+          open={dialogSangriaAberto}
+          onOpenChange={setDialogSangriaAberto}
+          caixaId={caixaAtual.id}
+        />
+      )}
 
       <DialogStatusCaixa
         open={dialogStatusCaixaAberto}
