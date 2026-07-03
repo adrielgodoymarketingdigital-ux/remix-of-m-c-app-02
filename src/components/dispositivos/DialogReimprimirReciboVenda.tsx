@@ -293,6 +293,7 @@ export function DialogReimprimirReciboVenda({
     .header-logo img { max-height: 36px; max-width: 80px; object-fit: contain; filter: brightness(0) invert(1); }
     .header-loja h1 { font-size: 14px; font-weight: 900; letter-spacing: 0.03em; }
     .header-loja p { font-size: 8px; color: #adb5bd; margin-top: 1px; }
+    .dados-loja { font-size: 9px; color: #111; margin-top: 2px; line-height: 1.6; font-weight: 600; font-style: normal; }
     .header-titulo { text-align: right; }
     .header-titulo h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; color: #4cc9f0; }
     .header-titulo p { font-size: 8px; color: #adb5bd; margin-top: 2px; }

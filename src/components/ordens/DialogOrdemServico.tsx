@@ -121,6 +121,7 @@ interface FormData {
   desconto: number;
   valorEntrada: number;
   mostrarEntrada: boolean;
+  formaPagamentoEntrada: string;
   total: number;
   entrada?: number;
   saldo?: number;
@@ -210,6 +211,7 @@ export const DialogOrdemServico = ({
     desconto: 0,
     valorEntrada: 0,
     mostrarEntrada: false,
+    formaPagamentoEntrada: "dinheiro",
     total: 0,
     entrada: 0,
     saldo: 0,
@@ -401,6 +403,7 @@ export const DialogOrdemServico = ({
         desconto: avariasData.dados_pagamento?.desconto || 0,
         valorEntrada: avariasData.dados_pagamento?.entrada || 0,
         mostrarEntrada: (avariasData.dados_pagamento?.entrada || 0) > 0,
+        formaPagamentoEntrada: avariasData.dados_pagamento?.forma_pagamento_entrada || "dinheiro",
         total: ordem.total || 0,
         entrada: avariasData.dados_pagamento?.entrada || 0,
         saldo: avariasData.dados_pagamento?.saldo || (ordem.total || 0),
@@ -472,6 +475,7 @@ export const DialogOrdemServico = ({
         desconto: 0,
         valorEntrada: 0,
         mostrarEntrada: false,
+        formaPagamentoEntrada: "dinheiro",
         total: 0,
         entrada: 0,
         saldo: 0,
@@ -661,6 +665,7 @@ export const DialogOrdemServico = ({
           subtotal,
           total,
           entrada: formData.mostrarEntrada ? formData.valorEntrada : 0,
+          forma_pagamento_entrada: formData.mostrarEntrada && formData.valorEntrada > 0 ? formData.formaPagamentoEntrada : undefined,
           saldo: formData.mostrarEntrada ? Math.max(0, total - formData.valorEntrada) : total,
           data_vencimento_prazo: formData.formaPagamento === 'a_prazo'
             ? (formData.semDataDefinida ? 'sem_prazo' : (formData.dataVencimentoPrazo ? formData.dataVencimentoPrazo.toISOString().split('T')[0] : undefined))
@@ -781,6 +786,7 @@ export const DialogOrdemServico = ({
               await supabase.from("contas").update({
                 valor: saldoRestante > 0 ? saldoRestante : total,
                 valor_pago: entradaPaga > 0 ? entradaPaga : null,
+                forma_pagamento: entradaPaga > 0 ? (formData.formaPagamentoEntrada as any) : null,
                 descricao: descricaoConta,
                 nome: `OS ${ordem.numero_os} - ${formData.clienteNome}`,
                 data_vencimento: dataVencConta,
@@ -794,6 +800,7 @@ export const DialogOrdemServico = ({
                 data: dataVencConta || dataHoje(),
                 data_vencimento: dataVencConta,
                 valor_pago: entradaPaga > 0 ? entradaPaga : null,
+                forma_pagamento: entradaPaga > 0 ? (formData.formaPagamentoEntrada as any) : null,
                 os_numero: ordem.numero_os,
                 status: "pendente",
                 recorrente: false,
@@ -989,6 +996,7 @@ export const DialogOrdemServico = ({
             defeitoRelatado: formData.defeitoRelatado,
             total,
             entradaPaga,
+            formaPagamentoEntrada: temEntrada ? formData.formaPagamentoEntrada : undefined,
             dataVencimentoPrazo: dadosPag?.data_vencimento_prazo,
             effectiveUserId,
           });
@@ -1855,6 +1863,8 @@ export const DialogOrdemServico = ({
               onNumeroParcelasChange={(parcelas) => setFormData({ ...formData, numeroParcelas: parcelas })}
               mostrarEntrada={formData.mostrarEntrada}
               onMostrarEntradaChange={(mostrar) => setFormData({ ...formData, mostrarEntrada: mostrar })}
+              formaPagamentoEntrada={formData.formaPagamentoEntrada}
+              onFormaPagamentoEntradaChange={(forma) => setFormData({ ...formData, formaPagamentoEntrada: forma })}
               dataVencimentoPrazo={formData.dataVencimentoPrazo}
               onDataVencimentoPrazoChange={(data) => setFormData({ ...formData, dataVencimentoPrazo: data })}
               semDataDefinida={formData.semDataDefinida}

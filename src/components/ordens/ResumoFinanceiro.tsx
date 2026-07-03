@@ -39,6 +39,8 @@ interface ResumoFinanceiroProps {
   onNumeroParcelasChange?: (parcelas: number) => void;
   mostrarEntrada: boolean;
   onMostrarEntradaChange: (mostrar: boolean) => void;
+  formaPagamentoEntrada?: string;
+  onFormaPagamentoEntradaChange?: (forma: string) => void;
   dataVencimentoPrazo?: Date;
   onDataVencimentoPrazoChange?: (data: Date | undefined) => void;
   semDataDefinida?: boolean;
@@ -71,6 +73,8 @@ export const ResumoFinanceiro = ({
   onNumeroParcelasChange,
   mostrarEntrada,
   onMostrarEntradaChange,
+  formaPagamentoEntrada = "dinheiro",
+  onFormaPagamentoEntradaChange,
   dataVencimentoPrazo,
   onDataVencimentoPrazoChange,
   semDataDefinida = false,
@@ -443,6 +447,22 @@ export const ResumoFinanceiro = ({
                     step="0.01"
                   />
                 </div>
+                {valorEntrada > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="forma-pagamento-entrada" className="text-xs whitespace-nowrap">Forma da entrada:</Label>
+                    <Select value={formaPagamentoEntrada} onValueChange={onFormaPagamentoEntradaChange}>
+                      <SelectTrigger id="forma-pagamento-entrada" className="h-8 text-sm flex-1">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="debito">Cartão de Débito</SelectItem>
+                        <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Saldo a pagar:</span>
                   <span className="font-medium text-primary">{formatCurrency(saldo)}</span>

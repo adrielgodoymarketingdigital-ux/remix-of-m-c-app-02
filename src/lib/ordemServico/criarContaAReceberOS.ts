@@ -7,6 +7,7 @@ export interface DadosContaAReceberOS {
   defeitoRelatado: string;
   total: number;
   entradaPaga: number;
+  formaPagamentoEntrada?: string;
   dataVencimentoPrazo?: string;
   effectiveUserId: string;
 }
@@ -15,7 +16,7 @@ export interface DadosContaAReceberOS {
  * Cria a conta a receber correspondente a uma OS recém-criada com valor total > 0.
  */
 export async function criarContaAReceberOS(dados: DadosContaAReceberOS): Promise<void> {
-  const { numeroOS, clienteNome, defeitoRelatado, total, entradaPaga, dataVencimentoPrazo, effectiveUserId } = dados;
+  const { numeroOS, clienteNome, defeitoRelatado, total, entradaPaga, formaPagamentoEntrada, dataVencimentoPrazo, effectiveUserId } = dados;
 
   const saldoRestante = Math.max(0, total - entradaPaga);
   const temEntrada = entradaPaga > 0;
@@ -31,6 +32,7 @@ export async function criarContaAReceberOS(dados: DadosContaAReceberOS): Promise
     data: dataVencimentoPrazo || dataHoje(),
     data_vencimento: dataVencimentoPrazo || null,
     valor_pago: entradaPaga > 0 ? entradaPaga : null,
+    forma_pagamento: entradaPaga > 0 && formaPagamentoEntrada ? (formaPagamentoEntrada as any) : null,
     os_numero: numeroOS,
     status: "pendente",
     recorrente: false,
