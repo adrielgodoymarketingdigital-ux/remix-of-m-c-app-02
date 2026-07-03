@@ -7,6 +7,7 @@ import { CardFinanceiroClicavel } from "./CardFinanceiroClicavel";
 import { FiltroPeriodoAvancado, FiltrosPeriodo } from "./FiltroPeriodoAvancado";
 import { TabelaContas } from "@/components/contas/TabelaContas";
 import { DialogCadastroConta } from "@/components/contas/DialogCadastroConta";
+import { DialogConfirmarBaixa } from "@/components/contas/DialogConfirmarBaixa";
 import { DialogInadimplentes } from "./DialogInadimplentes";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
@@ -40,7 +41,7 @@ interface SecaoContasPagarReceberProps {
   onCriarConta: (dados: FormularioConta) => Promise<boolean>;
   onAtualizarConta: (id: string, dados: Partial<FormularioConta>) => Promise<boolean>;
   onExcluirConta: (id: string) => Promise<boolean>;
-  onMarcarComoPaga: (id: string, tipo: "pagar" | "receber") => Promise<boolean>;
+  onMarcarComoPaga: (id: string, tipo: "pagar" | "receber", formaPagamento?: string) => Promise<boolean>;
   categoriasExtras?: string[];
 }
 
@@ -449,40 +450,53 @@ function ListaContasSimples({
   onMarcarComoPaga,
 }: {
   contas: Conta[];
-  onMarcarComoPaga: (id: string, tipo: "pagar" | "receber") => Promise<boolean>;
+  onMarcarComoPaga: (id: string, tipo: "pagar" | "receber", formaPagamento?: string) => Promise<boolean>;
 }) {
+  const [contaBaixa, setContaBaixa] = useState<Conta | null>(null);
+
   return (
-    <div className="space-y-2">
-      {contas.map((conta) => (
-        <div
-          key={conta.id}
-          className="flex items-center justify-between p-3 rounded-lg border bg-card"
-        >
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm truncate">{conta.nome}</p>
-            <p className="text-xs text-muted-foreground">
-              Venc: {formatDate(conta.data)}
-              {conta.recorrente && " • 🔄 Recorrente"}
-            </p>
+    <>
+      <div className="space-y-2">
+        {contas.map((conta) => (
+          <div
+            key={conta.id}
+            className="flex items-center justify-between p-3 rounded-lg border bg-card"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm truncate">{conta.nome}</p>
+              <p className="text-xs text-muted-foreground">
+                Venc: {formatDate(conta.data)}
+                {conta.recorrente && " • 🔄 Recorrente"}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="font-semibold">
+                <ValorMonetario valor={conta.valor} tipo="preco" />
+              </span>
+              {conta.status === "pendente" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setContaBaixa(conta)}
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Receber
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <span className="font-semibold">
-              <ValorMonetario valor={conta.valor} tipo="preco" />
-            </span>
-            {conta.status === "pendente" && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onMarcarComoPaga(conta.id, conta.tipo)}
-                className="text-green-600 border-green-600 hover:bg-green-50"
-              >
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Receber
-              </Button>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+
+      <DialogConfirmarBaixa
+        conta={contaBaixa}
+        open={contaBaixa !== null}
+        onOpenChange={(open) => { if (!open) setContaBaixa(null); }}
+        onConfirmar={async (id, tipo, formaPagamento) => {
+          return await onMarcarComoPaga(id, tipo, formaPagamento);
+        }}
+      />
+    </>
   );
 }

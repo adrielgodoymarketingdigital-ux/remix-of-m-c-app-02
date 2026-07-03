@@ -139,8 +139,8 @@ export default function Contas() {
     await excluirConta(id);
   };
 
-  const handleMarcarComoPaga = async (id: string, tipo: 'pagar' | 'receber') => {
-    await marcarComoPaga(id, tipo);
+  const handleMarcarComoPaga = async (id: string, tipo: 'pagar' | 'receber', formaPagamento?: string) => {
+    await marcarComoPaga(id, tipo, formaPagamento);
   };
 
   const handleToggleSelecao = (id: string) => {

@@ -283,7 +283,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     }
   };
 
-  const marcarComoPaga = async (id: string, tipo: 'pagar' | 'receber') => {
+  const marcarComoPaga = async (id: string, tipo: 'pagar' | 'receber', formaPagamento?: string) => {
     // Se é uma conta virtual de venda, marcar a venda como recebida
     if (id.startsWith("venda_") && tipo === "receber") {
       return await atualizarConta(id, { status: "recebido" });
@@ -291,7 +291,11 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
 
     const status = tipo === 'pagar' ? 'pago' : 'recebido';
     const hoje = new Date().toISOString().slice(0, 10);
-    const sucesso = await atualizarConta(id, { status, data_pagamento: hoje });
+    const sucesso = await atualizarConta(id, {
+      status,
+      data_pagamento: hoje,
+      ...(formaPagamento ? { forma_pagamento: formaPagamento } : {}),
+    });
 
     if (sucesso) {
       window.dispatchEvent(new CustomEvent("conta-atualizada"));

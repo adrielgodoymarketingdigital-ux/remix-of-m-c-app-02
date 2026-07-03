@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -26,12 +27,13 @@ import { Conta } from "@/types/conta";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
+import { DialogConfirmarBaixa } from "./DialogConfirmarBaixa";
 
 interface TabelaContasProps {
   contas: Conta[];
   onEditar: (conta: Conta) => void;
   onExcluir: (id: string) => void;
-  onMarcarComoPaga: (id: string, tipo: 'pagar' | 'receber') => void;
+  onMarcarComoPaga: (id: string, tipo: 'pagar' | 'receber', formaPagamento?: string) => void;
   contasSelecionadas: string[];
   onToggleSelecao: (id: string) => void;
   onToggleTodas: () => void;
@@ -47,6 +49,7 @@ export function TabelaContas({
   onToggleTodas,
 }: TabelaContasProps) {
   const isMobile = useIsMobile();
+  const [contaBaixa, setContaBaixa] = useState<Conta | null>(null);
 
   const contasPendentes = contas.filter(c => c.status === "pendente");
   const todasPendentesSelecionadas = contasPendentes.length > 0 && contasPendentes.every(c => contasSelecionadas.includes(c.id));
@@ -170,7 +173,7 @@ export function TabelaContas({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onMarcarComoPaga(conta.id, conta.tipo)}
+                    onClick={() => setContaBaixa(conta)}
                     className="h-9 text-green-600"
                   >
                     <CheckCircle className="h-4 w-4 mr-1" />
@@ -297,7 +300,7 @@ export function TabelaContas({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onMarcarComoPaga(conta.id, conta.tipo)}
+                        onClick={() => setContaBaixa(conta)}
                         title={conta.tipo === 'pagar' ? 'Marcar como pago' : 'Marcar como recebido'}
                       >
                         <CheckCircle className="h-4 w-4 text-green-600" />
@@ -344,6 +347,15 @@ export function TabelaContas({
           })}
         </TableBody>
       </Table>
+      <DialogConfirmarBaixa
+        conta={contaBaixa}
+        open={contaBaixa !== null}
+        onOpenChange={(open) => { if (!open) setContaBaixa(null); }}
+        onConfirmar={async (id, tipo, formaPagamento) => {
+          await onMarcarComoPaga(id, tipo, formaPagamento);
+          return true;
+        }}
+      />
     </div>
   );
 }
