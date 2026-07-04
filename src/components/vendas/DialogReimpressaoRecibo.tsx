@@ -222,7 +222,7 @@ export function DialogReimpressaoRecibo({
     @page { size: A4 portrait; margin: 10mm; }
     body {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: ${isThermal ? '9pt' : '13px'};
+      font-size: ${isThermal ? '12px' : '13px'};
       color: #111;
       background: white;
       padding: ${isThermal ? '2mm' : '15px'};
@@ -249,11 +249,12 @@ export function DialogReimpressaoRecibo({
       margin: ${isThermal ? '1mm 0' : '6px 0'};
     }
     .dados-loja {
-      font-size: ${isThermal ? '9pt' : '11px'};
-      font-weight: ${isThermal ? '600' : '400'};
-      color: #444;
-      margin-top: ${isThermal ? '1mm' : '6px'};
-      line-height: 1.5;
+      font-size: 11px;
+      font-weight: 700;
+      font-style: normal;
+      color: #000;
+      margin-top: 3px;
+      line-height: 1.8;
     }
     .recibo-titulo-bloco {
       margin-top: ${isThermal ? '2mm' : '12px'};

@@ -221,11 +221,11 @@ export function DialogReciboPDV({
       margin: ${isThermal ? '2px 0' : '6px 0'};
     }
     .dados-loja {
-      font-size: ${isThermal ? '10px' : '11px'};
+      font-size: 11px;
       font-weight: 700;
       font-style: normal;
       color: #000;
-      margin-top: 2px;
+      margin-top: 3px;
       line-height: 1.8;
     }
     .recibo-titulo-bloco {
