@@ -371,7 +371,16 @@ All colors MUST be HSL.
     padding: 0 !important;
     background: white !important;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  * {
+    overflow: visible !important;
+  }
+
+  ::-webkit-scrollbar {
+    display: none !important;
   }
 
   /* Hide screen-only elements */
