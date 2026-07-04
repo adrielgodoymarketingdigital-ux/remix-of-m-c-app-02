@@ -222,8 +222,9 @@ export function DialogReimpressaoRecibo({
     @page { size: A4 portrait; margin: 10mm; }
     body {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: ${isThermal ? '12px' : '13px'};
-      color: #111;
+      font-size: ${isThermal ? '13px' : '13px'};
+      font-weight: ${isThermal ? '600' : '400'};
+      color: #000;
       background: white;
       padding: ${isThermal ? '2mm' : '15px'};
       max-width: ${isThermal ? 'none' : '800px'};
@@ -244,15 +245,18 @@ export function DialogReimpressaoRecibo({
       margin: 0 auto ${isThermal ? '2mm' : '10px'};
     }
     .recibo-header h1 {
-      font-size: ${isThermal ? '11pt' : '20px'};
+      font-size: ${isThermal ? '14px' : '20px'};
       font-weight: 900;
+      color: #000;
+      letter-spacing: 0;
       margin: ${isThermal ? '1mm 0' : '6px 0'};
     }
     .dados-loja {
-      font-size: 11px;
-      font-weight: 700;
+      font-size: ${isThermal ? '12px' : '11px'};
+      font-weight: 900;
       font-style: normal;
       color: #000;
+      letter-spacing: 0;
       margin-top: 3px;
       line-height: 1.8;
     }
@@ -262,18 +266,20 @@ export function DialogReimpressaoRecibo({
       border-top: ${isThermal ? '1px dashed #000' : '1.5px solid #000'};
     }
     .recibo-header h2 {
-      font-size: ${isThermal ? '10pt' : '15px'};
-      font-weight: 700;
+      font-size: ${isThermal ? '12px' : '15px'};
+      font-weight: 900;
+      color: #000;
+      letter-spacing: 0;
       margin: 1mm 0;
     }
-    .recibo-header p { font-size: ${isThermal ? '8pt' : '11px'}; color: #555; }
+    .recibo-header p { font-size: ${isThermal ? '12px' : '11px'}; font-weight: 900; color: #000; letter-spacing: 0; }
     .recibo-section {
       margin-bottom: ${isThermal ? '3mm' : '16px'};
       page-break-inside: avoid;
     }
     .recibo-section h3 {
-      font-size: ${isThermal ? '9pt' : '13px'};
-      font-weight: 700;
+      font-size: ${isThermal ? '11px' : '13px'};
+      font-weight: 900;
       border-bottom: ${isThermal ? '1px dashed #ccc' : '1px solid #ccc'};
       padding-bottom: 2mm;
       margin-bottom: 2mm;
