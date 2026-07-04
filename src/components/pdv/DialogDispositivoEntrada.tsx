@@ -125,6 +125,7 @@ export function DialogDispositivoEntrada({
         .insert({
           user_id: user.id,
           empresa_id: empresaId || null,
+          tipo: "celular",
           marca: marca.trim(),
           modelo: modelo.trim(),
           imei: imei.trim() || null,
