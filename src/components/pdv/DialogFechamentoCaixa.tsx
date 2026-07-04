@@ -9,7 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
-import { Users, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { Users, ArrowDownCircle, ArrowUpCircle, Wallet } from "lucide-react";
+import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento } from "@/lib/formaPagamento";
 
 interface ResumoFechamento {
   total_dinheiro: number;
@@ -46,6 +47,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
   const [vendaFuncionarios, setVendaFuncionarios] = useState<VendaFuncionario[]>([]);
   const [totalSangrias, setTotalSangrias] = useState(0);
   const [totalSuprimentos, setTotalSuprimentos] = useState(0);
+  const [vendasPorForma, setVendasPorForma] = useState<BreakdownFormaPagamento[]>([]);
 
   useEffect(() => {
     if (open && caixa) {
@@ -61,7 +63,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
       let query = supabase
         .from("vendas")
-        .select("forma_pagamento, total, funcionario_id")
+        .select("forma_pagamento, total, funcionario_id, observacoes")
         .eq("user_id", userIdVendas)
         .gte("data", caixa.data_abertura)
         .lte("data", new Date().toISOString())
@@ -118,6 +120,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         .sort((a, b) => b.total - a.total);
 
       setVendaFuncionarios(breakdownFunc);
+      setVendasPorForma(agruparVendasPorFormaPagamento(vendas ?? []));
 
       // Buscar movimentações do caixa
       const { data: movimentacoes } = await supabase
@@ -235,6 +238,26 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                         <span className="ml-1 text-xs">({vf.quantidade} venda{vf.quantidade !== 1 ? "s" : ""})</span>
                       </span>
                       <span className="font-medium">{formatCurrency(vf.total)}</span>
+                    </div>
+                  ))}
+                </Card>
+              )}
+
+              {vendasPorForma.length > 0 && (
+                <Card className="p-4 space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Vendas por Forma de Pagamento</span>
+                  </div>
+                  {vendasPorForma.map((vf) => (
+                    <div key={vf.chave} className="flex justify-between items-center text-sm">
+                      <span className={CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}>
+                        {vf.nome}
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({vf.quantidade} venda{vf.quantidade !== 1 ? "s" : ""})
+                        </span>
+                      </span>
+                      <span className={`font-medium ${CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}`}>{formatCurrency(vf.total)}</span>
                     </div>
                   ))}
                 </Card>

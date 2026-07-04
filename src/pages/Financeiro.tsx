@@ -12,6 +12,7 @@ import { useContas } from "@/hooks/useContas";
 import { useCategoriasDespesas } from "@/hooks/useCategoriasDespesas";
 import { SecaoContasPagarReceber } from "@/components/financeiro/SecaoContasPagarReceber";
 import { SecaoAnaliseLucrosCustos } from "@/components/financeiro/SecaoAnaliseLucrosCustos";
+import { SecaoVendasPorFormaPagamento } from "@/components/financeiro/SecaoVendasPorFormaPagamento";
 import { ConfiguracoesFinanceiro } from "@/components/financeiro/ConfiguracoesFinanceiro";
 import { exportarRelatorioPDF } from "@/lib/exportarPDF";
 import { FileDown, CalendarRange } from "lucide-react";
@@ -233,6 +234,11 @@ export default function Financeiro() {
               calcularResumo={calcularResumo}
               onFiltroChange={handleFiltroChange}
             />
+          )}
+
+          {/* Seção 3: Vendas por Forma de Pagamento */}
+          {(isDonoLoja || podeVerAnaliseLucros) && filtroAtual.dataInicio && (
+            <SecaoVendasPorFormaPagamento filtros={filtroAtual} />
           )}
         </div>
       </main>

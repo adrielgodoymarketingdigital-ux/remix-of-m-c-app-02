@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
+import { agruparVendasPorFormaPagamento, BreakdownFormaPagamento } from "@/lib/formaPagamento";
 
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ultimoBreakdownFormaPagamento, setUltimoBreakdownFormaPagamento] = useState<BreakdownFormaPagamento[]>([]);
   const { lojaUserId, carregando: permissoesCarregando } = useFuncionarioPermissoes();
 
   // Ref para sempre ter o lojaUserId mais atualizado dentro de callbacks assíncronos
@@ -127,7 +129,7 @@ export function useCaixa() {
     const userIdVendas = caixa.proprietario_id ?? lojaUserIdRef.current ?? caixa.user_id;
     let vendasQuery = supabase
       .from("vendas")
-      .select("forma_pagamento, total")
+      .select("forma_pagamento, total, observacoes")
       .eq("user_id", userIdVendas)
       .gte("data", caixa.data_abertura)
       .lte("data", new Date().toISOString())
@@ -155,6 +157,8 @@ export function useCaixa() {
       else if (formasCartao.includes(venda.forma_pagamento ?? "")) total_cartao += valor;
       else if (venda.forma_pagamento === "a_receber") total_a_receber += valor;
     }
+
+    setUltimoBreakdownFormaPagamento(agruparVendasPorFormaPagamento(vendas ?? []));
 
     // Buscar movimentações (sangrias e suprimentos)
     const { data: movimentacoes } = await supabase
@@ -198,5 +202,5 @@ export function useCaixa() {
 
   const caixaEstaAberto = caixaAtual?.status === "aberto";
 
-  return { caixaAtual, caixaEstaAberto, loading, abrirCaixa, fecharCaixa, carregarCaixaAtual };
+  return { caixaAtual, caixaEstaAberto, loading, abrirCaixa, fecharCaixa, carregarCaixaAtual, ultimoBreakdownFormaPagamento };
 }
