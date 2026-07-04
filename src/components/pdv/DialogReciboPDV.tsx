@@ -193,7 +193,7 @@ export function DialogReciboPDV({
     @page { size: A4 portrait; margin: 10mm; }
     body {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: ${isThermal ? '11px' : '13px'};
+      font-size: ${isThermal ? '12px' : '13px'};
       color: #111;
       background: white;
       padding: ${isThermal ? '2mm' : '15px'};
@@ -221,12 +221,12 @@ export function DialogReciboPDV({
       margin: ${isThermal ? '2px 0' : '6px 0'};
     }
     .dados-loja {
-      font-size: 9px;
-      color: #111;
-      margin-top: 2px;
-      line-height: 1.6;
-      font-weight: 600;
+      font-size: ${isThermal ? '10px' : '11px'};
+      font-weight: 700;
       font-style: normal;
+      color: #000;
+      margin-top: 2px;
+      line-height: 1.8;
     }
     .recibo-titulo-bloco {
       margin-top: ${isThermal ? '6px' : '12px'};
@@ -238,7 +238,7 @@ export function DialogReciboPDV({
       font-weight: 700;
       margin: 2px 0;
     }
-    .recibo-header p { font-size: ${isThermal ? '9px' : '11px'}; color: #555; }
+    .recibo-header p { font-size: ${isThermal ? '10px' : '11px'}; font-weight: 700; color: #000; }
     /* --- Seções --- */
     .recibo-section {
       margin-bottom: ${isThermal ? '8px' : '16px'};
