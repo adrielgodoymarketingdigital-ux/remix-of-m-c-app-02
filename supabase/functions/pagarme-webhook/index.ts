@@ -155,7 +155,7 @@ serve(async (req) => {
       });
     }
 
-    log("Evento recebido", { type: eventType, id: eventId });
+    log("Evento recebido", { type: eventType, id: eventId, accountId: body?.account?.id ?? null });
 
     // ════════════════════════════════════════════════════════════════
     // EVENTOS DE SUBSCRIPTION (cartão recorrente)
