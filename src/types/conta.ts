@@ -16,6 +16,7 @@ export interface Conta {
   fornecedor_id?: string;
   data_pagamento?: string;
   forma_pagamento?: string;
+  forma_pagamento_entrada?: string;
 }
 
 export interface FormularioConta {
@@ -30,6 +31,8 @@ export interface FormularioConta {
   fornecedor_id?: string;
   data_pagamento?: string;
   forma_pagamento?: string;
+  valor_pago?: number;
+  forma_pagamento_entrada?: string;
 }
 
 export const CATEGORIAS_CONTA = [

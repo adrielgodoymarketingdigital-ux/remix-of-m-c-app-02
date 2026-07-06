@@ -62,6 +62,8 @@ export function DialogConfirmarBaixa({
 
   const tituloBotao = conta.tipo === "pagar" ? "Marcar como Pago" : "Marcar como Recebido";
   const tituloDialog = conta.tipo === "pagar" ? "Confirmar Pagamento" : "Confirmar Recebimento";
+  const temEntradaRegistrada = !!conta.valor_pago && conta.valor_pago > 0;
+  const saldoRestante = Math.max(Number(conta.valor) - Number(conta.valor_pago || 0), 0);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -77,6 +79,29 @@ export function DialogConfirmarBaixa({
               <ValorMonetario valor={conta.valor} tipo="preco" />
             </p>
           </div>
+
+          {temEntradaRegistrada && (
+            <div className="rounded-lg border p-3 space-y-1.5 bg-muted/50">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Entrada já registrada:</span>
+                <span className="font-medium">
+                  <ValorMonetario valor={conta.valor_pago || 0} tipo="preco" />
+                </span>
+              </div>
+              {conta.forma_pagamento_entrada && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Forma da entrada:</span>
+                  <span className="font-medium">{conta.forma_pagamento_entrada}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-sm pt-1 border-t">
+                <span className="text-muted-foreground">Saldo restante:</span>
+                <span className="font-semibold">
+                  <ValorMonetario valor={saldoRestante} tipo="preco" />
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="forma-pagamento">Forma de pagamento</Label>

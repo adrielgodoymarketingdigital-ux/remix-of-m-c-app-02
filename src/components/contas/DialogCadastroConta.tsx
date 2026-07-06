@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFornecedores } from "@/hooks/useFornecedores";
+import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustomizadas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,7 +29,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Conta, FormularioConta, CATEGORIAS_CONTA } from "@/types/conta";
+
+const FORMAS_PAGAMENTO_ENTRADA = [
+  { value: "dinheiro", label: "Dinheiro" },
+  { value: "pix", label: "PIX" },
+  { value: "debito", label: "Débito" },
+  { value: "credito", label: "Crédito" },
+];
 
 const formSchema = z.object({
   nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres").max(100, "Nome deve ter no máximo 100 caracteres"),
@@ -58,7 +68,11 @@ export function DialogCadastroConta({
   categoriasExtras = [],
 }: DialogCadastroContaProps) {
   const { fornecedores } = useFornecedores();
-  
+  const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas();
+  const [registrarEntrada, setRegistrarEntrada] = useState(false);
+  const [valorEntrada, setValorEntrada] = useState("");
+  const [formaPagamentoEntrada, setFormaPagamentoEntrada] = useState("dinheiro");
+
   const form = useForm<FormularioConta>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -87,6 +101,10 @@ export function DialogCadastroConta({
         descricao: conta.descricao || "",
         fornecedor_id: conta.fornecedor_id || "",
       });
+      const jaTemEntrada = !!conta.valor_pago && conta.valor_pago > 0;
+      setRegistrarEntrada(jaTemEntrada);
+      setValorEntrada(jaTemEntrada ? String(conta.valor_pago) : "");
+      setFormaPagamentoEntrada(conta.forma_pagamento_entrada || "dinheiro");
     } else {
       form.reset({
         nome: "",
@@ -99,19 +117,42 @@ export function DialogCadastroConta({
         descricao: "",
         fornecedor_id: "",
       });
+      setRegistrarEntrada(false);
+      setValorEntrada("");
+      setFormaPagamentoEntrada("dinheiro");
     }
   }, [conta, form]);
 
+  const valorTotalForm = form.watch("valor");
+  const valorEntradaNumero = parseFloat(valorEntrada.replace(",", ".")) || 0;
+  const saldoRestante = Math.max(Number(valorTotalForm || 0) - valorEntradaNumero, 0);
+
   const handleSubmit = async (dados: FormularioConta) => {
     // Converter fornecedor_id vazio para undefined
-    const dadosLimpos = {
+    const dadosLimpos: FormularioConta = {
       ...dados,
       fornecedor_id: dados.fornecedor_id && dados.fornecedor_id !== "nenhum" ? dados.fornecedor_id : undefined,
     };
+
+    if (registrarEntrada && valorEntradaNumero > 0) {
+      dadosLimpos.valor_pago = valorEntradaNumero;
+      dadosLimpos.forma_pagamento_entrada = formaPagamentoEntrada;
+      // Entrada cobre o valor total: marca a conta como quitada automaticamente.
+      dadosLimpos.status = valorEntradaNumero >= Number(dados.valor)
+        ? (dados.tipo === "pagar" ? "pago" : "recebido")
+        : "pendente";
+    } else {
+      dadosLimpos.valor_pago = 0;
+      dadosLimpos.forma_pagamento_entrada = undefined;
+    }
+
     const sucesso = await onSubmit(dadosLimpos);
     if (sucesso) {
       onOpenChange(false);
       form.reset();
+      setRegistrarEntrada(false);
+      setValorEntrada("");
+      setFormaPagamentoEntrada("dinheiro");
     }
   };
 
@@ -296,6 +337,76 @@ export function DialogCadastroConta({
                 </FormItem>
               )}
             />
+
+            {conta && (
+              <div className="rounded-lg border p-3 space-y-3">
+                <div className="flex flex-row items-center justify-between">
+                  <div className="space-y-0.5">
+                    <FormLabel>Registrar entrada parcial</FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      Registre um pagamento parcial e acompanhe o saldo restante
+                    </p>
+                  </div>
+                  <Checkbox
+                    checked={registrarEntrada}
+                    onCheckedChange={(checked) => setRegistrarEntrada(checked === true)}
+                  />
+                </div>
+
+                {registrarEntrada && (
+                  <div className="space-y-3 pt-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <FormLabel>Valor da entrada (R$)</FormLabel>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0,00"
+                          value={valorEntrada}
+                          onChange={(e) => setValorEntrada(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <FormLabel>Forma de pagamento da entrada</FormLabel>
+                        <Select value={formaPagamentoEntrada} onValueChange={setFormaPagamentoEntrada}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FORMAS_PAGAMENTO_ENTRADA.map((f) => (
+                              <SelectItem key={f.value} value={f.value}>
+                                {f.label}
+                              </SelectItem>
+                            ))}
+                            {formasCustomizadas.length > 0 && (
+                              <>
+                                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
+                                  Personalizadas
+                                </div>
+                                {formasCustomizadas.map((f) => (
+                                  <SelectItem key={f.id} value={`custom_${f.id}`}>
+                                    {f.nome}
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">Saldo restante:</span>
+                      <span className="font-semibold">
+                        <ValorMonetario valor={saldoRestante} tipo="preco" />
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <FormField
               control={form.control}
