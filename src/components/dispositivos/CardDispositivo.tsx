@@ -237,7 +237,7 @@ export function CardDispositivo({
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow max-w-full">
       <div className="relative h-40 bg-muted flex items-center justify-center p-2">
         {(dispositivo.fotos && dispositivo.fotos.length > 0) || dispositivo.foto_url ? (
           <>
@@ -287,7 +287,7 @@ export function CardDispositivo({
         )}
       </div>
 
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="p-4 space-y-3 min-w-0">
         <div>
           <h3 className="font-bold text-lg">{dispositivo.marca}</h3>
           <p className="text-sm text-muted-foreground">{dispositivo.modelo}</p>
@@ -298,17 +298,17 @@ export function CardDispositivo({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="space-y-2 text-sm">
           {dispositivo.capacidade_gb && (
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">Capacidade:</span>
-              <p className="font-medium">{dispositivo.capacidade_gb} GB</p>
+              <p className="font-medium truncate">{dispositivo.capacidade_gb} GB</p>
             </div>
           )}
           {dispositivo.imei && (
-            <div>
+            <div className="min-w-0">
               <span className="text-muted-foreground">IMEI:</span>
-              <p className="font-medium text-xs">{dispositivo.imei}</p>
+              <p className="font-medium text-xs truncate">{dispositivo.imei}</p>
             </div>
           )}
         </div>
@@ -361,61 +361,63 @@ export function CardDispositivo({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-1.5 pt-2">
-          <Button
-            onClick={handleVender}
-            className="w-full"
-            size="sm"
-            disabled={dispositivo.quantidade === 0}
-          >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            Vender
-          </Button>
-
-          {dispositivo.origem_tipo === 'terceiro' && compraId && (
-            temRecibo ? (
+        {dispositivo.origem_tipo === 'terceiro' && compraId && (
+          <div className="pt-1">
+            {temRecibo ? (
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full"
+                className="w-full text-xs"
                 onClick={handleBaixarRecibo}
                 disabled={gerandoRecibo}
               >
-                <Download className="h-4 w-4 mr-2" />
-                Ver Recibo Legal
+                <Download className="h-4 w-4 mr-2 shrink-0" />
+                <span className="truncate">Ver Recibo Legal</span>
               </Button>
             ) : (
               <Button
                 variant="secondary"
                 size="sm"
-                className="w-full"
+                className="w-full text-xs"
                 onClick={handleGerarReciboLegal}
                 disabled={gerandoRecibo}
               >
                 {gerandoRecibo ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 shrink-0 animate-spin" />
                 ) : (
-                  <FileText className="h-4 w-4 mr-2" />
+                  <FileText className="h-4 w-4 mr-2 shrink-0" />
                 )}
-                Gerar Recibo Legal
+                <span className="truncate">Gerar Recibo Legal</span>
               </Button>
-            )
-          )}
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-1 pt-2">
+          <Button
+            onClick={handleVender}
+            className="w-full text-xs px-1"
+            size="sm"
+            disabled={dispositivo.quantidade === 0}
+          >
+            <ShoppingCart className="h-4 w-4 mr-1 shrink-0" />
+            <span className="truncate">Vender</span>
+          </Button>
 
           <Button
             onClick={() => onEditar(dispositivo)}
             variant="default"
             size="sm"
-            className="w-full"
+            className="w-full text-xs px-1"
           >
-            <Pencil className="h-4 w-4 mr-2" />
-            Editar
+            <Pencil className="h-4 w-4 mr-1 shrink-0" />
+            <span className="truncate">Editar</span>
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="w-full">
-                <Trash2 className="h-3 w-3 mr-1" />
-                Excluir
+              <Button variant="destructive" size="sm" className="w-full text-xs px-1">
+                <Trash2 className="h-4 w-4 mr-1 shrink-0" />
+                <span className="truncate">Excluir</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
