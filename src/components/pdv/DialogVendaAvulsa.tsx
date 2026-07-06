@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustomizadas";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +53,8 @@ interface Props {
 
 export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
   const { lojaUserId } = useFuncionarioPermissoes();
+  const { empresaAtiva } = useEmpresa();
+  const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaAtiva);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("");
@@ -158,6 +162,15 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
 
   const totalHoje = vendasHoje.reduce((acc, v) => acc + Number(v.valor), 0);
 
+  function getLabelFormaPagamento(forma: string): string {
+    if (FORMAS_PAGAMENTO[forma]) return FORMAS_PAGAMENTO[forma];
+    if (forma.startsWith("custom_")) {
+      const id = forma.replace("custom_", "");
+      return formasCustomizadas.find((f) => f.id === id)?.nome || forma;
+    }
+    return forma;
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg sm:max-h-[90vh] overflow-y-auto">
@@ -203,6 +216,18 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
                 <SelectItem value="credito">Cartão de Crédito</SelectItem>
                 <SelectItem value="debito">Cartão de Débito</SelectItem>
                 <SelectItem value="transferencia">Transferência</SelectItem>
+                {formasCustomizadas.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
+                      Personalizadas
+                    </div>
+                    {formasCustomizadas.map((f) => (
+                      <SelectItem key={f.id} value={`custom_${f.id}`}>
+                        {f.nome}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -250,7 +275,7 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">{v.descricao}</p>
                     <p className="text-xs text-muted-foreground">
-                      {FORMAS_PAGAMENTO[v.forma_pagamento] ?? v.forma_pagamento}
+                      {getLabelFormaPagamento(v.forma_pagamento)}
                       {" · "}
                       {format(new Date(v.created_at), "HH:mm", { locale: ptBR })}
                     </p>

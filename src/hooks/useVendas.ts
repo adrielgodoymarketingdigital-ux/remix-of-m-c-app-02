@@ -7,6 +7,7 @@ import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
 import { dataHoje, extrairDataLocal } from "@/lib/formatters";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useIdentidade } from "./useResolvedUserId";
+import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -16,6 +17,16 @@ export const useVendas = () => {
   const { dispatchEvent } = useEventDispatcher();
   const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
   const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
+  const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaFiltro);
+
+  const resolverFormaPagamentoBanco = (forma: string): string =>
+    forma.startsWith("custom_") ? "outro" : forma;
+
+  const getLabelFormaCustomizada = (forma: string): string | null => {
+    if (!forma.startsWith("custom_")) return null;
+    const id = forma.replace("custom_", "");
+    return formasCustomizadas.find((f) => f.id === id)?.nome || null;
+  };
 
   const carregarVendas = async (dataInicio?: string, dataFim?: string) => {
     if (identidadeCarregando) return;
@@ -671,12 +682,54 @@ export const useVendas = () => {
         return false;
       }
 
+      // Vendas avulsas vivem em vendas_avulsas, não em vendas — sem parcelamento/contas a receber.
+      if (vendaOriginal.tipo === "avulsa") {
+        const updateAvulsa: { forma_pagamento: string; valor?: number } = {
+          forma_pagamento: dados.forma_pagamento,
+        };
+        if (dados.total !== undefined && Number(dados.total) !== Number(vendaOriginal.total)) {
+          updateAvulsa.valor = dados.total;
+        }
+
+        const { error: erroAvulsa } = await supabase
+          .from("vendas_avulsas" as any)
+          .update(updateAvulsa)
+          .eq("id", vendaId)
+          .eq("user_id", vendaOriginal.user_id);
+
+        if (erroAvulsa) throw erroAvulsa;
+
+        toast({
+          title: "Venda atualizada",
+          description: "A venda avulsa foi atualizada com sucesso.",
+        });
+
+        setVendas(prev => prev.map(v =>
+          v.id === vendaId
+            ? {
+                ...v,
+                forma_pagamento: dados.forma_pagamento as Venda["forma_pagamento"],
+                total: updateAvulsa.valor ?? v.total,
+              }
+            : v
+        ));
+        return true;
+      }
+
+      const nomeFormaCustomizada = getLabelFormaCustomizada(dados.forma_pagamento);
       const updateData: any = {
-        forma_pagamento: dados.forma_pagamento,
+        forma_pagamento: resolverFormaPagamentoBanco(dados.forma_pagamento),
         data_prevista_recebimento: dados.data_prevista_recebimento || null,
         parcela_numero: dados.parcela_numero || null,
         total_parcelas: dados.total_parcelas || null,
       };
+
+      if (nomeFormaCustomizada) {
+        // Preserva o nome do item (se houver) e anexa o nome da forma customizada,
+        // já que o banco só aceita "outro" — mesmo padrão usado no PDV.
+        const nomeBase = (vendaOriginal.observacoes || "").replace(/\s*\[forma:.*\]\s*$/, "").trim();
+        updateData.observacoes = `${nomeBase} [forma:${nomeFormaCustomizada}]`.trim();
+      }
 
       // Se mudou de a_receber/a_prazo para outra forma, resetar recebido
       if (dados.forma_pagamento !== "a_receber" && dados.forma_pagamento !== "a_prazo") {
@@ -843,6 +896,7 @@ export const useVendas = () => {
           ? {
               ...v,
               forma_pagamento: dados.forma_pagamento as Venda["forma_pagamento"],
+              observacoes: updateData.observacoes ?? v.observacoes,
               data_prevista_recebimento: dados.data_prevista_recebimento ?? v.data_prevista_recebimento,
               parcela_numero: dados.parcela_numero ?? v.parcela_numero,
               total_parcelas: dados.total_parcelas ?? v.total_parcelas,

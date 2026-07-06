@@ -13,7 +13,7 @@ export interface Venda {
   custo_unitario?: number;
   valor_desconto_manual?: number;
   valor_desconto_cupom?: number;
-  forma_pagamento: "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber" | "a_prazo" | null;
+  forma_pagamento: "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber" | "a_prazo" | "outro" | (string & {}) | null;
   user_id: string | null;
   cancelada?: boolean;
   data_cancelamento?: string | null;

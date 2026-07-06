@@ -17,6 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Venda } from "@/types/venda";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustomizadas";
+import { extrairNomeFormaCustomizada } from "@/lib/formaPagamento";
 
 interface DialogEditarVendaProps {
   open: boolean;
@@ -41,6 +44,11 @@ const FORMAS_PAGAMENTO = [
   { value: "a_receber", label: "A Receber (A Prazo)" },
 ];
 
+// Valor sintético para representar, no Select, uma forma customizada já salva na venda
+// (tanto vendas normais, gravadas como "outro" + nome no sufixo de observacoes, quanto
+// vendas avulsas, que já guardam "custom_<id>" diretamente).
+const VALOR_FORMA_ATUAL_CUSTOMIZADA = "__forma_atual_customizada__";
+
 export const DialogEditarVenda = ({
   open,
   onOpenChange,
@@ -48,15 +56,28 @@ export const DialogEditarVenda = ({
   onSalvar,
   salvando = false,
 }: DialogEditarVendaProps) => {
+  const { empresaAtiva } = useEmpresa();
+  const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaAtiva);
   const [formaPagamento, setFormaPagamento] = useState<string>("dinheiro");
   const [dataPrevista, setDataPrevista] = useState<string>("");
   const [parcelaNumero, setParcelaNumero] = useState<string>("");
   const [totalParcelas, setTotalParcelas] = useState<string>("");
   const [valorTotal, setValorTotal] = useState<string>("");
 
+  const nomeFormaCustomizadaAtual = venda
+    ? venda.forma_pagamento?.startsWith("custom_")
+      ? formasCustomizadas.find((f) => `custom_${f.id}` === venda.forma_pagamento)?.nome
+        ?? venda.forma_pagamento.replace("custom_", "")
+      : venda.forma_pagamento === "outro"
+        ? extrairNomeFormaCustomizada(venda.observacoes) ?? "Personalizada"
+        : null
+    : null;
+
   useEffect(() => {
     if (venda && open) {
-      setFormaPagamento(venda.forma_pagamento || "dinheiro");
+      const forma = venda.forma_pagamento || "dinheiro";
+      const ehCustomizada = forma.startsWith("custom_") || forma === "outro";
+      setFormaPagamento(ehCustomizada ? VALOR_FORMA_ATUAL_CUSTOMIZADA : forma);
       setDataPrevista(venda.data_prevista_recebimento || "");
       setParcelaNumero(venda.parcela_numero?.toString() || "");
       setTotalParcelas(venda.total_parcelas?.toString() || "");
@@ -72,8 +93,15 @@ export const DialogEditarVenda = ({
   const handleSalvar = async () => {
     if (!venda || !valorTotalValido) return;
 
+    // Se o usuário deixou selecionada a forma customizada original da venda,
+    // reenvia o valor cru (custom_<id> ou "outro") sem alteração.
+    const formaParaSalvar =
+      formaPagamento === VALOR_FORMA_ATUAL_CUSTOMIZADA
+        ? (venda.forma_pagamento as string)
+        : formaPagamento;
+
     const dados: any = {
-      forma_pagamento: formaPagamento,
+      forma_pagamento: formaParaSalvar,
     };
 
     if (valorTotalNumero !== venda.total) {
@@ -149,6 +177,25 @@ export const DialogEditarVenda = ({
                     {fp.label}
                   </SelectItem>
                 ))}
+                {nomeFormaCustomizadaAtual && (
+                  <SelectItem value={VALOR_FORMA_ATUAL_CUSTOMIZADA}>
+                    {nomeFormaCustomizadaAtual}
+                  </SelectItem>
+                )}
+                {formasCustomizadas.filter((f) => `custom_${f.id}` !== venda?.forma_pagamento).length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
+                      Personalizadas
+                    </div>
+                    {formasCustomizadas
+                      .filter((f) => `custom_${f.id}` !== venda?.forma_pagamento)
+                      .map((f) => (
+                        <SelectItem key={f.id} value={`custom_${f.id}`}>
+                          {f.nome}
+                        </SelectItem>
+                      ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
