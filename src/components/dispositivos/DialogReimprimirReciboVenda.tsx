@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 import {
   Dialog,
@@ -14,6 +14,12 @@ import { checklistLabels } from "@/lib/checklist-templates";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "@/lib/termo-garantia-utils";
+import {
+  SeletorFormatoPapelDialog,
+  FormatoPapel,
+  getUltimoFormatoPapel,
+  salvarUltimoFormatoPapel,
+} from "@/components/recibo/SeletorFormatoPapelDialog";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -140,6 +146,8 @@ export function DialogReimprimirReciboVenda({
   modo = "recibo",
 }: DialogReimprimirReciboVendaProps) {
   const { config: configLoja, refetch } = useConfiguracaoLoja(venda?.empresa_id);
+  const [dialogFormatoAberto, setDialogFormatoAberto] = useState(false);
+  const [formatoSelecionado, setFormatoSelecionado] = useState<FormatoPapel>(getUltimoFormatoPapel());
 
   useEffect(() => {
     if (open) refetch();
@@ -196,9 +204,27 @@ export function DialogReimprimirReciboVenda({
     return formatarTermoDispositivo(textoBase, varsTermos);
   };
 
+  const abrirSeletorFormato = () => {
+    setDialogFormatoAberto(true);
+  };
+
   const imprimirRecibo = () => {
+    salvarUltimoFormatoPapel(formatoSelecionado);
+    setDialogFormatoAberto(false);
+
     const janelaImpressao = window.open("", "_blank");
     if (!janelaImpressao) return;
+
+    const paper = resolvePaperSize(formatoSelecionado);
+    const cssTermico = paper.isThermal ? `
+    @page { size: ${paper.pageSize}; margin: 2mm; }
+    body { width: ${paper.bodyWidth} !important; max-width: ${paper.bodyMaxWidth} !important; font-size: 9px !important; }
+    .header { flex-direction: column; align-items: flex-start; gap: 6px; border-radius: 0; }
+    .header-titulo { text-align: left; }
+    .grid-2col { grid-template-columns: 1fr !important; }
+    .assinaturas { grid-template-columns: 1fr !important; gap: 10px; }
+    .faixa-data { flex-direction: column; align-items: flex-start; gap: 2px; border-radius: 0; }
+    ` : '';
 
     const textoTermoAtual = obterTextoTermo();
 
@@ -385,6 +411,8 @@ export function DialogReimprimirReciboVenda({
       body { margin: 0 !important; }
       .assinaturas { page-break-inside: avoid; break-inside: avoid; }
     }
+    /* Sobrescreve @page e body para térmica (deve vir por último) */
+    ${cssTermico}
   </style>
 </head>
 <body>
@@ -546,12 +574,20 @@ export function DialogReimprimirReciboVenda({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button onClick={imprimirRecibo}>
+          <Button onClick={abrirSeletorFormato}>
             <Printer className="h-4 w-4 mr-2" />
             {modo === "garantia" ? "Imprimir Garantia" : "Imprimir Recibo"}
           </Button>
         </div>
       </DialogContent>
+
+      <SeletorFormatoPapelDialog
+        open={dialogFormatoAberto}
+        onOpenChange={setDialogFormatoAberto}
+        formato={formatoSelecionado}
+        onFormatoChange={setFormatoSelecionado}
+        onConfirmar={imprimirRecibo}
+      />
     </Dialog>
   );
 }

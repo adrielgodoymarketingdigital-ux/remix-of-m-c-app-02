@@ -17,6 +17,12 @@ import { Dispositivo } from "@/types/dispositivo";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import {
+  SeletorFormatoPapelDialog,
+  FormatoPapel,
+  getUltimoFormatoPapel,
+  salvarUltimoFormatoPapel,
+} from "@/components/recibo/SeletorFormatoPapelDialog";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -77,6 +83,8 @@ export function DialogReimpressaoRecibo({
   const [clienteCompleto, setClienteCompleto] = useState<any>(null);
   const [produto, setProduto] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [dialogFormatoAberto, setDialogFormatoAberto] = useState(false);
+  const [formatoSelecionado, setFormatoSelecionado] = useState<FormatoPapel>(getUltimoFormatoPapel());
 
   useEffect(() => {
     if (open && venda) {
@@ -184,8 +192,6 @@ export function DialogReimpressaoRecibo({
   };
 
   const vendasConfig = configLoja?.layout_vendas_config as any;
-  const formatoPapel = vendasConfig?.formato_papel || 'a4';
-  const isThermal = formatoPapel !== 'a4';
   // Flags de visibilidade ficam em config_80mm (únicas flags de seção salvas pelo DialogConfiguracaoLayoutVendas)
   const config80mm = vendasConfig?.config_80mm || {};
   const showLogo = config80mm?.mostrar_logo !== false;
@@ -198,14 +204,22 @@ export function DialogReimpressaoRecibo({
   const showAssinaturas = config80mm?.mostrar_assinaturas !== false;
   const showValor = vendasConfig?.mostrar_valor !== false;
 
+  const abrirSeletorFormato = () => {
+    setDialogFormatoAberto(true);
+  };
+
   const imprimirRecibo = () => {
     if (!reciboRef.current) return;
+
+    salvarUltimoFormatoPapel(formatoSelecionado);
+    setDialogFormatoAberto(false);
 
     const conteudo = reciboRef.current.innerHTML;
     const janelaImpressao = window.open("", "_blank");
 
     if (janelaImpressao) {
-      const paper = resolvePaperSize(formatoPapel, vendasConfig?.largura_mm, vendasConfig?.altura_mm);
+      const isThermalImpressao = formatoSelecionado !== 'a4';
+      const paper = resolvePaperSize(formatoSelecionado, vendasConfig?.largura_mm, vendasConfig?.altura_mm);
       // getThermalPrintCSS gera @page + body para térmica; A4 retorna string vazia
       const cssTermico = getThermalPrintCSS(paper);
       const titulo = venda?.tipo === "dispositivo"
@@ -222,37 +236,37 @@ export function DialogReimpressaoRecibo({
     @page { size: A4 portrait; margin: 10mm; }
     body {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: ${isThermal ? '13px' : '13px'};
-      font-weight: ${isThermal ? '600' : '400'};
+      font-size: ${isThermalImpressao ? '13px' : '13px'};
+      font-weight: ${isThermalImpressao ? '600' : '400'};
       color: #000;
       background: white;
-      padding: ${isThermal ? '2mm' : '15px'};
-      max-width: ${isThermal ? 'none' : '800px'};
+      padding: ${isThermalImpressao ? '2mm' : '15px'};
+      max-width: ${isThermalImpressao ? 'none' : '800px'};
       margin: 0 auto;
       line-height: 1.4;
     }
     .recibo-header {
       text-align: center;
-      border-bottom: ${isThermal ? '1px dashed #000' : '2px solid #000'};
-      padding-bottom: ${isThermal ? '2mm' : '16px'};
-      margin-bottom: ${isThermal ? '3mm' : '16px'};
+      border-bottom: ${isThermalImpressao ? '1px dashed #000' : '2px solid #000'};
+      padding-bottom: ${isThermalImpressao ? '2mm' : '16px'};
+      margin-bottom: ${isThermalImpressao ? '3mm' : '16px'};
     }
     .logo-loja {
       display: block;
-      max-width: ${isThermal ? '30mm' : '120px'};
-      max-height: ${isThermal ? '15mm' : '70px'};
+      max-width: ${isThermalImpressao ? '30mm' : '120px'};
+      max-height: ${isThermalImpressao ? '15mm' : '70px'};
       height: auto;
-      margin: 0 auto ${isThermal ? '2mm' : '10px'};
+      margin: 0 auto ${isThermalImpressao ? '2mm' : '10px'};
     }
     .recibo-header h1 {
-      font-size: ${isThermal ? '14px' : '20px'};
+      font-size: ${isThermalImpressao ? '14px' : '20px'};
       font-weight: 900;
       color: #000;
       letter-spacing: 0;
-      margin: ${isThermal ? '1mm 0' : '6px 0'};
+      margin: ${isThermalImpressao ? '1mm 0' : '6px 0'};
     }
     .dados-loja {
-      font-size: ${isThermal ? '12px' : '11px'};
+      font-size: ${isThermalImpressao ? '12px' : '11px'};
       font-weight: 900;
       font-style: normal;
       color: #000;
@@ -261,31 +275,31 @@ export function DialogReimpressaoRecibo({
       line-height: 1.8;
     }
     .recibo-titulo-bloco {
-      margin-top: ${isThermal ? '2mm' : '12px'};
-      padding-top: ${isThermal ? '2mm' : '12px'};
-      border-top: ${isThermal ? '1px dashed #000' : '1.5px solid #000'};
+      margin-top: ${isThermalImpressao ? '2mm' : '12px'};
+      padding-top: ${isThermalImpressao ? '2mm' : '12px'};
+      border-top: ${isThermalImpressao ? '1px dashed #000' : '1.5px solid #000'};
     }
     .recibo-header h2 {
-      font-size: ${isThermal ? '12px' : '15px'};
+      font-size: ${isThermalImpressao ? '12px' : '15px'};
       font-weight: 900;
       color: #000;
       letter-spacing: 0;
       margin: 1mm 0;
     }
-    .recibo-header p { font-size: ${isThermal ? '12px' : '11px'}; font-weight: 900; color: #000; letter-spacing: 0; }
+    .recibo-header p { font-size: ${isThermalImpressao ? '12px' : '11px'}; font-weight: 900; color: #000; letter-spacing: 0; }
     .recibo-section {
-      margin-bottom: ${isThermal ? '3mm' : '16px'};
+      margin-bottom: ${isThermalImpressao ? '3mm' : '16px'};
       page-break-inside: avoid;
     }
     .recibo-section h3 {
-      font-size: ${isThermal ? '11px' : '13px'};
+      font-size: ${isThermalImpressao ? '11px' : '13px'};
       font-weight: 900;
-      border-bottom: ${isThermal ? '1px dashed #ccc' : '1px solid #ccc'};
+      border-bottom: ${isThermalImpressao ? '1px dashed #ccc' : '1px solid #ccc'};
       padding-bottom: 2mm;
       margin-bottom: 2mm;
     }
     .termos-garantia {
-      font-size: ${isThermal ? '7pt' : '10px'};
+      font-size: ${isThermalImpressao ? '7pt' : '10px'};
       line-height: 1.6;
       white-space: pre-line;
       color: #333;
@@ -293,28 +307,28 @@ export function DialogReimpressaoRecibo({
     .recibo-info {
       display: flex;
       justify-content: space-between;
-      font-size: ${isThermal ? '9pt' : '12px'};
+      font-size: ${isThermalImpressao ? '9pt' : '12px'};
       margin: 1mm 0;
     }
     .recibo-total {
-      font-size: ${isThermal ? '13pt' : '20px'};
+      font-size: ${isThermalImpressao ? '13pt' : '20px'};
       font-weight: bold;
       text-align: right;
-      margin-top: ${isThermal ? '3mm' : '20px'};
-      padding-top: ${isThermal ? '2mm' : '16px'};
-      border-top: ${isThermal ? '1px dashed #000' : '2px solid #000'};
+      margin-top: ${isThermalImpressao ? '3mm' : '20px'};
+      padding-top: ${isThermalImpressao ? '2mm' : '16px'};
+      border-top: ${isThermalImpressao ? '1px dashed #000' : '2px solid #000'};
     }
     .recibo-checklist {
       display: grid;
-      grid-template-columns: ${isThermal ? '1fr' : '1fr 1fr'};
-      gap: ${isThermal ? '1mm' : '6px 14px'};
+      grid-template-columns: ${isThermalImpressao ? '1fr' : '1fr 1fr'};
+      gap: ${isThermalImpressao ? '1mm' : '6px 14px'};
       margin-top: 2mm;
     }
     .recibo-checklist-item {
       display: flex;
       align-items: center;
       gap: 5px;
-      font-size: ${isThermal ? '8pt' : '11px'};
+      font-size: ${isThermalImpressao ? '8pt' : '11px'};
     }
     .recibo-checklist-icon { font-size: 11px; flex-shrink: 0; }
     .recibo-checklist-label { color: #333; }
@@ -576,12 +590,20 @@ export function DialogReimpressaoRecibo({
             <Copy className="h-4 w-4 mr-2" />
             Copiar Texto
           </Button>
-          <Button onClick={imprimirRecibo} disabled={loading} className="w-full sm:w-auto">
+          <Button onClick={abrirSeletorFormato} disabled={loading} className="w-full sm:w-auto">
             <Printer className="h-4 w-4 mr-2" />
             {loading ? "Carregando..." : "Imprimir Recibo"}
           </Button>
         </div>
       </DialogContent>
+
+      <SeletorFormatoPapelDialog
+        open={dialogFormatoAberto}
+        onOpenChange={setDialogFormatoAberto}
+        formato={formatoSelecionado}
+        onFormatoChange={setFormatoSelecionado}
+        onConfirmar={imprimirRecibo}
+      />
     </Dialog>
   );
 }
