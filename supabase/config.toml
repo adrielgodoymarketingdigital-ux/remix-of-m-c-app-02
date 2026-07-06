@@ -2,3 +2,9 @@ project_id = "zwzippdzxyunwdoiafko"
 
 [functions.tiny-oauth-callback]
 verify_jwt = false
+
+[functions.pagarme-webhook]
+verify_jwt = false
+
+[functions.ticto-webhook]
+verify_jwt = false
