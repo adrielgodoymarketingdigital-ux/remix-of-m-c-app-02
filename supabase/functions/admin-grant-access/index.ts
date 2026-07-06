@@ -160,18 +160,22 @@ serve(async (req) => {
       throw new Error(`Erro ao atualizar assinatura: ${updateError.message}`);
     }
 
-    // Registrar no histórico de bloqueios (usando ação "acesso_concedido")
-    await supabaseClient.from("historico_bloqueios").insert({
+    // Registrar no histórico de bloqueios (acao/tipo_bloqueio restritos por check constraint)
+    const { error: historicoError } = await supabaseClient.from("historico_bloqueios").insert({
       user_id,
       admin_id: userData.user.id,
-      acao: "acesso_concedido",
+      acao: "desbloqueio",
       motivo: motivo || `Acesso concedido: ${plano_tipo} por ${tempoLabel}`,
       user_nome: profileData?.nome || null,
       user_email: profileData?.email || null,
       admin_nome: adminProfileData?.nome || null,
       admin_email: adminProfileData?.email || null,
-      tipo_bloqueio: plano_tipo,
+      tipo_bloqueio: null,
     });
+
+    if (historicoError) {
+      logStep("Error logging historico_bloqueios", { error: historicoError.message });
+    }
 
     logStep("Access granted successfully", { user_id, plano_tipo });
 
