@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRemessasCorporativas, RemessaItem } from "@/hooks/useRemessasCorporativas";
 import { supabase } from "@/integrations/supabase/client";
+import { useOSStatusConfigContext } from "@/contexts/OSStatusConfigContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,8 +49,18 @@ function RemessaDetalheContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { remessas, loading, adicionarItem, removerItem } = useRemessasCorporativas();
+  const { statusList } = useOSStatusConfigContext();
 
   const remessa = useMemo(() => remessas.find((r) => r.id === id), [remessas, id]);
+
+  const statusColors = useMemo(
+    () => Object.fromEntries(statusList.map((s) => [s.slug, s.cor])),
+    [statusList]
+  );
+  const statusLabels = useMemo(
+    () => Object.fromEntries(statusList.map((s) => [s.slug, s.nome])),
+    [statusList]
+  );
 
   const [dialogAberto, setDialogAberto] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -363,31 +374,41 @@ function RemessaDetalheContent() {
                           {osHistorico.length === 0 ? (
                             <p className="text-sm text-muted-foreground">Carregando histórico...</p>
                           ) : (
-                            osHistorico.map((os) => (
-                              <div
-                                key={os.id}
-                                className="flex items-center justify-between gap-4 text-sm bg-background rounded-md border px-3 py-2"
-                              >
-                                <div className="flex items-center gap-4">
-                                  <span className="font-medium">OS {os.numero_os}</span>
-                                  <span className="text-muted-foreground">
-                                    {os.created_at
-                                      ? new Date(os.created_at).toLocaleDateString("pt-BR")
-                                      : "-"}
-                                  </span>
-                                  <Badge variant="outline">{os.status || "-"}</Badge>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1"
-                                  onClick={() => navigate("/os")}
+                            osHistorico.map((os) => {
+                              const cor = statusColors[os.status || ""] || "#eab308";
+                              const label = statusLabels[os.status || ""] || os.status || "-";
+                              return (
+                                <div
+                                  key={os.id}
+                                  className="flex items-center justify-between gap-4 text-sm bg-background rounded-md border px-3 py-2"
                                 >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                  Abrir OS
-                                </Button>
-                              </div>
-                            ))
+                                  <div className="flex items-center gap-4">
+                                    <span className="font-medium">OS {os.numero_os}</span>
+                                    <span className="text-muted-foreground">
+                                      {os.created_at
+                                        ? new Date(os.created_at).toLocaleDateString("pt-BR")
+                                        : "-"}
+                                    </span>
+                                    <span
+                                      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold border"
+                                      style={{ color: cor, borderColor: `${cor}35`, backgroundColor: `${cor}10` }}
+                                    >
+                                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
+                                      {label}
+                                    </span>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="gap-1"
+                                    onClick={() => navigate(`/os?numero=${encodeURIComponent(os.numero_os)}`)}
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                    Abrir OS
+                                  </Button>
+                                </div>
+                              );
+                            })
                           )}
                         </div>
                       </TableCell>
