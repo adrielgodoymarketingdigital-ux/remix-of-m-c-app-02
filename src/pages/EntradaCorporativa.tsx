@@ -99,14 +99,28 @@ function EntradaCorporativaContent() {
         .eq("user_id", remessa.user_id)
         .maybeSingle();
 
-      const novosOsIds = [...(item.os_ids || []), ...(osData?.id ? [osData.id] : [])];
+      if (osData?.id) {
+        // Buscar os_ids atuais diretamente do banco para evitar race condition
+        const { data: itemAtual } = await supabase
+          .from("remessa_itens")
+          .select("os_ids")
+          .eq("id", item.id)
+          .single();
 
-      await supabase
-        .from("remessa_itens")
-        .update({ os_ids: novosOsIds })
-        .eq("id", item.id);
+        const osIdsAtuais = (itemAtual?.os_ids as string[]) || [];
+        const novosOsIds = [...osIdsAtuais, osData.id];
 
-      setItem({ ...item, os_ids: novosOsIds });
+        const { error: updateError } = await supabase
+          .from("remessa_itens")
+          .update({ os_ids: novosOsIds })
+          .eq("id", item.id);
+
+        if (updateError) {
+          console.error("Erro ao atualizar os_ids:", updateError);
+        }
+
+        setItem({ ...item, os_ids: novosOsIds });
+      }
       setNumeroOSCriada(numeroOS);
       toast.success("Ordem de serviço criada!");
     } catch (error) {
