@@ -127,9 +127,11 @@ function EntradaCorporativaContent() {
       }
       setNumeroOSCriada(numeroOS);
       toast.success("Ordem de serviço criada!");
-    } catch (error) {
-      console.error("Erro ao criar OS:", error);
-      toast.error("Erro ao criar ordem de serviço");
+    } catch (error: unknown) {
+      const err = error as { message?: string; error_description?: string };
+      const mensagemErro = err?.message || err?.error_description || JSON.stringify(error) || "Erro desconhecido";
+      console.error("Erro completo:", error);
+      toast.error(`Erro ao criar OS: ${mensagemErro}`);
     } finally {
       setCriando(false);
     }
