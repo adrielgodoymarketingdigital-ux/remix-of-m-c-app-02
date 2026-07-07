@@ -46,6 +46,7 @@ export default function CatalogoDispositivos() {
   const [salvandoCatalogo, setSalvandoCatalogo] = useState(false);
   const [lpAlterada, setLpAlterada] = useState(false);
   const [configLPOriginal, setConfigLPOriginal] = useState<string>("");
+  const [atualizandoVisibilidade, setAtualizandoVisibilidade] = useState<Set<string>>(new Set());
   const configCatalogoRef = useRef(configCatalogo);
   configCatalogoRef.current = configCatalogo;
   
@@ -275,6 +276,43 @@ export default function CatalogoDispositivos() {
     }
   };
 
+  const handleToggleExibirNoCatalogo = async (item: ItemCatalogo) => {
+    const novoValor = !(item.exibir_no_catalogo !== false);
+    const tabela = item.tipo_item === 'dispositivo' ? 'dispositivos' : item.tipo_item === 'produto' ? 'produtos' : 'pecas';
+
+    setAtualizandoVisibilidade((prev) => new Set(prev).add(item.id));
+    try {
+      const { error } = await supabase
+        .from(tabela)
+        .update({ exibir_no_catalogo: novoValor })
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      toast({
+        title: novoValor ? "Item visível no catálogo" : "Item ocultado do catálogo",
+      });
+
+      if (item.tipo_item === 'dispositivo') {
+        await carregarDispositivos();
+      } else {
+        await carregarProdutos();
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar exibição no catálogo:", error);
+      toast({
+        title: "Erro ao atualizar exibição no catálogo",
+        variant: "destructive",
+      });
+    } finally {
+      setAtualizandoVisibilidade((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
+
   const loading = loadingDispositivos || loadingConfig || loadingProdutos;
 
   return (
@@ -382,6 +420,8 @@ export default function CatalogoDispositivos() {
                           itens={itensCatalogo}
                           selecionados={selecionados}
                           onSelecionar={handleSelecaoChange}
+                          onToggleExibirNoCatalogo={handleToggleExibirNoCatalogo}
+                          atualizandoIds={atualizandoVisibilidade}
                         />
                       </CardContent>
                     </Card>

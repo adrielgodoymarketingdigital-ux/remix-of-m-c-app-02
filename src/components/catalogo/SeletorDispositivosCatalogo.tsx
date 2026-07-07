@@ -6,18 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, CheckSquare, Square, Smartphone, Package } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, CheckSquare, Square, Smartphone, Package, Eye, EyeOff } from "lucide-react";
 
 interface SeletorDispositivosCatalogoProps {
   itens: ItemCatalogo[];
   selecionados: string[];
   onSelecionar: (ids: string[]) => void;
+  onToggleExibirNoCatalogo?: (item: ItemCatalogo) => void;
+  atualizandoIds?: Set<string>;
 }
 
 export function SeletorDispositivosCatalogo({
   itens,
   selecionados,
   onSelecionar,
+  onToggleExibirNoCatalogo,
+  atualizandoIds,
 }: SeletorDispositivosCatalogoProps) {
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -214,6 +219,32 @@ export function SeletorDispositivosCatalogo({
                   )}
                   <div className="text-xs text-muted-foreground">{item.quantidade} un.</div>
                 </div>
+
+                {onToggleExibirNoCatalogo && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="flex-shrink-0"
+                          disabled={atualizandoIds?.has(item.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onToggleExibirNoCatalogo(item);
+                          }}
+                        >
+                          {item.exibir_no_catalogo === false ? (
+                            <EyeOff className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Exibir no catálogo</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
             );
           })

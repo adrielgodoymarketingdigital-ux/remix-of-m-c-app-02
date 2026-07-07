@@ -33,6 +33,7 @@ export interface ItemCatalogo {
   categoria_id?: string | null;
   categoria_nome?: string | null;
   categoria_cor?: string | null;
+  exibir_no_catalogo?: boolean;
 }
 
 // Helper to convert Dispositivo to ItemCatalogo
@@ -68,6 +69,7 @@ export function dispositivoParaItemCatalogo(d: Dispositivo): ItemCatalogo {
     saude_bateria: d.saude_bateria,
     subtipo_computador: d.subtipo_computador,
     vendido: d.vendido,
+    exibir_no_catalogo: d.exibir_no_catalogo,
   };
 }
 
@@ -90,5 +92,6 @@ export function produtoParaItemCatalogo(item: ItemEstoque): ItemCatalogo {
     categoria_id: item.categoria_id || null,
     categoria_nome: item.categoria_nome || null,
     categoria_cor: item.categoria_cor || null,
+    exibir_no_catalogo: item.exibir_no_catalogo,
   };
 }
