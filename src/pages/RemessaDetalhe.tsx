@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useRemessasCorporativas, RemessaItem } from "@/hooks/useRemessasCorporativas";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, Plus, Printer, QrCode, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, ExternalLink, Plus, Printer, QrCode, Trash2 } from "lucide-react";
 import { getPrintScript, getAndroidPrintCSS } from "@/lib/print-utils";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -31,6 +32,13 @@ const STATUS_LABEL: Record<string, string> = {
   concluida: "Concluída",
   cancelada: "Cancelada",
 };
+
+interface OSHistorico {
+  id: string;
+  numero_os: string;
+  status: string | null;
+  created_at: string | null;
+}
 
 function urlEntrada(itemId: string) {
   return `https://appmec.in/entrada/${itemId}`;
@@ -55,6 +63,9 @@ function RemessaDetalheContent() {
   const [itemQrCode, setItemQrCode] = useState<RemessaItem | null>(null);
   const printContainerRef = useRef<HTMLDivElement>(null);
 
+  const [osPorId, setOsPorId] = useState<Record<string, OSHistorico>>({});
+  const [itensExpandidos, setItensExpandidos] = useState<Record<string, boolean>>({});
+
   const resetForm = () => {
     setMarca("");
     setModelo("");
@@ -62,6 +73,42 @@ function RemessaDetalheContent() {
     setImei("");
     setNumeroSerie("");
     setDefeitoPadrao("");
+  };
+
+  const todosOsIds = useMemo(() => {
+    const ids = (remessa?.itens || []).flatMap((item) => item.os_ids || []);
+    return Array.from(new Set(ids));
+  }, [remessa]);
+
+  useEffect(() => {
+    const buscarHistoricoOS = async () => {
+      if (todosOsIds.length === 0) {
+        setOsPorId({});
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, status, created_at")
+        .in("id", todosOsIds);
+
+      if (error) {
+        console.error("Erro ao carregar histórico de OS:", error);
+        return;
+      }
+
+      const mapa: Record<string, OSHistorico> = {};
+      (data || []).forEach((os) => {
+        mapa[os.id] = os as OSHistorico;
+      });
+      setOsPorId(mapa);
+    };
+
+    buscarHistoricoOS();
+  }, [todosOsIds]);
+
+  const toggleHistorico = (itemId: string) => {
+    setItensExpandidos((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
   };
 
   const handleAdicionar = async () => {
@@ -240,12 +287,21 @@ function RemessaDetalheContent() {
                   <TableHead>IMEI</TableHead>
                   <TableHead>Nº Série</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Histórico de OS</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itens.map((item) => (
-                  <TableRow key={item.id}>
+                {itens.map((item) => {
+                  const osIds = item.os_ids || [];
+                  const osHistorico = osIds
+                    .map((osId) => osPorId[osId])
+                    .filter((os): os is OSHistorico => !!os);
+                  const expandido = !!itensExpandidos[item.id];
+
+                  return (
+                  <Fragment key={item.id}>
+                  <TableRow>
                     <TableCell>{item.marca || "-"}</TableCell>
                     <TableCell>{item.modelo}</TableCell>
                     <TableCell>{item.cor || "-"}</TableCell>
@@ -261,6 +317,25 @@ function RemessaDetalheContent() {
                       >
                         {item.status === "recebido" ? "Recebido" : "Pendente"}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {osIds.length === 0 ? (
+                        <span className="text-sm text-muted-foreground">Nenhuma OS ainda</span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 -ml-2"
+                          onClick={() => toggleHistorico(item.id)}
+                        >
+                          {expandido ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                          Ver {osIds.length} OS
+                        </Button>
+                      )}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button
@@ -281,7 +356,46 @@ function RemessaDetalheContent() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  {expandido && osIds.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="bg-muted/30">
+                        <div className="space-y-2 py-2">
+                          {osHistorico.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">Carregando histórico...</p>
+                          ) : (
+                            osHistorico.map((os) => (
+                              <div
+                                key={os.id}
+                                className="flex items-center justify-between gap-4 text-sm bg-background rounded-md border px-3 py-2"
+                              >
+                                <div className="flex items-center gap-4">
+                                  <span className="font-medium">OS {os.numero_os}</span>
+                                  <span className="text-muted-foreground">
+                                    {os.created_at
+                                      ? new Date(os.created_at).toLocaleDateString("pt-BR")
+                                      : "-"}
+                                  </span>
+                                  <Badge variant="outline">{os.status || "-"}</Badge>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={() => navigate("/os")}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                  Abrir OS
+                                </Button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  </Fragment>
+                );
+                })}
               </TableBody>
             </Table>
           )}
