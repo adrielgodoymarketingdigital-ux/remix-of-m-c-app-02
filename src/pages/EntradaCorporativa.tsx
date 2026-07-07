@@ -36,6 +36,7 @@ function EntradaCorporativaContent() {
   const [defeito, setDefeito] = useState("");
   const [criando, setCriando] = useState(false);
   const [numeroOSCriada, setNumeroOSCriada] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState(false);
 
   const carregarItem = async () => {
     if (!itemId) return;
@@ -71,62 +72,63 @@ function EntradaCorporativaContent() {
     if (!item || !item.remessas_corporativas || !defeito.trim()) return;
 
     setCriando(true);
-    try {
-      const remessa = item.remessas_corporativas;
+    const remessa = item.remessas_corporativas;
+    const itemId = item.id;
 
-      const { data: osInserida, error: osError } = await supabase
-        .from("ordens_servico")
-        .insert({
-          user_id: remessa.user_id,
-          cliente_id: remessa.cliente_id || null,
-          dispositivo_tipo: item.marca ? "celular" : "outro",
-          dispositivo_marca: item.marca || "",
-          dispositivo_modelo: item.modelo,
-          dispositivo_cor: item.cor || null,
-          dispositivo_imei: item.imei || null,
-          dispositivo_numero_serie: item.numero_serie || null,
-          defeito_relatado: defeito.trim(),
-          status: "pendente",
-        })
-        .select("id, numero_os")
-        .single();
+    const { data: osInserida, error: osError } = await supabase
+      .from("ordens_servico")
+      .insert({
+        user_id: remessa.user_id,
+        cliente_id: remessa.cliente_id || null,
+        dispositivo_tipo: "celular",
+        dispositivo_marca: item.marca || "",
+        dispositivo_modelo: item.modelo,
+        dispositivo_cor: item.cor || null,
+        dispositivo_imei: item.imei || null,
+        dispositivo_numero_serie: item.numero_serie || null,
+        defeito_relatado: defeito.trim(),
+        status: "pendente",
+      })
+      .select("id, numero_os")
+      .single();
 
-      if (osError) throw osError;
-
-      // Buscar os_ids atuais diretamente do banco para evitar race condition
-      const { data: itemAtual } = await supabase
-        .from("remessa_itens")
-        .select("os_ids")
-        .eq("id", item.id)
-        .single();
-
-      const osIdsAtuais = (itemAtual?.os_ids as string[]) || [];
-      const novosOsIds = [...osIdsAtuais, osInserida.id];
-
-      const { error: updateError } = await supabase
-        .from("remessa_itens")
-        .update({ os_ids: novosOsIds })
-        .eq("id", item.id);
-
-      if (updateError) {
-        console.error("Erro ao atualizar os_ids:", updateError);
-      }
-
-      setItem({ ...item, os_ids: novosOsIds });
-      setNumeroOSCriada(osInserida.numero_os);
-      toast.success("Ordem de serviço criada!");
-    } catch (error: unknown) {
-      const err = error as { message?: string; error_description?: string };
-      const mensagemErro = err?.message || err?.error_description || JSON.stringify(error) || "Erro desconhecido";
-      console.error("Erro completo:", error);
-      toast.error(`Erro ao criar OS: ${mensagemErro}`);
-    } finally {
+    if (osError) {
+      toast.error(`Erro: ${osError.message}`);
       setCriando(false);
+      return;
     }
+
+    if (!osInserida?.id) {
+      toast.error("OS não foi criada corretamente");
+      setCriando(false);
+      return;
+    }
+
+    // Atualizar os_ids no item da remessa
+    const { data: itemAtual } = await supabase
+      .from("remessa_itens")
+      .select("os_ids")
+      .eq("id", itemId)
+      .single();
+
+    const osIdsAtuais = (itemAtual?.os_ids as string[]) || [];
+    const novosOsIds = [...osIdsAtuais, osInserida.id];
+
+    await supabase
+      .from("remessa_itens")
+      .update({ os_ids: novosOsIds })
+      .eq("id", itemId);
+
+    setItem({ ...item, os_ids: novosOsIds });
+    setNumeroOSCriada(osInserida.numero_os);
+    setSucesso(true);
+    toast.success("Ordem de serviço criada!");
+    setCriando(false);
   };
 
   const handleCriarOutra = () => {
     setNumeroOSCriada(null);
+    setSucesso(false);
     setDefeito(item?.defeito_padrao || "");
   };
 
@@ -193,7 +195,7 @@ function EntradaCorporativaContent() {
           </CardContent>
         </Card>
 
-        {numeroOSCriada ? (
+        {sucesso ? (
           <Card>
             <CardContent className="p-6 flex flex-col items-center text-center gap-3">
               <CheckCircle2 className="h-10 w-10 text-green-500" />
