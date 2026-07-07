@@ -386,6 +386,7 @@ const Produtos = () => {
                   onAlterarTipoEmMassa={alterarTipoEmMassa}
                   onAlterarPrecoEmMassa={alterarPrecoEmMassa}
                   onReporEstoque={(item) => setItemParaRepor(item)}
+                  onAtualizado={carregarTodos}
                 />
               )}
 

@@ -20,6 +20,7 @@ export interface Produto {
   categoria_cor?: string | null;
   produto_pai_id?: string | null;
   variacao_label?: string | null;
+  exibir_no_catalogo?: boolean;
 }
 
 export interface Peca {
@@ -40,6 +41,7 @@ export interface Peca {
   categoria_cor?: string | null;
   peca_pai_id?: string | null;
   variacao_label?: string | null;
+  exibir_no_catalogo?: boolean;
 }
 
 export type ItemEstoque = Produto | Peca;

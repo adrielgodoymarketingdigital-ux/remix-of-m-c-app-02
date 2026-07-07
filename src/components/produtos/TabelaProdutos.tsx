@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,13 +22,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Package, Wrench, ImageOff, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { Pencil, Trash2, Package, Wrench, ImageOff, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft, DollarSign, Eye, EyeOff } from 'lucide-react';
 import { ItemEstoque } from '@/types/produto';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ValorMonetario } from '@/components/ui/valor-monetario';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { DialogAlterarPrecoEmMassa } from './DialogAlterarPrecoEmMassa';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface TabelaProdutosProps {
   items: ItemEstoque[];
@@ -40,6 +43,7 @@ interface TabelaProdutosProps {
   onAlterarTipoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], novoTipo: 'produto' | 'peca') => Promise<boolean>;
   onAlterarPrecoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], novoPreco: number, novoPrecoAtacado: number | null) => Promise<boolean>;
   onReporEstoque?: (item: ItemEstoque) => void;
+  onAtualizado?: () => void;
   colunasVisiveis?: Set<string>;
 }
 
@@ -66,8 +70,9 @@ const FotoProduto = ({ fotos, tamanho = 'sm' }: { fotos?: string[]; tamanho?: 's
   );
 };
 
-export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onReporEstoque, colunasVisiveis }: TabelaProdutosProps) => {
+export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onReporEstoque, onAtualizado, colunasVisiveis }: TabelaProdutosProps) => {
   const [itemParaExcluir, setItemParaExcluir] = useState<ItemEstoque | null>(null);
+  const [atualizandoCatalogo, setAtualizandoCatalogo] = useState<Set<string>>(new Set());
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [confirmarExclusaoMassa, setConfirmarExclusaoMassa] = useState(false);
   const [excluindoMassa, setExcluindoMassa] = useState(false);
@@ -235,6 +240,32 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   };
 
   const limparSelecao = () => setSelecionados(new Set());
+
+  const toggleExibirNoCatalogo = async (item: ItemEstoque) => {
+    const novoValor = !item.exibir_no_catalogo;
+    const tabela = item.tipo === 'produto' ? 'produtos' : 'pecas';
+
+    setAtualizandoCatalogo(prev => new Set(prev).add(item.id));
+    try {
+      const { error } = await supabase
+        .from(tabela)
+        .update({ exibir_no_catalogo: novoValor })
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      toast.success(novoValor ? 'Item visível no catálogo' : 'Item ocultado do catálogo');
+      onAtualizado?.();
+    } catch (error: any) {
+      toast.error('Erro ao atualizar exibição no catálogo', { description: error.message });
+    } finally {
+      setAtualizandoCatalogo(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
 
   const handleExcluirEmMassa = async () => {
     if (!onDeleteBulk) return;
@@ -490,6 +521,26 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                   </div>
                   
                   <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExibirNoCatalogo(item)}
+                            disabled={atualizandoCatalogo.has(item.id)}
+                            className="h-9"
+                          >
+                            {item.exibir_no_catalogo === false ? (
+                              <EyeOff className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Exibir no catálogo</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     {onReporEstoque && (
                       <Button
                         variant="ghost"
@@ -752,6 +803,25 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                   )}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleExibirNoCatalogo(item)}
+                              disabled={atualizandoCatalogo.has(item.id)}
+                            >
+                              {item.exibir_no_catalogo === false ? (
+                                <EyeOff className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Exibir no catálogo</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       {onReporEstoque && (
                         <Button
                           variant="ghost"

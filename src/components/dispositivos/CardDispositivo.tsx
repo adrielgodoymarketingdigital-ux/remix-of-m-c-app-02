@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShoppingCart, Pencil, Trash2, ImageIcon, FileText, Download, Loader2, Lock, Smartphone } from "lucide-react";
+import { ShoppingCart, Pencil, Trash2, ImageIcon, FileText, Download, Loader2, Lock, Smartphone, Eye, EyeOff } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Dispositivo } from "@/types/dispositivo";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
@@ -54,6 +54,8 @@ export function CardDispositivo({
   const [temRecibo, setTemRecibo] = useState(false);
   const [compraId, setCompraId] = useState<string | null>(null);
   const [gerandoRecibo, setGerandoRecibo] = useState(false);
+  const [exibirNoCatalogo, setExibirNoCatalogo] = useState(dispositivo.exibir_no_catalogo !== false);
+  const [atualizandoCatalogo, setAtualizandoCatalogo] = useState(false);
 
   useEffect(() => {
     const verificarRecibo = async () => {
@@ -211,6 +213,32 @@ export function CardDispositivo({
         valorEntradaInicial: valorEntrada,
       }
     });
+  };
+
+  const handleToggleExibirNoCatalogo = async () => {
+    const novoValor = !exibirNoCatalogo;
+    setAtualizandoCatalogo(true);
+    try {
+      const { error } = await supabase
+        .from("dispositivos")
+        .update({ exibir_no_catalogo: novoValor })
+        .eq("id", dispositivo.id);
+
+      if (error) throw error;
+
+      setExibirNoCatalogo(novoValor);
+      toast({
+        title: novoValor ? "Dispositivo visível no catálogo" : "Dispositivo ocultado do catálogo",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar exibição no catálogo:", error);
+      toast({
+        title: "Erro ao atualizar exibição no catálogo",
+        variant: "destructive",
+      });
+    } finally {
+      setAtualizandoCatalogo(false);
+    }
   };
 
   const handleBaixarRecibo = async () => {
@@ -393,7 +421,7 @@ export function CardDispositivo({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-1 pt-2">
+        <div className="grid grid-cols-4 gap-1 pt-2">
           <Button
             onClick={handleVender}
             className="w-full text-xs px-1"
@@ -413,6 +441,28 @@ export function CardDispositivo({
             <Pencil className="h-4 w-4 mr-1 shrink-0" />
             <span className="truncate">Editar</span>
           </Button>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleToggleExibirNoCatalogo}
+                  disabled={atualizandoCatalogo}
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs px-1"
+                >
+                  {exibirNoCatalogo ? (
+                    <Eye className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <EyeOff className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Exibir no catálogo</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" className="w-full text-xs px-1">

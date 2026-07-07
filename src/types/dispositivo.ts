@@ -33,6 +33,7 @@ export interface Dispositivo {
   created_at: string;
   imeis?: string[];
   empresa_id?: string | null;
+  exibir_no_catalogo?: boolean;
 }
 
 export interface FormularioDispositivo {
