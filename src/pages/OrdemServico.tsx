@@ -250,6 +250,8 @@ export default function OrdemServicoPage() {
     setOrigemFiltro,
     midiaFiltro,
     setMidiaFiltro,
+    somenteRemessaCorporativa,
+    setSomenteRemessaCorporativa,
     dataInicio,
     setDataInicio,
     dataFim,
@@ -982,6 +984,8 @@ export default function OrdemServicoPage() {
                     onOrigemFiltroChange={setOrigemFiltro}
                     midiaFiltro={midiaFiltro}
                     onMidiaFiltroChange={setMidiaFiltro}
+                    somenteRemessaCorporativa={somenteRemessaCorporativa}
+                    onSomenteRemessaCorporativaChange={setSomenteRemessaCorporativa}
                     dataInicio={dataInicio}
                     onDataInicioChange={setDataInicio}
                     dataFim={dataFim}

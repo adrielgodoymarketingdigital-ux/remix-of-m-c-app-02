@@ -33,6 +33,7 @@ export interface OrdemServico {
   is_teste?: boolean;
   empresa_id?: string | null;
   tipo_os?: string;
+  origem_remessa_corporativa?: boolean;
   cliente?: {
     id: string;
     nome: string;
@@ -57,6 +58,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
   const [statusFiltro, setStatusFiltro] = useState("todos");
   const [origemFiltro, setOrigemFiltro] = useState("todos");
   const [midiaFiltro, setMidiaFiltro] = useState("todos");
+  const [somenteRemessaCorporativa, setSomenteRemessaCorporativa] = useState(false);
   const [dataInicio, setDataInicio] = useState<Date | undefined>(() => startOfMonth(new Date()));
   const [dataFim, setDataFim] = useState<Date | undefined>(() => endOfMonth(new Date()));
   const [mesFiltro, setMesFiltro] = useState(() => format(new Date(), "yyyy-MM"));
@@ -113,8 +115,12 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       resultado = resultado.filter((o: any) => (o.tipo_midia || "") === midiaFiltro);
     }
 
+    if (somenteRemessaCorporativa) {
+      resultado = resultado.filter((o) => o.origem_remessa_corporativa === true);
+    }
+
     return resultado;
-  }, [busca, origemFiltro, midiaFiltro, ordensBase]);
+  }, [busca, origemFiltro, midiaFiltro, somenteRemessaCorporativa, ordensBase]);
 
   useEffect(() => { resolvedUserIdRef.current = resolvedUserIdFromContext; }, [resolvedUserIdFromContext]);
 
@@ -231,6 +237,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             tipo_midia,
             tipo_os,
             empresa_id,
+            origem_remessa_corporativa,
             cliente:clientes!ordens_servico_cliente_fkey(id, nome, telefone, cpf)
           `)
           .eq("user_id", userId)
@@ -1020,6 +1027,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
     setOrigemFiltro,
     midiaFiltro,
     setMidiaFiltro,
+    somenteRemessaCorporativa,
+    setSomenteRemessaCorporativa,
     dataInicio,
     setDataInicio: handleDataInicioChange,
     dataFim,

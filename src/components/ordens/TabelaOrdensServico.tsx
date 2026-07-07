@@ -164,6 +164,9 @@ export const TabelaOrdensServico = ({
                     {(ordem as any).tipo_os === "simplificada" && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 font-mono">Simplificada</span>
                     )}
+                    {ordem.origem_remessa_corporativa && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 font-mono">Remessa Corporativa</span>
+                    )}
                   </div>
 
                   {onAtualizarStatus ? (
@@ -377,6 +380,14 @@ export const TabelaOrdensServico = ({
                   )}
                   {(ordem as any).tipo_os === "simplificada" && (
                     <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-sky-500/15 text-sky-600">S</span>
+                  )}
+                  {ordem.origem_remessa_corporativa && (
+                    <span
+                      className="ml-1 text-[10px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-600"
+                      title="Remessa Corporativa"
+                    >
+                      RC
+                    </span>
                   )}
                 </TableCell>
 

@@ -88,6 +88,7 @@ function EntradaCorporativaContent() {
         dispositivo_numero_serie: item.numero_serie || null,
         defeito_relatado: defeito.trim(),
         status: "pendente",
+        origem_remessa_corporativa: true,
       })
       .select("id, numero_os")
       .single();

@@ -1,4 +1,4 @@
-import { Search, CalendarIcon, X, Building2 } from "lucide-react";
+import { Search, CalendarIcon, X, Building2, Package } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 
@@ -27,6 +29,8 @@ interface BuscaOrdemServicoProps {
   lojaFiltro?: string;
   onLojaFiltroChange?: (value: string) => void;
   empresasDisponiveis?: { id: string; nome: string }[];
+  somenteRemessaCorporativa: boolean;
+  onSomenteRemessaCorporativaChange: (value: boolean) => void;
 }
 
 const gerarOpcoesMeses = () => {
@@ -90,6 +94,8 @@ export const BuscaOrdemServico = ({
   lojaFiltro,
   onLojaFiltroChange,
   empresasDisponiveis,
+  somenteRemessaCorporativa,
+  onSomenteRemessaCorporativaChange,
 }: BuscaOrdemServicoProps) => {
   const opcoesMeses = gerarOpcoesMeses();
   const { statusList } = useOSStatusConfig();
@@ -101,9 +107,10 @@ export const BuscaOrdemServico = ({
     onOrigemFiltroChange("todos");
     onMidiaFiltroChange("todos");
     onLojaFiltroChange?.("todos");
+    onSomenteRemessaCorporativaChange(false);
   };
 
-  const temFiltro = dataInicio || dataFim || mesFiltro !== "todos" || origemFiltro !== "todos" || midiaFiltro !== "todos" || (lojaFiltro && lojaFiltro !== "todos");
+  const temFiltro = dataInicio || dataFim || mesFiltro !== "todos" || origemFiltro !== "todos" || midiaFiltro !== "todos" || (lojaFiltro && lojaFiltro !== "todos") || somenteRemessaCorporativa;
 
   return (
     <div className="flex flex-col gap-4">
@@ -262,6 +269,19 @@ export const BuscaOrdemServico = ({
             </Select>
           </div>
         )}
+
+        {/* Toggle: somente OS de Remessa Corporativa */}
+        <div className="flex items-center gap-2 px-1">
+          <Switch
+            id="somente-remessa-corporativa"
+            checked={somenteRemessaCorporativa}
+            onCheckedChange={onSomenteRemessaCorporativaChange}
+          />
+          <Label htmlFor="somente-remessa-corporativa" className="flex items-center gap-1.5 text-sm font-normal cursor-pointer whitespace-nowrap">
+            <Package className="h-4 w-4 text-emerald-600" />
+            Remessa Corporativa
+          </Label>
+        </div>
 
         {/* Botão Limpar Filtros */}
         {temFiltro && (
