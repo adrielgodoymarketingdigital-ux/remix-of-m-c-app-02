@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -74,58 +73,47 @@ function EntradaCorporativaContent() {
     setCriando(true);
     try {
       const remessa = item.remessas_corporativas;
-      let osIdCriada: string | null = null;
 
-      const numeroOS = await gerarNumeroOSComRetry(remessa.user_id, async (numero) => {
-        const { data, error } = await supabase
-          .from("ordens_servico")
-          .insert([{
-            numero_os: numero,
-            user_id: remessa.user_id,
-            cliente_id: remessa.cliente_id,
-            tipo_os: "simplificada",
-            dispositivo_tipo: "celular",
-            dispositivo_marca: item.marca || "",
-            dispositivo_modelo: item.modelo,
-            dispositivo_cor: item.cor,
-            dispositivo_imei: item.imei,
-            dispositivo_numero_serie: item.numero_serie,
-            defeito_relatado: defeito.trim(),
-            status: "pendente",
-          }])
-          .select("id")
-          .single();
+      const { data: osInserida, error: osError } = await supabase
+        .from("ordens_servico")
+        .insert({
+          user_id: remessa.user_id,
+          cliente_id: remessa.cliente_id || null,
+          dispositivo_tipo: item.marca ? "celular" : "outro",
+          dispositivo_marca: item.marca || "",
+          dispositivo_modelo: item.modelo,
+          dispositivo_cor: item.cor || null,
+          dispositivo_imei: item.imei || null,
+          dispositivo_numero_serie: item.numero_serie || null,
+          defeito_relatado: defeito.trim(),
+          status: "pendente",
+        })
+        .select("id, numero_os")
+        .single();
 
-        if (!error) {
-          osIdCriada = data.id;
-        }
+      if (osError) throw osError;
 
-        return { error };
-      });
+      // Buscar os_ids atuais diretamente do banco para evitar race condition
+      const { data: itemAtual } = await supabase
+        .from("remessa_itens")
+        .select("os_ids")
+        .eq("id", item.id)
+        .single();
 
-      if (osIdCriada) {
-        // Buscar os_ids atuais diretamente do banco para evitar race condition
-        const { data: itemAtual } = await supabase
-          .from("remessa_itens")
-          .select("os_ids")
-          .eq("id", item.id)
-          .single();
+      const osIdsAtuais = (itemAtual?.os_ids as string[]) || [];
+      const novosOsIds = [...osIdsAtuais, osInserida.id];
 
-        const osIdsAtuais = (itemAtual?.os_ids as string[]) || [];
-        const novosOsIds = [...osIdsAtuais, osIdCriada];
+      const { error: updateError } = await supabase
+        .from("remessa_itens")
+        .update({ os_ids: novosOsIds })
+        .eq("id", item.id);
 
-        const { error: updateError } = await supabase
-          .from("remessa_itens")
-          .update({ os_ids: novosOsIds })
-          .eq("id", item.id);
-
-        if (updateError) {
-          console.error("Erro ao atualizar os_ids:", updateError);
-        }
-
-        setItem({ ...item, os_ids: novosOsIds });
+      if (updateError) {
+        console.error("Erro ao atualizar os_ids:", updateError);
       }
-      setNumeroOSCriada(numeroOS);
+
+      setItem({ ...item, os_ids: novosOsIds });
+      setNumeroOSCriada(osInserida.numero_os);
       toast.success("Ordem de serviço criada!");
     } catch (error: unknown) {
       const err = error as { message?: string; error_description?: string };
