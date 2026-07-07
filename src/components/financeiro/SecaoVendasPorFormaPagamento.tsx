@@ -26,7 +26,7 @@ export function SecaoVendasPorFormaPagamento({ filtros }: SecaoVendasPorFormaPag
     try {
       let query = supabase
         .from("vendas")
-        .select("forma_pagamento, total, observacoes")
+        .select("forma_pagamento, total, observacoes, segunda_forma_pagamento, valor_segunda_forma")
         .eq("user_id", userId)
         .or("cancelada.is.null,cancelada.eq.false");
 

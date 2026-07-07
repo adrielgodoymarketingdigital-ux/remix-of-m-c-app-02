@@ -464,7 +464,8 @@ const PDV = () => {
             quantidade: item.quantidade,
             // Registro principal guarda o total BRUTO do item (sem desconto)
             // O desconto fica em valor_desconto_manual e é subtraído na exibição
-            // Em pagamento duplo: total bruto do item (a tela ignora o registro secundário)
+            // Em pagamento duplo: total bruto do item (a tela de Vendas usa este valor para exibir
+            // o total da venda; o fechamento de caixa é quem precisa ratear entre as 2 formas)
             // Em parcelado a_receber: valor por parcela (bruto / número de parcelas)
             total: pagamentoDuploAtivo ? totalBrutoItem : valorPorParcela,
             custo_unitario: isParceladoReceber ? (item.custo || 0) / totalParcelas : item.custo,

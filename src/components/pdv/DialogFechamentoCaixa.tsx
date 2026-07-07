@@ -63,7 +63,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
       let query = supabase
         .from("vendas")
-        .select("forma_pagamento, total, funcionario_id, observacoes")
+        .select("forma_pagamento, total, funcionario_id, observacoes, segunda_forma_pagamento, valor_segunda_forma")
         .eq("user_id", userIdVendas)
         .gte("data", caixa.data_abertura)
         .lte("data", new Date().toISOString())
@@ -76,20 +76,29 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const { data: vendas } = await query;
 
       const formasCartao = ["debito", "credito", "credito_parcelado"];
+
+      // Usa o mesmo agrupador do fechamento real (useCaixa.ts), que rateia corretamente
+      // vendas com 2 formas de pagamento e ignora o registro auxiliar do split
+      const breakdown = agruparVendasPorFormaPagamento(vendas ?? []);
       let total_dinheiro = 0;
       let total_pix = 0;
       let total_cartao = 0;
       let total_a_receber = 0;
 
-      // Agregar por funcionário
+      for (const item of breakdown) {
+        if (item.chave === "dinheiro") total_dinheiro += item.total;
+        else if (item.chave === "pix") total_pix += item.total;
+        else if (formasCartao.includes(item.chave)) total_cartao += item.total;
+        else if (item.chave === "a_receber" || item.chave === "a_prazo") total_a_receber += item.total;
+      }
+
+      // Agregar por funcionário (ignora o registro auxiliar do split de pagamento,
+      // que duplicaria o valor do mesmo vendedor)
       const mapaFunc: Record<string, { total: number; quantidade: number }> = {};
 
       for (const venda of vendas ?? []) {
+        if (venda.observacoes === "pagamento_duplo_secundario") continue;
         const valor = Number(venda.total) || 0;
-        if (venda.forma_pagamento === "dinheiro") total_dinheiro += valor;
-        else if (venda.forma_pagamento === "pix") total_pix += valor;
-        else if (formasCartao.includes(venda.forma_pagamento ?? "")) total_cartao += valor;
-        else if (venda.forma_pagamento === "a_receber") total_a_receber += valor;
 
         const fid = venda.funcionario_id ?? "__sem_funcionario__";
         if (!mapaFunc[fid]) mapaFunc[fid] = { total: 0, quantidade: 0 };
@@ -120,7 +129,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         .sort((a, b) => b.total - a.total);
 
       setVendaFuncionarios(breakdownFunc);
-      setVendasPorForma(agruparVendasPorFormaPagamento(vendas ?? []));
+      setVendasPorForma(breakdown);
 
       // Buscar movimentações do caixa
       const { data: movimentacoes } = await supabase

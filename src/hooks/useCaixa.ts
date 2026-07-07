@@ -129,7 +129,7 @@ export function useCaixa() {
     const userIdVendas = caixa.proprietario_id ?? lojaUserIdRef.current ?? caixa.user_id;
     let vendasQuery = supabase
       .from("vendas")
-      .select("forma_pagamento, total, observacoes")
+      .select("forma_pagamento, total, observacoes, segunda_forma_pagamento, valor_segunda_forma")
       .eq("user_id", userIdVendas)
       .gte("data", caixa.data_abertura)
       .lte("data", new Date().toISOString())
@@ -145,20 +145,23 @@ export function useCaixa() {
 
     const formasCartao = ["debito", "credito", "credito_parcelado"];
 
+    // Usa o mesmo agrupador do preview de fechamento de caixa, que já rateia
+    // corretamente vendas com 2 formas de pagamento (evita contar o valor 2x)
+    const breakdown = agruparVendasPorFormaPagamento(vendas ?? []);
+
     let total_dinheiro = 0;
     let total_pix = 0;
     let total_cartao = 0;
     let total_a_receber = 0;
 
-    for (const venda of vendas ?? []) {
-      const valor = Number(venda.total) || 0;
-      if (venda.forma_pagamento === "dinheiro") total_dinheiro += valor;
-      else if (venda.forma_pagamento === "pix") total_pix += valor;
-      else if (formasCartao.includes(venda.forma_pagamento ?? "")) total_cartao += valor;
-      else if (venda.forma_pagamento === "a_receber") total_a_receber += valor;
+    for (const item of breakdown) {
+      if (item.chave === "dinheiro") total_dinheiro += item.total;
+      else if (item.chave === "pix") total_pix += item.total;
+      else if (formasCartao.includes(item.chave)) total_cartao += item.total;
+      else if (item.chave === "a_receber" || item.chave === "a_prazo") total_a_receber += item.total;
     }
 
-    setUltimoBreakdownFormaPagamento(agruparVendasPorFormaPagamento(vendas ?? []));
+    setUltimoBreakdownFormaPagamento(breakdown);
 
     // Buscar movimentações (sangrias e suprimentos)
     const { data: movimentacoes } = await supabase
