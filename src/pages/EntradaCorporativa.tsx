@@ -74,32 +74,36 @@ function EntradaCorporativaContent() {
     setCriando(true);
     try {
       const remessa = item.remessas_corporativas;
+      let osIdCriada: string | null = null;
 
-      const numeroOS = await gerarNumeroOSComRetry(remessa.user_id, (numero) =>
-        supabase.from("ordens_servico").insert([{
-          numero_os: numero,
-          user_id: remessa.user_id,
-          cliente_id: remessa.cliente_id,
-          tipo_os: "simplificada",
-          dispositivo_tipo: "celular",
-          dispositivo_marca: item.marca || "",
-          dispositivo_modelo: item.modelo,
-          dispositivo_cor: item.cor,
-          dispositivo_imei: item.imei,
-          dispositivo_numero_serie: item.numero_serie,
-          defeito_relatado: defeito.trim(),
-          status: "pendente",
-        }])
-      );
+      const numeroOS = await gerarNumeroOSComRetry(remessa.user_id, async (numero) => {
+        const { data, error } = await supabase
+          .from("ordens_servico")
+          .insert([{
+            numero_os: numero,
+            user_id: remessa.user_id,
+            cliente_id: remessa.cliente_id,
+            tipo_os: "simplificada",
+            dispositivo_tipo: "celular",
+            dispositivo_marca: item.marca || "",
+            dispositivo_modelo: item.modelo,
+            dispositivo_cor: item.cor,
+            dispositivo_imei: item.imei,
+            dispositivo_numero_serie: item.numero_serie,
+            defeito_relatado: defeito.trim(),
+            status: "pendente",
+          }])
+          .select("id")
+          .single();
 
-      const { data: osData } = await supabase
-        .from("ordens_servico")
-        .select("id")
-        .eq("numero_os", numeroOS)
-        .eq("user_id", remessa.user_id)
-        .maybeSingle();
+        if (!error) {
+          osIdCriada = data.id;
+        }
 
-      if (osData?.id) {
+        return { error };
+      });
+
+      if (osIdCriada) {
         // Buscar os_ids atuais diretamente do banco para evitar race condition
         const { data: itemAtual } = await supabase
           .from("remessa_itens")
@@ -108,7 +112,7 @@ function EntradaCorporativaContent() {
           .single();
 
         const osIdsAtuais = (itemAtual?.os_ids as string[]) || [];
-        const novosOsIds = [...osIdsAtuais, osData.id];
+        const novosOsIds = [...osIdsAtuais, osIdCriada];
 
         const { error: updateError } = await supabase
           .from("remessa_itens")
