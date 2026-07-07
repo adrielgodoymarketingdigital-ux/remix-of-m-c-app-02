@@ -2,6 +2,7 @@ export type TipoVenda = "dispositivo" | "produto" | "servico" | "avulsa";
 
 export interface Venda {
   id: string;
+  numero_venda?: string | null;
   data: string;
   tipo: TipoVenda;
   cliente_id: string | null;
@@ -79,6 +80,7 @@ export interface ResumoAReceber {
 // Interface para venda com múltiplos itens no PDV
 export interface VendaGrupo {
   grupo_venda: string;
+  numero_venda?: string | null;
   itens: Venda[];
   total: number;
   desconto_manual_total: number;

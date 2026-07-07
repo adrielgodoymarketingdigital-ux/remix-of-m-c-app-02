@@ -390,7 +390,7 @@ export function DialogReimpressaoRecibo({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Reimprimir Recibo de Venda
+            Reimprimir Recibo de Venda{venda.numero_venda ? ` — ${venda.numero_venda}` : ""}
           </DialogTitle>
         </DialogHeader>
 
@@ -422,6 +422,7 @@ export function DialogReimpressaoRecibo({
 
               <div className="recibo-titulo-bloco">
                 <h2>RECIBO DE VENDA</h2>
+                {venda.numero_venda && <p>Nº {venda.numero_venda}</p>}
                 <p>Data: {dataVenda}</p>
               </div>
             </div>

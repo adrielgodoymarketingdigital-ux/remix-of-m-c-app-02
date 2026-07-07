@@ -339,7 +339,10 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                 <Card key={venda.id} className={`p-4 ${venda.cancelada ? 'opacity-60 bg-muted/30' : ''}`}>
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{getNomeItem(venda)}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-sm">{getNomeItem(venda)}</p>
+                        {venda.numero_venda && <span className="text-xs text-muted-foreground">#{venda.numero_venda}</span>}
+                      </div>
                       <p className="text-xs text-muted-foreground">{venda.clientes?.nome || "Cliente não informado"}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -394,7 +397,10 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                           <ShoppingCart className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{getResumoGrupo(vendasDoGrupo)}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-sm">{getResumoGrupo(vendasDoGrupo)}</p>
+                            {primeiraVenda.numero_venda && <span className="text-xs text-muted-foreground">#{primeiraVenda.numero_venda}</span>}
+                          </div>
                           <p className="text-xs text-muted-foreground">{primeiraVenda.clientes?.nome || "Cliente não informado"}</p>
                         </div>
                       </div>
@@ -479,6 +485,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         <TableHeader>
           <TableRow>
             <TableHead className="w-8"></TableHead>
+            <TableHead>Nº</TableHead>
             <TableHead>Data</TableHead>
             <TableHead>Tipo</TableHead>
             <TableHead>Item</TableHead>
@@ -498,6 +505,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
               return (
                 <TableRow key={venda.id} className={venda.cancelada ? 'opacity-60 bg-muted/30' : ''}>
                   <TableCell></TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{venda.numero_venda || "-"}</TableCell>
                   <TableCell>{formatDataVenda(venda.data)}</TableCell>
                   <TableCell><Badge className={tipoColors[venda.tipo]}>{tipoLabels[venda.tipo]}</Badge></TableCell>
                   <TableCell>{getNomeItem(venda)}</TableCell>
@@ -554,6 +562,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         {expandido ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                       </div>
                     </TableCell>
+                    <TableCell className="text-sm">{primeiraVenda.numero_venda || "-"}</TableCell>
                     <TableCell>{formatDataVenda(primeiraVenda.data)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="border-primary text-primary">
@@ -584,6 +593,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         <TableCell className="w-8 pl-6">
                           <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
                         </TableCell>
+                        <TableCell></TableCell>
                         <TableCell className="text-muted-foreground text-sm">{formatDataVenda(venda.data)}</TableCell>
                         <TableCell><Badge className={`${tipoColors[venda.tipo]} text-xs`}>{tipoLabels[venda.tipo]}</Badge></TableCell>
                         <TableCell className="text-sm">{getNomeItem(venda)}</TableCell>

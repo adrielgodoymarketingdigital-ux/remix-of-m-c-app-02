@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -12,31 +11,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -331,6 +305,44 @@ export type Database = {
         }
         Relationships: []
       }
+      caixa_movimentacoes: {
+        Row: {
+          caixa_id: string
+          created_at: string
+          id: string
+          motivo: string | null
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          caixa_id: string
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          caixa_id?: string
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          tipo?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caixa_movimentacoes_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caixas: {
         Row: {
           created_at: string | null
@@ -532,6 +544,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      clientes_audit_log: {
+        Row: {
+          acao: string
+          cliente_id: string
+          created_at: string | null
+          dados_antes: Json | null
+          dados_depois: Json | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          acao: string
+          cliente_id: string
+          created_at?: string | null
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          acao?: string
+          cliente_id?: string
+          created_at?: string | null
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       comissoes_tipo_servico: {
         Row: {
@@ -853,6 +895,8 @@ export type Database = {
           data_vencimento: string | null
           descricao: string | null
           empresa_id: string | null
+          forma_pagamento: string | null
+          forma_pagamento_entrada: string | null
           fornecedor_id: string | null
           id: string
           nome: string
@@ -872,6 +916,8 @@ export type Database = {
           data_vencimento?: string | null
           descricao?: string | null
           empresa_id?: string | null
+          forma_pagamento?: string | null
+          forma_pagamento_entrada?: string | null
           fornecedor_id?: string | null
           id?: string
           nome: string
@@ -891,6 +937,8 @@ export type Database = {
           data_vencimento?: string | null
           descricao?: string | null
           empresa_id?: string | null
+          forma_pagamento?: string | null
+          forma_pagamento_entrada?: string | null
           fornecedor_id?: string | null
           id?: string
           nome?: string
@@ -1685,6 +1733,41 @@ export type Database = {
         }
         Relationships: []
       }
+      formas_pagamento_customizadas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string | null
+          id: string
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formas_pagamento_customizadas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fornecedores: {
         Row: {
           ativo: boolean | null
@@ -1905,6 +1988,7 @@ export type Database = {
       loja_funcionarios: {
         Row: {
           ativo: boolean | null
+          base_comissao: string | null
           cargo: string | null
           comissao_escopo: string | null
           comissao_tipo: string | null
@@ -1925,6 +2009,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
+          base_comissao?: string | null
           cargo?: string | null
           comissao_escopo?: string | null
           comissao_tipo?: string | null
@@ -1945,6 +2030,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
+          base_comissao?: string | null
           cargo?: string | null
           comissao_escopo?: string | null
           comissao_tipo?: string | null
@@ -2928,6 +3014,20 @@ export type Database = {
             referencedRelation: "fornecedores"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pecas_peca_pai_id_fkey"
+            columns: ["peca_pai_id"]
+            isOneToOne: false
+            referencedRelation: "pecas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pecas_peca_pai_id_fkey"
+            columns: ["peca_pai_id"]
+            isOneToOne: false
+            referencedRelation: "pecas_catalogo"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pedidos: {
@@ -3257,6 +3357,110 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      remessa_itens: {
+        Row: {
+          cor: string | null
+          created_at: string
+          defeito_padrao: string | null
+          id: string
+          imei: string | null
+          marca: string | null
+          modelo: string
+          numero_serie: string | null
+          os_ids: string[] | null
+          remessa_id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          cor?: string | null
+          created_at?: string
+          defeito_padrao?: string | null
+          id?: string
+          imei?: string | null
+          marca?: string | null
+          modelo: string
+          numero_serie?: string | null
+          os_ids?: string[] | null
+          remessa_id: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          cor?: string | null
+          created_at?: string
+          defeito_padrao?: string | null
+          id?: string
+          imei?: string | null
+          marca?: string | null
+          modelo?: string
+          numero_serie?: string | null
+          os_ids?: string[] | null
+          remessa_id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remessa_itens_remessa_id_fkey"
+            columns: ["remessa_id"]
+            isOneToOne: false
+            referencedRelation: "remessas_corporativas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      remessas_corporativas: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          descricao: string | null
+          empresa_id: string | null
+          id: string
+          nome: string
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remessas_corporativas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remessas_corporativas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_ativos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       servicos: {
         Row: {
@@ -3912,6 +4116,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_venda_counters: {
+        Row: {
+          created_at: string
+          ultimo_numero: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ultimo_numero?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ultimo_numero?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendas: {
         Row: {
           cancelada: boolean | null
@@ -3932,6 +4157,7 @@ export type Database = {
           id: string
           imei_dispositivo: string | null
           motivo_cancelamento: string | null
+          numero_venda: string | null
           observacoes: string | null
           parcela_numero: number | null
           peca_id: string | null
@@ -3967,6 +4193,7 @@ export type Database = {
           id?: string
           imei_dispositivo?: string | null
           motivo_cancelamento?: string | null
+          numero_venda?: string | null
           observacoes?: string | null
           parcela_numero?: number | null
           peca_id?: string | null
@@ -4002,6 +4229,7 @@ export type Database = {
           id?: string
           imei_dispositivo?: string | null
           motivo_cancelamento?: string | null
+          numero_venda?: string | null
           observacoes?: string | null
           parcela_numero?: number | null
           peca_id?: string | null
@@ -4914,6 +5142,10 @@ export type Database = {
         | { Args: never; Returns: string }
         | { Args: { p_user_id: string }; Returns: string }
       generate_os_number_safe: { Args: { p_user_id: string }; Returns: string }
+      generate_venda_number_safe: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       gerar_catalogo_slug: { Args: { nome: string }; Returns: string }
       get_loja_owner_id: { Args: never; Returns: string }
       get_next_os_number:
@@ -4996,6 +5228,7 @@ export type Database = {
         | "credito_parcelado"
         | "a_receber"
         | "a_prazo"
+        | "outro"
       plano_tipo:
         | "demonstracao"
         | "trial"
@@ -5165,9 +5398,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["admin", "tecnico", "vendedor"],
@@ -5179,6 +5409,7 @@ export const Constants = {
         "credito_parcelado",
         "a_receber",
         "a_prazo",
+        "outro",
       ],
       plano_tipo: [
         "demonstracao",
@@ -5231,6 +5462,3 @@ export const Constants = {
     },
   },
 } as const
-posthog 2026/06/27 11:06:26 WARN: sending request - Post "https://eu.i.posthog.com/batch/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
-A new version of Supabase CLI is available: v2.108.0 (currently installed v2.90.0)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

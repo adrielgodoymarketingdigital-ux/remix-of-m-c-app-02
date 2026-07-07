@@ -99,6 +99,7 @@ export interface DadosReciboPDV {
   numeroParcelas?: number;
   data: string;
   grupoVendaId: string;
+  numeroVenda?: string | null;
   empresaId?: string | null;
   pagamentoDuplo?: {
     valorPrimeira: number;
@@ -449,6 +450,7 @@ export function DialogReciboPDV({
 
               <div className="recibo-titulo-bloco">
                 <h2>RECIBO DE VENDA</h2>
+                {dados.numeroVenda && <p>Nº {dados.numeroVenda}</p>}
                 <p>Data: {dataFormatada}</p>
               </div>
             </div>
