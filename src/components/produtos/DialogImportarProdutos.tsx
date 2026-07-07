@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { FormularioProduto, TipoProduto } from '@/types/produto';
 import { CategoriaProduto } from '@/types/categoria-produto';
+import { ordenarCategoriasHierarquicamente } from '@/lib/categorias';
 import {
   lerPlanilha,
   detectarMapeamento,
@@ -461,9 +462,12 @@ export const DialogImportarProdutos = ({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__sem_categoria__">Sem categoria</SelectItem>
-                        {categorias.map(cat => (
+                        {ordenarCategoriasHierarquicamente(categorias).map(({ categoria: cat, nivel }) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            <span className="flex items-center gap-2">
+                            <span
+                              className="flex items-center gap-2"
+                              style={{ paddingLeft: nivel > 0 ? `${nivel * 0.75}rem` : undefined }}
+                            >
                               <span
                                 className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                                 style={{ backgroundColor: cat.cor }}
@@ -555,9 +559,12 @@ export const DialogImportarProdutos = ({
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="__sem_categoria__">Sem categoria</SelectItem>
-                                  {categorias.map(cat => (
+                                  {ordenarCategoriasHierarquicamente(categorias).map(({ categoria: cat, nivel }) => (
                                     <SelectItem key={cat.id} value={cat.id}>
-                                      <span className="flex items-center gap-1.5">
+                                      <span
+                                        className="flex items-center gap-1.5"
+                                        style={{ paddingLeft: nivel > 0 ? `${nivel * 0.75}rem` : undefined }}
+                                      >
                                         <span
                                           className="inline-block w-2 h-2 rounded-full shrink-0"
                                           style={{ backgroundColor: cat.cor }}

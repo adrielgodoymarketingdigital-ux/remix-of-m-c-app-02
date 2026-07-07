@@ -452,6 +452,7 @@ export type Database = {
       }
       categorias_produtos: {
         Row: {
+          categoria_pai_id: string | null
           cor: string
           created_at: string | null
           id: string
@@ -459,6 +460,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          categoria_pai_id?: string | null
           cor?: string
           created_at?: string | null
           id?: string
@@ -466,13 +468,22 @@ export type Database = {
           user_id: string
         }
         Update: {
+          categoria_pai_id?: string | null
           cor?: string
           created_at?: string | null
           id?: string
           nome?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categorias_produtos_categoria_pai_id_fkey"
+            columns: ["categoria_pai_id"]
+            isOneToOne: false
+            referencedRelation: "categorias_produtos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categorias_sistema_excluidas: {
         Row: {

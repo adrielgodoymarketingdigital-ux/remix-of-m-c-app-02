@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ItemEstoque, FormularioProduto, VariacaoInput } from '@/types/produto';
 import { CategoriaProduto } from '@/types/categoria-produto';
+import { ordenarCategoriasHierarquicamente } from '@/lib/categorias';
 import { formatCurrency } from '@/lib/formatters';
 import { LeitorCodigoBarras } from '@/components/scanner/LeitorCodigoBarras';
 import { UploadFotosProduto } from './UploadFotosProduto';
@@ -498,10 +499,13 @@ export const DialogCadastroProduto = ({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Sem categoria</SelectItem>
-                        {categorias.map((cat) => (
+                        {ordenarCategoriasHierarquicamente(categorias).map(({ categoria: cat, nivel }) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            <span className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: cat.cor }} />
+                            <span
+                              className="flex items-center gap-2"
+                              style={{ paddingLeft: nivel > 0 ? `${nivel * 0.75}rem` : undefined }}
+                            >
+                              <span className="w-3 h-3 rounded-full inline-block flex-shrink-0" style={{ backgroundColor: cat.cor }} />
                               {cat.nome}
                             </span>
                           </SelectItem>

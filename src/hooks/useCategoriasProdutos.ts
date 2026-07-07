@@ -4,8 +4,18 @@ import { toast } from 'sonner';
 import { CategoriaProduto, FormularioCategoria } from '@/types/categoria-produto';
 import { useFuncionarioPermissoes } from './useFuncionarioPermissoes';
 
+function montarSubcategorias(todas: CategoriaProduto[], paiId: string): CategoriaProduto[] {
+  return todas
+    .filter((c) => c.categoria_pai_id === paiId)
+    .map((c) => ({
+      ...c,
+      subcategorias: montarSubcategorias(todas, c.id),
+    }));
+}
+
 export const useCategoriasProdutos = () => {
   const [categorias, setCategorias] = useState<CategoriaProduto[]>([]);
+  const [categoriasArvore, setCategoriasArvore] = useState<CategoriaProduto[]>([]);
   const [loading, setLoading] = useState(false);
   const { lojaUserId, podeSincronizarProdutos, isFuncionario } = useFuncionarioPermissoes();
 
@@ -25,7 +35,16 @@ export const useCategoriasProdutos = () => {
         .order('nome');
 
       if (error) throw error;
-      setCategorias((data as any[]) || []);
+      const todas = (data as CategoriaProduto[]) || [];
+      setCategorias(todas);
+
+      const raiz = todas.filter((c) => !c.categoria_pai_id);
+      setCategoriasArvore(
+        raiz.map((cat) => ({
+          ...cat,
+          subcategorias: montarSubcategorias(todas, cat.id),
+        }))
+      );
     } catch (error: any) {
       console.error('Erro ao carregar categorias:', error);
     } finally {
@@ -43,6 +62,7 @@ export const useCategoriasProdutos = () => {
       const { error } = await supabase.from('categorias_produtos').insert({
         nome: dados.nome,
         cor: dados.cor,
+        categoria_pai_id: dados.categoria_pai_id || null,
         user_id: userId,
       } as any);
 
@@ -65,7 +85,7 @@ export const useCategoriasProdutos = () => {
 
       const { error } = await supabase
         .from('categorias_produtos')
-        .update({ nome: dados.nome, cor: dados.cor } as any)
+        .update({ nome: dados.nome, cor: dados.cor, categoria_pai_id: dados.categoria_pai_id || null } as any)
         .eq('id', id)
         .eq('user_id', userId);
 
@@ -104,6 +124,7 @@ export const useCategoriasProdutos = () => {
 
   return {
     categorias,
+    categoriasArvore,
     loading,
     carregarCategorias,
     criarCategoria,

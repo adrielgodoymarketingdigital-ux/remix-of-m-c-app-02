@@ -8,8 +8,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Pencil, Trash2, CornerDownRight } from 'lucide-react';
 import { CategoriaProduto, FormularioCategoria } from '@/types/categoria-produto';
+import { ordenarCategoriasHierarquicamente } from '@/lib/categorias';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,22 +65,26 @@ export const DialogGerenciarCategorias = ({
 }: DialogGerenciarCategoriasProps) => {
   const [nome, setNome] = useState('');
   const [cor, setCor] = useState('#3b82f6');
+  const [categoriaPaiId, setCategoriaPaiId] = useState<string | null>(null);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [categoriaParaExcluir, setCategoriaParaExcluir] = useState<CategoriaProduto | null>(null);
+
+  const categoriasHierarquia = ordenarCategoriasHierarquicamente(categorias);
 
   const handleSubmit = async () => {
     if (!nome.trim()) return;
 
     let sucesso: boolean;
     if (editandoId) {
-      sucesso = await onAtualizar(editandoId, { nome: nome.trim(), cor });
+      sucesso = await onAtualizar(editandoId, { nome: nome.trim(), cor, categoria_pai_id: categoriaPaiId });
     } else {
-      sucesso = await onCriar({ nome: nome.trim(), cor });
+      sucesso = await onCriar({ nome: nome.trim(), cor, categoria_pai_id: categoriaPaiId });
     }
 
     if (sucesso) {
       setNome('');
       setCor('#3b82f6');
+      setCategoriaPaiId(null);
       setEditandoId(null);
     }
   };
@@ -86,12 +92,14 @@ export const DialogGerenciarCategorias = ({
   const handleEditar = (cat: CategoriaProduto) => {
     setNome(cat.nome);
     setCor(cat.cor);
+    setCategoriaPaiId(cat.categoria_pai_id || null);
     setEditandoId(cat.id);
   };
 
   const handleCancelarEdicao = () => {
     setNome('');
     setCor('#3b82f6');
+    setCategoriaPaiId(null);
     setEditandoId(null);
   };
 
@@ -121,6 +129,27 @@ export const DialogGerenciarCategorias = ({
                   onChange={(e) => setNome(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 />
+              </div>
+              <div>
+                <Label>Categoria pai (opcional)</Label>
+                <Select
+                  value={categoriaPaiId || 'none'}
+                  onValueChange={(v) => setCategoriaPaiId(v === 'none' ? null : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nenhuma (categoria raiz)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma (categoria raiz)</SelectItem>
+                    {categorias
+                      .filter((cat) => cat.id !== editandoId)
+                      .map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.nome}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Cor</Label>
@@ -170,21 +199,23 @@ export const DialogGerenciarCategorias = ({
 
             {/* Lista */}
             <div className="border-t pt-3 space-y-2 max-h-60 overflow-y-auto">
-              {categorias.length === 0 ? (
+              {categoriasHierarquia.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Nenhuma categoria criada ainda.
                 </p>
               ) : (
-                categorias.map((cat) => (
+                categoriasHierarquia.map(({ categoria: cat, nivel }) => (
                   <div
                     key={cat.id}
                     className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"
+                    style={{ paddingLeft: nivel > 0 ? `${nivel * 1.25 + 0.5}rem` : undefined }}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.cor }} />
-                      <span className="text-sm font-medium">{cat.nome}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {nivel > 0 && <CornerDownRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
+                      <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: cat.cor }} />
+                      <span className="text-sm font-medium truncate">{cat.nome}</span>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
