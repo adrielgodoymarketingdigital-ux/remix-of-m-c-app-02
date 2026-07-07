@@ -18,13 +18,23 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Package, Plus } from "lucide-react";
+import { Package, Plus, Trash2 } from "lucide-react";
 
 const STATUS_LABEL: Record<string, string> = {
   ativa: "Ativa",
@@ -40,7 +50,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive"> = 
 
 function RemessasCorporativasContent() {
   const navigate = useNavigate();
-  const { remessas, loading, criarRemessa } = useRemessasCorporativas();
+  const { remessas, loading, criarRemessa, excluirRemessa } = useRemessasCorporativas();
   const { clientes } = useClientes();
 
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -48,6 +58,8 @@ function RemessasCorporativasContent() {
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [clienteId, setClienteId] = useState<string>("");
+  const [remessaParaExcluir, setRemessaParaExcluir] = useState<{ id: string; nome: string; totalOS: number } | null>(null);
+  const [excluindo, setExcluindo] = useState(false);
 
   const resetForm = () => {
     setNome("");
@@ -69,6 +81,18 @@ function RemessasCorporativasContent() {
     if (nova) {
       setDialogAberto(false);
       resetForm();
+    }
+  };
+
+  const handleExcluir = async () => {
+    if (!remessaParaExcluir) return;
+
+    setExcluindo(true);
+    const ok = await excluirRemessa(remessaParaExcluir.id);
+    setExcluindo(false);
+
+    if (ok) {
+      setRemessaParaExcluir(null);
     }
   };
 
@@ -115,15 +139,28 @@ function RemessasCorporativasContent() {
             const totalItens = remessa.itens?.length || 0;
             const recebidos = remessa.itens?.filter((i) => i.status === "recebido").length || 0;
             const pendentes = totalItens - recebidos;
+            const totalOS = (remessa.itens || []).reduce((acc, i) => acc + (i.os_ids?.length || 0), 0);
 
             return (
               <Card
                 key={remessa.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
+                className="hover:shadow-lg transition-shadow cursor-pointer relative group"
                 onClick={() => navigate(`/remessas/${remessa.id}`)}
               >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  title="Excluir remessa"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRemessaParaExcluir({ id: remessa.id, nome: remessa.nome, totalOS });
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
                 <CardHeader>
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2 pr-6">
                     <CardTitle className="text-base">{remessa.nome}</CardTitle>
                     <Badge variant={STATUS_VARIANT[remessa.status] || "default"}>
                       {STATUS_LABEL[remessa.status] || remessa.status}
@@ -207,6 +244,34 @@ function RemessasCorporativasContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!remessaParaExcluir} onOpenChange={(v) => !v && setRemessaParaExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir remessa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a remessa "{remessaParaExcluir?.nome}"? Todos os
+              dispositivos cadastrados nela também serão removidos.
+              {remessaParaExcluir && remessaParaExcluir.totalOS > 0 && (
+                <span className="block mt-2 font-medium text-destructive">
+                  Atenção: {remessaParaExcluir.totalOS} ordem(ns) de serviço já foram criadas a
+                  partir desta remessa. As OS não serão excluídas, mas perderão o vínculo com ela.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleExcluir}
+              disabled={excluindo}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindo ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

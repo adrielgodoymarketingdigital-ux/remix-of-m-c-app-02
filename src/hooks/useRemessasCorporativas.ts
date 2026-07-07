@@ -119,6 +119,24 @@ export function useRemessasCorporativas() {
     }
   };
 
+  const excluirRemessa = async (remessa_id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("remessas_corporativas")
+        .delete()
+        .eq("id", remessa_id);
+
+      if (error) throw error;
+      toast.success("Remessa excluída!");
+      await carregar();
+      return true;
+    } catch (error) {
+      console.error("Erro ao excluir remessa:", error);
+      toast.error("Erro ao excluir remessa");
+      return false;
+    }
+  };
+
   const removerItem = async (item_id: string): Promise<boolean> => {
     try {
       const { error } = await supabase
@@ -160,6 +178,7 @@ export function useRemessasCorporativas() {
     loading,
     carregar,
     criarRemessa,
+    excluirRemessa,
     adicionarItem,
     removerItem,
     buscarItemPorId,
