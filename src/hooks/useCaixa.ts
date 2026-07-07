@@ -143,6 +143,17 @@ export function useCaixa() {
 
     if (vendasError) throw vendasError;
 
+    // Vendas avulsas (tabela separada de vendas, sem empresa_id/cancelada — usa soft delete)
+    const { data: vendasAvulsas, error: vendasAvulsasError } = await supabase
+      .from("vendas_avulsas" as any)
+      .select("valor, forma_pagamento")
+      .eq("user_id", userIdVendas)
+      .is("deleted_at", null)
+      .gte("created_at", caixa.data_abertura)
+      .lte("created_at", new Date().toISOString());
+
+    if (vendasAvulsasError) throw vendasAvulsasError;
+
     const formasCartao = ["debito", "credito", "credito_parcelado"];
 
     // Usa o mesmo agrupador do preview de fechamento de caixa, que já rateia
@@ -160,6 +171,15 @@ export function useCaixa() {
       else if (formasCartao.includes(item.chave)) total_cartao += item.total;
       else if (item.chave === "a_receber" || item.chave === "a_prazo") total_a_receber += item.total;
     }
+
+    (vendasAvulsas || []).forEach((v: any) => {
+      const forma = v.forma_pagamento;
+      const valor = Number(v.valor || 0);
+      if (forma === "dinheiro") total_dinheiro += valor;
+      else if (forma === "pix") total_pix += valor;
+      else if (formasCartao.includes(forma)) total_cartao += valor;
+      else if (forma === "a_receber" || forma === "a_prazo") total_a_receber += valor;
+    });
 
     setUltimoBreakdownFormaPagamento(breakdown);
 
