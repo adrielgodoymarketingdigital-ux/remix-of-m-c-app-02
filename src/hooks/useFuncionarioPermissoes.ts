@@ -56,6 +56,7 @@ const PERMISSOES_DONO: Permissoes = {
     novidades: true,
     tutoriais: true,
     precificador: true,
+    remessas_corporativas: true,
   },
   recursos: {
     ver_custos: true,

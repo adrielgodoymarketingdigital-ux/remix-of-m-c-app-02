@@ -54,6 +54,7 @@ import {
   Calculator,
   Ticket,
   ClipboardList,
+  PackageCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +79,7 @@ const menuItems = [
   { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos },
   { title: "Serviços", url: "/servicos", icon: WrenchIcon, modulo: "servicos" as keyof PermissoesModulos },
   { title: "Dispositivos", url: "/dispositivos", icon: Tablet, modulo: "dispositivos" as keyof PermissoesModulos },
+  { title: "Remessas Corporativas", url: "/remessas", icon: PackageCheck, modulo: "remessas_corporativas" as keyof PermissoesModulos },
   { title: "Catálogo", url: "/catalogo", icon: BookOpen, modulo: "catalogo" as keyof PermissoesModulos },
   { title: "Origem de Dispositivos", url: "/origem-dispositivos", icon: ShoppingBag, modulo: "origem_dispositivos" as keyof PermissoesModulos },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck, modulo: "fornecedores" as keyof PermissoesModulos },
@@ -162,7 +164,7 @@ export function AppSidebar() {
         const modulosSemRestricao: string[] = ['/plano', '/suporte', '/tutoriais', '/baixar-app'];
         if (modulosSemRestricao.includes(item.url)) return true;
         // Módulos que existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano)
-        const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe'];
+        const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe', 'remessas_corporativas'];
         if (modulosSoPorFuncionario.includes(item.modulo)) return true;
         // Módulos sempre visíveis no menu (bloqueio acontece dentro da página via ComVerificacaoPlano)
         const modulosSempreVisiveis: string[] = ['pedidos', 'fornecedores'];

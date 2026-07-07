@@ -57,6 +57,7 @@ export interface PermissoesModulos {
   tutoriais: boolean;
   precificador: boolean;
   pedidos: boolean;
+  remessas_corporativas: boolean;
 }
 
 export interface PermissoesRecursos {
@@ -152,6 +153,7 @@ export const PERMISSOES_DEFAULT: Permissoes = {
     tutoriais: true,
     precificador: true,
     pedidos: false,
+    remessas_corporativas: false,
   },
   recursos: {
     ver_custos: false,
@@ -200,6 +202,7 @@ export const MODULOS_LABELS: Record<keyof PermissoesModulos, string> = {
   tutoriais: "Tutoriais",
   precificador: "Precificador",
   pedidos: "Pedidos/Encomendas",
+  remessas_corporativas: "Remessas Corporativas",
 };
 
 export const RECURSOS_LABELS: Record<keyof PermissoesRecursos, string> = {
@@ -249,4 +252,5 @@ export const ROTA_PARA_MODULO: Record<string, keyof PermissoesModulos> = {
   "/tutoriais": "tutoriais",
   "/precificador": "precificador",
   "/pedidos": "pedidos",
+  "/remessas": "remessas_corporativas",
 };

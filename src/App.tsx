@@ -76,6 +76,9 @@ const AcompanharOS = lazy(() => import("./pages/AcompanharOS"));
 const BaixarApp = lazy(() => import("./pages/BaixarApp"));
 const TeamOnboarding = lazy(() => import("./pages/TeamOnboarding"));
 const RenovacaoAssinatura = lazy(() => import("./pages/RenovacaoAssinatura"));
+const RemessasCorporativas = lazy(() => import("@/pages/RemessasCorporativas"));
+const RemessaDetalhe = lazy(() => import("@/pages/RemessaDetalhe"));
+const EntradaCorporativa = lazy(() => import("@/pages/EntradaCorporativa"));
 
 const RouteFallback = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -161,7 +164,8 @@ function AppRoutes() {
           <Route path="/c/:slug" element={<CatalogoPublico />} />
           <Route path="/lp/:slug" element={<LandingPagePublica />} />
           <Route path="/acompanhar/:token" element={<AcompanharOS />} />
-          
+          <Route path="/entrada/:itemId" element={<EntradaCorporativa />} />
+
           {/* Rotas protegidas - exigem autenticação + onboarding + trial/assinatura + permissão funcionário */}
           <Route path="/dashboard" element={
             <ProtectedAppRoute>
@@ -278,6 +282,16 @@ function AppRoutes() {
           <Route path="/plano" element={
             <ProtectedAppRoute>
               <Plano />
+            </ProtectedAppRoute>
+          } />
+          <Route path="/remessas" element={
+            <ProtectedAppRoute>
+              <RemessasCorporativas />
+            </ProtectedAppRoute>
+          } />
+          <Route path="/remessas/:id" element={
+            <ProtectedAppRoute>
+              <RemessaDetalhe />
             </ProtectedAppRoute>
           } />
           <Route path="/vendas" element={
