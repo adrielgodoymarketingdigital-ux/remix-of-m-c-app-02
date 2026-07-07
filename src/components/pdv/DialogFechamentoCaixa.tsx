@@ -92,6 +92,25 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         else if (item.chave === "a_receber" || item.chave === "a_prazo") total_a_receber += item.total;
       }
 
+      // Buscar vendas avulsas do período
+      const { data: vendasAvulsasPreview } = await supabase
+        .from("vendas_avulsas")
+        .select("valor, forma_pagamento")
+        .eq("user_id", userIdVendas)
+        .gte("created_at", caixa.data_abertura)
+        .lte("created_at", new Date().toISOString())
+        .is("deleted_at", null);
+
+      const formasCartaoPreview = ["debito", "credito", "credito_parcelado"];
+      (vendasAvulsasPreview || []).forEach((v: any) => {
+        const forma = v.forma_pagamento;
+        const valor = Number(v.valor || 0);
+        if (forma === "dinheiro") total_dinheiro += valor;
+        else if (forma === "pix") total_pix += valor;
+        else if (formasCartaoPreview.includes(forma)) total_cartao += valor;
+        else if (forma === "a_receber") total_a_receber += valor;
+      });
+
       // Agregar por funcionário (ignora o registro auxiliar do split de pagamento,
       // que duplicaria o valor do mesmo vendedor)
       const mapaFunc: Record<string, { total: number; quantidade: number }> = {};
