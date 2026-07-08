@@ -164,7 +164,7 @@ export const distribuirCustoParcelasGrupo = (vendas: VendaFinanceiraLike[]): Ven
   const semGrupo: VendaFinanceiraLike[] = [];
 
   for (const v of vendas) {
-    if (v.grupo_venda && isVendaPorCompetenciaRecebimento(v)) {
+    if (v.grupo_venda && isVendaPorCompetenciaRecebimento(v) && (Number(v.total_parcelas || 1) > 1)) {
       const arr = grupos.get(v.grupo_venda);
       if (arr) arr.push(v);
       else grupos.set(v.grupo_venda, [v]);
