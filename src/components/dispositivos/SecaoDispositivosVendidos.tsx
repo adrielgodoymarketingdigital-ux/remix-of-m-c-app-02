@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Printer, Search, ImageIcon, Package, Calendar as CalendarIcon, X, ShieldCheck, Pencil, Trash2 } from "lucide-react";
+import { Printer, Search, ImageIcon, Package, Calendar as CalendarIcon, X, ShieldCheck, Pencil, Trash2, Loader2, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,7 +17,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { useEmpresaFiltro } from "@/hooks/useResolvedUserId";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+
+interface ItemGrupoDetalhe {
+  id: string;
+  dispositivo_marca?: string;
+  dispositivo_modelo?: string;
+  dispositivo_imei?: string;
+  total: number;
+  custo_unitario: number;
+}
 
 interface VendaDispositivo {
   id: string;
@@ -73,6 +83,9 @@ export function SecaoDispositivosVendidos() {
   const [dialogEdicaoAberto, setDialogEdicaoAberto] = useState(false);
   const [vendaParaExcluir, setVendaParaExcluir] = useState<VendaDispositivo | null>(null);
   const [excluindo, setExcluindo] = useState(false);
+  const [grupoExpandido, setGrupoExpandido] = useState<string | null>(null);
+  const [itensGrupo, setItensGrupo] = useState<ItemGrupoDetalhe[]>([]);
+  const [carregandoGrupo, setCarregandoGrupo] = useState(false);
   const { toast } = useToast();
 
   // Gerar lista dos últimos 12 meses
@@ -145,6 +158,18 @@ export function SecaoDispositivosVendidos() {
         }
       }
 
+      const mapGrupoTotal = new Map<string, number>();
+      const mapGrupoCusto = new Map<string, number>();
+      for (const v of vendasData) {
+        if (v.grupo_venda) {
+          const totalAtual = mapGrupoTotal.get(v.grupo_venda) || 0;
+          const custoAtual = mapGrupoCusto.get(v.grupo_venda) || 0;
+          const totalVenda = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
+          mapGrupoTotal.set(v.grupo_venda, totalAtual + totalVenda);
+          mapGrupoCusto.set(v.grupo_venda, custoAtual + Number(v.custo_unitario || 0) * Number(v.quantidade || 1));
+        }
+      }
+
       for (const v of vendasData) {
         if (v.grupo_venda) {
           if (gruposVistos.has(v.grupo_venda)) continue;
@@ -181,8 +206,8 @@ export function SecaoDispositivosVendidos() {
           dispositivo_id: v.dispositivo_id,
           cliente_id: v.cliente_id,
           quantidade: v.quantidade,
-          total: totalReal,
-          custo_unitario: Number(v.custo_unitario || 0),
+          total: v.grupo_venda ? (mapGrupoTotal.get(v.grupo_venda) ?? totalReal) : totalReal,
+          custo_unitario: v.grupo_venda ? (mapGrupoCusto.get(v.grupo_venda) ?? Number(v.custo_unitario || 0)) : Number(v.custo_unitario || 0),
           grupo_venda: v.grupo_venda ?? null,
           forma_pagamento: v.forma_pagamento,
           data: v.data,
@@ -305,6 +330,47 @@ export function SecaoDispositivosVendidos() {
       dispositivo_modelo: venda.dispositivo_modelo,
     });
     setDialogEdicaoAberto(true);
+  };
+
+  const handleVerDetalhesGrupo = async (venda: VendaDispositivo) => {
+    if (!venda.grupo_venda) return;
+    setGrupoExpandido(venda.grupo_venda);
+    setCarregandoGrupo(true);
+    setItensGrupo([]);
+    try {
+      const { data, error } = await supabase
+        .from("vendas")
+        .select("id, custo_unitario, quantidade, total, valor_desconto_manual, valor_desconto_cupom, imei_dispositivo, dispositivo_id, dispositivos(marca, modelo, imei)")
+        .eq("grupo_venda", venda.grupo_venda)
+        .or("cancelada.eq.false,cancelada.is.null")
+        .or("observacoes.is.null,observacoes.neq.pagamento_duplo_secundario");
+
+      if (error) throw error;
+
+      const itens: ItemGrupoDetalhe[] = (data || []).map((v: any) => {
+        const totalReal = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
+        const custo = Number(v.custo_unitario || 0) * Number(v.quantidade || 1);
+        return {
+          id: v.id,
+          dispositivo_marca: v.dispositivos?.marca,
+          dispositivo_modelo: v.dispositivos?.modelo,
+          dispositivo_imei: v.imei_dispositivo || v.dispositivos?.imei,
+          total: totalReal,
+          custo_unitario: custo,
+        };
+      });
+
+      setItensGrupo(itens);
+    } catch (error) {
+      console.error("Erro ao buscar detalhes do grupo:", error);
+      toast({
+        title: "Erro ao buscar detalhes",
+        description: "Não foi possível carregar os itens do grupo.",
+        variant: "destructive",
+      });
+    } finally {
+      setCarregandoGrupo(false);
+    }
   };
 
   const confirmarExclusao = async () => {
@@ -561,6 +627,17 @@ export function SecaoDispositivosVendidos() {
                       </div>
                     )}
                   </div>
+                  {(venda.total_itens_grupo ?? 1) > 1 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full justify-between text-muted-foreground"
+                      onClick={() => handleVerDetalhesGrupo(venda)}
+                    >
+                      Ver todos os {venda.total_itens_grupo} dispositivos
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
                   <div className="flex gap-1 justify-end flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => handleEditar(venda)} title="Editar venda">
                       <Pencil className="h-4 w-4 mr-1" />
@@ -629,6 +706,64 @@ export function SecaoDispositivosVendidos() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DialogDetalhesGrupo
+        open={!!grupoExpandido}
+        onOpenChange={(open) => { if (!open) setGrupoExpandido(null); }}
+        itens={itensGrupo}
+        carregando={carregandoGrupo}
+      />
     </div>
+  );
+}
+
+interface DialogDetalhesGrupoProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  itens: ItemGrupoDetalhe[];
+  carregando: boolean;
+}
+
+function DialogDetalhesGrupo({ open, onOpenChange, itens, carregando }: DialogDetalhesGrupoProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Dispositivos da venda</DialogTitle>
+        </DialogHeader>
+        {carregando ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {itens.map((item) => (
+              <div key={item.id} className="border rounded-lg p-3 space-y-1">
+                <p className="font-medium">
+                  {item.dispositivo_marca} {item.dispositivo_modelo}
+                </p>
+                {item.dispositivo_imei && (
+                  <p className="text-xs text-muted-foreground">IMEI: {item.dispositivo_imei}</p>
+                )}
+                <div className="flex justify-between items-center pt-1">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Valor</p>
+                    <p className="font-semibold">
+                      <ValorMonetario valor={item.total} tipo="preco" />
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Lucro</p>
+                    <p className={`text-sm font-semibold ${item.total - item.custo_unitario >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                      <ValorMonetario valor={item.total - item.custo_unitario} />
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
