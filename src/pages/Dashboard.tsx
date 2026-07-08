@@ -343,6 +343,14 @@ const Dashboard = () => {
     const faturamentoDispositivos = vendasDispositivosFiltradas.reduce((acc, v: any) => acc + getVendaReceitaLiquida(v), 0);
     const custoDispositivos = vendasDispositivosFiltradas.reduce((acc, v: any) => acc + getVendaCustoTotal(v), 0);
 
+    console.log('[DEBUG LUCRO DISP] vendasDispositivos count:', vendasDispositivos?.length);
+    console.log('[DEBUG LUCRO DISP] após filtro excluirItemOS:', (vendasDispositivos || []).filter((v: any) => !excluirItemOS(v)).length);
+    console.log('[DEBUG LUCRO DISP] após distribuirCustoParcelasGrupo:', vendasDispositivosDistribuidas?.length);
+    console.log('[DEBUG LUCRO DISP] após isVendaInFinancialPeriod:', vendasDispositivosDistribuidas?.filter((v: any) => isVendaInFinancialPeriod(v, inicio, fim))?.length);
+    console.log('[DEBUG LUCRO DISP] lucro total:', vendasDispositivosDistribuidas
+      ?.filter((v: any) => isVendaInFinancialPeriod(v, inicio, fim))
+      ?.reduce((acc: number, v: any) => acc + getVendaReceitaLiquida(v) - getVendaCustoTotal(v), 0));
+
     const margemDispositivos = faturamentoDispositivos > 0 ? ((faturamentoDispositivos - custoDispositivos) / faturamentoDispositivos) * 100 : 0;
 
     // Buscar serviços avulsos do mês (apenas entregues ou finalizados)
