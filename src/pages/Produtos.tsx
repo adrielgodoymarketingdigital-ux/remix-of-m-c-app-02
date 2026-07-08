@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -32,7 +33,7 @@ import { useTrocasGarantia } from '@/hooks/useTrocasGarantia';
 
 const Produtos = () => {
   const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque } = useProdutos();
-  const { categorias, carregarCategorias, criarCategoria, atualizarCategoria, excluirCategoria } = useCategoriasProdutos();
+  const { categorias, categoriasArvore, carregarCategorias, criarCategoria, atualizarCategoria, excluirCategoria } = useCategoriasProdutos();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
   const { obterContagemProdutosMes, assinatura } = useAssinatura();
   const { config: configLoja } = useConfiguracaoLoja();
@@ -116,9 +117,36 @@ const Produtos = () => {
     };
   }, [items]);
 
+  const categoriasComNivel = useMemo(() => {
+    const resultado: { categoria: typeof categorias[number]; nivel: number }[] = [];
+    const percorrer = (lista: typeof categorias, nivel: number) => {
+      lista.forEach((cat) => {
+        resultado.push({ categoria: cat, nivel });
+        if (cat.subcategorias?.length) percorrer(cat.subcategorias, nivel + 1);
+      });
+    };
+    percorrer(categoriasArvore, 0);
+    return resultado;
+  }, [categoriasArvore]);
+
+  const idsCategoriaFiltro = useMemo(() => {
+    if (!categoriaFiltro) return null;
+    const ids = [categoriaFiltro];
+    const buscarFilhos = (paiId: string) => {
+      categorias
+        .filter((c) => c.categoria_pai_id === paiId)
+        .forEach((c) => {
+          ids.push(c.id);
+          buscarFilhos(c.id);
+        });
+    };
+    buscarFilhos(categoriaFiltro);
+    return ids;
+  }, [categoriaFiltro, categorias]);
+
   const itemsFiltrados = useMemo(() => {
     const filtrados = items.filter((item) => {
-      if (categoriaFiltro && item.categoria_id !== categoriaFiltro) return false;
+      if (idsCategoriaFiltro && (!item.categoria_id || !idsCategoriaFiltro.includes(item.categoria_id))) return false;
       const termoBusca = busca.toLowerCase().trim();
       if (!termoBusca) return true;
       const matchNome = item.nome.toLowerCase().includes(termoBusca);
@@ -135,7 +163,7 @@ const Produtos = () => {
       return [...filtrados].sort((a, b) => (contagemVendas[b.id] ?? 0) - (contagemVendas[a.id] ?? 0));
     }
     return filtrados;
-  }, [items, busca, categoriaFiltro, ordemFiltro, contagemVendas]);
+  }, [items, busca, idsCategoriaFiltro, ordemFiltro, contagemVendas]);
 
   const handleSubmit = async (dados: FormularioProduto) => {
     if (itemParaEditar) {
@@ -341,24 +369,35 @@ const Produtos = () => {
               {/* Filtro por Categoria */}
               {categorias.length > 0 && (
                 <div className="flex flex-wrap gap-2 items-center">
-                  <span className="text-sm text-muted-foreground">Filtrar:</span>
-                  {categorias.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setCategoriaFiltro(categoriaFiltro === cat.id ? null : cat.id)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        categoriaFiltro === cat.id
-                          ? 'border-foreground/30 bg-accent'
-                          : 'border-border hover:bg-muted'
-                      }`}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.cor }} />
-                      {cat.nome}
-                      {categoriaFiltro === cat.id && <X className="w-3 h-3" />}
-                    </button>
-                  ))}
+                  <span className="text-sm text-muted-foreground">Filtrar por categoria:</span>
+                  <Select
+                    value={categoriaFiltro ?? 'todas'}
+                    onValueChange={(v) => setCategoriaFiltro(v === 'todas' ? null : v)}
+                  >
+                    <SelectTrigger className="w-[220px] h-8 text-xs">
+                      <SelectValue placeholder="Todas as categorias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas as categorias</SelectItem>
+                      {categoriasComNivel.map(({ categoria: cat, nivel }) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          <span className="flex items-center gap-1.5">
+                            {nivel > 0 && (
+                              <span className="text-muted-foreground">
+                                {'—'.repeat(nivel)}
+                                {'→'}
+                              </span>
+                            )}
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.cor }} />
+                            {cat.nome}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {categoriaFiltro && (
                     <Button variant="ghost" size="sm" onClick={() => setCategoriaFiltro(null)} className="text-xs h-7">
+                      <X className="w-3 h-3 mr-1" />
                       Limpar filtro
                     </Button>
                   )}
