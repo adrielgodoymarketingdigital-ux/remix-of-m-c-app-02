@@ -515,6 +515,7 @@ export const DialogCadastroProduto = ({
                               style={{ paddingLeft: nivel > 0 ? `${nivel * 0.75}rem` : undefined }}
                             >
                               <span className="w-3 h-3 rounded-full inline-block flex-shrink-0" style={{ backgroundColor: cat.cor }} />
+                              {nivel > 0 && <span className="text-muted-foreground">→</span>}
                               {cat.nome}
                             </span>
                           </SelectItem>

@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -42,7 +43,7 @@ const Produtos = () => {
   const [abaAtiva, setAbaAtiva] = useState<'estoque' | 'trocas'>('estoque');
   const [dialogTrocaAberto, setDialogTrocaAberto] = useState(false);
   const [busca, setBusca] = useState('');
-  const [categoriaFiltro, setCategoriaFiltro] = useState<string | null>(null);
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([]);
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dialogImportarAberto, setDialogImportarAberto] = useState(false);
   const [dialogLimiteAtingido, setDialogLimiteAtingido] = useState(false);
@@ -130,23 +131,26 @@ const Produtos = () => {
   }, [categoriasArvore]);
 
   const idsCategoriaFiltro = useMemo(() => {
-    if (!categoriaFiltro) return null;
-    const ids = [categoriaFiltro];
+    if (categoriasSelecionadas.length === 0) return [];
+    const ids = new Set<string>();
     const buscarFilhos = (paiId: string) => {
       categorias
         .filter((c) => c.categoria_pai_id === paiId)
         .forEach((c) => {
-          ids.push(c.id);
+          ids.add(c.id);
           buscarFilhos(c.id);
         });
     };
-    buscarFilhos(categoriaFiltro);
-    return ids;
-  }, [categoriaFiltro, categorias]);
+    categoriasSelecionadas.forEach((categoriaId) => {
+      ids.add(categoriaId);
+      buscarFilhos(categoriaId);
+    });
+    return Array.from(ids);
+  }, [categoriasSelecionadas, categorias]);
 
   const itemsFiltrados = useMemo(() => {
     const filtrados = items.filter((item) => {
-      if (idsCategoriaFiltro && (!item.categoria_id || !idsCategoriaFiltro.includes(item.categoria_id))) return false;
+      if (idsCategoriaFiltro.length > 0 && (!item.categoria_id || !idsCategoriaFiltro.includes(item.categoria_id))) return false;
       const termoBusca = busca.toLowerCase().trim();
       if (!termoBusca) return true;
       const matchNome = item.nome.toLowerCase().includes(termoBusca);
@@ -370,35 +374,55 @@ const Produtos = () => {
               {categorias.length > 0 && (
                 <div className="flex flex-wrap gap-2 items-center">
                   <span className="text-sm text-muted-foreground">Filtrar por categoria:</span>
-                  <Select
-                    value={categoriaFiltro ?? 'todas'}
-                    onValueChange={(v) => setCategoriaFiltro(v === 'todas' ? null : v)}
-                  >
-                    <SelectTrigger className="w-[220px] h-8 text-xs">
-                      <SelectValue placeholder="Todas as categorias" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas as categorias</SelectItem>
-                      {categoriasComNivel.map(({ categoria: cat, nivel }) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          <span className="flex items-center gap-1.5">
-                            {nivel > 0 && (
-                              <span className="text-muted-foreground">
-                                {'—'.repeat(nivel)}
-                                {'→'}
-                              </span>
-                            )}
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.cor }} />
-                            {cat.nome}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {categoriaFiltro && (
-                    <Button variant="ghost" size="sm" onClick={() => setCategoriaFiltro(null)} className="text-xs h-7">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 text-xs justify-between w-[220px]">
+                        <span className="truncate">
+                          {categoriasSelecionadas.length === 0
+                            ? 'Todas as categorias'
+                            : categoriasSelecionadas.length === 1
+                              ? categorias.find((c) => c.id === categoriasSelecionadas[0])?.nome
+                              : `${categoriasSelecionadas.length} categorias selecionadas`}
+                        </span>
+                        <ChevronDown className="w-3 h-3 ml-1 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[260px] p-2" align="start">
+                      <div className="max-h-72 overflow-y-auto space-y-0.5">
+                        {categoriasComNivel.map(({ categoria: cat, nivel }) => {
+                          const marcada = categoriasSelecionadas.includes(cat.id);
+                          return (
+                            <label
+                              key={cat.id}
+                              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm"
+                              style={{ paddingLeft: nivel > 0 ? `${0.5 + nivel * 0.75}rem` : undefined }}
+                            >
+                              <Checkbox
+                                checked={marcada}
+                                onCheckedChange={(checked) => {
+                                  setCategoriasSelecionadas((prev) =>
+                                    checked ? [...prev, cat.id] : prev.filter((id) => id !== cat.id)
+                                  );
+                                }}
+                              />
+                              {nivel > 0 && <span className="text-muted-foreground">→</span>}
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.cor }} />
+                              <span className="truncate">{cat.nome}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {categoriasSelecionadas.length > 1 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {categoriasSelecionadas.length} categorias selecionadas
+                    </Badge>
+                  )}
+                  {categoriasSelecionadas.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={() => setCategoriasSelecionadas([])} className="text-xs h-7">
                       <X className="w-3 h-3 mr-1" />
-                      Limpar filtro
+                      Limpar
                     </Button>
                   )}
                 </div>
