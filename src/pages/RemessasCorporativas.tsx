@@ -134,7 +134,7 @@ function RemessasCorporativasContent() {
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {remessas.map((remessa) => {
             const totalItens = remessa.itens?.length || 0;
             const recebidos = remessa.itens?.filter((i) => i.status === "recebido").length || 0;
@@ -144,7 +144,7 @@ function RemessasCorporativasContent() {
             return (
               <Card
                 key={remessa.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer relative group"
+                className="hover:shadow-lg transition-shadow cursor-pointer relative group overflow-hidden w-full"
                 onClick={() => navigate(`/remessas/${remessa.id}`)}
               >
                 <Button
@@ -161,20 +161,20 @@ function RemessasCorporativasContent() {
                 </Button>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2 pr-6">
-                    <CardTitle className="text-base">{remessa.nome}</CardTitle>
+                    <CardTitle className="text-base min-w-0 truncate">{remessa.nome}</CardTitle>
                     <Badge variant={STATUS_VARIANT[remessa.status] || "default"}>
                       {STATUS_LABEL[remessa.status] || remessa.status}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground truncate">
                     {remessa.cliente_nome || "Sem cliente vinculado"}
                   </p>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground truncate">
                     {new Date(remessa.created_at).toLocaleDateString("pt-BR")}
                   </p>
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
                     <Badge variant="outline">{totalItens} dispositivo(s)</Badge>
                     <Badge variant="secondary">{pendentes} pendente(s)</Badge>
                     <Badge variant="secondary">{recebidos} recebido(s)</Badge>
