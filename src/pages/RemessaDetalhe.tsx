@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, ChevronDown, ChevronRight, ExternalLink, Plus, Printer, QrCode, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, ExternalLink, Plus, Printer, QrCode, Search, Trash2 } from "lucide-react";
 import { getPrintScript, getAndroidPrintCSS } from "@/lib/print-utils";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -76,6 +76,7 @@ function RemessaDetalheContent() {
 
   const [osPorId, setOsPorId] = useState<Record<string, OSHistorico>>({});
   const [itensExpandidos, setItensExpandidos] = useState<Record<string, boolean>>({});
+  const [buscaImei, setBuscaImei] = useState("");
 
   const resetForm = () => {
     setMarca("");
@@ -253,6 +254,9 @@ function RemessaDetalheContent() {
   }
 
   const itens = remessa.itens || [];
+  const itensFiltrados = buscaImei.trim()
+    ? itens.filter((item) => item.imei?.toLowerCase().includes(buscaImei.toLowerCase()))
+    : itens;
 
   return (
     <main className="flex-1 p-6 space-y-6">
@@ -282,9 +286,19 @@ function RemessaDetalheContent() {
         </div>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por IMEI..."
+          value={buscaImei}
+          onChange={(e) => setBuscaImei(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       <Card>
         <CardContent className="p-0">
-          {itens.length === 0 ? (
+          {itensFiltrados.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">
               Nenhum dispositivo adicionado a esta remessa.
             </div>
@@ -303,7 +317,7 @@ function RemessaDetalheContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itens.map((item) => {
+                {itensFiltrados.map((item) => {
                   const osIds = item.os_ids || [];
                   const osHistorico = osIds
                     .map((osId) => osPorId[osId])
