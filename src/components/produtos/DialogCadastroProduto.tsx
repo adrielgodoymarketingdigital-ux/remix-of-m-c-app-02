@@ -28,7 +28,6 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ItemEstoque, FormularioProduto, VariacaoInput } from '@/types/produto';
 import { CategoriaProduto } from '@/types/categoria-produto';
 import { ordenarCategoriasHierarquicamente } from '@/lib/categorias';
@@ -285,24 +284,12 @@ export const DialogCadastroProduto = ({
                       <FormItem>
                         <FormLabel>Código de Barras (EAN/UPC)</FormLabel>
                         <FormControl>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div>
-                                <LeitorCodigoBarras
-                                  valor={field.value || ''}
-                                  onChange={field.onChange}
-                                  onCodigoLido={field.onChange}
-                                  placeholder="Escaneie ou digite"
-                                  disabled={temVariacoes}
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            {temVariacoes && (
-                              <TooltipContent>
-                                Com variações ativas, o código de barras é definido em cada variação
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
+                          <LeitorCodigoBarras
+                            valor={field.value || ''}
+                            onChange={field.onChange}
+                            onCodigoLido={field.onChange}
+                            placeholder="Escaneie ou digite"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -319,24 +306,12 @@ export const DialogCadastroProduto = ({
                     <FormItem>
                       <FormLabel>Código de Barras</FormLabel>
                       <FormControl>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div>
-                              <LeitorCodigoBarras
-                                valor={field.value || ''}
-                                onChange={field.onChange}
-                                onCodigoLido={field.onChange}
-                                placeholder="Escaneie ou digite"
-                                disabled={temVariacoes}
-                              />
-                            </div>
-                          </TooltipTrigger>
-                          {temVariacoes && (
-                            <TooltipContent>
-                              Com variações ativas, o código de barras é definido em cada variação
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
+                        <LeitorCodigoBarras
+                          valor={field.value || ''}
+                          onChange={field.onChange}
+                          onCodigoLido={field.onChange}
+                          placeholder="Escaneie ou digite"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
