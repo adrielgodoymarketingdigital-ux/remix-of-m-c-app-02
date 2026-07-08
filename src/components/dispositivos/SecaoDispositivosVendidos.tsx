@@ -47,6 +47,7 @@ interface VendaDispositivo {
   dispositivo_tempo_garantia?: number;
   dispositivo_checklist?: any;
   empresa_id?: string | null;
+  total_itens_grupo?: number;
 }
 
 const FORMAS_PAGAMENTO_LABEL: Record<string, string> = {
@@ -137,6 +138,13 @@ export function SecaoDispositivosVendidos() {
       const vendasAgrupadas: typeof vendasData = [];
       const gruposVistos = new Set<string>();
 
+      const mapGrupoCount = new Map<string, number>();
+      for (const v of vendasData) {
+        if (v.grupo_venda) {
+          mapGrupoCount.set(v.grupo_venda, (mapGrupoCount.get(v.grupo_venda) || 0) + 1);
+        }
+      }
+
       for (const v of vendasData) {
         if (v.grupo_venda) {
           if (gruposVistos.has(v.grupo_venda)) continue;
@@ -196,6 +204,7 @@ export function SecaoDispositivosVendidos() {
           dispositivo_tempo_garantia: v.tempo_garantia ?? disp?.tempo_garantia,
           dispositivo_checklist: disp?.checklist,
           empresa_id: v.empresa_id ?? null,
+          total_itens_grupo: v.grupo_venda ? (mapGrupoCount.get(v.grupo_venda) || 1) : 1,
         };
       });
 
@@ -488,6 +497,11 @@ export function SecaoDispositivosVendidos() {
                 <Badge className="absolute top-2 left-2 bg-green-600 text-white">
                   Vendido
                 </Badge>
+                {(venda.total_itens_grupo ?? 1) > 1 && (
+                  <Badge className="absolute top-2 right-2 bg-blue-600 text-white">
+                    {venda.total_itens_grupo} itens
+                  </Badge>
+                )}
               </div>
 
               <CardContent className="p-4 space-y-3">
@@ -577,6 +591,7 @@ export function SecaoDispositivosVendidos() {
         onOpenChange={setDialogReciboAberto}
         venda={vendaSelecionada}
         modo={modoImpressao}
+        grupoVendaId={vendaSelecionada?.grupo_venda}
       />
 
       <DialogEditarVendaDispositivo

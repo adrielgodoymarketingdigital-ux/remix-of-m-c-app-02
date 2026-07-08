@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { checklistLabels } from "@/lib/checklist-templates";
@@ -52,6 +53,14 @@ interface VendaDispositivo {
   dispositivo_tempo_garantia?: number;
   dispositivo_checklist?: any;
   empresa_id?: string | null;
+}
+
+interface DispositivoDoGrupo {
+  id: string;
+  total: number;
+  dispositivo_imei?: string;
+  dispositivo_marca?: string;
+  dispositivo_modelo?: string;
 }
 
 const FORMAS_PAGAMENTO_LABEL: Record<string, string> = {
@@ -137,6 +146,7 @@ interface DialogReimprimirReciboVendaProps {
   onOpenChange: (open: boolean) => void;
   venda: VendaDispositivo | null;
   modo?: "recibo" | "garantia";
+  grupoVendaId?: string | null;
 }
 
 export function DialogReimprimirReciboVenda({
@@ -144,6 +154,7 @@ export function DialogReimprimirReciboVenda({
   onOpenChange,
   venda,
   modo = "recibo",
+  grupoVendaId,
 }: DialogReimprimirReciboVendaProps) {
   const { config: configLoja, refetch } = useConfiguracaoLoja(venda?.empresa_id);
   const [dialogFormatoAberto, setDialogFormatoAberto] = useState(false);
@@ -208,12 +219,43 @@ export function DialogReimprimirReciboVenda({
     setDialogFormatoAberto(true);
   };
 
-  const imprimirRecibo = () => {
+  const imprimirRecibo = async () => {
     salvarUltimoFormatoPapel(formatoSelecionado);
     setDialogFormatoAberto(false);
 
     const janelaImpressao = window.open("", "_blank");
     if (!janelaImpressao) return;
+
+    let dispositivosGrupo: DispositivoDoGrupo[] = [
+      { id: venda.id, total: venda.total, dispositivo_imei: venda.dispositivo_imei, dispositivo_marca: venda.dispositivo_marca, dispositivo_modelo: venda.dispositivo_modelo },
+    ];
+    if (grupoVendaId) {
+      const { data: grupoData } = await supabase
+        .from("vendas")
+        .select("id, dispositivo_id, total, imei_dispositivo, tempo_garantia")
+        .eq("grupo_venda", grupoVendaId)
+        .is("deleted_at", null);
+
+      if (grupoData && grupoData.length > 1) {
+        const dispIds = grupoData.map((g) => g.dispositivo_id).filter(Boolean);
+        const { data: disps } = await supabase
+          .from("dispositivos")
+          .select("id, marca, modelo, imei, cor, capacidade_gb, condicao")
+          .in("id", dispIds);
+
+        const dispMap = new Map((disps || []).map((d: any) => [d.id, d]));
+        dispositivosGrupo = grupoData.map((g: any) => {
+          const disp = dispMap.get(g.dispositivo_id);
+          return {
+            id: g.id,
+            total: Number(g.total || 0),
+            dispositivo_imei: g.imei_dispositivo || disp?.imei,
+            dispositivo_marca: disp?.marca || venda.dispositivo_marca,
+            dispositivo_modelo: disp?.modelo || venda.dispositivo_modelo,
+          };
+        });
+      }
+    }
 
     const paper = resolvePaperSize(formatoSelecionado);
     const cssTermico = paper.isThermal ? `
@@ -270,6 +312,27 @@ export function DialogReimprimirReciboVenda({
           ${venda.dispositivo_tempo_garantia ? `<div class="recibo-info"><span>Garantia:</span><span>${formatarGarantia(venda.dispositivo_tempo_garantia)}</span></div>` : ''}
         </div>
       </div>`;
+
+    const secaoDispositivosGrupo = dispositivosGrupo.length > 1 ? `
+  <!-- DISPOSITIVOS DO GRUPO -->
+  <div class="card" style="margin-bottom: 8px;">
+    <div class="card-header">Dispositivos (${dispositivosGrupo.length})</div>
+    <div class="card-body">
+      <table class="tabela-dispositivos">
+        <thead>
+          <tr><th>Aparelho</th><th>IMEI</th><th>Valor</th></tr>
+        </thead>
+        <tbody>
+          ${dispositivosGrupo.map((d) => `
+          <tr>
+            <td>${[d.dispositivo_marca, d.dispositivo_modelo].filter(Boolean).join(' ') || '—'}</td>
+            <td>${d.dispositivo_imei || '—'}</td>
+            <td>${formatCurrency(d.total)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>` : '';
 
     const secaoTermo = `
       <div class="recibo-section">
@@ -360,6 +423,9 @@ export function DialogReimprimirReciboVenda({
       color: #6c757d;
     }
     .card-body { padding: 8px 10px; }
+    .tabela-dispositivos { width: 100%; border-collapse: collapse; font-size: 9px; }
+    .tabela-dispositivos th { text-align: left; padding: 3px 6px; border-bottom: 1px solid #dee2e6; color: #6c757d; text-transform: uppercase; font-size: 8px; letter-spacing: 0.06em; }
+    .tabela-dispositivos td { padding: 3px 6px; border-bottom: 1px solid #f0f0f0; }
     .field { margin-bottom: 5px; }
     .field-label { font-size: 8px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1px; }
     .field-value { font-size: 11px; font-weight: 600; color: #1a1a1a; border-bottom: 1px solid #e9ecef; padding-bottom: 2px; }
@@ -482,6 +548,7 @@ export function DialogReimprimirReciboVenda({
       </div>
     </div>
   </div>
+  ${secaoDispositivosGrupo}
 
   <!-- TERMO -->
   <div class="termo-box">
