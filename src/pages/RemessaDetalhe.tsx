@@ -25,8 +25,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, ChevronDown, ChevronRight, ExternalLink, Plus, Printer, QrCode, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Eye, ExternalLink, FileText, Plus, Printer, QrCode, Search, Trash2 } from "lucide-react";
 import { getPrintScript, getAndroidPrintCSS } from "@/lib/print-utils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { formatCurrency } from "@/lib/formatters";
 
 const STATUS_LABEL: Record<string, string> = {
   ativa: "Ativa",
@@ -39,6 +42,12 @@ interface OSHistorico {
   numero_os: string;
   status: string | null;
   created_at: string | null;
+  defeito_relatado: string | null;
+  total: number | null;
+  dispositivo_marca: string | null;
+  dispositivo_modelo: string | null;
+  dispositivo_imei: string | null;
+  clientes: { nome: string | null } | null;
 }
 
 function urlEntrada(itemId: string) {
@@ -77,6 +86,7 @@ function RemessaDetalheContent() {
   const [osPorId, setOsPorId] = useState<Record<string, OSHistorico>>({});
   const [itensExpandidos, setItensExpandidos] = useState<Record<string, boolean>>({});
   const [buscaImei, setBuscaImei] = useState("");
+  const [osPreview, setOsPreview] = useState<OSHistorico | null>(null);
 
   const resetForm = () => {
     setMarca("");
@@ -101,7 +111,9 @@ function RemessaDetalheContent() {
 
       const { data, error } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, status, created_at")
+        .select(
+          "id, numero_os, status, created_at, defeito_relatado, total, dispositivo_marca, dispositivo_modelo, dispositivo_imei, clientes(nome)"
+        )
         .in("id", todosOsIds);
 
       if (error) {
@@ -417,13 +429,12 @@ function RemessaDetalheContent() {
                                     </span>
                                   </div>
                                   <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
-                                    className="gap-1"
-                                    onClick={() => navigate(`/os?numero=${encodeURIComponent(os.numero_os)}`)}
+                                    onClick={() => setOsPreview(os)}
                                   >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                    Abrir OS
+                                    <Eye className="h-3.5 w-3.5 mr-1" />
+                                    Ver OS
                                   </Button>
                                 </div>
                               );
@@ -520,6 +531,89 @@ function RemessaDetalheContent() {
             </Button>
             <Button onClick={handleAdicionar} disabled={!modelo.trim() || salvando}>
               {salvando ? "Salvando..." : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!osPreview} onOpenChange={(open) => !open && setOsPreview(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {osPreview?.numero_os}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Status:</span>
+              {osPreview && (() => {
+                const cor = statusColors[osPreview.status || ""] || "#eab308";
+                const label = statusLabels[osPreview.status || ""] || osPreview.status || "-";
+                return (
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold border"
+                    style={{ color: cor, borderColor: `${cor}35`, backgroundColor: `${cor}10` }}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
+                    {label}
+                  </span>
+                );
+              })()}
+            </div>
+            {osPreview?.clientes?.nome && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-muted-foreground">Cliente:</span>
+                <span className="font-medium">{osPreview.clientes.nome}</span>
+              </div>
+            )}
+            {osPreview?.dispositivo_modelo && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-muted-foreground">Dispositivo:</span>
+                <span className="font-medium">
+                  {osPreview.dispositivo_marca} {osPreview.dispositivo_modelo}
+                </span>
+              </div>
+            )}
+            {osPreview?.dispositivo_imei && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-muted-foreground">IMEI:</span>
+                <span className="font-mono text-xs">{osPreview.dispositivo_imei}</span>
+              </div>
+            )}
+            {osPreview?.defeito_relatado && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-muted-foreground">Defeito:</span>
+                <span>{osPreview.defeito_relatado}</span>
+              </div>
+            )}
+            {!!osPreview?.total && osPreview.total > 0 && (
+              <div className="flex gap-2 text-sm">
+                <span className="text-muted-foreground">Valor:</span>
+                <span className="font-medium">{formatCurrency(osPreview.total)}</span>
+              </div>
+            )}
+            <div className="flex gap-2 text-sm">
+              <span className="text-muted-foreground">Criada em:</span>
+              <span>
+                {osPreview?.created_at
+                  ? format(new Date(osPreview.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                  : ""}
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOsPreview(null)}>
+              Fechar
+            </Button>
+            <Button
+              onClick={() => {
+                if (osPreview) navigate(`/os?numero=${encodeURIComponent(osPreview.numero_os)}`);
+                setOsPreview(null);
+              }}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Abrir OS Completa
             </Button>
           </DialogFooter>
         </DialogContent>
