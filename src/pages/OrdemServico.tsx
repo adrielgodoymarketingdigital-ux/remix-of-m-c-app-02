@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -88,6 +88,7 @@ const DialogConfiguracaoTracking = lazy(() => import("@/components/ordens/Dialog
 
 export default function OrdemServicoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const tabParam = searchParams.get("tab");
   const [temAcessoTiny, setTemAcessoTiny] = useState(false);
   const [checandoAcessoTiny, setChecandoAcessoTiny] = useState(true);
@@ -365,6 +366,19 @@ export default function OrdemServicoPage() {
     setOrdemSelecionada(ordemCompleta);
     setDialogVisualizacao(true);
   };
+
+  // Abrir automaticamente a OS indicada por ?numero= na URL (ex: vindo da Remessa)
+  useEffect(() => {
+    const numeroOS = searchParams.get("numero");
+    if (!numeroOS || ordens.length === 0) return;
+
+    const os = ordens.find((o) => o.numero_os === numeroOS);
+    if (os) {
+      handleVisualizar(os);
+    }
+    navigate("/os", { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, ordens]);
 
   const handleImprimir = async (ordem: OrdemServico) => {
     const ordemCompleta = await buscarOrdemCompleta(ordem.id);
