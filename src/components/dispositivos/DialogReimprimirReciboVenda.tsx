@@ -61,6 +61,10 @@ interface DispositivoDoGrupo {
   dispositivo_imei?: string;
   dispositivo_marca?: string;
   dispositivo_modelo?: string;
+  dispositivo_cor?: string;
+  dispositivo_capacidade_gb?: number;
+  dispositivo_condicao?: string;
+  dispositivo_tempo_garantia?: number;
 }
 
 const FORMAS_PAGAMENTO_LABEL: Record<string, string> = {
@@ -203,16 +207,29 @@ export function DialogReimprimirReciboVenda({
     loja_endereco: configLoja?.endereco,
   };
 
-  const obterTextoTermo = (): string => {
+  const obterTextoTermo = (dispositivoGrupo?: DispositivoDoGrupo): string => {
     const termoConfig = configLoja?.termo_garantia_dispositivo_config as any;
-    const temGarantia = (venda.dispositivo_tempo_garantia != null && venda.dispositivo_tempo_garantia > 0) || !!venda.dispositivo_garantia;
+    const tempoGarantia = dispositivoGrupo ? dispositivoGrupo.dispositivo_tempo_garantia : venda.dispositivo_tempo_garantia;
+    const temGarantia = (tempoGarantia != null && tempoGarantia > 0) || (!dispositivoGrupo && !!venda.dispositivo_garantia);
     const textoBase = resolverTextoTermoDispositivo(
       termoConfig,
       temGarantia,
       TERMOS_GARANTIA_PADRAO.termo_com_garantia,
       TERMOS_GARANTIA_PADRAO.termo_sem_garantia
     );
-    return formatarTermoDispositivo(textoBase, varsTermos);
+    const vars = dispositivoGrupo
+      ? {
+          ...varsTermos,
+          dispositivo: [dispositivoGrupo.dispositivo_marca, dispositivoGrupo.dispositivo_modelo].filter(Boolean).join(' '),
+          imei: dispositivoGrupo.dispositivo_imei,
+          cor: dispositivoGrupo.dispositivo_cor,
+          capacidade: dispositivoGrupo.dispositivo_capacidade_gb ? `${dispositivoGrupo.dispositivo_capacidade_gb} GB` : undefined,
+          condicao: CONDICAO_LABEL[dispositivoGrupo.dispositivo_condicao || ''] || dispositivoGrupo.dispositivo_condicao,
+          garantia_meses: tempoGarantia != null ? formatarGarantia(tempoGarantia) : undefined,
+          valor: formatCurrency(dispositivoGrupo.total),
+        }
+      : varsTermos;
+    return formatarTermoDispositivo(textoBase, vars);
   };
 
   const abrirSeletorFormato = () => {
@@ -252,6 +269,10 @@ export function DialogReimprimirReciboVenda({
             dispositivo_imei: g.imei_dispositivo || disp?.imei,
             dispositivo_marca: disp?.marca || venda.dispositivo_marca,
             dispositivo_modelo: disp?.modelo || venda.dispositivo_modelo,
+            dispositivo_cor: disp?.cor,
+            dispositivo_capacidade_gb: disp?.capacidade_gb,
+            dispositivo_condicao: disp?.condicao,
+            dispositivo_tempo_garantia: g.tempo_garantia,
           };
         });
       }
@@ -334,11 +355,38 @@ export function DialogReimprimirReciboVenda({
     </div>
   </div>` : '';
 
-    const secaoTermo = `
+    const secaoTermo = dispositivosGrupo.length > 1
+      ? dispositivosGrupo.map((disp) => {
+          const textoTermoDisp = obterTextoTermo(disp);
+          return `
+      <div class="recibo-section">
+        <h3>Termo de Garantia — ${[disp.dispositivo_marca, disp.dispositivo_modelo].filter(Boolean).join(' ')}${disp.dispositivo_imei ? ` (IMEI: ${disp.dispositivo_imei})` : ''}</h3>
+        <div class="termos-garantia">${textoTermoDisp.replace(/\n/g, '<br>')}</div>
+      </div>`;
+        }).join('')
+      : `
       <div class="recibo-section">
         <h3>Termo de Garantia</h3>
         <div class="termos-garantia">${textoTermoAtual.replace(/\n/g, '<br>')}</div>
       </div>`;
+
+    const secaoTermoBox = dispositivosGrupo.length > 1
+      ? dispositivosGrupo.map((disp) => {
+          const textoTermoDisp = obterTextoTermo(disp);
+          return `
+        <div class="termo-box" style="margin-bottom: 12px;">
+          <div class="termo-header">
+            Termo de Garantia — ${disp.dispositivo_marca || ''} ${disp.dispositivo_modelo || ''}
+            ${disp.dispositivo_imei ? `(IMEI: ${disp.dispositivo_imei})` : ''}
+          </div>
+          <div class="termo-body">${textoTermoDisp.replace(/\n/g, '<br>')}</div>
+        </div>`;
+        }).join('')
+      : `
+    <div class="termo-box">
+      <div class="termo-header">Termo de Garantia e Direitos do Consumidor</div>
+      <div class="termo-body">${textoTermoAtual.replace(/\n/g, '<br>')}</div>
+    </div>`;
 
     const secaoAssinaturas = `
       <div class="assinaturas-container">
@@ -551,10 +599,7 @@ export function DialogReimprimirReciboVenda({
   ${secaoDispositivosGrupo}
 
   <!-- TERMO -->
-  <div class="termo-box">
-    <div class="termo-header">Termo de Garantia e Direitos do Consumidor</div>
-    <div class="termo-body">${textoTermoAtual.replace(/\n/g, '<br>')}</div>
-  </div>
+  ${secaoTermoBox}
 
   <!-- ASSINATURAS -->
   <div class="assinaturas">
