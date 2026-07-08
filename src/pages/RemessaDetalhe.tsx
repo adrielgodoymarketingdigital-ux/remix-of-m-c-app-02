@@ -255,7 +255,12 @@ function RemessaDetalheContent() {
 
   const itens = remessa.itens || [];
   const itensFiltrados = buscaImei.trim()
-    ? itens.filter((item) => item.imei?.toLowerCase().includes(buscaImei.toLowerCase()))
+    ? itens.filter((item) => {
+        const termo = buscaImei.trim().toLowerCase();
+        const imei = (item.imei || "").toLowerCase();
+        const serie = (item.numero_serie || "").toLowerCase();
+        return imei.includes(termo) || imei.endsWith(termo) || serie.includes(termo);
+      })
     : itens;
 
   return (
@@ -289,7 +294,7 @@ function RemessaDetalheContent() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por IMEI..."
+          placeholder="Buscar por IMEI completo, últimos 3 dígitos ou nº de série..."
           value={buscaImei}
           onChange={(e) => setBuscaImei(e.target.value)}
           className="pl-9"
