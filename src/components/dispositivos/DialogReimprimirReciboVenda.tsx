@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 import {
   Dialog,
@@ -16,9 +16,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "@/lib/termo-garantia-utils";
 import {
-  SeletorFormatoPapelDialog,
   FormatoPapel,
-  getUltimoFormatoPapel,
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
 
@@ -161,8 +159,6 @@ export function DialogReimprimirReciboVenda({
   grupoVendaId,
 }: DialogReimprimirReciboVendaProps) {
   const { config: configLoja, refetch } = useConfiguracaoLoja(venda?.empresa_id);
-  const [dialogFormatoAberto, setDialogFormatoAberto] = useState(false);
-  const [formatoSelecionado, setFormatoSelecionado] = useState<FormatoPapel>(getUltimoFormatoPapel());
 
   useEffect(() => {
     if (open) refetch();
@@ -232,13 +228,8 @@ export function DialogReimprimirReciboVenda({
     return formatarTermoDispositivo(textoBase, vars);
   };
 
-  const abrirSeletorFormato = () => {
-    setDialogFormatoAberto(true);
-  };
-
-  const imprimirRecibo = async () => {
-    salvarUltimoFormatoPapel(formatoSelecionado);
-    setDialogFormatoAberto(false);
+  const imprimirRecibo = async (formato: FormatoPapel) => {
+    salvarUltimoFormatoPapel(formato);
 
     const janelaImpressao = window.open("", "_blank");
     if (!janelaImpressao) return;
@@ -278,7 +269,7 @@ export function DialogReimprimirReciboVenda({
       }
     }
 
-    const paper = resolvePaperSize(formatoSelecionado);
+    const paper = resolvePaperSize(formato);
     const cssTermico = paper.isThermal ? `
     @page { size: ${paper.pageSize}; margin: 2mm; }
     body { width: ${paper.bodyWidth} !important; max-width: ${paper.bodyMaxWidth} !important; font-size: 9px !important; }
@@ -686,20 +677,20 @@ export function DialogReimprimirReciboVenda({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button onClick={abrirSeletorFormato}>
-            <Printer className="h-4 w-4 mr-2" />
-            {modo === "garantia" ? "Imprimir Garantia" : "Imprimir Recibo"}
+          <Button variant="outline" onClick={() => imprimirRecibo('a4')} className="gap-1.5">
+            <Printer className="h-4 w-4" />
+            A4
+          </Button>
+          <Button variant="outline" onClick={() => imprimirRecibo('80mm')} className="gap-1.5">
+            <Printer className="h-4 w-4" />
+            80mm
+          </Button>
+          <Button onClick={() => imprimirRecibo('58mm')} className="gap-1.5">
+            <Printer className="h-4 w-4" />
+            58mm
           </Button>
         </div>
       </DialogContent>
-
-      <SeletorFormatoPapelDialog
-        open={dialogFormatoAberto}
-        onOpenChange={setDialogFormatoAberto}
-        formato={formatoSelecionado}
-        onFormatoChange={setFormatoSelecionado}
-        onConfirmar={imprimirRecibo}
-      />
     </Dialog>
   );
 }

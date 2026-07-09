@@ -18,9 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  SeletorFormatoPapelDialog,
   FormatoPapel,
-  getUltimoFormatoPapel,
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
 
@@ -83,8 +81,6 @@ export function DialogReimpressaoRecibo({
   const [clienteCompleto, setClienteCompleto] = useState<any>(null);
   const [produto, setProduto] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [dialogFormatoAberto, setDialogFormatoAberto] = useState(false);
-  const [formatoSelecionado, setFormatoSelecionado] = useState<FormatoPapel>(getUltimoFormatoPapel());
 
   useEffect(() => {
     if (open && venda) {
@@ -204,22 +200,18 @@ export function DialogReimpressaoRecibo({
   const showAssinaturas = config80mm?.mostrar_assinaturas !== false;
   const showValor = vendasConfig?.mostrar_valor !== false;
 
-  const abrirSeletorFormato = () => {
-    setDialogFormatoAberto(true);
-  };
-
-  const imprimirRecibo = () => {
+  const imprimirRecibo = (formato: FormatoPapel) => {
     if (!reciboRef.current) return;
 
-    salvarUltimoFormatoPapel(formatoSelecionado);
+    salvarUltimoFormatoPapel(formato);
     setDialogFormatoAberto(false);
 
     const conteudo = reciboRef.current.innerHTML;
     const janelaImpressao = window.open("", "_blank");
 
     if (janelaImpressao) {
-      const isThermalImpressao = formatoSelecionado !== 'a4';
-      const paper = resolvePaperSize(formatoSelecionado, vendasConfig?.largura_mm, vendasConfig?.altura_mm);
+      const isThermalImpressao = formato !== 'a4';
+      const paper = resolvePaperSize(formato, vendasConfig?.largura_mm, vendasConfig?.altura_mm);
       // getThermalPrintCSS gera @page + body para térmica; A4 retorna string vazia
       const cssTermico = getThermalPrintCSS(paper);
       const titulo = venda?.tipo === "dispositivo"
@@ -591,20 +583,20 @@ export function DialogReimpressaoRecibo({
             <Copy className="h-4 w-4 mr-2" />
             Copiar Texto
           </Button>
-          <Button onClick={abrirSeletorFormato} disabled={loading} className="w-full sm:w-auto">
-            <Printer className="h-4 w-4 mr-2" />
-            {loading ? "Carregando..." : "Imprimir Recibo"}
+          <Button variant="outline" onClick={() => imprimirRecibo('a4')} disabled={loading} className="w-full sm:w-auto gap-1.5">
+            <Printer className="h-4 w-4" />
+            A4
+          </Button>
+          <Button variant="outline" onClick={() => imprimirRecibo('80mm')} disabled={loading} className="w-full sm:w-auto gap-1.5">
+            <Printer className="h-4 w-4" />
+            80mm
+          </Button>
+          <Button onClick={() => imprimirRecibo('58mm')} disabled={loading} className="w-full sm:w-auto gap-1.5">
+            <Printer className="h-4 w-4" />
+            58mm
           </Button>
         </div>
       </DialogContent>
-
-      <SeletorFormatoPapelDialog
-        open={dialogFormatoAberto}
-        onOpenChange={setDialogFormatoAberto}
-        formato={formatoSelecionado}
-        onFormatoChange={setFormatoSelecionado}
-        onConfirmar={imprimirRecibo}
-      />
     </Dialog>
   );
 }
