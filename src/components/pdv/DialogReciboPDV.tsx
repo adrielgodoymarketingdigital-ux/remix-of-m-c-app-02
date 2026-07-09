@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
+import { FormatoPapel, salvarUltimoFormatoPapel } from "@/components/recibo/SeletorFormatoPapelDialog";
 import {
   Dialog,
   DialogContent,
@@ -156,8 +157,6 @@ export function DialogReciboPDV({
   const pdvConfig = configLoja?.layout_pdv_config as any;
   // config80mm contém as preferências de seções visíveis (vale para qualquer formato)
   const config80mm = pdvConfig?.config_80mm || {};
-  const formatoPapel = pdvConfig?.formato_papel || 'a4';
-  const isThermal = formatoPapel !== 'a4';
   // Flags de visibilidade são sempre lidas de config80mm (únicas flags de seção salvas)
   const showLogo = config80mm?.mostrar_logo !== false;
   const showDadosLoja = config80mm?.mostrar_dados_loja !== false;
@@ -169,14 +168,17 @@ export function DialogReciboPDV({
   const showFormaPagamento = config80mm?.mostrar_forma_pagamento !== false;
   const showAssinaturas = config80mm?.mostrar_assinaturas !== false;
 
-  const imprimirRecibo = () => {
+  const imprimirRecibo = (formato: FormatoPapel) => {
     if (!reciboRef.current) return;
+
+    salvarUltimoFormatoPapel(formato);
 
     const conteudo = reciboRef.current.innerHTML;
     const janelaImpressao = window.open("", "_blank");
 
     if (janelaImpressao) {
-      const paper = resolvePaperSize(formatoPapel, pdvConfig?.largura_mm, pdvConfig?.altura_mm);
+      const isThermal = formato !== 'a4';
+      const paper = resolvePaperSize(formato, pdvConfig?.largura_mm, pdvConfig?.altura_mm);
       // getThermalPrintCSS gera @page + body com largura correta para térmica;
       // para A4 retorna string vazia e o @page abaixo fica como A4.
       const cssTermico = getThermalPrintCSS(paper);
@@ -648,9 +650,17 @@ export function DialogReciboPDV({
             <Copy className="h-4 w-4 mr-2" />
             Copiar Texto
           </Button>
-          <Button onClick={imprimirRecibo} className="w-full sm:w-auto">
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimir Recibo
+          <Button variant="outline" onClick={() => imprimirRecibo('a4')} className="w-full sm:w-auto gap-1.5">
+            <Printer className="h-4 w-4" />
+            A4
+          </Button>
+          <Button variant="outline" onClick={() => imprimirRecibo('80mm')} className="w-full sm:w-auto gap-1.5">
+            <Printer className="h-4 w-4" />
+            80mm
+          </Button>
+          <Button onClick={() => imprimirRecibo('58mm')} className="w-full sm:w-auto gap-1.5">
+            <Printer className="h-4 w-4" />
+            58mm
           </Button>
         </div>
       </DialogContent>
