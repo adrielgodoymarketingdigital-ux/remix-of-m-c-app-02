@@ -693,6 +693,7 @@ const PDV = () => {
       toast({
         title: "Venda finalizada com sucesso!",
         description: `Total: ${formatCurrency(calcularTotal())}`,
+        duration: 3000,
       });
 
       // Disparar evento de notificação automática
