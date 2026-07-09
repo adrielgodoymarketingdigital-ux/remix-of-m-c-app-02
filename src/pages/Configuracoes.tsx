@@ -8,6 +8,7 @@ import { PersonalizacaoCores } from "@/components/configuracoes/PersonalizacaoCo
 import { NotificationSettings } from "@/components/pwa/NotificationSettings";
 import { ConfiguracaoNumeracaoOS } from "@/components/configuracoes/ConfiguracaoNumeracaoOS";
 import { ConfiguracaoPermissoes } from "@/components/configuracoes/ConfiguracaoPermissoes";
+import { ExportacaoDados } from "@/components/configuracoes/ExportacaoDados";
 
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useToast } from "@/hooks/use-toast";
@@ -141,7 +142,7 @@ export default function Configuracoes() {
           </Card>
 
           <Tabs defaultValue="perfil" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8 h-auto">
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-9 h-auto">
               <TabsTrigger value="perfil" className="text-xs sm:text-sm py-2 sm:py-1.5">
                 Perfil
               </TabsTrigger>
@@ -165,6 +166,9 @@ export default function Configuracoes() {
               </TabsTrigger>
               <TabsTrigger value="preview" className="text-xs sm:text-sm py-2 sm:py-1.5">
                 Preview
+              </TabsTrigger>
+              <TabsTrigger value="exportacao" className="text-xs sm:text-sm py-2 sm:py-1.5">
+                Exportação
               </TabsTrigger>
             </TabsList>
 
@@ -204,6 +208,10 @@ export default function Configuracoes() {
 
             <TabsContent value="preview" className="space-y-4 mt-4 sm:mt-6">
               <PreviewRecibo configuracao={config} />
+            </TabsContent>
+
+            <TabsContent value="exportacao" className="space-y-4 mt-4 sm:mt-6">
+              <ExportacaoDados />
             </TabsContent>
           </Tabs>
         </div>
