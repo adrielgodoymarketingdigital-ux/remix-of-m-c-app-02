@@ -360,8 +360,8 @@ export const ImpressaoOrdemServico = ({
     .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-xs { font-size: 7pt !important; }
     ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 0; }')}
     @media print {
-      * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; }
+      * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; -webkit-text-size-adjust: none !important; }
       .impressao-duas-os-wrapper { page-break-inside: avoid !important; break-inside: avoid !important; }
       .impressao-duas-os-slot { overflow: hidden !important; position: relative !important; }
       .impressao-duas-os-slot > * { transform-origin: top left; width: 194mm !important; max-width: 194mm !important; position: absolute !important; top: 0 !important; left: 0 !important; }
@@ -456,16 +456,37 @@ export const ImpressaoOrdemServico = ({
     const iframe = document.createElement('iframe');
     iframe.id = 'print-iframe-android';
     iframe.style.position = 'fixed';
+    // iOS Safari não calcula layout (e por consequência não imprime) um iframe
+    // com dimensões 0x0 — a "área imprimível" fica vazia e a página sai em
+    // branco. Damos um tamanho real ao iframe mas o deixamos fora da viewport
+    // visível, o que funciona tanto no Safari quanto no Chrome Android.
     iframe.style.right = '0';
     iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
+    iframe.style.width = '1px';
+    iframe.style.height = '1px';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
     iframe.style.border = '0';
     document.body.appendChild(iframe);
 
     // O próprio script embutido em htmlDoc chama window.print() (que dentro do
     // iframe se refere ao seu próprio contentWindow) após aguardar as imagens
-    // carregarem, com fallback de 4s — não precisa de lógica adicional aqui.
+    // carregarem, com fallback de 4s.
+    // iOS Safari, diferente do Chrome Android, às vezes não dispara o print
+    // corretamente a partir do script interno do iframe quando ele foi aberto
+    // via srcdoc — chamamos contentWindow.print() explicitamente daqui como
+    // reforço, sem duplicar (a flag `printed` dentro do htmlDoc evita o replay).
+    iframe.onload = () => {
+      if (isIOS) {
+        setTimeout(() => {
+          try {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+          } catch { /* ignore — o script interno do iframe já cobre o fallback */ }
+        }, 600);
+      }
+    };
+
     iframe.srcdoc = htmlDoc;
   };
 
