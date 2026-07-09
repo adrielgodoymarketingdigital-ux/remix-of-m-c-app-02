@@ -607,19 +607,15 @@ export function DialogReimprimirReciboVenda({
   </div>
 
   <script>
-    (function() {
-      var printed = false;
-      function doPrint() { if (printed) return; printed = true; window.print(); window.onafterprint = function() { window.close(); }; }
-      var images = document.querySelectorAll('img');
-      if (images.length === 0) { setTimeout(doPrint, 300); }
-      else {
-        Promise.all(Array.from(images).map(function(img) {
-          if (img.complete) return Promise.resolve();
-          return new Promise(function(r) { img.onload = r; img.onerror = function() { img.style.display='none'; r(); }; });
-        })).then(function() { setTimeout(doPrint, 300); });
-      }
-      setTimeout(doPrint, 3000);
-    })();
+    window.onload = function() {
+      setTimeout(function() {
+        window.focus();
+        window.print();
+        window.onafterprint = function() {
+          window.close();
+        };
+      }, 500);
+    };
   </script>
 </body>
 </html>`);
