@@ -8,6 +8,7 @@ import { dataHoje, extrairDataLocal } from "@/lib/formatters";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useIdentidade } from "./useResolvedUserId";
 import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas";
+import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -198,6 +199,28 @@ export const useVendas = () => {
         avulsasData = (avulsasResult.value as any).data || [];
       }
 
+      // Buscar contas a receber pendentes (saldo a prazo) vinculadas às OS exibidas
+      const numerosOsExibidas = [...new Set(
+        ordensData.map((o: any) => o.numero_os).filter(Boolean)
+      )] as string[];
+
+      const contaAPrazoPorOsMap = new Map<string, { id: string; valor: number; data_vencimento: string | null }>();
+      if (numerosOsExibidas.length > 0) {
+        const { data: contasAPrazo } = await supabase
+          .from("contas")
+          .select("id, valor, data_vencimento, os_numero")
+          .eq("user_id", resolvedUserId)
+          .eq("tipo", "receber")
+          .eq("status", "pendente")
+          .in("os_numero", numerosOsExibidas);
+
+        (contasAPrazo || []).forEach((c: any) => {
+          if (c.os_numero) {
+            contaAPrazoPorOsMap.set(c.os_numero, { id: c.id, valor: Number(c.valor || 0), data_vencimento: c.data_vencimento });
+          }
+        });
+      }
+
       const avulsasComoVendas: Venda[] = avulsasData.map((va: any) => ({
         id: va.id,
         data: va.created_at,
@@ -253,6 +276,7 @@ export const useVendas = () => {
             servico_id: ordem.servico_id,
             servicos: ordem.servicos,
           },
+          contaAPrazoPendente: contaAPrazoPorOsMap.get(ordem.numero_os) ?? null,
         };
       });
 
@@ -295,6 +319,27 @@ export const useVendas = () => {
         }
         const { data: allOrdensData } = await allOrdensQuery;
 
+        const numerosAllOsExibidas = [...new Set(
+          (allOrdensData || []).map((o: any) => o.numero_os).filter(Boolean)
+        )] as string[];
+
+        const contaAPrazoPorAllOsMap = new Map<string, { id: string; valor: number; data_vencimento: string | null }>();
+        if (numerosAllOsExibidas.length > 0) {
+          const { data: allContasAPrazo } = await supabase
+            .from("contas")
+            .select("id, valor, data_vencimento, os_numero")
+            .eq("user_id", resolvedUserId)
+            .eq("tipo", "receber")
+            .eq("status", "pendente")
+            .in("os_numero", numerosAllOsExibidas);
+
+          (allContasAPrazo || []).forEach((c: any) => {
+            if (c.os_numero) {
+              contaAPrazoPorAllOsMap.set(c.os_numero, { id: c.id, valor: Number(c.valor || 0), data_vencimento: c.data_vencimento });
+            }
+          });
+        }
+
         const allOrdensComoVendas: Venda[] = (allOrdensData || []).map((ordem) => {
           const avarias = ordem.avarias as any;
           let custoTotal = 0;
@@ -327,6 +372,7 @@ export const useVendas = () => {
               servico_id: ordem.servico_id,
               servicos: ordem.servicos,
             },
+            contaAPrazoPendente: contaAPrazoPorAllOsMap.get(ordem.numero_os) ?? null,
           };
         });
 
@@ -388,6 +434,34 @@ export const useVendas = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cancelarContaAPrazoOS = async (contaId: string): Promise<boolean> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) return false;
+
+      const resolvedUserId = resolvedUserIdFromContext || (isFuncionario && lojaUserId ? lojaUserId : user.id);
+
+      await excluirContaPorId(contaId, resolvedUserId);
+
+      toast({
+        title: "Saldo a prazo cancelado",
+        description: "O lançamento de saldo a prazo foi cancelado. A Ordem de Serviço não foi alterada.",
+      });
+
+      await carregarVendas();
+      return true;
+    } catch (error) {
+      console.error("Erro ao cancelar saldo a prazo:", error);
+      toast({
+        title: "Erro ao cancelar",
+        description: "Não foi possível cancelar o saldo a prazo.",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
@@ -1029,5 +1103,6 @@ export const useVendas = () => {
     marcarComoRecebido,
     marcarComoPendente,
     excluirVenda,
+    cancelarContaAPrazoOS,
   };
 };

@@ -15,7 +15,7 @@ import { DialogEditarVenda } from "./DialogEditarVenda";
 import { formatDateTime, formatDate, formatDataVenda, extrairDataLocal } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart } from "lucide-react";
+import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart, CalendarClock } from "lucide-react";
 import { DialogReimpressaoRecibo } from "./DialogReimpressaoRecibo";
 import { DialogCancelarVenda } from "./DialogCancelarVenda";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,6 +44,7 @@ interface TabelaVendasProps {
     total_parcelas?: number | null;
     total?: number;
   }) => Promise<boolean>;
+  onCancelarContaAPrazoOS?: (contaId: string) => Promise<boolean>;
 }
 
 const tipoLabels: Record<string, string> = {
@@ -164,12 +165,14 @@ function getResumoGrupo(vendas: Venda[]): string {
   return `${nomes.slice(0, 2).join(", ")} +${nomes.length - 2} itens`;
 }
 
-export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebido, onExcluirVenda, onMarcarPendente, onEditarVenda }: TabelaVendasProps) => {
+export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebido, onExcluirVenda, onMarcarPendente, onEditarVenda, onCancelarContaAPrazoOS }: TabelaVendasProps) => {
   const [vendaSelecionada, setVendaSelecionada] = useState<Venda | null>(null);
   const [dialogReciboAberto, setDialogReciboAberto] = useState(false);
   const [dialogCancelarAberto, setDialogCancelarAberto] = useState(false);
   const [dialogExcluirAberto, setDialogExcluirAberto] = useState(false);
   const [dialogEditarAberto, setDialogEditarAberto] = useState(false);
+  const [dialogCancelarSaldoAberto, setDialogCancelarSaldoAberto] = useState(false);
+  const [cancelandoSaldo, setCancelandoSaldo] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
@@ -195,6 +198,26 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   const handleAbrirCancelar = (venda: Venda) => {
     setVendaSelecionada(venda);
     setDialogCancelarAberto(true);
+  };
+
+  const handleAbrirCancelarSaldo = (venda: Venda) => {
+    setVendaSelecionada(venda);
+    setDialogCancelarSaldoAberto(true);
+  };
+
+  const handleConfirmarCancelamentoSaldo = async () => {
+    if (!vendaSelecionada?.contaAPrazoPendente || !onCancelarContaAPrazoOS) return;
+
+    setCancelandoSaldo(true);
+    try {
+      const sucesso = await onCancelarContaAPrazoOS(vendaSelecionada.contaAPrazoPendente.id);
+      if (sucesso) {
+        setDialogCancelarSaldoAberto(false);
+        setVendaSelecionada(null);
+      }
+    } finally {
+      setCancelandoSaldo(false);
+    }
   };
 
   const handleAbrirExcluir = (venda: Venda) => {
@@ -282,6 +305,14 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     const isVencendo = dataVencimento && dataVencimento >= hoje && dataVencimento <= em3Dias;
 
     if (venda.cancelada) return <Badge variant="destructive" className="text-xs">Cancelada</Badge>;
+    if (venda.tipo === "servico" && venda.contaAPrazoPendente) {
+      return (
+        <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30 text-xs whitespace-nowrap">
+          <CalendarClock className="h-3 w-3 mr-1" />
+          Saldo a prazo: <ValorMonetario valor={venda.contaAPrazoPendente.valor} tipo="preco" />
+        </Badge>
+      );
+    }
     if (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") {
       if (venda.recebido) return <Badge className="bg-green-500 text-xs text-white">Recebido</Badge>;
       if (isVencida) return <Badge variant="destructive" className="text-xs">A Receber - Vencida</Badge>;
@@ -313,7 +344,12 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         <Button variant="ghost" size="sm" onClick={() => handleImprimirRecibo(venda)} className="h-8 w-8 p-0" title="Imprimir Recibo">
           <Printer className="h-4 w-4" />
         </Button>
-        {!venda.cancelada && onCancelarVenda && (
+        {venda.tipo === "servico" && venda.contaAPrazoPendente && onCancelarContaAPrazoOS && (
+          <Button variant="ghost" size="sm" onClick={() => handleAbrirCancelarSaldo(venda)} className="h-8 w-8 p-0 text-destructive hover:text-destructive" title="Cancelar Saldo a Prazo">
+            <CalendarClock className="h-4 w-4" />
+          </Button>
+        )}
+        {!venda.cancelada && venda.tipo !== "servico" && onCancelarVenda && (
           <Button variant="ghost" size="sm" onClick={() => handleAbrirCancelar(venda)} className="h-8 w-8 p-0 text-destructive hover:text-destructive" title="Cancelar Venda">
             <Ban className="h-4 w-4" />
           </Button>
@@ -326,6 +362,35 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
       </div>
     );
   };
+
+  const dialogCancelarSaldo = (
+    <AlertDialog open={dialogCancelarSaldoAberto} onOpenChange={setDialogCancelarSaldoAberto}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancelar saldo a prazo</AlertDialogTitle>
+          <AlertDialogDescription>
+            {vendaSelecionada?.contaAPrazoPendente && (
+              <>
+                Tem certeza que deseja cancelar o saldo a prazo de{" "}
+                <strong>{formatDate(vendaSelecionada.contaAPrazoPendente.data_vencimento || "")}</strong>{" "}
+                no valor de{" "}
+                <strong>
+                  {vendaSelecionada.contaAPrazoPendente.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </strong>
+                ? A Ordem de Serviço não será alterada, apenas este lançamento pendente será removido.
+              </>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={cancelandoSaldo}>Voltar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmarCancelamentoSaldo} disabled={cancelandoSaldo} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {cancelandoSaldo ? "Cancelando..." : "Cancelar saldo"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   // Mobile: Card-based layout
   if (isMobile) {
@@ -474,6 +539,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
           </AlertDialogContent>
         </AlertDialog>
         <DialogEditarVenda open={dialogEditarAberto} onOpenChange={setDialogEditarAberto} venda={vendaSelecionada} onSalvar={handleSalvarEdicao} salvando={salvandoEdicao} />
+        {dialogCancelarSaldo}
       </>
     );
   }
@@ -648,6 +714,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         </AlertDialogContent>
       </AlertDialog>
       <DialogEditarVenda open={dialogEditarAberto} onOpenChange={setDialogEditarAberto} venda={vendaSelecionada} onSalvar={handleSalvarEdicao} salvando={salvandoEdicao} />
+      {dialogCancelarSaldo}
     </>
   );
 };

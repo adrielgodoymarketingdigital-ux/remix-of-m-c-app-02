@@ -54,6 +54,11 @@ export interface Venda {
   valor_segunda_forma?: number | null;
   observacoes?: string | null;
   empresa_id?: string | null;
+  contaAPrazoPendente?: {
+    id: string;
+    valor: number;
+    data_vencimento: string | null;
+  } | null;
 }
 
 export interface ResumoVendas {

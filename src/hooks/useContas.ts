@@ -4,6 +4,7 @@ import { Conta, FormularioConta } from "@/types/conta";
 import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
+import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 
 export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
   const [contas, setContas] = useState<Conta[]>([]);
@@ -257,13 +258,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         return false;
       }
 
-      const { error } = await supabase
-        .from("contas")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", targetUserId);
-
-      if (error) throw error;
+      await excluirContaPorId(id, targetUserId);
 
       toast({
         title: "Conta excluída",

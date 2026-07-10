@@ -192,7 +192,8 @@ export const DialogAssinaturaSaida = ({
             await supabase.from("contas").insert({
               nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
               tipo: "receber",
-              valor: ordem.total || 0,
+              valor: saldoRestante,
+              valor_pago: entradaPaga,
               data: dataRecebimento,
               data_pagamento: dataRecebimento,
               os_numero: ordem.numero_os,

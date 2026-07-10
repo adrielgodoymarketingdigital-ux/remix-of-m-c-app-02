@@ -599,9 +599,12 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           const avariasData = ordem.avarias as any;
           const formaPagamento = avariasData?.dados_pagamento?.forma;
           const deveMarcarRecebido = formaPagamento !== 'a_prazo';
+          const entradaPagaSaida = avariasData?.dados_pagamento?.entrada || 0;
+          const saldoAReceberSaida = valorOrdem - entradaPagaSaida;
+          const valorAReceberFinal = saldoAReceberSaida > 0 ? saldoAReceberSaida : valorOrdem;
 
           let contaExistente: { id: string } | null = null;
-          
+
           const { data: contaPorNumero } = await supabase
             .from("contas")
             .select("id")
@@ -610,9 +613,9 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             .eq("tipo", "receber")
             .eq("status", "pendente")
             .maybeSingle();
-          
+
           contaExistente = contaPorNumero;
-          
+
           if (!contaExistente) {
             const { data: contaPorNome } = await supabase
               .from("contas")
@@ -638,7 +641,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             await supabase.from("contas").insert({
               nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || 'Cliente'}`,
               tipo: "receber",
-              valor: valorOrdem,
+              valor: valorAReceberFinal,
+              valor_pago: entradaPagaSaida > 0 ? entradaPagaSaida : null,
               data: dataRecebimentoFinal,
               data_pagamento: dataRecebimentoFinal,
               status: "recebido",
