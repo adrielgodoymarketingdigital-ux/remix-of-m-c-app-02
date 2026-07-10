@@ -11,7 +11,7 @@ import {
 } from "@/types/relatorio";
 import { useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod } from "@/lib/vendasFinanceiras";
+import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod, getValorFaturavelOS } from "@/lib/vendasFinanceiras";
 import { useIdentidade } from "./useResolvedUserId";
 
 export const useRelatorios = () => {
@@ -277,6 +277,29 @@ export const useRelatorios = () => {
         }
       });
 
+      // Buscar status das contas a receber vinculadas às OS (para não contar saldo pendente/cancelado como receita)
+      const numerosOsLucro = Array.from(
+        new Set((ordens || []).map((o: any) => o.numero_os).filter(Boolean))
+      ) as string[];
+      const statusContaPorOsMapLucro = new Map<string, string>();
+      if (numerosOsLucro.length > 0) {
+        let queryContasOsLucro = supabase
+          .from("contas")
+          .select("os_numero, status")
+          .eq("user_id", userId)
+          .eq("tipo", "receber")
+          .in("os_numero", numerosOsLucro);
+        if (empresaFiltroRef.current) {
+          queryContasOsLucro = isFilialRef.current
+            ? queryContasOsLucro.eq("empresa_id", empresaFiltroRef.current)
+            : queryContasOsLucro.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`);
+        }
+        const { data: contasOsLucro } = await queryContasOsLucro;
+        (contasOsLucro || []).forEach((c: any) => {
+          if (c.os_numero) statusContaPorOsMapLucro.set(c.os_numero, c.status);
+        });
+      }
+
       // Processar ordens de serviço (1 conserto por OS)
       ordens?.forEach((ordem: any) => {
         const avariasData = ordem.avarias || {};
@@ -286,8 +309,8 @@ export const useRelatorios = () => {
         let itemCusto = 0;
         let itemNome = `OS ${ordem.numero_os}`;
 
-        // Receita é sempre o total real da OS (valor cobrado do cliente)
-        const itemPreco = Number(ordem.total || 0);
+        // Receita conta o total da OS, exceto quando há saldo pendente/cancelado (nesse caso conta só a entrada)
+        const itemPreco = getValorFaturavelOS(ordem, statusContaPorOsMapLucro.get(ordem.numero_os));
 
         if (servicosRealizados.length > 0) {
           itemCusto = servicosRealizados.reduce((acc: number, servico: any) => acc + Number(servico.custo || 0), 0);
@@ -854,6 +877,29 @@ export const useRelatorios = () => {
         }
       });
 
+      // Buscar status das contas a receber vinculadas às OS (para não contar saldo pendente/cancelado como receita)
+      const numerosOsEvolucao = Array.from(
+        new Set((ordens || []).map((o: any) => o.numero_os).filter(Boolean))
+      ) as string[];
+      const statusContaPorOsMapEvolucao = new Map<string, string>();
+      if (numerosOsEvolucao.length > 0) {
+        let queryContasOsEvolucao = supabase
+          .from("contas")
+          .select("os_numero, status")
+          .eq("user_id", userId)
+          .eq("tipo", "receber")
+          .in("os_numero", numerosOsEvolucao);
+        if (ef) {
+          queryContasOsEvolucao = isFilialRef.current
+            ? queryContasOsEvolucao.eq("empresa_id", ef)
+            : queryContasOsEvolucao.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+        }
+        const { data: contasOsEvolucao } = await queryContasOsEvolucao;
+        (contasOsEvolucao || []).forEach((c: any) => {
+          if (c.os_numero) statusContaPorOsMapEvolucao.set(c.os_numero, c.status);
+        });
+      }
+
       // Processar ordens de serviço (usar data_saida como data de referência)
       ordens?.forEach((ordem: any) => {
         const data = new Date(ordem.data_saida || ordem.created_at);
@@ -869,7 +915,7 @@ export const useRelatorios = () => {
         }
 
         const evolucao = evolucaoMap.get(mes)!;
-        evolucao.receita += Number(ordem.total || 0);
+        evolucao.receita += getValorFaturavelOS(ordem, statusContaPorOsMapEvolucao.get(ordem.numero_os));
         
         // Ler custos dos serviços salvos no campo avarias
         const avariasData = ordem.avarias || {};

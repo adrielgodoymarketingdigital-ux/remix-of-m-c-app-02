@@ -44,7 +44,7 @@ interface TabelaVendasProps {
     total_parcelas?: number | null;
     total?: number;
   }) => Promise<boolean>;
-  onCancelarContaAPrazoOS?: (contaId: string) => Promise<boolean>;
+  onCancelarContaAPrazoOS?: (contaId: string, ordemId: string) => Promise<boolean>;
 }
 
 const tipoLabels: Record<string, string> = {
@@ -210,7 +210,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
 
     setCancelandoSaldo(true);
     try {
-      const sucesso = await onCancelarContaAPrazoOS(vendaSelecionada.contaAPrazoPendente.id);
+      const sucesso = await onCancelarContaAPrazoOS(vendaSelecionada.contaAPrazoPendente.id, vendaSelecionada.id);
       if (sucesso) {
         setDialogCancelarSaldoAberto(false);
         setVendaSelecionada(null);
@@ -313,6 +313,14 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         </Badge>
       );
     }
+    if (venda.tipo === "servico" && venda.saldoCancelado) {
+      return (
+        <Badge variant="outline" className="bg-muted text-muted-foreground border-muted-foreground/30 text-xs whitespace-nowrap">
+          <Ban className="h-3 w-3 mr-1" />
+          Saldo não recebido: <ValorMonetario valor={venda.saldoCancelado.valor} tipo="preco" />
+        </Badge>
+      );
+    }
     if (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") {
       if (venda.recebido) return <Badge className="bg-green-500 text-xs text-white">Recebido</Badge>;
       if (isVencida) return <Badge variant="destructive" className="text-xs">A Receber - Vencida</Badge>;
@@ -377,7 +385,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                 <strong>
                   {vendaSelecionada.contaAPrazoPendente.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </strong>
-                ? A Ordem de Serviço não será alterada, apenas este lançamento pendente será removido.
+                ? A OS será marcada como "saldo não recebido" e o lançamento pendente será removido.
               </>
             )}
           </AlertDialogDescription>

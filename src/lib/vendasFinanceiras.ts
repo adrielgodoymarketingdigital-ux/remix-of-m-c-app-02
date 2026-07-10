@@ -196,3 +196,35 @@ export const distribuirCustoParcelasGrupo = (vendas: VendaFinanceiraLike[]): Ven
 
   return resultado;
 };
+
+export interface OrdemFaturavelLike {
+  numero_os?: string | null;
+  total?: number | string | null;
+  avarias?: {
+    dados_pagamento?: {
+      entrada?: number | string | null;
+      saldo_cancelado?: boolean;
+    } | null;
+  } | null;
+}
+
+export type StatusContaOS = string | null | undefined;
+
+/**
+ * Decide quanto de uma OS deve entrar em cálculos de faturamento/receita:
+ * sem entrada, conta o total; com entrada e saldo pendente ou cancelado,
+ * conta só a entrada; com entrada e saldo já baixado, conta o total.
+ */
+export const getValorFaturavelOS = (
+  ordem: OrdemFaturavelLike,
+  statusContaVinculada: StatusContaOS
+): number => {
+  const total = toNumber(ordem.total);
+  const dadosPagamento = ordem.avarias?.dados_pagamento;
+  const entrada = toNumber(dadosPagamento?.entrada);
+
+  if (!dadosPagamento || entrada <= 0) return total;
+  if (dadosPagamento.saldo_cancelado === true) return entrada;
+  if (statusContaVinculada === "pendente") return entrada;
+  return total;
+};

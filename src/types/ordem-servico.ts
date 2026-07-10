@@ -90,4 +90,6 @@ export interface DadosPagamento {
   entrada?: number;
   saldo?: number;
   data_vencimento_prazo?: string;
+  saldo_cancelado?: boolean;
+  saldo_cancelado_em?: string;
 }

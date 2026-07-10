@@ -254,6 +254,12 @@ export const useVendas = () => {
           custoTotal += (avarias.produtos_utilizados as any[]).reduce((acc: number, p: any) => acc + ((p.custo_unitario || 0) * (p.quantidade || 1)), 0);
         }
 
+        const dadosPagamento = avarias?.dados_pagamento;
+        const entradaOS = Number(dadosPagamento?.entrada || 0);
+        const saldoCancelado = dadosPagamento?.saldo_cancelado === true
+          ? { valor: Number(ordem.total || 0) - entradaOS, canceladoEm: dadosPagamento?.saldo_cancelado_em ?? null }
+          : null;
+
         return {
           id: ordem.id,
           data: ordem.updated_at || ordem.created_at,
@@ -277,6 +283,7 @@ export const useVendas = () => {
             servicos: ordem.servicos,
           },
           contaAPrazoPendente: contaAPrazoPorOsMap.get(ordem.numero_os) ?? null,
+          saldoCancelado,
         };
       });
 
@@ -350,6 +357,12 @@ export const useVendas = () => {
             custoTotal += (avarias.produtos_utilizados as any[]).reduce((acc: number, p: any) => acc + ((p.custo_unitario || 0) * (p.quantidade || 1)), 0);
           }
 
+          const dadosPagamento = avarias?.dados_pagamento;
+          const entradaOS = Number(dadosPagamento?.entrada || 0);
+          const saldoCancelado = dadosPagamento?.saldo_cancelado === true
+            ? { valor: Number(ordem.total || 0) - entradaOS, canceladoEm: dadosPagamento?.saldo_cancelado_em ?? null }
+            : null;
+
           return {
             id: ordem.id,
             data: ordem.updated_at || ordem.created_at,
@@ -373,6 +386,7 @@ export const useVendas = () => {
               servicos: ordem.servicos,
             },
             contaAPrazoPendente: contaAPrazoPorAllOsMap.get(ordem.numero_os) ?? null,
+            saldoCancelado,
           };
         });
 
@@ -437,7 +451,7 @@ export const useVendas = () => {
     }
   };
 
-  const cancelarContaAPrazoOS = async (contaId: string): Promise<boolean> => {
+  const cancelarContaAPrazoOS = async (contaId: string, ordemId: string): Promise<boolean> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
@@ -447,11 +461,37 @@ export const useVendas = () => {
 
       await excluirContaPorId(contaId, resolvedUserId);
 
+      const { data: ordemAtual, error: fetchError } = await supabase
+        .from("ordens_servico")
+        .select("avarias")
+        .eq("id", ordemId)
+        .eq("user_id", resolvedUserId)
+        .single();
+      if (fetchError) throw fetchError;
+
+      const avariasAtuais = (ordemAtual?.avarias as any) || {};
+      const novasAvarias = {
+        ...avariasAtuais,
+        dados_pagamento: {
+          ...(avariasAtuais.dados_pagamento || {}),
+          saldo_cancelado: true,
+          saldo_cancelado_em: new Date().toISOString(),
+        },
+      };
+
+      const { error: updateError } = await supabase
+        .from("ordens_servico")
+        .update({ avarias: novasAvarias })
+        .eq("id", ordemId)
+        .eq("user_id", resolvedUserId);
+      if (updateError) throw updateError;
+
       toast({
         title: "Saldo a prazo cancelado",
-        description: "O lançamento de saldo a prazo foi cancelado. A Ordem de Serviço não foi alterada.",
+        description: "O lançamento foi cancelado e a OS foi marcada como saldo não recebido.",
       });
 
+      window.dispatchEvent(new CustomEvent("conta-atualizada"));
       await carregarVendas();
       return true;
     } catch (error) {

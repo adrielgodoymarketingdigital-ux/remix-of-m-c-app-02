@@ -59,6 +59,10 @@ export interface Venda {
     valor: number;
     data_vencimento: string | null;
   } | null;
+  saldoCancelado?: {
+    valor: number;
+    canceladoEm: string | null;
+  } | null;
 }
 
 export interface ResumoVendas {

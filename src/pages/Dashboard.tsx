@@ -26,7 +26,7 @@ import { CardAniversariantes, CardAniversariantesBloqueado } from "@/components/
 import { useClientes } from "@/hooks/useClientes";
 import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { useRelatorios } from "@/hooks/useRelatorios";
-import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod } from "@/lib/vendasFinanceiras";
+import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, getValorFaturavelOS } from "@/lib/vendasFinanceiras";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 import { useIdentidade } from "@/hooks/useResolvedUserId";
 
@@ -230,7 +230,7 @@ const Dashboard = () => {
     // jamais updated_at (muda a cada edição e traz OS antigas para o mês errado)
     let qVendasServicos = supabase
       .from("ordens_servico")
-      .select("total, servico_id, avarias")
+      .select("total, servico_id, avarias, numero_os")
       .eq("user_id", userId)
       .is("deleted_at", null)
       .in("status", ["finalizado", "entregue"])
@@ -239,6 +239,25 @@ const Dashboard = () => {
       );
     if (ef) qVendasServicos = qVendasServicos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: vendasServicos } = await qVendasServicos;
+
+    // Buscar status das contas a receber vinculadas às OS (para não contar saldo pendente/cancelado como faturado)
+    const numerosOsServicos = Array.from(
+      new Set((vendasServicos || []).map((v: any) => v.numero_os).filter(Boolean))
+    ) as string[];
+    const statusContaPorOsMapServicos = new Map<string, string>();
+    if (numerosOsServicos.length > 0) {
+      let qContasOsServicos = supabase
+        .from("contas")
+        .select("os_numero, status")
+        .eq("user_id", userId)
+        .eq("tipo", "receber")
+        .in("os_numero", numerosOsServicos);
+      if (ef) qContasOsServicos = qContasOsServicos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+      const { data: contasOsServicos } = await qContasOsServicos;
+      (contasOsServicos || []).forEach((c: any) => {
+        if (c.os_numero) statusContaPorOsMapServicos.set(c.os_numero, c.status);
+      });
+    }
 
     // Buscar custos dos serviços (somente por vínculo servico_id)
     const servicoIds = Array.from(
@@ -284,7 +303,10 @@ const Dashboard = () => {
     const { data: vendasDispositivos } = await qVendasDispositivos;
 
     // Calcular serviços (custo pelo servico_id + custos adicionais assumidos pela loja)
-    const faturamentoServicos = vendasServicos?.reduce((acc, v) => acc + Number(v.total || 0), 0) || 0;
+    const faturamentoServicos = vendasServicos?.reduce(
+      (acc, v: any) => acc + getValorFaturavelOS(v, statusContaPorOsMapServicos.get(v.numero_os)),
+      0
+    ) || 0;
     let custoServicos = vendasServicos?.reduce(
       (acc, v) => acc + (v.servico_id ? (servicosCustoMapById[v.servico_id] || 0) : 0),
       0
@@ -461,7 +483,7 @@ const Dashboard = () => {
 
     let qOrdensHoje = supabase
       .from("ordens_servico")
-      .select("total, avarias")
+      .select("total, avarias, numero_os")
       .eq("user_id", userId)
       .is("deleted_at", null)
       .in("status", ["finalizado", "entregue"])
@@ -506,7 +528,29 @@ const Dashboard = () => {
     console.log('[HojeDebug] vendasHoje count =', vendasHoje?.length, vendasHoje);
     console.log('[HojeDebug] avulsosHoje count =', avulsosHoje?.length, avulsosHoje);
 
-    const receitaOS = (ordensHoje || []).reduce((acc, o) => acc + Number(o.total || 0), 0);
+    // Buscar status das contas a receber vinculadas às OS de hoje (idem lógica do faturamento mensal)
+    const numerosOsHoje = Array.from(
+      new Set((ordensHoje || []).map((o: any) => o.numero_os).filter(Boolean))
+    ) as string[];
+    const statusContaPorOsMapHoje = new Map<string, string>();
+    if (numerosOsHoje.length > 0) {
+      let qContasOsHoje = supabase
+        .from("contas")
+        .select("os_numero, status")
+        .eq("user_id", userId)
+        .eq("tipo", "receber")
+        .in("os_numero", numerosOsHoje);
+      if (ef) qContasOsHoje = qContasOsHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+      const { data: contasOsHoje } = await qContasOsHoje;
+      (contasOsHoje || []).forEach((c: any) => {
+        if (c.os_numero) statusContaPorOsMapHoje.set(c.os_numero, c.status);
+      });
+    }
+
+    const receitaOS = (ordensHoje || []).reduce(
+      (acc, o: any) => acc + getValorFaturavelOS(o, statusContaPorOsMapHoje.get(o.numero_os)),
+      0
+    );
     const custoOS = (ordensHoje || []).reduce((acc, o) => {
       const avarias = (o.avarias || {}) as Record<string, any>;
       const servicosRealizados: any[] = avarias.servicos_realizados || [];
