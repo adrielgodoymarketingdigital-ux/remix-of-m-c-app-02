@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ChecklistDispositivo } from "@/components/ordens/ChecklistDispositivo";
 import { Checklist } from "@/types/ordem-servico";
+import { useResolvedUserId } from "@/hooks/useResolvedUserId";
 
 interface DialogDispositivoEntradaProps {
   open: boolean;
@@ -37,6 +38,7 @@ export function DialogDispositivoEntrada({
   empresaId,
   onConfirmar,
 }: DialogDispositivoEntradaProps) {
+  const resolvedUserId = useResolvedUserId();
   const [vendedorNome, setVendedorNome] = useState("");
   const [vendedorCpf, setVendedorCpf] = useState("");
   const [vendedorTelefone, setVendedorTelefone] = useState("");
@@ -106,10 +108,12 @@ export function DialogDispositivoEntrada({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado.");
 
+      const userId = resolvedUserId || user.id;
+
       const { data: pessoa, error: pessoaError } = await supabase
         .from("origem_pessoas")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           tipo: "fisica",
           nome: vendedorNome.trim(),
           cpf_cnpj: vendedorCpf.trim() || null,
@@ -123,7 +127,7 @@ export function DialogDispositivoEntrada({
       const { data: dispositivo, error: dispositivoError } = await supabase
         .from("dispositivos")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           empresa_id: empresaId || null,
           tipo: "celular",
           marca: marca.trim(),
@@ -151,7 +155,7 @@ export function DialogDispositivoEntrada({
       const { data: compraData, error: compraError } = await supabase
         .from("compras_dispositivos")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           empresa_id: empresaId || null,
           pessoa_id: pessoa.id,
           dispositivo_id: dispositivo.id,
