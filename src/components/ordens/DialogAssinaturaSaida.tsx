@@ -53,12 +53,20 @@ export const DialogAssinaturaSaida = ({
   const [dataRecebimento, setDataRecebimento] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
+  const [saldoAPrazo, setSaldoAPrazo] = useState(false);
+  const [formaPagamentoSaldo, setFormaPagamentoSaldo] = useState<string>("dinheiro");
+  const [dataVencimentoSaldo, setDataVencimentoSaldo] = useState<string>(
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  );
 
   if (!ordem) return null;
 
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistSaida = avariasData?.checklist?.saida || {};
   const formaPagamentoAtual = avariasData?.dados_pagamento?.forma || (ordem as any).forma_pagamento || "";
+  const entradaPaga = Number(avariasData?.dados_pagamento?.entrada || 0);
+  const temEntrada = entradaPaga > 0;
+  const saldoRestante = temEntrada ? Math.max(0, (ordem.total || 0) - entradaPaga) : (ordem.total || 0);
 
   const handleSalvarAssinatura = async () => {
     // Se for digital, precisa ter assinatura
@@ -132,14 +140,9 @@ export const DialogAssinaturaSaida = ({
       if (error) throw error;
       if (!updatedRows || updatedRows.length === 0) throw new Error("Nenhuma OS atualizada — verifique RLS ou empresa_id");
 
-      // Marcar conta vinculada como recebida (exceto se for a_prazo)
-      const deveMarcarRecebido = formaSelecionada !== 'a_prazo';
-
-      if (deveMarcarRecebido) {
-        // Buscar conta vinculada por os_numero
-        let contaId: string | null = null;
-
-        const { data: contaPorNumero } = await supabase
+      if (temEntrada && saldoRestante > 0) {
+        // Buscar conta existente da OS
+        const { data: contaExistente } = await supabase
           .from("contas")
           .select("id")
           .eq("user_id", effectiveUserId)
@@ -148,39 +151,111 @@ export const DialogAssinaturaSaida = ({
           .eq("status", "pendente")
           .maybeSingle();
 
-        contaId = contaPorNumero?.id || null;
+        if (saldoAPrazo) {
+          // Cenário 2: saldo fica como conta a receber pendente
+          if (contaExistente) {
+            await supabase.from("contas").update({
+              valor: saldoRestante,
+              valor_pago: entradaPaga,
+              status: "pendente",
+              data_vencimento: dataVencimentoSaldo,
+              forma_pagamento: formaPagamentoSaldo,
+            }).eq("id", contaExistente.id);
+          } else {
+            await supabase.from("contas").insert({
+              nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
+              tipo: "receber",
+              valor: saldoRestante,
+              valor_pago: entradaPaga,
+              data: dataVencimentoSaldo,
+              data_vencimento: dataVencimentoSaldo,
+              os_numero: ordem.numero_os,
+              status: "pendente",
+              recorrente: false,
+              categoria: "Serviços",
+              user_id: effectiveUserId,
+              empresa_id: empresaIdParaUpdate,
+              forma_pagamento: formaPagamentoSaldo,
+            });
+          }
+        } else {
+          // Cenário 1: saldo pago na entrega — marcar conta como recebida
+          const formaSelecionadaFinal = formaPagamento || formaPagamentoAtual;
+          if (contaExistente) {
+            await supabase.from("contas").update({
+              status: "recebido",
+              data: dataRecebimento,
+              data_pagamento: dataRecebimento,
+              forma_pagamento: formaSelecionadaFinal,
+            }).eq("id", contaExistente.id);
+          } else {
+            await supabase.from("contas").insert({
+              nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
+              tipo: "receber",
+              valor: ordem.total || 0,
+              data: dataRecebimento,
+              data_pagamento: dataRecebimento,
+              os_numero: ordem.numero_os,
+              status: "recebido",
+              recorrente: false,
+              categoria: "Serviços",
+              user_id: effectiveUserId,
+              empresa_id: empresaIdParaUpdate,
+              forma_pagamento: formaSelecionadaFinal,
+            });
+          }
+        }
+      } else {
+        // Marcar conta vinculada como recebida (exceto se for a_prazo)
+        const deveMarcarRecebido = formaSelecionada !== 'a_prazo';
 
-        if (!contaId) {
-          const { data: contaPorNome } = await supabase
+        if (deveMarcarRecebido) {
+          // Buscar conta vinculada por os_numero
+          let contaId: string | null = null;
+
+          const { data: contaPorNumero } = await supabase
             .from("contas")
             .select("id")
             .eq("user_id", effectiveUserId)
-            .ilike("nome", `%OS ${ordem.numero_os}%`)
+            .eq("os_numero", ordem.numero_os)
             .eq("tipo", "receber")
             .eq("status", "pendente")
             .maybeSingle();
-          contaId = contaPorNome?.id || null;
-        }
 
-        if (contaId) {
-          await supabase
-            .from("contas")
-            .update({ status: "recebido", data: dataRecebimento, data_pagamento: dataRecebimento })
-            .eq("id", contaId);
-        } else {
-          await supabase.from("contas").insert({
-            nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
-            tipo: "receber",
-            valor: ordem.total || 0,
-            data: dataRecebimento,
-            data_pagamento: dataRecebimento,
-            os_numero: ordem.numero_os,
-            status: "recebido",
-            recorrente: false,
-            categoria: "Serviços",
-            user_id: effectiveUserId,
-            empresa_id: empresaIdParaUpdate,
-          });
+          contaId = contaPorNumero?.id || null;
+
+          if (!contaId) {
+            const { data: contaPorNome } = await supabase
+              .from("contas")
+              .select("id")
+              .eq("user_id", effectiveUserId)
+              .ilike("nome", `%OS ${ordem.numero_os}%`)
+              .eq("tipo", "receber")
+              .eq("status", "pendente")
+              .maybeSingle();
+            contaId = contaPorNome?.id || null;
+          }
+
+          if (contaId) {
+            await supabase
+              .from("contas")
+              .update({ status: "recebido", data: dataRecebimento, data_pagamento: dataRecebimento })
+              .eq("id", contaId);
+          } else {
+            await supabase.from("contas").insert({
+              nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
+              tipo: "receber",
+              valor: ordem.total || 0,
+              data: dataRecebimento,
+              data_pagamento: dataRecebimento,
+              os_numero: ordem.numero_os,
+              status: "recebido",
+              recorrente: false,
+              categoria: "Serviços",
+              user_id: effectiveUserId,
+              empresa_id: empresaIdParaUpdate,
+            });
+          }
         }
       }
 
@@ -253,6 +328,26 @@ export const DialogAssinaturaSaida = ({
             </CardContent>
           </Card>
 
+          {temEntrada && (
+            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20">
+              <CardContent className="pt-4 space-y-2">
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">Resumo Financeiro</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Valor total:</span>
+                  <span className="font-medium">{formatCurrency(ordem.total || 0)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Entrada já paga ({avariasData?.dados_pagamento?.forma_pagamento_entrada || 'entrada'}):</span>
+                  <span className="font-medium text-green-600">- {formatCurrency(entradaPaga)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold border-t pt-2">
+                  <span>Saldo restante:</span>
+                  <span className="text-orange-600">{formatCurrency(saldoRestante)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Forma de Pagamento */}
           <Card>
             <CardHeader className="pb-2">
@@ -287,6 +382,48 @@ export const DialogAssinaturaSaida = ({
               </Select>
             </CardContent>
           </Card>
+
+          {temEntrada && saldoRestante > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="saldo-prazo"
+                  checked={saldoAPrazo}
+                  onChange={(e) => setSaldoAPrazo(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="saldo-prazo" className="cursor-pointer">
+                  Saldo de {formatCurrency(saldoRestante)} será recebido a prazo
+                </Label>
+              </div>
+              {saldoAPrazo && (
+                <div className="space-y-2 pl-6">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Forma de pagamento do saldo</Label>
+                    <Select value={formaPagamentoSaldo} onValueChange={setFormaPagamentoSaldo}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FORMAS_PAGAMENTO.filter(f => f.value !== 'a_prazo').map(f => (
+                          <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Data de vencimento</Label>
+                    <Input
+                      type="date"
+                      value={dataVencimentoSaldo}
+                      onChange={(e) => setDataVencimentoSaldo(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Checklist de Saída */}
           {Object.keys(checklistSaida).length > 0 && (
