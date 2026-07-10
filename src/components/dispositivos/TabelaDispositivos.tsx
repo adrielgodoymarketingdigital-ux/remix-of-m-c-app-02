@@ -303,7 +303,25 @@ export function TabelaDispositivos({
                 <span className="ml-1">{dispositivo.capacidade_gb ? `${dispositivo.capacidade_gb}GB` : "-"}</span>
               </div>
             </div>
-            
+
+            {(dispositivo as any).origem_tipo && (
+              <div className="mb-3">
+                <Badge className={
+                  (dispositivo as any).origem_tipo === 'troca_pdv' ? 'bg-cyan-600 text-white hover:bg-cyan-600' : undefined
+                } variant={
+                  (dispositivo as any).origem_tipo === 'terceiro' ? 'default' :
+                  (dispositivo as any).origem_tipo === 'fornecedor' ? 'secondary' :
+                  (dispositivo as any).origem_tipo === 'troca_pdv' ? 'default' :
+                  'outline'
+                }>
+                  {(dispositivo as any).origem_tipo === 'terceiro' && '👤 Terceiro'}
+                  {(dispositivo as any).origem_tipo === 'fornecedor' && '🏢 Fornecedor'}
+                  {(dispositivo as any).origem_tipo === 'estoque_proprio' && '📦 Estoque'}
+                  {(dispositivo as any).origem_tipo === 'troca_pdv' && '🔄 Entrada (Troca)'}
+                </Badge>
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-2 pt-3 border-t">
               <Button
                 variant="ghost"
@@ -451,14 +469,18 @@ export function TabelaDispositivos({
               </TableCell>
               <TableCell className="text-center">
                 {(dispositivo as any).origem_tipo ? (
-                  <Badge variant={
+                  <Badge className={
+                    (dispositivo as any).origem_tipo === 'troca_pdv' ? 'bg-cyan-600 text-white hover:bg-cyan-600' : undefined
+                  } variant={
                     (dispositivo as any).origem_tipo === 'terceiro' ? 'default' :
                     (dispositivo as any).origem_tipo === 'fornecedor' ? 'secondary' :
+                    (dispositivo as any).origem_tipo === 'troca_pdv' ? 'default' :
                     'outline'
                   }>
                     {(dispositivo as any).origem_tipo === 'terceiro' && '👤 Terceiro'}
                     {(dispositivo as any).origem_tipo === 'fornecedor' && '🏢 Fornecedor'}
                     {(dispositivo as any).origem_tipo === 'estoque_proprio' && '📦 Estoque'}
+                    {(dispositivo as any).origem_tipo === 'troca_pdv' && '🔄 Entrada (Troca)'}
                   </Badge>
                 ) : (
                   <span className="text-muted-foreground text-sm">-</span>

@@ -376,14 +376,18 @@ export function CardDispositivo({
         {(dispositivo as any).origem_tipo && (
           <div className="mt-3 pt-3 border-t">
             <div className="flex items-center justify-between">
-              <Badge variant={
+              <Badge className={
+                (dispositivo as any).origem_tipo === 'troca_pdv' ? 'bg-cyan-600 text-white hover:bg-cyan-600' : undefined
+              } variant={
                 (dispositivo as any).origem_tipo === 'terceiro' ? 'default' :
                 (dispositivo as any).origem_tipo === 'fornecedor' ? 'secondary' :
+                (dispositivo as any).origem_tipo === 'troca_pdv' ? 'default' :
                 'outline'
               }>
                 {(dispositivo as any).origem_tipo === 'terceiro' && '👤 Terceiro'}
                 {(dispositivo as any).origem_tipo === 'fornecedor' && '🏢 Fornecedor'}
                 {(dispositivo as any).origem_tipo === 'estoque_proprio' && '📦 Estoque'}
+                {(dispositivo as any).origem_tipo === 'troca_pdv' && '🔄 Entrada (Troca)'}
               </Badge>
             </div>
           </div>

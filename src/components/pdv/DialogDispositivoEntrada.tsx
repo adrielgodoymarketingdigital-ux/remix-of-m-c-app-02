@@ -142,6 +142,7 @@ export function DialogDispositivoEntrada({
           quantidade: 1,
           vendido: false,
           garantia: false,
+          origem_tipo: "troca_pdv",
         })
         .select()
         .single();

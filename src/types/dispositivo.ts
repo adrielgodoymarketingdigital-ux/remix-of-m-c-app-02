@@ -28,7 +28,7 @@ export interface Dispositivo {
     entrada?: Record<string, boolean>;
     saida?: Record<string, boolean>;
   };
-  origem_tipo?: 'terceiro' | 'fornecedor' | 'estoque_proprio';
+  origem_tipo?: 'terceiro' | 'fornecedor' | 'estoque_proprio' | 'troca_pdv';
   codigo_barras?: string;
   created_at: string;
   imeis?: string[];
