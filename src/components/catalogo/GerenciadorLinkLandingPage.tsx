@@ -68,8 +68,7 @@ export function GerenciadorLinkLandingPage({
         .from('configuracoes_loja')
         .select('catalogo_slug, landing_page_config, landing_page_ativa')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
+        .is('empresa_id', null)
         .maybeSingle();
 
       if (data) {
@@ -117,6 +116,7 @@ export function GerenciadorLinkLandingPage({
         .from('configuracoes_loja')
         .select('nome_loja')
         .eq('user_id', user.id)
+        .is('empresa_id', null)
         .maybeSingle();
 
       if (configData?.nome_loja) {
@@ -159,7 +159,8 @@ export function GerenciadorLinkLandingPage({
           landing_page_config: JSON.parse(JSON.stringify(configLP)),
           landing_page_ativa: ativa,
         })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .is('empresa_id', null);
 
       if (error) throw error;
 

@@ -60,6 +60,7 @@ export function GerenciadorLinkCatalogo({ configCatalogo, onConfigSalva }: Geren
         .from("configuracoes_loja")
         .select("catalogo_slug, catalogo_ativo, nome_loja")
         .eq("user_id", user.id)
+        .is("empresa_id", null)
         .maybeSingle();
 
       if (error) {
@@ -119,6 +120,7 @@ export function GerenciadorLinkCatalogo({ configCatalogo, onConfigSalva }: Geren
         .from("configuracoes_loja")
         .select("nome_loja")
         .eq("user_id", user.id)
+        .is("empresa_id", null)
         .maybeSingle();
 
       if (error || !data) {
@@ -172,7 +174,8 @@ export function GerenciadorLinkCatalogo({ configCatalogo, onConfigSalva }: Geren
           catalogo_ativo: ativo,
           catalogo_config: JSON.parse(JSON.stringify(configCatalogo)),
         })
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .is("empresa_id", null);
 
       if (error) {
         console.error("Erro ao salvar:", error);

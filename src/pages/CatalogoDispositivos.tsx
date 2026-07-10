@@ -67,6 +67,7 @@ export default function CatalogoDispositivos() {
         .from('configuracoes_loja')
         .select('catalogo_config, landing_page_config')
         .eq('user_id', user.id)
+        .is('empresa_id', null)
         .maybeSingle();
 
       if (data?.catalogo_config) {
@@ -104,7 +105,8 @@ export default function CatalogoDispositivos() {
           landing_page_config: JSON.parse(JSON.stringify(configLP)),
           catalogo_config: JSON.parse(JSON.stringify(configCatalogo)),
         })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .is('empresa_id', null);
       if (error) throw error;
       setConfigLPOriginal(JSON.stringify(configLP));
       setLpAlterada(false);
@@ -127,7 +129,8 @@ export default function CatalogoDispositivos() {
         .update({
           catalogo_config: JSON.parse(JSON.stringify(configCatalogo)),
         })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .is('empresa_id', null);
       if (error) throw error;
       toast({ title: "Catálogo salvo com sucesso!" });
     } catch (error) {
