@@ -18,6 +18,7 @@ interface ResumoFechamento {
   total_cartao: number;
   total_a_receber: number;
   total_vendas: number;
+  total_vendido: number;
   saldo_final: number;
 }
 
@@ -111,6 +112,16 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         else if (forma === "a_receber") total_a_receber += valor;
       });
 
+      // Breakdown consolidado (vendas + avulsas no mesmo agrupador) para a seção
+      // "Vendas por Forma de Pagamento": inclui formas customizadas e vendas avulsas,
+      // usado só para exibição no dialog — não altera o fechamento real (useCaixa.ts).
+      const vendasAvulsasComoVenda = (vendasAvulsasPreview || []).map((v: any) => ({
+        forma_pagamento: v.forma_pagamento,
+        total: Number(v.valor || 0),
+      }));
+      const breakdownCompleto = agruparVendasPorFormaPagamento([...(vendas ?? []), ...vendasAvulsasComoVenda]);
+      const total_vendido = breakdownCompleto.reduce((acc, item) => acc + item.total, 0);
+
       // Agregar por funcionário (ignora o registro auxiliar do split de pagamento,
       // que duplicaria o valor do mesmo vendedor)
       const mapaFunc: Record<string, { total: number; quantidade: number }> = {};
@@ -148,7 +159,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         .sort((a, b) => b.total - a.total);
 
       setVendaFuncionarios(breakdownFunc);
-      setVendasPorForma(breakdown);
+      setVendasPorForma(breakdownCompleto);
 
       // Buscar movimentações do caixa
       const { data: movimentacoes } = await supabase
@@ -170,7 +181,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
       const saldo_final = caixa.saldo_inicial + total_dinheiro + suprimentos - sangrias;
 
-      setResumo({ total_dinheiro, total_pix, total_cartao, total_a_receber, total_vendas, saldo_final });
+      setResumo({ total_dinheiro, total_pix, total_cartao, total_a_receber, total_vendas, total_vendido, saldo_final });
       setSaldoFinalContado(saldo_final);
     } finally {
       setCarregandoResumo(false);
@@ -205,7 +216,6 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         { label: "Total em PIX", valor: resumo.total_pix },
         { label: "Total em Cartão", valor: resumo.total_cartao },
         { label: "Total A Receber", valor: resumo.total_a_receber },
-        { label: "Total de Vendas", valor: resumo.total_vendas },
       ]
     : [];
 
@@ -222,13 +232,42 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
             <p className="text-sm text-muted-foreground text-center py-4">Calculando resumo...</p>
           ) : (
             <>
-              <Card className="p-4 space-y-2">
-                {linhasResumo.map(({ label, valor }) => (
-                  <div key={label} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{label}</span>
-                    <span className="font-medium">{formatCurrency(valor)}</span>
+              <Card className="p-4 space-y-3">
+                <div className="space-y-2">
+                  {linhasResumo.map(({ label, valor }) => (
+                    <div key={label} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-medium">{formatCurrency(valor)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {resumo && (
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-sm font-semibold">Total Vendido</span>
+                    <span className="text-base font-bold">{formatCurrency(resumo.total_vendido)}</span>
                   </div>
-                ))}
+                )}
+
+                {vendasPorForma.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Wallet className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold">Vendas por Forma de Pagamento</span>
+                    </div>
+                    {vendasPorForma.map((vf) => (
+                      <div key={vf.chave} className="flex justify-between items-center text-sm">
+                        <span className={CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}>
+                          {vf.nome}
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            ({vf.quantidade} venda{vf.quantidade !== 1 ? "s" : ""})
+                          </span>
+                        </span>
+                        <span className={`font-medium ${CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}`}>{formatCurrency(vf.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
 
               {temMovimentacoes && (
@@ -266,26 +305,6 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                         <span className="ml-1 text-xs">({vf.quantidade} venda{vf.quantidade !== 1 ? "s" : ""})</span>
                       </span>
                       <span className="font-medium">{formatCurrency(vf.total)}</span>
-                    </div>
-                  ))}
-                </Card>
-              )}
-
-              {vendasPorForma.length > 0 && (
-                <Card className="p-4 space-y-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-semibold">Vendas por Forma de Pagamento</span>
-                  </div>
-                  {vendasPorForma.map((vf) => (
-                    <div key={vf.chave} className="flex justify-between items-center text-sm">
-                      <span className={CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}>
-                        {vf.nome}
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          ({vf.quantidade} venda{vf.quantidade !== 1 ? "s" : ""})
-                        </span>
-                      </span>
-                      <span className={`font-medium ${CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}`}>{formatCurrency(vf.total)}</span>
                     </div>
                   ))}
                 </Card>
