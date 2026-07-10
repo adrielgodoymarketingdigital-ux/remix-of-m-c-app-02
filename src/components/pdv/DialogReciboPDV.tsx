@@ -276,7 +276,7 @@ export function DialogReciboPDV({
     .item-detalhes {
       display: flex;
       justify-content: space-between;
-      color: #555;
+      color: #000;
       font-size: ${isThermal ? '9px' : '11px'};
       margin-top: 2px;
     }
@@ -500,14 +500,14 @@ export function DialogReciboPDV({
                     <div className="item-nome" style={{ fontWeight: 500 }}>
                       {index + 1}. {item.nome}
                     </div>
-                    <div 
-                      className="item-detalhes" 
-                      style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        color: '#666', 
-                        fontSize: '12px', 
-                        marginTop: '4px' 
+                    <div
+                      className="item-detalhes"
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        color: '#000',
+                        fontSize: '12px',
+                        marginTop: '4px'
                       }}
                     >
                       <span>
