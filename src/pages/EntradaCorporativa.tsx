@@ -24,7 +24,7 @@ interface ItemData {
     user_id: string;
     cliente_id: string | null;
     clientes: { nome: string } | null;
-  } | null;
+  };
 }
 
 function EntradaCorporativaContent() {
@@ -43,23 +43,33 @@ function EntradaCorporativaContent() {
     setCarregando(true);
     setErro(false);
 
-    const { data, error } = await supabase
-      .from("remessa_itens")
-      .select(`
-        id, remessa_id, marca, modelo, cor, imei, numero_serie, defeito_padrao, os_ids,
-        remessas_corporativas ( nome, user_id, cliente_id, clientes ( nome ) )
-      `)
-      .eq("id", itemId)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("get_remessa_item", { p_item_id: itemId });
+    const linha = data?.[0];
 
-    if (error || !data || !data.remessas_corporativas) {
+    if (error || !linha) {
       setErro(true);
       setCarregando(false);
       return;
     }
 
-    setItem(data as unknown as ItemData);
-    setDefeito(data.defeito_padrao || "");
+    setItem({
+      id: linha.id,
+      remessa_id: linha.remessa_id,
+      marca: linha.marca,
+      modelo: linha.modelo,
+      cor: linha.cor,
+      imei: linha.imei,
+      numero_serie: linha.numero_serie,
+      defeito_padrao: linha.defeito_padrao,
+      os_ids: linha.os_ids,
+      remessas_corporativas: {
+        nome: linha.remessa_nome,
+        user_id: linha.remessa_user_id,
+        cliente_id: linha.remessa_cliente_id,
+        clientes: linha.remessa_cliente_nome ? { nome: linha.remessa_cliente_nome } : null,
+      },
+    });
+    setDefeito(linha.defeito_padrao || "");
     setCarregando(false);
   };
 
@@ -72,55 +82,20 @@ function EntradaCorporativaContent() {
     if (!item || !item.remessas_corporativas || !defeito.trim()) return;
 
     setCriando(true);
-    const remessa = item.remessas_corporativas;
-    const itemId = item.id;
 
-    const { data: osInserida, error: osError } = await supabase
-      .from("ordens_servico")
-      .insert({
-        user_id: remessa.user_id,
-        cliente_id: remessa.cliente_id || null,
-        dispositivo_tipo: "celular",
-        dispositivo_marca: item.marca || "",
-        dispositivo_modelo: item.modelo,
-        dispositivo_cor: item.cor || null,
-        dispositivo_imei: item.imei || null,
-        dispositivo_numero_serie: item.numero_serie || null,
-        defeito_relatado: defeito.trim(),
-        status: "pendente",
-        origem_remessa_corporativa: true,
-      })
-      .select("id, numero_os")
-      .single();
+    const { data, error } = await supabase.rpc("criar_os_remessa_corporativa", {
+      p_item_id: item.id,
+      p_defeito: defeito.trim(),
+    });
+    const osInserida = data?.[0];
 
-    if (osError) {
-      toast.error(`Erro: ${osError.message}`);
+    if (error || !osInserida?.id) {
+      toast.error(error ? `Erro: ${error.message}` : "OS não foi criada corretamente");
       setCriando(false);
       return;
     }
 
-    if (!osInserida?.id) {
-      toast.error("OS não foi criada corretamente");
-      setCriando(false);
-      return;
-    }
-
-    // Atualizar os_ids no item da remessa
-    const { data: itemAtual } = await supabase
-      .from("remessa_itens")
-      .select("os_ids")
-      .eq("id", itemId)
-      .single();
-
-    const osIdsAtuais = (itemAtual?.os_ids as string[]) || [];
-    const novosOsIds = [...osIdsAtuais, osInserida.id];
-
-    await supabase
-      .from("remessa_itens")
-      .update({ os_ids: novosOsIds })
-      .eq("id", itemId);
-
-    setItem({ ...item, os_ids: novosOsIds });
+    setItem({ ...item, os_ids: [...(item.os_ids || []), osInserida.id] });
     setNumeroOSCriada(osInserida.numero_os);
     setSucesso(true);
     toast.success("Ordem de serviço criada!");

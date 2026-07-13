@@ -75,54 +75,59 @@ export default function AcompanharOS() {
   useEffect(() => {
     if (!token) return;
 
-    const buscarDados = async () => {
+    type LinhaTracking = {
+      numero_os: string;
+      status: string | null;
+      defeito_relatado: string | null;
+      total: number | null;
+      os_created_at: string;
+      data_saida: string | null;
+      dispositivo_marca: string | null;
+      dispositivo_modelo: string | null;
+      cliente_nome: string | null;
+      cliente_telefone: string | null;
+      nome_loja: string | null;
+      logo_url: string | null;
+      cor_primaria: string | null;
+      loja_telefone: string | null;
+      loja_endereco: string | null;
+      cores_personalizadas: Record<string, unknown> | null;
+    };
+
+    const mapearLinha = (linha: LinhaTracking): TrackingDados => {
+      const coresPersonalizadas = linha.cores_personalizadas || {};
+      const trackingConfig = (coresPersonalizadas.tracking_config as TrackingPageConfig | undefined) || null;
+
+      return {
+        os: {
+          numero_os: linha.numero_os,
+          status: linha.status,
+          defeito_relatado: linha.defeito_relatado,
+          total: linha.total,
+          created_at: linha.os_created_at,
+          data_saida: linha.data_saida,
+          dispositivo_marca: linha.dispositivo_marca,
+          dispositivo_modelo: linha.dispositivo_modelo,
+          cliente: linha.cliente_nome ? { nome: linha.cliente_nome, telefone: linha.cliente_telefone } : null,
+        },
+        loja: {
+          nome_loja: linha.nome_loja,
+          logo_url: linha.logo_url,
+          cor_primaria: linha.cor_primaria,
+          telefone: linha.loja_telefone,
+          endereco: linha.loja_endereco,
+          tracking_config: trackingConfig,
+        },
+      };
+    };
+
+    // Carga inicial: incrementa visualizacoes uma unica vez.
+    const carregarInicial = async () => {
       try {
-        const { data: linkData, error: linkError } = await supabase
-          .from("os_tracking_links")
-          .select("os_id, user_id, visualizacoes")
-          .eq("token", token)
-          .eq("ativo", true)
-          .maybeSingle();
-
-        if (linkError || !linkData) { setErro(true); return; }
-
-        await supabase
-          .from("os_tracking_links")
-          .update({ visualizacoes: (linkData.visualizacoes || 0) + 1 })
-          .eq("token", token);
-
-        const { data: osData } = await supabase
-          .from("ordens_servico")
-          .select(`
-            numero_os, status, defeito_relatado,
-            total, created_at, data_saida,
-            dispositivo_marca, dispositivo_modelo,
-            cliente:clientes(nome, telefone)
-          `)
-          .eq("id", linkData.os_id)
-          .maybeSingle();
-
-        const { data: lojaData } = await supabase
-          .from("configuracoes_loja")
-          .select("nome_loja, logo_url, cor_primaria, telefone, endereco, cores_personalizadas")
-          .eq("user_id", linkData.user_id)
-          .maybeSingle();
-
-        // tracking_config fica dentro de cores_personalizadas no banco
-        const coresPersonalizadas = (lojaData?.cores_personalizadas as Record<string, unknown> | null) || {};
-        const trackingConfig = (coresPersonalizadas.tracking_config as TrackingPageConfig | undefined) || null;
-
-        setDados({
-          os: osData as TrackingDados["os"],
-          loja: lojaData ? {
-            nome_loja: lojaData.nome_loja,
-            logo_url: lojaData.logo_url,
-            cor_primaria: lojaData.cor_primaria,
-            telefone: lojaData.telefone,
-            endereco: lojaData.endereco,
-            tracking_config: trackingConfig,
-          } : null,
-        });
+        const { data, error } = await supabase.rpc("get_os_tracking", { p_token: token });
+        const linha = data?.[0];
+        if (error || !linha) { setErro(true); return; }
+        setDados(mapearLinha(linha as LinhaTracking));
       } catch {
         setErro(true);
       } finally {
@@ -130,18 +135,17 @@ export default function AcompanharOS() {
       }
     };
 
-    buscarDados();
+    // Polling: so leitura, nao incrementa visualizacoes.
+    const atualizarStatus = async () => {
+      const { data, error } = await supabase.rpc("get_os_tracking_status", { p_token: token });
+      const linha = data?.[0];
+      if (error || !linha) return;
+      setDados(mapearLinha(linha as LinhaTracking));
+    };
 
-    const channel = supabase
-      .channel(`os-tracking-${token}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "ordens_servico" }, (payload) => {
-        setDados((prev) =>
-          prev ? { ...prev, os: prev.os ? { ...prev.os, status: payload.new.status } : prev.os } : prev
-        );
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    carregarInicial();
+    const intervalo = setInterval(atualizarStatus, 15000);
+    return () => clearInterval(intervalo);
   }, [token]);
 
   // ── Loading ──────────────────────────────────────────────────────

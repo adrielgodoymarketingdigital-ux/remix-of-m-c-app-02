@@ -133,6 +133,14 @@ export function useConfiguracaoLoja(empresaId?: string | null) {
         });
 
       if (error) {
+        // 23505 = violação de unique constraint: outra requisição concorrente já
+        // criou a config (race condition entre múltiplas telas montando ao mesmo
+        // tempo). Não é uma falha real — buscar a linha que já existe.
+        if (error.code === "23505") {
+          console.log("Configuração já criada por outra requisição concorrente, buscando dados...");
+          await buscarConfiguracao();
+          return true;
+        }
         console.error("Erro ao criar configuração padrão:", error);
         return false;
       }
