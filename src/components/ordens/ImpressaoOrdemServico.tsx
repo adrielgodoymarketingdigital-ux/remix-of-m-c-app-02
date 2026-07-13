@@ -361,7 +361,7 @@ export const ImpressaoOrdemServico = ({
     ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 0; }')}
     @media print {
       * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; -webkit-text-size-adjust: none !important; }
+      html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; height: auto !important; -webkit-text-size-adjust: none !important; }
       .impressao-duas-os-wrapper { page-break-inside: avoid !important; break-inside: avoid !important; }
       .impressao-duas-os-slot { overflow: hidden !important; position: relative !important; }
       .impressao-duas-os-slot > * { transform-origin: top left; width: 194mm !important; max-width: 194mm !important; position: absolute !important; top: 0 !important; left: 0 !important; }
@@ -416,6 +416,7 @@ export const ImpressaoOrdemServico = ({
       function doPrint() {
         if (printed) return;
         printed = true;
+        window.__printed = true;
         window.focus();
         window.print();
         window.onafterprint = function() {
@@ -475,15 +476,24 @@ export const ImpressaoOrdemServico = ({
     // iOS Safari, diferente do Chrome Android, às vezes não dispara o print
     // corretamente a partir do script interno do iframe quando ele foi aberto
     // via srcdoc — chamamos contentWindow.print() explicitamente daqui como
-    // reforço, sem duplicar (a flag `printed` dentro do htmlDoc evita o replay).
+    // reforço. `iframe.onload` dispara quando o HTML terminou de parsear, mas
+    // não garante que o layout já foi pintado (fontes/imagens/reflow), então
+    // aguardamos dois requestAnimationFrame (garante ao menos 1 frame pintado)
+    // antes de reforçar — e checamos window.__printed para nunca competir com
+    // o doPrint() interno que possa já estar em andamento.
     iframe.onload = () => {
       if (isIOS) {
-        setTimeout(() => {
+        const reforcarPrint = () => {
+          const win = iframe.contentWindow as (Window & { __printed?: boolean }) | null;
+          if (!win || win.__printed) return;
           try {
-            iframe.contentWindow?.focus();
-            iframe.contentWindow?.print();
+            win.focus();
+            win.print();
           } catch { /* ignore — o script interno do iframe já cobre o fallback */ }
-        }, 600);
+        };
+        setTimeout(() => {
+          requestAnimationFrame(() => requestAnimationFrame(reforcarPrint));
+        }, 1000);
       }
     };
 

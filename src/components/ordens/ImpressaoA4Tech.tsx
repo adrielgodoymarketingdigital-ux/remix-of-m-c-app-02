@@ -48,7 +48,13 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
       <div className="impressao-header">
         <div className="impressao-header-top">
           {layoutConfig.mostrar_logo_impressao && configuracaoLoja?.logo_url && (
-            <img src={configuracaoLoja.logo_url} alt="Logo" className="impressao-logo" />
+            <img
+              src={configuracaoLoja.logo_url}
+              alt="Logo"
+              className="impressao-logo"
+              crossOrigin="anonymous"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
           )}
           <div className="impressao-header-info">
             <h1 className="impressao-titulo">ORDEM DE SERVIÇO</h1>
