@@ -43,15 +43,16 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { user_id, plan_code, cpf } = body as {
+    const { user_id, email, plan_code, cpf } = body as {
       user_id?: string;
+      email?: string;
       plan_code?: string;
       cpf?: string;
     };
 
-    if (!user_id || !plan_code || !cpf) {
+    if (!user_id || !email || !plan_code || !cpf) {
       return new Response(
-        JSON.stringify({ error: "Parâmetros obrigatórios: user_id, plan_code, cpf." }),
+        JSON.stringify({ error: "Parâmetros obrigatórios: user_id, email, plan_code, cpf." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -84,28 +85,45 @@ serve(async (req: Request) => {
       { auth: { persistSession: false } }
     );
 
-    // Buscar dados do usuário
+    // Checagem de consistência (não é autenticação real): confirma que o user_id
+    // recebido de fato corresponde ao email informado, buscando em auth.users pelo
+    // próprio user_id — não aceitamos o par às cegas. Isso barra o caso simples de
+    // alguém enviar um user_id obtido de outra forma sem saber o email verdadeiro
+    // associado a ele, mas não impede quem já conhece os dois valores de terceiros.
+    const authLookupRes = await fetch(
+      `${Deno.env.get("SUPABASE_URL")}/auth/v1/admin/users/${encodeURIComponent(user_id)}`,
+      {
+        headers: {
+          "apikey": Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+          "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
+        },
+      }
+    );
+
+    if (!authLookupRes.ok) {
+      return new Response(
+        JSON.stringify({ error: "Usuário não encontrado." }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const authLookupData = await authLookupRes.json();
+    const userEmail = authLookupData?.email ?? null;
+
+    if (!userEmail || userEmail.toLowerCase() !== email.trim().toLowerCase()) {
+      log("Email não corresponde ao user_id informado", { user_id });
+      return new Response(
+        JSON.stringify({ error: "Dados não conferem. Verifique seu email e tente novamente." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Buscar dados complementares do usuário
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("nome, email, celular")
+      .select("nome, celular")
       .eq("user_id", user_id)
       .maybeSingle();
-
-    // Buscar email em auth.users como fallback
-    let userEmail = profile?.email ?? null;
-    if (!userEmail) {
-      const searchRes = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/auth/v1/admin/users?filter=${encodeURIComponent(user_id)}&page=1&per_page=1`,
-        {
-          headers: {
-            "apikey": Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
-          },
-        }
-      );
-      const searchData = await searchRes.json();
-      userEmail = searchData?.users?.[0]?.email ?? null;
-    }
 
     const customerName = profile?.nome || (userEmail?.split("@")[0] ?? "Cliente");
     const rawPhone = sanitizeDigits(profile?.celular);

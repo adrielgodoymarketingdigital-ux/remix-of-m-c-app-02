@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { verifyPagarmeSignature } from "../_shared/hmac.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -141,11 +142,34 @@ serve(async (req) => {
   );
 
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+
+    // Valida a assinatura HMAC-SHA256 enviada pela Pagar.me (header X-Hub-Signature).
+    // Sem um segredo configurado, rejeitamos tudo — nunca processamos payloads não assinados.
+    const webhookSecret = Deno.env.get("PAGARME_WEBHOOK_SECRET");
+    if (!webhookSecret) {
+      log("PAGARME_WEBHOOK_SECRET não configurada — rejeitando webhook");
+      return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const signatureHeader = req.headers.get("x-hub-signature") ?? req.headers.get("X-Hub-Signature");
+    const signatureValid = await verifyPagarmeSignature(rawBody, signatureHeader, webhookSecret);
+    if (!signatureValid) {
+      log("Assinatura HMAC inválida ou ausente");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = JSON.parse(rawBody);
     const eventType = body?.type;
     const eventId = body?.id;
 
-    // Verifica que o webhook vem da conta Pagar.me correta
+    // Camada extra (defense in depth): confirma que o webhook referencia a conta Pagar.me correta
     const pagarmeAccountId = Deno.env.get("PAGARME_ACCOUNT_ID");
     if (pagarmeAccountId && body?.account?.id && body.account.id !== pagarmeAccountId) {
       log("Account ID inválido", { received: body.account.id });

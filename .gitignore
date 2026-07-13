@@ -23,7 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
-.env*.local
+.env
+.env.*
+!.env.example
+supabase/functions/.env
+supabase/functions/.env.*
 
 # Android / Bubblewrap
 android.keystore

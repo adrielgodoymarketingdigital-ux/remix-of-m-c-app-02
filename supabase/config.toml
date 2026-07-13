@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.ticto-webhook]
 verify_jwt = false
+
+[functions.buscar-assinatura-email]
+verify_jwt = false
+
+[functions.create-pix-order-renovacao]
+verify_jwt = false

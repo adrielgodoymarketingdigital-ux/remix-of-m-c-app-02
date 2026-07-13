@@ -83,7 +83,6 @@ interface DadosAssinatura {
   status: string;
   dataFim?: string;
   dataProximaCobranca?: string;
-  nomeUsuario?: string;
   email: string;
 }
 
@@ -260,8 +259,7 @@ export default function RenovacaoAssinatura() {
         status: data.status,
         dataFim: data.dataFim ?? undefined,
         dataProximaCobranca: data.dataProximaCobranca ?? undefined,
-        nomeUsuario: data.nome ?? undefined,
-        email: data.email ?? email.trim().toLowerCase(),
+        email: email.trim().toLowerCase(),
       });
 
       // Planos gratuitos vão direto para seleção de upgrade
@@ -366,9 +364,7 @@ export default function RenovacaoAssinatura() {
         <div className="w-full max-w-[440px] space-y-4">
           <div className="text-center">
             <p className="text-xs text-blue-400 font-mono uppercase tracking-widest mb-1">Assinatura encontrada</p>
-            <h1 className="text-2xl font-bold text-white leading-tight">
-              {dados.nomeUsuario ? `Olá, ${dados.nomeUsuario.split(" ")[0]}!` : "Assinatura encontrada!"}
-            </h1>
+            <h1 className="text-2xl font-bold text-white leading-tight">Assinatura encontrada!</h1>
             <p className="text-sm text-slate-400 mt-1.5">{dados.email}</p>
           </div>
 
@@ -548,7 +544,7 @@ export default function RenovacaoAssinatura() {
           )}
 
           <button
-            onClick={() => { setEtapa("email"); setModo(null); setPlanoSelecionado(null); }}
+            onClick={() => { setEtapa("email"); setModo(null); setPlanoSelecionado(null); setDados(null); }}
             className="w-full text-center text-xs text-slate-500 hover:text-slate-300 transition-colors py-1"
           >
             ← Usar outro email
@@ -597,6 +593,7 @@ export default function RenovacaoAssinatura() {
             planoPreco={planoSelecionadoInfo.preco}
             onSuccess={handleSucesso}
             userId={dados?.userId}
+            userEmail={dados?.email}
           />
         </>
       )}

@@ -39,8 +39,9 @@ interface PixCheckoutDialogProps {
   planoPreco: number;
   cupomInicial?: string;
   onSuccess?: () => void;
-  // Quando fornecido, usa a edge function de renovação (sem autenticação)
+  // Quando fornecidos, usa a edge function de renovação (sem autenticação)
   userId?: string;
+  userEmail?: string;
 }
 
 interface PixData {
@@ -66,6 +67,7 @@ export function PixCheckoutDialog({
   cupomInicial,
   onSuccess,
   userId,
+  userEmail,
 }: PixCheckoutDialogProps) {
   const [loading, setLoading] = useState(false);
   const [pixData, setPixData] = useState<PixData | null>(null);
@@ -108,13 +110,13 @@ export function PixCheckoutDialog({
     try {
       let data: Record<string, unknown>;
 
-      if (userId) {
+      if (userId && userEmail) {
         // Fluxo renovação: sem autenticação, usa edge function dedicada
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
         const res = await fetch(`${supabaseUrl}/functions/v1/create-pix-order-renovacao`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, plan_code: planoKey, cpf: cpfDigits }),
+          body: JSON.stringify({ user_id: userId, email: userEmail, plan_code: planoKey, cpf: cpfDigits }),
         });
         data = await res.json();
         if (!res.ok || data?.error) throw new Error((data?.error as string) ?? "Erro ao criar PIX.");
@@ -153,7 +155,7 @@ export function PixCheckoutDialog({
     } finally {
       setLoading(false);
     }
-  }, [planoKey, cpfDigits, canGeneratePix, toast]);
+  }, [planoKey, cpfDigits, canGeneratePix, toast, userId, userEmail, cupom]);
 
   // Reset ao abrir/fechar
   useEffect(() => {
