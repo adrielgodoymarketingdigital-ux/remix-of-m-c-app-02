@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_alteracoes_correcoes: {
@@ -1274,6 +1299,7 @@ export type Database = {
           custo: number | null
           deleted_at: string | null
           empresa_id: string | null
+          exibir_no_catalogo: boolean | null
           fornecedor_id: string | null
           foto_url: string | null
           fotos: Json | null
@@ -1306,6 +1332,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           foto_url?: string | null
           fotos?: Json | null
@@ -1338,6 +1365,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           foto_url?: string | null
           fotos?: Json | null
@@ -2414,6 +2442,7 @@ export type Database = {
           localizacao_fisica: string | null
           numero_os: string
           origem_cliente: string | null
+          origem_remessa_corporativa: boolean
           senha_desbloqueio: string | null
           servico_data_pagamento: string | null
           servico_fornecedor_id: string | null
@@ -2456,6 +2485,7 @@ export type Database = {
           localizacao_fisica?: string | null
           numero_os: string
           origem_cliente?: string | null
+          origem_remessa_corporativa?: boolean
           senha_desbloqueio?: string | null
           servico_data_pagamento?: string | null
           servico_fornecedor_id?: string | null
@@ -2498,6 +2528,7 @@ export type Database = {
           localizacao_fisica?: string | null
           numero_os?: string
           origem_cliente?: string | null
+          origem_remessa_corporativa?: boolean
           senha_desbloqueio?: string | null
           servico_data_pagamento?: string | null
           servico_fornecedor_id?: string | null
@@ -2956,6 +2987,7 @@ export type Database = {
           custo: number | null
           deleted_at: string | null
           empresa_id: string | null
+          exibir_no_catalogo: boolean | null
           fornecedor_id: string | null
           fotos: Json | null
           id: string
@@ -2974,6 +3006,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           fotos?: Json | null
           id?: string
@@ -2992,6 +3025,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           fotos?: Json | null
           id?: string
@@ -3094,6 +3128,7 @@ export type Database = {
           custo: number | null
           deleted_at: string | null
           empresa_id: string | null
+          exibir_no_catalogo: boolean | null
           fornecedor_id: string | null
           fotos: Json | null
           id: string
@@ -3114,6 +3149,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           fotos?: Json | null
           id?: string
@@ -3134,6 +3170,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           fotos?: Json | null
           id?: string
@@ -5145,6 +5182,13 @@ export type Database = {
       count_user_clients: { Args: { _user_id: string }; Returns: number }
       count_user_devices: { Args: { _user_id: string }; Returns: number }
       count_user_orders: { Args: { _user_id: string }; Returns: number }
+      criar_os_remessa_corporativa: {
+        Args: { p_defeito: string; p_item_id: string }
+        Returns: {
+          id: string
+          numero_os: string
+        }[]
+      }
       determinar_condicao_usuario: {
         Args: { p_user_id: string }
         Returns: string
@@ -5162,6 +5206,66 @@ export type Database = {
       get_next_os_number:
         | { Args: never; Returns: number }
         | { Args: { p_user_id?: string }; Returns: number }
+      get_os_tracking: {
+        Args: { p_token: string }
+        Returns: {
+          cliente_nome: string
+          cliente_telefone: string
+          cor_primaria: string
+          cores_personalizadas: Json
+          data_saida: string
+          defeito_relatado: string
+          dispositivo_marca: string
+          dispositivo_modelo: string
+          logo_url: string
+          loja_endereco: string
+          loja_telefone: string
+          nome_loja: string
+          numero_os: string
+          os_created_at: string
+          status: string
+          total: number
+        }[]
+      }
+      get_os_tracking_status: {
+        Args: { p_token: string }
+        Returns: {
+          cliente_nome: string
+          cliente_telefone: string
+          cor_primaria: string
+          cores_personalizadas: Json
+          data_saida: string
+          defeito_relatado: string
+          dispositivo_marca: string
+          dispositivo_modelo: string
+          logo_url: string
+          loja_endereco: string
+          loja_telefone: string
+          nome_loja: string
+          numero_os: string
+          os_created_at: string
+          status: string
+          total: number
+        }[]
+      }
+      get_remessa_item: {
+        Args: { p_item_id: string }
+        Returns: {
+          cor: string
+          defeito_padrao: string
+          id: string
+          imei: string
+          marca: string
+          modelo: string
+          numero_serie: string
+          os_ids: string[]
+          remessa_cliente_id: string
+          remessa_cliente_nome: string
+          remessa_id: string
+          remessa_nome: string
+          remessa_user_id: string
+        }[]
+      }
       get_user_by_id: {
         Args: { p_user_id: string }
         Returns: {
@@ -5409,6 +5513,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "tecnico", "vendedor"],
