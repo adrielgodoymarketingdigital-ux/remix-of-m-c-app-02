@@ -204,7 +204,6 @@ export function DialogReimpressaoRecibo({
     if (!reciboRef.current) return;
 
     salvarUltimoFormatoPapel(formato);
-    setDialogFormatoAberto(false);
 
     const conteudo = reciboRef.current.innerHTML;
     const janelaImpressao = window.open("", "_blank");
