@@ -17,7 +17,7 @@ interface ChecklistDispositivoProps {
   sistema?: string;
   fabricante?: string;
   subtipo?: string;
-  value: Checklist;
+  value?: Checklist;
   onChange: (checklist: Checklist) => void;
   onSistemaChange?: (sistema: string) => void;
   onFabricanteChange?: (fabricante: string) => void;
@@ -31,13 +31,15 @@ export const ChecklistDispositivo = ({
   sistema,
   fabricante,
   subtipo,
-  value,
+  value: valueProp,
   onChange,
   onSistemaChange,
   onFabricanteChange,
   onSubtipoChange,
   apenasEntrada = false,
 }: ChecklistDispositivoProps) => {
+  // Proteção contra checklist undefined/null vindo de dados legados no banco
+  const value = valueProp || { entrada: {}, saida: {} };
   const isMobile = useIsMobile();
   const [tipoSelecionado, setTipoSelecionado] = useState(tipoDispositivo);
   const [sistemaSelecionado, setSistemaSelecionado] = useState(sistema || '');
@@ -525,7 +527,7 @@ export const ChecklistDispositivo = ({
           </div>
           <Switch
             id="sem-teste"
-            checked={value.sem_teste === true}
+            checked={value?.sem_teste === true}
             onCheckedChange={(checked) => {
               onChange({
                 ...value,
@@ -535,7 +537,7 @@ export const ChecklistDispositivo = ({
           />
         </div>
 
-        {value.sem_teste && (
+        {value?.sem_teste && (
           <div className="p-3 rounded-lg bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-300">
             <span className="font-medium">⚠️ Sem teste:</span>{" "}
             Não foi possível realizar os testes porque o aparelho chegou desligado.
