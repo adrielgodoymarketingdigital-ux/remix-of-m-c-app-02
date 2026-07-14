@@ -1,4 +1,4 @@
-import { Component, ReactNode } from "react";
+import { Component, ReactNode, ErrorInfo } from "react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -18,8 +18,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { hasError: true };
   }
 
-  componentDidCatch(error: unknown) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // DEBUG TEMPORÁRIO — remover após identificar a causa raiz do erro "_id"
     console.error("Erro não tratado capturado pelo ErrorBoundary:", error);
+    console.error("[DEBUG] error.message:", error?.message);
+    console.error("[DEBUG] error.stack:", error?.stack);
+    console.error("[DEBUG] component stack:", errorInfo?.componentStack);
   }
 
   render() {
