@@ -12,11 +12,12 @@ interface UploadFotosDispositivoProps {
   maxFotos?: number;
 }
 
-export function UploadFotosDispositivo({ 
-  fotos = [], 
+export function UploadFotosDispositivo({
+  fotos: fotosProp = [],
   onFotosChange,
-  maxFotos = 10 
+  maxFotos = 10
 }: UploadFotosDispositivoProps) {
+  const fotos = Array.isArray(fotosProp) ? fotosProp : [];
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 

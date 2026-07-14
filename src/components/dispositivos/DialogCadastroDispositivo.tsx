@@ -226,6 +226,10 @@ export function DialogCadastroDispositivo({
 
   useEffect(() => {
     if (dispositivoParaEditar) {
+      // DEBUG TEMPORÁRIO — remover após confirmar a causa do crash em produção
+      // eslint-disable-next-line no-console
+      console.log("[DEBUG] dispositivoParaEditar:", JSON.stringify(dispositivoParaEditar, null, 2));
+      try {
       form.reset({
         tipo: dispositivoParaEditar.tipo,
         marca: dispositivoParaEditar.marca,
@@ -239,8 +243,12 @@ export function DialogCadastroDispositivo({
         custo: dispositivoParaEditar.custo,
         preco: dispositivoParaEditar.preco,
         foto_url: dispositivoParaEditar.foto_url || "",
-        fotos: dispositivoParaEditar.fotos || (dispositivoParaEditar.foto_url ? [dispositivoParaEditar.foto_url] : []),
-        checklist: dispositivoParaEditar.checklist || { entrada: {}, saida: {} },
+        fotos: Array.isArray(dispositivoParaEditar.fotos)
+          ? dispositivoParaEditar.fotos
+          : (dispositivoParaEditar.foto_url ? [dispositivoParaEditar.foto_url] : []),
+        checklist: (dispositivoParaEditar.checklist && typeof dispositivoParaEditar.checklist === "object" && !Array.isArray(dispositivoParaEditar.checklist))
+          ? dispositivoParaEditar.checklist
+          : { entrada: {}, saida: {} },
         cor: dispositivoParaEditar.cor || "",
         capacidade_gb: dispositivoParaEditar.capacidade_gb,
         imei: dispositivoParaEditar.imei || "",
@@ -260,6 +268,11 @@ export function DialogCadastroDispositivo({
         custo: dispositivoParaEditar.custo?.toString() || "",
         preco: dispositivoParaEditar.preco?.toString() || "",
       }]);
+      } catch (err) {
+        // DEBUG TEMPORÁRIO — remover após confirmar a causa do crash em produção
+        console.error("[DEBUG] Erro ao carregar dispositivo para edição:", err, dispositivoParaEditar);
+        throw err;
+      }
     } else {
       form.reset({
         tipo: "",
