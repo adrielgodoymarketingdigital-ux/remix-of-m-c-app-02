@@ -281,7 +281,7 @@ const Dashboard = () => {
     // Buscar por data OU data_recebimento para capturar vendas "a_receber" recebidas no período
     let qVendasProdutos = supabase
       .from("vendas")
-      .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes")
+      .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes, segunda_forma_pagamento, valor_segunda_forma")
       .eq("user_id", userId)
       .eq("tipo", "produto")
       .eq("cancelada", false)
@@ -293,7 +293,7 @@ const Dashboard = () => {
     // Buscar vendas de dispositivos com custo
     let qVendasDispositivos = supabase
       .from("vendas")
-      .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes")
+      .select("data, data_recebimento, total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, grupo_venda, peca_id, observacoes, segunda_forma_pagamento, valor_segunda_forma")
       .eq("user_id", userId)
       .eq("tipo", "dispositivo")
       .eq("cancelada", false)

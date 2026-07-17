@@ -12,6 +12,8 @@ export interface VendaFinanceiraLike {
   custo_unitario?: number | string | null;
   quantidade?: number | string | null;
   grupo_venda?: string | null;
+  segunda_forma_pagamento?: string | null;
+  valor_segunda_forma?: number | null;
 }
 
 const FORMAS_POR_COMPETENCIA = new Set(["a_receber", "a_prazo"]);
@@ -132,9 +134,18 @@ export const getVendaReceitaLiquida = (venda: VendaFinanceiraLike) => {
     toNumber(venda.valor_desconto_manual) -
     toNumber(venda.valor_desconto_cupom);
 
-  // Para vendas "a_receber"/"a_prazo", cada parcela tem seu próprio valor - não multiplicar
+  // Se tem pagamento duplo com segunda forma "a_receber" (não recebida ainda),
+  // descontar o valor da segunda forma do faturamento
+  const valorSegundaAReceber =
+    venda.segunda_forma_pagamento === "a_receber" && toNumber(venda.valor_segunda_forma) > 0
+      ? toNumber(venda.valor_segunda_forma)
+      : 0;
+
+  const receitaAjustada = receitaBase - valorSegundaAReceber;
+
+  // Para vendas "a_receber"/"a_prazo", cada parcela tem seu próprio valor
   if (isVendaPorCompetenciaRecebimento(venda)) {
-    return receitaBase;
+    return receitaAjustada;
   }
 
   // Para outros meios de pagamento parcelados, reconstituir valor total na parcela 1
@@ -142,10 +153,10 @@ export const getVendaReceitaLiquida = (venda: VendaFinanceiraLike) => {
     toNumber(venda.total_parcelas) > 1 &&
     Number(venda.parcela_numero || 1) === 1
   ) {
-    return receitaBase * toNumber(venda.total_parcelas);
+    return receitaAjustada * toNumber(venda.total_parcelas);
   }
 
-  return receitaBase;
+  return receitaAjustada;
 };
 
 export const getVendaCustoTotal = (venda: VendaFinanceiraLike) => {
