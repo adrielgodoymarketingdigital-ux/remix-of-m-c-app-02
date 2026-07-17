@@ -282,6 +282,7 @@ export const useVendas = () => {
             servico_id: ordem.servico_id,
             servicos: ordem.servicos,
           },
+          data_prevista_recebimento: contaAPrazoPorOsMap.get(ordem.numero_os)?.data_vencimento ?? null,
           contaAPrazoPendente: contaAPrazoPorOsMap.get(ordem.numero_os) ?? null,
           saldoCancelado,
         };
@@ -385,6 +386,7 @@ export const useVendas = () => {
               servico_id: ordem.servico_id,
               servicos: ordem.servicos,
             },
+            data_prevista_recebimento: contaAPrazoPorAllOsMap.get(ordem.numero_os)?.data_vencimento ?? null,
             contaAPrazoPendente: contaAPrazoPorAllOsMap.get(ordem.numero_os) ?? null,
             saldoCancelado,
           };
