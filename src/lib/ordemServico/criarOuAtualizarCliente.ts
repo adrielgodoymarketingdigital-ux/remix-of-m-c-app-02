@@ -63,6 +63,12 @@ export async function criarOuAtualizarCliente(
     data_nascimento: dados.dataNascimento || null,
   };
 
+  // Se o usuário selecionou um cliente diferente do cliente atual da OS,
+  // apenas trocar o vínculo — não atualizar dados de nenhum cliente
+  if (clienteSelecionadoId && clienteIdExistente && clienteSelecionadoId !== clienteIdExistente) {
+    return clienteSelecionadoId;
+  }
+
   if (clienteSelecionadoId && !clienteIdExistente) {
     await atualizarSeAlterado(clienteSelecionadoId, effectiveUserId, payload);
     return clienteSelecionadoId;
