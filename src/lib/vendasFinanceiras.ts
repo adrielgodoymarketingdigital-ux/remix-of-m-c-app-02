@@ -211,10 +211,12 @@ export const distribuirCustoParcelasGrupo = (vendas: VendaFinanceiraLike[]): Ven
 export interface OrdemFaturavelLike {
   numero_os?: string | null;
   total?: number | string | null;
+  forma_pagamento?: string | null;
   avarias?: {
     dados_pagamento?: {
       entrada?: number | string | null;
       saldo_cancelado?: boolean;
+      forma?: string | null;
     } | null;
   } | null;
 }
@@ -233,6 +235,13 @@ export const getValorFaturavelOS = (
   const total = toNumber(ordem.total);
   const dadosPagamento = ordem.avarias?.dados_pagamento;
   const entrada = toNumber(dadosPagamento?.entrada);
+  const formaPagamento = dadosPagamento?.forma || (ordem as any).forma_pagamento || "";
+
+  // OS com forma a_prazo/a_receber sem entrada: só contabilizar quando conta estiver recebida
+  if ((formaPagamento === 'a_prazo' || formaPagamento === 'a_receber') && entrada <= 0) {
+    if (statusContaVinculada === "pendente" || statusContaVinculada === null) return 0;
+    return total;
+  }
 
   if (!dadosPagamento || entrada <= 0) return total;
   if (dadosPagamento.saldo_cancelado === true) return entrada;
