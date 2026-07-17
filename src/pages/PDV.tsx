@@ -518,11 +518,14 @@ const PDV = () => {
               const nomeItem = item.nome || "Item";
               const nomeCliente = clienteSelecionado?.nome || "Cliente avulso";
               const sufixoParcela = isParceladoReceber ? ` (${parcIdx + 1}/${totalParcelas})` : "";
-              
+              const valorPrimeiraForma = pagamentoDuploAtivo
+                ? totalBrutoItem - valorSegundaPagamento
+                : vendaData.total;
+
               await supabase.from("contas").insert({
                 nome: `Venda - ${nomeItem} - ${nomeCliente}${sufixoParcela}`,
                 tipo: "receber",
-                valor: vendaData.total,
+                valor: valorPrimeiraForma,
                 data: dataPrevisao || dataLocalHoje(),
                 data_vencimento: dataPrevisao || null,
                 status: "pendente",
@@ -655,6 +658,7 @@ const PDV = () => {
                 categoria: "Vendas",
                 descricao: `venda_id:${vendaSegunda.id}`,
                 user_id: userIdParaVenda,
+                empresa_id: empresaIdPDV,
               });
             }
           }
