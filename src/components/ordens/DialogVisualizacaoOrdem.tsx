@@ -21,6 +21,7 @@ import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSTracking } from "@/hooks/useOSTracking";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -38,6 +39,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
   const { config: configuracaoLoja } = useConfiguracaoLoja(ordem?.empresa_id);
   const { statusList } = useOSStatusConfig();
   const { gerarLink, gerando } = useOSTracking();
+  const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
 
   if (!ordem) return null;
 
@@ -61,7 +63,11 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
 
   const handleGerarLink = async () => {
     if (linkAcompanhamento) return;
-    const link = await gerarLink(ordem.id);
+    if (!podeCompartilharLink) {
+      toast.error("Você não tem permissão para compartilhar o link de acompanhamento");
+      return;
+    }
+    const link = await gerarLink(ordem.id, lojaUserId ?? undefined);
     if (link) setLinkAcompanhamento(link);
   };
 
@@ -436,7 +442,11 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
                   Gere um link público para o cliente acompanhar o status da OS em tempo real, sem precisar fazer login.
                 </p>
 
-                {!linkAcompanhamento ? (
+                {!podeCompartilharLink ? (
+                  <p className="text-xs text-muted-foreground italic">
+                    Você não tem permissão para compartilhar o link de acompanhamento. Fale com o responsável da loja.
+                  </p>
+                ) : !linkAcompanhamento ? (
                   <Button
                     onClick={handleGerarLink}
                     disabled={gerando}

@@ -40,6 +40,7 @@ import { useOrdensServico, type OrdemServico } from "@/hooks/useOrdensServico";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSTracking } from "@/hooks/useOSTracking";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { BuscaOrdemServico } from "@/components/ordens/BuscaOrdemServico";
 import { TabelaOrdensServico } from "@/components/ordens/TabelaOrdensServico";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
@@ -196,6 +197,7 @@ export default function OrdemServicoPage() {
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
   const { compartilharWhatsApp, gerarLink } = useOSTracking();
+  const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
 
   useEffect(() => {
     const buscarUso = async () => {
@@ -572,7 +574,11 @@ export default function OrdemServicoPage() {
   };
 
   const handleCompartilhar = async (ordem: OrdemServico) => {
-    const link = await gerarLink(ordem.id);
+    if (!podeCompartilharLink) {
+      toast.error("Você não tem permissão para compartilhar o link de acompanhamento");
+      return;
+    }
+    const link = await gerarLink(ordem.id, lojaUserId ?? undefined);
     if (!link) return;
     setLinkCompartilhamento(link);
     setOrdemCompartilhar(ordem);

@@ -72,6 +72,7 @@ export interface PermissoesRecursos {
   ver_analise_lucros: boolean;
   ver_total_vendas: boolean;
   tecnico_obrigatorio_os: boolean;
+  compartilhar_link_acompanhamento: boolean;
 }
 
 export interface PermissoesDados {
@@ -167,6 +168,7 @@ export const PERMISSOES_DEFAULT: Permissoes = {
     ver_analise_lucros: false,
     ver_total_vendas: false,
     tecnico_obrigatorio_os: false,
+    compartilhar_link_acompanhamento: false,
   },
   dados: {
     produtos_pecas: false,
@@ -217,6 +219,7 @@ export const RECURSOS_LABELS: Record<keyof PermissoesRecursos, string> = {
   ver_analise_lucros: "Ver seção de Análise de Lucros e Custos (dentro do Financeiro)",
   ver_total_vendas: "Ver card de total vendido no período (Vendas)",
   tecnico_obrigatorio_os: "Técnico/Funcionário obrigatório na OS (não permite salvar sem preencher)",
+  compartilhar_link_acompanhamento: "Compartilhar link de acompanhamento da OS com o cliente",
 };
 
 export const DADOS_LABELS: Record<keyof PermissoesDados, string> = {

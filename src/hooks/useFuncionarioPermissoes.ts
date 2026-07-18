@@ -28,6 +28,7 @@ interface FuncionarioPermissoesResult {
   podeVerAnaliseLucros: boolean;
   podeVerTotalVendas: boolean;
   tecnicoObrigatorioOS: boolean;
+  podeCompartilharLink: boolean;
 }
 
 const PERMISSOES_DONO: Permissoes = {
@@ -70,6 +71,7 @@ const PERMISSOES_DONO: Permissoes = {
     ver_analise_lucros: true,
     ver_total_vendas: true,
     tecnico_obrigatorio_os: false,
+    compartilhar_link_acompanhamento: true,
   },
   dados: {
     produtos_pecas: true,
@@ -261,5 +263,6 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
     podeVerTotalVendas: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_total_vendas ?? false),
     // Lê da config global da loja (configuracoes_loja.layout_os_config.tecnico_obrigatorio_os)
     tecnicoObrigatorioOS: tecnicoObrigatorioOSGlobal,
+    podeCompartilharLink: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.compartilhar_link_acompanhamento ?? false),
   };
 }

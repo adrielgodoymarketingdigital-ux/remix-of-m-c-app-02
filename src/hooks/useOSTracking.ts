@@ -17,18 +17,22 @@ const LIMITES_PLANO: Record<string, number> = {
 export function useOSTracking() {
   const [gerando, setGerando] = useState(false);
 
-  const gerarLink = useCallback(async (osId: string) => {
+  const gerarLink = useCallback(async (osId: string, lojaUserId?: string) => {
     setGerando(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
+
+      // Dono da loja: usado para resolver o plano e a cota, mesmo quando quem
+      // compartilha é um funcionário (funcionário não tem assinatura própria)
+      const donoId = lojaUserId ?? user.id;
 
       // Se já existe link ativo para essa OS, reutiliza sem consumir cota
       const { data: existente } = await supabase
         .from('os_tracking_links')
         .select('token')
         .eq('os_id', osId)
-        .eq('user_id', user.id)
+        .eq('user_id', donoId)
         .eq('ativo', true)
         .maybeSingle();
 
@@ -36,18 +40,18 @@ export function useOSTracking() {
         return `${window.location.origin}/acompanhar/${existente.token}`;
       }
 
-      // Verificar plano do usuário
+      // Verificar plano do dono da loja
       const [{ data: assinatura }, { data: adminRole }] = await Promise.all([
         supabase
           .from('assinaturas')
           .select('plano_tipo, status, free_trial_ends_at, trial_end_at, data_fim')
-          .eq('user_id', user.id)
+          .eq('user_id', donoId)
           .in('status', ['active', 'trialing'])
           .maybeSingle(),
         supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', user.id)
+          .eq('user_id', donoId)
           .eq('role', 'admin')
           .maybeSingle(),
       ]);
@@ -74,7 +78,7 @@ export function useOSTracking() {
       const { data: uso } = await supabase
         .from('os_tracking_uso')
         .select('total_compartilhamentos')
-        .eq('user_id', user.id)
+        .eq('user_id', donoId)
         .eq('mes', mes)
         .eq('ano', ano)
         .maybeSingle();
@@ -91,7 +95,7 @@ export function useOSTracking() {
         .from('os_tracking_links')
         .insert({
           os_id: osId,
-          user_id: user.id,
+          user_id: donoId,
         })
         .select('token')
         .single();
@@ -102,7 +106,7 @@ export function useOSTracking() {
       await supabase
         .from('os_tracking_uso')
         .upsert({
-          user_id: user.id,
+          user_id: donoId,
           mes,
           ano,
           total_compartilhamentos: totalUsado + 1,
@@ -132,16 +136,17 @@ export function useOSTracking() {
     celularCliente: string,
     nomeCliente: string,
     numeroOS: string,
-    status: string
+    status: string,
+    lojaUserId?: string
   ) => {
-    const link = await gerarLink(osId);
+    const link = await gerarLink(osId, lojaUserId);
     if (!link) return;
 
     const { data: { user } } = await supabase.auth.getUser();
     const { data: config } = await supabase
       .from('configuracoes_loja')
       .select('mensagens_whatsapp')
-      .eq('user_id', user?.id)
+      .eq('user_id', lojaUserId ?? user?.id)
       .maybeSingle();
 
     const mensagens = (config?.mensagens_whatsapp as Record<string, string>) || {};
