@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
-import { Users, ArrowDownCircle, ArrowUpCircle, Wallet } from "lucide-react";
+import { Users, ArrowDownCircle, ArrowUpCircle, Wallet, Wrench } from "lucide-react";
 import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento } from "@/lib/formaPagamento";
 
 interface ResumoFechamento {
@@ -49,6 +49,13 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
   const [totalSangrias, setTotalSangrias] = useState(0);
   const [totalSuprimentos, setTotalSuprimentos] = useState(0);
   const [vendasPorForma, setVendasPorForma] = useState<BreakdownFormaPagamento[]>([]);
+  const [servicosEntregues, setServicosEntregues] = useState<{
+    forma_pagamento: string;
+    total: number;
+    numero_os: string;
+    cliente_nome: string;
+  }[]>([]);
+  const [totalServicos, setTotalServicos] = useState(0);
 
   useEffect(() => {
     if (open && caixa) {
@@ -161,6 +168,42 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       setVendaFuncionarios(breakdownFunc);
       setVendasPorForma(breakdownCompleto);
 
+      // Buscar OS entregues no período do caixa
+      const { data: osEntregues } = await supabase
+        .from("ordens_servico")
+        .select("numero_os, total, forma_pagamento, avarias, clientes(nome)")
+        .eq("user_id", userIdVendas)
+        .eq("status", "entregue")
+        .gte("data_saida", caixa.data_abertura)
+        .lte("data_saida", new Date().toISOString())
+        .or("cancelada.is.null,cancelada.eq.false");
+
+      if (caixa.empresa_id) {
+        // empresa_id já filtrado acima se necessário
+      }
+
+      const servicosFiltrados = (osEntregues || [])
+        .filter(os => {
+          const dadosPagamento = (os.avarias as any)?.dados_pagamento;
+          const forma = dadosPagamento?.forma || os.forma_pagamento || "";
+          // Excluir OS a prazo ainda pendentes
+          return forma !== 'a_prazo' || (dadosPagamento?.entrada > 0);
+        })
+        .map(os => {
+          const dadosPagamento = (os.avarias as any)?.dados_pagamento;
+          const entrada = Number(dadosPagamento?.entrada || 0);
+          const forma = dadosPagamento?.forma || os.forma_pagamento || "";
+          return {
+            numero_os: os.numero_os,
+            cliente_nome: (os.clientes as any)?.nome || "Cliente não informado",
+            forma_pagamento: forma,
+            total: entrada > 0 ? entrada : Number(os.total || 0),
+          };
+        });
+
+      setServicosEntregues(servicosFiltrados);
+      setTotalServicos(servicosFiltrados.reduce((acc, s) => acc + s.total, 0));
+
       // Buscar movimentações do caixa
       const { data: movimentacoes } = await supabase
         .from("caixa_movimentacoes")
@@ -266,6 +309,30 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                         <span className={`font-medium ${CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}`}>{formatCurrency(vf.total)}</span>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {servicosEntregues.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <Wrench className="h-4 w-4" />
+                      Serviços Entregues ({servicosEntregues.length})
+                    </h4>
+                    <div className="space-y-1">
+                      {servicosEntregues.map((os) => (
+                        <div key={os.numero_os} className="flex justify-between items-center text-sm py-1 border-b border-border/50 last:border-0">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{os.numero_os}</span>
+                            <span className="text-xs text-muted-foreground">{os.cliente_nome} • {os.forma_pagamento}</span>
+                          </div>
+                          <span className="font-medium text-green-600">{formatCurrency(os.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between font-semibold text-sm pt-1 border-t">
+                      <span>Total Serviços</span>
+                      <span className="text-green-600">{formatCurrency(totalServicos)}</span>
+                    </div>
                   </div>
                 )}
               </Card>
