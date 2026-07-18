@@ -169,18 +169,21 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       setVendasPorForma(breakdownCompleto);
 
       // Buscar OS entregues no período do caixa
-      const { data: osEntregues } = await supabase
+      let queryOs = supabase
         .from("ordens_servico")
         .select("numero_os, total, forma_pagamento, avarias, clientes(nome)")
         .eq("user_id", userIdVendas)
         .eq("status", "entregue")
+        .is("deleted_at", null)
         .gte("data_saida", caixa.data_abertura)
-        .lte("data_saida", new Date().toISOString())
-        .or("cancelada.is.null,cancelada.eq.false");
+        .lte("data_saida", new Date().toISOString());
 
       if (caixa.empresa_id) {
-        // empresa_id já filtrado acima se necessário
+        queryOs = queryOs.eq("empresa_id", caixa.empresa_id);
       }
+
+      const { data: osEntregues, error: osEntreguesError } = await queryOs;
+      if (osEntreguesError) console.error("Erro ao buscar OS entregues:", osEntreguesError);
 
       const servicosFiltrados = (osEntregues || [])
         .filter(os => {
