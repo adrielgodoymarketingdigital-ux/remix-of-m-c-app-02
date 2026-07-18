@@ -338,6 +338,13 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                     </div>
                   </div>
                 )}
+
+                {resumo && servicosEntregues.length > 0 && (
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-sm font-bold">Total Vendas + Serviços</span>
+                    <span className="text-base font-bold">{formatCurrency(resumo.total_vendido + totalServicos)}</span>
+                  </div>
+                )}
               </Card>
 
               {temMovimentacoes && (
