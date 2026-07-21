@@ -1543,19 +1543,19 @@ export default function OrdemServicoPage() {
 
       {/* Dialog de Compartilhamento */}
       <Dialog open={dialogCompartilharAberto} onOpenChange={setDialogCompartilharAberto}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-sm mx-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RadioTower className="h-5 w-5 text-blue-500" />
               Compartilhar Acompanhamento
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="truncate max-w-full">
               OS #{ordemCompartilhar?.numero_os} — {ordemCompartilhar?.cliente?.nome}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted border">
-            <p className="text-xs text-muted-foreground flex-1 truncate">{linkCompartilhamento}</p>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted border overflow-hidden">
+            <p className="text-xs text-muted-foreground flex-1 break-all min-w-0">{linkCompartilhamento}</p>
             <Button
               size="sm"
               variant="ghost"
