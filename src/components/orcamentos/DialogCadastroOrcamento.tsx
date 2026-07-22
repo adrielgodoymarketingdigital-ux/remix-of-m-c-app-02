@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, User, FileText, ClipboardCheck, Search, X, Smartphone, Wrench, Package, Info } from "lucide-react";
+import { Plus, Trash2, User, FileText, ClipboardCheck, Search, X, Smartphone, Wrench, Package, Info, Eye, EyeOff } from "lucide-react";
 import { ChecklistOrcamento, ItemOrcamento, Orcamento } from "@/types/orcamento";
 import { Checklist } from "@/types/ordem-servico";
 import { useClientes } from "@/hooks/useClientes";
@@ -58,6 +58,7 @@ export function DialogCadastroOrcamento({
   const [observacoes, setObservacoes] = useState("");
   const [termosCondicoes, setTermosCondicoes] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [mostrarTotal, setMostrarTotal] = useState(true);
 
   // Dispositivo
   const [tipoDispositivo, setTipoDispositivo] = useState("");
@@ -626,31 +627,61 @@ export function DialogCadastroOrcamento({
 
               {/* Totais */}
               {itens.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg border">
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs">Subtotal</Label>
-                    <Input value={formatCurrency(subtotal)} disabled className="bg-background font-medium" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">
-                      Desconto (R$)
-                      <span className="ml-1 text-muted-foreground font-normal">— opcional</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={desconto}
-                      onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold">Total Final</Label>
-                    <Input
-                      value={formatCurrency(valorTotal)}
-                      disabled
-                      className="bg-background font-bold text-lg text-primary"
-                    />
+                <div className="space-y-3 p-4 bg-muted rounded-lg border">
+                  {itens.length > 1 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Exibição do total</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1.5 text-xs"
+                        onClick={() => setMostrarTotal((prev) => !prev)}
+                      >
+                        {mostrarTotal ? (
+                          <>
+                            <EyeOff className="h-3.5 w-3.5" />
+                            Ocultar Total
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-3.5 w-3.5" />
+                            Mostrar Total
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {mostrarTotal && (
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground text-xs">Subtotal</Label>
+                        <Input value={formatCurrency(subtotal)} disabled className="bg-background font-medium" />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label className="text-xs">
+                        Desconto (R$)
+                        <span className="ml-1 text-muted-foreground font-normal">— opcional</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={desconto}
+                        onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    {mostrarTotal && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold">Total Final</Label>
+                        <Input
+                          value={formatCurrency(valorTotal)}
+                          disabled
+                          className="bg-background font-bold text-lg text-primary"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
