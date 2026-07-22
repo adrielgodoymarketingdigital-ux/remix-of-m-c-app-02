@@ -522,7 +522,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           : new Date().toISOString();
       }
       // Limpar data_saida se sair de "entregue" para outro status
-      if (statusAnterior === "entregue" && novoStatus !== "entregue") {
+      if (statusAnterior === "entregue" && novoStatus !== "entregue" && novoStatus !== "garantia") {
         updateData.data_saida = null;
       }
 
