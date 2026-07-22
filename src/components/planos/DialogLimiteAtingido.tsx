@@ -45,7 +45,7 @@ export function DialogLimiteAtingido({
   limite,
 }: DialogLimiteAtingidoProps) {
   const navigate = useNavigate();
-  const { titulo, descricao, icone } = MENSAGENS[tipo];
+  const { titulo, descricao, icone } = MENSAGENS[tipo] ?? MENSAGENS.ordens;
 
   const handleUpgrade = () => {
     onOpenChange(false);
