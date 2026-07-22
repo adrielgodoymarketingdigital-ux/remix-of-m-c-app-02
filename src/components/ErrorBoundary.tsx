@@ -6,16 +6,17 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
   hasError: boolean;
+  error: Error | null;
 }
 
 // Sem isso, qualquer exceção de render (ex: localStorage bloqueado em
 // WebViews in-app, falha de inicialização de algum provider) desmonta a
 // árvore inteira e deixa tela branca sem nenhum fallback visível.
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false };
+  state: ErrorBoundaryState = { hasError: false, error: null };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -34,6 +35,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <p className="max-w-sm text-sm text-muted-foreground">
             Ocorreu um erro inesperado ao carregar a página. Tente recarregar.
           </p>
+          {/* TEMPORÁRIO: mostrar erro para debug (inclusive em produção, até achar a causa raiz do "_id") */}
+          {this.state.error && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-xs text-red-800 max-w-full overflow-auto">
+              <p className="font-bold mb-1">{this.state.error.message}</p>
+              <pre className="whitespace-pre-wrap">{this.state.error.stack}</pre>
+            </div>
+          )}
           <button
             onClick={() => window.location.reload()}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
