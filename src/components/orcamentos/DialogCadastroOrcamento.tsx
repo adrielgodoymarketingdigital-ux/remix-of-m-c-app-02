@@ -86,7 +86,7 @@ export function DialogCadastroOrcamento({
       setBuscaCliente(orcamentoEdicao.cliente_nome || "");
       setClienteTelefone(orcamentoEdicao.cliente_telefone || "");
       setClienteEmail(orcamentoEdicao.cliente_email || "");
-      setItens(orcamentoEdicao.itens || []);
+      setItens(Array.isArray(orcamentoEdicao.itens) ? orcamentoEdicao.itens : []);
       setDesconto(orcamentoEdicao.desconto || 0);
       setValidadeDias(orcamentoEdicao.validade_dias || 30);
       setObservacoes(orcamentoEdicao.observacoes || "");
@@ -98,8 +98,10 @@ export function DialogCadastroOrcamento({
       setModeloDispositivo(orcamentoEdicao.modelo_dispositivo || "");
       setCorDispositivo(orcamentoEdicao.cor_dispositivo || "");
       setChecklist(
-        orcamentoEdicao.checklist
-          ? { entrada: {}, saida: {}, ...orcamentoEdicao.checklist }
+        orcamentoEdicao.checklist &&
+          typeof orcamentoEdicao.checklist === "object" &&
+          !Array.isArray(orcamentoEdicao.checklist)
+          ? { entrada: {}, saida: {}, ...(orcamentoEdicao.checklist as any) }
           : { entrada: {}, saida: {} }
       );
     } else {
