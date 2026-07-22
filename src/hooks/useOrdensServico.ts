@@ -561,6 +561,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
 
       // 4. Integração com o financeiro baseado no novo status (em try-catch separado para não bloquear a UI)
       try {
+        // Status "garantia" não gera nem altera lançamentos financeiros
+        if (novoStatus !== "garantia") {
         // 4.1 Se mudou para "aguardando_retirada" ou "em_andamento" → criar conta a receber (pendente)
         const statusQueGeraConta = ["aguardando_retirada", "em_andamento"];
         const statusAnteriorNaoGerava = !statusQueGeraConta.includes(statusAnterior || "");
@@ -729,6 +731,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             title: "Status atualizado",
             description: "O status da ordem foi atualizado com sucesso.",
           });
+        }
         }
 
       } catch (finError) {
