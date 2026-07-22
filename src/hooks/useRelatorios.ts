@@ -103,7 +103,7 @@ export const useRelatorios = () => {
         `)
         .eq("user_id", userId)
         .is("deleted_at", null)
-        .in("status", ["finalizado", "entregue"])
+        .in("status", ["finalizado", "entregue", "garantia"])
         .order("data_saida", { ascending: false, nullsFirst: false });
 
       if (filtros.dataInicio && filtros.dataFim) {
@@ -132,7 +132,7 @@ export const useRelatorios = () => {
         .from("servicos_avulsos")
         .select("*")
         .eq("user_id", userId)
-        .in("status", ["entregue", "finalizado"])
+        .in("status", ["finalizado", "entregue", "garantia"])
         .order("created_at", { ascending: false });
 
       if (filtros.dataInicio) {
@@ -688,7 +688,7 @@ export const useRelatorios = () => {
         `)
         .eq("user_id", userId)
         .is("deleted_at", null)
-        .in("status", ["finalizado", "entregue"]);
+        .in("status", ["finalizado", "entregue", "garantia"]);
 
       if (filtros.dataInicio && filtros.dataFim) {
         queryOrdens = queryOrdens.or(
@@ -716,7 +716,7 @@ export const useRelatorios = () => {
         .from("servicos_avulsos")
         .select("*")
         .eq("user_id", userId)
-        .in("status", ["entregue", "finalizado"]);
+        .in("status", ["finalizado", "entregue", "garantia"]);
 
       if (filtros.dataInicio) {
         const inicioAvulsos2ISO = parseFiltroDate(filtros.dataInicio).toISOString();

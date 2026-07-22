@@ -233,7 +233,7 @@ const Dashboard = () => {
       .select("total, servico_id, avarias, numero_os")
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .in("status", ["finalizado", "entregue"])
+      .in("status", ["finalizado", "entregue", "garantia"])
       .or(
         `and(data_saida.not.is.null,data_saida.gte.${inicioStr},data_saida.lte.${fimStr}T23:59:59),and(data_saida.is.null,created_at.gte.${inicioISO},created_at.lte.${fimISO})`
       );
@@ -374,7 +374,7 @@ const Dashboard = () => {
       .from("servicos_avulsos")
       .select("preco, custo, status")
       .eq("user_id", userId)
-      .in("status", ["entregue", "finalizado"])
+      .in("status", ["finalizado", "entregue", "garantia"])
       .gte("created_at", avulsosInicioISO)
       .lte("created_at", avulsosFimISO);
     if (ef) qAvulsosMes = qAvulsosMes.or(`empresa_id.eq.${ef},empresa_id.is.null`);
@@ -486,7 +486,7 @@ const Dashboard = () => {
       .select("total, avarias, numero_os")
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .in("status", ["finalizado", "entregue"])
+      .in("status", ["finalizado", "entregue", "garantia"])
       .gte("data_saida", inicioDiaISO)
       .lte("data_saida", fimDiaISO);
     if (ef) qOrdensHoje = qOrdensHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
@@ -503,7 +503,7 @@ const Dashboard = () => {
       .from("servicos_avulsos")
       .select("preco, custo")
       .eq("user_id", userId)
-      .in("status", ["entregue", "finalizado"])
+      .in("status", ["finalizado", "entregue", "garantia"])
       .gte("created_at", inicioDiaISO)
       .lte("created_at", fimDiaISO);
     if (ef) qAvulsosHoje = qAvulsosHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
