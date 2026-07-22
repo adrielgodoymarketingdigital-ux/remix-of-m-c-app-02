@@ -29,6 +29,8 @@ import {
   Settings,
   ChevronDown,
   Thermometer,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useState } from "react";
@@ -68,6 +70,7 @@ export function DialogVisualizarOrcamento({
   const [imprimindo, setImprimindo] = useState(false);
   const [configImpressao, setConfigImpressao] = useState<typeof lojaConfig | null>(null);
   const [configLayoutAberto, setConfigLayoutAberto] = useState(false);
+  const [mostrarTotal, setMostrarTotal] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -308,27 +311,52 @@ export function DialogVisualizarOrcamento({
 
             {/* Totais */}
             <div className="space-y-2 p-4 bg-muted rounded-lg">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>
-                  <ValorMonetario valor={orcamento.subtotal} />
-                </span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground">Exibição do total</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={() => setMostrarTotal((prev) => !prev)}
+                >
+                  {mostrarTotal ? (
+                    <>
+                      <EyeOff className="h-3.5 w-3.5" />
+                      Ocultar Total
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3.5 w-3.5" />
+                      Mostrar Total
+                    </>
+                  )}
+                </Button>
               </div>
-              {orcamento.desconto > 0 && (
-                <div className="flex justify-between text-destructive">
-                  <span>Desconto</span>
-                  <span>
-                    - <ValorMonetario valor={orcamento.desconto} />
-                  </span>
+              {mostrarTotal && (
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>
+                      <ValorMonetario valor={orcamento.subtotal} />
+                    </span>
+                  </div>
+                  {orcamento.desconto > 0 && (
+                    <div className="flex justify-between text-destructive">
+                      <span>Desconto</span>
+                      <span>
+                        - <ValorMonetario valor={orcamento.desconto} />
+                      </span>
+                    </div>
+                  )}
+                  <Separator />
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Total</span>
+                    <span>
+                      <ValorMonetario valor={orcamento.valor_total} />
+                    </span>
+                  </div>
                 </div>
               )}
-              <Separator />
-              <div className="flex justify-between text-lg font-bold">
-                <span>Total</span>
-                <span>
-                  <ValorMonetario valor={orcamento.valor_total} />
-                </span>
-              </div>
             </div>
 
             {/* Datas */}
