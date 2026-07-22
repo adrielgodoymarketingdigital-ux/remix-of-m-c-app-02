@@ -525,6 +525,10 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       if (statusAnterior === "entregue" && novoStatus !== "entregue" && novoStatus !== "garantia") {
         updateData.data_saida = null;
       }
+      // Ao ir para garantia, preservar data_saida existente ou preencher com agora
+      if (novoStatus === "garantia" && !ordem.data_saida) {
+        updateData.data_saida = new Date().toISOString();
+      }
 
       let qUpdate = supabase
         .from("ordens_servico")
