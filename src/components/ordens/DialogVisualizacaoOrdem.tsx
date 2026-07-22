@@ -14,7 +14,7 @@ import {
   User, Smartphone, CheckCircle2, XCircle, PenTool,
   MessageSquare, Camera, Hash, Calendar, Clock,
   MapPin, Phone, CreditCard, Wrench, Lock, FileText,
-  RadioTower, Copy, ExternalLink, Loader2, Package,
+  RadioTower, Copy, ExternalLink, Loader2, Package, History,
 } from "lucide-react";
 import { checklistIcons } from "@/lib/checklist-icons";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
@@ -24,6 +24,9 @@ import { useOSTracking } from "@/hooks/useOSTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface DialogVisualizacaoOrdemProps {
   open: boolean;
@@ -36,6 +39,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
   const [dialogAssinaturaSaidaAberto, setDialogAssinaturaSaidaAberto] = useState(false);
   const [dialogWhatsAppAberto, setDialogWhatsAppAberto] = useState(false);
   const [linkAcompanhamento, setLinkAcompanhamento] = useState<string | null>(null);
+  const [historico, setHistorico] = useState<any[]>([]);
   const { config: configuracaoLoja } = useConfiguracaoLoja(ordem?.empresa_id);
   const { statusList } = useOSStatusConfig();
   const { gerarLink, gerando } = useOSTracking();
@@ -85,6 +89,26 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
       `Olá ${ordem.cliente?.nome}! Acompanhe sua OS #${ordem.numero_os} em tempo real:\n${linkAcompanhamento}`
     );
     window.open(`https://wa.me/55${celular}?text=${msg}`, "_blank");
+  };
+
+  const getLabelAcao = (acao: string) => {
+    const labels: Record<string, string> = {
+      'STATUS_GARANTIA': '🔄 Status alterado para Em Garantia',
+      'UPDATE': '✏️ OS atualizada',
+      'CREATE': '📋 OS criada',
+      'STATUS': '🔄 Status alterado',
+    };
+    return labels[acao] || acao;
+  };
+
+  const carregarHistorico = async () => {
+    if (!ordem?.id) return;
+    const { data } = await supabase
+      .from('os_audit_log')
+      .select('*')
+      .eq('os_id', ordem.id)
+      .order('created_at', { ascending: false });
+    setHistorico(data || []);
   };
 
   return (
@@ -145,8 +169,12 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
 
         {/* Tabs */}
         <div className="px-3 sm:px-5 pt-3 overflow-y-auto flex-1 min-h-0">
-          <Tabs defaultValue="cliente" className="w-full">
-            <TabsList className="grid w-full grid-cols-7 h-auto mb-4 bg-muted/40 border border-border/40 p-0.5 rounded-lg">
+          <Tabs
+            defaultValue="cliente"
+            className="w-full"
+            onValueChange={(value) => { if (value === "historico") carregarHistorico(); }}
+          >
+            <TabsList className="grid w-full grid-cols-8 h-auto mb-4 bg-muted/40 border border-border/40 p-0.5 rounded-lg">
               {[
                 { value: "cliente", icon: User, label: "Cliente" },
                 { value: "dispositivo", icon: Smartphone, label: "Dispositivo" },
@@ -155,6 +183,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
                 { value: "saida", icon: XCircle, label: "Saída" },
                 { value: "assinaturas", icon: PenTool, label: "Assin." },
                 { value: "rastrear", icon: RadioTower, label: "Tempo Real" },
+                { value: "historico", icon: History, label: "Histórico" },
               ].map(({ value, icon: Icon, label, badge }) => (
                 <TabsTrigger
                   key={value}
@@ -509,6 +538,37 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
                       O link permanece ativo enquanto a OS estiver em aberto.
                     </p>
                   </div>
+                )}
+              </Section>
+            </TabsContent>
+
+            {/* ── Tab Histórico ── */}
+            <TabsContent value="historico" className="mt-0">
+              <Section title="Histórico da OS" icon={<History className="h-3.5 w-3.5" />}>
+                {historico.length > 0 ? (
+                  <div className="space-y-3">
+                    {historico.map((item) => (
+                      <div key={item.id} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                          <div className="w-px flex-1 bg-border mt-1" />
+                        </div>
+                        <div className="pb-3 flex-1">
+                          <p className="text-xs font-medium">{getLabelAcao(item.acao)}</p>
+                          {item.dados_depois?.problema_relatado && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Problema: {item.dados_depois.problema_relatado}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                            {format(new Date(item.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState label="Nenhum registro de histórico" />
                 )}
               </Section>
             </TabsContent>

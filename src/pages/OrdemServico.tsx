@@ -72,6 +72,7 @@ const DialogConfiguracaoTermoGarantia = lazy(() => import("@/components/ordens/D
 const DialogConfiguracaoLayoutOS = lazy(() => import("@/components/ordens/DialogConfiguracaoLayoutOS").then((m) => ({ default: m.DialogConfiguracaoLayoutOS })));
 const DialogConfiguracaoTermoResponsabilidade = lazy(() => import("@/components/ordens/DialogConfiguracaoTermoResponsabilidade").then((m) => ({ default: m.DialogConfiguracaoTermoResponsabilidade })));
 const DialogPopupStatusConta = lazy(() => import("@/components/ordens/DialogPopupStatusConta").then((m) => ({ default: m.DialogPopupStatusConta })));
+const DialogProblemaGarantia = lazy(() => import("@/components/ordens/DialogProblemaGarantia").then((m) => ({ default: m.DialogProblemaGarantia })));
 const ImpressaoOrdemServico = lazy(() => import("@/components/ordens/ImpressaoOrdemServico").then((m) => ({ default: m.ImpressaoOrdemServico })));
 const ImpressaoTermoResponsabilidade = lazy(() => import("@/components/ordens/ImpressaoTermoResponsabilidade").then((m) => ({ default: m.ImpressaoTermoResponsabilidade })));
 const ConfiguracaoNumeracaoOS = lazy(() => import("@/components/configuracoes/ConfiguracaoNumeracaoOS").then((m) => ({ default: m.ConfiguracaoNumeracaoOS })));
@@ -169,6 +170,8 @@ export default function OrdemServicoPage() {
   const [contadorOS, setContadorOS] = useState({ usadas: 0, limite: -1, percentual: 0, ilimitado: true, restantes: Infinity });
   const [dialogPopupConta, setDialogPopupConta] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ id: string; slug: string; nome: string } | null>(null);
+  const [dialogProblemaGarantia, setDialogProblemaGarantia] = useState(false);
+  const [ordemParaGarantia, setOrdemParaGarantia] = useState<string | null>(null);
   const [dialogServicoAvulso, setDialogServicoAvulso] = useState(false);
   const [avulsoParaExcluir, setAvulsoParaExcluir] = useState<string | null>(null);
   const [dialogImportarOS, setDialogImportarOS] = useState(false);
@@ -496,6 +499,12 @@ export default function OrdemServicoPage() {
       }
     }
 
+    if (novoStatus === "garantia") {
+      setOrdemParaGarantia(id);
+      setDialogProblemaGarantia(true);
+      return;
+    }
+
     const statusConfig = getStatusBySlug(novoStatus);
     if (statusConfig?.gera_conta && statusConfig?.pedir_data_vencimento) {
       setPendingStatusChange({ id, slug: novoStatus, nome: statusConfig.nome });
@@ -557,12 +566,17 @@ export default function OrdemServicoPage() {
 
   const handlePopupContaConfirmar = async (dataVencimento: Date | null, semPrazo: boolean) => {
     if (!pendingStatusChange) return;
-    
+
     await atualizarStatus(pendingStatusChange.id, pendingStatusChange.slug);
     await criarContaParaStatus(pendingStatusChange.id, pendingStatusChange.slug, dataVencimento, semPrazo);
-    
+
     setDialogPopupConta(false);
     setPendingStatusChange(null);
+  };
+
+  const handleConfirmarProblemaGarantia = async (_problemaRelatado: string) => {
+    if (!ordemParaGarantia) return;
+    await atualizarStatus(ordemParaGarantia, "garantia");
   };
 
   // Enviar OS via WhatsApp - abre dialog
@@ -1520,6 +1534,17 @@ export default function OrdemServicoPage() {
             }}
             statusNome={pendingStatusChange?.nome || ''}
             onConfirmar={handlePopupContaConfirmar}
+          />
+
+          {/* Dialog Problema Relatado - Garantia */}
+          <DialogProblemaGarantia
+            open={dialogProblemaGarantia}
+            onOpenChange={(open) => {
+              setDialogProblemaGarantia(open);
+              if (!open) setOrdemParaGarantia(null);
+            }}
+            ordemId={ordemParaGarantia}
+            onConfirmar={handleConfirmarProblemaGarantia}
           />
 
           {/* Dialog de Limite Atingido */}
