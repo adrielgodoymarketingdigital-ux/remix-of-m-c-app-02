@@ -80,31 +80,36 @@ export function DialogCadastroOrcamento({
   }, []);
 
   useEffect(() => {
-    if (orcamentoEdicao) {
-      setClienteId(orcamentoEdicao.cliente_id || "");
-      setClienteNome(orcamentoEdicao.cliente_nome || "");
-      setBuscaCliente(orcamentoEdicao.cliente_nome || "");
-      setClienteTelefone(orcamentoEdicao.cliente_telefone || "");
-      setClienteEmail(orcamentoEdicao.cliente_email || "");
-      setItens(Array.isArray(orcamentoEdicao.itens) ? orcamentoEdicao.itens : []);
-      setDesconto(orcamentoEdicao.desconto || 0);
-      setValidadeDias(orcamentoEdicao.validade_dias || 30);
-      setObservacoes(orcamentoEdicao.observacoes || "");
-      setTermosCondicoes(orcamentoEdicao.termos_condicoes || "");
-      setTipoDispositivo(orcamentoEdicao.tipo_dispositivo || "");
-      setSistemaOperacional(orcamentoEdicao.sistema_operacional || "");
-      setFabricante(orcamentoEdicao.fabricante || "");
-      setMarcaDispositivo(orcamentoEdicao.marca_dispositivo || "");
-      setModeloDispositivo(orcamentoEdicao.modelo_dispositivo || "");
-      setCorDispositivo(orcamentoEdicao.cor_dispositivo || "");
-      setChecklist(
-        orcamentoEdicao.checklist &&
-          typeof orcamentoEdicao.checklist === "object" &&
-          !Array.isArray(orcamentoEdicao.checklist)
-          ? { entrada: {}, saida: {}, ...(orcamentoEdicao.checklist as any) }
-          : { entrada: {}, saida: {} }
-      );
-    } else {
+    try {
+      if (orcamentoEdicao) {
+        setClienteId(orcamentoEdicao.cliente_id || "");
+        setClienteNome(orcamentoEdicao.cliente_nome || "");
+        setBuscaCliente(orcamentoEdicao.cliente_nome || "");
+        setClienteTelefone(orcamentoEdicao.cliente_telefone || "");
+        setClienteEmail(orcamentoEdicao.cliente_email || "");
+        setItens(Array.isArray(orcamentoEdicao.itens) ? orcamentoEdicao.itens : []);
+        setDesconto(orcamentoEdicao.desconto || 0);
+        setValidadeDias(orcamentoEdicao.validade_dias || 30);
+        setObservacoes(orcamentoEdicao.observacoes || "");
+        setTermosCondicoes(orcamentoEdicao.termos_condicoes || "");
+        setTipoDispositivo(orcamentoEdicao.tipo_dispositivo || "");
+        setSistemaOperacional(orcamentoEdicao.sistema_operacional || "");
+        setFabricante(orcamentoEdicao.fabricante || "");
+        setMarcaDispositivo(orcamentoEdicao.marca_dispositivo || "");
+        setModeloDispositivo(orcamentoEdicao.modelo_dispositivo || "");
+        setCorDispositivo(orcamentoEdicao.cor_dispositivo || "");
+        setChecklist(
+          orcamentoEdicao.checklist &&
+            typeof orcamentoEdicao.checklist === "object" &&
+            !Array.isArray(orcamentoEdicao.checklist)
+            ? { entrada: {}, saida: {}, ...(orcamentoEdicao.checklist as any) }
+            : { entrada: {}, saida: {} }
+        );
+      } else {
+        limparFormulario();
+      }
+    } catch (error) {
+      console.error('[DialogCadastroOrcamento] Erro ao carregar orçamento para edição:', error);
       limparFormulario();
     }
   }, [orcamentoEdicao, aberto]);
