@@ -379,8 +379,14 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
           <AlertDialogDescription>
             {vendaSelecionada?.contaAPrazoPendente && (
               <>
-                Tem certeza que deseja cancelar o saldo a prazo de{" "}
-                <strong>{formatDate(vendaSelecionada.contaAPrazoPendente.data_vencimento || "")}</strong>{" "}
+                Tem certeza que deseja cancelar o saldo a prazo
+                {vendaSelecionada.contaAPrazoPendente.data_vencimento ? (
+                  <>
+                    {" "}de <strong>{formatDate(vendaSelecionada.contaAPrazoPendente.data_vencimento)}</strong>
+                  </>
+                ) : (
+                  <> (sem data de vencimento definida)</>
+                )}{" "}
                 no valor de{" "}
                 <strong>
                   {vendaSelecionada.contaAPrazoPendente.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
