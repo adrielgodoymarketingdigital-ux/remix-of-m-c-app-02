@@ -53,7 +53,7 @@ export const DashboardOrdensServico = ({
     return s.count > 0 || config?.is_sistema;
   });
 
-  const ordensEntregues = ordens.filter((o) => o.status === "entregue");
+  const ordensEntregues = ordens.filter((o) => o.status === "entregue" || o.status === "garantia");
   const valorFaturado = ordensEntregues.reduce((acc, ordem) => acc + (ordem.total || 0), 0);
 
   const totalAvulsos = servicosAvulsos.length;
