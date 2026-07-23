@@ -356,7 +356,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         .from("ordens_servico")
         .select("avarias, total")
         .eq("user_id", userId)
-        .eq("status", "entregue")
+        .in("status", ["entregue", "garantia"])
         .eq("is_teste", false)
         .is("deleted_at", null);
 
