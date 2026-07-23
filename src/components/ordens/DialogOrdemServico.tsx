@@ -782,6 +782,12 @@ export const DialogOrdemServico = ({
               .maybeSingle();
 
             if (contaExistente) {
+              // Se a OS já está entregue/garantia e a forma de pagamento não é mais "a prazo",
+              // a conta deve refletir como recebida (evita ficar presa em "pendente" após editar o pagamento)
+              const jaEntregueOuGarantia = formData.status === "entregue" || formData.status === "garantia";
+              const deveMarcarRecebido = jaEntregueOuGarantia && formData.formaPagamento !== "a_prazo";
+              const dataRecebimentoConta = dataHoje();
+
               // Atualizar conta existente com novos valores
               await supabase.from("contas").update({
                 valor: saldoRestante > 0 ? saldoRestante : total,
@@ -790,6 +796,9 @@ export const DialogOrdemServico = ({
                 descricao: descricaoConta,
                 nome: `OS ${ordem.numero_os} - ${formData.clienteNome}`,
                 data_vencimento: dataVencConta,
+                ...(deveMarcarRecebido
+                  ? { status: "recebido", data: dataRecebimentoConta, data_pagamento: dataRecebimentoConta }
+                  : {}),
               }).eq("id", contaExistente.id);
             } else {
               // Criar nova conta
