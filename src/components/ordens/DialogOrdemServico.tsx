@@ -719,6 +719,7 @@ export const DialogOrdemServico = ({
         const { error } = await supabase
           .from("ordens_servico")
           .update({
+            cliente_id: clienteId!,
             dispositivo_tipo: formData.dispositivoTipo,
             dispositivo_marca: formData.dispositivoMarca,
             dispositivo_modelo: formData.dispositivoModelo,
