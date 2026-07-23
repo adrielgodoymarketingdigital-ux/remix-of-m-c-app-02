@@ -204,8 +204,6 @@ const Dashboard = () => {
     if (!user) return;
     const userId = resolvedUserIdRef.current ?? user.id;
 
-    const inicioStr = format(inicio, "yyyy-MM-dd");
-    const fimStr = format(fim, "yyyy-MM-dd");
     const { queryInicio, queryFim } = getFinancialQueryDateBounds(inicio, fim);
     // ISO completo para filtros de created_at (timestamptz) — evita ambiguidade de fuso
     const inicioISO = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), 0, 0, 0, 0).toISOString();
@@ -228,6 +226,9 @@ const Dashboard = () => {
     // Buscar apenas finalizadas/entregues para cálculo de faturamento
     // data_saida preenchida apenas em "entregue". Fallback: created_at (nunca muda),
     // jamais updated_at (muda a cada edição e traz OS antigas para o mês errado)
+    // data_saida é timestamptz salvo em UTC via toISOString(); usar inicioISO/fimISO
+    // (limites do dia local convertidos para UTC) evita excluir OS do fim do mês
+    // entregues à noite no fuso do Brasil (UTC-3).
     let qVendasServicos = supabase
       .from("ordens_servico")
       .select("total, servico_id, avarias, numero_os")
@@ -235,7 +236,7 @@ const Dashboard = () => {
       .is("deleted_at", null)
       .in("status", ["finalizado", "entregue", "garantia"])
       .or(
-        `and(data_saida.not.is.null,data_saida.gte.${inicioStr},data_saida.lte.${fimStr}T23:59:59),and(data_saida.is.null,created_at.gte.${inicioISO},created_at.lte.${fimISO})`
+        `and(data_saida.not.is.null,data_saida.gte.${inicioISO},data_saida.lte.${fimISO}),and(data_saida.is.null,created_at.gte.${inicioISO},created_at.lte.${fimISO})`
       );
     if (ef) qVendasServicos = qVendasServicos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: vendasServicos } = await qVendasServicos;
