@@ -664,7 +664,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         }
 
         // 4.2.1 Se saiu de "entregue" para outro status (exceto estornado) → reverter conta para pendente
-        if (statusAnterior === "entregue" && novoStatus !== "entregue" && novoStatus !== "estornado") {
+        if (statusAnterior === "entregue" && novoStatus !== "entregue" && novoStatus !== "estornado" && novoStatus !== "garantia") {
           const { data: contaRecebida } = await supabase
             .from("contas")
             .select("id")
