@@ -525,9 +525,11 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       if (statusAnterior === "entregue" && novoStatus !== "entregue" && novoStatus !== "garantia") {
         updateData.data_saida = null;
       }
-      // Ao ir para garantia, preservar data_saida existente ou preencher com agora
-      if (novoStatus === "garantia" && !ordem.data_saida) {
-        updateData.data_saida = new Date().toISOString();
+      // Ao ir para garantia, NUNCA alterar data_saida — preservar sempre o valor original
+      // A data_saida representa quando a OS foi entregue ao cliente, não quando entrou em garantia
+      if (novoStatus === "garantia") {
+        // Não alterar data_saida — remover qualquer modificação que possa ter sido adicionada
+        delete updateData.data_saida;
       }
 
       let qUpdate = supabase
