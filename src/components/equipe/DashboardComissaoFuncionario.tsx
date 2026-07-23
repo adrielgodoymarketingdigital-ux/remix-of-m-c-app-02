@@ -47,12 +47,12 @@ export function DashboardComissaoFuncionario() {
 
       const { data: ordens } = await supabase
         .from("ordens_servico")
-        .select("total")
+        .select("total, base_comissao, data_saida")
         .eq("funcionario_id", funcionarioId)
         .is("deleted_at", null)
-        .in("status", ["finalizado", "entregue"])
-        .gte("updated_at", inicio)
-        .lte("updated_at", fim);
+        .in("status", ["finalizado", "entregue", "garantia"])
+        .gte("data_saida", inicio)
+        .lte("data_saida", fim);
 
       const { data: vendasAnt } = await supabase
         .from("vendas")
