@@ -91,7 +91,7 @@ export const useVendas = () => {
         `)
         .eq("user_id", resolvedUserId)
         .is("deleted_at", null)
-        .in("status", ["finalizado", "entregue"])
+        .in("status", ["finalizado", "entregue", "garantia"])
         .order("data_saida", { ascending: false, nullsFirst: false });
 
       if (empresaFiltro) {
@@ -316,7 +316,7 @@ export const useVendas = () => {
           .select(`*, clientes!ordens_servico_cliente_fkey (nome, telefone), servicos (nome)`)
           .eq("user_id", resolvedUserId)
           .is("deleted_at", null)
-          .in("status", ["finalizado", "entregue"])
+          .in("status", ["finalizado", "entregue", "garantia"])
           .order("updated_at", { ascending: false });
         if (empresaFiltro) {
           allOrdensQuery = isFilial
