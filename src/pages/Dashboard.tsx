@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard, Activity, Zap } from "lucide-react";
+import { DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard, Activity, Zap, ClipboardList, Users, AlertOctagon, ArrowUpRight, ArrowDownRight, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -29,6 +29,17 @@ import { useRelatorios } from "@/hooks/useRelatorios";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, getValorFaturavelOS } from "@/lib/vendasFinanceiras";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 import { useIdentidade } from "@/hooks/useResolvedUserId";
+import { useDashboardResumo } from "@/hooks/useDashboardResumo";
+import { useCotacaoDolar } from "@/hooks/useCotacaoDolar";
+import { getSerieHistorica7Dias, getSerieHistoricaPeriodo, somarSeriePeriodo, type PontoSerieDiaria } from "@/lib/serieHistorica";
+import { calcularVariacaoPercentual } from "@/lib/variacaoPercentual";
+import { Sparkline } from "@/components/dashboard/Sparkline";
+import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto";
+import { SeletorFilial } from "@/components/layout/SeletorFilial";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { useOcultarValores } from "@/contexts/OcultarValoresContext";
 
 interface ProdutoVendido {
   nome: string;
@@ -122,9 +133,16 @@ const Dashboard = () => {
   });
   const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<ProdutoVendido[]>([]);
   const [produtosMenosVendidos, setProdutosMenosVendidos] = useState<ProdutoVendido[]>([]);
-  
+  const [serieHistorica, setSerieHistorica] = useState<PontoSerieDiaria[]>([]);
+  const [metricsMesAnterior, setMetricsMesAnterior] = useState({
+    faturamentoTotal: 0,
+    lucroLiquido: 0,
+  });
+  const [hojeAnteriorData, setHojeAnteriorData] = useState({ faturamento: 0, lucro: 0 });
+
   // Estado para filtro de mês - formato "YYYY-MM" ou "atual" para mês corrente
   const [mesSelecionado, setMesSelecionado] = useState<string>("atual");
+  const { isProprietario } = useEmpresa();
 
   // Funcionários não veem banner de trial expirado
   const isTrialExpirado = !isFuncionario && assinatura?.plano_tipo === "trial" && trialExpirado;
@@ -155,6 +173,12 @@ const Dashboard = () => {
     return { inicio: startOfMonth(data), fim: endOfMonth(data) };
   };
 
+  const datasMesAtualParaResumo = getDatasMesSelecionado(mesSelecionado);
+  const dashboardResumo = useDashboardResumo(datasMesAtualParaResumo.inicio, datasMesAtualParaResumo.fim);
+  const { cotacao: cotacaoDolar, variacao: variacaoCotacaoDolar } = useCotacaoDolar();
+  const infoPlanoMobile = useMemo(() => getInfoPlanoCompacto(assinatura as any), [assinatura]);
+  const { valoresOcultos, toggleValores: toggleValoresOcultos } = useOcultarValores();
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -162,6 +186,8 @@ const Dashboard = () => {
   // Carregar dados de hoje separadamente, sem depender de dashboardBloqueado
   useEffect(() => {
     loadHojeData();
+    loadComparacaoOntem();
+    loadSerieHistorica();
   }, [empresaFiltro]);
 
   // Recarregar dados quando o mês selecionado mudar (pular se dashboard bloqueado para funcionário)
@@ -172,6 +198,7 @@ const Dashboard = () => {
     loadFinanceiroData(datas.inicio, datas.fim);
     loadProdutosVendidos(datas.inicio, datas.fim);
     loadHojeData();
+    loadComparacaoMesAnterior(datas.inicio);
   }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
 
   // Recarregar quando uma OS for criada ou editada
@@ -182,6 +209,9 @@ const Dashboard = () => {
       loadMetrics(datas.inicio, datas.fim);
       loadFinanceiroData(datas.inicio, datas.fim);
       loadHojeData();
+      loadComparacaoOntem();
+      loadSerieHistorica();
+      loadComparacaoMesAnterior(datas.inicio);
     };
     window.addEventListener("os-salva", handler);
     window.addEventListener("conta-atualizada", handler);
@@ -464,6 +494,49 @@ const Dashboard = () => {
 
   };
 
+  const loadSerieHistorica = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const userId = resolvedUserIdRef.current ?? user.id;
+    const pontos = await getSerieHistorica7Dias(userId, empresaFiltroRef.current);
+    setSerieHistorica(pontos);
+  };
+
+  // Compara o mês selecionado com o mês imediatamente anterior, usando a mesma
+  // série diária (getSerieHistoricaPeriodo) que alimenta os sparklines — assim
+  // a variação % reflete exatamente a mesma definição de faturamento/lucro
+  // mostrada no card "Faturamento Total".
+  const loadComparacaoMesAnterior = async (inicioMesAtual: Date) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const userId = resolvedUserIdRef.current ?? user.id;
+
+    const inicioMesAnterior = startOfMonth(new Date(inicioMesAtual.getFullYear(), inicioMesAtual.getMonth() - 1, 1));
+    const fimMesAnterior = endOfMonth(inicioMesAnterior);
+    const pontos = await getSerieHistoricaPeriodo(userId, empresaFiltroRef.current, inicioMesAnterior, fimMesAnterior);
+    const totais = somarSeriePeriodo(pontos);
+    setMetricsMesAnterior({
+      faturamentoTotal: totais.faturamento,
+      lucroLiquido: totais.lucro,
+    });
+  };
+
+  // Compara faturamento/lucro de hoje com ontem, usando o mesmo núcleo de
+  // cálculo da série diária (garante consistência com o sparkline de 7 dias).
+  const loadComparacaoOntem = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const userId = resolvedUserIdRef.current ?? user.id;
+
+    const ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
+    const inicioOntem = new Date(ontem.getFullYear(), ontem.getMonth(), ontem.getDate(), 0, 0, 0, 0);
+    const fimOntem = new Date(ontem.getFullYear(), ontem.getMonth(), ontem.getDate(), 23, 59, 59, 999);
+    const pontos = await getSerieHistoricaPeriodo(userId, empresaFiltroRef.current, inicioOntem, fimOntem);
+    const totais = somarSeriePeriodo(pontos);
+    setHojeAnteriorData({ faturamento: totais.faturamento, lucro: totais.lucro });
+  };
+
   const loadHojeData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -727,13 +800,25 @@ const Dashboard = () => {
 
   const totalFaturamento = metrics.faturamentoServicos + metrics.faturamentoProdutos + metrics.faturamentoDispositivos + metrics.faturamentoAvulsos;
 
+  // Variações % — reorganização visual (Parte 2): vs. mês anterior no card
+  // "Faturamento Total"/"Lucro Líquido", vs. ontem nos cards "Hoje".
+  const variacaoFaturamentoMes = calcularVariacaoPercentual(totalFaturamento, metricsMesAnterior.faturamentoTotal);
+  const variacaoLucroLiquidoMes = calcularVariacaoPercentual(financeiroData.lucroLiquido, metricsMesAnterior.lucroLiquido);
+  const variacaoFaturamentoHoje = calcularVariacaoPercentual(hojeData.faturamento, hojeAnteriorData.faturamento);
+  const variacaoLucroHoje = calcularVariacaoPercentual(hojeData.lucro, hojeAnteriorData.lucro);
+
+  const sparklineFaturamentoTotal = serieHistorica.map(p => p.faturamento);
+  const sparklineFaturamentoAssistencia = serieHistorica.map(p => p.faturamentoAssistencia);
+  const sparklineFaturamentoProdutos = serieHistorica.map(p => p.faturamentoProdutos);
+  const sparklineFaturamentoDispositivos = serieHistorica.map(p => p.faturamentoDispositivos);
+
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
       <TutorialAutoStart />
-      {/* Mobile: saudação em cima, filtro + tema embaixo ocupando largura toda */}
-      {/* Desktop: saudação à esquerda, data + filtro + tema à direita na mesma linha */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+
+      {/* ============ TOPO — DESKTOP (layout original, inalterado) ============ */}
+      <div className="hidden sm:flex sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div data-tutorial="dashboard-title">
           <h1 className="text-2xl sm:text-3xl font-semibold mb-1">
             {nomeUsuario
@@ -782,6 +867,129 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* ============ TOPO — MOBILE/PWA (novo layout) ============ */}
+      <div className="sm:hidden">
+        {/* Saudação genérica (sem nome) + frase do dia + ações (ocultar valores/sino/avatar) alinhadas na mesma linha */}
+        <div className="flex items-start justify-between gap-3 mb-4" data-tutorial="dashboard-title">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold mb-1">
+              {getSaudacao()}, <span className="text-primary">Bem Vindo</span>!
+            </h1>
+            <p className="text-muted-foreground text-sm italic">
+              {getFraseDiaria()}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0 pt-1">
+            <button
+              type="button"
+              onClick={toggleValoresOcultos}
+              className="flex items-center justify-center h-9 w-9 rounded-full hover:bg-accent transition-colors active:scale-95"
+              title={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
+            >
+              {valoresOcultos ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+            </button>
+            <NotificationCenter />
+            <button
+              onClick={() => navigate("/configuracoes")}
+              className="ml-1 flex items-center justify-center h-9 w-9 rounded-full overflow-hidden ring-2 ring-border/50 hover:ring-primary/50 transition-all active:scale-95"
+              title={nomeUsuario || "Perfil"}
+            >
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
+                  {nomeUsuario ? nomeUsuario.slice(0, 2).toUpperCase() : "?"}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </div>
+        </div>
+
+        {/* Seletor de empresa (matriz/filiais) */}
+        {isProprietario && (
+          <div className="mb-4">
+            <SeletorFilial />
+          </div>
+        )}
+
+        {/* Linha compacta: cotação USD/BRL + status do plano — card único dividido, estilo mockup */}
+        <div
+          className="flex items-stretch rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 mb-4 cursor-pointer"
+          onClick={() => navigate("/plano")}
+          role="button"
+        >
+          <div className="flex items-center gap-2.5 flex-1 p-3">
+            <div className="h-9 w-9 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+              <DollarSign className="h-4 w-4 text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 leading-tight">USD/BRL</p>
+              <p className="text-sm font-bold text-white leading-tight">
+                {cotacaoDolar ? `R$ ${cotacaoDolar.toFixed(4)}` : "···"}
+              </p>
+              {variacaoCotacaoDolar !== null && (
+                <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold rounded-md px-1 mt-0.5 ${variacaoCotacaoDolar >= 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                  {variacaoCotacaoDolar >= 0 ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
+                  {Math.abs(variacaoCotacaoDolar).toFixed(2)}%
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="w-px bg-white/10 my-3" />
+
+          <div className="flex items-center gap-2.5 flex-1 p-3">
+            <div className="h-9 w-9 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
+              <Crown className="h-4 w-4 text-indigo-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              {infoPlanoMobile ? (
+                <>
+                  <p className="text-sm font-bold text-white leading-tight">{infoPlanoMobile.nome}</p>
+                  {infoPlanoMobile.diasRestantes !== null ? (
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      Expira em <span className="text-indigo-400 font-semibold">{infoPlanoMobile.diasRestantes > 0 ? `${infoPlanoMobile.diasRestantes} dias` : "expirado"}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 leading-tight">Plano ativo</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm font-bold text-white leading-tight">Ver plano</p>
+              )}
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-500 shrink-0" />
+          </div>
+        </div>
+
+        {/* Linha: seletor de mês + tema */}
+        <div className="flex items-center gap-3 mb-6">
+          <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+            <SelectTrigger className="flex-1 rounded-xl">
+              <CalendarIcon className="h-4 w-4 mr-2 shrink-0" />
+              <SelectValue placeholder="Selecione o mês" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="atual">Mês atual</SelectItem>
+              {opçõesMeses.map((mes) => (
+                <SelectItem key={mes.valor} value={mes.valor}>
+                  {mes.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {mounted && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-xl"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          )}
+        </div>
+      </div>
+
       {/* Banner de Ativação de Notificações */}
       <BannerAtivarNotificacoes />
 
@@ -801,13 +1009,13 @@ const Dashboard = () => {
         </Alert>
       )}
 
-      
+
 
       {!dashboardBloqueado && (
         <>
-          {/* Card de Aniversariantes do Mês (Plano Profissional) */}
+          {/* Card de Aniversariantes do Mês (Plano Profissional) — só desktop, removido do mobile/PWA */}
           {!loadingClientes && (
-            <div className="mb-4">
+            <div className="mb-4 hidden sm:block">
               {temPlanoProfissional ? (
                 <CardAniversariantes clientes={clientes} />
               ) : (
@@ -836,8 +1044,8 @@ const Dashboard = () => {
             </Alert>
           )}
 
-          {/* Card de Resumo Total */}
-          <div className="relative mb-6 rounded-2xl overflow-hidden border border-blue-500/30 dark:border-blue-400/20 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)] dark:shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
+          {/* ============ CARD FATURAMENTO TOTAL — DESKTOP (original) ============ */}
+          <div className="hidden sm:block relative mb-6 rounded-2xl overflow-hidden border border-blue-500/30 dark:border-blue-400/20 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)] dark:shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
             {/* fundo gradiente — usa cores personalizadas das configurações */}
             <div
               className="absolute inset-0"
@@ -931,8 +1139,103 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Card Duplo — Faturamento Hoje + Lucro Hoje */}
-          <div className="grid grid-cols-2 gap-0 mb-4 rounded-xl overflow-hidden border border-blue-100 dark:border-white/10 shadow-[0_0_40px_-10px_rgba(59,130,246,0.15)] dark:shadow-[0_0_40px_-10px_rgba(59,130,246,0.25)] relative">
+          {/* ============ CARD ÚNICO "RESUMO FINANCEIRO" — MOBILE/PWA (novo, estilo mockup) ============ */}
+          <div className="sm:hidden mb-6">
+            <h2 className="text-lg font-bold mb-3">Resumo Financeiro</h2>
+
+            <div className="relative rounded-3xl overflow-hidden border border-blue-500/30 dark:border-blue-400/20 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)] dark:shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
+              <div
+                className="absolute inset-0"
+                style={{ background: `linear-gradient(135deg, ${cores.card_faturamento_from}, ${cores.card_faturamento_via}, ${cores.card_faturamento_to})` }}
+              />
+              <div className="absolute inset-0 opacity-10 [background-image:linear-gradient(rgba(255,255,255,.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.15)_1px,transparent_1px)] [background-size:32px_32px]" />
+              <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
+
+              <div className="relative z-10 p-5">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-blue-200/70">Faturamento Total</span>
+                    <Eye className="h-3.5 w-3.5 text-blue-200/50" />
+                  </div>
+                  <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+                    <SelectTrigger className="w-auto h-7 text-xs rounded-full border-white/20 bg-white/10 text-white px-3 gap-1">
+                      <SelectValue placeholder="Mês" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="atual">Mês atual</SelectItem>
+                      {opçõesMeses.map((mes) => (
+                        <SelectItem key={mes.valor} value={mes.valor}>
+                          {mes.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-3xl font-bold tracking-tight text-white">
+                    <ValorMonetario valor={totalFaturamento} />
+                  </h2>
+                  {sparklineFaturamentoTotal.length > 0 && (
+                    <div className="w-28">
+                      <Sparkline dados={sparklineFaturamentoTotal} cor="#60a5fa" altura={48} destacarUltimoPonto />
+                    </div>
+                  )}
+                </div>
+                <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${variacaoFaturamentoMes >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                  {variacaoFaturamentoMes >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                  {Math.abs(variacaoFaturamentoMes).toFixed(0)}% vs. mês anterior
+                </span>
+
+                {/* breakdown por categoria — 3 colunas */}
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  <div className="rounded-2xl bg-black/20 p-3">
+                    <p className="text-[10px] text-blue-200/70 mb-1">Assistência</p>
+                    <p className="text-sm font-bold text-white"><ValorMonetario valor={metrics.faturamentoServicos + metrics.faturamentoAvulsos} /></p>
+                    {totalFaturamento > 0 && (
+                      <p className="text-[10px] text-emerald-300 mt-0.5">{(((metrics.faturamentoServicos + metrics.faturamentoAvulsos) / totalFaturamento) * 100).toFixed(0)}% do total</p>
+                    )}
+                  </div>
+                  <div className="rounded-2xl bg-black/20 p-3">
+                    <p className="text-[10px] text-blue-200/70 mb-1">Produtos</p>
+                    <p className="text-sm font-bold text-white"><ValorMonetario valor={metrics.faturamentoProdutos} /></p>
+                    {totalFaturamento > 0 && (
+                      <p className="text-[10px] text-blue-300 mt-0.5">{((metrics.faturamentoProdutos / totalFaturamento) * 100).toFixed(0)}% do total</p>
+                    )}
+                  </div>
+                  <div className="rounded-2xl bg-black/20 p-3">
+                    <p className="text-[10px] text-blue-200/70 mb-1">Dispositivos</p>
+                    <p className="text-sm font-bold text-white"><ValorMonetario valor={metrics.faturamentoDispositivos} /></p>
+                    {totalFaturamento > 0 && (
+                      <p className="text-[10px] text-cyan-300 mt-0.5">{((metrics.faturamentoDispositivos / totalFaturamento) * 100).toFixed(0)}% do total</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* sub-card Lucro Líquido */}
+                <div className="mt-3 rounded-2xl bg-black/20 p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                      <TrendingUp className="h-4 w-4 text-emerald-300" />
+                    </div>
+                    <span className="text-xs text-blue-100/80">Lucro Líquido</span>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-base font-bold ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                      <ValorMonetario valor={financeiroData.lucroLiquido} />
+                    </p>
+                    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${variacaoLucroLiquidoMes >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                      {variacaoLucroLiquidoMes >= 0 ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
+                      {Math.abs(variacaoLucroLiquidoMes).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ============ CARD DUPLO HOJE — DESKTOP (original) ============ */}
+          <div className="hidden sm:grid grid-cols-2 gap-0 mb-4 rounded-xl overflow-hidden border border-blue-100 dark:border-white/10 shadow-[0_0_40px_-10px_rgba(59,130,246,0.15)] dark:shadow-[0_0_40px_-10px_rgba(59,130,246,0.25)] relative">
             {/* scanline sutil — só no dark */}
             <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
 
@@ -995,8 +1298,114 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Cards Hoje por Categoria */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          {/* ============ CARDS HOJE — MOBILE/PWA (novo, fundo com glow + sparkline full-width) ============ */}
+          <div className="sm:hidden grid grid-cols-2 gap-3 mb-4">
+            <div className="relative rounded-2xl overflow-hidden p-4 bg-blue-50 dark:bg-slate-950 border border-blue-200/60 dark:border-blue-500/20 shadow-[0_0_30px_-10px_rgba(59,130,246,0.25)] dark:shadow-[0_0_30px_-8px_rgba(59,130,246,0.5)]">
+              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center mb-2">
+                <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Faturamento Hoje</p>
+              {hojeData.carregando ? (
+                <div className="h-6 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+              ) : (
+                <p className="text-lg font-bold text-slate-800 dark:text-white"><ValorMonetario valor={hojeData.faturamento} /></p>
+              )}
+              <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${variacaoFaturamentoHoje >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                {variacaoFaturamentoHoje >= 0 ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
+                {Math.abs(variacaoFaturamentoHoje).toFixed(0)}% vs. ontem
+              </span>
+              {sparklineFaturamentoTotal.length > 0 && (
+                <div className="mt-2 -mx-4 -mb-4">
+                  <Sparkline dados={sparklineFaturamentoTotal} cor="#3b82f6" altura={40} />
+                </div>
+              )}
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden p-4 bg-emerald-50 dark:bg-slate-950 border border-emerald-200/60 dark:border-emerald-500/20 shadow-[0_0_30px_-10px_rgba(16,185,129,0.25)] dark:shadow-[0_0_30px_-8px_rgba(16,185,129,0.5)]">
+              <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center mb-2">
+                <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Lucro Hoje</p>
+              {hojeData.carregando ? (
+                <div className="h-6 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+              ) : (
+                <p className={`text-lg font-bold ${hojeData.lucro >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}><ValorMonetario valor={hojeData.lucro} /></p>
+              )}
+              <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${variacaoLucroHoje >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                {variacaoLucroHoje >= 0 ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
+                {Math.abs(variacaoLucroHoje).toFixed(0)}% vs. ontem
+              </span>
+              {sparklineFaturamentoTotal.length > 0 && (
+                <div className="mt-2 -mx-4 -mb-4">
+                  <Sparkline dados={serieHistorica.map(p => p.lucro)} cor="#10b981" altura={40} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Atalhos rápidos — só mobile/PWA */}
+          <div className="grid grid-cols-5 sm:hidden gap-2 mb-6">
+            <button
+              onClick={() => navigate("/os")}
+              className="flex flex-col items-center gap-1.5 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 py-3 px-1"
+            >
+              <div className="h-9 w-9 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <ClipboardList className="h-4 w-4 text-blue-400" />
+              </div>
+              <p className="text-base font-bold text-white leading-tight">{dashboardResumo.osAbertas}</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">Ordens</p>
+              <p className="text-[9px] text-blue-400 leading-tight text-center">abertas</p>
+            </button>
+
+            <button
+              onClick={() => navigate("/clientes")}
+              className="flex flex-col items-center gap-1.5 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 py-3 px-1"
+            >
+              <div className="h-9 w-9 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                <Users className="h-4 w-4 text-violet-400" />
+              </div>
+              <p className="text-base font-bold text-white leading-tight">{dashboardResumo.totalClientes}</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">Clientes</p>
+            </button>
+
+            <button
+              onClick={() => navigate("/produtos")}
+              className="flex flex-col items-center gap-1.5 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 py-3 px-1"
+            >
+              <div className="h-9 w-9 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                <Package className="h-4 w-4 text-orange-400" />
+              </div>
+              <p className="text-base font-bold text-white leading-tight">{dashboardResumo.totalProdutos}</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">Produtos</p>
+            </button>
+
+            <button
+              onClick={() => navigate("/vendas")}
+              className="flex flex-col items-center gap-1.5 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 py-3 px-1"
+            >
+              <div className="h-9 w-9 rounded-xl bg-teal-500/20 flex items-center justify-center">
+                <Wallet className="h-4 w-4 text-teal-400" />
+              </div>
+              <p className="text-base font-bold text-white leading-tight">{dashboardResumo.pagamentosPendentes}</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">Pagamentos</p>
+              <p className="text-[9px] text-teal-400 leading-tight text-center">pendentes</p>
+            </button>
+
+            <button
+              onClick={() => navigate("/os?status=atrasadas")}
+              className="flex flex-col items-center gap-1.5 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 py-3 px-1"
+            >
+              <div className="h-9 w-9 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <AlertOctagon className="h-4 w-4 text-red-400" />
+              </div>
+              <p className="text-base font-bold text-white leading-tight">{dashboardResumo.alertasUrgentes}</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">Alertas</p>
+              <p className="text-[9px] text-red-400 leading-tight text-center">urgentes</p>
+            </button>
+          </div>
+
+          {/* ============ CARDS HOJE POR CATEGORIA — DESKTOP (original) ============ */}
+          <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             {/* Assistência */}
             <div className="rounded-xl overflow-hidden border border-blue-100 dark:border-white/10 shadow-[0_0_30px_-10px_rgba(59,130,246,0.15)] dark:shadow-[0_0_30px_-10px_rgba(59,130,246,0.2)] relative">
               <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
@@ -1160,9 +1569,72 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* ============ CARDS POR CATEGORIA — MOBILE/PWA (novo, compacto com "Ver detalhes") ============ */}
+          <div className="sm:hidden grid grid-cols-1 gap-3 mb-4">
+            <div className="rounded-2xl border bg-card p-3 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center shrink-0">
+                <Wrench className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold">Assistência</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">
+                  {hojeData.carregando ? "—" : <ValorMonetario valor={hojeData.faturamentoAssistencia} />}
+                </p>
+              </div>
+              {sparklineFaturamentoAssistencia.length > 0 && (
+                <div className="w-14 shrink-0">
+                  <Sparkline dados={sparklineFaturamentoAssistencia} cor="#3b82f6" altura={28} />
+                </div>
+              )}
+              <button onClick={() => navigate("/os")} className="text-[10px] text-blue-600 dark:text-blue-400 font-medium shrink-0">
+                Ver detalhes
+              </button>
+            </div>
+
+            <div className="rounded-2xl border bg-card p-3 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center shrink-0">
+                <Package className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold">Produtos & Peças</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">
+                  {hojeData.carregando ? "—" : <ValorMonetario valor={hojeData.faturamentoProdutosPecas} />}
+                </p>
+              </div>
+              {sparklineFaturamentoProdutos.length > 0 && (
+                <div className="w-14 shrink-0">
+                  <Sparkline dados={sparklineFaturamentoProdutos} cor="#8b5cf6" altura={28} />
+                </div>
+              )}
+              <button onClick={() => navigate("/produtos")} className="text-[10px] text-violet-600 dark:text-violet-400 font-medium shrink-0">
+                Ver detalhes
+              </button>
+            </div>
+
+            <div className="rounded-2xl border bg-card p-3 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-cyan-100 dark:bg-cyan-500/15 flex items-center justify-center shrink-0">
+                <Smartphone className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold">Dispositivos</p>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">
+                  {hojeData.carregando ? "—" : <ValorMonetario valor={hojeData.faturamentoDispositivos} />}
+                </p>
+              </div>
+              {sparklineFaturamentoDispositivos.length > 0 && (
+                <div className="w-14 shrink-0">
+                  <Sparkline dados={sparklineFaturamentoDispositivos} cor="#06b6d4" altura={28} />
+                </div>
+              )}
+              <button onClick={() => navigate("/dispositivos")} className="text-[10px] text-cyan-600 dark:text-cyan-400 font-medium shrink-0">
+                Ver detalhes
+              </button>
+            </div>
+          </div>
+
           {/* Cards Financeiros */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-primary">
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-primary">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
@@ -1174,7 +1646,7 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-green-500">
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-green-500">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                   <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
@@ -1186,7 +1658,7 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-emerald-600">
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-emerald-600">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                   <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
@@ -1199,7 +1671,7 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-blue-500">
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-blue-500">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                   <Percent className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
@@ -1211,7 +1683,7 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-orange-500">
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-orange-500">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                   <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
@@ -1223,7 +1695,7 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-rose-500">
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-rose-500">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
                   <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-rose-600 dark:text-rose-400" />
@@ -1235,7 +1707,7 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-red-500">
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-red-500">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                   <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400" />
@@ -1251,7 +1723,7 @@ const Dashboard = () => {
               </p>
             </Card>
 
-            <Card className="p-4 sm:p-6 shadow-md border-l-4 border-l-purple-500">
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-purple-500">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                   <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
@@ -1267,7 +1739,7 @@ const Dashboard = () => {
 
           {/* Métricas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <Card className="p-6 shadow-md hover:shadow-lg transition-shadow">
+            <Card className="p-6 shadow-md hover:shadow-lg transition-shadow rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center">
                   <Wrench className="h-6 w-6 text-success" />
@@ -1303,7 +1775,7 @@ const Dashboard = () => {
               </div>
             </Card>
 
-            <Card className="p-6 shadow-md hover:shadow-lg transition-shadow">
+            <Card className="p-6 shadow-md hover:shadow-lg transition-shadow rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center">
                   <Package className="h-6 w-6 text-foreground" />
@@ -1333,7 +1805,7 @@ const Dashboard = () => {
               </div>
             </Card>
 
-            <Card className="p-6 shadow-md hover:shadow-lg transition-shadow">
+            <Card className="p-6 shadow-md hover:shadow-lg transition-shadow rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Smartphone className="h-6 w-6 text-primary" />

@@ -92,6 +92,12 @@ export function MobileHeader() {
     return "Méc";
   }, [location.pathname]);
 
+  // Na tela do Dashboard, o próprio Dashboard.tsx já mostra saudação,
+  // seletor de empresa e os botões de ações (ocultar valores/sino/avatar)
+  // alinhados com a saudação — não renderiza esse header aqui para não duplicar.
+  const isDashboard = location.pathname === "/dashboard";
+  if (isDashboard) return null;
+
   return (
     <header
       className="lg:hidden sticky top-0 z-40 border-b border-border/50"

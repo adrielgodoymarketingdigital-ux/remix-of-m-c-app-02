@@ -279,11 +279,26 @@ export default function OrdemServicoPage() {
     return filial?.nome ?? "Filial";
   };
 
-  const ordens = useMemo(() => {
+  const ordensPorFilial = useMemo(() => {
     if (!mostrarOsFiliais || lojaFiltro === "todos") return ordensRaw;
     if (lojaFiltro === "matriz") return ordensRaw.filter(o => !(o as any).empresa_id);
     return ordensRaw.filter(o => (o as any).empresa_id === lojaFiltro);
   }, [ordensRaw, mostrarOsFiliais, lojaFiltro]);
+
+  // Filtro "atrasadas" vindo do atalho do Dashboard (?status=atrasadas): OS abertas
+  // (fora dos status finais) criadas há mais de 3 dias. Mesma regra de
+  // useDashboardResumo.ts, aplicada aqui só no client, sem alterar a query base.
+  const STATUS_FECHADOS_ATRASO = ["entregue", "finalizado", "garantia", "cancelada"];
+  const filtroAtrasadas = searchParams.get("status") === "atrasadas";
+  const ordens = useMemo(() => {
+    if (!filtroAtrasadas) return ordensPorFilial;
+    const tresDiasAtras = new Date();
+    tresDiasAtras.setDate(tresDiasAtras.getDate() - 3);
+    return ordensPorFilial.filter((o: any) => {
+      if (STATUS_FECHADOS_ATRASO.includes(o.status)) return false;
+      return new Date(o.created_at) < tresDiasAtras;
+    });
+  }, [ordensPorFilial, filtroAtrasadas]);
 
   // ── Dados gerenciais (instanciado após useOrdensServico para ter dataInicio/dataFim) ──
   const { data: gerencialData, diasUteis: gerencialDiasUteis, meta: gerencialMeta, carregando: gerencialCarregando, salvarMeta: gerencialSalvarMeta } =

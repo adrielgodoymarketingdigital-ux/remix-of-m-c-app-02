@@ -95,15 +95,26 @@ export function MobileBottomNav() {
     setSelectedNavIds(ids);
   };
 
+  // Na tela do Dashboard, a barra fica "flutuante" (destacada das bordas,
+  // cantos arredondados, sombra), igual ao mockup. Nas demais páginas
+  // mantém o visual padrão colado nas bordas.
+  const isDashboard = location.pathname === "/dashboard";
+
   return (
     <>
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/50"
+        className={cn(
+          "lg:hidden fixed z-40",
+          isDashboard
+            ? "left-3 right-3 rounded-2xl border border-border/50 shadow-lg"
+            : "bottom-0 left-0 right-0 border-t border-border/50"
+        )}
         style={{
           background: "hsl(var(--background) / 0.97)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
+          bottom: isDashboard ? "max(env(safe-area-inset-bottom), 12px)" : undefined,
+          paddingBottom: isDashboard ? undefined : "max(env(safe-area-inset-bottom), 8px)",
         }}
       >
         <div className="flex items-stretch justify-around h-14 max-w-lg mx-auto">
