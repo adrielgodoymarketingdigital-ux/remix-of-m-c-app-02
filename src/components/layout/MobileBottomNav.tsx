@@ -106,16 +106,23 @@ export function MobileBottomNav() {
         className={cn(
           "lg:hidden fixed z-40",
           isDashboard
-            ? "left-3 right-3 rounded-2xl border border-border/50 shadow-lg"
+            ? "left-3 right-3 rounded-2xl border shadow-lg bg-slate-900 border-slate-800 dark:bg-slate-100 dark:border-slate-200"
             : "bottom-0 left-0 right-0 border-t border-border/50"
         )}
-        style={{
-          background: "hsl(var(--background) / 0.97)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          bottom: isDashboard ? "max(env(safe-area-inset-bottom), 12px)" : undefined,
-          paddingBottom: isDashboard ? undefined : "max(env(safe-area-inset-bottom), 8px)",
-        }}
+        style={
+          isDashboard
+            ? {
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                bottom: "max(env(safe-area-inset-bottom), 12px)",
+              }
+            : {
+                background: "hsl(var(--background) / 0.97)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
+              }
+        }
       >
         <div className="flex items-stretch justify-around h-14 max-w-lg mx-auto">
           {navItems.map((item) => {
@@ -127,9 +134,13 @@ export function MobileBottomNav() {
                 className={cn(
                   "flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 relative",
                   "active:scale-95 touch-manipulation transition-transform",
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                  isDashboard
+                    ? active
+                      ? "text-primary"
+                      : "text-slate-400 dark:text-slate-500"
+                    : active
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {active && (
@@ -148,14 +159,16 @@ export function MobileBottomNav() {
               </NavLink>
             );
           })}
-          
+
           {/* Menu Button */}
           <button
             onClick={() => setMenuOpen(true)}
             className={cn(
               "flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200",
               "active:scale-95 touch-manipulation",
-              "text-slate-500 hover:text-slate-300"
+              isDashboard
+                ? "text-slate-400 dark:text-slate-500"
+                : "text-slate-500 hover:text-slate-300"
             )}
           >
             <Menu className="h-5 w-5" />
