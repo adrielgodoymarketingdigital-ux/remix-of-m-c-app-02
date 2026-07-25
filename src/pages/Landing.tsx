@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { LandingNav } from "@/components/landing/LandingNav";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { MobileDemoSection } from "@/components/landing/MobileDemoSection";
@@ -16,6 +18,26 @@ import { FinalCTA } from "@/components/landing/FinalCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export default function Landing() {
+  const navigate = useNavigate();
+  const [checkingStandalone, setCheckingStandalone] = useState(true);
+
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true; // fallback iOS
+
+    if (isStandalone) {
+      navigate("/auth", { replace: true });
+      return;
+    }
+
+    setCheckingStandalone(false);
+  }, [navigate]);
+
+  if (checkingStandalone) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <LandingNav />

@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => ({
         display_override: ["standalone", "fullscreen", "minimal-ui"],
         orientation: "any",
         scope: "/",
-        start_url: "/",
+        start_url: "/auth",
         categories: ["business", "productivity"],
         icons: [
           {
