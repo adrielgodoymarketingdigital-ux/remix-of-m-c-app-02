@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
+import { useThemeColorSync } from "@/hooks/useThemeColorSync";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense, useEffect } from "react";
 import { initPixel } from "@/lib/pixel";
@@ -114,6 +115,7 @@ const PUBLIC_ROUTES_NO_WAIT = [
 function AppRoutes() {
   const { isRestoring } = useSessionRestore();
   const location = useLocation();
+  useThemeColorSync();
 
   useEffect(() => {
     initPixel()
