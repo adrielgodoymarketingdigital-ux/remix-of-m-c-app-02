@@ -69,30 +69,6 @@ export function EtapaInformacoesServico({
       />
 
       <div className="space-y-5">
-        {localizacoes.length > 0 && (
-          <div>
-            <CampoLabel htmlFor="localizacaoFisica" texto="Localização Física" subtexto="Onde o aparelho está fisicamente armazenado ou em reparo." />
-            <Select
-              value={formData.localizacaoFisica || "__nenhuma__"}
-              onValueChange={(value) =>
-                setFormData({ ...formData, localizacaoFisica: value === "__nenhuma__" ? "" : value })
-              }
-            >
-              <SelectTrigger id="localizacaoFisica" className="h-12 rounded-xl">
-                <SelectValue placeholder="Selecionar localização" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__nenhuma__">— Sem localização —</SelectItem>
-                {localizacoes.map((loc) => (
-                  <SelectItem key={loc.id} value={loc.nome}>
-                    {loc.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
         <div>
           <CampoLabel htmlFor="defeitoRelatado" texto="Defeito Relatado" obrigatorio />
           <Textarea
@@ -133,59 +109,85 @@ export function EtapaInformacoesServico({
           />
         </div>
 
-        <div>
-          <CampoLabel htmlFor="tempoGarantia" texto="Tempo de Garantia" />
-          <Select
-            value={formData.tempoGarantia?.toString() || "90"}
-            onValueChange={(value) =>
-              setFormData({ ...formData, tempoGarantia: value === "0" ? null : Number(value) })
-            }
-          >
-            <SelectTrigger id="tempoGarantia" className="h-12 rounded-xl">
-              <SelectValue placeholder="Selecione o tempo de garantia" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">Sem garantia</SelectItem>
-              <SelectItem value="7">7 dias</SelectItem>
-              <SelectItem value="15">15 dias</SelectItem>
-              <SelectItem value="30">30 dias</SelectItem>
-              <SelectItem value="60">60 dias</SelectItem>
-              <SelectItem value="90">90 dias</SelectItem>
-              <SelectItem value="180">180 dias (6 meses)</SelectItem>
-              <SelectItem value="365">365 dias (1 ano)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Técnico Responsável (principal - compatibilidade) */}
-        {podeVerTecnicos && funcionarios.length > 0 && (
-          <div>
-            <CampoLabel
-              htmlFor="tecnicoId"
-              texto="Técnico Principal"
-              obrigatorio={tecnicoObrigatorioOS}
-            />
-            <Select
-              value={tecnicoId || "nenhum"}
-              onValueChange={(value) => setTecnicoId(value === "nenhum" ? null : value)}
-            >
-              <SelectTrigger className={cn("h-12 rounded-xl", ((tecnicoObrigatorioOS && !tecnicoId) || campoComErro === "tecnicoId") && "border-destructive")}>
-                <SelectValue placeholder="Selecione o técnico" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="nenhum">Nenhum</SelectItem>
-                {funcionarios
-                  .filter(f => f.ativo)
-                  .map((func) => (
-                    <SelectItem key={func.id} value={func.id}>
-                      {func.nome}
-                      {func.cargo ? ` (${func.cargo})` : ""}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
+          {localizacoes.length > 0 && (
+            <div>
+              <CampoLabel htmlFor="localizacaoFisica" texto="Localização Física" subtexto="Onde o aparelho está fisicamente armazenado ou em reparo." />
+              <Select
+                value={formData.localizacaoFisica || "__nenhuma__"}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, localizacaoFisica: value === "__nenhuma__" ? "" : value })
+                }
+              >
+                <SelectTrigger id="localizacaoFisica" className="h-12 rounded-xl">
+                  <SelectValue placeholder="Selecionar localização" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__nenhuma__">— Sem localização —</SelectItem>
+                  {localizacoes.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.nome}>
+                      {loc.nome}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div>
+            <CampoLabel htmlFor="tempoGarantia" texto="Tempo de Garantia" />
+            <Select
+              value={formData.tempoGarantia?.toString() || "90"}
+              onValueChange={(value) =>
+                setFormData({ ...formData, tempoGarantia: value === "0" ? null : Number(value) })
+              }
+            >
+              <SelectTrigger id="tempoGarantia" className="h-12 rounded-xl">
+                <SelectValue placeholder="Selecione o tempo de garantia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Sem garantia</SelectItem>
+                <SelectItem value="7">7 dias</SelectItem>
+                <SelectItem value="15">15 dias</SelectItem>
+                <SelectItem value="30">30 dias</SelectItem>
+                <SelectItem value="60">60 dias</SelectItem>
+                <SelectItem value="90">90 dias</SelectItem>
+                <SelectItem value="180">180 dias (6 meses)</SelectItem>
+                <SelectItem value="365">365 dias (1 ano)</SelectItem>
               </SelectContent>
             </Select>
           </div>
-        )}
+
+          {/* Técnico Responsável (principal - compatibilidade) */}
+          {podeVerTecnicos && funcionarios.length > 0 && (
+            <div>
+              <CampoLabel
+                htmlFor="tecnicoId"
+                texto="Técnico Principal"
+                obrigatorio={tecnicoObrigatorioOS}
+              />
+              <Select
+                value={tecnicoId || "nenhum"}
+                onValueChange={(value) => setTecnicoId(value === "nenhum" ? null : value)}
+              >
+                <SelectTrigger className={cn("h-12 rounded-xl", ((tecnicoObrigatorioOS && !tecnicoId) || campoComErro === "tecnicoId") && "border-destructive")}>
+                  <SelectValue placeholder="Selecione o técnico" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nenhum">Nenhum</SelectItem>
+                  {funcionarios
+                    .filter(f => f.ativo)
+                    .map((func) => (
+                      <SelectItem key={func.id} value={func.id}>
+                        {func.nome}
+                        {func.cargo ? ` (${func.cargo})` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
 
         {/* Técnicos Adicionais */}
         {podeVerTecnicos && funcionarios.length > 0 && (

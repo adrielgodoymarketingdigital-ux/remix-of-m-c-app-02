@@ -65,8 +65,8 @@ export function EtapaDadosCliente({
         )}
       </div>
 
-      <div className="space-y-5">
-        <div className="relative" ref={nomeInputRef}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
+        <div className="relative sm:col-span-2" ref={nomeInputRef}>
           <CampoLabel htmlFor="clienteNome" texto="Nome" obrigatorio />
           <Input
             id="clienteNome"
@@ -180,59 +180,55 @@ export function EtapaDadosCliente({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <CampoLabel htmlFor="clienteNumero" texto="Número" />
-            <Input
-              id="clienteNumero"
-              value={formData.clienteNumero}
-              onChange={(e) =>
-                setFormData({ ...formData, clienteNumero: e.target.value })
-              }
-              className="h-12 rounded-xl"
-            />
-          </div>
-          <div>
-            <CampoLabel htmlFor="clienteBairro" texto="Bairro" />
-            <Input
-              id="clienteBairro"
-              value={formData.clienteBairro}
-              onChange={(e) =>
-                setFormData({ ...formData, clienteBairro: e.target.value })
-              }
-              className="h-12 rounded-xl"
-            />
-          </div>
+        <div>
+          <CampoLabel htmlFor="clienteNumero" texto="Número" />
+          <Input
+            id="clienteNumero"
+            value={formData.clienteNumero}
+            onChange={(e) =>
+              setFormData({ ...formData, clienteNumero: e.target.value })
+            }
+            className="h-12 rounded-xl"
+          />
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <CampoLabel htmlFor="clienteCidade" texto="Cidade" />
-            <Input
-              id="clienteCidade"
-              value={formData.clienteCidade}
-              onChange={(e) =>
-                setFormData({ ...formData, clienteCidade: e.target.value })
-              }
-              className="h-12 rounded-xl"
-            />
-          </div>
-          <div>
-            <CampoLabel htmlFor="clienteEstado" texto="Estado" />
-            <Input
-              id="clienteEstado"
-              value={formData.clienteEstado}
-              placeholder="UF"
-              maxLength={2}
-              onChange={(e) =>
-                setFormData({ ...formData, clienteEstado: e.target.value.toUpperCase() })
-              }
-              className="h-12 rounded-xl"
-            />
-          </div>
+        <div>
+          <CampoLabel htmlFor="clienteBairro" texto="Bairro" />
+          <Input
+            id="clienteBairro"
+            value={formData.clienteBairro}
+            onChange={(e) =>
+              setFormData({ ...formData, clienteBairro: e.target.value })
+            }
+            className="h-12 rounded-xl"
+          />
         </div>
 
         <div>
+          <CampoLabel htmlFor="clienteCidade" texto="Cidade" />
+          <Input
+            id="clienteCidade"
+            value={formData.clienteCidade}
+            onChange={(e) =>
+              setFormData({ ...formData, clienteCidade: e.target.value })
+            }
+            className="h-12 rounded-xl"
+          />
+        </div>
+        <div>
+          <CampoLabel htmlFor="clienteEstado" texto="Estado" />
+          <Input
+            id="clienteEstado"
+            value={formData.clienteEstado}
+            placeholder="UF"
+            maxLength={2}
+            onChange={(e) =>
+              setFormData({ ...formData, clienteEstado: e.target.value.toUpperCase() })
+            }
+            className="h-12 rounded-xl"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
           <CampoLabel htmlFor="clienteDataNascimento" texto="Data de Nascimento" />
           <Input
             id="clienteDataNascimento"
@@ -241,7 +237,7 @@ export function EtapaDadosCliente({
             onChange={(e) =>
               setFormData({ ...formData, clienteDataNascimento: e.target.value })
             }
-            className="h-12 rounded-xl"
+            className="h-12 rounded-xl sm:w-1/2"
           />
         </div>
       </div>
