@@ -982,3 +982,150 @@ export async function downloadOrdemServicoPDF(
     URL.revokeObjectURL(url);
   }, 100);
 }
+
+// Dados exibidos na página pública de acompanhamento (/acompanhar/:token via
+// get_os_tracking RPC) — mesmo conjunto de campos, sem CPF/IMEI/nº série/senha.
+export interface DadosPublicosOS {
+  numeroOS: string;
+  status: string | null;
+  statusLabel?: string;
+  defeitoRelatado: string | null;
+  total: number | null;
+  createdAt: string;
+  dataSaida: string | null;
+  dispositivoMarca: string | null;
+  dispositivoModelo: string | null;
+  clienteNome: string | null;
+  nomeLoja: string | null;
+}
+
+// PDF simplificado para download público na página de acompanhamento — usa
+// só os campos já expostos nessa página, sem dados sensíveis (CPF, IMEI,
+// nº de série, senha de desbloqueio), que só existem no PDF completo interno.
+export async function gerarPDFAcompanhamentoPublico(dados: DadosPublicosOS): Promise<Blob> {
+  const doc = new jsPDF();
+  const margemEsquerda = 15;
+  const margemDireita = 195;
+  const larguraUtil = margemDireita - margemEsquerda;
+  let yPos = 20;
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ORDEM DE SERVIÇO', 105, yPos, { align: 'center' });
+  yPos += 8;
+
+  doc.setFontSize(12);
+  doc.text(`#${dados.numeroOS}`, 105, yPos, { align: 'center' });
+  yPos += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Status: ${dados.statusLabel || dados.status || 'N/A'}`, margemEsquerda, yPos);
+  doc.text(`Data: ${formatarDataHoraBrasil(dados.createdAt)}`, 120, yPos);
+  yPos += 10;
+
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.3);
+  doc.line(margemEsquerda, yPos, margemDireita, yPos);
+  yPos += 8;
+
+  if (dados.nomeLoja) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ESTABELECIMENTO', margemEsquerda, yPos);
+    yPos += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(dados.nomeLoja, margemEsquerda, yPos);
+    yPos += 9;
+    doc.line(margemEsquerda, yPos - 4, margemDireita, yPos - 4);
+  }
+
+  if (dados.clienteNome) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CLIENTE', margemEsquerda, yPos);
+    yPos += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Nome: ${dados.clienteNome}`, margemEsquerda, yPos);
+    yPos += 9;
+    doc.line(margemEsquerda, yPos - 4, margemDireita, yPos - 4);
+  }
+
+  const dispositivo = `${dados.dispositivoMarca || ''} ${dados.dispositivoModelo || ''}`.trim();
+  if (dispositivo) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DISPOSITIVO', margemEsquerda, yPos);
+    yPos += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(dispositivo, margemEsquerda, yPos);
+    yPos += 9;
+    doc.line(margemEsquerda, yPos - 4, margemDireita, yPos - 4);
+  }
+
+  if (dados.defeitoRelatado) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PROBLEMA RELATADO', margemEsquerda, yPos);
+    yPos += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const linhas = doc.splitTextToSize(dados.defeitoRelatado, larguraUtil);
+    linhas.forEach((linha: string) => {
+      doc.text(linha, margemEsquerda, yPos);
+      yPos += 5;
+    });
+    yPos += 4;
+    doc.line(margemEsquerda, yPos, margemDireita, yPos);
+    yPos += 8;
+  }
+
+  if (dados.total != null && dados.total > 0) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VALOR DO SERVIÇO', margemEsquerda, yPos);
+    yPos += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(formatarMoeda(dados.total), margemEsquerda, yPos);
+    yPos += 9;
+    doc.line(margemEsquerda, yPos - 4, margemDireita, yPos - 4);
+  }
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATAS', margemEsquerda, yPos);
+  yPos += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Entrada: ${formatarDataHoraBrasil(dados.createdAt)}`, margemEsquerda, yPos);
+  if (dados.dataSaida) {
+    doc.text(`Previsão de entrega: ${formatarDataHoraBrasil(dados.dataSaida)}`, margemEsquerda, yPos + 5);
+  }
+
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  doc.text('Documento gerado a partir do acompanhamento público da OS.', 105, 285, { align: 'center' });
+
+  return doc.output('blob');
+}
+
+// Faz o download do PDF simplificado da página pública de acompanhamento.
+export async function downloadPDFAcompanhamentoPublico(dados: DadosPublicosOS): Promise<void> {
+  const blob = await gerarPDFAcompanhamentoPublico(dados);
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `OS-${dados.numeroOS}.pdf`;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, 100);
+}

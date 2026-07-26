@@ -3,9 +3,11 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Smartphone, Wrench, CalendarDays, DollarSign, AlertCircle,
-  CheckCircle2, Clock, PackageSearch, XCircle, ClipboardList,
+  CheckCircle2, Clock, PackageSearch, XCircle, ClipboardList, Download, Loader2,
 } from "lucide-react";
 import { TrackingPageConfig, TRACKING_CONFIG_PADRAO } from "@/types/configuracao-loja";
+import { downloadPDFAcompanhamentoPublico } from "@/lib/gerarOrdemServicoPDF";
+import { toast } from "sonner";
 
 // Mapeamento de status do sistema → label/ícone de exibição
 const STATUS_CONFIG: Record<string, {
@@ -71,6 +73,7 @@ export default function AcompanharOS() {
   const [dados, setDados] = useState<TrackingDados | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
+  const [baixandoPDF, setBaixandoPDF] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -147,6 +150,32 @@ export default function AcompanharOS() {
     const intervalo = setInterval(atualizarStatus, 15000);
     return () => clearInterval(intervalo);
   }, [token]);
+
+  const handleBaixarPDF = async () => {
+    if (!dados?.os) return;
+    setBaixandoPDF(true);
+    try {
+      const statusLabel = STATUS_CONFIG[dados.os.status ?? ""]?.label;
+      await downloadPDFAcompanhamentoPublico({
+        numeroOS: dados.os.numero_os,
+        status: dados.os.status,
+        statusLabel,
+        defeitoRelatado: dados.os.defeito_relatado,
+        total: dados.os.total,
+        createdAt: dados.os.created_at,
+        dataSaida: dados.os.data_saida,
+        dispositivoMarca: dados.os.dispositivo_marca,
+        dispositivoModelo: dados.os.dispositivo_modelo,
+        clienteNome: dados.os.cliente?.nome ?? null,
+        nomeLoja: dados.loja?.nome_loja ?? null,
+      });
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast.error("Erro ao gerar o PDF. Tente novamente.");
+    } finally {
+      setBaixandoPDF(false);
+    }
+  };
 
   // ── Loading ──────────────────────────────────────────────────────
   if (loading) return (
@@ -421,6 +450,27 @@ export default function AcompanharOS() {
             </div>
           </div>
         </div>
+
+        {/* Baixar PDF */}
+        <button
+          type="button"
+          onClick={handleBaixarPDF}
+          disabled={baixandoPDF}
+          className="mt-4 w-full flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-60"
+          style={{ color: prim, borderColor: `${prim}40`, background: `${prim}10` }}
+        >
+          {baixandoPDF ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Gerando PDF...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Baixar PDF da OS
+            </>
+          )}
+        </button>
 
         {/* Footer */}
         <p className="text-center text-[11px] mt-5" style={{ color: tc.cor_texto_secundario + "50" }}>

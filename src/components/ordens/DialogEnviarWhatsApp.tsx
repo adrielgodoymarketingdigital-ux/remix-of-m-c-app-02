@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Download, CheckCircle2, FileText, Shield, Files, Contact, Paperclip, Info, X, Share2 } from "lucide-react";
+import { Loader2, Download, CheckCircle2, FileText, Shield, Files, Contact, Paperclip, Info, X, Share2, Link2 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { ConfiguracaoLoja, MensagensWhatsAppOS } from "@/types/configuracao-loja";
@@ -11,6 +11,8 @@ import { gerarOrdemServicoPDF, TipoPDFOS } from "@/lib/gerarOrdemServicoPDF";
 import { toast } from "sonner";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
+import { useOSTracking } from "@/hooks/useOSTracking";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { cn } from "@/lib/utils";
 
 interface DialogEnviarWhatsAppProps {
@@ -73,8 +75,11 @@ export const DialogEnviarWhatsApp = ({
   const [pdfBaixado, setPdfBaixado] = useState(false);
   const [tipoPDF, setTipoPDF] = useState<TipoPDFOS>('completo');
   const [compartilhando, setCompartilhando] = useState(false);
+  const [enviandoLink, setEnviandoLink] = useState(false);
   const mobile = isMobile();
   const { statusList } = useOSStatusConfig();
+  const { gerarLink } = useOSTracking();
+  const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
 
   // Detecta suporte a compartilhamento de arquivos (Web Share API nível 2)
   const suportaCompartilharArquivo = podeCompartilharArquivo(
@@ -150,7 +155,7 @@ export const DialogEnviarWhatsApp = ({
       }, 200);
 
       setPdfBaixado(true);
-      toast.success("PDF baixado! Agora clique em 'Abrir WhatsApp' e anexe o PDF.");
+      toast.success("PDF baixado! Agora é só anexar na conversa do WhatsApp.");
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       toast.error("Erro ao gerar PDF. Tente novamente.");
@@ -197,30 +202,6 @@ export const DialogEnviarWhatsApp = ({
     }
   };
 
-  const handleAbrirWhatsApp = () => {
-    const telefoneNumeros = telefone.replace(/\D/g, "");
-
-    if (!telefoneNumeros || telefoneNumeros.length < 10) {
-      toast.error("Informe um número de telefone válido");
-      return;
-    }
-
-    const numeroFormatado = telefoneNumeros.startsWith("55")
-      ? telefoneNumeros
-      : `55${telefoneNumeros}`;
-
-    const mensagemCodificada = encodeURIComponent(mensagem);
-    const urlWhatsApp = `https://wa.me/${numeroFormatado}?text=${mensagemCodificada}`;
-
-    window.open(urlWhatsApp, "_blank");
-
-    toast.success("WhatsApp aberto! Anexe o PDF baixado na conversa.", {
-      duration: 6000,
-    });
-
-    onOpenChange(false);
-  };
-
   // Apenas abre o WhatsApp com a mensagem, sem gerar/baixar PDF
   const handleEnviarSoMensagem = () => {
     const telefoneNumeros = telefone.replace(/\D/g, "");
@@ -240,6 +221,43 @@ export const DialogEnviarWhatsApp = ({
     window.open(urlWhatsApp, "_blank");
 
     onOpenChange(false);
+  };
+
+  // Monta a mensagem com o link público de acompanhamento e abre o WhatsApp —
+  // o cliente decide, pelo link, se quer ver os detalhes ou baixar o PDF.
+  const handleEnviarLinkAcompanhamento = async () => {
+    if (!ordem) return;
+
+    const telefoneNumeros = telefone.replace(/\D/g, "");
+
+    if (!telefoneNumeros || telefoneNumeros.length < 10) {
+      toast.error("Informe um número de telefone válido");
+      return;
+    }
+
+    if (!podeCompartilharLink) {
+      toast.error("Você não tem permissão para compartilhar o link de acompanhamento");
+      return;
+    }
+
+    setEnviandoLink(true);
+    try {
+      const link = await gerarLink(ordem.id, lojaUserId ?? undefined);
+      if (!link) return;
+
+      const numeroFormatado = telefoneNumeros.startsWith("55")
+        ? telefoneNumeros
+        : `55${telefoneNumeros}`;
+
+      const mensagemComLink = `${mensagem}\n\nAcompanhe sua OS em tempo real:\n${link}`;
+      const mensagemCodificada = encodeURIComponent(mensagemComLink);
+      const urlWhatsApp = `https://wa.me/${numeroFormatado}?text=${mensagemCodificada}`;
+
+      window.open(urlWhatsApp, "_blank");
+      onOpenChange(false);
+    } finally {
+      setEnviandoLink(false);
+    }
   };
 
   const handleEnviarDesktop = async () => {
@@ -420,101 +438,125 @@ export const DialogEnviarWhatsApp = ({
                 Como enviar no celular:
               </p>
               <ul className="list-disc list-inside space-y-1 pl-1">
+                <li><strong className="text-foreground">Só chamar no WhatsApp:</strong> abre a conversa direto com a mensagem, sem PDF.</li>
                 {suportaCompartilharArquivo ? (
-                  <>
-                    <li><strong className="text-foreground">Só chamar no WhatsApp:</strong> abre a conversa direto com a mensagem, sem PDF.</li>
-                    <li><strong className="text-foreground">Compartilhar direto:</strong> abre o menu nativo de compartilhamento com o PDF já anexado — escolha o WhatsApp na lista.</li>
-                  </>
+                  <li><strong className="text-foreground">Compartilhar direto:</strong> abre o menu nativo de compartilhamento com o PDF já anexado — escolha o WhatsApp na lista.</li>
                 ) : (
-                  <>
-                    <li><strong className="text-foreground">Só chamar no WhatsApp:</strong> abre a conversa direto com a mensagem, sem PDF.</li>
-                    <li><strong className="text-foreground">Enviar com PDF:</strong> baixe o PDF, depois abra o WhatsApp e anexe o arquivo na conversa.</li>
-                  </>
+                  <li><strong className="text-foreground">Baixar PDF:</strong> baixe o arquivo e anexe manualmente na conversa do WhatsApp.</li>
                 )}
               </ul>
             </div>
           )}
         </div>
 
-        <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/10 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            onClick={handleEnviarSoMensagem}
-            disabled={gerando || compartilhando}
-            className={cn("gap-2", mobile && "col-span-2")}
-          >
-            <FaWhatsapp className="h-4 w-4 text-[#25D366]" />
-            Só chamar no WhatsApp
-          </Button>
-
-          {mobile ? (
-            suportaCompartilharArquivo ? (
-              <Button
-                onClick={handleCompartilharDireto}
-                disabled={compartilhando}
-                className="col-span-2 gap-2"
-              >
-                {compartilhando ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Preparando...
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="h-4 w-4" />
-                    Compartilhar direto (com PDF)
-                  </>
-                )}
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant={pdfBaixado ? "outline" : "default"}
-                  onClick={handleBaixarPDF}
-                  disabled={gerando}
-                  className="gap-2"
-                >
-                  {gerando ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Gerando...
-                    </>
-                  ) : pdfBaixado ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      PDF Baixado
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4" />
-                      1. Baixar PDF
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={handleAbrirWhatsApp}
-                  disabled={!pdfBaixado}
-                  className="gap-2"
-                >
-                  <Send className="h-4 w-4" />
-                  2. Abrir WhatsApp
-                </Button>
-              </>
-            )
-          ) : (
-            <Button onClick={handleEnviarDesktop} disabled={gerando} className="gap-2">
-              {gerando ? (
+        <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/10 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] space-y-2">
+          {mobile && suportaCompartilharArquivo && (
+            <Button
+              onClick={handleCompartilharDireto}
+              disabled={compartilhando}
+              className="w-full gap-2"
+            >
+              {compartilhando ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Preparando...
                 </>
               ) : (
                 <>
-                  <Paperclip className="h-4 w-4" />
-                  Enviar com PDF
+                  <Share2 className="h-4 w-4" />
+                  Compartilhar direto (com PDF)
                 </>
               )}
             </Button>
+          )}
+
+          {mobile ? (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                onClick={handleEnviarSoMensagem}
+                disabled={gerando || compartilhando}
+                className="gap-2"
+              >
+                <FaWhatsapp className="h-4 w-4 text-[#25D366]" />
+                Só chamar no WhatsApp
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleBaixarPDF}
+                disabled={gerando || compartilhando}
+                className="gap-2"
+              >
+                {gerando ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Gerando...
+                  </>
+                ) : pdfBaixado ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    PDF Baixado
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Baixar PDF
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                onClick={handleEnviarSoMensagem}
+                disabled={gerando}
+                className="gap-2"
+              >
+                <FaWhatsapp className="h-4 w-4 text-[#25D366]" />
+                Só chamar no WhatsApp
+              </Button>
+              <Button onClick={handleEnviarDesktop} disabled={gerando} className="gap-2">
+                {gerando ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Preparando...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="h-4 w-4" />
+                    Enviar com PDF
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {podeCompartilharLink && (
+            <Button
+              variant="outline"
+              onClick={handleEnviarLinkAcompanhamento}
+              disabled={enviandoLink}
+              className="w-full gap-2"
+            >
+              {enviandoLink ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Gerando link...
+                </>
+              ) : (
+                <>
+                  <Link2 className="h-4 w-4" />
+                  Enviar link de acompanhamento
+                </>
+              )}
+            </Button>
+          )}
+
+          {mobile && !suportaCompartilharArquivo && (
+            <p className="text-[11px] text-muted-foreground text-center px-2">
+              Para enviar o PDF manualmente: baixe o arquivo e anexe na conversa do WhatsApp.
+            </p>
           )}
         </div>
       </DialogContent>
