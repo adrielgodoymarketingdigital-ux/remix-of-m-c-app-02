@@ -15,6 +15,7 @@ import {
   MessageSquare, Camera, Hash, Calendar, Clock,
   MapPin, Phone, CreditCard, Wrench, Lock, FileText,
   RadioTower, Copy, ExternalLink, Loader2, Package, History,
+  X, Pencil, DollarSign,
 } from "lucide-react";
 import { checklistIcons } from "@/lib/checklist-icons";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
@@ -33,9 +34,10 @@ interface DialogVisualizacaoOrdemProps {
   onOpenChange: (open: boolean) => void;
   ordem: OrdemServico | null;
   onSuccess?: () => void;
+  onEditar?: (ordem: OrdemServico) => void;
 }
 
-export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }: DialogVisualizacaoOrdemProps) => {
+export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, onEditar }: DialogVisualizacaoOrdemProps) => {
   const [dialogAssinaturaSaidaAberto, setDialogAssinaturaSaidaAberto] = useState(false);
   const [dialogWhatsAppAberto, setDialogWhatsAppAberto] = useState(false);
   const [linkAcompanhamento, setLinkAcompanhamento] = useState<string | null>(null);
@@ -113,57 +115,59 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[92dvh] no-print p-0 gap-0 overflow-hidden flex flex-col" data-print-hide="true">
+      <DialogContent
+        className="!inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-[calc(100vw-1rem)] !h-[92dvh] !max-w-4xl !rounded-2xl sm:!w-[calc(100vw-2rem)] sm:!h-[90dvh] sm:!max-w-4xl sm:!rounded-2xl no-print p-0 gap-0 overflow-hidden flex flex-col bg-background [&>.absolute.right-4.top-4]:hidden"
+        data-print-hide="true"
+      >
+        <DialogTitle className="sr-only">Ordem de Serviço #{ordem.numero_os}</DialogTitle>
+
+        {/* Alça de arrastar */}
+        <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+          <div className="h-1.5 w-10 rounded-full bg-muted-foreground/25" />
+        </div>
+
+        {/* Botão fechar isolado */}
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          className="absolute right-3 top-3 sm:right-5 sm:top-5 z-10 h-8 w-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Fechar</span>
+        </button>
 
         {/* Header */}
-        <div className="relative px-3 sm:px-5 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-border/40 bg-gradient-to-r from-muted/30 to-background overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-          <div className="absolute top-0 left-0 w-32 h-32 opacity-5 rounded-full bg-primary blur-3xl" />
-
-          <div className="relative flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">Ordem de Serviço</span>
-                  {(ordem as any).tipo_os === "simplificada" && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 font-mono">Simplificada</span>
-                  )}
-                </div>
-                <h2 className="text-xl font-black font-mono tracking-tight">#{ordem.numero_os}</h2>
-              </div>
+        <div className="relative px-3 sm:px-5 pt-1 sm:pt-2 pb-3 sm:pb-4 border-b border-border/40 shrink-0">
+          <div className="flex items-start gap-3 pr-12">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5 text-primary" />
             </div>
-
-            <div className="flex items-center gap-2 shrink-0 mt-1">
-              <span
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold border"
-                style={{ color: statusCor, borderColor: `${statusCor}40`, backgroundColor: `${statusCor}12` }}
-              >
-                <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: statusCor }} />
-                {statusLabel}
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">Ordem de Serviço</span>
+                {(ordem as any).tipo_os === "simplificada" && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 font-mono">Simplificada</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-black font-mono tracking-tight">#{ordem.numero_os}</h2>
+                <span
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold border shrink-0"
+                  style={{ color: statusCor, borderColor: `${statusCor}40`, backgroundColor: `${statusCor}12` }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: statusCor }} />
+                  {statusLabel}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Meta linha rápida */}
-          <div className="relative flex items-center gap-4 mt-3 text-[11px] text-muted-foreground font-mono flex-wrap">
-            <span className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {ordem.cliente?.nome || "—"}
-            </span>
-            <span className="flex items-center gap-1">
-              <Smartphone className="h-3 w-3" />
-              {ordem.dispositivo_marca} {ordem.dispositivo_modelo}
-            </span>
-            <span className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {formatDate(ordem.created_at)}
-            </span>
-            <span className="flex items-center gap-1 font-semibold text-primary">
-              <ValorMonetario valor={ordem.total || 0} tipo="preco" />
-            </span>
+          {/* Meta chips */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+            <MetaChip icon={<User className="h-3.5 w-3.5" />} value={ordem.cliente?.nome || "—"} />
+            <MetaChip icon={<Smartphone className="h-3.5 w-3.5" />} value={`${ordem.dispositivo_marca || ""} ${ordem.dispositivo_modelo || ""}`.trim() || "—"} />
+            <MetaChip icon={<Calendar className="h-3.5 w-3.5" />} value={formatDate(ordem.created_at)} />
+            <MetaChip icon={<DollarSign className="h-3.5 w-3.5" />} value={<ValorMonetario valor={ordem.total || 0} tipo="preco" />} highlight />
           </div>
         </div>
 
@@ -174,36 +178,36 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
             className="w-full"
             onValueChange={(value) => { if (value === "historico") carregarHistorico(); }}
           >
-            <TabsList className="grid w-full grid-cols-8 h-auto mb-4 bg-muted/40 border border-border/40 p-0.5 rounded-lg">
+            <TabsList className="flex w-full h-auto mb-4 bg-transparent border-0 p-0 gap-1 overflow-x-auto scrollbar-hide justify-start sm:justify-between">
               {[
                 { value: "cliente", icon: User, label: "Cliente" },
                 { value: "dispositivo", icon: Smartphone, label: "Dispositivo" },
                 { value: "fotos", icon: Camera, label: "Fotos", badge: fotosDispositivo.length },
                 { value: "entrada", icon: CheckCircle2, label: "Entrada" },
                 { value: "saida", icon: XCircle, label: "Saída" },
-                { value: "assinaturas", icon: PenTool, label: "Assin." },
-                { value: "rastrear", icon: RadioTower, label: "Tempo Real" },
+                { value: "assinaturas", icon: PenTool, label: "Assinatura" },
+                { value: "rastrear", icon: RadioTower, label: "Tempo" },
                 { value: "historico", icon: History, label: "Histórico" },
               ].map(({ value, icon: Icon, label, badge }) => (
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="flex flex-col items-center justify-center gap-0.5 py-1.5 px-0.5 h-auto rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground transition-all min-w-0"
+                  className="group/tab flex flex-col items-center justify-center gap-1 py-1 px-1.5 h-auto rounded-none bg-transparent shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none transition-all shrink-0"
                 >
-                  <div className="relative">
-                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <div className="relative h-8 w-8 rounded-full flex items-center justify-center bg-muted text-muted-foreground transition-colors group-data-[state=active]/tab:bg-primary group-data-[state=active]/tab:text-primary-foreground">
+                    <Icon className="h-4 w-4 shrink-0" />
                     {badge && badge > 0 ? (
-                      <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-primary text-primary-foreground text-[8px] font-bold flex items-center justify-center">{badge}</span>
+                      <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center">{badge}</span>
                     ) : null}
                   </div>
-                  <span className="text-[9px] font-medium leading-none truncate w-full text-center">{label}</span>
+                  <span className="text-[10px] font-medium leading-none whitespace-nowrap text-muted-foreground transition-colors group-data-[state=active]/tab:text-foreground group-data-[state=active]/tab:font-semibold">{label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
 
             {/* ── Tab Cliente ── */}
-            <TabsContent value="cliente" className="space-y-4 mt-0">
-              <Section title="Cliente" icon={<User className="h-3.5 w-3.5" />}>
+            <TabsContent value="cliente" className="space-y-4 mt-0 focus-visible:ring-0 focus-visible:outline-none">
+              <Section title="Cliente" icon={<User className="h-3.5 w-3.5" />} onEditar={onEditar ? () => onEditar(ordem) : undefined}>
                 <InfoGrid>
                   <InfoItem icon={<User className="h-3 w-3" />} label="Nome" value={ordem.cliente?.nome} />
                   <InfoItem icon={<Phone className="h-3 w-3" />} label="Telefone" value={ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : undefined} />
@@ -212,7 +216,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
                 </InfoGrid>
               </Section>
 
-              <Section title="Serviço" icon={<Wrench className="h-3.5 w-3.5" />}>
+              <Section title="Serviço" icon={<Wrench className="h-3.5 w-3.5" />} onEditar={onEditar ? () => onEditar(ordem) : undefined}>
                 <InfoGrid>
                   <InfoItem icon={<Calendar className="h-3 w-3" />} label="Abertura" value={`${formatDate(ordem.created_at)} ${formatTime(ordem.created_at)}`} mono />
                   <InfoItem icon={<Hash className="h-3 w-3" />} label="OS" value={`#${ordem.numero_os}`} mono />
@@ -241,8 +245,8 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
             </TabsContent>
 
             {/* ── Tab Dispositivo ── */}
-            <TabsContent value="dispositivo" className="space-y-4 mt-0">
-              <Section title="Dispositivo" icon={<Smartphone className="h-3.5 w-3.5" />}>
+            <TabsContent value="dispositivo" className="space-y-4 mt-0 focus-visible:ring-0 focus-visible:outline-none">
+              <Section title="Dispositivo" icon={<Smartphone className="h-3.5 w-3.5" />} onEditar={onEditar ? () => onEditar(ordem) : undefined}>
                 <InfoGrid>
                   <InfoItem label="Tipo" value={ordem.dispositivo_tipo} />
                   <InfoItem label="Marca" value={ordem.dispositivo_marca} />
@@ -274,7 +278,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
             </TabsContent>
 
             {/* ── Tab Fotos ── */}
-            <TabsContent value="fotos" className="mt-0">
+            <TabsContent value="fotos" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
               <Section title="Fotos do Dispositivo" icon={<Camera className="h-3.5 w-3.5" />}>
                 {fotosDispositivo.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -296,7 +300,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
             </TabsContent>
 
             {/* ── Tab Entrada ── */}
-            <TabsContent value="entrada" className="mt-0">
+            <TabsContent value="entrada" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
               <div className="grid md:grid-cols-2 gap-4">
                 <Section title="Checklist de Entrada" icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
                   {avariasData?.checklist?.sem_teste && (
@@ -360,7 +364,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
             </TabsContent>
 
             {/* ── Tab Saída ── */}
-            <TabsContent value="saida" className="mt-0">
+            <TabsContent value="saida" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
               <Section title="Checklist de Saída" icon={<XCircle className="h-3.5 w-3.5" />}>
                 {Object.keys(checklistSaida).length > 0 ? (
                   <div className="grid grid-cols-2 gap-1.5">
@@ -393,7 +397,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
             </TabsContent>
 
             {/* ── Tab Assinaturas ── */}
-            <TabsContent value="assinaturas" className="mt-0">
+            <TabsContent value="assinaturas" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
               <Section title="Assinaturas Digitais" icon={<PenTool className="h-3.5 w-3.5" />}>
                 <div className="grid md:grid-cols-2 gap-3">
                   {/* Entrada */}
@@ -465,7 +469,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
               </Section>
             </TabsContent>
             {/* ── Tab Rastrear ── */}
-            <TabsContent value="rastrear" className="mt-0">
+            <TabsContent value="rastrear" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
               <Section title="Acompanhamento de OS em Tempo Real" icon={<RadioTower className="h-3.5 w-3.5" />}>
                 <p className="text-xs text-muted-foreground mb-4">
                   Gere um link público para o cliente acompanhar o status da OS em tempo real, sem precisar fazer login.
@@ -543,7 +547,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
             </TabsContent>
 
             {/* ── Tab Histórico ── */}
-            <TabsContent value="historico" className="mt-0">
+            <TabsContent value="historico" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
               <Section title="Histórico da OS" icon={<History className="h-3.5 w-3.5" />}>
                 {historico.length > 0 ? (
                   <div className="space-y-3">
@@ -576,17 +580,17 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 px-3 sm:px-5 py-3 border-t border-border/40 bg-muted/10">
+        <div className="grid grid-cols-2 gap-2 px-3 sm:px-5 py-3 border-t border-border/40 bg-muted/10 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setDialogWhatsAppAberto(true)}
-            className="gap-1.5 text-xs text-green-600 hover:text-green-700 border-green-500/30 hover:bg-green-500/5"
+            className="gap-1.5 text-xs h-9 text-green-600 hover:text-green-700 border-green-500/30 hover:bg-green-500/5"
           >
             <MessageSquare className="h-3.5 w-3.5" />
             WhatsApp
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="text-xs">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="text-xs h-9">
             Fechar
           </Button>
         </div>
@@ -611,12 +615,33 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess }
 
 // ── Sub-componentes de layout ──
 
-function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
+function MetaChip({ icon, value, highlight }: { icon: React.ReactNode; value: React.ReactNode; highlight?: boolean }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/20 px-2.5 py-2 min-w-0">
+      <span className={cn("shrink-0", highlight ? "text-primary" : "text-muted-foreground/60")}>{icon}</span>
+      <span className={cn("text-xs truncate", highlight ? "font-bold text-primary" : "font-medium text-foreground/80")}>{value}</span>
+    </div>
+  );
+}
+
+function Section({ title, icon, children, onEditar }: { title: string; icon?: React.ReactNode; children: React.ReactNode; onEditar?: () => void }) {
   return (
     <div className="rounded-xl border border-border/40 overflow-hidden mb-1">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/30 bg-muted/20">
-        {icon && <span className="text-muted-foreground/60">{icon}</span>}
-        <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">{title}</span>
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/30 bg-muted/20">
+        <div className="flex items-center gap-2">
+          {icon && <span className="text-muted-foreground/60">{icon}</span>}
+          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">{title}</span>
+        </div>
+        {onEditar && (
+          <button
+            type="button"
+            onClick={onEditar}
+            className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            <Pencil className="h-3 w-3" />
+            Editar
+          </button>
+        )}
       </div>
       <div className="p-3">{children}</div>
     </div>
@@ -624,19 +649,21 @@ function Section({ title, icon, children }: { title: string; icon?: React.ReactN
 }
 
 function InfoGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">{children}</div>;
+  return <div className="grid grid-cols-2 gap-2.5">{children}</div>;
 }
 
 function InfoItem({ label, value, icon, mono }: { label: string; value?: string | null; icon?: React.ReactNode; mono?: boolean }) {
   return (
-    <div>
-      <div className="flex items-center gap-1 mb-0.5">
-        {icon && <span className="text-muted-foreground/40">{icon}</span>}
-        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/50">{label}</p>
+    <div className="flex items-start gap-2">
+      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0 text-muted-foreground/60">
+        {icon || <FileText className="h-3 w-3" />}
       </div>
-      <p className={cn("text-sm text-foreground/80", mono && "font-mono text-xs")}>
-        {value || <span className="text-muted-foreground/30">—</span>}
-      </p>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/50 mb-0.5">{label}</p>
+        <p className={cn("text-sm text-foreground/80 truncate", mono && "font-mono text-xs")}>
+          {value || <span className="text-muted-foreground/30">—</span>}
+        </p>
+      </div>
     </div>
   );
 }

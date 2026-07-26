@@ -1352,6 +1352,7 @@ export default function OrdemServicoPage() {
             open={dialogVisualizacao}
             onOpenChange={setDialogVisualizacao}
             ordem={ordemSelecionada}
+            onEditar={(ordem) => { setDialogVisualizacao(false); handleEditar(ordem); }}
           />
 
           <DialogAssinaturaSaida
