@@ -236,10 +236,10 @@ export function BannerVencimentoPlano() {
                 e.stopPropagation();
                 navigate("/plano");
               }}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition-transform group-active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-3 font-display text-base font-bold text-slate-900 shadow-sm transition-transform group-active:scale-[0.98]"
             >
               {bannerInfo.botao}
-              <ChevronRight className="h-4 w-4 shrink-0" />
+              <ChevronRight className="h-5 w-5 shrink-0" />
             </span>
           </div>
         </button>
@@ -301,10 +301,10 @@ export function BannerVencimentoPlano() {
                 setDetalhesAbertos(false);
                 navigate("/plano");
               }}
-              className={`flex w-full items-center justify-center gap-1 rounded-xl bg-gradient-to-r ${gradient} px-3 py-2.5 text-sm font-semibold text-white shadow-md transition-transform active:scale-[0.98]`}
+              className={`flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r ${gradient} px-4 py-3 font-display text-base font-bold text-white shadow-md transition-transform active:scale-[0.98]`}
             >
               {bannerInfo.botao}
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-5 w-5 shrink-0" />
             </button>
 
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-border/50 border border-border/50 sm:grid-cols-3">

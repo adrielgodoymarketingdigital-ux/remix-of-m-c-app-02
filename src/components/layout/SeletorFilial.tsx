@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export function SeletorFilial() {
+export function SeletorFilial({ className }: { className?: string }) {
   const { empresaAtiva, setEmpresaAtiva, isProprietario, empresas, nomeMatriz } = useEmpresa();
 
   if (!isProprietario) return null;
@@ -25,7 +25,7 @@ export function SeletorFilial() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 min-w-0 gap-0 rounded-full border-border/50 bg-card pl-1.5 pr-1 text-foreground shadow-sm hover:bg-accent max-w-[160px]"
+          className={`h-8 min-w-0 gap-0 rounded-full border-border/50 bg-card pl-1.5 pr-1 text-foreground shadow-sm hover:bg-accent max-w-[160px] ${className ?? ""}`}
         >
           <span className="truncate text-xs font-medium">{label}</span>
           <ChevronDown className="h-2.5 w-2.5 shrink-0 opacity-50 ml-0.5" />
