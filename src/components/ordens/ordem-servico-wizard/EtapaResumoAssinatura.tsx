@@ -38,7 +38,7 @@ export function EtapaResumoAssinatura({
         descricao="Confira os valores e colete a assinatura do cliente."
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:items-start">
       <ResumoFinanceiro
         servicos={formData.servicos}
         produtos={formData.produtos}
@@ -75,7 +75,7 @@ export function EtapaResumoAssinatura({
         })()}
       />
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {/* Assinatura Digital do Cliente - Entrada */}
         <AssinaturaDigital
           label="Assinatura do Cliente (Entrada)"

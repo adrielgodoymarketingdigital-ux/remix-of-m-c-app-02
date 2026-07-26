@@ -165,11 +165,11 @@ export const DialogOrdemServico = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-3xl lg:max-w-4xl h-[92dvh] sm:h-auto sm:max-h-[85dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-3xl bg-muted/30 [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-3 [&>button]:right-3 [&>button]:shadow-sm">
-        <div className="shrink-0 px-3 pt-3 pb-2 sm:px-4 sm:pt-4">
-          <div className="bg-background rounded-2xl shadow-sm px-3 py-2.5 sm:px-4">
-            <DialogHeader className="mb-2">
-              <DialogTitle className="text-base sm:text-lg font-bold">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-3xl h-[92dvh] sm:h-auto sm:max-h-[78dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl bg-muted/30 [&>button]:h-7 [&>button]:w-7 [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-2.5 [&>button]:right-2.5 [&>button]:shadow-sm">
+        <div className="shrink-0 px-2.5 pt-2.5 pb-1.5 sm:px-3 sm:pt-3">
+          <div className="bg-background rounded-xl shadow-sm px-2.5 py-2 sm:px-3">
+            <DialogHeader className="mb-1.5">
+              <DialogTitle className="text-sm sm:text-base font-bold">
                 {ordem ? `Editar Ordem de Serviço — OS ${ordem.numero_os}` : "Nova Ordem de Serviço"}
               </DialogTitle>
             </DialogHeader>
@@ -181,8 +181,8 @@ export const DialogOrdemServico = ({
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 sm:px-4">
-          <div className="bg-background rounded-2xl shadow-sm p-3 sm:p-4 text-sm">
+        <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5 sm:px-3">
+          <div className="bg-background rounded-xl shadow-sm p-2.5 sm:p-3 text-xs">
           {etapaAtual === 1 && (
             <EtapaOrigemCliente formData={formData} setFormData={setFormData} />
           )}
@@ -263,24 +263,24 @@ export const DialogOrdemServico = ({
           </div>
         </div>
 
-        <div className="shrink-0 px-3 py-2.5 sm:px-4 flex flex-row justify-between gap-3">
+        <div className="shrink-0 px-2.5 py-2 sm:px-3 flex flex-row justify-between gap-3">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={etapaAtual === 1 ? () => onOpenChange(false) : voltarEtapa}
             disabled={loading}
-            className="rounded-full px-6"
+            className="rounded-full px-5 h-8 text-xs"
           >
             {etapaAtual === 1 ? "Cancelar" : "Anterior"}
           </Button>
           {etapaAtual < TOTAL_ETAPAS ? (
-            <Button type="button" size="sm" onClick={tentarAvancar} disabled={loading} className="rounded-full px-6 gap-1.5">
+            <Button type="button" size="sm" onClick={tentarAvancar} disabled={loading} className="rounded-full px-5 h-8 text-xs gap-1">
               Próximo
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           ) : (
-            <Button type="button" size="sm" onClick={handleSalvar} disabled={loading} className="rounded-full px-6">
+            <Button type="button" size="sm" onClick={handleSalvar} disabled={loading} className="rounded-full px-5 h-8 text-xs">
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

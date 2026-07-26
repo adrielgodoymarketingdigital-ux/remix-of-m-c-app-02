@@ -68,7 +68,7 @@ export function EtapaInformacoesServico({
         descricao="Descreva o problema e defina os responsáveis pelo atendimento."
       />
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div>
           <CampoLabel htmlFor="defeitoRelatado" texto="Defeito Relatado" obrigatorio />
           <Textarea
@@ -77,16 +77,16 @@ export function EtapaInformacoesServico({
             onChange={(e) =>
               setFormData({ ...formData, defeitoRelatado: e.target.value })
             }
-            rows={3}
-            className={cn("rounded-xl", campoComErro === "defeitoRelatado" && "border-destructive")}
+            rows={2}
+            className={cn("rounded-xl text-xs min-h-0", campoComErro === "defeitoRelatado" && "border-destructive")}
           />
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center justify-between mb-1">
             <CampoLabel htmlFor="observacoesInternas" texto="Observações Internas" />
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground">
                 {formData.mostrarObsInternasImpressao ? "Aparece na impressão" : "Não aparece na impressão"}
               </span>
               <Switch
@@ -103,13 +103,13 @@ export function EtapaInformacoesServico({
             onChange={(e) =>
               setFormData({ ...formData, observacoesInternas: e.target.value })
             }
-            rows={2}
+            rows={1}
             placeholder="Anotações internas sobre o aparelho"
-            className="rounded-xl"
+            className="rounded-xl text-xs min-h-0"
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-2">
           {localizacoes.length > 0 && (
             <div>
               <CampoLabel htmlFor="localizacaoFisica" texto="Localização Física" subtexto="Onde o aparelho está fisicamente armazenado ou em reparo." />
@@ -119,7 +119,7 @@ export function EtapaInformacoesServico({
                   setFormData({ ...formData, localizacaoFisica: value === "__nenhuma__" ? "" : value })
                 }
               >
-                <SelectTrigger id="localizacaoFisica" className="h-10 rounded-xl">
+                <SelectTrigger id="localizacaoFisica" className="h-8 rounded-xl text-xs">
                   <SelectValue placeholder="Selecionar localização" />
                 </SelectTrigger>
                 <SelectContent>
@@ -142,7 +142,7 @@ export function EtapaInformacoesServico({
                 setFormData({ ...formData, tempoGarantia: value === "0" ? null : Number(value) })
               }
             >
-              <SelectTrigger id="tempoGarantia" className="h-10 rounded-xl">
+              <SelectTrigger id="tempoGarantia" className="h-8 rounded-xl text-xs">
                 <SelectValue placeholder="Selecione o tempo de garantia" />
               </SelectTrigger>
               <SelectContent>
@@ -170,7 +170,7 @@ export function EtapaInformacoesServico({
                 value={tecnicoId || "nenhum"}
                 onValueChange={(value) => setTecnicoId(value === "nenhum" ? null : value)}
               >
-                <SelectTrigger className={cn("h-10 rounded-xl", ((tecnicoObrigatorioOS && !tecnicoId) || campoComErro === "tecnicoId") && "border-destructive")}>
+                <SelectTrigger className={cn("h-8 rounded-xl text-xs", ((tecnicoObrigatorioOS && !tecnicoId) || campoComErro === "tecnicoId") && "border-destructive")}>
                   <SelectValue placeholder="Selecione o técnico" />
                 </SelectTrigger>
                 <SelectContent>
@@ -192,31 +192,31 @@ export function EtapaInformacoesServico({
         {/* Técnicos Adicionais */}
         {podeVerTecnicos && funcionarios.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <Label className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                <User className="h-3.5 w-3.5" />
+            <div className="flex items-center justify-between mb-1">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <User className="h-3 w-3" />
                 Técnicos e Serviços Realizados
               </Label>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-full"
+                className="rounded-full h-7 text-xs"
                 onClick={() => setTecnicosOS([...tecnicosOS, { funcionario_id: "", descricao_servico: "" }])}
               >
-                <Plus className="h-3.5 w-3.5 mr-1" />
+                <Plus className="h-3 w-3 mr-1" />
                 Adicionar
               </Button>
             </div>
             {tecnicosOS.length === 0 && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 Adicione técnicos para especificar o que cada um realizou nesta OS.
               </p>
             )}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {tecnicosOS.map((tec, index) => (
-                <div key={index} className="flex gap-2 items-start p-3 border rounded-xl bg-muted/30">
-                  <div className="flex-1 space-y-2">
+                <div key={index} className="flex gap-2 items-start p-2 border rounded-xl bg-muted/30">
+                  <div className="flex-1 space-y-1.5">
                     <Select
                       value={tec.funcionario_id || "selecionar"}
                       onValueChange={(value) => {
@@ -225,7 +225,7 @@ export function EtapaInformacoesServico({
                         setTecnicosOS(novos);
                       }}
                     >
-                      <SelectTrigger className="h-9 rounded-lg">
+                      <SelectTrigger className="h-7 text-xs rounded-lg">
                         <SelectValue placeholder="Selecione o técnico" />
                       </SelectTrigger>
                       <SelectContent>
@@ -248,20 +248,20 @@ export function EtapaInformacoesServico({
                         novos[index].descricao_servico = e.target.value;
                         setTecnicosOS(novos);
                       }}
-                      className="h-9 text-sm rounded-lg"
+                      className="h-7 text-xs rounded-lg"
                     />
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-9 w-9 p-0 text-destructive hover:text-destructive shrink-0"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive shrink-0"
                     onClick={() => {
                       const novos = tecnicosOS.filter((_, i) => i !== index);
                       setTecnicosOS(novos);
                     }}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
               ))}
@@ -271,8 +271,8 @@ export function EtapaInformacoesServico({
 
         {/* Tipo de Serviço */}
         <div>
-          <Label className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-1.5">
-            <Wrench className="h-3.5 w-3.5" />
+          <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground mb-1">
+            <Wrench className="h-3 w-3" />
             Tipo de Serviço
           </Label>
           {criandoTipoServico ? (
@@ -293,12 +293,12 @@ export function EtapaInformacoesServico({
                   }
                 }}
                 autoFocus
-                className="h-10 rounded-xl"
+                className="h-8 rounded-xl text-xs"
               />
               <Button
                 type="button"
                 size="icon"
-                className="h-10 w-12 rounded-xl shrink-0"
+                className="h-8 w-8 rounded-xl shrink-0"
                 onClick={async () => {
                   if (novoTipoServicoNome.trim()) {
                     const novo = await criarTipoServico(novoTipoServicoNome.trim());
@@ -311,12 +311,13 @@ export function EtapaInformacoesServico({
                 }}
                 disabled={!novoTipoServicoNome.trim()}
               >
-                <Check className="h-4 w-4" />
+                <Check className="h-3.5 w-3.5" />
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                className="rounded-xl shrink-0"
+                size="sm"
+                className="rounded-xl shrink-0 h-8 text-xs"
                 onClick={() => { setCriandoTipoServico(false); setNovoTipoServicoNome(""); }}
               >
                 Cancelar
@@ -328,7 +329,7 @@ export function EtapaInformacoesServico({
                 value={tipoServicoId || "nenhum"}
                 onValueChange={(value) => setTipoServicoId(value === "nenhum" ? null : value)}
               >
-                <SelectTrigger className="flex-1 h-10 rounded-xl">
+                <SelectTrigger className="flex-1 h-8 rounded-xl text-xs">
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -344,17 +345,17 @@ export function EtapaInformacoesServico({
                 type="button"
                 size="icon"
                 variant="outline"
-                className="h-10 w-12 rounded-xl shrink-0"
+                className="h-8 w-8 rounded-xl shrink-0"
                 onClick={() => setCriandoTipoServico(true)}
                 title="Criar novo tipo de serviço"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2">
           <div>
             <CampoLabel texto="Data de Entrada" />
             <Popover>
@@ -362,11 +363,11 @@ export function EtapaInformacoesServico({
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal h-10 rounded-xl",
+                    "w-full justify-start text-left font-normal h-8 rounded-xl text-xs",
                     !formData.dataEntrada && "text-muted-foreground"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
                   {formData.dataEntrada
                     ? format(formData.dataEntrada, "dd/MM/yyyy", { locale: ptBR })
                     : "Selecione a data"}
@@ -389,11 +390,11 @@ export function EtapaInformacoesServico({
               variant="outline"
               disabled
               className={cn(
-                "w-full justify-start text-left font-normal h-10 rounded-xl",
+                "w-full justify-start text-left font-normal h-8 rounded-xl text-xs",
                 !formData.dataSaida && "text-muted-foreground"
               )}
             >
-              <CalendarIcon className="mr-2 h-4 w-4" />
+              <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
               {formData.dataSaida
                 ? format(formData.dataSaida, "dd/MM/yyyy", { locale: ptBR })
                 : "Ao entregar"}

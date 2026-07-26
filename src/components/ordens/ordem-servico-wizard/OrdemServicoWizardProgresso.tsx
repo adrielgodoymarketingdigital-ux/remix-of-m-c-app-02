@@ -28,7 +28,7 @@ export function OrdemServicoWizardProgresso({
 
   return (
     <div>
-      <div className="flex items-center justify-between text-xs mb-1.5">
+      <div className="flex items-center justify-between text-[11px] mb-1">
         <span className="text-foreground">
           <span className="font-bold text-primary">Passo {etapaAtual}</span> de {TOTAL_ETAPAS} — {NOMES_ETAPAS[etapaAtual]}
         </span>
