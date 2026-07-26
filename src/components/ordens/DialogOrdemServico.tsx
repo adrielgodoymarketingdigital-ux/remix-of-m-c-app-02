@@ -165,7 +165,7 @@ export const DialogOrdemServico = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-3xl lg:max-w-5xl h-[92dvh] sm:h-[96dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-3xl bg-muted/30 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-4 [&>button]:right-4 [&>button]:shadow-sm">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-3xl lg:max-w-4xl h-[92dvh] sm:h-[90dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-3xl bg-muted/30 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-4 [&>button]:right-4 [&>button]:shadow-sm">
         <div className="shrink-0 px-4 pt-4 pb-3 sm:px-6 sm:pt-5">
           <div className="bg-background rounded-2xl shadow-sm px-4 py-3 sm:px-5">
             <DialogHeader className="mb-2.5">
