@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Minus, X, Package, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Minus, X, Package, Check, ChevronsUpDown, Pencil } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useProdutos } from "@/hooks/useProdutos";
@@ -52,6 +52,8 @@ export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProp
         custo_unitario: item.custo || 0,
         preco_total: item.preco || 0,
         estoque_disponivel: item.quantidade || 0,
+        preco_cadastro: item.preco || 0,
+        preco_editado: false,
       };
       onChange([...value, novoProduto]);
       setItemSelecionado("");
@@ -68,6 +70,20 @@ export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProp
     onChange(value.map(p =>
       p.id === id
         ? { ...p, quantidade: novaQuantidade, preco_total: p.preco_unitario * novaQuantidade }
+        : p
+    ));
+  };
+
+  const handleAlterarPrecoUnitario = (id: string, novoPreco: number) => {
+    if (novoPreco < 0 || Number.isNaN(novoPreco)) return;
+    onChange(value.map(p =>
+      p.id === id
+        ? {
+            ...p,
+            preco_unitario: novoPreco,
+            preco_total: novoPreco * p.quantidade,
+            preco_editado: novoPreco !== (p.preco_cadastro ?? p.preco_unitario),
+          }
         : p
     ));
   };
@@ -163,16 +179,41 @@ export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProp
             {value.map((produto) => (
               <div key={produto.id} className="flex items-center justify-between p-3 bg-muted rounded-lg gap-2">
                 <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className="text-xs">
                       {produto.tipo === 'peca' ? 'Peça' : 'Produto'}
                     </Badge>
                     <p className="font-medium truncate">{produto.nome}</p>
+                    {produto.preco_editado && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Pencil className="w-3 h-3" />
+                            Valor personalizado
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Preço de cadastro: <ValorMonetario valor={produto.preco_cadastro ?? 0} tipo="preco" />
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm text-muted-foreground">
-                      <ValorMonetario valor={produto.preco_unitario} tipo="preco" /> × {produto.quantidade} = <ValorMonetario valor={produto.preco_total} tipo="preco" />
-                    </p>
+                    <span className="text-sm text-muted-foreground">Valor unit.:</span>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={produto.preco_unitario}
+                        onChange={(e) => handleAlterarPrecoUnitario(produto.id, parseFloat(e.target.value))}
+                        className="h-8 w-24 pl-7 text-right"
+                      />
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      × {produto.quantidade} = <ValorMonetario valor={produto.preco_total} tipo="preco" />
+                    </span>
                     {produto.estoque_disponivel !== undefined && (
                       <span className="text-xs text-muted-foreground">
                         (Estoque: {produto.estoque_disponivel})

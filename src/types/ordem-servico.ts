@@ -54,6 +54,8 @@ export interface ProdutoUtilizado {
   custo_unitario: number;
   preco_total: number;
   estoque_disponivel?: number; // Para validação no formulário
+  preco_cadastro?: number; // Preço original do cadastro, para comparação e indicador visual
+  preco_editado?: boolean; // true quando preco_unitario foi alterado manualmente nesta OS
 }
 
 export interface CustoAdicional {

@@ -213,6 +213,8 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         preco_unitario: p.preco_unitario,
         custo_unitario: p.custo_unitario,
         preco_total: p.preco_total,
+        preco_cadastro: p.preco_cadastro,
+        preco_editado: p.preco_editado,
       })),
       custos_adicionais: formData.custosAdicionais,
       assinaturas: {
