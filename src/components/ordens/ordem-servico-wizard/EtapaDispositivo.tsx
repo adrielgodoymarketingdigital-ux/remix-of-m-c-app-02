@@ -46,7 +46,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
         </TabsList>
 
         <TabsContent value="dados" className="mt-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
             <div>
               <CampoLabel htmlFor="dispositivoTipo" texto="Tipo" obrigatorio />
               <Select
@@ -63,7 +63,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                   })
                 }
               >
-                <SelectTrigger className={cn("h-12 rounded-xl", campoComErro === "dispositivoTipo" && "border-destructive")}>
+                <SelectTrigger className={cn("h-10 rounded-xl", campoComErro === "dispositivoTipo" && "border-destructive")}>
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -84,7 +84,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                 onChange={(e) =>
                   setFormData({ ...formData, dispositivoCor: e.target.value })
                 }
-                className="h-12 rounded-xl"
+                className="h-10 rounded-xl"
               />
             </div>
 
@@ -96,7 +96,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                 onChange={(e) =>
                   setFormData({ ...formData, dispositivoMarca: e.target.value })
                 }
-                className={cn("h-12 rounded-xl", campoComErro === "dispositivoMarca" && "border-destructive")}
+                className={cn("h-10 rounded-xl", campoComErro === "dispositivoMarca" && "border-destructive")}
               />
             </div>
 
@@ -108,7 +108,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                 onChange={(e) =>
                   setFormData({ ...formData, dispositivoModelo: e.target.value })
                 }
-                className={cn("h-12 rounded-xl", campoComErro === "dispositivoModelo" && "border-destructive")}
+                className={cn("h-10 rounded-xl", campoComErro === "dispositivoModelo" && "border-destructive")}
               />
             </div>
 
@@ -123,7 +123,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                     dispositivoNumeroSerie: e.target.value,
                   })
                 }
-                className="h-12 rounded-xl"
+                className="h-10 rounded-xl"
               />
             </div>
 
@@ -135,7 +135,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                 onChange={(e) =>
                   setFormData({ ...formData, dispositivoIMEI: e.target.value })
                 }
-                className="h-12 rounded-xl"
+                className="h-10 rounded-xl"
               />
             </div>
           </div>

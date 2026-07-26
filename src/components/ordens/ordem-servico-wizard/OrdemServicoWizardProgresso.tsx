@@ -28,7 +28,7 @@ export function OrdemServicoWizardProgresso({
 
   return (
     <div>
-      <div className="flex items-center justify-between text-sm mb-2">
+      <div className="flex items-center justify-between text-xs mb-1.5">
         <span className="text-foreground">
           <span className="font-bold text-primary">Passo {etapaAtual}</span> de {TOTAL_ETAPAS} — {NOMES_ETAPAS[etapaAtual]}
         </span>
@@ -50,13 +50,13 @@ export function OrdemServicoWizardProgresso({
                 title={NOMES_ETAPAS[etapa]}
                 className={cn(
                   "rounded-full shrink-0 transition-all flex items-center justify-center",
-                  atual ? "h-5 w-5 border-2 border-primary bg-background" : "h-2.5 w-2.5",
+                  atual ? "h-4 w-4 border-2 border-primary bg-background" : "h-2 w-2",
                   !atual && (concluida || alcancada) && "bg-primary",
                   !atual && !alcancada && "bg-muted cursor-not-allowed",
                   alcancada && !atual && "cursor-pointer",
                 )}
               >
-                {atual && <span className="h-2 w-2 rounded-full bg-primary" />}
+                {atual && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
               </button>
               {index < TOTAL_ETAPAS - 1 && (
                 <div className={cn("h-0.5 flex-1 mx-1", tracoPreenchido ? "bg-primary" : "bg-muted")} />

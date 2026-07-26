@@ -10,12 +10,12 @@ interface CampoLabelProps {
 /** Label em negrito + subtexto explicativo cinza abaixo, padrão usado em todos os campos do wizard. */
 export function CampoLabel({ htmlFor, texto, subtexto, obrigatorio }: CampoLabelProps) {
   return (
-    <div className="mb-1.5">
-      <Label htmlFor={htmlFor} className="text-sm font-semibold text-foreground">
+    <div className="mb-1">
+      <Label htmlFor={htmlFor} className="text-xs font-semibold text-foreground">
         {texto}
         {obrigatorio && <span className="text-destructive"> *</span>}
       </Label>
-      {subtexto && <p className="text-xs text-muted-foreground mt-0.5">{subtexto}</p>}
+      {subtexto && <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{subtexto}</p>}
     </div>
   );
 }

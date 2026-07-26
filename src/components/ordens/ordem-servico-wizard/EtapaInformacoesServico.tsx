@@ -68,7 +68,7 @@ export function EtapaInformacoesServico({
         descricao="Descreva o problema e defina os responsáveis pelo atendimento."
       />
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div>
           <CampoLabel htmlFor="defeitoRelatado" texto="Defeito Relatado" obrigatorio />
           <Textarea
@@ -109,7 +109,7 @@ export function EtapaInformacoesServico({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
           {localizacoes.length > 0 && (
             <div>
               <CampoLabel htmlFor="localizacaoFisica" texto="Localização Física" subtexto="Onde o aparelho está fisicamente armazenado ou em reparo." />
@@ -119,7 +119,7 @@ export function EtapaInformacoesServico({
                   setFormData({ ...formData, localizacaoFisica: value === "__nenhuma__" ? "" : value })
                 }
               >
-                <SelectTrigger id="localizacaoFisica" className="h-12 rounded-xl">
+                <SelectTrigger id="localizacaoFisica" className="h-10 rounded-xl">
                   <SelectValue placeholder="Selecionar localização" />
                 </SelectTrigger>
                 <SelectContent>
@@ -142,7 +142,7 @@ export function EtapaInformacoesServico({
                 setFormData({ ...formData, tempoGarantia: value === "0" ? null : Number(value) })
               }
             >
-              <SelectTrigger id="tempoGarantia" className="h-12 rounded-xl">
+              <SelectTrigger id="tempoGarantia" className="h-10 rounded-xl">
                 <SelectValue placeholder="Selecione o tempo de garantia" />
               </SelectTrigger>
               <SelectContent>
@@ -170,7 +170,7 @@ export function EtapaInformacoesServico({
                 value={tecnicoId || "nenhum"}
                 onValueChange={(value) => setTecnicoId(value === "nenhum" ? null : value)}
               >
-                <SelectTrigger className={cn("h-12 rounded-xl", ((tecnicoObrigatorioOS && !tecnicoId) || campoComErro === "tecnicoId") && "border-destructive")}>
+                <SelectTrigger className={cn("h-10 rounded-xl", ((tecnicoObrigatorioOS && !tecnicoId) || campoComErro === "tecnicoId") && "border-destructive")}>
                   <SelectValue placeholder="Selecione o técnico" />
                 </SelectTrigger>
                 <SelectContent>
@@ -293,12 +293,12 @@ export function EtapaInformacoesServico({
                   }
                 }}
                 autoFocus
-                className="h-12 rounded-xl"
+                className="h-10 rounded-xl"
               />
               <Button
                 type="button"
                 size="icon"
-                className="h-12 w-12 rounded-xl shrink-0"
+                className="h-10 w-12 rounded-xl shrink-0"
                 onClick={async () => {
                   if (novoTipoServicoNome.trim()) {
                     const novo = await criarTipoServico(novoTipoServicoNome.trim());
@@ -328,7 +328,7 @@ export function EtapaInformacoesServico({
                 value={tipoServicoId || "nenhum"}
                 onValueChange={(value) => setTipoServicoId(value === "nenhum" ? null : value)}
               >
-                <SelectTrigger className="flex-1 h-12 rounded-xl">
+                <SelectTrigger className="flex-1 h-10 rounded-xl">
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -344,7 +344,7 @@ export function EtapaInformacoesServico({
                 type="button"
                 size="icon"
                 variant="outline"
-                className="h-12 w-12 rounded-xl shrink-0"
+                className="h-10 w-12 rounded-xl shrink-0"
                 onClick={() => setCriandoTipoServico(true)}
                 title="Criar novo tipo de serviço"
               >
@@ -362,7 +362,7 @@ export function EtapaInformacoesServico({
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal h-12 rounded-xl",
+                    "w-full justify-start text-left font-normal h-10 rounded-xl",
                     !formData.dataEntrada && "text-muted-foreground"
                   )}
                 >
@@ -389,7 +389,7 @@ export function EtapaInformacoesServico({
               variant="outline"
               disabled
               className={cn(
-                "w-full justify-start text-left font-normal h-12 rounded-xl",
+                "w-full justify-start text-left font-normal h-10 rounded-xl",
                 !formData.dataSaida && "text-muted-foreground"
               )}
             >

@@ -19,14 +19,14 @@ export function EtapaOrigemCliente({ formData, setFormData }: EtapaOrigemCliente
         descricao="Informe de onde o cliente chegou até você."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <CampoLabel htmlFor="origemCliente" texto="Canal de origem" subtexto="Selecione o canal pelo qual o cliente entrou em contato." />
           <Select
             value={formData.origemCliente}
             onValueChange={(v) => setFormData({ ...formData, origemCliente: v })}
           >
-            <SelectTrigger id="origemCliente" className="h-12 rounded-xl">
+            <SelectTrigger id="origemCliente" className="h-10 rounded-xl">
               <MessageCircle className="h-4 w-4 text-primary shrink-0 mr-1" />
               <SelectValue placeholder="Selecionar canal" />
             </SelectTrigger>
@@ -48,7 +48,7 @@ export function EtapaOrigemCliente({ formData, setFormData }: EtapaOrigemCliente
             value={formData.tipoMidia}
             onValueChange={(v) => setFormData({ ...formData, tipoMidia: v })}
           >
-            <SelectTrigger id="tipoMidia" className="h-12 rounded-xl">
+            <SelectTrigger id="tipoMidia" className="h-10 rounded-xl">
               <Image className="h-4 w-4 text-primary shrink-0 mr-1" />
               <SelectValue placeholder="Selecionar tipo" />
             </SelectTrigger>

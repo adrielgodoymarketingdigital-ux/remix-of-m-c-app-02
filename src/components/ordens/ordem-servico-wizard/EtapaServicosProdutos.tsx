@@ -18,9 +18,9 @@ export function EtapaServicosProdutos({ formData, setFormData }: EtapaServicosPr
         descricao="Selecione o que será utilizado neste atendimento."
       />
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-3">Serviços</h4>
+          <h4 className="text-xs font-semibold text-foreground mb-2">Serviços</h4>
           <SelecionadorServico
             value={formData.servicos}
             onChange={(servicos) => setFormData({ ...formData, servicos })}
@@ -28,7 +28,7 @@ export function EtapaServicosProdutos({ formData, setFormData }: EtapaServicosPr
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-3">Produtos e Peças</h4>
+          <h4 className="text-xs font-semibold text-foreground mb-2">Produtos e Peças</h4>
           <SelecionadorProduto
             value={formData.produtos}
             onChange={(produtos) => setFormData({ ...formData, produtos })}
