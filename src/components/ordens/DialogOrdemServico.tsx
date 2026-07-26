@@ -165,18 +165,18 @@ export const DialogOrdemServico = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-4xl lg:max-w-5xl h-[92dvh] sm:h-auto sm:max-h-[90dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl bg-background [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-full [&>button]:bg-muted [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-6 [&>button]:right-6">
-        <div className="shrink-0 px-6 pt-6 pb-5 border-b">
-          <DialogHeader className="mb-5">
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-xl bg-primary flex items-center justify-center shrink-0">
-                <ClipboardList className="h-5 w-5 text-primary-foreground" />
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-4xl lg:max-w-5xl h-[92dvh] sm:h-auto sm:max-h-[90dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl bg-background [&>button]:h-7 [&>button]:w-7 sm:[&>button]:h-8 sm:[&>button]:w-8 [&>button]:rounded-full [&>button]:bg-muted [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-3 [&>button]:right-3 sm:[&>button]:top-6 sm:[&>button]:right-6">
+        <div className="shrink-0 px-3 pt-3 pb-2.5 sm:px-6 sm:pt-6 sm:pb-5 border-b">
+          <DialogHeader className="mb-2.5 sm:mb-5">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-11 sm:w-11 rounded-lg sm:rounded-xl bg-primary flex items-center justify-center shrink-0">
+                <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
               </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-left">
-                  {ordem ? `Editar Ordem de Serviço — OS ${ordem.numero_os}` : "Nova Ordem de Serviço"}
+              <div className="min-w-0">
+                <DialogTitle className="text-sm sm:text-lg font-bold text-left truncate">
+                  {ordem ? `Editar OS ${ordem.numero_os}` : "Nova Ordem de Serviço"}
                 </DialogTitle>
-                <p className="text-sm text-muted-foreground">
+                <p className="hidden sm:block text-sm text-muted-foreground">
                   {ordem ? "Atualize as informações e acompanhe o progresso." : "Preencha as informações para abrir uma nova OS."}
                 </p>
               </div>
@@ -189,7 +189,7 @@ export const DialogOrdemServico = ({
           />
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-6 sm:py-5">
           <div className="text-sm">
           {etapaAtual === 1 && (
             <EtapaOrigemCliente formData={formData} setFormData={setFormData} />
@@ -271,24 +271,25 @@ export const DialogOrdemServico = ({
           </div>
         </div>
 
-        <div className="shrink-0 px-6 py-4 border-t flex flex-row justify-between gap-3">
+        <div className="shrink-0 px-3 py-2.5 sm:px-6 sm:py-4 border-t flex flex-row justify-between gap-2 sm:gap-3">
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={etapaAtual === 1 ? () => onOpenChange(false) : voltarEtapa}
             disabled={loading}
-            className="gap-1.5"
+            className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm"
           >
             <ChevronLeft className="h-4 w-4" />
             {etapaAtual === 1 ? "Cancelar" : "Anterior"}
           </Button>
           {etapaAtual < TOTAL_ETAPAS ? (
-            <Button type="button" onClick={tentarAvancar} disabled={loading} className="gap-1.5">
+            <Button type="button" size="sm" onClick={tentarAvancar} disabled={loading} className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm">
               Próximo
               <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={handleSalvar} disabled={loading}>
+            <Button type="button" size="sm" onClick={handleSalvar} disabled={loading} className="sm:h-10 sm:px-4 sm:text-sm">
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
