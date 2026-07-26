@@ -14,10 +14,11 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, Smartphone, Loader2, Banknote, CreditCard, Wallet, Calendar, DollarSign } from "lucide-react";
+import { CheckCircle2, XCircle, Smartphone, Loader2, Banknote, CreditCard, Wallet, Calendar, DollarSign, ClipboardCheck, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { OrdemServico } from "@/hooks/useOrdensServico";
-import { AvariasOS, TipoAssinatura } from "@/types/ordem-servico";
+import { AvariasOS, Checklist, TipoAssinatura } from "@/types/ordem-servico";
 import { AssinaturaDigital } from "./AssinaturaDigital";
+import { ChecklistDispositivo } from "./ChecklistDispositivo";
 import { formatCurrency } from "@/lib/formatters";
 import { checklistIcons } from "@/lib/checklist-icons";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,11 +59,15 @@ export const DialogAssinaturaSaida = ({
   const [dataVencimentoSaldo, setDataVencimentoSaldo] = useState<string>(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
+  const [mostrarChecklistSaida, setMostrarChecklistSaida] = useState(false);
+  const [editandoChecklistSaida, setEditandoChecklistSaida] = useState(false);
+  const [checklistPreenchido, setChecklistPreenchido] = useState<Checklist | null>(null);
 
   if (!ordem) return null;
 
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistSaida = avariasData?.checklist?.saida || {};
+  const checklistSaidaJaPreenchido = Object.keys(checklistSaida).length > 0;
   const formaPagamentoAtual = avariasData?.dados_pagamento?.forma || (ordem as any).forma_pagamento || "";
   const entradaPaga = Number(avariasData?.dados_pagamento?.entrada || 0);
   const temEntrada = entradaPaga > 0;
@@ -103,9 +108,24 @@ export const DialogAssinaturaSaida = ({
         effectiveUserId = rpcId;
       }
 
+      // Checklist de saída é opcional: só grava se o usuário preencheu algo (etapa nova)
+      // ou se entrou explicitamente no modo de edição de um checklist já existente
+      const houveChecklistSaidaPreenchido =
+        !!checklistPreenchido &&
+        (editandoChecklistSaida ||
+          Object.keys(checklistPreenchido.saida || {}).length > 0 ||
+          !!checklistPreenchido.peca_trocada_descricao_saida);
+
       // Atualizar o campo avarias com a assinatura de saída e forma de pagamento
       const novasAvarias: AvariasOS = {
         ...avariasData,
+        checklist: houveChecklistSaidaPreenchido
+          ? {
+              ...(avariasData?.checklist || { entrada: {}, saida: {} }),
+              saida: checklistPreenchido!.saida || {},
+              peca_trocada_descricao_saida: checklistPreenchido!.peca_trocada_descricao_saida,
+            }
+          : avariasData?.checklist,
         assinaturas: {
           ...avariasData?.assinaturas,
           cliente_saida: tipoAssinaturaSaida === 'digital' ? assinaturaSaida : undefined,
@@ -139,6 +159,15 @@ export const DialogAssinaturaSaida = ({
 
       if (error) throw error;
       if (!updatedRows || updatedRows.length === 0) throw new Error("Nenhuma OS atualizada — verifique RLS ou empresa_id");
+
+      if (houveChecklistSaidaPreenchido) {
+        await supabase.from("os_audit_log").insert({
+          os_id: ordem.id,
+          acao: "CHECKLIST_SAIDA",
+          user_id: effectiveUserId,
+          dados_depois: { checklist_saida: checklistPreenchido!.saida },
+        } as any);
+      }
 
       if (temEntrada && saldoRestante > 0) {
         // Buscar conta existente da OS
@@ -426,12 +455,53 @@ export const DialogAssinaturaSaida = ({
             </div>
           )}
 
-          {/* Checklist de Saída */}
-          {Object.keys(checklistSaida).length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Checklist de Saída</CardTitle>
-              </CardHeader>
+          {/* Checklist de Saída — se já existe (de uma entrega anterior), mostra resumo com opção de editar;
+              se não existe, é uma etapa opcional que pode ser pulada sem afetar a confirmação de entrega */}
+          <Card>
+            <CardHeader className="pb-2">
+              {checklistSaidaJaPreenchido && !editandoChecklistSaida ? (
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Checklist de Saída</CardTitle>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => {
+                      setChecklistPreenchido(avariasData?.checklist || { entrada: {}, saida: {} });
+                      setEditandoChecklistSaida(true);
+                    }}
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Editar
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMostrarChecklistSaida((v) => !v)}
+                  className="flex items-center justify-between w-full text-left"
+                >
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ClipboardCheck className="h-4 w-4" />
+                    Checklist de Saída (opcional)
+                  </CardTitle>
+                  {mostrarChecklistSaida ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+              )}
+              {!checklistSaidaJaPreenchido && !mostrarChecklistSaida && (
+                <p className="text-xs text-muted-foreground pt-1">
+                  Você pode confirmar a entrega sem preencher esta etapa.
+                </p>
+              )}
+            </CardHeader>
+
+            {/* Resumo somente leitura (já preenchido, ainda não entrou em modo edição) */}
+            {checklistSaidaJaPreenchido && !editandoChecklistSaida && (
               <CardContent>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(checklistSaida).map(([item, status]) => {
@@ -459,8 +529,20 @@ export const DialogAssinaturaSaida = ({
                   })}
                 </div>
               </CardContent>
-            </Card>
-          )}
+            )}
+
+            {/* Formulário editável: etapa nova (ainda sem dado) expandida, ou edição de um checklist já existente */}
+            {((!checklistSaidaJaPreenchido && mostrarChecklistSaida) || (checklistSaidaJaPreenchido && editandoChecklistSaida)) && (
+              <CardContent>
+                <ChecklistDispositivo
+                  tipoDispositivo={ordem.dispositivo_tipo}
+                  value={checklistPreenchido || { entrada: {}, saida: {} }}
+                  onChange={setChecklistPreenchido}
+                  apenasSaida
+                />
+              </CardContent>
+            )}
+          </Card>
 
           <Separator />
 
