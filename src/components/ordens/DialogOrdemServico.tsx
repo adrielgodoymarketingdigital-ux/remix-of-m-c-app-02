@@ -165,11 +165,11 @@ export const DialogOrdemServico = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-3xl lg:max-w-4xl max-h-[92dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-3xl bg-muted/30 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-5 [&>button]:right-5 [&>button]:shadow-sm">
-        <div className="shrink-0 px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
-          <div className="bg-background rounded-2xl shadow-sm px-4 py-4 sm:px-5">
-            <DialogHeader className="mb-4">
-              <DialogTitle className="text-xl sm:text-2xl font-bold">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-3xl lg:max-w-4xl h-[92dvh] sm:h-auto sm:max-h-[96dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-3xl bg-muted/30 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-4 [&>button]:right-4 [&>button]:shadow-sm">
+        <div className="shrink-0 px-4 pt-4 pb-3 sm:px-6 sm:pt-5">
+          <div className="bg-background rounded-2xl shadow-sm px-4 py-3 sm:px-5">
+            <DialogHeader className="mb-2.5">
+              <DialogTitle className="text-lg sm:text-xl font-bold">
                 {ordem ? `Editar Ordem de Serviço — OS ${ordem.numero_os}` : "Nova Ordem de Serviço"}
               </DialogTitle>
             </DialogHeader>
@@ -181,8 +181,8 @@ export const DialogOrdemServico = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-5 sm:px-6">
-          <div className="bg-background rounded-2xl shadow-sm p-5 sm:p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 sm:px-6">
+          <div className="bg-background rounded-2xl shadow-sm p-4 sm:p-5">
           {etapaAtual === 1 && (
             <EtapaOrigemCliente formData={formData} setFormData={setFormData} />
           )}
@@ -263,7 +263,7 @@ export const DialogOrdemServico = ({
           </div>
         </div>
 
-        <div className="shrink-0 px-5 py-4 sm:px-6 flex flex-row justify-between gap-3">
+        <div className="shrink-0 px-4 py-3 sm:px-6 sm:py-4 flex flex-row justify-between gap-3">
           <Button
             type="button"
             variant="outline"

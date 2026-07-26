@@ -68,7 +68,7 @@ export function EtapaInformacoesServico({
         descricao="Descreva o problema e defina os responsáveis pelo atendimento."
       />
 
-      <div className="space-y-5">
+      <div className="space-y-4">
         <div>
           <CampoLabel htmlFor="defeitoRelatado" texto="Defeito Relatado" obrigatorio />
           <Textarea
