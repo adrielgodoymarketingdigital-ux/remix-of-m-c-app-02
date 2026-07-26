@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CreditCard } from "lucide-react";
+import { AlertTriangle, Calendar, ChevronRight } from "lucide-react";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { format } from "date-fns";
@@ -57,8 +57,8 @@ export function BannerVencimentoPlano() {
       if (isProblem) {
         return {
           tipo: "vencido" as const,
-          mensagem: `Falha no pagamento da sua assinatura. Atualize seu método de pagamento para continuar usando o sistema.`,
-          cor: "bg-red-600",
+          texto: "Falha no pagamento da sua assinatura",
+          destaque: "Atualize seu método de pagamento",
           botao: "Atualizar pagamento",
         };
       }
@@ -67,10 +67,8 @@ export function BannerVencimentoPlano() {
       if (diasRestantes <= -1) {
         return {
           tipo: "vencido" as const,
-          mensagem: isCartaoAutomatico
-            ? `Não conseguimos renovar sua assinatura automaticamente em ${dataFormatada}. Atualize seu pagamento para continuar.`
-            : `Sua assinatura venceu em ${dataFormatada}. Renove agora para continuar usando todas as funcionalidades.`,
-          cor: "bg-red-600",
+          texto: isCartaoAutomatico ? "Não conseguimos renovar sua assinatura automaticamente" : "Sua assinatura venceu",
+          destaque: dataFormatada,
           botao: isCartaoAutomatico ? "Atualizar pagamento" : "Renovar plano",
         };
       }
@@ -78,10 +76,8 @@ export function BannerVencimentoPlano() {
       if (diasRestantes <= 0) {
         return {
           tipo: "urgente" as const,
-          mensagem: isCartaoAutomatico
-            ? `Falha na cobrança automática em ${dataFormatada}. Você tem 1 dia de carência.`
-            : `Sua assinatura venceu em ${dataFormatada}. Você tem 1 dia de carência para renovar.`,
-          cor: "bg-amber-600",
+          texto: isCartaoAutomatico ? "Falha na cobrança automática — 1 dia de carência" : "Sua assinatura venceu — 1 dia de carência",
+          destaque: dataFormatada,
           botao: isCartaoAutomatico ? "Atualizar pagamento" : "Renovar plano",
         };
       }
@@ -89,16 +85,16 @@ export function BannerVencimentoPlano() {
       if (diasRestantes <= 3) {
         return {
           tipo: "urgente" as const,
-          mensagem: `Sua assinatura expira em ${diasRestantes} dia${diasRestantes > 1 ? "s" : ""} (${dataFormatada})`,
-          cor: "bg-amber-600",
+          texto: `Sua assinatura expira em ${diasRestantes} dia${diasRestantes > 1 ? "s" : ""}`,
+          destaque: dataFormatada,
           botao: "Upgrade de plano",
         };
       }
 
       return {
         tipo: "aviso" as const,
-        mensagem: `Sua assinatura expira em ${dataFormatada}`,
-        cor: "bg-blue-600",
+        texto: "Sua assinatura expira em",
+        destaque: dataFormatada,
         botao: "Ver plano atual",
       };
     }
@@ -108,56 +104,33 @@ export function BannerVencimentoPlano() {
 
   if (!bannerInfo) return null;
 
-  const isUrgente = bannerInfo.tipo === "urgente" || bannerInfo.tipo === "vencido";
+  const isVencido = bannerInfo.tipo === "vencido";
+  const isUrgente = bannerInfo.tipo === "urgente";
+
+  const accentText = isVencido ? "text-red-600" : isUrgente ? "text-amber-600" : "text-primary";
+  const iconBg = isVencido ? "bg-red-600" : isUrgente ? "bg-amber-500" : "bg-primary";
+  const Icon = isVencido || isUrgente ? AlertTriangle : Calendar;
 
   return (
-    <div className="w-full">
-      <div className={`relative overflow-hidden border-b ${isUrgente ? "bg-gradient-to-r from-red-950 via-red-900 to-red-950 border-red-700/40" : "bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 border-blue-700/40"}`}>
-
-        {/* Linha decorativa superior */}
-        <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent ${isUrgente ? "via-red-400/60" : "via-blue-400/60"} to-transparent`} />
-
-        {/* Scanline animada sutil */}
-        <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.03)_50%)] bg-[length:100%_4px] pointer-events-none opacity-30" />
-
-        <div className="flex items-center justify-between px-3 py-1.5">
-
-          <div className="flex-1 flex items-center justify-center gap-2">
-            {/* Ponto pulsante */}
-            <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isUrgente ? "bg-red-300" : "bg-blue-300"} opacity-60`} />
-              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isUrgente ? "bg-red-400" : "bg-blue-400"}`} />
-            </span>
-
-            {/* Ícone */}
-            {isUrgente
-              ? <AlertTriangle className="h-3 w-3 text-red-300/70 flex-shrink-0" />
-              : <CreditCard className="h-3 w-3 text-blue-300/70 flex-shrink-0" />
-            }
-
-            {/* Texto */}
-            <span className={`text-[11px] font-mono tracking-wide ${isUrgente ? "text-red-200/80" : "text-blue-200/80"}`}>
-              <span className={`${isUrgente ? "text-red-400/60" : "text-blue-400/60"} mr-1`}>PLANO</span>
-              {bannerInfo.mensagem}
-            </span>
-          </div>
-
-          {/* Botão */}
-          <button
-            onClick={() => navigate("/plano")}
-            className={`flex-shrink-0 text-[10px] font-mono font-semibold tracking-wider transition-colors px-2 py-0.5 rounded-sm ${
-              isUrgente
-                ? "text-red-300 hover:text-red-100 border border-red-600/50 hover:border-red-400/70 bg-red-900/40 hover:bg-red-800/40"
-                : "text-blue-300 hover:text-blue-100 border border-blue-600/50 hover:border-blue-400/70 bg-blue-900/40 hover:bg-blue-800/40"
-            }`}
-          >
-            {bannerInfo.botao.toUpperCase()}
-          </button>
-
+    <div className="px-4 pt-2">
+      <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-card px-4 py-3 shadow-sm">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${iconBg}`}>
+          <Icon className="h-5 w-5 text-white" />
         </div>
 
-        {/* Linha decorativa inferior */}
-        <div className={`absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent ${isUrgente ? "via-red-500/30" : "via-blue-500/30"} to-transparent`} />
+        <div className="min-w-0 flex-1">
+          <p className={`text-[11px] font-semibold tracking-wide ${accentText}`}>PLANO</p>
+          <p className="text-sm text-foreground leading-tight">{bannerInfo.texto}</p>
+          <p className={`text-base font-bold leading-tight ${accentText}`}>{bannerInfo.destaque}</p>
+        </div>
+
+        <button
+          onClick={() => navigate("/plano")}
+          className="flex shrink-0 items-center gap-1 rounded-full border border-border/50 bg-background px-3 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+        >
+          {bannerInfo.botao}
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );

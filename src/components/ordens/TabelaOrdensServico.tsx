@@ -15,8 +15,9 @@ import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
 import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { OrdemServico } from "@/hooks/useOrdensServico";
-import { Check, ClipboardList, Building2 } from "lucide-react";
+import { Check, ClipboardList, Building2, ArrowDownUp } from "lucide-react";
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import { useIsMobile, useIsMobileOrTablet } from "@/hooks/use-mobile";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSColunas } from "@/hooks/useOSColunas";
@@ -86,6 +87,10 @@ export const TabelaOrdensServico = ({
 }: TabelaOrdensServicoProps) => {
   const [popoverAberto, setPopoverAberto] = useState<string | null>(null);
   const isMobileOrTablet = useIsMobileOrTablet();
+  const { resolvedTheme } = useTheme();
+  // A seção "Gestão de OS" inverte o tema (ver OrdemServico.tsx); os cards de
+  // OS devem seguir o tema real do app, então cancelamos essa inversão aqui.
+  const classeTemaRealDoApp = resolvedTheme === "dark" ? "forcar-escuro" : "forcar-claro";
   const { statusList, activeStatusList } = useOSStatusConfig();
   const { config } = useOSColunas();
   const colunasAtivas = config.colunas;
@@ -126,139 +131,163 @@ export const TabelaOrdensServico = ({
   // Mobile/Tablet
   if (isMobileOrTablet) {
     return (
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-        {ordens.map((ordem) => {
-          const cor = statusColors[ordem.status as string] || "#eab308";
-          const label = statusLabels[ordem.status as string] || "Aguardando";
-          const isAvulso = (ordem.avarias as any)?.is_avulso;
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-foreground">
+            Ordens encontradas
+          </span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            Mais recentes
+            <ArrowDownUp className="h-3 w-3" />
+          </span>
+        </div>
 
-          return (
-            <div
-              key={ordem.id}
-              className="relative rounded-xl border bg-card overflow-hidden transition-all duration-150 hover:border-border"
-              style={{ borderColor: selecaoAtiva && itensSelecionados.has(ordem.id) ? `${cor}80` : `${cor}25` }}
-            >
-              {/* Linha de cor no topo */}
-              <div className="h-[2px] w-full" style={{ background: `linear-gradient(90deg, ${cor}90, ${cor}20)` }} />
-              {selecaoAtiva && (
-                <div className="absolute top-3 left-3 z-10">
-                  <Checkbox
-                    checked={itensSelecionados.has(ordem.id)}
-                    onCheckedChange={() => onToggleSelecionado?.(ordem.id)}
-                    className="h-4 w-4"
-                  />
-                </div>
-              )}
+        <div className={`grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1 ${classeTemaRealDoApp}`}>
+          {ordens.map((ordem) => {
+            const cor = statusColors[ordem.status as string] || "#eab308";
+            const label = statusLabels[ordem.status as string] || "Aguardando";
+            const isAvulso = (ordem.avarias as any)?.is_avulso;
 
-              <div className={`p-3.5 ${selecaoAtiva ? "pl-9" : ""}`}>
-                <div className="flex justify-between items-start mb-2.5">
-                  <div className="flex items-center gap-2">
-                    {isAvulso ? (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-500 font-mono">Avulso</span>
-                    ) : (
-                      <span className="text-xs font-bold font-mono text-foreground/80">#{ordem.numero_os}</span>
-                    )}
-                    {(ordem as any).is_teste && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 font-mono">Teste</span>
-                    )}
-                    {(ordem as any).tipo_os === "simplificada" && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 font-mono">Simplificada</span>
-                    )}
-                    {ordem.origem_remessa_corporativa && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 font-mono">Remessa Corporativa</span>
-                    )}
+            return (
+              <div
+                key={ordem.id}
+                className="relative rounded-xl border border-border/50 bg-card overflow-hidden transition-all duration-150 hover:border-border"
+                style={{ borderLeft: `4px solid ${selecaoAtiva && itensSelecionados.has(ordem.id) ? cor : cor}` }}
+              >
+                {selecaoAtiva && (
+                  <div className="absolute top-3 left-3 z-10">
+                    <Checkbox
+                      checked={itensSelecionados.has(ordem.id)}
+                      onCheckedChange={() => onToggleSelecionado?.(ordem.id)}
+                      className="h-4 w-4"
+                    />
                   </div>
-
-                  {onAtualizarStatus ? (
-                    <Popover
-                      open={popoverAberto === ordem.id}
-                      onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
-                    >
-                      <PopoverTrigger asChild>
-                        <button className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold cursor-pointer transition-opacity hover:opacity-80 border"
-                          style={{ color: cor, borderColor: `${cor}40`, backgroundColor: `${cor}12` }}
-                        >
-                          <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />
-                          {label}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-56 p-0" align="end">
-                        <Command>
-                          <CommandGroup>
-                            {opcoesStatus.map((opcao) => (
-                              <CommandItem key={opcao.value} value={opcao.value}
-                                onSelect={() => { onAtualizarStatus(ordem.id, opcao.value); setPopoverAberto(null); }}
-                                className="flex items-center gap-2 cursor-pointer"
-                              >
-                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusColors[opcao.value] || "#3b82f6" }} />
-                                <span className="flex-1 text-xs">{opcao.label}</span>
-                                {ordem.status === opcao.value && <Check className="h-3.5 w-3.5" />}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  ) : (
-                    <span className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold border"
-                      style={{ color: cor, borderColor: `${cor}40`, backgroundColor: `${cor}12` }}
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
-                      {label}
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-sm font-medium leading-tight truncate mb-0.5">
-                  {isAvulso ? ordem.defeito_relatado : (ordem.cliente?.nome || "N/A")}
-                </p>
-                <p className={`text-xs text-muted-foreground truncate ${(!isAvulso && colunasAtivas.includes("defeito") && ordem.defeito_relatado) ? "" : "mb-2.5"}`}>
-                  {isAvulso ? "Serviço Avulso" : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
-                </p>
-                {!isAvulso && colunasAtivas.includes("defeito") && ordem.defeito_relatado && (
-                  <p className="text-xs text-muted-foreground/80 truncate mb-2.5 italic">
-                    {ordem.defeito_relatado}
-                  </p>
                 )}
 
-                <div className="flex items-center justify-between pt-2.5 border-t border-border/40">
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-mono text-muted-foreground">
-                      {formatDate(ordem.created_at)} <span className="opacity-60">{formatTime(ordem.created_at)}</span>
+                <div className={`flex items-start justify-between gap-3 p-3.5 ${selecaoAtiva ? "pl-9" : ""}`}>
+                  {/* Coluna esquerda: identificação */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                      {isAvulso ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-500 font-mono">Avulso</span>
+                      ) : (
+                        <span className="text-sm font-bold font-mono text-foreground">#{ordem.numero_os}</span>
+                      )}
+                      {(ordem as any).is_teste && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 font-mono">Teste</span>
+                      )}
+                      {(ordem as any).tipo_os === "simplificada" && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-600 font-mono">Simplificada</span>
+                      )}
+                      {ordem.origem_remessa_corporativa && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 font-mono">Remessa</span>
+                      )}
+                    </div>
+
+                    <div className="mb-2">
+                      {onAtualizarStatus ? (
+                        <Popover
+                          open={popoverAberto === ordem.id}
+                          onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <button className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide cursor-pointer transition-opacity hover:opacity-80"
+                              style={{ color: cor, backgroundColor: `${cor}18` }}
+                            >
+                              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+                              {label}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-0" align="start">
+                            <Command>
+                              <CommandGroup>
+                                {opcoesStatus.map((opcao) => (
+                                  <CommandItem key={opcao.value} value={opcao.value}
+                                    onSelect={() => { onAtualizarStatus(ordem.id, opcao.value); setPopoverAberto(null); }}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: statusColors[opcao.value] || "#3b82f6" }} />
+                                    <span className="flex-1 text-xs">{opcao.label}</span>
+                                    {ordem.status === opcao.value && <Check className="h-3.5 w-3.5" />}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                          style={{ color: cor, backgroundColor: `${cor}18` }}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
+                          {label}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-sm font-bold leading-tight truncate mb-0.5 text-foreground">
+                      {isAvulso ? ordem.defeito_relatado : (ordem.cliente?.nome || "N/A")}
                     </p>
-                    {mostrarColunaLoja && resolverNomeLoja && (
-                      <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1">
-                        <Building2 className="h-2.5 w-2.5" />
-                        {resolverNomeLoja((ordem as any).empresa_id)}
+                    <p className="text-xs text-muted-foreground truncate">
+                      {isAvulso ? "Serviço Avulso" : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
+                    </p>
+                    {!isAvulso && colunasAtivas.includes("defeito") && ordem.defeito_relatado && (
+                      <p className="text-xs text-muted-foreground/70 truncate italic mt-0.5">
+                        {ordem.defeito_relatado}
                       </p>
                     )}
-                    <p className="text-sm font-bold font-mono">
-                      <ValorMonetario valor={ordem.total} tipo="preco" />
-                    </p>
-                    {(() => {
-                      const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
-                      return entrada > 0 ? (
-                        <p className="text-[10px] text-green-500 font-mono">+<ValorMonetario valor={entrada} tipo="preco" /> entrada</p>
-                      ) : null;
-                    })()}
                   </div>
-                  <BotoesAcaoOrdem
-                    onVisualizar={() => onVisualizar(ordem)}
-                    onEditar={() => onEditar(ordem)}
-                    onImprimir={() => onImprimir(ordem)}
-                    onExcluir={() => onExcluir(ordem)}
-                    onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
-                    onCompartilhar={() => onCompartilhar?.(ordem)}
-                    onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
-                    onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
-                    termoAtivo={termoAtivo}
-                    acoesAtivas={acoesAtivas}
-                  />
+
+                  {/* Coluna direita: data/valor/canal + ações */}
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="text-right space-y-1">
+                      <p className="text-[10px] text-muted-foreground">
+                        {formatDate(ordem.created_at)} {formatTime(ordem.created_at)}
+                      </p>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Valor</p>
+                        <p className="text-sm font-bold font-mono text-foreground">
+                          <ValorMonetario valor={ordem.total} tipo="preco" />
+                        </p>
+                        {(() => {
+                          const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
+                          return entrada > 0 ? (
+                            <p className="text-[10px] text-green-500 font-mono">+<ValorMonetario valor={entrada} tipo="preco" /></p>
+                          ) : null;
+                        })()}
+                      </div>
+                      {mostrarColunaLoja && resolverNomeLoja ? (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Loja</p>
+                          <p className="text-[11px] font-medium truncate max-w-[6rem] text-foreground">{resolverNomeLoja((ordem as any).empresa_id)}</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Canal</p>
+                          <p className="text-[11px] font-medium truncate max-w-[6rem] text-foreground">{ordem.origem_remessa_corporativa ? "Remessa" : "Balcão"}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <BotoesAcaoOrdem
+                      onVisualizar={() => onVisualizar(ordem)}
+                      onEditar={() => onEditar(ordem)}
+                      onImprimir={() => onImprimir(ordem)}
+                      onExcluir={() => onExcluir(ordem)}
+                      onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
+                      onCompartilhar={() => onCompartilhar?.(ordem)}
+                      onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
+                      onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
+                      termoAtivo={termoAtivo}
+                      acoesAtivas={acoesAtivas}
+                      corIconesNeutros="text-foreground"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     );
   }

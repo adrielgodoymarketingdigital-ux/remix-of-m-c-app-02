@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer, SlidersHorizontal } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
@@ -90,6 +91,8 @@ const DialogConfiguracaoTracking = lazy(() => import("@/components/ordens/Dialog
 
 export default function OrdemServicoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { resolvedTheme } = useTheme();
+  const classeGestaoOSInvertida = resolvedTheme === "dark" ? "forcar-claro" : "forcar-escuro";
   const navigate = useNavigate();
   const tabParam = searchParams.get("tab");
   const [temAcessoTiny, setTemAcessoTiny] = useState(false);
@@ -372,6 +375,34 @@ export default function OrdemServicoPage() {
       return true;
     });
   }, [servicosAvulsos, dataInicio, dataFim]);
+
+  // Lista combinada (OS + serviços avulsos) usada pelo Kanban e pelos painéis
+  // de resumo/atividades que ficam abaixo dele — mesma construção que já era
+  // feita inline dentro do bloco do Kanban, só extraída para reuso.
+  const ordensComAvulsosParaKanban = useMemo((): OrdemServico[] => {
+    const avulsosComoOrdens: OrdemServico[] = servicosAvulsosFiltrados.map((sa) => ({
+      id: sa.id,
+      numero_os: "AVULSO",
+      created_at: sa.created_at,
+      data_saida: sa.created_at,
+      defeito_relatado: sa.nome + (sa.observacoes ? ` - ${sa.observacoes}` : ''),
+      total: sa.preco,
+      status: sa.status || "finalizado",
+      dispositivo_modelo: "",
+      dispositivo_imei: null,
+      dispositivo_tipo: "Serviço Avulso",
+      dispositivo_marca: "",
+      dispositivo_cor: null,
+      dispositivo_numero_serie: null,
+      senha_desbloqueio: null,
+      avarias: { is_avulso: true, custo: sa.custo, lucro: sa.lucro },
+      cliente_id: "",
+      funcionario_id: null,
+      tempo_garantia: null,
+      cliente: { id: "", nome: "—", telefone: null, cpf: null, endereco: null },
+    } as OrdemServico));
+    return [...ordens, ...avulsosComoOrdens];
+  }, [ordens, servicosAvulsosFiltrados]);
 
   const handleEditar = async (ordem: OrdemServico) => {
     const ordemCompleta = await buscarOrdemCompleta(ordem.id);
@@ -659,223 +690,234 @@ export default function OrdemServicoPage() {
         <div className="min-w-0 p-4 md:p-6 max-w-full overflow-x-hidden">
           <div className="mb-5 md:mb-7 flex min-w-0 flex-col gap-4">
 
-            {/* Header futurista */}
-            <div className="relative flex items-center gap-3 rounded-xl border border-primary/10 bg-gradient-to-r from-primary/5 via-background to-background px-4 py-3 overflow-hidden">
-              {/* Linha brilhante no topo */}
-              <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+            {/* Card com fundo invertido ao tema — escuro no modo claro, claro no modo escuro */}
+            <div className="relative rounded-2xl bg-[#0b0f19] dark:bg-slate-100 px-4 py-4 md:px-5 md:py-5 flex flex-col gap-4 overflow-hidden">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger className="hidden lg:flex shrink-0 text-white/70 hover:text-white dark:text-slate-500 dark:hover:text-slate-900" />
 
-              <SidebarTrigger className="hidden lg:flex shrink-0" />
-
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="relative shrink-0">
-                  <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-                    <ClipboardList className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
+                  <SlidersHorizontal className="h-5 w-5 text-primary" />
                 </div>
+
                 <div className="min-w-0">
-                  <h1 className="text-lg md:text-xl font-bold tracking-tight leading-none">
-                    Ordens de Serviço
+                  <h1 className="text-lg md:text-xl font-bold tracking-tight text-white dark:text-slate-900 truncate">
+                    Centro de Controle
                   </h1>
-                  <p className="text-[11px] text-muted-foreground capitalize mt-0.5 hidden sm:block font-mono">
-                    {format(new Date(), "EEE · dd/MM/yyyy", { locale: ptBR })}
+                  <p className="text-xs text-white/50 dark:text-slate-500 truncate hidden sm:block">
+                    Acompanhe e gerencie todas as ordens
                   </p>
                 </div>
+
+                <div className="ml-auto flex items-center gap-2 shrink-0">
+                  {!contadorOS.ilimitado && (
+                    <div className="hidden sm:flex items-center gap-1.5 rounded-lg bg-white/10 dark:bg-slate-900/10 px-2.5 py-1 font-mono text-xs text-white/70 dark:text-slate-600">
+                      <span className="text-primary-foreground dark:text-primary font-semibold">{contadorOS.usadas}</span>
+                      <span>/</span>
+                      <span>{contadorOS.limite}</span>
+                      <span className="text-[10px]">OS</span>
+                    </div>
+                  )}
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        className="os-nova-btn h-9 text-xs gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide text-white"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Nova OS
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleNovaOrdem}>
+                        Completa
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleNovaOrdemSimplificada}>
+                        Simplificada
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
-              <div className="ml-auto flex items-center gap-2 shrink-0">
-                {!contadorOS.ilimitado && (
-                  <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-2.5 py-1 font-mono text-xs text-muted-foreground">
-                    <span className="text-primary font-semibold">{contadorOS.usadas}</span>
-                    <span>/</span>
-                    <span>{contadorOS.limite}</span>
-                    <span className="text-[10px] hidden sm:inline">OS</span>
-                  </div>
-                )}
-                {usoCompartilhamentos.limite !== 0 && (
-                  <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-2.5 py-1 font-mono text-xs text-muted-foreground">
-                    <RadioTower className="h-3 w-3" />
-                    <span>{usoCompartilhamentos.limite === -1 ? "∞" : `${usoCompartilhamentos.usado}/${usoCompartilhamentos.limite}`}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Barra de ações + chips gerenciais na mesma linha */}
-            <div className="flex flex-wrap items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2 h-8 text-xs border-border/60 hover:border-border">
-                    <Settings className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Config</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setDialogNumeracao(true)}>
-                    <Hash className="h-4 w-4 mr-2" />
-                    Numeração de OS
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogMensagensWhatsApp(true)}>
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Mensagens WhatsApp
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogTermoGarantia(true)}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Termo de Garantia
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogTermoResponsabilidade(true)}>
-                    <ClipboardList className="h-4 w-4 mr-2" />
-                    Termo de Responsabilidade
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogLayoutOS(true)}>
-                    <Layout className="h-4 w-4 mr-2" />
-                    Layout da OS
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogStatusOS(true)}>
-                    <Palette className="h-4 w-4 mr-2" />
-                    Status da OS
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogTaxasCartao(true)}>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Taxas de Cartão
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogEtiqueta(true)}>
-                    <Tag className="h-4 w-4 mr-2" />
-                    Etiqueta de Identificação
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogPersonalizarColunas(true)}>
-                    <Columns3 className="h-4 w-4 mr-2" />
-                    Personalizar Colunas
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogTracking(true)}>
-                    <RadioTower className="h-4 w-4 mr-2" />
-                    Página de Acompanhamento
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDialogLocalizacao(true)}>
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Localizações Físicas
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Button variant="outline" size="sm" onClick={() => setDialogImportarOS(true)} className="h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 hover:border-border">
-                <Upload className="h-3.5 w-3.5" />
-                Importar
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setDialogExportarRelatorio(true)} className="h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 hover:border-border">
-                <Download className="h-3.5 w-3.5" />
-                Exportar
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setDialogServicoAvulso(true)} className="h-8 text-xs flex-1 sm:flex-none gap-1.5 border-border/60 hover:border-border">
-                <Wrench className="h-3.5 w-3.5" />
-                Avulso
-              </Button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    className="os-nova-btn h-8 text-xs flex-1 sm:flex-none gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Nova OS
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleNovaOrdem}>
-                    Completa
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleNovaOrdemSimplificada}>
-                    Simplificada
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-
-            </div>
-
-            {/* Filtro de período — linha compacta */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-muted/20 px-2.5 py-1.5 text-xs text-muted-foreground font-mono">
-                <CalendarIcon className="h-3 w-3 shrink-0" />
-                <Select value={mesFiltro} onValueChange={aplicarFiltroMes}>
-                  <SelectTrigger className="h-5 w-[130px] border-0 bg-transparent shadow-none focus:ring-0 text-xs p-0">
-                    <SelectValue placeholder="Mês" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os meses</SelectItem>
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const data = subMonths(new Date(), i);
-                      const valor = format(data, "yyyy-MM");
-                      const label = format(data, "MMMM yyyy", { locale: ptBR });
-                      return (
-                        <SelectItem key={valor} value={valor}>
-                          {label.charAt(0).toUpperCase() + label.slice(1)}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <span className="text-xs text-muted-foreground/50 font-mono">|</span>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn("h-7 text-xs gap-1 px-2.5 border-border/50 font-mono", !dataInicio && "text-muted-foreground")}
-                  >
-                    <CalendarIcon className="h-3 w-3" />
-                    {dataInicio ? format(dataInicio, "dd/MM") : "início"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dataInicio}
-                    onSelect={(d) => { setDataInicio(d); aplicarFiltroMes("todos"); }}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <span className="text-xs text-muted-foreground/40 font-mono">→</span>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn("h-7 text-xs gap-1 px-2.5 border-border/50 font-mono", !dataFim && "text-muted-foreground")}
-                  >
-                    <CalendarIcon className="h-3 w-3" />
-                    {dataFim ? format(dataFim, "dd/MM") : "fim"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dataFim}
-                    onSelect={(d) => { setDataFim(d); aplicarFiltroMes("todos"); }}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-
-              {(dataInicio || dataFim || mesFiltro !== "todos") && (
+              {/* Barra de ações */}
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => { setDataInicio(undefined); setDataFim(undefined); aplicarFiltroMes("todos"); }}
-                  className="h-7 text-xs gap-1 px-2 text-muted-foreground hover:text-destructive"
+                  onClick={() => setDialogImportarOS(true)}
+                  className="h-9 text-xs flex-1 sm:flex-none gap-1.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
                 >
-                  <X className="h-3 w-3" />
+                  <Upload className="h-3.5 w-3.5" />
+                  Importar
                 </Button>
-              )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDialogExportarRelatorio(true)}
+                  className="h-9 text-xs flex-1 sm:flex-none gap-1.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Exportar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDialogServicoAvulso(true)}
+                  className="h-9 text-xs flex-1 sm:flex-none gap-1.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
+                >
+                  <Wrench className="h-3.5 w-3.5" />
+                  Avulso
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-9 p-0 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 shrink-0"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setDialogNumeracao(true)}>
+                      <Hash className="h-4 w-4 mr-2" />
+                      Numeração de OS
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogMensagensWhatsApp(true)}>
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Mensagens WhatsApp
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogTermoGarantia(true)}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Termo de Garantia
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogTermoResponsabilidade(true)}>
+                      <ClipboardList className="h-4 w-4 mr-2" />
+                      Termo de Responsabilidade
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogLayoutOS(true)}>
+                      <Layout className="h-4 w-4 mr-2" />
+                      Layout da OS
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogStatusOS(true)}>
+                      <Palette className="h-4 w-4 mr-2" />
+                      Status da OS
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogTaxasCartao(true)}>
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Taxas de Cartão
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogEtiqueta(true)}>
+                      <Tag className="h-4 w-4 mr-2" />
+                      Etiqueta de Identificação
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogPersonalizarColunas(true)}>
+                      <Columns3 className="h-4 w-4 mr-2" />
+                      Personalizar Colunas
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogTracking(true)}>
+                      <RadioTower className="h-4 w-4 mr-2" />
+                      Página de Acompanhamento
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogLocalizacao(true)}>
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Localizações Físicas
+                    </DropdownMenuItem>
+                    {usoCompartilhamentos.limite !== 0 && (
+                      <DropdownMenuItem disabled className="font-mono text-xs opacity-70">
+                        <RadioTower className="h-4 w-4 mr-2" />
+                        {usoCompartilhamentos.limite === -1 ? "∞" : `${usoCompartilhamentos.usado}/${usoCompartilhamentos.limite}`} compartilhamentos
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Filtro de período */}
+              <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto scrollbar-hide">
+                <div className="flex items-center gap-1.5 rounded-lg bg-white/5 dark:bg-slate-900/5 px-2.5 py-1.5 text-xs text-white/70 dark:text-slate-600 font-mono shrink-0">
+                  <CalendarIcon className="h-3 w-3 shrink-0" />
+                  <Select value={mesFiltro} onValueChange={aplicarFiltroMes}>
+                    <SelectTrigger className="h-5 w-[130px] border-0 bg-transparent shadow-none focus:ring-0 text-xs p-0 text-white/70 dark:text-slate-600">
+                      <SelectValue placeholder="Mês" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os meses</SelectItem>
+                      {Array.from({ length: 12 }, (_, i) => {
+                        const data = subMonths(new Date(), i);
+                        const valor = format(data, "yyyy-MM");
+                        const label = format(data, "MMMM yyyy", { locale: ptBR });
+                        return (
+                          <SelectItem key={valor} value={valor}>
+                            {label.charAt(0).toUpperCase() + label.slice(1)}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <span className="text-xs text-white/30 dark:text-slate-400 font-mono shrink-0">|</span>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn("h-7 shrink-0 text-xs gap-1 px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataInicio && "text-white/50 dark:text-slate-400")}
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                      {dataInicio ? format(dataInicio, "dd/MM") : "início"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dataInicio}
+                      onSelect={(d) => { setDataInicio(d); aplicarFiltroMes("todos"); }}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <span className="text-xs text-white/30 dark:text-slate-400 font-mono shrink-0">até</span>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn("h-7 shrink-0 text-xs gap-1 px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataFim && "text-white/50 dark:text-slate-400")}
+                    >
+                      <CalendarIcon className="h-3 w-3" />
+                      {dataFim ? format(dataFim, "dd/MM") : "fim"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dataFim}
+                      onSelect={(d) => { setDataFim(d); aplicarFiltroMes("todos"); }}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {(dataInicio || dataFim || mesFiltro !== "todos") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setDataInicio(undefined); setDataFim(undefined); aplicarFiltroMes("todos"); }}
+                    className="h-7 shrink-0 text-xs gap-1 px-2 text-white/50 dark:text-slate-500 hover:text-destructive hover:bg-white/10 dark:hover:bg-slate-900/10"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -901,7 +943,7 @@ export default function OrdemServicoPage() {
                 transition: "max-height 300ms ease-in-out, opacity 300ms ease-in-out",
               }}
             >
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+              <div className="grid grid-cols-4 gap-1 w-full">
                 <OSChipsGerenciais snapshot={gerencialSnapshot} />
               </div>
             </div>
@@ -928,6 +970,7 @@ export default function OrdemServicoPage() {
             <TabsContent value="minhas" className="mt-0">
           <DashboardOrdensServico ordens={ordens} servicosAvulsos={servicosAvulsosFiltrados} lucroOrdensEntregues={lucroOrdensEntregues} />
 
+          <div className={classeGestaoOSInvertida}>
           <Card className="min-w-0 overflow-hidden border-border/40 shadow-sm">
             <CardHeader className="p-4 sm:p-5 border-b border-border/30 bg-muted/10">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -935,7 +978,7 @@ export default function OrdemServicoPage() {
                   <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
                   <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Gestão de OS</CardTitle>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2">
                   {visualizacao === "tabela" && (
                     <Button
                       variant={selecaoAtiva ? "secondary" : "ghost"}
@@ -973,6 +1016,46 @@ export default function OrdemServicoPage() {
                     </ToggleGroupItem>
                   </ToggleGroup>
                 </div>
+              </div>
+
+              {/* Seletor de visualização — pills largas, mobile-first (fiel à referência) */}
+              <div className="sm:hidden flex items-center gap-2 mt-3">
+                {visualizacao === "tabela" && (
+                  <Button
+                    variant={selecaoAtiva ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => selecaoAtiva ? handleCancelarSelecao() : setSelecaoAtiva(true)}
+                    className="h-9 text-xs px-2.5 gap-1.5 shrink-0"
+                  >
+                    <CheckSquare className="h-3.5 w-3.5" />
+                    {selecaoAtiva ? "Cancelar" : "Selecionar"}
+                  </Button>
+                )}
+                <ToggleGroup
+                  type="single"
+                  value={visualizacao}
+                  onValueChange={(v) => {
+                    if (!v) return;
+                    const novaVis = v as "tabela" | "kanban" | "tempo";
+                    if (novaVis !== "tabela" && statusFiltro !== "todos") setStatusFiltro("todos");
+                    if (novaVis !== "tabela") handleCancelarSelecao();
+                    setVisualizacao(novaVis);
+                  }}
+                  className="flex-1 rounded-xl bg-muted/30 border border-border/50 p-1 h-11 min-w-0"
+                >
+                  <ToggleGroupItem value="tabela" className="flex-1 gap-1.5 text-xs font-semibold px-2 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                    <List className="h-3.5 w-3.5" />
+                    Lista
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="kanban" className="flex-1 gap-1.5 text-xs font-semibold px-2 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                    <Columns3 className="h-3.5 w-3.5" />
+                    Kanban
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="tempo" className="flex-1 gap-1.5 text-xs font-semibold px-2 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                    <Timer className="h-3.5 w-3.5" />
+                    Tempo
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
             </CardHeader>
             <CardContent className="min-w-0 space-y-4 overflow-hidden p-4 sm:p-5 pt-4 sm:pt-4">
@@ -1108,30 +1191,7 @@ export default function OrdemServicoPage() {
               {visualizacao === "kanban" && (
                 <div className="w-full max-w-full overflow-hidden">
                   <KanbanOrdensServico
-                    ordens={(() => {
-                      const avulsosComoOrdens: OrdemServico[] = servicosAvulsosFiltrados.map((sa) => ({
-                        id: sa.id,
-                        numero_os: "AVULSO",
-                        created_at: sa.created_at,
-                        data_saida: sa.created_at,
-                        defeito_relatado: sa.nome + (sa.observacoes ? ` - ${sa.observacoes}` : ''),
-                        total: sa.preco,
-                        status: sa.status || "finalizado",
-                        dispositivo_modelo: "",
-                        dispositivo_imei: null,
-                        dispositivo_tipo: "Serviço Avulso",
-                        dispositivo_marca: "",
-                        dispositivo_cor: null,
-                        dispositivo_numero_serie: null,
-                        senha_desbloqueio: null,
-                        avarias: { is_avulso: true, custo: sa.custo, lucro: sa.lucro },
-                        cliente_id: "",
-                        funcionario_id: null,
-                        tempo_garantia: null,
-                        cliente: { id: "", nome: "—", telefone: null, cpf: null, endereco: null },
-                      } as OrdemServico));
-                      return [...ordens, ...avulsosComoOrdens];
-                    })()}
+                    ordens={ordensComAvulsosParaKanban}
                     loading={loading}
                     onVisualizar={handleVisualizar}
                     onEditar={handleEditar}
@@ -1201,6 +1261,7 @@ export default function OrdemServicoPage() {
               )}
             </CardContent>
           </Card>
+          </div>
 
             <div ref={osGerencialRef}>
               <OSGerencialCards

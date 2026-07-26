@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Smartphone } from "lucide-react";
-import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
+import { Search } from "lucide-react";
+import { formatDate, formatTime } from "@/lib/formatters";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import type { OrdemServico } from "@/hooks/useOrdensServico";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
@@ -27,6 +26,7 @@ interface KanbanOrdensServicoProps {
 
 interface KanbanCardProps {
   ordem: OrdemServico;
+  cor: string;
   onVisualizar: (ordem: OrdemServico) => void;
   onEditar: (ordem: OrdemServico) => void;
   onImprimir: (ordem: OrdemServico) => void;
@@ -40,6 +40,7 @@ interface KanbanCardProps {
 
 function KanbanCard({
   ordem,
+  cor,
   onVisualizar,
   onEditar,
   onImprimir,
@@ -57,49 +58,56 @@ function KanbanCard({
         e.dataTransfer.setData("ordemId", ordem.id);
         e.dataTransfer.effectAllowed = "move";
       }}
-      className="bg-background border rounded-lg p-3 space-y-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
+      onClick={() => onVisualizar(ordem)}
+      className="group relative bg-card rounded-xl p-2.5 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 space-y-1">
-          <p className="font-semibold text-sm truncate">{ordem.numero_os}</p>
-          <p className="text-sm font-medium truncate">{ordem.cliente?.nome || "Cliente não informado"}</p>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="font-bold font-mono text-xs text-foreground truncate">#{ordem.numero_os}</span>
+        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+      </div>
+
+      {((ordem as any).is_teste || (ordem as any).tipo_os === "simplificada") && (
+        <div className="flex items-center gap-1 mb-1">
+          {(ordem as any).is_teste && (
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 shrink-0">Teste</Badge>
+          )}
+          {(ordem as any).tipo_os === "simplificada" && (
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 shrink-0">Simpl.</Badge>
+          )}
         </div>
-        {(ordem as any).is_teste && (
-          <Badge variant="outline" className="text-[10px] shrink-0">
-            Teste
-          </Badge>
-        )}
-        {(ordem as any).tipo_os === "simplificada" && (
-          <Badge variant="outline" className="text-[10px] shrink-0">
-            Simplificada
-          </Badge>
-        )}
-      </div>
+      )}
 
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
-        <Smartphone className="h-3 w-3 flex-shrink-0" />
-        <span className="truncate">
-          {ordem.dispositivo_marca} {ordem.dispositivo_modelo}
-        </span>
-      </div>
+      <p className="text-sm font-bold text-foreground leading-tight truncate">
+        {ordem.cliente?.nome || "Cliente não informado"}
+      </p>
+      <p className="text-xs text-muted-foreground truncate">
+        {ordem.dispositivo_marca} {ordem.dispositivo_modelo}
+      </p>
+      {ordem.defeito_relatado && (
+        <p className="text-xs text-muted-foreground/70 italic truncate">
+          {ordem.defeito_relatado}
+        </p>
+      )}
 
-      <p className="text-xs text-muted-foreground line-clamp-2">
-        {ordem.defeito_relatado}
+      <span
+        className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full mt-1.5"
+        style={{
+          color: ordem.origem_remessa_corporativa ? "#7c3aed" : "#2563eb",
+          backgroundColor: ordem.origem_remessa_corporativa ? "#7c3aed18" : "#2563eb18",
+        }}
+      >
+        {ordem.origem_remessa_corporativa ? "Remessa" : "Balcão"}
+      </span>
+
+      <p className="text-[11px] text-muted-foreground font-mono mt-1">
+        {formatDate(ordem.created_at)} · {formatTime(ordem.created_at)}
       </p>
 
-      <div className="flex items-center justify-between gap-2 pt-1 border-t">
-        <span className="text-xs text-muted-foreground truncate">
-          {formatDate(ordem.created_at)}
-          <span className="block text-[10px]">{formatTime(ordem.created_at)}</span>
-        </span>
-        {ordem.total != null && ordem.total > 0 && (
-          <span className="text-xs font-semibold text-foreground shrink-0">
-            {formatCurrency(ordem.total)}
-          </span>
-        )}
-      </div>
-
-      <div className="pt-1 border-t">
+      {/* Ações — ocultas por padrão, aparecem no hover/toque para não poluir o card */}
+      <div
+        className="absolute top-2 right-2 rounded-lg bg-card shadow-md border border-border/50 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+        onClick={(e) => e.stopPropagation()}
+      >
         <BotoesAcaoOrdem
           onVisualizar={() => onVisualizar(ordem)}
           onEditar={() => onEditar(ordem)}
@@ -110,6 +118,8 @@ function KanbanCard({
           onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
           onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
           termoAtivo={termoAtivo}
+          compacto
+          corIconesNeutros="text-foreground"
         />
       </div>
     </div>
@@ -187,17 +197,17 @@ export function KanbanOrdensServico({
     return (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
-          <Card key={index}>
-            <CardHeader className="space-y-2">
+          <div key={index} className="rounded-xl border border-border/50 bg-card">
+            <div className="p-3 space-y-2">
               <Skeleton className="h-5 w-32" />
               <Skeleton className="h-8 w-full" />
-            </CardHeader>
-            <CardContent className="space-y-3">
+            </div>
+            <div className="p-3 space-y-3">
               {Array.from({ length: 3 }).map((__, cardIndex) => (
                 <Skeleton key={cardIndex} className="h-32 w-full" />
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -205,31 +215,35 @@ export function KanbanOrdensServico({
 
   return (
     <div className="w-full max-w-full overflow-hidden">
-      <ScrollAreaPrimitive.Root className="relative h-[calc(100vh-22rem)] min-h-[22rem] max-h-[32rem] w-full max-w-full overflow-hidden overscroll-x-contain">
+      <ScrollAreaPrimitive.Root className="relative h-[calc(100dvh-22rem)] min-h-[22rem] max-h-[32rem] w-full max-w-full overflow-hidden overscroll-x-contain">
         <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
-        <div className="flex w-max min-w-full h-full gap-4 items-start pr-4 pb-3">
+        <div className="flex w-max min-w-full h-full gap-2 items-start pr-4 pb-3">
           {colunas.map((col) => (
             <div
               key={col.slug}
-              className="min-w-[280px] w-[280px] h-full flex-shrink-0"
+              className="min-w-[196px] w-[196px] h-full flex-shrink-0"
               onDrop={(e) => handleDrop(e, col.slug)}
               onDragOver={(e) => handleDragOver(e, col.slug)}
               onDragLeave={() => setDragOverCol(null)}
             >
-              <Card
-                className={`flex h-full flex-col ${dragOverCol === col.slug ? "ring-2 ring-primary/50 bg-accent/30" : ""}`}
+              <div
+                className={`flex h-full flex-col rounded-xl border overflow-hidden transition-colors ${dragOverCol === col.slug ? "ring-2 ring-primary/50 bg-accent/30 border-primary/40" : "border-border/50 bg-card"}`}
+                style={{ borderTop: `2px solid ${col.cor}` }}
               >
-                <CardHeader className="pb-2 space-y-2">
-                  <CardTitle className="text-sm flex items-center gap-2 min-w-0">
+                <div className="p-3 space-y-2 border-b border-border/40">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                       style={{ backgroundColor: col.cor }}
                     />
-                    <span className="truncate flex-1">{col.nome}</span>
-                    <Badge variant="outline" className="text-xs shrink-0">
+                    <span className="truncate flex-1 text-sm font-semibold text-foreground">{col.nome}</span>
+                    <span
+                      className="text-[11px] font-bold rounded-full px-2 py-0.5 shrink-0"
+                      style={{ color: col.cor, backgroundColor: `${col.cor}18` }}
+                    >
                       {col.ordens.length}
-                    </Badge>
-                  </CardTitle>
+                    </span>
+                  </div>
 
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -245,9 +259,9 @@ export function KanbanOrdensServico({
                       className="h-8 text-xs pl-7"
                     />
                   </div>
-                </CardHeader>
+                </div>
 
-                <CardContent className="space-y-2 flex-1 min-h-0 overflow-y-auto">
+                <div className="space-y-2 flex-1 min-h-0 overflow-y-auto p-2">
                   {col.ordens.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-6">
                       Nenhuma ordem neste status
@@ -257,6 +271,7 @@ export function KanbanOrdensServico({
                       <KanbanCard
                         key={ordem.id}
                         ordem={ordem}
+                        cor={col.cor}
                         onVisualizar={onVisualizar}
                         onEditar={onEditar}
                         onImprimir={onImprimir}
@@ -269,8 +284,8 @@ export function KanbanOrdensServico({
                       />
                     ))
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           ))}
         </div>

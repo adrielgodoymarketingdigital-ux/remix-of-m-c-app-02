@@ -17,23 +17,15 @@ interface Props {
 
 // ── Popover de ajuda ─────────────────────────────────────────────────────────
 
-function hexToRgb(hex: string) {
-  const c = hex.replace("#", "");
-  const r = parseInt(c.slice(0, 2), 16);
-  const g = parseInt(c.slice(2, 4), 16);
-  const b = parseInt(c.slice(4, 6), 16);
-  return `${r} ${g} ${b}`;
-}
-
 function HelpButton({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="absolute top-3 right-3 flex items-center justify-center h-5 w-5 rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors focus:outline-none"
+          className="absolute top-1.5 right-1.5 flex items-center justify-center h-4 w-4 rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors focus:outline-none"
           aria-label={title}
         >
-          <HelpCircle className="h-3 w-3" />
+          <HelpCircle className="h-2.5 w-2.5" />
         </button>
       </PopoverTrigger>
       <PopoverContent side="bottom" align="end" className="w-72 text-xs space-y-2">
@@ -47,11 +39,10 @@ function HelpButton({ title, children }: { title: string; children: React.ReactN
 
 function CardSkeleton() {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 min-h-[160px] animate-pulse">
-      <div className="h-2.5 w-20 rounded bg-muted mb-4" />
-      <div className="h-7 w-32 rounded bg-muted mb-3" />
-      <div className="h-2 w-full rounded-full bg-muted mb-2" />
-      <div className="h-3 w-24 rounded bg-muted" />
+    <div className="relative overflow-hidden rounded-lg border border-border/50 bg-card p-2 animate-pulse flex flex-col">
+      <div className="h-6 w-6 rounded-md bg-muted mb-1" />
+      <div className="h-[3.6em] w-full rounded bg-muted mb-1" />
+      <div className="h-4 w-12 rounded bg-muted" />
     </div>
   );
 }
@@ -75,41 +66,24 @@ function PremiumCard({
   helpContent: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const rgb = hexToRgb(cor);
   return (
     <div
-      className="os-card-glow relative overflow-hidden rounded-xl border bg-card p-6 min-h-[160px] transition-all duration-500 w-full"
-      style={{
-        borderColor: `rgba(${rgb} / 0.30)`,
-        boxShadow: `inset 0 1px 0 0 rgba(${rgb} / 0.15), 0 4px 20px rgba(${rgb} / 0.10)`,
-        ["--glow-rgb" as string]: rgb,
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(8px)",
-      }}
+      className="relative overflow-hidden rounded-lg border border-border/50 bg-card px-1.5 py-2 flex flex-col transition-opacity duration-500"
+      style={{ opacity: visible ? 1 : 0 }}
     >
-      {/* glow de canto */}
-      <div
-        className="pointer-events-none absolute top-0 right-0 h-20 w-20 opacity-10"
-        style={{ background: `radial-gradient(circle at 100% 0%, ${cor} 0%, transparent 70%)` }}
+      <span
+        className="absolute top-1.5 right-6 h-1.5 w-1.5 rounded-full"
+        style={{ backgroundColor: cor }}
       />
-      {/* linha superior */}
       <div
-        className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent 10%, rgba(${rgb} / 0.6) 50%, transparent 90%)` }}
-      />
-
-      {/* label + ícone */}
-      <div className="flex items-center gap-2 mb-0 pr-8">
-        <div
-          className="h-6 w-6 rounded-md flex items-center justify-center shrink-0"
-          style={{ background: `rgba(${rgb} / 0.12)`, border: `1px solid rgba(${rgb} / 0.25)` }}
-        >
-          {icon}
-        </div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground leading-none">
-          {label}
-        </p>
+        className="h-6 w-6 rounded-md flex items-center justify-center mb-1"
+        style={{ backgroundColor: `${cor}1a` }}
+      >
+        <span style={{ color: cor }}>{icon}</span>
       </div>
+      <p className="text-[9px] font-medium text-foreground leading-[1.2] min-h-[3.6em] uppercase tracking-wide">
+        {label}
+      </p>
 
       {children}
 
@@ -121,15 +95,13 @@ function PremiumCard({
 // ── Barra de progresso ───────────────────────────────────────────────────────
 
 function ProgressBar({ pct, cor, visible }: { pct: number; cor: string; visible: boolean }) {
-  const rgb = hexToRgb(cor);
   return (
-    <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden mt-3">
+    <div className="h-1 w-full rounded-full bg-muted overflow-hidden mt-1">
       <div
         className="h-full rounded-full transition-all duration-700 ease-out"
         style={{
           width: visible ? `${pct}%` : "0%",
-          background: `linear-gradient(90deg, rgba(${rgb} / 0.7), ${cor})`,
-          boxShadow: `0 0 8px rgba(${rgb} / 0.6)`,
+          backgroundColor: cor,
         }}
       />
     </div>
@@ -285,11 +257,11 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
     <>
       {/* META OS */}
       {editandoMeta ? (
-        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 min-h-[160px] flex flex-col justify-center gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Meta OS</p>
+        <div className="relative overflow-hidden rounded-lg border border-border bg-card p-2 flex flex-col gap-1.5">
+          <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Meta OS</p>
           <Input
             autoFocus
-            className="h-8 text-sm font-mono"
+            className="h-6 text-[10px] font-mono px-1.5"
             placeholder="Ex: 15000"
             value={inputMeta}
             onChange={(e) => setInputMeta(e.target.value)}
@@ -298,25 +270,25 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
               if (e.key === "Escape") setEditandoMeta(false);
             }}
           />
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <button
               onClick={confirmarMeta}
-              className="flex items-center gap-1.5 rounded-lg bg-green-500/20 border border-green-500/30 px-3 py-1.5 text-xs text-green-400 hover:bg-green-500/30 transition-colors"
+              className="flex items-center gap-1 rounded-md bg-green-500/20 border border-green-500/30 px-1.5 py-1 text-[9px] text-green-400 hover:bg-green-500/30 transition-colors"
             >
-              <Check className="h-3 w-3" /> Salvar
+              <Check className="h-2.5 w-2.5" /> Salvar
             </button>
             <button
               onClick={() => setEditandoMeta(false)}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors"
             >
-              <X className="h-3 w-3" /> Cancelar
+              <X className="h-2.5 w-2.5" /> Cancelar
             </button>
           </div>
         </div>
       ) : (
         <PremiumCard
           cor={corMeta}
-          icon={<Target className="h-3.5 w-3.5" style={{ color: corMeta }} />}
+          icon={<Target className="h-3 w-3" style={{ color: corMeta }} />}
           label="Meta OS"
           visible={visible}
           helpTitle="O que é Meta OS?"
@@ -331,25 +303,25 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
         >
           {metaValor > 0 ? (
             <>
-              <p className="text-3xl font-bold tabular-nums font-mono text-foreground leading-none mt-3">
+              <p className="text-xs font-bold tabular-nums text-foreground leading-tight mt-0.5">
                 {formatCurrency(valorRealizado)}
               </p>
               <ProgressBar pct={pctMeta} cor={corMeta} visible={visible} />
-              <p className="text-sm mt-2 text-muted-foreground">
-                {pctMeta.toFixed(0)}% da meta — faltam {formatCurrency(Math.max(0, metaValor - valorRealizado))}
+              <p className="text-[9px] mt-1 text-muted-foreground">
+                {pctMeta.toFixed(0)}% da meta
               </p>
             </>
           ) : (
             <>
-              <p className="text-3xl font-bold tabular-nums font-mono text-muted-foreground leading-none mt-3">
+              <p className="text-xs font-bold tabular-nums text-muted-foreground leading-tight mt-0.5">
                 {formatCurrency(valorRealizado)}
               </p>
               <button
                 onClick={abrirEdicao}
-                className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="mt-1 flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors"
               >
-                <Pencil className="h-3.5 w-3.5" />
-                Definir meta do mês
+                <Pencil className="h-2.5 w-2.5" />
+                Definir meta
               </button>
             </>
           )}
@@ -357,10 +329,10 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
           {metaValor > 0 && (
             <button
               onClick={abrirEdicao}
-              className="absolute bottom-3 right-9 text-muted-foreground/30 hover:text-muted-foreground transition-colors"
+              className="absolute bottom-1.5 right-1.5 text-muted-foreground/30 hover:text-muted-foreground transition-colors"
               title="Editar meta"
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className="h-2.5 w-2.5" />
             </button>
           )}
         </PremiumCard>
@@ -369,7 +341,7 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
       {/* SEMÁFORO */}
       <PremiumCard
         cor={corSemaforo}
-        icon={<TrendingUp className="h-3.5 w-3.5" style={{ color: corSemaforo }} />}
+        icon={<TrendingUp className="h-3 w-3" style={{ color: corSemaforo }} />}
         label="Semáforo"
         visible={visible}
         helpTitle="Como funciona o Semáforo?"
@@ -389,17 +361,17 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
       >
         {metaValor > 0 ? (
           <>
-            <p className="text-3xl font-bold font-mono leading-none" style={{ color: corSemaforo }}>
+            <p className="text-xs font-bold leading-tight mt-0.5" style={{ color: corSemaforo }}>
               {labelSemaforo}
             </p>
-            <p className="text-sm mt-2 text-muted-foreground">
-              Real {pctReal.toFixed(0)}% — Esperado {pctEsperado.toFixed(0)}%
+            <p className="text-[9px] mt-1 text-muted-foreground">
+              Real {pctReal.toFixed(0)}% / Esp. {pctEsperado.toFixed(0)}%
             </p>
           </>
         ) : (
           <>
-            <p className="text-3xl font-bold text-muted-foreground/30 leading-none">—</p>
-            <p className="text-sm mt-2 text-muted-foreground">Defina uma meta para ativar</p>
+            <p className="text-xs font-bold text-muted-foreground/30 leading-tight mt-0.5">—</p>
+            <p className="text-[9px] mt-1 text-muted-foreground">Defina uma meta</p>
           </>
         )}
       </PremiumCard>
@@ -407,7 +379,7 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
       {/* RITMO DIÁRIO */}
       <PremiumCard
         cor={corRitmo}
-        icon={<Zap className="h-3.5 w-3.5" style={{ color: corRitmo }} />}
+        icon={<Zap className="h-3 w-3" style={{ color: corRitmo }} />}
         label="Ritmo Diário"
         visible={visible}
         helpTitle="O que é Ritmo Diário?"
@@ -420,18 +392,18 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
           </>
         }
       >
-        <p className="text-3xl font-bold tabular-nums font-mono text-foreground leading-none">
+        <p className="text-xs font-bold tabular-nums text-foreground leading-tight mt-0.5">
           {diasUteisPassados > 0 ? formatCurrency(ritmoDiario) : "—"}
         </p>
-        <p className="text-sm mt-2 text-muted-foreground">
-          Média por dia útil ({diasUteisPassados}/{diasUteisMes} dias)
+        <p className="text-[9px] mt-1 text-muted-foreground">
+          {diasUteisPassados}/{diasUteisMes} dias úteis
         </p>
       </PremiumCard>
 
       {/* PROJEÇÃO */}
       <PremiumCard
         cor={corProjecao}
-        icon={<BarChart2 className="h-3.5 w-3.5" style={{ color: corProjecao }} />}
+        icon={<BarChart2 className="h-3 w-3" style={{ color: corProjecao }} />}
         label="Projeção"
         visible={visible}
         helpTitle="O que é Projeção?"
@@ -444,11 +416,11 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
           </>
         }
       >
-        <p className="text-3xl font-bold tabular-nums font-mono text-foreground leading-none">
+        <p className="text-xs font-bold tabular-nums text-foreground leading-tight mt-0.5">
           {diasUteisPassados > 0 ? formatCurrency(projecao) : "—"}
         </p>
-        <p className="text-sm mt-2 text-muted-foreground">
-          Projeção de fechamento do mês
+        <p className="text-[9px] mt-1 text-muted-foreground">
+          Fechamento do mês
         </p>
       </PremiumCard>
     </>

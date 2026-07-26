@@ -1,5 +1,6 @@
 import { Eye, Pencil, Printer, Trash2, MessageSquare, FileText, Tag, RadioTower, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -25,6 +26,8 @@ interface BotoesAcaoOrdemProps {
   termoAtivo?: boolean;
   compacto?: boolean;
   acoesAtivas?: string[];
+  /** Classe de cor para os ícones neutros (visualizar/editar/imprimir/mais opções), para forçar contraste em fundos com tema invertido */
+  corIconesNeutros?: string;
 }
 
 export const BotoesAcaoOrdem = ({
@@ -39,6 +42,7 @@ export const BotoesAcaoOrdem = ({
   termoAtivo,
   compacto = false,
   acoesAtivas,
+  corIconesNeutros,
 }: BotoesAcaoOrdemProps) => {
   const tamanhoBotao = compacto ? "h-6 w-6 shrink-0" : "h-8 w-8";
   const tamanhoIcone = compacto ? "h-3.5 w-3.5" : "h-4 w-4";
@@ -62,7 +66,7 @@ export const BotoesAcaoOrdem = ({
         {mostrar('visualizar') && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onVisualizar} className={tamanhoBotao}>
+              <Button variant="ghost" size="icon" onClick={onVisualizar} className={cn(tamanhoBotao, corIconesNeutros)}>
                 <Eye className={tamanhoIcone} />
               </Button>
             </TooltipTrigger>
@@ -73,7 +77,7 @@ export const BotoesAcaoOrdem = ({
         {mostrar('editar') && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onEditar} className={tamanhoBotao}>
+              <Button variant="ghost" size="icon" onClick={onEditar} className={cn(tamanhoBotao, corIconesNeutros)}>
                 <Pencil className={tamanhoIcone} />
               </Button>
             </TooltipTrigger>
@@ -84,7 +88,7 @@ export const BotoesAcaoOrdem = ({
         {mostrar('imprimir') && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={onImprimir} className={tamanhoBotao}>
+              <Button variant="ghost" size="icon" onClick={onImprimir} className={cn(tamanhoBotao, corIconesNeutros)}>
                 <Printer className={tamanhoIcone} />
               </Button>
             </TooltipTrigger>
@@ -166,7 +170,7 @@ export const BotoesAcaoOrdem = ({
         {temSecundarias && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className={tamanhoBotao}>
+              <Button variant="ghost" size="icon" className={cn(tamanhoBotao, corIconesNeutros)}>
                 <MoreHorizontal className={tamanhoIcone} />
               </Button>
             </DropdownMenuTrigger>

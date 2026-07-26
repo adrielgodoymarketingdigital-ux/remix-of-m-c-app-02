@@ -95,22 +95,22 @@ export function MobileBottomNav() {
     setSelectedNavIds(ids);
   };
 
-  // Na tela do Dashboard, a barra fica "flutuante" (destacada das bordas,
-  // cantos arredondados, sombra), igual ao mockup. Nas demais páginas
-  // mantém o visual padrão colado nas bordas.
-  const isDashboard = location.pathname === "/dashboard";
+  // No Dashboard e em Ordens de Serviço, a barra fica "flutuante" (destacada
+  // das bordas, cantos arredondados, sombra), igual ao mockup. Nas demais
+  // páginas mantém o visual padrão colado nas bordas.
+  const isFlutuante = location.pathname === "/dashboard" || location.pathname.startsWith("/os");
 
   return (
     <>
       <nav
         className={cn(
           "lg:hidden fixed z-40",
-          isDashboard
+          isFlutuante
             ? "left-3 right-3 rounded-2xl border shadow-lg bg-slate-900 border-slate-800 dark:bg-slate-100 dark:border-slate-200"
             : "bottom-0 left-0 right-0 border-t border-border/50"
         )}
         style={
-          isDashboard
+          isFlutuante
             ? {
                 backdropFilter: "blur(20px)",
                 WebkitBackdropFilter: "blur(20px)",
@@ -134,7 +134,7 @@ export function MobileBottomNav() {
                 className={cn(
                   "flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 relative",
                   "active:scale-95 touch-manipulation transition-transform",
-                  isDashboard
+                  isFlutuante
                     ? active
                       ? "text-primary"
                       : "text-slate-400 dark:text-slate-500"
@@ -166,7 +166,7 @@ export function MobileBottomNav() {
             className={cn(
               "flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200",
               "active:scale-95 touch-manipulation",
-              isDashboard
+              isFlutuante
                 ? "text-slate-400 dark:text-slate-500"
                 : "text-slate-500 hover:text-slate-300"
             )}

@@ -1,12 +1,12 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
-import { Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useOcultarValores } from "@/contexts/OcultarValoresContext";
+import { Button } from "@/components/ui/button";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
+import { useOcultarValores } from "@/contexts/OcultarValoresContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -14,7 +14,7 @@ import { ptBR } from "date-fns/locale";
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/pdv": "PDV",
-  "/os": "Ordem de Serviço",
+  "/os": "Ordens de Serviço",
   "/produtos": "Produtos e Peças",
   "/servicos": "Serviços",
   "/dispositivos": "Dispositivos",
@@ -109,53 +109,54 @@ export function MobileHeader() {
     >
       {/* Safe area para notch do iPhone */}
       <div style={{ paddingTop: "env(safe-area-inset-top)" }}>
-        <div className="flex items-center justify-between h-14 px-4">
+        <div className="flex flex-col gap-3 px-4 pt-4 pb-3">
 
-          {/* Título da página */}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-[17px] font-semibold text-foreground tracking-tight truncate leading-tight">
-              {pageTitle}
-            </h1>
-            {location.pathname === "/os" && (
-              <p className="text-[11px] text-muted-foreground capitalize leading-tight">
-                {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </p>
-            )}
-          </div>
+          <div className="flex items-center justify-between gap-2">
+            {/* Título da página */}
+            <div className="shrink-0">
+              <h1 className="text-sm font-bold text-foreground tracking-tight leading-tight whitespace-nowrap">
+                {pageTitle}
+              </h1>
+              {location.pathname === "/os" && (
+                <p className="text-sm text-muted-foreground capitalize leading-tight mt-0.5">
+                  {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                </p>
+              )}
+            </div>
 
-          {/* Ações da direita */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <SeletorFilial />
+            {/* Ações da direita */}
+            <div className="flex items-center gap-0.5 min-w-0">
+              <SeletorFilial />
 
-            {/* Botão ocultar valores */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              onClick={toggleValores}
-              title={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
-            >
-              {valoresOcultos
-                ? <EyeOff className="h-[18px] w-[18px]" />
-                : <Eye className="h-[18px] w-[18px]" />}
-            </Button>
+              {/* Ocultar valores */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={toggleValores}
+                title={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
+              >
+                {valoresOcultos
+                  ? <EyeOff className="h-4 w-4" />
+                  : <Eye className="h-4 w-4" />}
+              </Button>
 
-            {/* Notificações */}
-            <NotificationCenter />
+              {/* Notificações */}
+              <NotificationCenter />
 
-            {/* Avatar de perfil — navega para /configuracoes */}
-            <button
-              onClick={() => navigate("/configuracoes")}
-              className="ml-1 flex items-center justify-center h-9 w-9 rounded-full overflow-hidden ring-2 ring-border/50 hover:ring-primary/50 transition-all active:scale-95"
-              title={userName || "Perfil"}
-            >
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-            </button>
-
+              {/* Avatar de perfil — navega para /configuracoes */}
+              <button
+                onClick={() => navigate("/configuracoes")}
+                className="flex items-center justify-center h-8 w-8 rounded-full overflow-hidden ring-2 ring-border/50 hover:ring-primary/50 transition-all active:scale-95 shrink-0"
+                title={userName || "Perfil"}
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </div>
           </div>
         </div>
       </div>

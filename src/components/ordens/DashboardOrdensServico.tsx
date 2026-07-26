@@ -1,7 +1,18 @@
-import { Package, DollarSign, TrendingUp, Wrench } from "lucide-react";
+import { Package, DollarSign, TrendingUp, Wrench, ClipboardCheck, CircleCheck, Clock, CircleX, PackageCheck, Shield, TriangleAlert, LucideIcon } from "lucide-react";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
+
+const ICONE_POR_STATUS: Record<string, LucideIcon> = {
+  aguardando_aprovacao: Clock,
+  em_andamento: Clock,
+  finalizado: CircleCheck,
+  aguardando_retirada: Clock,
+  entregue: PackageCheck,
+  cancelada: CircleX,
+  garantia: Shield,
+  estornado: TriangleAlert,
+};
 
 interface OrdemServico {
   id: string;
@@ -63,194 +74,119 @@ export const DashboardOrdensServico = ({
   const lucroTotal = (lucroOrdensEntregues || 0) + lucroAvulsosEntregues;
 
   return (
-    <div className="space-y-3 mb-6">
+    <div className="space-y-2 mb-4">
       {/* Cards de status dinâmicos */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        {visibleStatuses.map((s) => (
-          <StatusCard key={s.slug} cor={s.cor} label={s.nome} ping>
-            <div className="text-3xl sm:text-4xl font-black tabular-nums tracking-tight font-mono" style={{ color: s.cor }}>
-              {s.count}
-            </div>
-          </StatusCard>
-        ))}
+      <div className="grid gap-2 grid-cols-5">
+        <StatusCard cor="#3b82f6" label="Total de Ordens" icon={<Package className="h-3.5 w-3.5" />}>
+          <p className="text-lg font-bold tabular-nums mt-0.5">{ordens.length}</p>
+        </StatusCard>
+
+        {visibleStatuses.map((s) => {
+          const Icone = ICONE_POR_STATUS[s.slug] ?? ClipboardCheck;
+          return (
+            <StatusCard key={s.slug} cor={s.cor} label={s.nome} icon={<Icone className="h-3.5 w-3.5" />}>
+              <p className="text-lg font-bold tabular-nums mt-0.5">{s.count}</p>
+            </StatusCard>
+          );
+        })}
+
         {aguardandoRetiradaCount > 0 && (
-          <div
-            className="rounded-xl border-2 p-4 flex flex-col gap-1"
-            style={{ borderColor: aguardandoRetiradaCor, backgroundColor: `${aguardandoRetiradaCor}15` }}
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em]" style={{ color: aguardandoRetiradaCor, opacity: 0.7 }}>
-              A Receber — {aguardandoRetiradaNome}
-            </p>
-            <p className="text-3xl sm:text-4xl font-black" style={{ color: aguardandoRetiradaCor }}>
-              {aguardandoRetiradaCount}
-            </p>
-            <p className="text-sm font-bold font-mono" style={{ color: aguardandoRetiradaCor }}>
+          <StatusCard cor={aguardandoRetiradaCor} label={aguardandoRetiradaNome} icon={<Clock className="h-3.5 w-3.5" />}>
+            <p className="text-lg font-bold tabular-nums mt-0.5">{aguardandoRetiradaCount}</p>
+            <p className="text-[9px] text-muted-foreground truncate">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(aguardandoRetiradaValor)}
             </p>
-            <p className="text-[10px]" style={{ color: aguardandoRetiradaCor, opacity: 0.7 }}>OS {aguardandoRetiradaNome.toLowerCase()}</p>
-          </div>
+          </StatusCard>
         )}
+
+        <StatusCard cor="#8b5cf6" label="Avulsos" icon={<Wrench className="h-3.5 w-3.5" />}>
+          <p className="text-lg font-bold tabular-nums mt-0.5">{totalAvulsos}</p>
+          {totalAvulsos > 0 && (
+            <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={valorAvulsos} /></p>
+          )}
+        </StatusCard>
       </div>
 
-      {/* Linha com cards fixos: Avulsos + financeiros */}
+      {/* Linha com cards financeiros */}
       {!isFuncionario ? (
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <StatusCard cor="#8b5cf6" label="Avulsos" icon={<Wrench className="h-3.5 w-3.5 text-violet-400" />}>
-            <div className="text-3xl sm:text-4xl font-black tabular-nums tracking-tight font-mono text-violet-500">{totalAvulsos}</div>
-            {totalAvulsos > 0 && (
-              <p className="text-[11px] text-violet-400/70 mt-0.5 font-mono"><ValorMonetario valor={valorAvulsos} /></p>
-            )}
-          </StatusCard>
-
-          <FinanceCard
-            cor="#3b82f6"
-            label="Total de Ordens"
-            icon={<Package className="h-4 w-4 text-blue-400" />}
-            iconBg="bg-blue-500/10 border-blue-500/20"
-          >
-            <span className="text-3xl sm:text-4xl font-black tabular-nums tracking-tight font-mono text-blue-500">
-              {ordens.length}
-            </span>
-          </FinanceCard>
-
-          <FinanceCard
-            cor="#22c55e"
+        <div className="grid gap-2 grid-cols-2">
+          <ValorCard
             label="Valor Faturado"
-            icon={<DollarSign className="h-4 w-4 text-green-400" />}
-            iconBg="bg-green-500/10 border-green-500/20"
-          >
-            <span className="text-xl sm:text-2xl font-black tabular-nums tracking-tight font-mono text-green-500">
-              <ValorMonetario valor={valorFaturado + valorAvulsos} />
-            </span>
-          </FinanceCard>
+            sublabel="Total faturado"
+            valor={valorFaturado + valorAvulsos}
+            icon={<DollarSign className="h-3.5 w-3.5" />}
+          />
 
           {podeVerLucros && (
-            <FinanceCard
-              cor="#10b981"
+            <ValorCard
               label="Lucro Total"
-              icon={<TrendingUp className="h-4 w-4 text-emerald-400" />}
-              iconBg="bg-emerald-500/10 border-emerald-500/20"
-            >
-              <span className="text-xl sm:text-2xl font-black tabular-nums tracking-tight font-mono text-emerald-500">
-                <ValorMonetario valor={lucroTotal} />
-              </span>
-            </FinanceCard>
+              sublabel="Lucro líquido"
+              valor={lucroTotal}
+              icon={<TrendingUp className="h-3.5 w-3.5" />}
+            />
           )}
         </div>
       ) : (
-        <div className="grid gap-3 grid-cols-2">
-          <StatusCard cor="#8b5cf6" label="Avulsos" icon={<Wrench className="h-3.5 w-3.5 text-violet-400" />}>
-            <div className="text-3xl sm:text-4xl font-black tabular-nums tracking-tight font-mono text-violet-500">{totalAvulsos}</div>
-            {totalAvulsos > 0 && (
-              <p className="text-[11px] text-violet-400/70 mt-0.5 font-mono"><ValorMonetario valor={valorAvulsos} /></p>
-            )}
-          </StatusCard>
-          {podeVerLucros && (
-            <StatusCard cor="#10b981" label="Lucro Avulsos" icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}>
-              <div className="text-xl sm:text-2xl font-black tabular-nums tracking-tight font-mono text-emerald-500">
+        podeVerLucros && (
+          <div className="grid gap-2 grid-cols-2">
+            <StatusCard cor="#10b981" label="Lucro Avulsos" icon={<TrendingUp className="h-3.5 w-3.5" />}>
+              <p className="text-lg font-bold tabular-nums mt-0.5">
                 <ValorMonetario valor={lucroAvulsosEntregues} />
-              </div>
+              </p>
             </StatusCard>
-          )}
-        </div>
+          </div>
+        )
       )}
     </div>
   );
 };
 
-function hexToRgbStr(hex: string): string {
-  const clean = hex.replace("#", "");
-  if (clean.length !== 6) return "59 130 246";
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `${r} ${g} ${b}`;
-}
-
 interface StatusCardProps {
   cor: string;
   label: string;
-  ping?: boolean;
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
   children: React.ReactNode;
 }
 
-function StatusCard({ cor, label, ping, icon, children }: StatusCardProps) {
-  const rgb = hexToRgbStr(cor);
+function StatusCard({ cor, label, icon, children }: StatusCardProps) {
   return (
-    <div
-      className="os-card-glow group relative overflow-hidden rounded-xl border bg-card p-4 cursor-default transition-all duration-200"
-      style={{
-        borderColor: `rgba(${rgb} / 0.25)`,
-        ["--glow-rgb" as string]: rgb,
-        boxShadow: `inset 0 1px 0 0 rgba(${rgb} / 0.15)`,
-      }}
-    >
-      {/* Glow no topo interno */}
-      <div
-        className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent 10%, rgba(${rgb} / 0.6) 50%, transparent 90%)` }}
+    <div className="relative overflow-hidden rounded-lg border border-border/50 bg-card p-2 flex flex-col">
+      <span
+        className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full"
+        style={{ backgroundColor: cor }}
       />
-      {/* Reflexo de canto */}
       <div
-        className="absolute top-0 right-0 h-16 w-16 opacity-10 pointer-events-none"
-        style={{ background: `radial-gradient(circle at 100% 0%, ${cor} 0%, transparent 70%)` }}
-      />
-
-      <div className="flex items-center justify-between mb-2.5">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
-          {label}
-        </span>
-        {ping ? (
-          <div className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50" style={{ backgroundColor: cor }} />
-            <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: cor }} />
-          </div>
-        ) : icon}
+        className="h-6 w-6 rounded-md flex items-center justify-center mb-1"
+        style={{ backgroundColor: `${cor}1a` }}
+      >
+        <span style={{ color: cor }}>{icon}</span>
       </div>
+      <p className="text-[9px] font-medium text-foreground leading-[1.2] min-h-[3.6em]">{label}</p>
       {children}
     </div>
   );
 }
 
-interface FinanceCardProps {
-  cor: string;
+interface ValorCardProps {
   label: string;
+  sublabel: string;
+  valor: number;
   icon: React.ReactNode;
-  iconBg: string;
-  children: React.ReactNode;
 }
 
-function FinanceCard({ cor, label, icon, iconBg, children }: FinanceCardProps) {
-  const rgb = hexToRgbStr(cor);
+function ValorCard({ label, sublabel, valor, icon }: ValorCardProps) {
   return (
-    <div
-      className="os-card-glow group relative overflow-hidden rounded-xl border bg-card p-4 cursor-default transition-all duration-200"
-      style={{
-        borderColor: `rgba(${rgb} / 0.2)`,
-        ["--glow-rgb" as string]: rgb,
-        boxShadow: `inset 0 1px 0 0 rgba(${rgb} / 0.12)`,
-      }}
-    >
-      <div
-        className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent 10%, rgba(${rgb} / 0.5) 50%, transparent 90%)` }}
-      />
-      <div
-        className="absolute top-0 right-0 h-16 w-16 opacity-[0.07] pointer-events-none"
-        style={{ background: `radial-gradient(circle at 100% 0%, ${cor} 0%, transparent 70%)` }}
-      />
-      <div className="relative flex items-start justify-between">
-        <div>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 block mb-2.5">
-            {label}
-          </span>
-          {children}
-        </div>
-        <div className={`h-8 w-8 rounded-lg border flex items-center justify-center shrink-0 ${iconBg}`}>
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5">
+      <div className="flex items-start gap-2 mb-1">
+        <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">{label}</p>
+        <div className="h-6 w-6 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0 text-emerald-500">
           {icon}
         </div>
       </div>
+      <p className="text-lg font-bold tabular-nums text-emerald-500 leading-tight break-words">
+        <ValorMonetario valor={valor} />
+      </p>
+      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{sublabel}</p>
     </div>
   );
 }

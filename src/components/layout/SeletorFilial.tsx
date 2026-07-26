@@ -25,11 +25,10 @@ export function SeletorFilial() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 gap-1.5 border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 max-w-[180px]"
+          className="h-8 min-w-0 gap-0 rounded-full border-border/50 bg-card pl-1.5 pr-1 text-foreground shadow-sm hover:bg-accent max-w-[160px]"
         >
-          <Building2 className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate text-xs">{label}</span>
-          <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+          <span className="truncate text-xs font-medium">{label}</span>
+          <ChevronDown className="h-2.5 w-2.5 shrink-0 opacity-50 ml-0.5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
