@@ -240,10 +240,26 @@ export const DialogEnviarWhatsApp = ({
       return;
     }
 
+    // Abrir a janela PRIMEIRO, de forma síncrona, para não perder o "user
+    // gesture" do clique — se abrirmos depois do await gerarLink(), o
+    // navegador (Safari em especial) bloqueia o popup silenciosamente,
+    // sem lançar erro nenhum (mesmo padrão já usado em handleEnviarDesktop).
+    const janelaWhatsApp = window.open("", "_blank");
+
+    if (!janelaWhatsApp) {
+      toast.error("Não foi possível abrir o WhatsApp. Permita popups para este site.");
+      return;
+    }
+
     setEnviandoLink(true);
     try {
+      // gerarLink já mostra toast.error em todos os cenários de falha
+      // (limite de plano, sessão expirada, erro de geração)
       const link = await gerarLink(ordem.id, lojaUserId ?? undefined);
-      if (!link) return;
+      if (!link) {
+        janelaWhatsApp.close();
+        return;
+      }
 
       const numeroFormatado = telefoneNumeros.startsWith("55")
         ? telefoneNumeros
@@ -253,8 +269,12 @@ export const DialogEnviarWhatsApp = ({
       const mensagemCodificada = encodeURIComponent(mensagemComLink);
       const urlWhatsApp = `https://wa.me/${numeroFormatado}?text=${mensagemCodificada}`;
 
-      window.open(urlWhatsApp, "_blank");
+      janelaWhatsApp.location.href = urlWhatsApp;
       onOpenChange(false);
+    } catch (error) {
+      console.error("Erro ao enviar link de acompanhamento:", error);
+      toast.error("Não foi possível gerar o link. Tente novamente.");
+      janelaWhatsApp.close();
     } finally {
       setEnviandoLink(false);
     }

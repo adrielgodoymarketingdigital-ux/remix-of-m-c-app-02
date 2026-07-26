@@ -21,7 +21,10 @@ export function useOSTracking() {
     setGerando(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!user) {
+        toast.error("Sessão expirada. Faça login novamente para gerar o link.");
+        return null;
+      }
 
       // Dono da loja: usado para resolver o plano e a cota, mesmo quando quem
       // compartilha é um funcionário (funcionário não tem assinatura própria)
