@@ -130,14 +130,14 @@ export const ResumoFinanceiro = ({
   };
 
   return (
-    <Card className="p-2">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <DollarSign className="w-4 h-4" />
+    <Card className="p-1.5">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <DollarSign className="w-3.5 h-3.5" />
           Resumo Financeiro
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 pt-0">
+      <CardContent className="space-y-2.5 pt-0 text-xs">
         {/* Lista de Serviços */}
         {servicos.length > 0 && (
           <div className="space-y-2">
