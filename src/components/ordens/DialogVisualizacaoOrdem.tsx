@@ -12,11 +12,12 @@ import { DialogAssinaturaSaida } from "./DialogAssinaturaSaida";
 import { DialogEnviarWhatsApp } from "./DialogEnviarWhatsApp";
 import {
   User, Smartphone, CheckCircle2, XCircle, PenTool,
-  MessageSquare, Camera, Hash, Calendar, Clock,
+  Camera, Hash, Calendar, Clock,
   MapPin, Phone, CreditCard, Wrench, Lock, FileText,
   RadioTower, Copy, ExternalLink, Loader2, Package, History,
   X, Pencil, DollarSign,
 } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa";
 import { checklistIcons } from "@/lib/checklist-icons";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
@@ -533,7 +534,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                         onClick={handleEnviarLinkWhatsApp}
                         className="col-span-2 gap-1.5 text-xs h-8 bg-green-600 hover:bg-green-700 text-white"
                       >
-                        <MessageSquare className="h-3.5 w-3.5" />
+                        <FaWhatsapp className="h-3.5 w-3.5" />
                         Enviar pelo WhatsApp
                       </Button>
                     </div>
@@ -587,7 +588,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
             onClick={() => setDialogWhatsAppAberto(true)}
             className="gap-1.5 text-xs h-9 text-green-600 hover:text-green-700 border-green-500/30 hover:bg-green-500/5"
           >
-            <MessageSquare className="h-3.5 w-3.5" />
+            <FaWhatsapp className="h-3.5 w-3.5" />
             WhatsApp
           </Button>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="text-xs h-9">

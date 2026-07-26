@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, Download, CheckCircle2, FileText, Shield, Files } from "lucide-react";
+import { Send, Loader2, Download, CheckCircle2, FileText, Shield, Files, Contact, Paperclip, Info, X } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { ConfiguracaoLoja, MensagensWhatsAppOS } from "@/types/configuracao-loja";
 import { gerarOrdemServicoPDF, TipoPDFOS } from "@/lib/gerarOrdemServicoPDF";
 import { toast } from "sonner";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
+import { cn } from "@/lib/utils";
 
 interface DialogEnviarWhatsAppProps {
   open: boolean;
@@ -252,95 +253,140 @@ export const DialogEnviarWhatsApp = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden">
-        <DialogHeader>
-          <DialogTitle>Enviar OS via WhatsApp</DialogTitle>
-          <DialogDescription>
-            Mande só a mensagem ou anexe o PDF da OS #{ordem.numero_os}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        className="!inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-[calc(100vw-1rem)] !h-[92dvh] !max-w-lg !rounded-2xl sm:!w-[calc(100vw-2rem)] sm:!h-auto sm:!max-h-[90dvh] sm:!max-w-lg sm:!rounded-2xl p-0 gap-0 overflow-hidden flex flex-col bg-background [&>.absolute.right-4.top-4]:hidden"
+      >
+        <DialogTitle className="sr-only">Enviar OS via WhatsApp</DialogTitle>
 
-        <div className="space-y-4 py-4">
+        {/* Alça de arrastar */}
+        <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+          <div className="h-1.5 w-10 rounded-full bg-muted-foreground/25" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-start gap-3 px-4 sm:px-5 pt-1 pb-4 shrink-0">
+          <div className="h-11 w-11 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+            <FaWhatsapp className="h-5 w-5 text-[#25D366]" />
+          </div>
+          <div className="min-w-0 flex-1 pr-8">
+            <h2 className="text-base font-bold leading-tight">Enviar OS via WhatsApp</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Mande só a mensagem ou anexe o PDF da OS <span className="font-semibold text-foreground">#{ordem.numero_os}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="absolute right-3 top-3 sm:right-4 sm:top-4 h-8 w-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Fechar</span>
+          </button>
+        </div>
+
+        <div className="space-y-4 px-4 sm:px-5 pb-4 overflow-y-auto flex-1 min-h-0">
           {/* Seletor de tipo de PDF — só relevante se for enviar o PDF junto */}
           <div className="space-y-2">
-            <Label>Anexar PDF? (opcional)</Label>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">Anexar PDF? (opcional)</p>
             <div className="grid grid-cols-1 gap-2">
-              {opcoesPDF.map((opcao) => (
-                <button
-                  key={opcao.valor}
-                  type="button"
-                  onClick={() => { setTipoPDF(opcao.valor); setPdfBaixado(false); }}
-                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
-                    tipoPDF === opcao.valor
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-border hover:bg-muted/50'
-                  }`}
-                >
-                  <span className={tipoPDF === opcao.valor ? 'text-primary' : 'text-muted-foreground'}>
-                    {opcao.icone}
-                  </span>
-                  <span className="flex-1">
-                    <span className="block text-sm font-medium">{opcao.label}</span>
-                    <span className="block text-xs text-muted-foreground">{opcao.descricao}</span>
-                  </span>
-                  {tipoPDF === opcao.valor && (
-                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                  )}
-                </button>
-              ))}
+              {opcoesPDF.map((opcao) => {
+                const selecionado = tipoPDF === opcao.valor;
+                return (
+                  <button
+                    key={opcao.valor}
+                    type="button"
+                    onClick={() => { setTipoPDF(opcao.valor); setPdfBaixado(false); }}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                      selecionado
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted/50"
+                    )}
+                  >
+                    <span className={cn(
+                      "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
+                      opcao.valor === "termo_garantia" ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary"
+                    )}>
+                      {opcao.icone}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className={cn("block text-sm font-medium", selecionado && "text-primary")}>{opcao.label}</span>
+                      <span className="block text-xs text-muted-foreground">{opcao.descricao}</span>
+                    </span>
+                    {selecionado ? (
+                      <CheckCircle2 className="h-5 w-5 text-primary shrink-0 fill-primary/15" />
+                    ) : (
+                      <span className="h-5 w-5 rounded-full border-2 border-muted-foreground/25 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="telefone">Número do WhatsApp</Label>
-            <Input
-              id="telefone"
-              placeholder="(00) 00000-0000"
-              value={telefone}
-              onChange={handleTelefoneChange}
-              maxLength={15}
-            />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">Número do WhatsApp</p>
+            <div className="relative">
+              <FaWhatsapp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#25D366] pointer-events-none" />
+              <Input
+                id="telefone"
+                placeholder="(00) 00000-0000"
+                value={telefone}
+                onChange={handleTelefoneChange}
+                maxLength={15}
+                className="pl-9 pr-10"
+              />
+              <Contact className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary pointer-events-none" />
+            </div>
             {ordem.cliente?.nome && (
-              <p className="text-sm text-muted-foreground">
-                Cliente: {ordem.cliente.nome}
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Contact className="h-3.5 w-3.5" />
+                Cliente: <span className="font-medium text-foreground">{ordem.cliente.nome}</span>
               </p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="mensagem">Mensagem</Label>
-            <Textarea
-              id="mensagem"
-              value={mensagem}
-              onChange={(e) => setMensagem(e.target.value)}
-              rows={6}
-              className="resize-none"
-            />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">Mensagem</p>
+            <div className="relative">
+              <Textarea
+                id="mensagem"
+                value={mensagem}
+                onChange={(e) => setMensagem(e.target.value)}
+                rows={6}
+                maxLength={500}
+                className="resize-none pb-6"
+              />
+              <span className="absolute bottom-2 right-3 text-[10px] text-muted-foreground/60 font-mono">
+                {mensagem.length}/500
+              </span>
+            </div>
           </div>
 
           {mobile && (
-            <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground space-y-2">
-              <p className="font-medium">📱 Como enviar no celular:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li><strong>Só chamar no WhatsApp:</strong> abre a conversa direto com a mensagem, sem PDF.</li>
-                <li><strong>Enviar com PDF:</strong> baixe o PDF, depois abra o WhatsApp e anexe o arquivo na conversa.</li>
+            <div className="rounded-xl bg-primary/5 border border-primary/10 p-3 text-sm text-muted-foreground space-y-2">
+              <p className="font-medium text-foreground flex items-center gap-1.5">
+                <span className="h-5 w-5 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                  <Info className="h-3 w-3" />
+                </span>
+                Como enviar no celular:
+              </p>
+              <ul className="list-disc list-inside space-y-1 pl-1">
+                <li><strong className="text-foreground">Só chamar no WhatsApp:</strong> abre a conversa direto com a mensagem, sem PDF.</li>
+                <li><strong className="text-foreground">Enviar com PDF:</strong> baixe o PDF, depois abra o WhatsApp e anexe o arquivo na conversa.</li>
               </ul>
             </div>
           )}
         </div>
 
-        <DialogFooter className="gap-2 flex-col">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-
+        <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/10 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] grid grid-cols-2 gap-2">
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleEnviarSoMensagem}
             disabled={gerando}
-            className="gap-2"
+            className={cn("gap-2", mobile && "col-span-2")}
           >
-            <Send className="h-4 w-4" />
+            <FaWhatsapp className="h-4 w-4 text-[#25D366]" />
             Só chamar no WhatsApp
           </Button>
 
@@ -387,13 +433,13 @@ export const DialogEnviarWhatsApp = ({
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4" />
+                  <Paperclip className="h-4 w-4" />
                   Enviar com PDF
                 </>
               )}
             </Button>
           )}
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
