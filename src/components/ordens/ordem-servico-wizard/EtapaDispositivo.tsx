@@ -39,14 +39,14 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
       />
 
       <Tabs value={subAba} onValueChange={setSubAba}>
-        <TabsList className="grid w-full grid-cols-3 rounded-xl h-8">
-          <TabsTrigger value="dados" className="rounded-lg text-xs">Dados</TabsTrigger>
-          <TabsTrigger value="fotos" className="rounded-lg text-xs">Fotos</TabsTrigger>
-          <TabsTrigger value="senha" className="rounded-lg text-xs">Senha</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 rounded-xl h-11">
+          <TabsTrigger value="dados" className="rounded-lg">Dados</TabsTrigger>
+          <TabsTrigger value="fotos" className="rounded-lg">Fotos</TabsTrigger>
+          <TabsTrigger value="senha" className="rounded-lg">Senha</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dados" className="mt-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-2">
+        <TabsContent value="dados" className="mt-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
             <div>
               <CampoLabel htmlFor="dispositivoTipo" texto="Tipo" obrigatorio />
               <Select
@@ -63,7 +63,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                   })
                 }
               >
-                <SelectTrigger className={cn("h-8 rounded-xl text-xs", campoComErro === "dispositivoTipo" && "border-destructive")}>
+                <SelectTrigger className={cn("h-10 rounded-xl", campoComErro === "dispositivoTipo" && "border-destructive")}>
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -84,7 +84,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                 onChange={(e) =>
                   setFormData({ ...formData, dispositivoCor: e.target.value })
                 }
-                className="h-8 rounded-xl text-xs"
+                className="h-10 rounded-xl"
               />
             </div>
 
@@ -96,7 +96,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                 onChange={(e) =>
                   setFormData({ ...formData, dispositivoMarca: e.target.value })
                 }
-                className={cn("h-8 rounded-xl text-xs", campoComErro === "dispositivoMarca" && "border-destructive")}
+                className={cn("h-10 rounded-xl", campoComErro === "dispositivoMarca" && "border-destructive")}
               />
             </div>
 
@@ -108,7 +108,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                 onChange={(e) =>
                   setFormData({ ...formData, dispositivoModelo: e.target.value })
                 }
-                className={cn("h-8 rounded-xl text-xs", campoComErro === "dispositivoModelo" && "border-destructive")}
+                className={cn("h-10 rounded-xl", campoComErro === "dispositivoModelo" && "border-destructive")}
               />
             </div>
 
@@ -123,7 +123,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                     dispositivoNumeroSerie: e.target.value,
                   })
                 }
-                className="h-8 rounded-xl text-xs"
+                className="h-10 rounded-xl"
               />
             </div>
 
@@ -135,13 +135,13 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                 onChange={(e) =>
                   setFormData({ ...formData, dispositivoIMEI: e.target.value })
                 }
-                className="h-8 rounded-xl text-xs"
+                className="h-10 rounded-xl"
               />
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="fotos" className="mt-3">
+        <TabsContent value="fotos" className="mt-5">
           <UploadFotosOS
             fotos={formData.fotosDispositivo}
             onFotosChange={(fotos) => setFormData({ ...formData, fotosDispositivo: fotos })}
@@ -149,7 +149,7 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
           />
         </TabsContent>
 
-        <TabsContent value="senha" className="mt-3">
+        <TabsContent value="senha" className="mt-5">
           <SenhaDesbloqueio
             value={formData.senhaDesbloqueio}
             onChange={(senha) => setFormData({ ...formData, senhaDesbloqueio: senha })}

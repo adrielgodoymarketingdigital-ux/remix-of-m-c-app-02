@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EtapaWizard } from "./tipos";
 
@@ -27,14 +28,8 @@ export function OrdemServicoWizardProgresso({
   const percent = Math.round(((etapaAtual - 1) / (TOTAL_ETAPAS - 1)) * 100);
 
   return (
-    <div>
-      <div className="flex items-center justify-between text-[11px] mb-1">
-        <span className="text-foreground">
-          <span className="font-bold text-primary">Passo {etapaAtual}</span> de {TOTAL_ETAPAS} — {NOMES_ETAPAS[etapaAtual]}
-        </span>
-        <span className="text-foreground font-medium">{percent}%</span>
-      </div>
-      <div className="flex items-center">
+    <div className="flex items-center gap-4">
+      <div className="flex items-center flex-1">
         {(Array.from({ length: TOTAL_ETAPAS }, (_, i) => (i + 1) as EtapaWizard)).map((etapa, index) => {
           const alcancada = etapa <= etapaMaximaAlcancada;
           const concluida = etapa < etapaAtual;
@@ -47,23 +42,38 @@ export function OrdemServicoWizardProgresso({
                 type="button"
                 disabled={!alcancada}
                 onClick={() => onEtapaClick(etapa)}
-                title={NOMES_ETAPAS[etapa]}
-                className={cn(
-                  "rounded-full shrink-0 transition-all flex items-center justify-center",
-                  atual ? "h-4 w-4 border-2 border-primary bg-background" : "h-2 w-2",
-                  !atual && (concluida || alcancada) && "bg-primary",
-                  !atual && !alcancada && "bg-muted cursor-not-allowed",
-                  alcancada && !atual && "cursor-pointer",
-                )}
+                className="flex flex-col items-center gap-1 shrink-0"
               >
-                {atual && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                <span
+                  className={cn(
+                    "h-7 w-7 rounded-full shrink-0 flex items-center justify-center text-xs font-semibold transition-all",
+                    atual && "border-2 border-primary bg-primary text-primary-foreground",
+                    !atual && concluida && "bg-primary text-primary-foreground",
+                    !atual && !concluida && alcancada && "border border-input bg-background text-foreground cursor-pointer",
+                    !atual && !alcancada && "border border-input bg-muted text-muted-foreground cursor-not-allowed",
+                  )}
+                >
+                  {concluida ? <Check className="h-3.5 w-3.5" /> : etapa}
+                </span>
+                <span
+                  className={cn(
+                    "text-[11px] whitespace-nowrap",
+                    atual ? "font-semibold text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  {NOMES_ETAPAS[etapa]}
+                </span>
               </button>
               {index < TOTAL_ETAPAS - 1 && (
-                <div className={cn("h-0.5 flex-1 mx-1", tracoPreenchido ? "bg-primary" : "bg-muted")} />
+                <div className={cn("h-0.5 flex-1 mx-1.5 mb-4", tracoPreenchido ? "bg-primary" : "bg-border")} />
               )}
             </div>
           );
         })}
+      </div>
+
+      <div className="text-right shrink-0 mb-4">
+        <span className="text-xs text-foreground font-medium">{percent}% concluído</span>
       </div>
     </div>
   );

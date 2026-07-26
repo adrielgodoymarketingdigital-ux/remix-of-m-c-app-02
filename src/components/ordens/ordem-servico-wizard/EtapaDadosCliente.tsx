@@ -51,7 +51,7 @@ export function EtapaDadosCliente({
 }: EtapaDadosClienteProps) {
   return (
     <div>
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="flex items-start justify-between gap-3 mb-5">
         <EtapaCabecalho
           icone={Contact}
           titulo="Dados do Cliente"
@@ -65,7 +65,7 @@ export function EtapaDadosCliente({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
         <div className="relative sm:col-span-2" ref={nomeInputRef}>
           <CampoLabel htmlFor="clienteNome" texto="Nome" obrigatorio />
           <Input
@@ -75,7 +75,7 @@ export function EtapaDadosCliente({
             onFocus={() => formData.clienteNome.length >= 2 && buscarClientes(formData.clienteNome, 'nome')}
             onBlur={() => setTimeout(() => setMostrarSugestoesNome(false), 200)}
             autoComplete="off"
-            className={cn("h-8 rounded-xl text-xs", campoComErro === "clienteNome" && "border-destructive")}
+            className={cn("h-10 rounded-xl", campoComErro === "clienteNome" && "border-destructive")}
           />
           {mostrarSugestoesNome && clientesFiltrados.length > 0 && (
             <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
@@ -109,7 +109,7 @@ export function EtapaDadosCliente({
             onChange={(e) =>
               setFormData({ ...formData, clienteTelefone: e.target.value })
             }
-            className="h-8 rounded-xl text-xs"
+            className="h-10 rounded-xl"
           />
         </div>
 
@@ -124,7 +124,7 @@ export function EtapaDadosCliente({
             autoComplete="off"
             placeholder="000.000.000-00"
             maxLength={18}
-            className="h-8 rounded-xl text-xs"
+            className="h-10 rounded-xl"
           />
           {mostrarSugestoesCPF && clientesFiltrados.length > 0 && (
             <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
@@ -160,9 +160,9 @@ export function EtapaDadosCliente({
                 setFormData({ ...formData, clienteCEP: aplicarMascaraCEP(e.target.value) })
               }
               onBlur={() => handleBuscarCEPOS()}
-              className="h-8 rounded-xl text-xs"
+              className="h-10 rounded-xl"
             />
-            <Button type="button" variant="outline" size="icon" onClick={handleBuscarCEPOS} disabled={buscandoCEP} className="h-8 w-8 rounded-xl shrink-0">
+            <Button type="button" variant="outline" size="icon" onClick={handleBuscarCEPOS} disabled={buscandoCEP} className="h-10 w-10 rounded-xl shrink-0">
               {buscandoCEP ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             </Button>
           </div>
@@ -176,7 +176,7 @@ export function EtapaDadosCliente({
             onChange={(e) =>
               setFormData({ ...formData, clienteEndereco: e.target.value })
             }
-            className="h-8 rounded-xl text-xs"
+            className="h-10 rounded-xl"
           />
         </div>
 
@@ -188,7 +188,7 @@ export function EtapaDadosCliente({
             onChange={(e) =>
               setFormData({ ...formData, clienteNumero: e.target.value })
             }
-            className="h-8 rounded-xl text-xs"
+            className="h-10 rounded-xl"
           />
         </div>
         <div>
@@ -199,7 +199,7 @@ export function EtapaDadosCliente({
             onChange={(e) =>
               setFormData({ ...formData, clienteBairro: e.target.value })
             }
-            className="h-8 rounded-xl text-xs"
+            className="h-10 rounded-xl"
           />
         </div>
 
@@ -211,7 +211,7 @@ export function EtapaDadosCliente({
             onChange={(e) =>
               setFormData({ ...formData, clienteCidade: e.target.value })
             }
-            className="h-8 rounded-xl text-xs"
+            className="h-10 rounded-xl"
           />
         </div>
         <div>
@@ -224,7 +224,7 @@ export function EtapaDadosCliente({
             onChange={(e) =>
               setFormData({ ...formData, clienteEstado: e.target.value.toUpperCase() })
             }
-            className="h-8 rounded-xl text-xs"
+            className="h-10 rounded-xl"
           />
         </div>
 
@@ -237,7 +237,7 @@ export function EtapaDadosCliente({
             onChange={(e) =>
               setFormData({ ...formData, clienteDataNascimento: e.target.value })
             }
-            className="h-8 rounded-xl text-xs sm:w-1/2"
+            className="h-10 rounded-xl sm:w-1/2"
           />
         </div>
       </div>

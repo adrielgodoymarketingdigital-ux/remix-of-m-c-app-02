@@ -1,4 +1,4 @@
-import { Loader2, ChevronRight } from "lucide-react";
+import { Loader2, ChevronRight, ChevronLeft, ClipboardList } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
@@ -165,24 +165,32 @@ export const DialogOrdemServico = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-3xl h-[92dvh] sm:h-auto sm:max-h-[78dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl bg-muted/30 [&>button]:h-7 [&>button]:w-7 [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-2.5 [&>button]:right-2.5 [&>button]:shadow-sm">
-        <div className="shrink-0 px-2.5 pt-2.5 pb-1.5 sm:px-3 sm:pt-3">
-          <div className="bg-background rounded-xl shadow-sm px-2.5 py-2 sm:px-3">
-            <DialogHeader className="mb-1.5">
-              <DialogTitle className="text-sm sm:text-base font-bold">
-                {ordem ? `Editar Ordem de Serviço — OS ${ordem.numero_os}` : "Nova Ordem de Serviço"}
-              </DialogTitle>
-            </DialogHeader>
-            <OrdemServicoWizardProgresso
-              etapaAtual={etapaAtual}
-              etapaMaximaAlcancada={etapaMaximaAlcancada}
-              onEtapaClick={irParaEtapa}
-            />
-          </div>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl sm:max-w-4xl lg:max-w-5xl h-[92dvh] sm:h-auto sm:max-h-[90dvh] p-0 gap-0 overflow-hidden flex flex-col rounded-2xl bg-background [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-full [&>button]:bg-muted [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-6 [&>button]:right-6">
+        <div className="shrink-0 px-6 pt-6 pb-5 border-b">
+          <DialogHeader className="mb-5">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-xl bg-primary flex items-center justify-center shrink-0">
+                <ClipboardList className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-left">
+                  {ordem ? `Editar Ordem de Serviço — OS ${ordem.numero_os}` : "Nova Ordem de Serviço"}
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  {ordem ? "Atualize as informações e acompanhe o progresso." : "Preencha as informações para abrir uma nova OS."}
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+          <OrdemServicoWizardProgresso
+            etapaAtual={etapaAtual}
+            etapaMaximaAlcancada={etapaMaximaAlcancada}
+            onEtapaClick={irParaEtapa}
+          />
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-2.5 pb-2.5 sm:px-3">
-          <div className="bg-background rounded-xl shadow-sm p-2.5 sm:p-3 text-xs">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+          <div className="text-sm">
           {etapaAtual === 1 && (
             <EtapaOrigemCliente formData={formData} setFormData={setFormData} />
           )}
@@ -263,24 +271,24 @@ export const DialogOrdemServico = ({
           </div>
         </div>
 
-        <div className="shrink-0 px-2.5 py-2 sm:px-3 flex flex-row justify-between gap-3">
+        <div className="shrink-0 px-6 py-4 border-t flex flex-row justify-between gap-3">
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={etapaAtual === 1 ? () => onOpenChange(false) : voltarEtapa}
             disabled={loading}
-            className="rounded-full px-5 h-8 text-xs"
+            className="gap-1.5"
           >
+            <ChevronLeft className="h-4 w-4" />
             {etapaAtual === 1 ? "Cancelar" : "Anterior"}
           </Button>
           {etapaAtual < TOTAL_ETAPAS ? (
-            <Button type="button" size="sm" onClick={tentarAvancar} disabled={loading} className="rounded-full px-5 h-8 text-xs gap-1">
+            <Button type="button" onClick={tentarAvancar} disabled={loading} className="gap-1.5">
               Próximo
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button type="button" size="sm" onClick={handleSalvar} disabled={loading} className="rounded-full px-5 h-8 text-xs">
+            <Button type="button" onClick={handleSalvar} disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

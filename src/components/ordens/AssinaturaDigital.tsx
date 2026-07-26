@@ -126,33 +126,33 @@ export const AssinaturaDigital = ({
 
   return (
     <Card>
-      <CardHeader className="pb-1.5 pt-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <PenTool className="h-3.5 w-3.5" />
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <PenTool className="h-4 w-4" />
           {label}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-4">
         {/* Seletor de Tipo de Assinatura */}
         {mostrarSeletorTipo && (
-          <div className="p-2 bg-muted/30 rounded-lg">
-            <Label className="text-xs font-medium mb-1.5 block">Tipo de Assinatura</Label>
+          <div className="p-3 bg-muted/30 rounded-lg">
+            <Label className="text-xs font-medium mb-2 block">Tipo de Assinatura</Label>
             <RadioGroup
               value={tipoAtual}
               onValueChange={(value) => handleTipoChange(value as TipoAssinatura)}
-              className="flex flex-col gap-2 sm:flex-row sm:gap-4"
+              className="flex flex-col gap-3 sm:flex-row sm:gap-4"
               disabled={disabled}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="digital" id="assinatura-digital" />
-                <Label htmlFor="assinatura-digital" className="font-normal cursor-pointer text-xs flex items-center gap-1">
+                <Label htmlFor="assinatura-digital" className="font-normal cursor-pointer text-sm flex items-center gap-1">
                   <PenTool className="h-3 w-3" />
                   Digital (na tela)
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="fisica" id="assinatura-fisica" />
-                <Label htmlFor="assinatura-fisica" className="font-normal cursor-pointer text-xs flex items-center gap-1">
+                <Label htmlFor="assinatura-fisica" className="font-normal cursor-pointer text-sm flex items-center gap-1">
                   <FileSignature className="h-3 w-3" />
                   Física (no papel)
                 </Label>
@@ -162,7 +162,7 @@ export const AssinaturaDigital = ({
         )}
 
         {mostrarCheckbox && (
-          <div className="flex items-start gap-2 p-2 bg-muted/30 rounded-lg">
+          <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
             <Checkbox
               id="aceite-assinatura"
               checked={aceite}
@@ -171,7 +171,7 @@ export const AssinaturaDigital = ({
             />
             <Label
               htmlFor="aceite-assinatura"
-              className="text-xs leading-snug cursor-pointer"
+              className="text-sm leading-relaxed cursor-pointer"
             >
               {textoAceite}
             </Label>
@@ -190,8 +190,8 @@ export const AssinaturaDigital = ({
               <SignatureCanvas
                 ref={sigCanvas}
                 canvasProps={{
-                  className: "w-full h-24 touch-none",
-                  style: { width: "100%", height: "96px" },
+                  className: "w-full h-40 touch-none",
+                  style: { width: "100%", height: "160px" },
                 }}
                 backgroundColor="transparent"
                 penColor="black"
@@ -199,7 +199,7 @@ export const AssinaturaDigital = ({
               />
             </div>
 
-            <p className="text-[11px] text-muted-foreground text-center">
+            <p className="text-xs text-muted-foreground text-center">
               Use o dedo ou mouse para assinar no campo acima
             </p>
 
@@ -207,22 +207,20 @@ export const AssinaturaDigital = ({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={handleClear}
                 disabled={disabled}
                 className="flex-1"
               >
-                <Eraser className="h-3.5 w-3.5 mr-2" />
+                <Eraser className="h-4 w-4 mr-2" />
                 Limpar
               </Button>
               <Button
                 type="button"
-                size="sm"
                 onClick={handleSave}
                 disabled={disabled || !canSave}
                 className="flex-1"
               >
-                <Check className="h-3.5 w-3.5 mr-2" />
+                <Check className="h-4 w-4 mr-2" />
                 {assinado ? "Atualizar" : "Confirmar"}
               </Button>
             </div>
@@ -237,12 +235,12 @@ export const AssinaturaDigital = ({
 
         {/* Mensagem para Assinatura Física */}
         {tipoAtual === 'fisica' && (
-          <div className="p-3 border-2 border-dashed rounded-lg bg-muted/10 text-center">
-            <FileSignature className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">
+          <div className="p-4 border-2 border-dashed rounded-lg bg-muted/10 text-center">
+            <FileSignature className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
               A assinatura será feita no documento impresso.
             </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Ao imprimir, haverá um espaço reservado para assinatura.
             </p>
             {mostrarCheckbox && aceite && (

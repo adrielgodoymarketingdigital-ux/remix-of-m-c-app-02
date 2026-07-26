@@ -18,9 +18,9 @@ export function EtapaChecklistAvarias({ formData, setFormData }: EtapaChecklistA
         descricao="Registre as condições de entrada e saída do aparelho."
       />
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div>
-          <h4 className="text-xs font-semibold text-foreground mb-2">Checklist de Entrada e Saída</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-3">Checklist de Entrada e Saída</h4>
           <ChecklistDispositivo
             tipoDispositivo={formData.dispositivoTipo}
             sistema={formData.dispositivoSistema}
@@ -35,7 +35,7 @@ export function EtapaChecklistAvarias({ formData, setFormData }: EtapaChecklistA
         </div>
 
         <div>
-          <h4 className="text-xs font-semibold text-foreground mb-2">Marcação de Avarias</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-3">Marcação de Avarias</h4>
           <MarcacaoAvarias
             tipoDispositivo={formData.dispositivoTipo}
             value={formData.avarias}
