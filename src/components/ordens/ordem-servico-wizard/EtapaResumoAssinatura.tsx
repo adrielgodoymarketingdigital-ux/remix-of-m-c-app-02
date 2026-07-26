@@ -38,7 +38,7 @@ export function EtapaResumoAssinatura({
         descricao="Confira os valores e colete a assinatura do cliente."
       />
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:items-start">
       <ResumoFinanceiro
         servicos={formData.servicos}
         produtos={formData.produtos}
@@ -75,33 +75,35 @@ export function EtapaResumoAssinatura({
         })()}
       />
 
-      {/* Assinatura Digital do Cliente - Entrada */}
-      <AssinaturaDigital
-        label="Assinatura do Cliente (Entrada)"
-        textoAceite="Declaro estar ciente das condições do dispositivo conforme checklist e avarias registradas neste documento. Autorizo a execução dos serviços descritos."
-        onSave={(assinatura) => setFormData({ ...formData, assinaturaEntrada: assinatura })}
-        onClear={() => setFormData({ ...formData, assinaturaEntrada: "" })}
-        onTipoChange={(tipo) => setFormData({ ...formData, tipoAssinaturaEntrada: tipo, assinaturaEntrada: tipo === 'fisica' ? "" : formData.assinaturaEntrada })}
-        assinaturaExistente={formData.assinaturaEntrada}
-        tipoAssinatura={formData.tipoAssinaturaEntrada}
-        mostrarCheckbox={true}
-        mostrarSeletorTipo={true}
-      />
-
-      {/* Assinatura Digital do Cliente - Saída (somente na edição) */}
-      {temAssinaturaSaida && (
+      <div className="space-y-4">
+        {/* Assinatura Digital do Cliente - Entrada */}
         <AssinaturaDigital
-          label="Assinatura do Cliente (Saída / Recebimento)"
-          textoAceite="Declaro ter recebido o dispositivo nas condições descritas nesta ordem de serviço. Confirmo que o serviço foi realizado conforme acordado."
-          onSave={(assinatura) => setFormData({ ...formData, assinaturaSaida: assinatura })}
-          onClear={() => setFormData({ ...formData, assinaturaSaida: "" })}
-          onTipoChange={(tipo) => setFormData({ ...formData, tipoAssinaturaSaida: tipo, assinaturaSaida: tipo === 'fisica' ? "" : formData.assinaturaSaida })}
-          assinaturaExistente={formData.assinaturaSaida}
-          tipoAssinatura={formData.tipoAssinaturaSaida}
+          label="Assinatura do Cliente (Entrada)"
+          textoAceite="Declaro estar ciente das condições do dispositivo conforme checklist e avarias registradas neste documento. Autorizo a execução dos serviços descritos."
+          onSave={(assinatura) => setFormData({ ...formData, assinaturaEntrada: assinatura })}
+          onClear={() => setFormData({ ...formData, assinaturaEntrada: "" })}
+          onTipoChange={(tipo) => setFormData({ ...formData, tipoAssinaturaEntrada: tipo, assinaturaEntrada: tipo === 'fisica' ? "" : formData.assinaturaEntrada })}
+          assinaturaExistente={formData.assinaturaEntrada}
+          tipoAssinatura={formData.tipoAssinaturaEntrada}
           mostrarCheckbox={true}
           mostrarSeletorTipo={true}
         />
-      )}
+
+        {/* Assinatura Digital do Cliente - Saída (somente na edição) */}
+        {temAssinaturaSaida && (
+          <AssinaturaDigital
+            label="Assinatura do Cliente (Saída / Recebimento)"
+            textoAceite="Declaro ter recebido o dispositivo nas condições descritas nesta ordem de serviço. Confirmo que o serviço foi realizado conforme acordado."
+            onSave={(assinatura) => setFormData({ ...formData, assinaturaSaida: assinatura })}
+            onClear={() => setFormData({ ...formData, assinaturaSaida: "" })}
+            onTipoChange={(tipo) => setFormData({ ...formData, tipoAssinaturaSaida: tipo, assinaturaSaida: tipo === 'fisica' ? "" : formData.assinaturaSaida })}
+            assinaturaExistente={formData.assinaturaSaida}
+            tipoAssinatura={formData.tipoAssinaturaSaida}
+            mostrarCheckbox={true}
+            mostrarSeletorTipo={true}
+          />
+        )}
+      </div>
       </div>
     </div>
   );
