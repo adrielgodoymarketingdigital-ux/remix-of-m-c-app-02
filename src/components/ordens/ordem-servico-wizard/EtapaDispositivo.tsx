@@ -9,6 +9,15 @@ import { SenhaDesbloqueio } from "../SenhaDesbloqueio";
 import { EtapaCabecalho } from "./EtapaCabecalho";
 import { CampoLabel } from "./CampoLabel";
 import { FormData } from "./tipos";
+import { ComboboxComTextoLivre } from "./ComboboxComTextoLivre";
+import {
+  OPCAO_OUTRA,
+  OPCAO_OUTRO_MODELO,
+  OPCAO_OUTRA_COR,
+  getMarcasPorTipo,
+  getModelosPorMarca,
+  getCoresPorMarca,
+} from "@/data/catalogoDispositivos";
 
 const CAMPOS_ERRO_SUB_ABA_DADOS = ["dispositivoTipo", "dispositivoMarca", "dispositivoModelo"];
 
@@ -29,6 +38,15 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
       setSubAba("dados");
     }
   }, [campoComErro]);
+
+  const marcasDisponiveis = getMarcasPorTipo(formData.dispositivoTipo);
+  const marcaEhTextoLivre = formData.dispositivoMarca === OPCAO_OUTRA || marcasDisponiveis.length === 0;
+  const modelosDisponiveis = marcaEhTextoLivre
+    ? []
+    : getModelosPorMarca(formData.dispositivoTipo, formData.dispositivoMarca);
+  const coresDisponiveis = marcaEhTextoLivre
+    ? []
+    : getCoresPorMarca(formData.dispositivoTipo, formData.dispositivoMarca);
 
   return (
     <div>
@@ -77,39 +95,82 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
             </div>
 
             <div>
-              <CampoLabel htmlFor="dispositivoCor" texto="Cor" />
-              <Input
-                id="dispositivoCor"
-                value={formData.dispositivoCor}
-                onChange={(e) =>
-                  setFormData({ ...formData, dispositivoCor: e.target.value })
-                }
-                className="h-10 rounded-xl"
-              />
-            </div>
-
-            <div>
               <CampoLabel htmlFor="dispositivoMarca" texto="Marca" obrigatorio />
-              <Input
-                id="dispositivoMarca"
-                value={formData.dispositivoMarca}
-                onChange={(e) =>
-                  setFormData({ ...formData, dispositivoMarca: e.target.value })
-                }
-                className={cn("h-10 rounded-xl", campoComErro === "dispositivoMarca" && "border-destructive")}
-              />
+              {marcasDisponiveis.length > 0 ? (
+                <ComboboxComTextoLivre
+                  id="dispositivoMarca"
+                  value={formData.dispositivoMarca}
+                  opcoes={marcasDisponiveis}
+                  opcaoOutra={OPCAO_OUTRA}
+                  placeholder="Selecione a marca"
+                  buscaPlaceholder="Buscar marca..."
+                  onChange={(value) =>
+                    setFormData({ ...formData, dispositivoMarca: value, dispositivoModelo: "", dispositivoCor: "" })
+                  }
+                  className="h-10 rounded-xl"
+                  erro={campoComErro === "dispositivoMarca"}
+                />
+              ) : (
+                <Input
+                  id="dispositivoMarca"
+                  value={formData.dispositivoMarca}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dispositivoMarca: e.target.value })
+                  }
+                  className={cn("h-10 rounded-xl", campoComErro === "dispositivoMarca" && "border-destructive")}
+                />
+              )}
             </div>
 
             <div>
               <CampoLabel htmlFor="dispositivoModelo" texto="Modelo" obrigatorio />
-              <Input
-                id="dispositivoModelo"
-                value={formData.dispositivoModelo}
-                onChange={(e) =>
-                  setFormData({ ...formData, dispositivoModelo: e.target.value })
-                }
-                className={cn("h-10 rounded-xl", campoComErro === "dispositivoModelo" && "border-destructive")}
-              />
+              {modelosDisponiveis.length > 0 ? (
+                <ComboboxComTextoLivre
+                  id="dispositivoModelo"
+                  value={formData.dispositivoModelo}
+                  opcoes={modelosDisponiveis}
+                  opcaoOutra={OPCAO_OUTRO_MODELO}
+                  placeholder="Selecione o modelo"
+                  buscaPlaceholder="Buscar modelo..."
+                  onChange={(value) => setFormData({ ...formData, dispositivoModelo: value })}
+                  className="h-10 rounded-xl"
+                  erro={campoComErro === "dispositivoModelo"}
+                />
+              ) : (
+                <Input
+                  id="dispositivoModelo"
+                  value={formData.dispositivoModelo}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dispositivoModelo: e.target.value })
+                  }
+                  className={cn("h-10 rounded-xl", campoComErro === "dispositivoModelo" && "border-destructive")}
+                />
+              )}
+            </div>
+
+            <div>
+              <CampoLabel htmlFor="dispositivoCor" texto="Cor" />
+              {coresDisponiveis.length > 0 ? (
+                <ComboboxComTextoLivre
+                  id="dispositivoCor"
+                  value={formData.dispositivoCor}
+                  opcoes={coresDisponiveis}
+                  opcaoOutra={OPCAO_OUTRA_COR}
+                  placeholder="Selecione a cor"
+                  buscaPlaceholder="Buscar cor..."
+                  onChange={(value) => setFormData({ ...formData, dispositivoCor: value })}
+                  className="h-10 rounded-xl"
+                />
+              ) : (
+                <Input
+                  id="dispositivoCor"
+                  value={formData.dispositivoCor}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dispositivoCor: e.target.value })
+                  }
+                  className="h-10 rounded-xl"
+                />
+              )}
             </div>
 
             <div>
