@@ -18,7 +18,7 @@ export function EtapaServicosProdutos({ formData, setFormData }: EtapaServicosPr
         descricao="Selecione o que será utilizado neste atendimento."
       />
 
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:items-start">
         <div>
           <h4 className="text-sm font-semibold text-foreground mb-3">Serviços</h4>
           <SelecionadorServico
