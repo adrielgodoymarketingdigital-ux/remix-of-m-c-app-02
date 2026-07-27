@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Target, TrendingUp, Activity, Zap, BarChart2,
-  Pencil, Check, X, RefreshCw, Clock, HelpCircle,
+  Pencil, Check, X, RefreshCw, HelpCircle,
   ChevronUp, ChevronDown, Trash2
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -106,10 +106,10 @@ function SkeletonCard() {
   );
 }
 
-function corBorda(dias: number) {
-  if (dias >= 3) return "border-red-500/70";
-  if (dias >= 1) return "border-yellow-500/70";
-  return "border-green-500/70";
+function corBordaKanban(dias: number) {
+  if (dias > 7) return "border-l-4 border-l-destructive";
+  if (dias >= 4) return "border-l-4 border-l-yellow-500";
+  return "border-l-4 border-l-green-500";
 }
 
 function corTextoStatus(status: string) {
@@ -159,6 +159,103 @@ function SectionHeader({ titulo, subtitulo, expandido, onToggle, count }: {
         {expandido ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
       </div>
     </button>
+  );
+}
+
+interface OSParada {
+  id: string;
+  numero_os: string;
+  cliente_nome: string;
+  status: string;
+  diasParada: number;
+  total: number | null;
+  created_at: string;
+}
+
+function CardOSParadaKanban({
+  os,
+  labelStatus,
+  onAbrir,
+  onExcluir,
+}: {
+  os: OSParada;
+  labelStatus: (slug: string) => string;
+  onAbrir?: (id: string) => void;
+  onExcluir?: (id: string, numero_os: string) => void;
+}) {
+  return (
+    <div
+      onClick={() => onAbrir?.(os.id)}
+      className={`group relative rounded-lg border bg-muted/10 p-3 text-sm transition-colors ${corBordaKanban(os.diasParada)} ${onAbrir ? "cursor-pointer hover:bg-muted/20" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-1 mb-1">
+        <span className="font-mono text-xs font-bold text-foreground truncate">
+          #{os.numero_os} — {os.cliente_nome}
+        </span>
+        <span className="font-semibold text-xs shrink-0">{formatCurrency(os.total ?? 0)}</span>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className={`text-[10px] font-medium ${corTextoStatus(os.status)}`}>
+          {labelStatus(os.status)}
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          {os.diasParada === 0 ? "Hoje" : `${os.diasParada}d`}
+        </span>
+      </div>
+      {onExcluir && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onExcluir(os.id, os.numero_os); }}
+          className="absolute bottom-2 right-2 p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+          aria-label="Excluir OS"
+        >
+          <Trash2 className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function KanbanOSParadas({
+  osParadas,
+  labelStatus,
+  onAbrir,
+  onExcluir,
+}: {
+  osParadas: OSParada[];
+  labelStatus: (slug: string) => string;
+  onAbrir?: (id: string) => void;
+  onExcluir?: (id: string, numero_os: string) => void;
+}) {
+  const somaVal = (lista: OSParada[]) => lista.reduce((a, o) => a + (o.total ?? 0), 0);
+
+  const cols = [
+    { label: "1 – 3 dias", cor: "border-t-green-500", corText: "text-green-600", items: osParadas.filter((o) => o.diasParada <= 3) },
+    { label: "4 – 7 dias", cor: "border-t-yellow-500", corText: "text-yellow-600", items: osParadas.filter((o) => o.diasParada >= 4 && o.diasParada <= 7) },
+    { label: "+ 7 dias", cor: "border-t-destructive", corText: "text-destructive", items: osParadas.filter((o) => o.diasParada > 7) },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {cols.map((col) => (
+        <div key={col.label} className={`rounded-lg border border-t-2 border-border/40 bg-muted/5 ${col.cor}`}>
+          <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-border/30">
+            <span className={`text-xs font-semibold ${col.corText}`}>{col.label}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {col.items.length} OS · {formatCurrency(somaVal(col.items))}
+            </span>
+          </div>
+          <div className="p-2 space-y-2 min-h-[60px]">
+            {col.items.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground text-center py-4">Nenhuma OS</p>
+            ) : (
+              col.items.map((os) => (
+                <CardOSParadaKanban key={os.id} os={os} labelStatus={labelStatus} onAbrir={onAbrir} onExcluir={onExcluir} />
+              ))
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -494,58 +591,24 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS, onExcluirOS }
         <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
           <SectionHeader
             titulo="OS em aberto"
-            subtitulo="mais antigas primeiro"
+            subtitulo="kanban por tempo parado"
             expandido={expandidoOsParadas}
             onToggle={() => setExpandidoOsParadas(p => !p)}
             count={data.osParadas.length}
           />
           <div style={{
-            maxHeight: expandidoOsParadas ? "1000px" : "0px",
+            maxHeight: expandidoOsParadas ? "2000px" : "0px",
             opacity: expandidoOsParadas ? 1 : 0,
             overflow: "hidden",
             transition: "max-height 300ms ease-in-out, opacity 200ms ease-in-out",
           }}>
-            <div className="border-t border-border/30 p-3 grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {data.osParadas.map((os) => (
-                <div
-                  key={os.id}
-                  onClick={() => onAbrirOS?.(os.id)}
-                  className={`relative overflow-hidden rounded-xl border-2 bg-card p-3 ${corBorda(os.diasParada)} ${onAbrirOS ? "cursor-pointer hover:brightness-110 transition-[filter]" : ""}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-foreground/90 truncate">
-                        #{os.numero_os} — {os.cliente_nome}
-                      </p>
-                      <p className={`text-[10px] font-medium mt-0.5 ${corTextoStatus(os.status)}`}>
-                        {labelStatus(os.status)}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-xs font-black font-mono text-foreground/80">
-                        {formatCurrency(os.total)}
-                      </p>
-                      <div className="flex items-center gap-1 justify-end mt-0.5">
-                        <Clock className="h-2.5 w-2.5 text-muted-foreground/50" />
-                        <p className="text-[10px] text-muted-foreground/60">
-                          {os.diasParada === 0
-                            ? "Hoje"
-                            : `${os.diasParada}d parada`}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  {onExcluirOS && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onExcluirOS(os.id, os.numero_os); }}
-                      className="absolute bottom-2 right-2 p-1 rounded text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      aria-label="Excluir OS"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
+            <div className="border-t border-border/30 p-3">
+              <KanbanOSParadas
+                osParadas={data.osParadas}
+                labelStatus={labelStatus}
+                onAbrir={onAbrirOS}
+                onExcluir={onExcluirOS}
+              />
             </div>
           </div>
         </div>
