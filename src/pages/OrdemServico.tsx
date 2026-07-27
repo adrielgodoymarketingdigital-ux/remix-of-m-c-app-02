@@ -70,6 +70,7 @@ const DialogAssinaturaSaida = lazy(() => import("@/components/ordens/DialogAssin
 const DialogEnviarWhatsApp = lazy(() => import("@/components/ordens/DialogEnviarWhatsApp").then((m) => ({ default: m.DialogEnviarWhatsApp })));
 const DialogConfiguracaoMensagensWhatsApp = lazy(() => import("@/components/ordens/DialogConfiguracaoMensagensWhatsApp").then((m) => ({ default: m.DialogConfiguracaoMensagensWhatsApp })));
 const DialogConfiguracaoTermoGarantia = lazy(() => import("@/components/ordens/DialogConfiguracaoTermoGarantia").then((m) => ({ default: m.DialogConfiguracaoTermoGarantia })));
+const DialogConfiguracaoValorHora = lazy(() => import("@/components/ordens/DialogConfiguracaoValorHora").then((m) => ({ default: m.DialogConfiguracaoValorHora })));
 const DialogConfiguracaoLayoutOS = lazy(() => import("@/components/ordens/DialogConfiguracaoLayoutOS").then((m) => ({ default: m.DialogConfiguracaoLayoutOS })));
 const DialogConfiguracaoTermoResponsabilidade = lazy(() => import("@/components/ordens/DialogConfiguracaoTermoResponsabilidade").then((m) => ({ default: m.DialogConfiguracaoTermoResponsabilidade })));
 const DialogPopupStatusConta = lazy(() => import("@/components/ordens/DialogPopupStatusConta").then((m) => ({ default: m.DialogPopupStatusConta })));
@@ -170,6 +171,7 @@ export default function OrdemServicoPage() {
   const [dialogTermoResponsabilidade, setDialogTermoResponsabilidade] = useState(false);
   const [dialogStatusOS, setDialogStatusOS] = useState(false);
   const [dialogTaxasCartao, setDialogTaxasCartao] = useState(false);
+  const [dialogValorHora, setDialogValorHora] = useState(false);
   const [contadorOS, setContadorOS] = useState({ usadas: 0, limite: -1, percentual: 0, ilimitado: true, restantes: Infinity });
   const [dialogPopupConta, setDialogPopupConta] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ id: string; slug: string; nome: string } | null>(null);
@@ -809,6 +811,10 @@ export default function OrdemServicoPage() {
                       <CreditCard className="h-4 w-4 mr-2" />
                       Taxas de Cartão
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogValorHora(true)}>
+                      <Timer className="h-4 w-4 mr-2" />
+                      Valor por Hora (Mão de Obra)
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setDialogEtiqueta(true)}>
                       <Tag className="h-4 w-4 mr-2" />
                       Etiqueta de Identificação
@@ -1424,6 +1430,13 @@ export default function OrdemServicoPage() {
               <ConfiguracaoTaxasCartao />
             </DialogContent>
           </Dialog>
+
+          {/* Dialog de Valor por Hora (Mão de Obra) */}
+          <DialogConfiguracaoValorHora
+            open={dialogValorHora}
+            onOpenChange={setDialogValorHora}
+            onSave={refetchConfig}
+          />
 
           {/* Dialog de Configuração de Etiqueta */}
           <DialogConfiguracaoEtiqueta
