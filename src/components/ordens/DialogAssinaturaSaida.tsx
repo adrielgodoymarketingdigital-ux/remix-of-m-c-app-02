@@ -62,9 +62,34 @@ export const DialogAssinaturaSaida = ({
   const [mostrarChecklistSaida, setMostrarChecklistSaida] = useState(false);
   const [editandoChecklistSaida, setEditandoChecklistSaida] = useState(false);
   const [checklistPreenchido, setChecklistPreenchido] = useState<Checklist | null>(null);
-  const [tempoGasto, setTempoGasto] = useState<string>(
-    ordem?.tempo_gasto_horas != null ? String(ordem.tempo_gasto_horas) : ""
+
+  // Tempo gasto é sempre persistido em horas decimais (tempo_gasto_horas), mas o
+  // usuário pode digitar em minutos ou horas — a unidade é só facilidade de entrada.
+  // Ao editar uma OS com tempo já salvo, escolhe a unidade mais natural para exibição:
+  // menos de 1h mostra em minutos, 1h ou mais mostra em horas.
+  const tempoGastoInicial = ordem?.tempo_gasto_horas;
+  const [unidadeTempo, setUnidadeTempo] = useState<"minutos" | "horas">(
+    tempoGastoInicial != null && tempoGastoInicial > 0 && tempoGastoInicial < 1 ? "minutos" : "horas"
   );
+  const [tempoGasto, setTempoGasto] = useState<string>(() => {
+    if (tempoGastoInicial == null) return "";
+    return unidadeTempo === "minutos"
+      ? String(Math.round(tempoGastoInicial * 60))
+      : String(tempoGastoInicial);
+  });
+
+  const handleTrocarUnidade = (novaUnidade: "minutos" | "horas") => {
+    if (novaUnidade === unidadeTempo) return;
+
+    const valorAtual = tempoGasto ? Number(tempoGasto.replace(",", ".")) : null;
+    if (valorAtual != null && !Number.isNaN(valorAtual)) {
+      const valorEmHoras = unidadeTempo === "minutos" ? valorAtual / 60 : valorAtual;
+      const novoValor =
+        novaUnidade === "minutos" ? String(Math.round(valorEmHoras * 60)) : String(valorEmHoras);
+      setTempoGasto(novoValor);
+    }
+    setUnidadeTempo(novaUnidade);
+  };
 
   if (!ordem) return null;
 
@@ -141,16 +166,19 @@ export const DialogAssinaturaSaida = ({
         },
       };
 
-      const tempoGastoNumerico = tempoGasto
-        ? Number(tempoGasto.replace(",", "."))
+      const tempoGastoDigitado = tempoGasto ? Number(tempoGasto.replace(",", ".")) : null;
+      const tempoGastoValido = tempoGastoDigitado != null && !Number.isNaN(tempoGastoDigitado);
+      const tempoGastoEmHoras = tempoGastoValido
+        ? unidadeTempo === "minutos"
+          ? tempoGastoDigitado / 60
+          : tempoGastoDigitado
         : null;
 
       const updateData: any = {
         avarias: novasAvarias as any,
         status: "entregue",
         data_saida: `${dataRecebimento}T${new Date().toTimeString().split(" ")[0]}`,
-        tempo_gasto_horas:
-          tempoGastoNumerico != null && !Number.isNaN(tempoGastoNumerico) ? tempoGastoNumerico : null,
+        tempo_gasto_horas: tempoGastoEmHoras,
       };
 
       // Atualizar forma_pagamento na tabela principal também
@@ -366,17 +394,43 @@ export const DialogAssinaturaSaida = ({
               </div>
               <div className="flex justify-between items-center pt-1">
                 <Label htmlFor="tempo-gasto" className="text-muted-foreground font-normal">
-                  Tempo gasto (h) — opcional:
+                  Tempo gasto — opcional:
                 </Label>
-                <Input
-                  id="tempo-gasto"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="Ex: 1.5"
-                  value={tempoGasto}
-                  onChange={(e) => setTempoGasto(e.target.value)}
-                  className="w-24 text-right h-7 text-sm px-2"
-                />
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    id="tempo-gasto"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder={unidadeTempo === "minutos" ? "Ex: 90" : "Ex: 1.5"}
+                    value={tempoGasto}
+                    onChange={(e) => setTempoGasto(e.target.value)}
+                    className="w-20 text-right h-7 text-sm px-2"
+                  />
+                  <div className="flex items-center rounded-md border overflow-hidden shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleTrocarUnidade("minutos")}
+                      className={`px-2 h-7 text-xs transition-colors ${
+                        unidadeTempo === "minutos"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-transparent text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      min
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTrocarUnidade("horas")}
+                      className={`px-2 h-7 text-xs transition-colors border-l ${
+                        unidadeTempo === "horas"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-transparent text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      h
+                    </button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
