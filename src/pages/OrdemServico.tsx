@@ -1186,9 +1186,20 @@ export default function OrdemServicoPage() {
                         tempo_garantia: null,
                         cliente: { id: "", nome: "—", telefone: null, cpf: null, endereco: null },
                       } as OrdemServico));
-                      return [...ordens, ...avulsosComoOrdens].sort(
-                        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                      );
+                      // Ordenar por numero_os (sequencial e imutável) em vez de created_at,
+                      // que pode ser retroativo via "data de entrada" no formulário.
+                      // Serviços avulsos não têm numero_os sequencial ("AVULSO"), então
+                      // continuam posicionados pela data nesse caso.
+                      const numeroOsInt = (numeroOs: string): number | null => {
+                        const digitos = numeroOs?.replace(/\D/g, '');
+                        return digitos ? parseInt(digitos, 10) : null;
+                      };
+                      return [...ordens, ...avulsosComoOrdens].sort((a, b) => {
+                        const numA = numeroOsInt(a.numero_os);
+                        const numB = numeroOsInt(b.numero_os);
+                        if (numA !== null && numB !== null) return numB - numA;
+                        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                      });
                     })()}
                     loading={loading}
                     onVisualizar={handleVisualizar}

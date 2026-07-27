@@ -272,7 +272,9 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           query = query.eq("funcionario_id", funcionarioId);
         }
 
-        query = query.order("created_at", { ascending: false });
+        // Ordenar por numero_os (sequencial e imutável) em vez de created_at,
+        // que pode ser retroativo via "data de entrada" no formulário.
+        query = query.order("numero_os", { ascending: false });
 
         if (statusFiltro !== "todos") {
           query = query.eq("status", statusFiltro as any);
