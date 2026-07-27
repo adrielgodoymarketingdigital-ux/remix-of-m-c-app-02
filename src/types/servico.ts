@@ -8,6 +8,7 @@ export interface Servico {
   quantidade: number;
   peca_id?: string;
   peca_nome?: string;
+  tempo_medio_estimado_horas?: number | null;
   created_at: string;
 }
 
@@ -18,4 +19,5 @@ export interface FormularioServico {
   preco: number;
   quantidade?: number;
   peca_id?: string;
+  tempo_medio_estimado_horas?: number | null;
 }

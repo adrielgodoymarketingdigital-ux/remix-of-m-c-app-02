@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Plus } from "lucide-react";
 import { useServicos } from "@/hooks/useServicos";
-import { DialogCadastroServico } from "@/components/servicos/DialogCadastroServico";
+import { DialogCadastroServico, DadosSubmitServico } from "@/components/servicos/DialogCadastroServico";
 import { GerenciadorTiposServico } from "@/components/servicos/GerenciadorTiposServico";
 import { TabelaServicos } from "@/components/servicos/TabelaServicos";
-import { Servico, FormularioServico } from "@/types/servico";
+import { Servico } from "@/types/servico";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppLayout } from "@/components/layout/AppLayout";
 
@@ -34,7 +34,7 @@ export default function Servicos() {
     );
   }, [servicos, busca]);
 
-  const handleSubmit = async (dados: FormularioServico) => {
+  const handleSubmit = async (dados: DadosSubmitServico) => {
     const dadosServico = {
       ...dados,
       quantidade: dados.quantidade ?? 0,

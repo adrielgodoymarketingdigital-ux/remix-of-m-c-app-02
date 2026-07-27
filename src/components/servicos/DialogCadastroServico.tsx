@@ -35,6 +35,7 @@ const formSchema = z.object({
   custo: z.coerce.number().min(0, "Custo deve ser maior ou igual a zero"),
   preco: z.coerce.number().min(0, "Preço deve ser maior ou igual a zero"),
   peca_id: z.string().optional(),
+  tempo_medio_estimado: z.string().optional(),
 }).refine((data) => data.preco >= data.custo, {
   message: "Preço de venda deve ser maior ou igual ao custo",
   path: ["preco"],
@@ -42,10 +43,14 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+export interface DadosSubmitServico extends Omit<FormValues, "tempo_medio_estimado"> {
+  tempo_medio_estimado_horas: number | null;
+}
+
 interface DialogCadastroServicoProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (dados: FormValues) => Promise<void>;
+  onSubmit: (dados: DadosSubmitServico) => Promise<void>;
   servicoParaEditar: Servico | null;
 }
 
@@ -57,6 +62,11 @@ export function DialogCadastroServico({
 }: DialogCadastroServicoProps) {
   const [pecas, setPecas] = useState<Array<{ id: string; nome: string }>>([]);
 
+  // Tempo médio estimado é sempre persistido em horas decimais
+  // (tempo_medio_estimado_horas), mas o usuário pode digitar em minutos ou
+  // horas — mesmo padrão de seletor de unidade do campo "Tempo gasto" da OS.
+  const [unidadeTempo, setUnidadeTempo] = useState<"minutos" | "horas">("horas");
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -65,12 +75,37 @@ export function DialogCadastroServico({
       custo: 0,
       preco: 0,
       peca_id: undefined,
+      tempo_medio_estimado: "",
     },
   });
 
   const custo = form.watch("custo");
   const preco = form.watch("preco");
   const lucro = preco - custo;
+
+  const definirUnidadeEValor = (tempoHoras: number | null | undefined) => {
+    if (tempoHoras == null) {
+      setUnidadeTempo("horas");
+      return "";
+    }
+    const unidade = tempoHoras > 0 && tempoHoras < 1 ? "minutos" : "horas";
+    setUnidadeTempo(unidade);
+    return unidade === "minutos" ? String(Math.round(tempoHoras * 60)) : String(tempoHoras);
+  };
+
+  const handleTrocarUnidade = (novaUnidade: "minutos" | "horas") => {
+    if (novaUnidade === unidadeTempo) return;
+
+    const valorAtual = form.getValues("tempo_medio_estimado");
+    const numerico = valorAtual ? Number(valorAtual.replace(",", ".")) : null;
+    if (numerico != null && !Number.isNaN(numerico)) {
+      const valorEmHoras = unidadeTempo === "minutos" ? numerico / 60 : numerico;
+      const novoValor =
+        novaUnidade === "minutos" ? String(Math.round(valorEmHoras * 60)) : String(valorEmHoras);
+      form.setValue("tempo_medio_estimado", novoValor);
+    }
+    setUnidadeTempo(novaUnidade);
+  };
 
   useEffect(() => {
     if (servicoParaEditar) {
@@ -80,14 +115,17 @@ export function DialogCadastroServico({
         custo: servicoParaEditar.custo,
         preco: servicoParaEditar.preco,
         peca_id: servicoParaEditar.peca_id || undefined,
+        tempo_medio_estimado: definirUnidadeEValor(servicoParaEditar.tempo_medio_estimado_horas),
       });
     } else {
+      setUnidadeTempo("horas");
       form.reset({
         codigo: "",
         nome: "",
         custo: 0,
         preco: 0,
         peca_id: undefined,
+        tempo_medio_estimado: "",
       });
     }
   }, [servicoParaEditar, form]);
@@ -121,7 +159,21 @@ export function DialogCadastroServico({
   }, [open]);
 
   const handleSubmit = async (data: FormValues) => {
-    await onSubmit(data);
+    const tempoDigitado = data.tempo_medio_estimado
+      ? Number(data.tempo_medio_estimado.replace(",", "."))
+      : null;
+    const tempoValido = tempoDigitado != null && !Number.isNaN(tempoDigitado);
+    const tempoMedioEstimadoHoras = tempoValido
+      ? unidadeTempo === "minutos"
+        ? tempoDigitado / 60
+        : tempoDigitado
+      : null;
+
+    const { tempo_medio_estimado, ...resto } = data;
+    await onSubmit({
+      ...resto,
+      tempo_medio_estimado_horas: tempoMedioEstimadoHoras,
+    });
     form.reset();
   };
 
@@ -190,6 +242,55 @@ export function DialogCadastroServico({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tempo_medio_estimado"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tempo Médio Estimado (Opcional)</FormLabel>
+                  <div className="flex items-center gap-1.5">
+                    <FormControl>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={unidadeTempo === "minutos" ? "Ex: 90" : "Ex: 1.5"}
+                        {...field}
+                        className="w-28"
+                      />
+                    </FormControl>
+                    <div className="flex items-center rounded-md border overflow-hidden shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleTrocarUnidade("minutos")}
+                        className={`px-2 h-9 text-xs transition-colors ${
+                          unidadeTempo === "minutos"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-transparent text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        min
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTrocarUnidade("horas")}
+                        className={`px-2 h-9 text-xs transition-colors border-l ${
+                          unidadeTempo === "horas"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-transparent text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        h
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Usado como estimativa de referência até que OS reais desse serviço tenham tempo registrado.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
