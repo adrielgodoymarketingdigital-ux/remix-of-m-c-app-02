@@ -23,8 +23,6 @@ import { CardAvisosSistema } from "@/components/dashboard/CardAvisosSistema";
 import { CardFeedback } from "@/components/dashboard/CardFeedback";
 import { CardCotacaoDolar } from "@/components/dashboard/CardCotacaoDolar";
 
-import { CardAniversariantes, CardAniversariantesBloqueado } from "@/components/clientes/CardAniversariantes";
-import { useClientes } from "@/hooks/useClientes";
 import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { useRelatorios } from "@/hooks/useRelatorios";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, getValorFaturavelOS } from "@/lib/vendasFinanceiras";
@@ -53,7 +51,6 @@ const Dashboard = () => {
   const { assinatura, carregando: carregandoAssinatura, trialExpirado, migracaoNecessaria } = useAssinatura();
   const { isFuncionario, temAcessoModulo, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const dashboardBloqueado = isFuncionario && !temAcessoModulo('dashboard');
-  const { clientes, loading: loadingClientes } = useClientes();
   const { calcularResumo } = useRelatorios();
   const { cores } = useCoresPersonalizadas();
   const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
@@ -62,12 +59,6 @@ const Dashboard = () => {
   useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
   useEffect(() => { resolvedUserIdRef.current = resolvedUserId; }, [resolvedUserId]);
 
-  // Verificar se tem plano profissional
-  const temPlanoProfissional = useMemo(() => {
-    if (!assinatura) return false;
-    const planosProfissionais = ['profissional_mensal', 'profissional_anual', 'profissional_ultra_mensal', 'profissional_ultra_anual', 'admin', 'trial'];
-    return planosProfissionais.includes(assinatura.plano_tipo);
-  }, [assinatura]);
 
   // Evita hydration mismatch
   useEffect(() => {
@@ -1006,18 +997,6 @@ const Dashboard = () => {
 
       {!dashboardBloqueado && (
         <>
-          {/* Card de Aniversariantes do Mês (Plano Profissional) — só desktop, removido do mobile/PWA */}
-          {!loadingClientes && (
-            <div className="mb-4 hidden sm:block">
-              {temPlanoProfissional ? (
-                <CardAniversariantes clientes={clientes} />
-              ) : (
-                <CardAniversariantesBloqueado />
-              )}
-            </div>
-          )}
-
-
           {/* Banner de Trial Expirado */}
           {!migracaoNecessaria && isTrialExpirado && (
             <Alert className="mb-6 border-2 border-primary bg-gradient-to-r from-primary/10 via-primary/5 to-background">
@@ -1037,103 +1016,8 @@ const Dashboard = () => {
             </Alert>
           )}
 
-          {/* ============ CARD FATURAMENTO TOTAL — DESKTOP (original) ============ */}
-          <div className="hidden sm:block relative mb-6 rounded-2xl overflow-hidden border border-blue-500/30 dark:border-blue-400/20 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)] dark:shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
-            {/* fundo gradiente — usa cores personalizadas das configurações */}
-            <div
-              className="absolute inset-0"
-              style={{ background: `linear-gradient(135deg, ${cores.card_faturamento_from}, ${cores.card_faturamento_via}, ${cores.card_faturamento_to})` }}
-            />
-            {/* grade decorativa */}
-            <div className="absolute inset-0 opacity-10 [background-image:linear-gradient(rgba(255,255,255,.15)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.15)_1px,transparent_1px)] [background-size:32px_32px]" />
-            {/* brilho no canto */}
-            <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none" />
-            {/* scanline sutil dark */}
-            <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.05)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
-
-            <div className="relative z-10 p-5 sm:p-7">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-mono text-blue-200/80 tracking-widest uppercase">Faturamento Total</span>
-                    <span className="h-px flex-1 bg-blue-400/30 hidden sm:block" />
-                  </div>
-                  <div className="flex items-baseline gap-3">
-                    <h2 className="text-3xl sm:text-5xl font-bold font-mono tracking-tight text-white">
-                      <ValorMonetario valor={totalFaturamento} />
-                    </h2>
-                  </div>
-                  <p className="text-[11px] text-blue-200/60 font-mono mt-2 uppercase tracking-wider">
-                    {mesSelecionado === "atual"
-                      ? format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })
-                      : (opçõesMeses.find(m => m.valor === mesSelecionado)?.label || "")}
-                  </p>
-                </div>
-
-                {/* mini breakdown por categoria */}
-                <div className="flex flex-col gap-2 sm:items-end">
-                  <div className="flex items-center gap-3 text-xs font-mono text-blue-100/80">
-                    <Wrench className="h-3.5 w-3.5 text-blue-300" />
-                    <span className="text-blue-200/60 uppercase tracking-wider">Assistência</span>
-                    <span className="font-semibold text-white"><ValorMonetario valor={metrics.faturamentoServicos + metrics.faturamentoAvulsos} /></span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs font-mono text-blue-100/80">
-                    <Package className="h-3.5 w-3.5 text-blue-300" />
-                    <span className="text-blue-200/60 uppercase tracking-wider">Produtos</span>
-                    <span className="font-semibold text-white"><ValorMonetario valor={metrics.faturamentoProdutos} /></span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs font-mono text-blue-100/80">
-                    <Smartphone className="h-3.5 w-3.5 text-blue-300" />
-                    <span className="text-blue-200/60 uppercase tracking-wider">Dispositivos</span>
-                    <span className="font-semibold text-white"><ValorMonetario valor={metrics.faturamentoDispositivos} /></span>
-                  </div>
-                  <div className="h-px w-full bg-blue-400/30 my-1" />
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-emerald-300" />
-                    <span className="text-xs font-mono text-blue-200/70 uppercase tracking-wider">Lucro Líquido</span>
-                    <span className={`text-sm font-bold font-mono ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                      <ValorMonetario valor={financeiroData.lucroLiquido} />
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* barra de progresso por categoria */}
-              {totalFaturamento > 0 && (
-                <div className="mt-5">
-                  <div className="flex h-1.5 rounded-full overflow-hidden gap-0.5">
-                    <div
-                      className="bg-blue-300/80 rounded-full transition-all"
-                      style={{ width: `${((metrics.faturamentoServicos + metrics.faturamentoAvulsos) / totalFaturamento) * 100}%` }}
-                    />
-                    <div
-                      className="bg-violet-300/80 rounded-full transition-all"
-                      style={{ width: `${(metrics.faturamentoProdutos / totalFaturamento) * 100}%` }}
-                    />
-                    <div
-                      className="bg-cyan-300/80 rounded-full transition-all"
-                      style={{ width: `${(metrics.faturamentoDispositivos / totalFaturamento) * 100}%` }}
-                    />
-                  </div>
-                  <div className="flex gap-4 mt-2">
-                    <span className="flex items-center gap-1 text-[9px] font-mono text-blue-200/50 uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-300/80 inline-block" />Assistência
-                    </span>
-                    <span className="flex items-center gap-1 text-[9px] font-mono text-blue-200/50 uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 rounded-full bg-violet-300/80 inline-block" />Produtos
-                    </span>
-                    <span className="flex items-center gap-1 text-[9px] font-mono text-blue-200/50 uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-300/80 inline-block" />Dispositivos
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ============ CARD ÚNICO "RESUMO FINANCEIRO" — MOBILE/PWA (novo, estilo mockup) ============ */}
-          <div className="sm:hidden mb-6">
+          {/* ============ CARD ÚNICO "RESUMO FINANCEIRO" (layout do PWA, usado também no desktop) ============ */}
+          <div className="mb-6">
             <h2 className="text-lg font-bold mb-3">Resumo Financeiro</h2>
 
             <div className="relative rounded-3xl overflow-hidden border border-blue-500/30 dark:border-blue-400/20 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)] dark:shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
@@ -1227,72 +1111,8 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* ============ CARD DUPLO HOJE — DESKTOP (original) ============ */}
-          <div className="hidden sm:grid grid-cols-2 gap-0 mb-4 rounded-xl overflow-hidden border border-blue-100 dark:border-white/10 shadow-[0_0_40px_-10px_rgba(59,130,246,0.15)] dark:shadow-[0_0_40px_-10px_rgba(59,130,246,0.25)] relative">
-            {/* scanline sutil — só no dark */}
-            <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
-
-            {/* Faturamento Hoje */}
-            <div className="relative bg-gradient-to-br from-white via-blue-50 to-white dark:from-slate-900 dark:via-blue-950/60 dark:to-slate-900 p-4 sm:p-5 flex flex-col gap-3 border-r border-blue-100 dark:border-white/10 overflow-hidden">
-              <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-400/10 dark:bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-60" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500" />
-                  </span>
-                  <span className="text-[10px] font-mono text-blue-500/70 dark:text-blue-400/70 tracking-widest uppercase">LIVE</span>
-                </div>
-                <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center">
-                  <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-              <div>
-                <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1">Faturamento Hoje</p>
-                {hojeData.carregando ? (
-                  <div className="h-7 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                ) : (
-                  <p className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white font-mono tracking-tight">
-                    <ValorMonetario valor={hojeData.faturamento} />
-                  </p>
-                )}
-              </div>
-              <div className="h-[1px] bg-gradient-to-r from-blue-400/40 via-blue-300/10 to-transparent dark:from-blue-500/30 dark:via-blue-400/10" />
-              <p className="text-[10px] text-slate-400 dark:text-slate-600 font-mono">receita bruta do dia</p>
-            </div>
-
-            {/* Lucro Hoje */}
-            <div className="relative bg-gradient-to-br from-white via-emerald-50 to-white dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 p-4 sm:p-5 flex flex-col gap-3 overflow-hidden">
-              <div className="absolute -top-6 -left-6 w-24 h-24 bg-emerald-400/10 dark:bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-600/70 dark:text-emerald-400/70 tracking-widest uppercase">LIVE</span>
-                </div>
-                <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center">
-                  <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
-              </div>
-              <div>
-                <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-1">Lucro Hoje</p>
-                {hojeData.carregando ? (
-                  <div className="h-7 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                ) : (
-                  <p className={`text-xl sm:text-2xl font-bold font-mono tracking-tight ${hojeData.lucro >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                    <ValorMonetario valor={hojeData.lucro} />
-                  </p>
-                )}
-              </div>
-              <div className="h-[1px] bg-gradient-to-r from-emerald-400/40 via-emerald-300/10 to-transparent dark:from-emerald-500/30 dark:via-emerald-400/10" />
-              <p className="text-[10px] text-slate-400 dark:text-slate-600 font-mono">receita − custo do dia</p>
-            </div>
-          </div>
-
-          {/* ============ CARDS HOJE — MOBILE/PWA (novo, fundo com glow + sparkline full-width) ============ */}
-          <div className="sm:hidden grid grid-cols-2 gap-3 mb-4">
+          {/* ============ CARDS HOJE (layout do PWA, usado também no desktop) ============ */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="relative rounded-2xl overflow-hidden p-4 bg-blue-50 dark:bg-slate-950 border border-blue-200/60 dark:border-blue-500/20 shadow-[0_0_30px_-10px_rgba(59,130,246,0.25)] dark:shadow-[0_0_30px_-8px_rgba(59,130,246,0.5)]">
               <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center mb-2">
                 <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -1336,8 +1156,8 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Atalhos rápidos — só mobile/PWA */}
-          <div className="grid grid-cols-5 sm:hidden gap-2 mb-6">
+          {/* Atalhos rápidos (layout do PWA, usado também no desktop) */}
+          <div className="grid grid-cols-5 gap-2 mb-6">
             <button
               onClick={() => navigate("/os")}
               className="flex flex-col items-center gap-1.5 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 py-3 px-1"
@@ -1397,173 +1217,8 @@ const Dashboard = () => {
             </button>
           </div>
 
-          {/* ============ CARDS HOJE POR CATEGORIA — DESKTOP (original) ============ */}
-          <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            {/* Assistência */}
-            <div className="rounded-xl overflow-hidden border border-blue-100 dark:border-white/10 shadow-[0_0_30px_-10px_rgba(59,130,246,0.15)] dark:shadow-[0_0_30px_-10px_rgba(59,130,246,0.2)] relative">
-              <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
-              {/* header */}
-              <div className="relative bg-gradient-to-r from-blue-50 to-white dark:from-slate-800/80 dark:to-slate-900 px-4 py-2.5 flex items-center gap-2 border-b border-blue-100 dark:border-white/10">
-                <div className="h-6 w-6 rounded-md bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
-                  <Wrench className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <span className="text-[11px] font-mono font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Assistência</span>
-              </div>
-              <div className="grid grid-cols-2 gap-0">
-                {/* Faturamento */}
-                <div className="relative bg-gradient-to-br from-white via-blue-50/50 to-white dark:from-slate-900 dark:via-blue-950/40 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 border-r border-blue-100 dark:border-white/10 overflow-hidden">
-                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-blue-400/10 rounded-full blur-xl pointer-events-none" />
-                  <div className="flex items-center justify-between">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-60" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500" />
-                    </span>
-                    <Activity className="h-3.5 w-3.5 text-blue-500/60" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Fat. Hoje</p>
-                    {hojeData.carregando ? (
-                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                    ) : (
-                      <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white font-mono">
-                        <ValorMonetario valor={hojeData.faturamentoAssistencia} />
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {/* Lucro */}
-                <div className="relative bg-gradient-to-br from-white via-emerald-50/50 to-white dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 overflow-hidden">
-                  <div className="absolute -top-4 -left-4 w-16 h-16 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
-                  <div className="flex items-center justify-between">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                    </span>
-                    <Zap className="h-3.5 w-3.5 text-emerald-500/60" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Lucro Hoje</p>
-                    {hojeData.carregando ? (
-                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                    ) : (
-                      <p className={`text-sm sm:text-base font-bold font-mono ${hojeData.lucroAssistencia >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                        <ValorMonetario valor={hojeData.lucroAssistencia} />
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Produtos e Peças */}
-            <div className="rounded-xl overflow-hidden border border-violet-100 dark:border-white/10 shadow-[0_0_30px_-10px_rgba(139,92,246,0.15)] dark:shadow-[0_0_30px_-10px_rgba(139,92,246,0.2)] relative">
-              <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
-              <div className="relative bg-gradient-to-r from-violet-50 to-white dark:from-slate-800/80 dark:to-slate-900 px-4 py-2.5 flex items-center gap-2 border-b border-violet-100 dark:border-white/10">
-                <div className="h-6 w-6 rounded-md bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
-                  <Package className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-                </div>
-                <span className="text-[11px] font-mono font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-widest">Produtos & Peças</span>
-              </div>
-              <div className="grid grid-cols-2 gap-0">
-                <div className="relative bg-gradient-to-br from-white via-violet-50/50 to-white dark:from-slate-900 dark:via-violet-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 border-r border-violet-100 dark:border-white/10 overflow-hidden">
-                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-violet-400/10 rounded-full blur-xl pointer-events-none" />
-                  <div className="flex items-center justify-between">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-500 opacity-60" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-500" />
-                    </span>
-                    <Activity className="h-3.5 w-3.5 text-violet-500/60" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Fat. Hoje</p>
-                    {hojeData.carregando ? (
-                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                    ) : (
-                      <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white font-mono">
-                        <ValorMonetario valor={hojeData.faturamentoProdutosPecas} />
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="relative bg-gradient-to-br from-white via-emerald-50/50 to-white dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 overflow-hidden">
-                  <div className="absolute -top-4 -left-4 w-16 h-16 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
-                  <div className="flex items-center justify-between">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                    </span>
-                    <Zap className="h-3.5 w-3.5 text-emerald-500/60" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Lucro Hoje</p>
-                    {hojeData.carregando ? (
-                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                    ) : (
-                      <p className={`text-sm sm:text-base font-bold font-mono ${hojeData.lucroProdutosPecas >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                        <ValorMonetario valor={hojeData.lucroProdutosPecas} />
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Dispositivos */}
-            <div className="rounded-xl overflow-hidden border border-cyan-100 dark:border-white/10 shadow-[0_0_30px_-10px_rgba(6,182,212,0.15)] dark:shadow-[0_0_30px_-10px_rgba(6,182,212,0.2)] relative">
-              <div className="absolute inset-0 hidden dark:block bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.04)_50%)] bg-[length:100%_4px] pointer-events-none opacity-20 z-0" />
-              <div className="relative bg-gradient-to-r from-cyan-50 to-white dark:from-slate-800/80 dark:to-slate-900 px-4 py-2.5 flex items-center gap-2 border-b border-cyan-100 dark:border-white/10">
-                <div className="h-6 w-6 rounded-md bg-cyan-100 dark:bg-cyan-500/20 flex items-center justify-center">
-                  <Smartphone className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
-                </div>
-                <span className="text-[11px] font-mono font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-widest">Dispositivos</span>
-              </div>
-              <div className="grid grid-cols-2 gap-0">
-                <div className="relative bg-gradient-to-br from-white via-cyan-50/50 to-white dark:from-slate-900 dark:via-cyan-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 border-r border-cyan-100 dark:border-white/10 overflow-hidden">
-                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-cyan-400/10 rounded-full blur-xl pointer-events-none" />
-                  <div className="flex items-center justify-between">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-500 opacity-60" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500" />
-                    </span>
-                    <Activity className="h-3.5 w-3.5 text-cyan-500/60" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Fat. Hoje</p>
-                    {hojeData.carregando ? (
-                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                    ) : (
-                      <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white font-mono">
-                        <ValorMonetario valor={hojeData.faturamentoDispositivos} />
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="relative bg-gradient-to-br from-white via-emerald-50/50 to-white dark:from-slate-900 dark:via-emerald-950/30 dark:to-slate-900 p-3 sm:p-4 flex flex-col gap-2 overflow-hidden">
-                  <div className="absolute -top-4 -left-4 w-16 h-16 bg-emerald-400/10 rounded-full blur-xl pointer-events-none" />
-                  <div className="flex items-center justify-between">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                    </span>
-                    <Zap className="h-3.5 w-3.5 text-emerald-500/60" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-mono text-slate-400 dark:text-slate-500 tracking-wider uppercase mb-0.5">Lucro Hoje</p>
-                    {hojeData.carregando ? (
-                      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
-                    ) : (
-                      <p className={`text-sm sm:text-base font-bold font-mono ${hojeData.lucroDispositivos >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                        <ValorMonetario valor={hojeData.lucroDispositivos} />
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ============ CARDS POR CATEGORIA — MOBILE/PWA (novo, compacto com "Ver detalhes") ============ */}
-          <div className="sm:hidden grid grid-cols-1 gap-3 mb-4">
+          {/* ============ CARDS POR CATEGORIA (layout do PWA, usado também no desktop) ============ */}
+          <div className="grid grid-cols-1 gap-3 mb-4">
             <div className="rounded-2xl border bg-card p-3 flex items-center gap-3">
               <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-500/15 flex items-center justify-center shrink-0">
                 <Wrench className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -1626,7 +1281,7 @@ const Dashboard = () => {
           </div>
 
           {/* Cards Financeiros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 gap-4 mb-6">
             <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-primary">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1731,7 +1386,7 @@ const Dashboard = () => {
           </div>
 
           {/* Métricas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <Card className="p-6 shadow-md hover:shadow-lg transition-shadow rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center">
@@ -1849,7 +1504,7 @@ const Dashboard = () => {
           </div>
 
           {/* Ações Rápidas */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <Button
               size="lg"
               className="h-auto py-4 sm:py-6"
@@ -1876,7 +1531,7 @@ const Dashboard = () => {
             <Button
               size="lg"
               variant="outline"
-              className="h-auto py-4 sm:py-6 col-span-2 sm:col-span-1"
+              className="h-auto py-4 sm:py-6 col-span-2"
               onClick={() => navigate("/produtos")}
             >
               <div className="flex flex-col items-center gap-1 sm:gap-2">

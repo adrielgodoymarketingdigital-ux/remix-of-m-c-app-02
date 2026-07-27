@@ -116,7 +116,7 @@ export const GraficosDashboard = ({
       </div>
 
       {/* Gráficos de Pizza - Setor */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Faturamento por Setor */}
         <Card>
           <CardHeader className="pb-2">
@@ -207,7 +207,7 @@ export const GraficosDashboard = ({
       </div>
 
       {/* Gráficos de Barra - Produtos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Produtos Mais Vendidos */}
         <Card>
           <CardHeader className="pb-2">
