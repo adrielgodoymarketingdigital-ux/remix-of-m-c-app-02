@@ -13,6 +13,7 @@ import { useCategoriasDespesas } from "@/hooks/useCategoriasDespesas";
 import { SecaoContasPagarReceber } from "@/components/financeiro/SecaoContasPagarReceber";
 import { SecaoAnaliseLucrosCustos } from "@/components/financeiro/SecaoAnaliseLucrosCustos";
 import { SecaoVendasPorFormaPagamento } from "@/components/financeiro/SecaoVendasPorFormaPagamento";
+import { SecaoLucratividadePorServico } from "@/components/financeiro/SecaoLucratividadePorServico";
 import { ConfiguracoesFinanceiro } from "@/components/financeiro/ConfiguracoesFinanceiro";
 import { exportarRelatorioPDF } from "@/lib/exportarPDF";
 import { FileDown, CalendarRange } from "lucide-react";
@@ -239,6 +240,11 @@ export default function Financeiro() {
           {/* Seção 3: Vendas por Forma de Pagamento */}
           {(isDonoLoja || podeVerAnaliseLucros) && filtroAtual.dataInicio && (
             <SecaoVendasPorFormaPagamento filtros={filtroAtual} />
+          )}
+
+          {/* Seção 4: Lucratividade por Serviço (mão de obra) */}
+          {(isDonoLoja || podeVerAnaliseLucros) && filtroAtual.dataInicio && (
+            <SecaoLucratividadePorServico filtros={filtroAtual} />
           )}
         </div>
       </main>
