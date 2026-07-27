@@ -62,6 +62,16 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
   const statusCor = statusConfig?.cor || "#eab308";
   const statusLabel = statusConfig?.nome || "Aguardando";
 
+  // Custo de mão de obra: métrica interna/informativa, não altera valor cobrado do
+  // cliente nem os cálculos de faturamento/lucro do Dashboard e relatórios.
+  const tempoGastoHoras = ordem.tempo_gasto_horas;
+  const valorHoraReferencia = configuracaoLoja?.valor_hora_referencia;
+  const mostrarCustoMaoDeObra =
+    tempoGastoHoras != null && tempoGastoHoras > 0 &&
+    valorHoraReferencia != null && valorHoraReferencia > 0;
+  const custoMaoDeObra = mostrarCustoMaoDeObra ? tempoGastoHoras * valorHoraReferencia : 0;
+  const lucroRealOS = mostrarCustoMaoDeObra ? (ordem.total || 0) - custoMaoDeObra : null;
+
   const handleAssinaturaSaidaSuccess = () => {
     setDialogAssinaturaSaidaAberto(false);
     onOpenChange(false);
@@ -242,6 +252,28 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                     <ValorMonetario valor={ordem.total || 0} tipo="preco" />
                   </span>
                 </div>
+
+                {mostrarCustoMaoDeObra && (
+                  <div className="mt-2 space-y-1.5 rounded-lg border border-muted-foreground/10 bg-muted/30 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60">
+                      Mão de obra (informativo)
+                    </p>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        Custo de mão de obra ({tempoGastoHoras}h × <ValorMonetario valor={valorHoraReferencia || 0} tipo="preco" />/h)
+                      </span>
+                      <span className="font-semibold text-foreground/80">
+                        <ValorMonetario valor={custoMaoDeObra} tipo="preco" />
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Lucro real</span>
+                      <span className="font-bold text-primary">
+                        <ValorMonetario valor={lucroRealOS || 0} tipo="preco" />
+                      </span>
+                    </div>
+                  </div>
+                )}
               </Section>
             </TabsContent>
 

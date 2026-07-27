@@ -51,6 +51,7 @@ const formSchema = z.object({
   horario_funcionamento: z.string().optional(),
   instagram: z.string().optional(),
   facebook: z.string().optional(),
+  valor_hora_referencia: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -90,6 +91,10 @@ export function FormularioPerfilLoja({
       horario_funcionamento: configuracao?.horario_funcionamento || "",
       instagram: configuracao?.instagram || "",
       facebook: configuracao?.facebook || "",
+      valor_hora_referencia:
+        configuracao?.valor_hora_referencia != null
+          ? String(configuracao.valor_hora_referencia)
+          : "",
     },
   });
 
@@ -129,12 +134,18 @@ export function FormularioPerfilLoja({
   };
 
   const onSubmit = async (data: FormData) => {
+    const valorHoraNumerico = data.valor_hora_referencia
+      ? Number(data.valor_hora_referencia.replace(",", "."))
+      : null;
+
     const dadosParaSalvar = {
       ...data,
       cnpj: removerMascara(data.cnpj),
       cep: removerMascara(data.cep),
       telefone: removerMascara(data.telefone),
       whatsapp: data.whatsapp ? removerMascara(data.whatsapp) : undefined,
+      valor_hora_referencia:
+        valorHoraNumerico != null && !Number.isNaN(valorHoraNumerico) ? valorHoraNumerico : null,
     };
 
     const sucesso = await onSalvar(dadosParaSalvar);
@@ -475,6 +486,28 @@ export function FormularioPerfilLoja({
                       <FormControl>
                         <Input {...field} placeholder="https://www.loja.com" />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="valor_hora_referencia"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor por Hora (referência)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="Ex: 50.00"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Usado apenas para calcular o custo de mão de obra informativo nas OS. Não altera o valor cobrado do cliente.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

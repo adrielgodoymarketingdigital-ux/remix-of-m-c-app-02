@@ -210,6 +210,7 @@ export interface ConfiguracaoLoja {
   termo_garantia_dispositivo_config?: Record<string, any>;
   tracking_config?: TrackingPageConfig;
   permissoes_multiempresa?: PermissoesMultiempresa;
+  valor_hora_referencia?: number | null;
   created_at: string;
   updated_at: string;
 }

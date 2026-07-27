@@ -62,6 +62,9 @@ export const DialogAssinaturaSaida = ({
   const [mostrarChecklistSaida, setMostrarChecklistSaida] = useState(false);
   const [editandoChecklistSaida, setEditandoChecklistSaida] = useState(false);
   const [checklistPreenchido, setChecklistPreenchido] = useState<Checklist | null>(null);
+  const [tempoGasto, setTempoGasto] = useState<string>(
+    ordem?.tempo_gasto_horas != null ? String(ordem.tempo_gasto_horas) : ""
+  );
 
   if (!ordem) return null;
 
@@ -138,10 +141,16 @@ export const DialogAssinaturaSaida = ({
         },
       };
 
+      const tempoGastoNumerico = tempoGasto
+        ? Number(tempoGasto.replace(",", "."))
+        : null;
+
       const updateData: any = {
         avarias: novasAvarias as any,
         status: "entregue",
         data_saida: `${dataRecebimento}T${new Date().toTimeString().split(" ")[0]}`,
+        tempo_gasto_horas:
+          tempoGastoNumerico != null && !Number.isNaN(tempoGastoNumerico) ? tempoGastoNumerico : null,
       };
 
       // Atualizar forma_pagamento na tabela principal também
@@ -353,6 +362,20 @@ export const DialogAssinaturaSaida = ({
                   value={dataRecebimento}
                   onChange={(e) => setDataRecebimento(e.target.value)}
                   className="w-auto text-right h-7 text-sm px-2"
+                />
+              </div>
+              <div className="flex justify-between items-center pt-1">
+                <Label htmlFor="tempo-gasto" className="text-muted-foreground font-normal">
+                  Tempo gasto (h) — opcional:
+                </Label>
+                <Input
+                  id="tempo-gasto"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Ex: 1.5"
+                  value={tempoGasto}
+                  onChange={(e) => setTempoGasto(e.target.value)}
+                  className="w-24 text-right h-7 text-sm px-2"
                 />
               </div>
             </CardContent>

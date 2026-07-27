@@ -34,6 +34,7 @@ export interface OrdemServico {
   empresa_id?: string | null;
   tipo_os?: string;
   origem_remessa_corporativa?: boolean;
+  tempo_gasto_horas?: number | null;
   cliente?: {
     id: string;
     nome: string;
@@ -238,6 +239,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             tipo_os,
             empresa_id,
             origem_remessa_corporativa,
+            tempo_gasto_horas,
             cliente:clientes!ordens_servico_cliente_fkey(id, nome, telefone, cpf)
           `)
           .eq("user_id", userId)
