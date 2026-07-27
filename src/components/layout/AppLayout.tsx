@@ -33,14 +33,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { isFuncionario } = useFuncionarioPermissoes();
   useUserPresence((assinatura as any)?.user_id ?? null);
   const location = useLocation();
+  const isDashboard = location.pathname === "/dashboard";
 
   const freeTrialEndsAt = (assinatura as any)?.free_trial_ends_at;
   const trialJaCancelado = (assinatura as any)?.trial_canceled === true;
   const showFreeTrialTimer = !isFuncionario && assinatura?.plano_tipo === 'free' && freeTrialEndsAt && !trialJaCancelado;
-
-  // No Dashboard, o status do plano já aparece no card compacto ao lado da
-  // cotação do dólar — o banner global de vencimento fica redundante ali.
-  const isDashboard = location.pathname === "/dashboard";
 
   return (
     <OcultarValoresProvider>
@@ -52,7 +49,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <AppSidebar />
               <div className="flex min-w-0 flex-1 flex-col min-h-screen overflow-x-hidden">
                 <MobileHeader />
-                {!isDashboard && <BannerVencimentoPlano />}
+                {isDashboard && <BannerVencimentoPlano />}
                 <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
                   <div className="px-4 sm:px-6 pt-3">
                     <TrialBanner />
