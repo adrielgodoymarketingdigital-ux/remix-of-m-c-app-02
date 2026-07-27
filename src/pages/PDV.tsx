@@ -18,7 +18,7 @@ import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2, Banknote, QrCode, Clock, ArrowDownCircle } from "lucide-react";
+import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2, Banknote, QrCode, Clock, ArrowDownCircle, UserRound, ShieldCheck } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
 import { DialogAberturaCaixa } from "@/components/pdv/DialogAberturaCaixa";
@@ -784,98 +784,136 @@ const PDV = () => {
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
-        <div className="mb-6 sm:mb-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold mb-1">PDV - Frente de Caixa</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">Sistema de ponto de venda</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-violet-500 text-violet-600 hover:bg-violet-50"
-              onClick={() => setDialogVendaAvulsaAberto(true)}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl font-semibold mb-1 leading-tight break-normal">
+            PDV - Frente de Caixa
+          </h1>
+          <p className="text-muted-foreground text-xs sm:text-base">Sistema de ponto de venda</p>
+        </div>
+
+        <div className="grid grid-cols-3 sm:grid-cols-5 lg:flex lg:flex-row gap-2 sm:gap-3 mb-6 sm:mb-8">
+          <button
+            type="button"
+            onClick={() => setDialogVendaAvulsaAberto(true)}
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-card p-3 sm:p-4 lg:p-3 lg:w-28 lg:shrink-0 text-center transition-colors hover:bg-accent"
+          >
+            <span className="flex h-10 w-10 sm:h-11 sm:w-11 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-violet-500/10 text-violet-600">
+              <ShoppingBag className="h-5 w-5" />
+            </span>
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
+              Venda Avulsa
+            </span>
+          </button>
+
+          {!caixaEstaAberto ? (
+            <button
+              type="button"
+              onClick={() => setDialogAberturaCaixaAberto(true)}
+              className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-card p-3 sm:p-4 lg:p-3 lg:w-28 lg:shrink-0 text-center transition-colors hover:bg-accent"
             >
-              <ShoppingBag className="h-4 w-4" />
-              <span className="hidden sm:inline">Venda Avulsa</span>
-            </Button>
-            {!caixaEstaAberto ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-green-500 text-green-600 hover:bg-green-50"
-                onClick={() => setDialogAberturaCaixaAberto(true)}
+              <span className="flex h-10 w-10 sm:h-11 sm:w-11 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-green-500/10 text-green-600">
+                <DollarSign className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
+                Abrir Caixa
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setDialogFechamentoCaixaAberto(true)}
+              className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-card p-3 sm:p-4 lg:p-3 lg:w-28 lg:shrink-0 text-center transition-colors hover:bg-accent"
+            >
+              <span className="flex h-10 w-10 sm:h-11 sm:w-11 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-red-500/10 text-red-600">
+                <XCircle className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
+                Fechar Caixa
+              </span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            disabled={!caixaAtual}
+            onClick={() => setDialogSangriaAberto(true)}
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-card p-3 sm:p-4 lg:p-3 lg:w-28 lg:shrink-0 text-center transition-colors hover:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+          >
+            <span className="flex h-10 w-10 sm:h-11 sm:w-11 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
+              <ArrowDownCircle className="h-5 w-5" />
+            </span>
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
+              Sangria / Suprimento
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDialogStatusCaixaAberto(true)}
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-card p-3 sm:p-4 lg:p-3 lg:w-28 lg:shrink-0 text-center transition-colors hover:bg-accent"
+          >
+            <span className="flex h-10 w-10 sm:h-11 sm:w-11 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-sky-500/10 text-sky-600">
+              <Info className="h-5 w-5" />
+            </span>
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
+              Status do Caixa
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDialogHistoricoCaixasAberto(true)}
+            className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-card p-3 sm:p-4 lg:p-3 lg:w-28 lg:shrink-0 text-center transition-colors hover:bg-accent"
+          >
+            <span className="flex h-10 w-10 sm:h-11 sm:w-11 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-blue-500/10 text-blue-600">
+              <History className="h-5 w-5" />
+            </span>
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
+              Histórico
+            </span>
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-card p-3 sm:p-4 lg:p-3 lg:w-28 lg:shrink-0 text-center transition-colors hover:bg-accent"
               >
-                <DollarSign className="h-4 w-4" />
-                <span className="hidden sm:inline">Abrir Caixa</span>
-              </Button>
-            ) : (
-              <>
-                {caixaAtual && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDialogSangriaAberto(true)}
-                    className="gap-1.5 text-xs border-amber-500/40 text-amber-600 hover:bg-amber-500/5"
-                  >
-                    <ArrowDownCircle className="h-3.5 w-3.5" />
-                    Sangria / Suprimento
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-red-500 text-red-600 hover:bg-red-50"
-                  onClick={() => setDialogFechamentoCaixaAberto(true)}
-                >
-                  <XCircle className="h-4 w-4" />
-                  <span className="hidden sm:inline">Fechar Caixa</span>
-                </Button>
-              </>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setDialogStatusCaixaAberto(true)}
-            >
-              <Info className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => setDialogHistoricoCaixasAberto(true)}
-            >
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">Histórico</span>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Settings className="h-4 w-4" />
-                  <span className="hidden sm:inline">Configurações</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setDialogLayoutAberto(true)}>
-                  <Layout className="h-4 w-4 mr-2" />
-                  Layout de Impressão
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setDialogTaxasCartaoAberto(true)}>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Taxas de Cartão
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                <span className="flex h-10 w-10 sm:h-11 sm:w-11 lg:h-9 lg:w-9 items-center justify-center rounded-full bg-slate-500/10 text-slate-600">
+                  <Settings className="h-5 w-5" />
+                </span>
+                <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
+                  Configurações
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => setDialogLayoutAberto(true)}>
+                <Layout className="h-4 w-4 mr-2" />
+                Layout de Impressão
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDialogTaxasCartaoAberto(true)}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Taxas de Cartão
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/configuracoes")}>
+                <Settings className="h-4 w-4 mr-2" />
+                Configurações Gerais
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Formulário de venda */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             <Card className="p-4 sm:p-6">
-              <h2 className="text-lg sm:text-xl font-semibold mb-4">Dados do Cliente</h2>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                  <UserRound className="h-4 w-4 sm:h-5 sm:w-5" />
+                </span>
+                <h2 className="text-lg sm:text-xl font-semibold">Dados do Cliente</h2>
+              </div>
 
               <SelecionadorCliente
                 clientes={clientes}
@@ -895,7 +933,12 @@ const PDV = () => {
 
             <Card className="p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                <h2 className="text-lg sm:text-xl font-semibold">Itens da Venda</h2>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                    <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </span>
+                  <h2 className="text-lg sm:text-xl font-semibold">Itens da Venda</h2>
+                </div>
                 <Button size="sm" onClick={() => setDialogItemAberto(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="hidden xs:inline">Adicionar</span> Item
@@ -929,7 +972,12 @@ const PDV = () => {
           {/* Resumo da venda */}
           <div className="space-y-4 sm:space-y-6">
             <Card className="p-4 sm:p-6 lg:sticky lg:top-6">
-              <h2 className="text-lg sm:text-xl font-semibold mb-4">Resumo</h2>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
+                </span>
+                <h2 className="text-lg sm:text-xl font-semibold">Resumo</h2>
+              </div>
 
               <div className="space-y-3 mb-4 sm:mb-6">
                 <div className="flex justify-between text-sm items-center">
@@ -1247,6 +1295,18 @@ const PDV = () => {
                 {finalizando ? "Finalizando..." : "Finalizar Venda"}
               </Button>
             </Card>
+          </div>
+        </div>
+
+        <div className="mt-6 sm:mt-8 flex items-center gap-3 rounded-xl border bg-card p-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold">Sistema seguro e confiável</p>
+            <p className="text-xs text-muted-foreground">
+              Todos os dados são protegidos e armazenados com segurança.
+            </p>
           </div>
         </div>
       </main>
