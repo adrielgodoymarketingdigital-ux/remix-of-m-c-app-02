@@ -319,7 +319,8 @@ export function OSGerencialCards({ dataInicio, dataFim, onAbrirOS, onExcluirOS }
             <div className="space-y-1.5">
               <Input
                 autoFocus
-                className="h-7 text-xs font-mono"
+                inputMode="decimal"
+                className="h-9 text-sm font-mono sm:h-7 sm:text-xs"
                 placeholder="Ex: 15000"
                 value={inputMeta}
                 onChange={(e) => setInputMeta(e.target.value)}

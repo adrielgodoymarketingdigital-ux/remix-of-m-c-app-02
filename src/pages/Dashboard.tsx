@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard, Activity, Zap, ClipboardList, Users, AlertOctagon, ArrowUpRight, ArrowDownRight, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard, Activity, Zap, ClipboardList, Users, AlertOctagon, ArrowUpRight, ArrowDownRight, ChevronRight, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -35,11 +36,7 @@ import { getSerieHistorica7Dias, getSerieHistoricaPeriodo, somarSeriePeriodo, ty
 import { calcularVariacaoPercentual } from "@/lib/variacaoPercentual";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto";
-import { SeletorFilial } from "@/components/layout/SeletorFilial";
-import { useEmpresa } from "@/contexts/EmpresaContext";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { NotificationCenter } from "@/components/notifications/NotificationCenter";
-import { useOcultarValores } from "@/contexts/OcultarValoresContext";
+import { DASHBOARD_HEADER_SLOT_ID } from "@/contexts/DashboardHeaderContext";
 
 interface ProdutoVendido {
   nome: string;
@@ -142,7 +139,6 @@ const Dashboard = () => {
 
   // Estado para filtro de mês - formato "YYYY-MM" ou "atual" para mês corrente
   const [mesSelecionado, setMesSelecionado] = useState<string>("atual");
-  const { isProprietario } = useEmpresa();
 
   // Funcionários não veem banner de trial expirado
   const isTrialExpirado = !isFuncionario && assinatura?.plano_tipo === "trial" && trialExpirado;
@@ -177,7 +173,6 @@ const Dashboard = () => {
   const dashboardResumo = useDashboardResumo(datasMesAtualParaResumo.inicio, datasMesAtualParaResumo.fim);
   const { cotacao: cotacaoDolar, variacao: variacaoCotacaoDolar } = useCotacaoDolar();
   const infoPlanoMobile = useMemo(() => getInfoPlanoCompacto(assinatura as any), [assinatura]);
-  const { valoresOcultos, toggleValores: toggleValoresOcultos } = useOcultarValores();
 
   useEffect(() => {
     checkAuth();
@@ -790,6 +785,40 @@ const Dashboard = () => {
     return FRASES[diaDoAno % FRASES.length];
   };
 
+  // Saudação é teleportada via portal para o slot renderizado pelo
+  // MobileHeader (bloco com gradiente escuro na Dashboard). O card de
+  // cotação/plano fica de fora do cabeçalho — ver mais abaixo, no conteúdo
+  // normal da página. Usar portal (em vez do Context+useEffect anterior)
+  // evita perder o conteúdo quando a Dashboard re-renderiza rápido logo após
+  // o mount — useCotacaoDolar/useDashboardResumo disparam vários setState em
+  // sequência (loading -> dados), e o efeito de cleanup do Context corria o
+  // risco de rodar depois do novo setContent, zerando o slot.
+  // O componente Dashboard retorna uma tela de "Carregando..." (sem AppLayout
+  // nem MobileHeader) enquanto loading/carregandoAssinatura são true — nesse
+  // meio tempo o <div id="dashboard-header-slot"> ainda não existe no DOM.
+  // Um efeito com deps [] rodaria só nesse primeiro render "vazio" e nunca
+  // mais tentaria de novo. Por isso o efeito roda a cada render até achar o
+  // slot (ele para de re-executar sozinho assim que setDashboardHeaderSlot
+  // guarda um valor não-nulo, porque a dependência [dashboardHeaderSlot] só
+  // muda uma vez).
+  const [dashboardHeaderSlot, setDashboardHeaderSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (dashboardHeaderSlot) return;
+    const found = document.getElementById(DASHBOARD_HEADER_SLOT_ID);
+    if (found) setDashboardHeaderSlot(found);
+  });
+  const dashboardHeaderPortal = dashboardHeaderSlot && createPortal(
+    <div data-tutorial="dashboard-title">
+      <h1 className="text-3xl font-bold mb-2 text-white">
+        {getSaudacao()}, <span className="text-blue-300">Bem Vindo</span>!
+      </h1>
+      <p className="text-white/60 text-base italic">
+        {getFraseDiaria()}
+      </p>
+    </div>,
+    dashboardHeaderSlot
+  );
+
   if (loading || carregandoAssinatura) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -868,51 +897,15 @@ const Dashboard = () => {
       </div>
 
       {/* ============ TOPO — MOBILE/PWA (novo layout) ============ */}
+      {/* Saudação é teleportada via portal (ver dashboardHeaderPortal acima)
+          para dentro do MobileHeader — bloco único com gradiente escuro e
+          cantos arredondados. O card de cotação/plano fica fora do
+          cabeçalho, aqui no conteúdo normal da página. */}
+      {dashboardHeaderPortal}
       <div className="sm:hidden">
-        {/* Saudação genérica (sem nome) + frase do dia + ações (ocultar valores/sino/avatar) alinhadas na mesma linha */}
-        <div className="flex items-start justify-between gap-3 mb-4" data-tutorial="dashboard-title">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold mb-1">
-              {getSaudacao()}, <span className="text-primary">Bem Vindo</span>!
-            </h1>
-            <p className="text-muted-foreground text-sm italic">
-              {getFraseDiaria()}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0 pt-1">
-            <button
-              type="button"
-              onClick={toggleValoresOcultos}
-              className="flex items-center justify-center h-9 w-9 rounded-full hover:bg-accent transition-colors active:scale-95"
-              title={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
-            >
-              {valoresOcultos ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
-            </button>
-            <NotificationCenter />
-            <button
-              onClick={() => navigate("/configuracoes")}
-              className="ml-1 flex items-center justify-center h-9 w-9 rounded-full overflow-hidden ring-2 ring-border/50 hover:ring-primary/50 transition-all active:scale-95"
-              title={nomeUsuario || "Perfil"}
-            >
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
-                  {nomeUsuario ? nomeUsuario.slice(0, 2).toUpperCase() : "?"}
-                </AvatarFallback>
-              </Avatar>
-            </button>
-          </div>
-        </div>
-
-        {/* Seletor de empresa (matriz/filiais) */}
-        {isProprietario && (
-          <div className="mb-4">
-            <SeletorFilial />
-          </div>
-        )}
-
         {/* Linha compacta: cotação USD/BRL + status do plano — card único dividido, estilo mockup */}
         <div
-          className="flex items-stretch rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 mb-4 cursor-pointer"
+          className="flex items-stretch rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 mt-4 mb-4 cursor-pointer"
           onClick={() => navigate("/plano")}
           role="button"
         >

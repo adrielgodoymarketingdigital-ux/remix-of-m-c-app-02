@@ -261,7 +261,8 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
           <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Meta OS</p>
           <Input
             autoFocus
-            className="h-6 text-[10px] font-mono px-1.5"
+            inputMode="decimal"
+            className="input-compact h-6 text-[10px] font-mono px-1.5"
             placeholder="Ex: 15000"
             value={inputMeta}
             onChange={(e) => setInputMeta(e.target.value)}
@@ -270,18 +271,18 @@ export function OSChipsGerenciais({ snapshot }: { snapshot: OSGerencialSnapshot 
               if (e.key === "Escape") setEditandoMeta(false);
             }}
           />
-          <div className="flex gap-1">
+          <div className="flex flex-col gap-1">
             <button
               onClick={confirmarMeta}
-              className="flex items-center gap-1 rounded-md bg-green-500/20 border border-green-500/30 px-1.5 py-1 text-[9px] text-green-400 hover:bg-green-500/30 transition-colors"
+              className="button-compact h-6 flex items-center justify-center gap-1 rounded-md bg-green-500/20 border border-green-500/30 px-1 text-[9px] text-green-400 hover:bg-green-500/30 transition-colors min-w-0"
             >
-              <Check className="h-2.5 w-2.5" /> Salvar
+              <Check className="h-2.5 w-2.5 shrink-0" /> <span className="truncate">Salvar</span>
             </button>
             <button
               onClick={() => setEditandoMeta(false)}
-              className="flex items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+              className="button-compact h-6 flex items-center justify-center gap-1 rounded-md border border-border bg-muted px-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors min-w-0"
             >
-              <X className="h-2.5 w-2.5" /> Cancelar
+              <X className="h-2.5 w-2.5 shrink-0" /> <span className="truncate">Cancelar</span>
             </button>
           </div>
         </div>

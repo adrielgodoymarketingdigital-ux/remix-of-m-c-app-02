@@ -338,11 +338,26 @@ All colors MUST be HSL.
   input, select, textarea {
     font-size: 16px !important;
   }
-  
+
+  /* Opt-out para inputs compactos onde o design pede caixa pequena de
+     propósito (ex.: campo de meta dentro de card estreito) — aceita o zoom
+     automático do iOS ao focar em vez de inflar a caixa para caber 16px. */
+  input.input-compact {
+    font-size: 10px !important;
+  }
+
   /* Better tap targets on mobile - only for interactive elements without explicit height */
-  button:not([class*="h-"]), 
+  button:not([class*="h-"]),
   [role="button"]:not([class*="h-"]) {
     min-height: 44px;
+  }
+
+  /* Opt-out explícito para botões compactos dentro de cards estreitos (ex.:
+     Salvar/Cancelar do card de meta) — garante altura e fonte pequenas mesmo
+     que alguma outra regra global tente inflar min-height/font-size. */
+  button.button-compact {
+    min-height: 0 !important;
+    font-size: 9px !important;
   }
   
   /* Active state for mobile cards */

@@ -688,7 +688,7 @@ export default function OrdemServicoPage() {
       <Suspense fallback={null}>
        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto">
         <div className="min-w-0 p-4 md:p-6 max-w-full overflow-x-hidden">
-          <div className="mb-5 md:mb-7 flex min-w-0 flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
 
             {/* Card com fundo invertido ao tema — escuro no modo claro, claro no modo escuro */}
             <div className="relative rounded-2xl bg-[#0b0f19] dark:bg-slate-100 px-4 py-4 md:px-5 md:py-5 flex flex-col gap-4 overflow-hidden">
@@ -922,34 +922,53 @@ export default function OrdemServicoPage() {
           </div>
 
           {/* 4 cards gerenciais — grid 4 colunas largura total */}
-          <div className="space-y-2">
-            <div className="flex justify-end">
-              <button
-                onClick={toggleChipsExpandido}
-                className="flex items-center gap-1.5 text-xs font-medium text-blue-400 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400/60 transition-all px-3 py-1.5 rounded-lg shrink-0"
-              >
-                {chipsExpandido ? (
-                  <><ChevronUp className="h-3.5 w-3.5 shrink-0" /><span>Ocultar painel</span></>
-                ) : (
-                  <><ChevronDown className="h-3.5 w-3.5 shrink-0" /><span>Ver painel gerencial</span></>
-                )}
-              </button>
-            </div>
-            <div
+          <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm mt-5 md:mt-7 mb-5 md:mb-7">
+            <CardHeader className="p-4 sm:p-5 pb-0">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
+                  <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Metas</CardTitle>
+                </div>
+                <button
+                  onClick={toggleChipsExpandido}
+                  className="flex items-center gap-1.5 text-xs font-medium text-blue-400 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400/60 transition-all px-3 py-1.5 rounded-lg shrink-0"
+                >
+                  {chipsExpandido ? (
+                    <><ChevronUp className="h-3.5 w-3.5 shrink-0" /><span>Ocultar metas</span></>
+                  ) : (
+                    <><ChevronDown className="h-3.5 w-3.5 shrink-0" /><span>Ver metas</span></>
+                  )}
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent
+              className="px-4 sm:px-5"
               style={{
                 maxHeight: chipsExpandido ? "1000px" : "0px",
                 opacity: chipsExpandido ? 1 : 0,
+                paddingTop: chipsExpandido ? undefined : 0,
+                paddingBottom: chipsExpandido ? undefined : 0,
                 overflow: "hidden",
-                transition: "max-height 300ms ease-in-out, opacity 300ms ease-in-out",
+                transition: "max-height 300ms ease-in-out, opacity 300ms ease-in-out, padding 300ms ease-in-out",
               }}
             >
-              <div className="grid grid-cols-4 gap-1 w-full">
+              <div className="grid grid-cols-4 gap-2 w-full py-4 sm:py-5">
                 <OSChipsGerenciais snapshot={gerencialSnapshot} />
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Abas principais */}
+          {/* Card grande agrupando cards de status + abas + tabela/kanban de OS,
+              com título próprio — antes ficava tudo solto direto no fundo da
+              página, sem nenhuma separação visual da seção de Metas acima. */}
+          <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm">
+            <CardHeader className="p-4 sm:p-5 pb-0">
+              <div className="flex items-center gap-2">
+                <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
+                <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Indicadores</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-5">
           <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
             <TabsList className="mb-4 h-8 bg-muted/40 border border-border/40 p-0.5">
               <TabsTrigger value="minhas" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -1303,6 +1322,8 @@ export default function OrdemServicoPage() {
               </TabsContent>
             )}
           </Tabs>
+            </CardContent>
+          </Card>
 
           <DialogServicoAvulso
             open={dialogServicoAvulso}
