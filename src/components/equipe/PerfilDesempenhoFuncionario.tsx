@@ -24,17 +24,17 @@ interface PerfilDesempenhoFuncionarioProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const STATUS_CANCELADOS = ["cancelado", "cancelada", "estornado", "estornada"];
+const STATUS_COMISSIONAVEIS = ["entregue"];
 
-function isOSCancelada(os: OSFuncionario): boolean {
-  return !!os.status && STATUS_CANCELADOS.includes(os.status.trim().toLowerCase());
+function isOSComissionavel(os: OSFuncionario): boolean {
+  return !!os.status && STATUS_COMISSIONAVEIS.includes(os.status.trim().toLowerCase());
 }
 
 function resolverComissaoOS(
   os: OSFuncionario,
   comissoesFallback: Record<string, { tipo: string; valor: number }>,
 ): number | null {
-  if (isOSCancelada(os)) return 0;
+  if (!isOSComissionavel(os)) return 0;
 
   if (os.comissao_calculada_snapshot != null) {
     return os.comissao_calculada_snapshot;

@@ -21,12 +21,14 @@ export function DashboardComissaoFuncionario() {
 
       const { data: funcData } = await supabase
         .from("loja_funcionarios")
-        .select("comissao_tipo, comissao_valor, comissao_escopo, comissoes_por_cargo, cargo, loja_user_id")
+        .select("comissao_tipo, comissao_valor, comissao_escopo, comissoes_por_cargo, cargo, loja_user_id, base_comissao")
         .eq("funcionario_user_id", user.id)
         .eq("ativo", true)
         .maybeSingle();
 
       if (!funcData) return null;
+
+      const campoData = funcData.base_comissao === "entrega" ? "data_saida" : "created_at";
 
       const agora = new Date();
       const inicio = startOfMonth(agora).toISOString();
@@ -47,12 +49,12 @@ export function DashboardComissaoFuncionario() {
 
       const { data: ordens } = await supabase
         .from("ordens_servico")
-        .select("total, base_comissao, data_saida")
+        .select("total")
         .eq("funcionario_id", funcionarioId)
         .is("deleted_at", null)
-        .in("status", ["finalizado", "entregue", "garantia"])
-        .gte("data_saida", inicio)
-        .lte("data_saida", fim);
+        .in("status", ["entregue"])
+        .gte(campoData, inicio)
+        .lte(campoData, fim);
 
       const { data: vendasAnt } = await supabase
         .from("vendas")

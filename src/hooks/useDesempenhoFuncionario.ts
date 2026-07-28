@@ -34,6 +34,15 @@ export function useDesempenhoFuncionario(funcionarioId: string | null, dataInici
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { ordens: [], tiposServico: {}, comissoesTipoServico: {} };
 
+      // Fetch employee's commission date base config
+      const { data: funcData } = await supabase
+        .from("loja_funcionarios")
+        .select("base_comissao")
+        .eq("id", funcionarioId)
+        .maybeSingle();
+
+      const campoData = funcData?.base_comissao === "entrega" ? "data_saida" : "created_at";
+
       // Fetch OS assigned to this employee
       let query = supabase
         .from("ordens_servico")
@@ -49,10 +58,10 @@ export function useDesempenhoFuncionario(funcionarioId: string | null, dataInici
         .eq("is_teste", false);
 
       if (dataInicio) {
-        query = query.gte("created_at", dataInicio);
+        query = query.gte(campoData, dataInicio);
       }
       if (dataFim) {
-        query = query.lte("created_at", dataFim);
+        query = query.lte(campoData, dataFim);
       }
 
       const { data: ordens } = await query.order("created_at", { ascending: false });
