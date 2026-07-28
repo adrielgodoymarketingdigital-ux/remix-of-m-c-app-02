@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
-import { User, Wrench, ClipboardList, CalendarIcon } from "lucide-react";
+import { User, Wrench, ClipboardList, CalendarIcon, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -60,6 +61,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }:
   const [dataInicio, setDataInicio] = useState<Date | undefined>(startOfMonth(new Date()));
   const [dataFim, setDataFim] = useState<Date | undefined>(endOfMonth(new Date()));
   const [statusFiltro, setStatusFiltro] = useState("todos");
+  const [buscaNumeroOS, setBuscaNumeroOS] = useState("");
   const { statusList } = useOSStatusConfig();
 
   // Usa o dia selecionado inteiro no filtro
@@ -76,13 +78,19 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }:
   const comissoesTipoServico = data?.comissoesTipoServico || {};
 
   const ordensFiltradas = useMemo(() => {
-    const ordens = data?.ordens || [];
-    if (statusFiltro === "todos") return ordens;
-    return ordens.filter(o => {
-      const s = (o.status || "").trim().toLowerCase();
-      return s === statusFiltro.trim().toLowerCase();
-    });
-  }, [data?.ordens, statusFiltro]);
+    let ordens = data?.ordens || [];
+    if (statusFiltro !== "todos") {
+      ordens = ordens.filter(o => {
+        const s = (o.status || "").trim().toLowerCase();
+        return s === statusFiltro.trim().toLowerCase();
+      });
+    }
+    const termoBusca = buscaNumeroOS.trim().toLowerCase();
+    if (termoBusca) {
+      ordens = ordens.filter(o => (o.numero_os || "").toLowerCase().includes(termoBusca));
+    }
+    return ordens;
+  }, [data?.ordens, statusFiltro, buscaNumeroOS]);
 
   const totalOS = ordensFiltradas.length;
   const totalValor = ordensFiltradas.reduce((acc, o) => acc + (o.total || 0), 0);
@@ -95,6 +103,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }:
     setDataInicio(undefined);
     setDataFim(undefined);
     setStatusFiltro("todos");
+    setBuscaNumeroOS("");
   };
 
   return (
@@ -180,7 +189,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }:
                   </SelectContent>
                 </Select>
               </div>
-              {(dataInicio || dataFim || statusFiltro !== "todos") && (
+              {(dataInicio || dataFim || statusFiltro !== "todos" || buscaNumeroOS) && (
                 <Button variant="ghost" size="sm" onClick={limparFiltro}>Limpar</Button>
               )}
             </div>
@@ -226,6 +235,15 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }:
                 <CardTitle className="text-base">Histórico de Ordens de Serviço</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="relative mb-4 max-w-xs">
+                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={buscaNumeroOS}
+                    onChange={(e) => setBuscaNumeroOS(e.target.value)}
+                    placeholder="Buscar por número da OS..."
+                    className="pl-8 h-9"
+                  />
+                </div>
                 {isLoading ? (
                   <div className="space-y-3">
                     <Skeleton className="h-10 w-full" />
@@ -234,7 +252,9 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }:
                   </div>
                 ) : ordensFiltradas.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
-                    Nenhuma ordem de serviço encontrada para o período selecionado.
+                    {buscaNumeroOS.trim()
+                      ? "Nenhuma OS encontrada com esse número."
+                      : "Nenhuma ordem de serviço encontrada para o período selecionado."}
                   </p>
                 ) : (
                   <div className="rounded-md border overflow-x-auto">
