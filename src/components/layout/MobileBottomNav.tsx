@@ -100,7 +100,7 @@ export function MobileBottomNav() {
       <nav
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/50"
         style={{
-          background: "hsl(var(--background) / 0.97)",
+          background: "hsl(var(--foreground) / 0.97)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
@@ -118,7 +118,7 @@ export function MobileBottomNav() {
                   "active:scale-95 touch-manipulation transition-transform",
                   active
                     ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-background/60 hover:text-background"
                 )}
               >
                 {active && (
@@ -141,7 +141,7 @@ export function MobileBottomNav() {
           {/* Menu Button */}
           <button
             onClick={() => setMenuOpen(true)}
-            className="flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 active:scale-95 touch-manipulation text-slate-500 hover:text-slate-300"
+            className="flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 active:scale-95 touch-manipulation text-background/60 hover:text-background"
           >
             <Menu className="h-5 w-5" />
             <span className="text-[10px] font-medium">Menu</span>
