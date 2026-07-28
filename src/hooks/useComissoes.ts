@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Funcionario, ComissaoTipo, ComissaoEscopo, ComissaoCargo } from "@/types/funcionario";
-import { startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 
 export interface ComissaoFuncionario {
   funcionarioId: string;
@@ -236,6 +236,141 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
     comissoesAnterior: data?.anterior || [],
     totalComissoes: data?.totalComissoes || 0,
     totalVendido: data?.totalVendido || 0,
+    carregando: isLoading,
+  };
+}
+
+export interface PontoSerieMensalComissoes {
+  mes: string; // yyyy-MM
+  totalVendido: number;
+  totalComissoes: number;
+}
+
+/**
+ * Série mensal (últimos `meses` meses, incluindo o mês de referência) de
+ * Total Vendido e Comissões a Pagar da equipe — para sparkline e variação
+ * percentual na aba Desempenho. Busca vendas/OS do período inteiro numa
+ * query só (mais barato que N queries de 1 mês) e agrega em memória por mês,
+ * reaproveitando calcularComissao para não duplicar a regra de comissão.
+ */
+export function useComissoesSerieMensal(funcionarios: Funcionario[], mesRef: Date, meses: number = 6) {
+  const funcionarioIds = funcionarios.map((f) => f.id);
+  const inicioSerie = startOfMonth(subMonths(mesRef, meses - 1)).toISOString();
+  const fimSerie = endOfMonth(mesRef).toISOString();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["comissoes-serie-mensal", funcionarioIds, inicioSerie, fimSerie],
+    queryFn: async (): Promise<PontoSerieMensalComissoes[]> => {
+      if (!funcionarioIds.length) return [];
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const idsCriacao = funcionarios
+        .filter((f) => !f.base_comissao || f.base_comissao === "criacao")
+        .map((f) => f.id);
+      const idsEntrega = funcionarios
+        .filter((f) => f.base_comissao === "entrega")
+        .map((f) => f.id);
+
+      const { data: vendasPeriodo } = await supabase
+        .from("vendas")
+        .select("funcionario_id, total, quantidade, tipo, data")
+        .eq("user_id", user.id)
+        .in("funcionario_id", funcionarioIds)
+        .gte("data", inicioSerie)
+        .lte("data", fimSerie)
+        .eq("cancelada", false)
+        .or("observacoes.is.null,observacoes.neq.pagamento_duplo_secundario");
+
+      const [osCriacaoPeriodo, osEntregaPeriodo] = await Promise.all([
+        idsCriacao.length > 0
+          ? supabase
+              .from("ordens_servico")
+              .select("funcionario_id, total, created_at")
+              .eq("user_id", user.id)
+              .is("deleted_at", null)
+              .in("funcionario_id", idsCriacao)
+              .in("status", ["entregue"])
+              .gte("created_at", inicioSerie)
+              .lte("created_at", fimSerie)
+              .then((r) => r.data || [])
+          : Promise.resolve([]),
+        idsEntrega.length > 0
+          ? supabase
+              .from("ordens_servico")
+              .select("funcionario_id, total, data_saida")
+              .eq("user_id", user.id)
+              .is("deleted_at", null)
+              .in("funcionario_id", idsEntrega)
+              .in("status", ["entregue"])
+              .not("data_saida", "is", null)
+              .gte("data_saida", inicioSerie)
+              .lte("data_saida", fimSerie)
+              .then((r) => r.data || [])
+          : Promise.resolve([]),
+      ]);
+
+      const pontos: PontoSerieMensalComissoes[] = [];
+      for (let i = meses - 1; i >= 0; i--) {
+        const mesAtualRef = subMonths(mesRef, i);
+        const inicioMes = startOfMonth(mesAtualRef);
+        const fimMes = endOfMonth(mesAtualRef);
+
+        const vendasMes = (vendasPeriodo || []).filter((v: any) => {
+          const d = new Date(v.data);
+          return d >= inicioMes && d <= fimMes;
+        });
+        const osMes = [
+          ...osCriacaoPeriodo.filter((o: any) => {
+            const d = new Date(o.created_at);
+            return d >= inicioMes && d <= fimMes;
+          }),
+          ...osEntregaPeriodo.filter((o: any) => {
+            const d = new Date(o.data_saida);
+            return d >= inicioMes && d <= fimMes;
+          }),
+        ];
+
+        let totalVendidoMes = 0;
+        let totalComissoesMes = 0;
+
+        funcionarios.forEach((f) => {
+          const vendasFunc = vendasMes.filter((v: any) => v.funcionario_id === f.id);
+          const osFunc = osMes.filter((o: any) => o.funcionario_id === f.id);
+
+          const totalVendasProdutos = vendasFunc
+            .filter((v: any) => v.tipo === "produto" || v.tipo === "peca")
+            .reduce((acc: number, v: any) => acc + Number(v.total), 0);
+          const totalVendasDispositivos = vendasFunc
+            .filter((v: any) => v.tipo === "dispositivo")
+            .reduce((acc: number, v: any) => acc + Number(v.total), 0);
+          const totalServicos = osFunc.reduce((acc: number, o: any) => acc + Number(o.total || 0), 0);
+          const quantidadeVendas = vendasFunc.length;
+          const quantidadeOS = osFunc.length;
+
+          const { total: comissaoCalculada } = calcularComissao(
+            f, totalVendasProdutos, totalVendasDispositivos, totalServicos, quantidadeVendas, quantidadeOS
+          );
+
+          totalVendidoMes += totalVendasProdutos + totalVendasDispositivos + totalServicos;
+          totalComissoesMes += comissaoCalculada;
+        });
+
+        pontos.push({
+          mes: format(mesAtualRef, "yyyy-MM"),
+          totalVendido: totalVendidoMes,
+          totalComissoes: totalComissoesMes,
+        });
+      }
+
+      return pontos;
+    },
+    enabled: funcionarioIds.length > 0,
+  });
+
+  return {
+    serieMensal: data || [],
     carregando: isLoading,
   };
 }

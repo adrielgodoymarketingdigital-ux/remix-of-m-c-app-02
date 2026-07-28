@@ -3,12 +3,13 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, AlertCircle, BarChart3 } from "lucide-react";
+import { Users, Plus, AlertCircle, BarChart3, ChevronDown } from "lucide-react";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { TabelaFuncionarios } from "@/components/equipe/TabelaFuncionarios";
 import { DialogCadastroFuncionario } from "@/components/equipe/DialogCadastroFuncionario";
 import { DashboardEquipe } from "@/components/equipe/DashboardEquipe";
 import { ConfiguracaoOSEquipe } from "@/components/equipe/ConfiguracaoOSEquipe";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import type { Funcionario, FuncionarioFormData } from "@/types/funcionario";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -91,26 +92,35 @@ export default function Equipe() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Users className="h-6 w-6" />
-              Equipe
-            </h1>
-            <p className="text-muted-foreground">
-              Gerencie os funcionários e suas permissões de acesso.
-            </p>
+          <div className="flex items-center gap-3">
+            <span className="hidden lg:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600">
+              <Users className="h-5 w-5 text-white" />
+            </span>
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Users className="h-6 w-6 lg:hidden" />
+                Equipe
+              </h1>
+              <p className="text-muted-foreground">
+                Gerencie os funcionários e suas permissões de acesso.
+              </p>
+            </div>
           </div>
-          {planoPermiteEquipe && (
-            <Button
-              onClick={handleNovoFuncionario}
-              disabled={!podeAdicionarMais}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Funcionário
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <NotificationCenter className="hidden lg:flex" />
+            {planoPermiteEquipe && (
+              <Button
+                onClick={handleNovoFuncionario}
+                disabled={!podeAdicionarMais}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Funcionário
+                <ChevronDown className="hidden lg:inline-block h-4 w-4 ml-2" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {!planoPermiteEquipe && (
