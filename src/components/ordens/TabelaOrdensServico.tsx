@@ -17,7 +17,6 @@ import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { Check, ClipboardList, Building2, ArrowDownUp } from "lucide-react";
 import { useState } from "react";
-import { useTheme } from "next-themes";
 import { useIsMobile, useIsMobileOrTablet } from "@/hooks/use-mobile";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSColunas } from "@/hooks/useOSColunas";
@@ -87,10 +86,6 @@ export const TabelaOrdensServico = ({
 }: TabelaOrdensServicoProps) => {
   const [popoverAberto, setPopoverAberto] = useState<string | null>(null);
   const isMobileOrTablet = useIsMobileOrTablet();
-  const { resolvedTheme } = useTheme();
-  // A seção "Gestão de OS" inverte o tema (ver OrdemServico.tsx); os cards de
-  // OS devem seguir o tema real do app, então cancelamos essa inversão aqui.
-  const classeTemaRealDoApp = resolvedTheme === "dark" ? "forcar-escuro" : "forcar-claro";
   const { statusList, activeStatusList } = useOSStatusConfig();
   const { config } = useOSColunas();
   const colunasAtivas = config.colunas;
@@ -142,7 +137,7 @@ export const TabelaOrdensServico = ({
           </span>
         </div>
 
-        <div className={`grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1 ${classeTemaRealDoApp}`}>
+        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
           {ordens.map((ordem) => {
             const cor = statusColors[ordem.status as string] || "#eab308";
             const label = statusLabels[ordem.status as string] || "Aguardando";

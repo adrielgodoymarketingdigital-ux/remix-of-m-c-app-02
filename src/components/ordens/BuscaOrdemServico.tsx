@@ -423,16 +423,17 @@ export const BuscaOrdemServico = ({
       </div>
 
       {/* Linha 3: Remessa Corporativa + Limpar filtros */}
-      <div className="flex items-center justify-between gap-2 rounded-xl border border-border/50 bg-muted/20 px-3.5 py-2.5">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-center justify-between flex-wrap gap-2 rounded-xl border border-border/50 bg-muted/20 px-3.5 py-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <Switch
             id="somente-remessa-corporativa"
             checked={somenteRemessaCorporativa}
             onCheckedChange={onSomenteRemessaCorporativaChange}
+            className="shrink-0"
           />
-          <Label htmlFor="somente-remessa-corporativa" className="flex items-center gap-1.5 text-sm font-medium cursor-pointer whitespace-nowrap">
-            <Package className="h-4 w-4 text-emerald-600" />
-            Remessa Corporativa
+          <Label htmlFor="somente-remessa-corporativa" className="flex items-center gap-1.5 text-sm font-medium cursor-pointer min-w-0">
+            <Package className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span className="truncate">Remessa Corporativa</span>
           </Label>
         </div>
 
@@ -441,9 +442,9 @@ export const BuscaOrdemServico = ({
           size="sm"
           onClick={limparFiltros}
           disabled={!temFiltro}
-          className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground disabled:opacity-40"
+          className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground disabled:opacity-40 shrink-0"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
+          <RotateCcw className="h-3.5 w-3.5 shrink-0" />
           Limpar filtros
         </Button>
       </div>

@@ -95,34 +95,16 @@ export function MobileBottomNav() {
     setSelectedNavIds(ids);
   };
 
-  // No Dashboard e em Ordens de Serviço, a barra fica "flutuante" (destacada
-  // das bordas, cantos arredondados, sombra), igual ao mockup. Nas demais
-  // páginas mantém o visual padrão colado nas bordas.
-  const isFlutuante = location.pathname === "/dashboard" || location.pathname.startsWith("/os");
-
   return (
     <>
       <nav
-        className={cn(
-          "lg:hidden fixed z-40",
-          isFlutuante
-            ? "left-3 right-3 rounded-2xl border shadow-lg bg-slate-900 border-slate-800 dark:bg-slate-100 dark:border-slate-200"
-            : "bottom-0 left-0 right-0 border-t border-border/50"
-        )}
-        style={
-          isFlutuante
-            ? {
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                bottom: "max(env(safe-area-inset-bottom), 12px)",
-              }
-            : {
-                background: "hsl(var(--background) / 0.97)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
-              }
-        }
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/50"
+        style={{
+          background: "hsl(var(--background) / 0.97)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
+        }}
       >
         <div className="flex items-stretch justify-around h-14 max-w-lg mx-auto">
           {navItems.map((item) => {
@@ -134,13 +116,9 @@ export function MobileBottomNav() {
                 className={cn(
                   "flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 relative",
                   "active:scale-95 touch-manipulation transition-transform",
-                  isFlutuante
-                    ? active
-                      ? "text-primary"
-                      : "text-slate-400 dark:text-slate-500"
-                    : active
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
+                  active
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {active && (
@@ -163,13 +141,7 @@ export function MobileBottomNav() {
           {/* Menu Button */}
           <button
             onClick={() => setMenuOpen(true)}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200",
-              "active:scale-95 touch-manipulation",
-              isFlutuante
-                ? "text-slate-400 dark:text-slate-500"
-                : "text-slate-500 hover:text-slate-300"
-            )}
+            className="flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 active:scale-95 touch-manipulation text-slate-500 hover:text-slate-300"
           >
             <Menu className="h-5 w-5" />
             <span className="text-[10px] font-medium">Menu</span>

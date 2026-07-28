@@ -1,6 +1,5 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer, SlidersHorizontal } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -92,8 +91,6 @@ const DialogConfiguracaoTracking = lazy(() => import("@/components/ordens/Dialog
 
 export default function OrdemServicoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { resolvedTheme } = useTheme();
-  const classeGestaoOSInvertida = resolvedTheme === "dark" ? "forcar-claro" : "forcar-escuro";
   const navigate = useNavigate();
   const tabParam = searchParams.get("tab");
   const [temAcessoTiny, setTemAcessoTiny] = useState(false);
@@ -964,9 +961,9 @@ export default function OrdemServicoPage() {
             </CardContent>
           </Card>
 
-          {/* Card grande agrupando cards de status + abas + tabela/kanban de OS,
-              com título próprio — antes ficava tudo solto direto no fundo da
-              página, sem nenhuma separação visual da seção de Metas acima. */}
+          {/* Card "Indicadores" contém apenas o header e a navegação por abas —
+              o conteúdo de cada aba (Gestão de OS, Terceirizada, MicroSolda)
+              fica fora deste Card, como irmão, para não herdar seu fundo/estilo. */}
           <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm">
             <CardHeader className="p-4 sm:p-5 pb-0">
               <div className="flex items-center gap-2">
@@ -975,28 +972,32 @@ export default function OrdemServicoPage() {
               </div>
             </CardHeader>
             <CardContent className="p-4 sm:p-5">
-          <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
-            <TabsList className="mb-4 h-8 bg-muted/40 border border-border/40 p-0.5">
-              <TabsTrigger value="minhas" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                Minhas OS
-              </TabsTrigger>
-              {!checandoAcessoTiny && temAcessoTiny && (
-                <TabsTrigger value="terceirizada" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  Terceirizada
-                </TabsTrigger>
-              )}
-              {!checandoAcessoTiny && temAcessoTiny && (
-                <TabsTrigger value="microsolda" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  MicroSolda + UpStore
-                </TabsTrigger>
-              )}
-            </TabsList>
+              <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
+                <TabsList className="h-8 bg-muted/40 border border-border/40 p-0.5">
+                  <TabsTrigger value="minhas" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    Minhas OS
+                  </TabsTrigger>
+                  {!checandoAcessoTiny && temAcessoTiny && (
+                    <TabsTrigger value="terceirizada" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                      Terceirizada
+                    </TabsTrigger>
+                  )}
+                  {!checandoAcessoTiny && temAcessoTiny && (
+                    <TabsTrigger value="microsolda" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                      MicroSolda + UpStore
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+              </Tabs>
+            </CardContent>
+          </Card>
 
-            <TabsContent value="minhas" className="mt-0">
+          {/* Conteúdo das abas — irmão do Card "Indicadores", não mais filho dele. */}
+          <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
+            <TabsContent value="minhas" className="mt-5 md:mt-7">
           <DashboardOrdensServico ordens={ordens} servicosAvulsos={servicosAvulsosFiltrados} lucroOrdensEntregues={lucroOrdensEntregues} />
 
-          <div className={classeGestaoOSInvertida}>
-          <Card className="min-w-0 overflow-hidden border-border/40 shadow-sm">
+          <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm mt-5 md:mt-7">
             <CardHeader className="p-4 sm:p-5 border-b border-border/30 bg-muted/10">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
@@ -1048,12 +1049,13 @@ export default function OrdemServicoPage() {
                 {visualizacao === "tabela" && (
                   <Button
                     variant={selecaoAtiva ? "secondary" : "ghost"}
-                    size="sm"
+                    size="icon"
                     onClick={() => selecaoAtiva ? handleCancelarSelecao() : setSelecaoAtiva(true)}
-                    className="h-9 text-xs px-2.5 gap-1.5 shrink-0"
+                    className="h-9 w-9 shrink-0"
+                    aria-label={selecaoAtiva ? "Cancelar seleção" : "Selecionar"}
+                    title={selecaoAtiva ? "Cancelar seleção" : "Selecionar"}
                   >
                     <CheckSquare className="h-3.5 w-3.5" />
-                    {selecaoAtiva ? "Cancelar" : "Selecionar"}
                   </Button>
                 )}
                 <ToggleGroup
@@ -1068,17 +1070,17 @@ export default function OrdemServicoPage() {
                   }}
                   className="flex-1 rounded-xl bg-muted/30 border border-border/50 p-1 h-11 min-w-0"
                 >
-                  <ToggleGroupItem value="tabela" className="flex-1 gap-1.5 text-xs font-semibold px-2 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
-                    <List className="h-3.5 w-3.5" />
-                    Lista
+                  <ToggleGroupItem value="tabela" className="flex-1 min-w-0 gap-1 text-xs font-semibold px-1.5 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                    <List className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Lista</span>
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="kanban" className="flex-1 gap-1.5 text-xs font-semibold px-2 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
-                    <Columns3 className="h-3.5 w-3.5" />
-                    Kanban
+                  <ToggleGroupItem value="kanban" className="flex-1 min-w-0 gap-1 text-xs font-semibold px-1.5 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                    <Columns3 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Kanban</span>
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="tempo" className="flex-1 gap-1.5 text-xs font-semibold px-2 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
-                    <Timer className="h-3.5 w-3.5" />
-                    Tempo
+                  <ToggleGroupItem value="tempo" className="flex-1 min-w-0 gap-1 text-xs font-semibold px-1.5 h-9 rounded-lg data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm transition-all">
+                    <Timer className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Tempo</span>
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
@@ -1297,7 +1299,6 @@ export default function OrdemServicoPage() {
               )}
             </CardContent>
           </Card>
-          </div>
 
             <div ref={osGerencialRef}>
               <OSGerencialCards
@@ -1315,7 +1316,7 @@ export default function OrdemServicoPage() {
             </TabsContent>
 
             {temAcessoTiny && (
-              <TabsContent value="terceirizada" className="mt-0">
+              <TabsContent value="terceirizada" className="mt-5 md:mt-7">
                 <TerceirizadaTab
                   integration={integration ?? null}
                   integrationLoading={integrationLoading}
@@ -1328,7 +1329,7 @@ export default function OrdemServicoPage() {
             )}
 
             {temAcessoTiny && (
-              <TabsContent value="microsolda" className="mt-0">
+              <TabsContent value="microsolda" className="mt-5 md:mt-7">
                 <MicroSoldaUpStoreTab
                   integration={integration ?? null}
                   integrationLoading={integrationLoading}
@@ -1339,8 +1340,6 @@ export default function OrdemServicoPage() {
               </TabsContent>
             )}
           </Tabs>
-            </CardContent>
-          </Card>
 
           <DialogServicoAvulso
             open={dialogServicoAvulso}
