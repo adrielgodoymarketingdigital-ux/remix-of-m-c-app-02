@@ -94,10 +94,9 @@ export const DialogOrdemServico = ({
   } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId });
 
   const irParaEtapa = (etapa: EtapaWizard) => {
-    if (etapa <= etapaMaximaAlcancada) {
-      setCampoComErro(null);
-      setEtapaAtual(etapa);
-    }
+    setCampoComErro(null);
+    setEtapaAtual(etapa);
+    setEtapaMaximaAlcancada((prev) => (etapa > prev ? etapa : prev));
   };
 
   const voltarEtapa = () => {
@@ -166,7 +165,8 @@ export const DialogOrdemServico = ({
     }
   };
 
-  const tentarSalvarModoUnico = () => {
+  /** Valida as etapas 2, 3 e 4 (únicas com campos obrigatórios) em ordem; retorna a primeira inválida, se houver. */
+  const validarEtapasObrigatorias = () => {
     const etapasParaValidar: EtapaWizard[] = [2, 3, 4];
     for (const etapa of etapasParaValidar) {
       const resultado = validarEtapa({
@@ -176,24 +176,54 @@ export const DialogOrdemServico = ({
         tecnicoObrigatorioOS,
         funcionarioId,
       });
-
       if (!resultado.valido) {
-        toast({
-          title: "Campo obrigatório",
-          description: resultado.mensagem,
-          variant: "destructive",
-        });
-        setCampoComErro(resultado.campoComErro ?? null);
-        document
-          .querySelector(`[data-etapa="${etapa}"]`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-        return;
+        return { etapa, resultado };
       }
+    }
+    return null;
+  };
+
+  const tentarSalvarModoUnico = () => {
+    const invalida = validarEtapasObrigatorias();
+    if (invalida) {
+      toast({
+        title: "Campo obrigatório",
+        description: invalida.resultado.mensagem,
+        variant: "destructive",
+      });
+      setCampoComErro(invalida.resultado.campoComErro ?? null);
+      document
+        .querySelector(`[data-etapa="${invalida.etapa}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
     }
 
     setCampoComErro(null);
     handleSalvar();
   };
+
+  const tentarSalvarWizard = () => {
+    const invalida = validarEtapasObrigatorias();
+    if (invalida) {
+      toast({
+        title: "Campo obrigatório",
+        description: invalida.resultado.mensagem,
+        variant: "destructive",
+      });
+      setCampoComErro(invalida.resultado.campoComErro ?? null);
+      setEtapaAtual(invalida.etapa);
+      setEtapaMaximaAlcancada((prev) => (invalida.etapa > prev ? invalida.etapa : prev));
+      return;
+    }
+
+    setCampoComErro(null);
+    handleSalvar();
+  };
+
+  const etapasComPendencia: EtapaWizard[] = ([2, 3, 4] as EtapaWizard[]).filter(
+    (etapa) =>
+      !validarEtapa({ etapa, formData, tecnicoId, tecnicoObrigatorioOS, funcionarioId }).valido
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -220,6 +250,7 @@ export const DialogOrdemServico = ({
                 etapaAtual={etapaAtual}
                 etapaMaximaAlcancada={etapaMaximaAlcancada}
                 onEtapaClick={irParaEtapa}
+                etapasComPendencia={etapasComPendencia}
               />
             )}
           </div>
@@ -436,7 +467,7 @@ export const DialogOrdemServico = ({
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button type="button" size="sm" onClick={handleSalvar} disabled={loading} className="sm:h-10 sm:px-4 sm:text-sm">
+                  <Button type="button" size="sm" onClick={tentarSalvarWizard} disabled={loading} className="sm:h-10 sm:px-4 sm:text-sm">
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

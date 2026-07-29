@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EtapaWizard } from "./tipos";
 
@@ -18,12 +18,14 @@ interface OrdemServicoWizardProgressoProps {
   etapaAtual: EtapaWizard;
   etapaMaximaAlcancada: EtapaWizard;
   onEtapaClick: (etapa: EtapaWizard) => void;
+  etapasComPendencia?: EtapaWizard[];
 }
 
 export function OrdemServicoWizardProgresso({
   etapaAtual,
   etapaMaximaAlcancada,
   onEtapaClick,
+  etapasComPendencia = [],
 }: OrdemServicoWizardProgressoProps) {
   const percent = Math.round(((etapaAtual - 1) / (TOTAL_ETAPAS - 1)) * 100);
 
@@ -70,38 +72,44 @@ export function OrdemServicoWizardProgresso({
         </div>
       </div>
 
-      {/* Desktop: círculos numerados com nome de cada etapa abaixo */}
+      {/* Desktop: círculos numerados com nome de cada etapa abaixo — navegação livre, clique direto em qualquer etapa */}
       <div className="hidden sm:flex items-center gap-4">
         <div className="flex items-center flex-1">
           {(Array.from({ length: TOTAL_ETAPAS }, (_, i) => (i + 1) as EtapaWizard)).map((etapa, index) => {
-            const alcancada = etapa <= etapaMaximaAlcancada;
             const concluida = etapa < etapaAtual;
             const atual = etapa === etapaAtual;
             const tracoPreenchido = etapa < etapaAtual;
+            const pendente = etapasComPendencia.includes(etapa) && etapa !== etapaAtual;
 
             return (
               <div key={etapa} className="flex items-center flex-1 last:flex-none">
                 <button
                   type="button"
-                  disabled={!alcancada}
                   onClick={() => onEtapaClick(etapa)}
-                  className="flex flex-col items-center gap-1 shrink-0"
+                  title={pendente ? `${NOMES_ETAPAS[etapa]} — há campos obrigatórios pendentes` : NOMES_ETAPAS[etapa]}
+                  className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group"
                 >
                   <span
                     className={cn(
-                      "h-7 w-7 rounded-full shrink-0 flex items-center justify-center text-xs font-semibold transition-all",
+                      "h-7 w-7 rounded-full shrink-0 flex items-center justify-center text-xs font-semibold transition-all group-hover:border-primary/60",
                       atual && "border-2 border-primary bg-primary text-primary-foreground",
-                      !atual && concluida && "bg-primary text-primary-foreground",
-                      !atual && !concluida && alcancada && "border border-input bg-background text-foreground cursor-pointer",
-                      !atual && !alcancada && "border border-input bg-muted text-muted-foreground cursor-not-allowed",
+                      !atual && pendente && "border border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                      !atual && !pendente && concluida && "bg-primary text-primary-foreground",
+                      !atual && !pendente && !concluida && "border border-input bg-background text-foreground",
                     )}
                   >
-                    {concluida ? <Check className="h-3.5 w-3.5" /> : etapa}
+                    {pendente && !atual ? (
+                      <AlertCircle className="h-3.5 w-3.5" />
+                    ) : concluida ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      etapa
+                    )}
                   </span>
                   <span
                     className={cn(
                       "text-[11px] whitespace-nowrap",
-                      atual ? "font-semibold text-primary" : "text-muted-foreground",
+                      atual ? "font-semibold text-primary" : pendente ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
                     )}
                   >
                     {NOMES_ETAPAS[etapa]}
