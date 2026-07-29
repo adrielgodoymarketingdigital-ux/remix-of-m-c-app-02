@@ -118,7 +118,7 @@ export function TabelaContas({
               </div>
               
               <div className="text-sm mb-3 space-y-2">
-                {(conta.valor_pago != null && conta.valor_pago > 0) ? (
+                {(conta.valor_pago != null && conta.valor_pago > 0 && conta.status === 'pendente') ? (
                   <div className="rounded-lg border p-3 space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Total da OS:</span>
@@ -129,17 +129,8 @@ export function TabelaContas({
                       <span className="font-semibold text-green-600"><ValorMonetario valor={conta.valor_pago} /></span>
                     </div>
                     <div className="border-t pt-1.5 flex justify-between items-center">
-                      {conta.status === 'recebido' ? (
-                        <>
-                          <span className="text-green-600 font-medium">✓ Restante recebido:</span>
-                          <span className="font-bold text-green-600"><ValorMonetario valor={conta.valor} /></span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-orange-600 font-medium">Falta receber:</span>
-                          <span className="font-bold text-orange-600"><ValorMonetario valor={conta.valor} /></span>
-                        </>
-                      )}
+                      <span className="text-orange-600 font-medium">Falta receber:</span>
+                      <span className="font-bold text-orange-600"><ValorMonetario valor={conta.valor} /></span>
                     </div>
                   </div>
                 ) : (
@@ -271,15 +262,11 @@ export function TabelaContas({
                 <TableCell>{getTipoBadge(conta.tipo)}</TableCell>
                 <TableCell>{conta.categoria || "-"}</TableCell>
                 <TableCell>
-                  {(conta.valor_pago != null && conta.valor_pago > 0) ? (
+                  {(conta.valor_pago != null && conta.valor_pago > 0 && conta.status === 'pendente') ? (
                     <div className="space-y-0.5">
                       <p className="text-xs text-muted-foreground">Total: <span className="font-medium text-foreground"><ValorMonetario valor={conta.valor + conta.valor_pago} /></span></p>
                       <p className="text-xs text-green-600">✓ Entrada: <ValorMonetario valor={conta.valor_pago} /></p>
-                      {conta.status === 'recebido' ? (
-                        <p className="font-semibold text-green-600">✓ Restante: <ValorMonetario valor={conta.valor} /></p>
-                      ) : (
-                        <p className="font-semibold text-orange-600">Falta: <ValorMonetario valor={conta.valor} /></p>
-                      )}
+                      <p className="font-semibold text-orange-600">Falta: <ValorMonetario valor={conta.valor} /></p>
                     </div>
                   ) : (
                     <p className="font-semibold"><ValorMonetario valor={conta.valor} /></p>

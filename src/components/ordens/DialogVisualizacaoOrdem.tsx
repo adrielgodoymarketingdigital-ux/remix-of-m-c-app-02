@@ -230,6 +230,9 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
               <Section title="Serviço" icon={<Wrench className="h-3.5 w-3.5" />} onEditar={onEditar ? () => onEditar(ordem) : undefined}>
                 <InfoGrid>
                   <InfoItem icon={<Calendar className="h-3 w-3" />} label="Abertura" value={`${formatDate(ordem.created_at)} ${formatTime(ordem.created_at)}`} mono />
+                  {ordem.data_saida && (
+                    <InfoItem icon={<Calendar className="h-3 w-3" />} label="Entrega" value={`${formatDate(ordem.data_saida)} ${formatTime(ordem.data_saida)}`} mono />
+                  )}
                   <InfoItem icon={<Hash className="h-3 w-3" />} label="OS" value={`#${ordem.numero_os}`} mono />
                   {ordem.localizacao_fisica && (
                     <InfoItem icon={<Package className="h-3 w-3" />} label="Localização Física" value={ordem.localizacao_fisica} />

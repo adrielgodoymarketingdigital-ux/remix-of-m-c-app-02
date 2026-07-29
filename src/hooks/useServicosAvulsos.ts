@@ -121,7 +121,7 @@ export function useServicosAvulsos() {
           nome: `Serviço Avulso - ${dados.nome}`,
           tipo: "receber" as any,
           valor: dados.preco,
-          valor_pago: dados.preco,
+          valor_pago: null,
           data: dataHoje(),
           status: "pago" as any,
           recorrente: false,
