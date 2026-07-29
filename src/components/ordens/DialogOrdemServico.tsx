@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useTiposServico } from "@/hooks/useTiposServico";
+import { useIsPwaMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ import { useOrdemServicoWizardState } from "./ordem-servico-wizard/useOrdemServi
 import { validarEtapa } from "./ordem-servico-wizard/useOrdemServicoWizardValidacao";
 import { salvarOrdemServico } from "./ordem-servico-wizard/handleSubmitOrdemServico";
 import { OrdemServicoWizardProgresso } from "./ordem-servico-wizard/OrdemServicoWizardProgresso";
+import { EtapaCardWrapper } from "./ordem-servico-wizard/EtapaCardWrapper";
 import { EtapaOrigemCliente } from "./ordem-servico-wizard/EtapaOrigemCliente";
 import { EtapaDadosCliente } from "./ordem-servico-wizard/EtapaDadosCliente";
 import { EtapaDispositivo } from "./ordem-servico-wizard/EtapaDispositivo";
@@ -63,6 +65,7 @@ export const DialogOrdemServico = ({
   const { tiposServico, criar: criarTipoServico } = useTiposServico();
   const { taxasAtivas, calcularTaxa } = useTaxasCartao();
   const { localizacoes } = useLocalizacoesOS();
+  const modoUnico = useIsPwaMobile();
 
   const {
     loading, setLoading,
@@ -163,6 +166,35 @@ export const DialogOrdemServico = ({
     }
   };
 
+  const tentarSalvarModoUnico = () => {
+    const etapasParaValidar: EtapaWizard[] = [2, 3, 4];
+    for (const etapa of etapasParaValidar) {
+      const resultado = validarEtapa({
+        etapa,
+        formData,
+        tecnicoId,
+        tecnicoObrigatorioOS,
+        funcionarioId,
+      });
+
+      if (!resultado.valido) {
+        toast({
+          title: "Campo obrigatório",
+          description: resultado.mensagem,
+          variant: "destructive",
+        });
+        setCampoComErro(resultado.campoComErro ?? null);
+        document
+          .querySelector(`[data-etapa="${etapa}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+    }
+
+    setCampoComErro(null);
+    handleSalvar();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="!inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-[calc(100vw-1rem)] !h-[92dvh] !max-w-2xl !rounded-2xl sm:!w-screen sm:!h-screen sm:!max-w-none sm:!max-h-none sm:!rounded-none sm:!left-0 sm:!top-0 sm:!translate-x-0 sm:!translate-y-0 sm:!border-0 sm:zoom-in-100 sm:slide-in-from-left-0 sm:slide-in-from-top-0 sm:data-[state=closed]:slide-out-to-left-0 sm:data-[state=closed]:slide-out-to-top-0 sm:data-[state=closed]:zoom-out-100 p-0 gap-0 overflow-hidden flex flex-col bg-background [&>button]:h-7 [&>button]:w-7 sm:[&>button]:h-8 sm:[&>button]:w-8 [&>button]:rounded-full [&>button]:bg-muted [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-3 [&>button]:right-3 sm:[&>button]:top-6 sm:[&>button]:right-6">
@@ -183,16 +215,100 @@ export const DialogOrdemServico = ({
                 </div>
               </div>
             </DialogHeader>
-            <OrdemServicoWizardProgresso
-              etapaAtual={etapaAtual}
-              etapaMaximaAlcancada={etapaMaximaAlcancada}
-              onEtapaClick={irParaEtapa}
-            />
+            {!modoUnico && (
+              <OrdemServicoWizardProgresso
+                etapaAtual={etapaAtual}
+                etapaMaximaAlcancada={etapaMaximaAlcancada}
+                onEtapaClick={irParaEtapa}
+              />
+            )}
           </div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-6 sm:py-5">
           <div className="text-sm sm:max-w-5xl sm:mx-auto">
+          {modoUnico ? (
+            <div className="space-y-4">
+              <EtapaCardWrapper dataEtapa={1}>
+                <EtapaOrigemCliente formData={formData} setFormData={setFormData} />
+              </EtapaCardWrapper>
+
+              <EtapaCardWrapper dataEtapa={2}>
+                <EtapaDadosCliente
+                  formData={formData}
+                  setFormData={setFormData}
+                  campoComErro={campoComErro}
+                  clienteSelecionadoId={clienteSelecionadoId}
+                  clientesFiltrados={clientesFiltrados}
+                  mostrarSugestoesNome={mostrarSugestoesNome}
+                  setMostrarSugestoesNome={setMostrarSugestoesNome}
+                  mostrarSugestoesCPF={mostrarSugestoesCPF}
+                  setMostrarSugestoesCPF={setMostrarSugestoesCPF}
+                  nomeInputRef={nomeInputRef}
+                  cpfInputRef={cpfInputRef}
+                  buscandoCEP={buscandoCEP}
+                  buscarClientes={buscarClientes}
+                  selecionarCliente={selecionarCliente}
+                  handleClienteNomeChange={handleClienteNomeChange}
+                  handleClienteCPFChange={handleClienteCPFChange}
+                  handleBuscarCEPOS={handleBuscarCEPOS}
+                />
+              </EtapaCardWrapper>
+
+              <EtapaCardWrapper dataEtapa={3}>
+                <EtapaDispositivo
+                  formData={formData}
+                  setFormData={setFormData}
+                  campoComErro={campoComErro}
+                />
+              </EtapaCardWrapper>
+
+              <EtapaCardWrapper dataEtapa={4}>
+                <EtapaInformacoesServico
+                  formData={formData}
+                  setFormData={setFormData}
+                  campoComErro={campoComErro}
+                  localizacoes={localizacoes}
+                  podeVerTecnicos={podeVerTecnicos}
+                  funcionarios={funcionarios}
+                  tecnicoObrigatorioOS={tecnicoObrigatorioOS}
+                  tecnicoId={tecnicoId}
+                  setTecnicoId={setTecnicoId}
+                  tecnicosOS={tecnicosOS}
+                  setTecnicosOS={setTecnicosOS}
+                  tiposServico={tiposServico}
+                  tipoServicoId={tipoServicoId}
+                  setTipoServicoId={setTipoServicoId}
+                  criandoTipoServico={criandoTipoServico}
+                  setCriandoTipoServico={setCriandoTipoServico}
+                  novoTipoServicoNome={novoTipoServicoNome}
+                  setNovoTipoServicoNome={setNovoTipoServicoNome}
+                  criarTipoServico={criarTipoServico}
+                />
+              </EtapaCardWrapper>
+
+              <EtapaCardWrapper dataEtapa={5}>
+                <EtapaChecklistAvarias formData={formData} setFormData={setFormData} />
+              </EtapaCardWrapper>
+
+              <EtapaCardWrapper dataEtapa={6}>
+                <EtapaServicosProdutos formData={formData} setFormData={setFormData} />
+              </EtapaCardWrapper>
+
+              <EtapaCardWrapper dataEtapa={7}>
+                <EtapaResumoAssinatura
+                  formData={formData}
+                  setFormData={setFormData}
+                  taxasAtivas={taxasAtivas}
+                  bandeiraSelecionada={bandeiraSelecionada}
+                  setBandeiraSelecionada={setBandeiraSelecionada}
+                  calcularTaxa={calcularTaxa}
+                  temAssinaturaSaida={!!ordem}
+                />
+              </EtapaCardWrapper>
+            </div>
+          ) : (
+            <>
           {etapaAtual === 1 && (
             <EtapaOrigemCliente formData={formData} setFormData={setFormData} />
           )}
@@ -270,38 +386,68 @@ export const DialogOrdemServico = ({
               temAssinaturaSaida={!!ordem}
             />
           )}
+            </>
+          )}
           </div>
         </div>
 
         <div className="shrink-0 px-3 py-2.5 sm:px-6 sm:py-4 border-t">
           <div className="flex flex-row justify-between gap-2 sm:gap-3 sm:max-w-5xl sm:mx-auto">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={etapaAtual === 1 ? () => onOpenChange(false) : voltarEtapa}
-              disabled={loading}
-              className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              {etapaAtual === 1 ? "Cancelar" : "Anterior"}
-            </Button>
-            {etapaAtual < TOTAL_ETAPAS ? (
-              <Button type="button" size="sm" onClick={tentarAvancar} disabled={loading} className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm">
-                Próximo
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+            {modoUnico ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onOpenChange(false)}
+                  disabled={loading}
+                  className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Cancelar
+                </Button>
+                <Button type="button" size="sm" onClick={tentarSalvarModoUnico} disabled={loading} className="sm:h-10 sm:px-4 sm:text-sm">
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    ordem ? "Atualizar" : "Criar Ordem"
+                  )}
+                </Button>
+              </>
             ) : (
-              <Button type="button" size="sm" onClick={handleSalvar} disabled={loading} className="sm:h-10 sm:px-4 sm:text-sm">
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={etapaAtual === 1 ? () => onOpenChange(false) : voltarEtapa}
+                  disabled={loading}
+                  className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  {etapaAtual === 1 ? "Cancelar" : "Anterior"}
+                </Button>
+                {etapaAtual < TOTAL_ETAPAS ? (
+                  <Button type="button" size="sm" onClick={tentarAvancar} disabled={loading} className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm">
+                    Próximo
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 ) : (
-                  ordem ? "Atualizar" : "Criar Ordem"
+                  <Button type="button" size="sm" onClick={handleSalvar} disabled={loading} className="sm:h-10 sm:px-4 sm:text-sm">
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      ordem ? "Atualizar" : "Criar Ordem"
+                    )}
+                  </Button>
                 )}
-              </Button>
+              </>
             )}
           </div>
         </div>

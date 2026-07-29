@@ -51,3 +51,26 @@ export function useIsMobileOrTablet() {
 
   return !!isMobileOrTablet;
 }
+
+/** true quando o app roda instalado (PWA standalone) em uma tela mobile. */
+export function useIsPwaMobile() {
+  const [isPwaMobile, setIsPwaMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const mqlStandalone = window.matchMedia("(display-mode: standalone)");
+    const mqlMobile = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const compute = () => {
+      const standalone = mqlStandalone.matches || (navigator as any).standalone === true;
+      setIsPwaMobile(standalone && window.innerWidth < MOBILE_BREAKPOINT);
+    };
+    compute();
+    mqlStandalone.addEventListener("change", compute);
+    mqlMobile.addEventListener("change", compute);
+    return () => {
+      mqlStandalone.removeEventListener("change", compute);
+      mqlMobile.removeEventListener("change", compute);
+    };
+  }, []);
+
+  return isPwaMobile;
+}
