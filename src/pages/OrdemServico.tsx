@@ -689,8 +689,8 @@ export default function OrdemServicoPage() {
         <div className="min-w-0 p-4 md:p-6 max-w-full overflow-x-hidden">
           <div className="flex min-w-0 flex-col gap-4">
 
-            {/* Card com fundo invertido ao tema — escuro no modo claro, claro no modo escuro */}
-            <div className="relative rounded-2xl bg-[#0b0f19] dark:bg-slate-100 px-4 py-4 md:px-5 md:py-5 flex flex-col gap-4 overflow-hidden">
+            {/* Card com fundo invertido ao tema — gradiente preto no modo claro, claro no modo escuro */}
+            <div className="relative rounded-2xl bg-gradient-to-br from-slate-800 to-black dark:bg-slate-100 dark:bg-none px-4 py-4 md:px-5 md:py-5 flex flex-col gap-4 overflow-hidden">
               <div className="flex items-center gap-3">
                 <SidebarTrigger className="hidden lg:flex shrink-0 text-white/70 hover:text-white dark:text-slate-500 dark:hover:text-slate-900" />
 
@@ -698,8 +698,8 @@ export default function OrdemServicoPage() {
                   <SlidersHorizontal className="h-5 w-5 text-primary" />
                 </div>
 
-                <div className="min-w-0">
-                  <h1 className="text-lg md:text-xl font-bold tracking-tight text-white dark:text-slate-900 truncate">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-white dark:text-slate-900 truncate">
                     Centro de Controle
                   </h1>
                   <p className="text-xs text-white/50 dark:text-slate-500 truncate hidden sm:block">
@@ -740,33 +740,33 @@ export default function OrdemServicoPage() {
               </div>
 
               {/* Barra de ações */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2 min-w-0">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setDialogImportarOS(true)}
-                  className="h-9 text-xs flex-1 sm:flex-none gap-1.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
+                  className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
                 >
-                  <Upload className="h-3.5 w-3.5" />
-                  Importar
+                  <Upload className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Importar</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setDialogExportarRelatorio(true)}
-                  className="h-9 text-xs flex-1 sm:flex-none gap-1.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
+                  className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  Exportar
+                  <Download className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Exportar</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setDialogServicoAvulso(true)}
-                  className="h-9 text-xs flex-1 sm:flex-none gap-1.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
+                  className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
                 >
-                  <Wrench className="h-3.5 w-3.5" />
-                  Avulso
+                  <Wrench className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Avulso</span>
                 </Button>
 
                 <DropdownMenu>
@@ -839,11 +839,11 @@ export default function OrdemServicoPage() {
               </div>
 
               {/* Filtro de período */}
-              <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto scrollbar-hide">
-                <div className="flex items-center gap-1.5 rounded-lg bg-white/5 dark:bg-slate-900/5 px-2.5 py-1.5 text-xs text-white/70 dark:text-slate-600 font-mono shrink-0">
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap min-w-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 rounded-lg bg-white/5 dark:bg-slate-900/5 px-2 sm:px-2.5 py-1.5 text-xs text-white/70 dark:text-slate-600 font-mono min-w-0">
                   <CalendarIcon className="h-3 w-3 shrink-0" />
                   <Select value={mesFiltro} onValueChange={aplicarFiltroMes}>
-                    <SelectTrigger className="h-5 w-[130px] border-0 bg-transparent shadow-none focus:ring-0 text-xs p-0 text-white/70 dark:text-slate-600">
+                    <SelectTrigger className="h-5 w-[92px] sm:w-[130px] border-0 bg-transparent shadow-none focus:ring-0 text-[11px] sm:text-xs p-0 text-white/70 dark:text-slate-600">
                       <SelectValue placeholder="Mês" />
                     </SelectTrigger>
                     <SelectContent>
@@ -862,16 +862,16 @@ export default function OrdemServicoPage() {
                   </Select>
                 </div>
 
-                <span className="text-xs text-white/30 dark:text-slate-400 font-mono shrink-0">|</span>
+                <span className="text-xs text-white/30 dark:text-slate-400 font-mono shrink-0 hidden sm:inline">|</span>
 
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
-                      className={cn("h-7 shrink-0 text-xs gap-1 px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataInicio && "text-white/50 dark:text-slate-400")}
+                      className={cn("h-7 shrink-0 text-[11px] sm:text-xs gap-1 px-2 sm:px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataInicio && "text-white/50 dark:text-slate-400")}
                     >
-                      <CalendarIcon className="h-3 w-3" />
+                      <CalendarIcon className="h-3 w-3 shrink-0" />
                       {dataInicio ? format(dataInicio, "dd/MM") : "início"}
                     </Button>
                   </PopoverTrigger>
@@ -886,16 +886,16 @@ export default function OrdemServicoPage() {
                   </PopoverContent>
                 </Popover>
 
-                <span className="text-xs text-white/30 dark:text-slate-400 font-mono shrink-0">até</span>
+                <span className="text-[11px] sm:text-xs text-white/30 dark:text-slate-400 font-mono shrink-0">até</span>
 
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       size="sm"
-                      className={cn("h-7 shrink-0 text-xs gap-1 px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataFim && "text-white/50 dark:text-slate-400")}
+                      className={cn("h-7 shrink-0 text-[11px] sm:text-xs gap-1 px-2 sm:px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataFim && "text-white/50 dark:text-slate-400")}
                     >
-                      <CalendarIcon className="h-3 w-3" />
+                      <CalendarIcon className="h-3 w-3 shrink-0" />
                       {dataFim ? format(dataFim, "dd/MM") : "fim"}
                     </Button>
                   </PopoverTrigger>
@@ -915,7 +915,7 @@ export default function OrdemServicoPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => { setDataInicio(undefined); setDataFim(undefined); aplicarFiltroMes("todos"); }}
-                    className="h-7 shrink-0 text-xs gap-1 px-2 text-white/50 dark:text-slate-500 hover:text-destructive hover:bg-white/10 dark:hover:bg-slate-900/10"
+                    className="h-7 w-7 sm:w-auto shrink-0 text-xs gap-1 px-0 sm:px-2 text-white/50 dark:text-slate-500 hover:text-destructive hover:bg-white/10 dark:hover:bg-slate-900/10"
                   >
                     <X className="h-3 w-3" />
                   </Button>
