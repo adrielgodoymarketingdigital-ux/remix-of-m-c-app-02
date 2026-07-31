@@ -460,6 +460,7 @@ export default function OrdemServicoPage() {
     if (ordemParaExcluir) {
       await excluirOrdem(ordemParaExcluir.id);
       setOrdemParaExcluir(null);
+      await carregarContador();
     }
   };
 
@@ -505,6 +506,7 @@ export default function OrdemServicoPage() {
     setDialogExcluirEmLote(false);
     handleCancelarSelecao();
     toast.success(`${ids.length} ${ids.length === 1 ? "OS excluída" : "OS excluídas"} com sucesso`);
+    await carregarContador();
   };
 
   const handleConfirmarMudarStatusEmLote = async () => {
@@ -1376,13 +1378,13 @@ export default function OrdemServicoPage() {
             open={dialogAberto}
             onOpenChange={setDialogAberto}
             ordem={ordemSelecionada}
-            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); }}
+            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); await carregarContador(); }}
           />
 
           <DialogOrdemServicoSimplificada
             open={dialogSimplificadaAberto}
             onOpenChange={setDialogSimplificadaAberto}
-            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); }}
+            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); await carregarContador(); }}
           />
 
           <DialogVisualizacaoOrdem
@@ -1396,7 +1398,7 @@ export default function OrdemServicoPage() {
             open={dialogAssinaturaSaida}
             onOpenChange={setDialogAssinaturaSaida}
             ordem={ordemParaAssinatura}
-            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); }}
+            onSuccess={async () => { await carregarOrdens(); await carregarLucroOrdensEntregues(); await carregarContador(); }}
           />
 
           <DialogEnviarWhatsApp
@@ -1612,6 +1614,7 @@ export default function OrdemServicoPage() {
                     if (gerencialExcluir) {
                       await excluirOrdem(gerencialExcluir.id);
                       setGerencialExcluir(null);
+                      await carregarContador();
                     }
                   }}
                 >
@@ -1681,7 +1684,11 @@ export default function OrdemServicoPage() {
           <DialogImportarOS
             open={dialogImportarOS}
             onOpenChange={setDialogImportarOS}
-            onImportar={importarOSEmLote}
+            onImportar={async (ordens: Parameters<typeof importarOSEmLote>[0]) => {
+              const resultado = await importarOSEmLote(ordens);
+              await carregarContador();
+              return resultado;
+            }}
           />
         </div>
       </main>
