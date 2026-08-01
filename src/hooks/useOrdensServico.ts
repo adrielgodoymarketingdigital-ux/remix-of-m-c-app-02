@@ -281,17 +281,13 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         }
 
         if (dataInicio) {
-          const ano = dataInicio.getFullYear();
-          const mes = String(dataInicio.getMonth() + 1).padStart(2, '0');
-          const dia = String(dataInicio.getDate()).padStart(2, '0');
-          query = query.gte("created_at", `${ano}-${mes}-${dia}T00:00:00`);
+          const inicioDia = new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0, 0);
+          query = query.gte("created_at", inicioDia.toISOString());
         }
 
         if (dataFim) {
-          const ano = dataFim.getFullYear();
-          const mes = String(dataFim.getMonth() + 1).padStart(2, '0');
-          const dia = String(dataFim.getDate()).padStart(2, '0');
-          query = query.lte("created_at", `${ano}-${mes}-${dia}T23:59:59`);
+          const fimDia = new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999);
+          query = query.lte("created_at", fimDia.toISOString());
         }
 
         const { data, error } = await query;
@@ -383,13 +379,13 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       }
 
       if (dataInicio) {
-        const inicioISO = dataInicio.toISOString().split('T')[0];
-        query = query.gte("created_at", inicioISO);
+        const inicioDia = new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0, 0);
+        query = query.gte("created_at", inicioDia.toISOString());
       }
 
       if (dataFim) {
-        const fimISO = dataFim.toISOString().split('T')[0] + "T23:59:59";
-        query = query.lte("created_at", fimISO);
+        const fimDia = new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999);
+        query = query.lte("created_at", fimDia.toISOString());
       }
 
       const { data, error } = await query;
