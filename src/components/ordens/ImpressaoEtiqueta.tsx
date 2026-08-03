@@ -2,8 +2,10 @@ import { useEffect, useCallback } from "react";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { EtiquetaOSConfig } from "@/types/configuracao-loja";
+import { AvariasOS } from "@/types/ordem-servico";
 import { format } from "date-fns";
 import { getPrintScript } from "@/lib/print-utils";
+import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 
 interface ImpressaoEtiquetaProps {
   ordem: OrdemServico;
@@ -48,6 +50,14 @@ export function ImpressaoEtiqueta({ ordem, onFechar, printWindow }: ImpressaoEti
   const logoUrl = config?.logo_url || "";
   const valorTotal = ordem.total ? `R$ ${Number(ordem.total).toFixed(2).replace('.', ',')}` : "";
 
+  const avariasData = ordem.avarias as AvariasOS | null;
+  const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
+  const senhaExibicao = senhaDesbloqueio
+    ? senhaDesbloqueio.tipo === "padrao"
+      ? (senhaDesbloqueio.padrao?.join("-") || "")
+      : senhaDesbloqueio.valor
+    : "";
+
   const buildContent = useCallback(() => {
     let html = '<div class="etiqueta-container">';
 
@@ -62,11 +72,11 @@ export function ImpressaoEtiqueta({ ordem, onFechar, printWindow }: ImpressaoEti
     if (etiquetaConfig.mostrar_defeito && defeito) html += `<div class="etiqueta-defeito">Def: ${defeito}</div>`;
     if (etiquetaConfig.mostrar_valor && valorTotal) html += `<div class="etiqueta-campo etiqueta-campo-bold">${valorTotal}</div>`;
     if (etiquetaConfig.mostrar_data) html += `<div class="etiqueta-campo etiqueta-data">Entrada: ${dataEntrada}</div>`;
-    if (etiquetaConfig.mostrar_senha && ordem.senha_desbloqueio) html += `<div class="etiqueta-campo">Senha: ${ordem.senha_desbloqueio}</div>`;
+    if (etiquetaConfig.mostrar_senha && senhaExibicao) html += `<div class="etiqueta-campo">Senha: ${senhaExibicao}</div>`;
 
     html += "</div>";
     return html;
-  }, [clienteNome, clienteTelefone, dataEntrada, defeito, etiquetaConfig, marcaModelo, ordem, logoUrl, valorTotal]);
+  }, [clienteNome, clienteTelefone, dataEntrada, defeito, etiquetaConfig, marcaModelo, ordem, logoUrl, valorTotal, senhaExibicao]);
 
   useEffect(() => {
     const targetWindow = printWindow ?? window.open("", "_blank", "width=400,height=400");

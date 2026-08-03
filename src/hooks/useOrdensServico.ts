@@ -311,8 +311,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
     }
   }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, funcionarioCarregando, isFilial, isProprietario, mostrarOsFiliais]);
 
-  const buscarOrdemCompleta = useCallback(async (id: string): Promise<OrdemServico | null> => {
-    if (detalhesCacheRef.current[id]) {
+  const buscarOrdemCompleta = useCallback(async (id: string, forcarAtualizacao = false): Promise<OrdemServico | null> => {
+    if (!forcarAtualizacao && detalhesCacheRef.current[id]) {
       return detalhesCacheRef.current[id];
     }
 

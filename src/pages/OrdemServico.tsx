@@ -674,7 +674,7 @@ export default function OrdemServicoPage() {
 
     etiquetaPrintWindowRef.current = printWindow;
 
-    const ordemCompleta = await buscarOrdemCompleta(ordem.id);
+    const ordemCompleta = await buscarOrdemCompleta(ordem.id, true);
     if (!ordemCompleta) {
       printWindow.close();
       etiquetaPrintWindowRef.current = null;
