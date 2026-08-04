@@ -383,6 +383,7 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
          funcionario={funcionarioSelecionado}
          open={perfilAberto}
          onOpenChange={setPerfilAberto}
+         mesReferencia={mesSelecionado}
        />
      </div>
    );

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,6 +23,7 @@ interface PerfilDesempenhoFuncionarioProps {
   funcionario: Funcionario | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mesReferencia?: Date;
 }
 
 const STATUS_COMISSIONAVEIS = ["entregue"];
@@ -57,12 +58,25 @@ function resolverNomeTipoServico(
   return null;
 }
 
-export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }: PerfilDesempenhoFuncionarioProps) {
-  const [dataInicio, setDataInicio] = useState<Date | undefined>(startOfMonth(new Date()));
-  const [dataFim, setDataFim] = useState<Date | undefined>(endOfMonth(new Date()));
+export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, mesReferencia }: PerfilDesempenhoFuncionarioProps) {
+  const [dataInicio, setDataInicio] = useState<Date | undefined>(startOfMonth(mesReferencia ?? new Date()));
+  const [dataFim, setDataFim] = useState<Date | undefined>(endOfMonth(mesReferencia ?? new Date()));
   const [statusFiltro, setStatusFiltro] = useState("todos");
   const [buscaNumeroOS, setBuscaNumeroOS] = useState("");
   const { statusList } = useOSStatusConfig();
+
+  // Ao abrir o dialog para um funcionário, sincroniza o período com o mês
+  // selecionado no Dashboard de Equipe (em vez de sempre cair no mês atual).
+  useEffect(() => {
+    if (open && funcionario) {
+      const ref = mesReferencia ?? new Date();
+      setDataInicio(startOfMonth(ref));
+      setDataFim(endOfMonth(ref));
+      setStatusFiltro("todos");
+      setBuscaNumeroOS("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, funcionario?.id]);
 
   // Usa o dia selecionado inteiro no filtro
   const dataInicioISO = dataInicio ? startOfDay(dataInicio).toISOString() : null;
@@ -92,9 +106,18 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }:
     return ordens;
   }, [data?.ordens, statusFiltro, buscaNumeroOS]);
 
-  const totalOS = ordensFiltradas.length;
-  const totalValor = ordensFiltradas.reduce((acc, o) => acc + (o.total || 0), 0);
-  const totalComissao = ordensFiltradas.reduce((acc, o) => {
+  // "Total de OS" no resumo conta apenas OS entregues, para bater com a
+  // coluna "OS" da tabela de Desempenho por Funcionário (useComissoes),
+  // que só soma OS comissionáveis. A tabela abaixo continua listando o
+  // histórico completo (todos os status) quando nenhum filtro é aplicado.
+  const ordensComissionaveis = useMemo(
+    () => ordensFiltradas.filter(isOSComissionavel),
+    [ordensFiltradas],
+  );
+
+  const totalOS = ordensComissionaveis.length;
+  const totalValor = ordensComissionaveis.reduce((acc, o) => acc + (o.total || 0), 0);
+  const totalComissao = ordensComissionaveis.reduce((acc, o) => {
     const c = resolverComissaoOS(o, comissoesTipoServico);
     return acc + (c || 0);
   }, 0);
@@ -198,11 +221,12 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange }:
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Total de OS</CardTitle>
+                  <CardTitle className="text-sm font-medium">OS Entregues</CardTitle>
                   <ClipboardList className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{isLoading ? "..." : totalOS}</div>
+                  <p className="text-xs text-muted-foreground">Comissionáveis no período</p>
                 </CardContent>
               </Card>
               <Card>
