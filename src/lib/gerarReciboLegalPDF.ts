@@ -623,9 +623,13 @@ export async function salvarReciboStorage(pdf: jsPDF, compraId: string): Promise
 
   if (error) throw error;
 
-  const { data: urlData } = supabase.storage
+  // Bucket privado — getPublicUrl geraria uma URL que o Storage rejeita
+  // com "Bucket not found", então usamos signed URL (válida por 1 ano).
+  const { data: signedData, error: signedError } = await supabase.storage
     .from('termos-compra')
-    .getPublicUrl(filePath);
+    .createSignedUrl(filePath, 60 * 60 * 24 * 365);
 
-  return urlData.publicUrl;
+  if (signedError) throw signedError;
+
+  return signedData.signedUrl;
 }
