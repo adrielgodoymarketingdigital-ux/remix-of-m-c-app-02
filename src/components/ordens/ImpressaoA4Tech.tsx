@@ -243,26 +243,34 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
             </div>
             <div className="impressao-block-content impressao-senha-content">
               <div className="impressao-senha-info">
-                <div className="impressao-field">
-                  <span className="impressao-label">Tipo:</span>
-                  <span className="impressao-value">
-                    {senhaDesbloqueio.tipo === "numero" && "PIN"}
-                    {senhaDesbloqueio.tipo === "letra" && "Texto"}
-                    {senhaDesbloqueio.tipo === "padrao" && "Padrão Android"}
-                  </span>
-                </div>
-                {senhaDesbloqueio.tipo !== "padrao" && (
+                {senhaDesbloqueio.nao_informada ? (
                   <div className="impressao-field">
-                    <span className="impressao-label">Senha:</span>
-                    <span className="impressao-value impressao-senha-valor">
-                      {senhaDesbloqueio.valor || "N/A"}
-                    </span>
+                    <span className="impressao-value">Cliente não quis passar a senha</span>
                   </div>
-                )}
-                {senhaDesbloqueio.tipo === "padrao" && senhaDesbloqueio.padrao && (
-                  <div className="impressao-field">
-                    <PatternLockVisualizacao pattern={senhaDesbloqueio.padrao} size={80} />
-                  </div>
+                ) : (
+                  <>
+                    <div className="impressao-field">
+                      <span className="impressao-label">Tipo:</span>
+                      <span className="impressao-value">
+                        {senhaDesbloqueio.tipo === "numero" && "PIN"}
+                        {senhaDesbloqueio.tipo === "letra" && "Texto"}
+                        {senhaDesbloqueio.tipo === "padrao" && "Padrão Android"}
+                      </span>
+                    </div>
+                    {senhaDesbloqueio.tipo !== "padrao" && (
+                      <div className="impressao-field">
+                        <span className="impressao-label">Senha:</span>
+                        <span className="impressao-value impressao-senha-valor">
+                          {senhaDesbloqueio.valor || "N/A"}
+                        </span>
+                      </div>
+                    )}
+                    {senhaDesbloqueio.tipo === "padrao" && senhaDesbloqueio.padrao && (
+                      <div className="impressao-field">
+                        <PatternLockVisualizacao pattern={senhaDesbloqueio.padrao} size={80} />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

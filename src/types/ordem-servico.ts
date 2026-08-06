@@ -4,6 +4,7 @@ export interface SenhaDesbloqueio {
   tipo: TipoSenha;
   valor: string;
   padrao?: number[];
+  nao_informada?: boolean;
 }
 
 export interface ChecklistItem {

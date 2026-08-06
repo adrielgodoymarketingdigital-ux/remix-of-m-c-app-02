@@ -18,12 +18,14 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, User, Check } from "lucide-react";
 import { Cliente } from "@/types/cliente";
 import { Servico } from "@/types/servico";
 import { Checklist, AvariasOS } from "@/types/ordem-servico";
+import { encryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useEmpresaInfo } from "@/hooks/useResolvedUserId";
@@ -59,6 +61,8 @@ interface FormDataSimplificada {
   dispositivoSistema: string;
   dispositivoFabricante: string;
   dispositivoSubtipo: string;
+  senhaDesbloqueio: string;
+  senhaNaoInformada: boolean;
   defeitoRelatado: string;
   observacoesInternas: string;
   checklistEntrada: Record<string, boolean>;
@@ -84,6 +88,8 @@ const formDataInicial: FormDataSimplificada = {
   dispositivoSistema: "",
   dispositivoFabricante: "",
   dispositivoSubtipo: "",
+  senhaDesbloqueio: "",
+  senhaNaoInformada: false,
   defeitoRelatado: "",
   observacoesInternas: "",
   checklistEntrada: {},
@@ -230,6 +236,13 @@ export const DialogOrdemServicoSimplificada = ({
 
       const avariasData: AvariasOS = {
         checklist: { entrada: formData.checklistEntrada, saida: {} } as Checklist,
+        senha_desbloqueio: encryptSenhaDesbloqueio(
+          formData.senhaNaoInformada
+            ? { tipo: "letra", valor: "", nao_informada: true }
+            : formData.senhaDesbloqueio
+            ? { tipo: "letra", valor: formData.senhaDesbloqueio }
+            : undefined
+        ),
         servicos_realizados: formData.servicos.map((s) => {
           const custo = Number(s.custo || 0);
           const preco = Number(s.preco || 0);
@@ -563,6 +576,32 @@ export const DialogOrdemServicoSimplificada = ({
                   value={formData.dispositivoIMEI}
                   onChange={(e) => setFormData({ ...formData, dispositivoIMEI: e.target.value })}
                 />
+              </div>
+              <div className="col-span-1 sm:col-span-2 space-y-2">
+                <Label htmlFor="senhaDesbloqueio">Senha de Desbloqueio</Label>
+                <Input
+                  id="senhaDesbloqueio"
+                  placeholder="Ex: 1234 ou abc123"
+                  value={formData.senhaDesbloqueio}
+                  onChange={(e) => setFormData({ ...formData, senhaDesbloqueio: e.target.value })}
+                  disabled={formData.senhaNaoInformada}
+                />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="senhaNaoInformada"
+                    checked={formData.senhaNaoInformada}
+                    onCheckedChange={(checked) =>
+                      setFormData({
+                        ...formData,
+                        senhaNaoInformada: checked === true,
+                        senhaDesbloqueio: checked === true ? "" : formData.senhaDesbloqueio,
+                      })
+                    }
+                  />
+                  <Label htmlFor="senhaNaoInformada" className="font-normal cursor-pointer">
+                    Cliente não quis passar a senha
+                  </Label>
+                </div>
               </div>
             </CardContent>
           </Card>

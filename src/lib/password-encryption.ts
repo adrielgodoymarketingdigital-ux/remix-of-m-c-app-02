@@ -80,6 +80,7 @@ export function encryptSenhaDesbloqueio(senha: SenhaDesbloqueio | undefined): Se
     tipo: senha.tipo,
     valor: encryptValue(senha.valor),
     padrao: senha.padrao ? senha.padrao.map(n => n + PATTERN_OFFSET) : undefined,
+    nao_informada: senha.nao_informada,
   };
 }
 
@@ -96,7 +97,8 @@ export function decryptSenhaDesbloqueio(senha: SenhaDesbloqueio | undefined): Se
     tipo: senha.tipo,
     valor: decryptValue(senha.valor),
     padrao: senha.padrao && isPatternObfuscated
-      ? senha.padrao.map(n => n - PATTERN_OFFSET) 
+      ? senha.padrao.map(n => n - PATTERN_OFFSET)
       : senha.padrao,
+    nao_informada: senha.nao_informada,
   };
 }

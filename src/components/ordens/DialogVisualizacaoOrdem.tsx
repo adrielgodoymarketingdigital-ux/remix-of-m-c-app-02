@@ -295,18 +295,22 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
 
               <Section title="Senha de Desbloqueio" icon={<Lock className="h-3.5 w-3.5" />}>
                 {senhaDesbloqueio ? (
-                  <div className="space-y-2">
-                    <InfoItem label="Tipo" value={
-                      senhaDesbloqueio.tipo === "numero" ? "PIN Numérico" :
-                      senhaDesbloqueio.tipo === "letra" ? "Senha Texto" : "Padrão Android"
-                    } />
-                    {senhaDesbloqueio.tipo !== "padrao" && (
-                      <InfoItem label="Senha" value={senhaDesbloqueio.valor} mono />
-                    )}
-                    {senhaDesbloqueio.tipo === "padrao" && senhaDesbloqueio.padrao && (
-                      <PatternLockVisualizacao pattern={senhaDesbloqueio.padrao} size={100} />
-                    )}
-                  </div>
+                  senhaDesbloqueio.nao_informada ? (
+                    <EmptyState label="Cliente não quis passar a senha" />
+                  ) : (
+                    <div className="space-y-2">
+                      <InfoItem label="Tipo" value={
+                        senhaDesbloqueio.tipo === "numero" ? "PIN Numérico" :
+                        senhaDesbloqueio.tipo === "letra" ? "Senha Texto" : "Padrão Android"
+                      } />
+                      {senhaDesbloqueio.tipo !== "padrao" && (
+                        <InfoItem label="Senha" value={senhaDesbloqueio.valor} mono />
+                      )}
+                      {senhaDesbloqueio.tipo === "padrao" && senhaDesbloqueio.padrao && (
+                        <PatternLockVisualizacao pattern={senhaDesbloqueio.padrao} size={100} />
+                      )}
+                    </div>
+                  )
                 ) : (
                   <EmptyState label="Nenhuma senha registrada" />
                 )}

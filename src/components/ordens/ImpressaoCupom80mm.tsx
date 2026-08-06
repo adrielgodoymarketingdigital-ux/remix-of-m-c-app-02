@@ -257,7 +257,9 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
       {c.mostrar_senha && senhaDesbloqueio && (
         <div className="cupom-section cupom-border-bottom">
           <div className="cupom-section-title">SENHA</div>
-          {senhaDesbloqueio.tipo === "padrao" && senhaDesbloqueio.padrao ? (
+          {senhaDesbloqueio.nao_informada ? (
+            <div>Cliente não quis passar a senha</div>
+          ) : senhaDesbloqueio.tipo === "padrao" && senhaDesbloqueio.padrao ? (
             <div className="cupom-center">
               <PatternLockVisualizacao pattern={senhaDesbloqueio.padrao} size={60} />
             </div>

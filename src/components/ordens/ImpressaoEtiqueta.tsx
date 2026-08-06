@@ -53,7 +53,9 @@ export function ImpressaoEtiqueta({ ordem, onFechar, printWindow }: ImpressaoEti
   const avariasData = ordem.avarias as AvariasOS | null;
   const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
   const senhaExibicao = senhaDesbloqueio
-    ? senhaDesbloqueio.tipo === "padrao"
+    ? senhaDesbloqueio.nao_informada
+      ? "Não informada"
+      : senhaDesbloqueio.tipo === "padrao"
       ? (senhaDesbloqueio.padrao?.join("-") || "")
       : senhaDesbloqueio.valor
     : "";
