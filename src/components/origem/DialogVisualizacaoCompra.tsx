@@ -202,9 +202,10 @@ export function DialogVisualizacaoCompra({
       }
     } catch (error) {
       console.error('Erro ao gerar recibo:', error);
+      const mensagem = error instanceof Error ? error.message : 'Erro ao gerar recibo legal';
       toast({
-        title: "Erro",
-        description: "Erro ao gerar recibo legal",
+        title: "Erro ao gerar recibo",
+        description: mensagem,
         variant: "destructive",
       });
     } finally {
