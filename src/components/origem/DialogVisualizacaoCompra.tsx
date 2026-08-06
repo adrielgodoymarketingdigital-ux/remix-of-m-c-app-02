@@ -67,27 +67,38 @@ export function DialogVisualizacaoCompra({
         return;
       }
 
-      // Buscar dados da pessoa
-      if (!compra.pessoa_id) {
+      // Buscar dados da pessoa (compra "terceiro") ou usar fornecedor (compra "fornecedor")
+      let pessoaData: Partial<OrigemPessoa> & { nome: string };
+
+      if (compra.pessoa_id) {
+        const { data, error: pessoaError } = await supabase
+          .from('origem_pessoas')
+          .select('*')
+          .eq('id', compra.pessoa_id)
+          .single();
+
+        if (pessoaError || !data) {
+          toast({
+            title: "Erro ao buscar vendedor",
+            description: "Não foi possível encontrar os dados do vendedor",
+            variant: "destructive",
+          });
+          setGerandoPDF(false);
+          return;
+        }
+
+        pessoaData = data;
+      } else if (compra.fornecedor_id) {
+        pessoaData = {
+          nome: compra.fornecedores?.nome || 'Fornecedor não identificado',
+          cpf_cnpj: '',
+          endereco: '',
+          telefone: '',
+        };
+      } else {
         toast({
           title: "Erro",
-          description: "Compra sem pessoa associada",
-          variant: "destructive",
-        });
-        setGerandoPDF(false);
-        return;
-      }
-
-      const { data: pessoaData, error: pessoaError } = await supabase
-        .from('origem_pessoas')
-        .select('*')
-        .eq('id', compra.pessoa_id)
-        .single();
-
-      if (pessoaError || !pessoaData) {
-        toast({
-          title: "Erro ao buscar vendedor",
-          description: "Não foi possível encontrar os dados do vendedor",
+          description: "Compra sem pessoa ou fornecedor associado",
           variant: "destructive",
         });
         setGerandoPDF(false);
@@ -95,14 +106,10 @@ export function DialogVisualizacaoCompra({
       }
 
       // Validar campos obrigatórios do vendedor
-      const camposFaltandoVendedor: string[] = [];
-      if (!pessoaData.nome) camposFaltandoVendedor.push("Nome do vendedor");
-      if (!pessoaData.cpf_cnpj) camposFaltandoVendedor.push("CPF/CNPJ do vendedor");
-
-      if (camposFaltandoVendedor.length > 0) {
+      if (!pessoaData.nome) {
         toast({
           title: "Dados do vendedor incompletos",
-          description: `Por favor, complete os seguintes campos: ${camposFaltandoVendedor.join(", ")}`,
+          description: "Por favor, complete o nome do vendedor",
           variant: "destructive",
         });
         setGerandoPDF(false);
@@ -142,12 +149,6 @@ export function DialogVisualizacaoCompra({
         return;
       }
 
-      // Converter tipo de pessoa
-      const pessoa: OrigemPessoa = {
-        ...pessoaData,
-        tipo: pessoaData.tipo as 'fisica' | 'juridica',
-      };
-
       // Gerar PDF
       const pdf = await gerarReciboLegalPDF({
         loja: {
@@ -157,7 +158,7 @@ export function DialogVisualizacaoCompra({
           endereco: config.endereco,
           telefone: config.telefone,
         },
-        vendedor: pessoa,
+        vendedor: pessoaData,
         dispositivo: {
           tipo: dispositivo.tipo,
           marca: dispositivo.marca,
