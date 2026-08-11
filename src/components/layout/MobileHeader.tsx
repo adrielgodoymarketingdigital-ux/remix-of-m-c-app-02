@@ -43,6 +43,8 @@ const routeTitles: Record<string, string> = {
   "/admin/chat": "Chat",
   "/admin/avisos": "Avisos",
   "/admin/notificacoes": "Notificações",
+  "/admin/compatibilidade-pelicula": "Compatibilidade de Película",
+  "/compatibilidade-pelicula": "Compatibilidade de Película",
 };
 
 export function MobileHeader() {

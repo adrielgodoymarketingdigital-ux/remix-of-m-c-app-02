@@ -1231,6 +1231,56 @@ export type Database = {
         }
         Relationships: []
       }
+      grupo_compatibilidade_modelos: {
+        Row: {
+          grupo_id: string
+          id: string
+          marca: string
+          modelo: string
+        }
+        Insert: {
+          grupo_id: string
+          id?: string
+          marca: string
+          modelo: string
+        }
+        Update: {
+          grupo_id?: string
+          id?: string
+          marca?: string
+          modelo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupo_compatibilidade_modelos_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_compatibilidade_pelicula"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_compatibilidade_pelicula: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       dispositivo_imeis: {
         Row: {
           created_at: string | null

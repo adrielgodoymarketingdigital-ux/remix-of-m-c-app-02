@@ -60,6 +60,8 @@ const AdminNovidades = lazy(() => import("./pages/AdminNovidades"));
 const AdminFinanceiro = lazy(() => import("./pages/AdminFinanceiro"));
 const AdminCupons = lazy(() => import("./pages/AdminCupons"));
 const AdminAlteracoesCorrecoes = lazy(() => import("./pages/AdminAlteracoesCorrecoes"));
+const AdminCompatibilidadePelicula = lazy(() => import("./pages/AdminCompatibilidadePelicula"));
+const CompatibilidadePelicula = lazy(() => import("./pages/CompatibilidadePelicula"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const CadastroPlano = lazy(() => import("./pages/CadastroPlano"));
 const Novidades = lazy(() => import("./pages/Novidades"));
@@ -450,6 +452,18 @@ function AppRoutes() {
           <Route path="/admin/alteracoes-correcoes" element={
             <ProtectedAppRoute>
               <AdminAlteracoesCorrecoes />
+            </ProtectedAppRoute>
+          } />
+          <Route path="/admin/compatibilidade-pelicula" element={
+            <ProtectedAppRoute>
+              <AdminCompatibilidadePelicula />
+            </ProtectedAppRoute>
+          } />
+
+          {/* Compatibilidade de Película - base global, acessível a todos os usuários autenticados */}
+          <Route path="/compatibilidade-pelicula" element={
+            <ProtectedAppRoute>
+              <CompatibilidadePelicula />
             </ProtectedAppRoute>
           } />
 

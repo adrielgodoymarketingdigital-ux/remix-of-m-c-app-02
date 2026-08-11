@@ -46,6 +46,8 @@ import {
   ClipboardList,
   Settings2,
   PackageCheck,
+  ShieldCheck,
+  Layers,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
@@ -101,6 +103,7 @@ const adminMenuItems = [
   { title: "Chat Suporte", url: "/admin/chat", icon: MessageCircle, badgeKey: 'chatsAbertos' as const },
   { title: "Avisos", url: "/admin/avisos", icon: Megaphone, badgeKey: null },
   { title: "Notificações", url: "/admin/notificacoes", icon: Bell, badgeKey: null },
+  { title: "Compatibilidade de Película", url: "/admin/compatibilidade-pelicula", icon: Layers, badgeKey: null },
 ];
 
 // Map routes to tutorial data-tutorial attribute values
@@ -314,6 +317,17 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
           )}
 
           <div className="border-t border-white/5 py-4 mb-4">
+            <button
+              onClick={() => {
+                navigate("/compatibilidade-pelicula");
+                onOpenChange(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left active:scale-[0.98] touch-manipulation text-slate-400 hover:text-slate-200 hover:bg-white/5"
+            >
+              <ShieldCheck className="h-5 w-5 flex-shrink-0" />
+              <span className="flex-1 text-sm">Compatibilidade de Película</span>
+              <ChevronRight className="h-4 w-4 text-slate-600" />
+            </button>
             {onPersonalizarMenu && (
               <button
                 onClick={() => {
