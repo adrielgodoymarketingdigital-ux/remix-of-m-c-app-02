@@ -66,7 +66,10 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, modulo: "dashboard" as keyof PermissoesModulos },
   { title: "PDV", url: "/pdv", icon: ShoppingCart, modulo: "pdv" as keyof PermissoesModulos },
   { title: "Ordem de Serviço", url: "/os", icon: ClipboardCheck, modulo: "ordem_servico" as keyof PermissoesModulos },
-  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos },
+  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos, items: [
+    { title: "Produtos e Peças", url: "/produtos", icon: Package },
+    { title: "Compatibilidade de Película", url: "/compatibilidade-pelicula", icon: ShieldCheck },
+  ]},
   { title: "Serviços", url: "/servicos", icon: WrenchIcon, modulo: "servicos" as keyof PermissoesModulos },
   { title: "Dispositivos", url: "/dispositivos", icon: Tablet, modulo: "dispositivos" as keyof PermissoesModulos },
   { title: "Remessas Corporativas", url: "/remessas", icon: PackageCheck, modulo: "remessas_corporativas" as keyof PermissoesModulos },
@@ -122,7 +125,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [clientesExpandido, setClientesExpandido] = useState(false);
+  const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
@@ -224,10 +227,11 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                 const temSubmenu = !!(item.items && item.items.length > 0);
 
                 if (temSubmenu) {
+                  const expandido = !!expandidos[item.title];
                   return (
                     <div key={item.title}>
                       <button
-                        onClick={() => setClientesExpandido(v => !v)}
+                        onClick={() => setExpandidos(prev => ({ ...prev, [item.title]: !expandido }))}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
                           "active:scale-[0.98] touch-manipulation",
@@ -236,9 +240,9 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                       >
                         <item.icon className="h-5 w-5 flex-shrink-0" />
                         <span className="flex-1 text-sm">{item.title}</span>
-                        <ChevronRight className={cn("h-4 w-4 text-slate-600 transition-transform", clientesExpandido && "rotate-90")} />
+                        <ChevronRight className={cn("h-4 w-4 text-slate-600 transition-transform", expandido && "rotate-90")} />
                       </button>
-                      {clientesExpandido && item.items?.map(sub => (
+                      {expandido && item.items?.map(sub => (
                         <button
                           key={sub.url}
                           onClick={() => handleNavigate(sub.url)}
@@ -317,17 +321,6 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
           )}
 
           <div className="border-t border-white/5 py-4 mb-4">
-            <button
-              onClick={() => {
-                navigate("/compatibilidade-pelicula");
-                onOpenChange(false);
-              }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left active:scale-[0.98] touch-manipulation text-slate-400 hover:text-slate-200 hover:bg-white/5"
-            >
-              <ShieldCheck className="h-5 w-5 flex-shrink-0" />
-              <span className="flex-1 text-sm">Compatibilidade de Película</span>
-              <ChevronRight className="h-4 w-4 text-slate-600" />
-            </button>
             {onPersonalizarMenu && (
               <button
                 onClick={() => {

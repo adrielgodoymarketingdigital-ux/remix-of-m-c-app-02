@@ -55,7 +55,6 @@ import {
   Ticket,
   ClipboardList,
   PackageCheck,
-  ShieldCheck,
   Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,14 +73,14 @@ const novidadesItem = { title: "Novidades", url: "/novidades", icon: Sparkles, m
 // Menu de Ajuda: sempre visível para todos os usuários logados, sem restrição de permissão/plano
 const ajudaItem = { title: "Ajuda", url: "/ajuda", icon: HelpCircle };
 
-// Compatibilidade de Película: base global, sempre visível a todos os usuários logados
-const compatibilidadePeliculaItem = { title: "Compatibilidade de Película", url: "/compatibilidade-pelicula", icon: ShieldCheck };
-
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, modulo: "dashboard" as keyof PermissoesModulos },
   { title: "PDV", url: "/pdv", icon: ShoppingCart, modulo: "pdv" as keyof PermissoesModulos },
   { title: "Ordem de Serviço", url: "/os", icon: ClipboardCheck, modulo: "ordem_servico" as keyof PermissoesModulos },
-  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos },
+  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos, items: [
+    { title: "📦 Produtos e Peças", url: "/produtos", modulo: "produtos_pecas" as keyof PermissoesModulos },
+    { title: "🛡️ Compatibilidade de Película", url: "/compatibilidade-pelicula" },
+  ]},
   { title: "Serviços", url: "/servicos", icon: WrenchIcon, modulo: "servicos" as keyof PermissoesModulos },
   { title: "Dispositivos", url: "/dispositivos", icon: Tablet, modulo: "dispositivos" as keyof PermissoesModulos },
   { title: "Remessas Corporativas", url: "/remessas", icon: PackageCheck, modulo: "remessas_corporativas" as keyof PermissoesModulos },
@@ -404,14 +403,6 @@ export function AppSidebar() {
         )}
 
         <div className="mt-auto p-4 border-t border-white/5 space-y-1">
-          <Button
-            variant="ghost"
-            className={`w-full text-slate-400 hover:text-slate-200 hover:bg-white/5 ${collapsed ? "justify-center" : "justify-start"} ${location.pathname.startsWith(compatibilidadePeliculaItem.url) ? "bg-blue-500/10 text-blue-400 font-medium" : ""}`}
-            onClick={() => navigate(compatibilidadePeliculaItem.url)}
-          >
-            <compatibilidadePeliculaItem.icon className="h-5 w-5" />
-            {!collapsed && <span className="ml-2">{compatibilidadePeliculaItem.title}</span>}
-          </Button>
           <Button
             variant="ghost"
             className={`w-full text-slate-400 hover:text-slate-200 hover:bg-white/5 ${collapsed ? "justify-center" : "justify-start"} ${location.pathname.startsWith(ajudaItem.url) ? "bg-blue-500/10 text-blue-400 font-medium" : ""}`}
