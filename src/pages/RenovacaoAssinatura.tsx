@@ -345,9 +345,10 @@ export default function RenovacaoAssinatura() {
             </div>
 
             <Button
+              variant="ghost"
               onClick={buscarAssinatura}
               disabled={!email.trim() || buscando}
-              className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 font-semibold rounded-xl gap-2 shadow-[0_0_24px_-6px_rgba(59,130,246,0.5)] disabled:opacity-40"
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 font-semibold rounded-xl gap-2 shadow-[0_0_24px_-6px_rgba(59,130,246,0.5)] disabled:bg-none disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none disabled:opacity-100"
             >
               {buscando ? (
                 <><Loader2 className="h-4 w-4 animate-spin" />Buscando...</>
