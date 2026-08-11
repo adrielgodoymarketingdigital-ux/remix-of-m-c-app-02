@@ -68,7 +68,7 @@ const menuItems = [
   { title: "Ordem de Serviço", url: "/os", icon: ClipboardCheck, modulo: "ordem_servico" as keyof PermissoesModulos },
   { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos, items: [
     { title: "Produtos e Peças", url: "/produtos", icon: Package },
-    { title: "Compatibilidade de Película", url: "/compatibilidade-pelicula", icon: ShieldCheck },
+    { title: "Comp. Película", url: "/compatibilidade-pelicula", icon: ShieldCheck },
   ]},
   { title: "Serviços", url: "/servicos", icon: WrenchIcon, modulo: "servicos" as keyof PermissoesModulos },
   { title: "Dispositivos", url: "/dispositivos", icon: Tablet, modulo: "dispositivos" as keyof PermissoesModulos },
