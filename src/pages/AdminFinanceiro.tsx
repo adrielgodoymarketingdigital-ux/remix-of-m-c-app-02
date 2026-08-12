@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
-import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock, Phone } from "lucide-react";
+import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock, Phone, Download } from "lucide-react";
 import { SecaoDesempenhoSistema } from "@/components/admin/SecaoDesempenhoSistema";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { format } from "date-fns";
@@ -16,6 +16,8 @@ import { ptBR } from "date-fns/locale";
 import { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { aplicarMascaraTelefone } from "@/lib/mascaras";
+import { toast } from "sonner";
 
 const COLORS = ["hsl(var(--primary))", "#10b981", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444"];
 
@@ -159,6 +161,46 @@ export default function AdminFinanceiro() {
 
   const naoRenovadosSectionRef = useRef<HTMLDivElement>(null);
   const [mostrarNaoRenovados, setMostrarNaoRenovados] = useState(false);
+
+  const exportarNaoRenovadosCsv = () => {
+    const usuarios = naoRenovados ?? [];
+    if (usuarios.length === 0) {
+      toast.error("Nenhum usuário não renovado para exportar");
+      return;
+    }
+
+    const escapeCsvValue = (value: string) => {
+      if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
+    const headers = ["Nome", "Telefone", "Email"];
+    const rows = usuarios.map((u) => [
+      u.profile?.nome || "",
+      u.profile?.celular ? aplicarMascaraTelefone(u.profile.celular) : "",
+      u.profile?.email || "",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map(escapeCsvValue).join(",")),
+    ].join("\n");
+
+    const BOM = "﻿";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nao_renovados_${format(new Date(), "yyyy-MM-dd_HH-mm")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`${usuarios.length} usuário(s) exportado(s) com sucesso!`);
+  };
 
   const { data: inadimplenteProfiles } = useQuery({
     queryKey: ["admin-inadimplentes-profiles", inadimplenteIds],
@@ -961,9 +1003,21 @@ export default function AdminFinanceiro() {
                       Tinham plano pago, venceu há mais de 3 dias e não renovaram — acesso bloqueado
                     </CardDescription>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => setMostrarNaoRenovados(false)}>
-                    Fechar
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportarNaoRenovadosCsv}
+                      disabled={(naoRenovados?.length ?? 0) === 0}
+                      className="gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Exportar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setMostrarNaoRenovados(false)}>
+                      Fechar
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
