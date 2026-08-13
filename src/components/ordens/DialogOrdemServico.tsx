@@ -305,8 +305,6 @@ export const DialogOrdemServico = ({
                   tecnicoObrigatorioOS={tecnicoObrigatorioOS}
                   tecnicoId={tecnicoId}
                   setTecnicoId={setTecnicoId}
-                  tecnicosOS={tecnicosOS}
-                  setTecnicosOS={setTecnicosOS}
                   tiposServico={tiposServico}
                   tipoServicoId={tipoServicoId}
                   setTipoServicoId={setTipoServicoId}
@@ -323,7 +321,14 @@ export const DialogOrdemServico = ({
               </EtapaCardWrapper>
 
               <EtapaCardWrapper dataEtapa={6}>
-                <EtapaServicosProdutos formData={formData} setFormData={setFormData} />
+                <EtapaServicosProdutos
+                  formData={formData}
+                  setFormData={setFormData}
+                  podeVerTecnicos={podeVerTecnicos}
+                  funcionarios={funcionarios}
+                  tecnicosOS={tecnicosOS}
+                  setTecnicosOS={setTecnicosOS}
+                />
               </EtapaCardWrapper>
 
               <EtapaCardWrapper dataEtapa={7}>
@@ -385,8 +390,6 @@ export const DialogOrdemServico = ({
               tecnicoObrigatorioOS={tecnicoObrigatorioOS}
               tecnicoId={tecnicoId}
               setTecnicoId={setTecnicoId}
-              tecnicosOS={tecnicosOS}
-              setTecnicosOS={setTecnicosOS}
               tiposServico={tiposServico}
               tipoServicoId={tipoServicoId}
               setTipoServicoId={setTipoServicoId}
@@ -403,7 +406,14 @@ export const DialogOrdemServico = ({
           )}
 
           {etapaAtual === 6 && (
-            <EtapaServicosProdutos formData={formData} setFormData={setFormData} />
+            <EtapaServicosProdutos
+              formData={formData}
+              setFormData={setFormData}
+              podeVerTecnicos={podeVerTecnicos}
+              funcionarios={funcionarios}
+              tecnicosOS={tecnicosOS}
+              setTecnicosOS={setTecnicosOS}
+            />
           )}
 
           {etapaAtual === 7 && (

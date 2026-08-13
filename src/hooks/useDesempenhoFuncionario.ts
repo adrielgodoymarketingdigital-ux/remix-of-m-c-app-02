@@ -17,7 +17,12 @@ export interface OSFuncionario {
   comissao_calculada_snapshot: number | null;
   avarias: any;
   cliente: { nome: string } | null;
-  tecnicos_os: { descricao_servico: string | null; comissao_calculada_snapshot: number | null }[];
+  tecnicos_os: {
+    descricao_servico: string | null;
+    servico_nome_snapshot: string | null;
+    preco_servico_snapshot: number | null;
+    comissao_calculada_snapshot: number | null;
+  }[];
 }
 
 export interface DesempenhoFuncionario {
@@ -74,16 +79,23 @@ export function useDesempenhoFuncionario(funcionarioId: string | null, dataInici
       const { data: tecnicosOS } = osIds.length > 0
         ? await supabase
             .from("os_tecnicos")
-            .select("os_id, descricao_servico, comissao_calculada_snapshot")
+            .select("os_id, descricao_servico, servico_nome_snapshot, preco_servico_snapshot, comissao_calculada_snapshot")
             .eq("funcionario_id", funcionarioId)
             .in("os_id", osIds)
         : { data: [] as any[] };
 
-      const tecnicosPorOS: Record<string, { descricao_servico: string | null; comissao_calculada_snapshot: number | null }[]> = {};
+      const tecnicosPorOS: Record<string, {
+        descricao_servico: string | null;
+        servico_nome_snapshot: string | null;
+        preco_servico_snapshot: number | null;
+        comissao_calculada_snapshot: number | null;
+      }[]> = {};
       (tecnicosOS || []).forEach((t: any) => {
         if (!tecnicosPorOS[t.os_id]) tecnicosPorOS[t.os_id] = [];
         tecnicosPorOS[t.os_id].push({
           descricao_servico: t.descricao_servico,
+          servico_nome_snapshot: t.servico_nome_snapshot,
+          preco_servico_snapshot: t.preco_servico_snapshot,
           comissao_calculada_snapshot: t.comissao_calculada_snapshot,
         });
       });

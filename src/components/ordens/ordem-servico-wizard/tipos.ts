@@ -71,6 +71,7 @@ export interface FormData {
 export interface TecnicoOS {
   funcionario_id: string;
   descricao_servico: string;
+  servico_id?: string;
 }
 
 export interface ResultadoValidacaoEtapa {

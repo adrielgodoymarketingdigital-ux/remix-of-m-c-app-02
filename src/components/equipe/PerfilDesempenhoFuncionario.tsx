@@ -319,7 +319,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                                   <div className="flex flex-col gap-1">
                                     {os.tecnicos_os.map((t, idx) => (
                                       <Badge key={idx} variant="outline" className="text-xs w-fit">
-                                        {t.descricao_servico || nomeTipo || "Serviço"}
+                                        {t.servico_nome_snapshot || t.descricao_servico || nomeTipo || "Serviço"}
                                       </Badge>
                                     ))}
                                   </div>
@@ -378,12 +378,14 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
             const linhas = osDetalhe.tecnicos_os && osDetalhe.tecnicos_os.length > 0
               ? osDetalhe.tecnicos_os.map((t, idx) => ({
                   key: idx,
-                  descricao: t.descricao_servico || nomeTipo || "Serviço",
+                  descricao: t.servico_nome_snapshot || t.descricao_servico || nomeTipo || "Serviço",
+                  valorServico: t.preco_servico_snapshot,
                   comissao: t.comissao_calculada_snapshot,
                 }))
               : [{
                   key: 0,
                   descricao: nomeTipo || "Serviço",
+                  valorServico: osDetalhe.total,
                   comissao: resolverComissaoOS(osDetalhe, comissoesTipoServico),
                 }];
             const totalComissaoOS = linhas.reduce((acc, l) => acc + (l.comissao || 0), 0);
@@ -405,6 +407,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                     <TableHeader>
                       <TableRow>
                         <TableHead>Serviço Realizado</TableHead>
+                        <TableHead className="text-right">Valor do Serviço</TableHead>
                         <TableHead className="text-right">Comissão</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -412,6 +415,11 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                       {linhas.map((l) => (
                         <TableRow key={l.key}>
                           <TableCell>{l.descricao}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {l.valorServico != null
+                              ? <ValorMonetario valor={l.valorServico} />
+                              : "—"}
+                          </TableCell>
                           <TableCell className="text-right">
                             {l.comissao !== null
                               ? <span className="font-medium text-primary"><ValorMonetario valor={l.comissao} /></span>

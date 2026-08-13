@@ -46,12 +46,81 @@ interface SalvarOrdemServicoParams {
 }
 
 /**
- * Salva técnicos da OS com snapshot de comissão individual — extraída sem
- * mudança semântica do handleSubmit original de DialogOrdemServico.tsx.
+ * Calcula a comissão do Técnico Principal somando, serviço a serviço, a
+ * comissão configurada para o tipo de serviço cujo nome está CONTIDO no
+ * nome do item em formData.servicos (comparação case-insensitive, com
+ * trim). Isso substitui o cálculo antigo que aplicava uma única % (a do
+ * tipoServicoId selecionado na Etapa 4) sobre o TOTAL da OS — errado quando
+ * a OS tem múltiplos serviços com comissões diferentes entre si.
+ *
+ * Usa "contém" em vez de igualdade exata porque, na prática, o nome do
+ * serviço lançado na OS costuma incluir modelo/peça/detalhes (ex: "FRONTAL
+ * IPHONE 13 PRO MAX _*O.CHINA*_ (TROCA DE CI)"), enquanto o Tipo de Serviço
+ * configurado é um nome curto e genérico (ex: "TROCA DE FRONTAL"). Quando
+ * mais de um tipo configurado bate, usa o nome mais longo (mais
+ * específico) para reduzir falsos positivos.
+ *
+ * Serviços cujo nome não bate com nenhum tipo de serviço configurado para
+ * o funcionário não entram na soma (comissão null para aquele item).
+ */
+async function calcularComissaoPorServico(
+  funcId: string,
+  servicos: FormData["servicos"],
+): Promise<number | null> {
+  if (servicos.length === 0) return null;
+
+  const { data: tiposServicoTodos } = await supabase
+    .from("tipos_servico")
+    .select("id, nome");
+
+  const { data: comissoesFuncionario } = await supabase
+    .from("comissoes_tipo_servico")
+    .select("tipo_servico_id, comissao_tipo, comissao_valor")
+    .eq("funcionario_id", funcId);
+
+  const comissaoPorTipoServicoId = new Map(
+    (comissoesFuncionario || []).map(c => [c.tipo_servico_id, c])
+  );
+
+  const tiposComComissao = (tiposServicoTodos || []).filter(
+    t => comissaoPorTipoServicoId.has(t.id)
+  );
+
+  let comissaoTotal = 0;
+  let algumEncontrado = false;
+
+  for (const servico of servicos) {
+    const nomeServicoNormalizado = servico.nome.trim().toLowerCase();
+    const candidatos = tiposComComissao.filter(t => {
+      const nomeTipoNormalizado = t.nome.trim().toLowerCase();
+      return nomeTipoNormalizado.length > 0
+        && nomeServicoNormalizado.includes(nomeTipoNormalizado);
+    });
+    // Entre os tipos cujo nome bate, prioriza o mais específico (mais longo).
+    const tipoEncontrado = candidatos.sort((a, b) => b.nome.length - a.nome.length)[0];
+    const config = tipoEncontrado ? comissaoPorTipoServicoId.get(tipoEncontrado.id) : undefined;
+
+    if (config && config.comissao_valor > 0) {
+      algumEncontrado = true;
+      comissaoTotal += config.comissao_tipo === "porcentagem"
+        ? servico.preco * (config.comissao_valor / 100)
+        : config.comissao_valor;
+    }
+  }
+
+  return algumEncontrado ? comissaoTotal : null;
+}
+
+/**
+ * Salva técnicos da OS com snapshot de comissão individual. A comissão de
+ * cada técnico é calculada sobre o preço do serviço específico vinculado a
+ * ele (servico_id), não sobre o total da OS — importante quando a OS tem
+ * múltiplos serviços com preços/comissões diferentes.
  */
 async function salvarTecnicosOS(
   osId: string,
   tecnicos: TecnicoOS[],
+  servicosOS: FormData["servicos"],
   totalOS: number,
   tipoServicoId: string | null
 ) {
@@ -73,6 +142,13 @@ async function salvarTecnicosOS(
     let comissaoValor: number | null = null;
     let comissaoCalculada: number | null = null;
 
+    // Serviço vinculado a este técnico (preço próprio); se não houver
+    // vínculo (dados antigos ou não informado), cai no total da OS.
+    const servicoVinculado = tec.servico_id
+      ? servicosOS.find(s => s.id === tec.servico_id)
+      : undefined;
+    const baseCalculo = servicoVinculado ? servicoVinculado.preco : totalOS;
+
     if (tsId) {
       const { data: comissaoConfig } = await supabase
         .from("comissoes_tipo_servico")
@@ -85,7 +161,7 @@ async function salvarTecnicosOS(
         comissaoTipo = comissaoConfig.comissao_tipo;
         comissaoValor = comissaoConfig.comissao_valor;
         if (comissaoConfig.comissao_tipo === "porcentagem") {
-          comissaoCalculada = (totalOS > 0 ? totalOS : 0) * (comissaoConfig.comissao_valor / 100);
+          comissaoCalculada = (baseCalculo > 0 ? baseCalculo : 0) * (comissaoConfig.comissao_valor / 100);
         } else {
           comissaoCalculada = comissaoConfig.comissao_valor;
         }
@@ -96,6 +172,9 @@ async function salvarTecnicosOS(
       os_id: osId,
       funcionario_id: tec.funcionario_id,
       descricao_servico: tec.descricao_servico || null,
+      servico_id: servicoVinculado ? servicoVinculado.id : null,
+      servico_nome_snapshot: servicoVinculado ? servicoVinculado.nome : null,
+      preco_servico_snapshot: servicoVinculado ? servicoVinculado.preco : null,
       comissao_tipo_snapshot: comissaoTipo,
       comissao_valor_snapshot: comissaoValor,
       comissao_calculada_snapshot: comissaoCalculada,
@@ -282,11 +361,18 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     const funcId = tecnicoId || funcionarioId || null;
     const tsId = tipoServicoId || null;
 
-    if (funcId && tsId) {
-      // Buscar nome do tipo de serviço
+    if (tsId) {
       const tipoEncontrado = tiposServico.find(t => t.id === tsId);
       tipoServicoNomeSnapshot = tipoEncontrado?.nome || null;
+    }
 
+    if (funcId && formData.servicos.length > 1) {
+      // Múltiplos serviços na OS: cada um pode ter uma comissão configurada
+      // diferente — soma a comissão de cada serviço sobre o preço dele,
+      // em vez de aplicar uma única % (a do Tipo de Serviço da Etapa 4)
+      // sobre o total da OS inteira.
+      comissaoCalculadaSnapshot = await calcularComissaoPorServico(funcId, formData.servicos);
+    } else if (funcId && tsId) {
       // Buscar comissão configurada para essa combinação
       const { data: comissaoConfig } = await supabase
         .from("comissoes_tipo_servico")
@@ -353,7 +439,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       if (error) throw error;
 
       // === SALVAR TÉCNICOS DA OS ===
-      await salvarTecnicosOS(ordem.id, tecnicosOS, total, tipoServicoId);
+      await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId);
 
       // === ATUALIZAR OU CRIAR CONTA A RECEBER AO EDITAR OS ===
       if (ordem.numero_os) {
@@ -543,7 +629,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .maybeSingle();
 
       if (osCriada) {
-        await salvarTecnicosOS(osCriada.id, tecnicosOS, total, tipoServicoId);
+        await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId);
       }
 
       // === BAIXA NO ESTOQUE E REGISTRO DE VENDAS PARA PRODUTOS/PEÇAS ===

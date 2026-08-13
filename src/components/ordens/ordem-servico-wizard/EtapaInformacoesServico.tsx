@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ClipboardList, Wrench, User, CalendarIcon, Plus, Check, Trash2 } from "lucide-react";
+import { ClipboardList, Wrench, CalendarIcon, Plus, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,7 +15,7 @@ import { TipoServico } from "@/hooks/useTiposServico";
 import { LocalizacaoOS } from "@/hooks/useLocalizacoesOS";
 import { EtapaCabecalho } from "./EtapaCabecalho";
 import { CampoLabel } from "./CampoLabel";
-import { FormData, TecnicoOS } from "./tipos";
+import { FormData } from "./tipos";
 
 interface EtapaInformacoesServicoProps {
   formData: FormData;
@@ -27,8 +27,6 @@ interface EtapaInformacoesServicoProps {
   tecnicoObrigatorioOS: boolean;
   tecnicoId: string | null;
   setTecnicoId: (id: string | null) => void;
-  tecnicosOS: TecnicoOS[];
-  setTecnicosOS: (tecnicos: TecnicoOS[]) => void;
   tiposServico: TipoServico[];
   tipoServicoId: string | null;
   setTipoServicoId: (id: string | null) => void;
@@ -49,8 +47,6 @@ export function EtapaInformacoesServico({
   tecnicoObrigatorioOS,
   tecnicoId,
   setTecnicoId,
-  tecnicosOS,
-  setTecnicosOS,
   tiposServico,
   tipoServicoId,
   setTipoServicoId,
@@ -189,84 +185,12 @@ export function EtapaInformacoesServico({
           )}
         </div>
 
-        {/* Técnicos Adicionais */}
         {podeVerTecnicos && funcionarios.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <Label className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                <User className="h-3.5 w-3.5" />
-                Técnicos e Serviços Realizados
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => setTecnicosOS([...tecnicosOS, { funcionario_id: "", descricao_servico: "" }])}
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Adicionar
-              </Button>
-            </div>
-            {tecnicosOS.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Adicione técnicos para especificar o que cada um realizou nesta OS.
-              </p>
-            )}
-            <div className="space-y-2">
-              {tecnicosOS.map((tec, index) => (
-                <div key={index} className="flex gap-2 items-start p-3 border rounded-xl bg-muted/30">
-                  <div className="flex-1 space-y-2">
-                    <Select
-                      value={tec.funcionario_id || "selecionar"}
-                      onValueChange={(value) => {
-                        const novos = [...tecnicosOS];
-                        novos[index].funcionario_id = value === "selecionar" ? "" : value;
-                        setTecnicosOS(novos);
-                      }}
-                    >
-                      <SelectTrigger className="h-9 rounded-lg">
-                        <SelectValue placeholder="Selecione o técnico" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="selecionar">Selecione...</SelectItem>
-                        {funcionarios
-                          .filter(f => f.ativo)
-                          .map((func) => (
-                            <SelectItem key={func.id} value={func.id}>
-                              {func.nome}
-                              {func.cargo ? ` (${func.cargo})` : ""}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="O que este técnico realizou? Ex: Troca de tela"
-                      value={tec.descricao_servico}
-                      onChange={(e) => {
-                        const novos = [...tecnicosOS];
-                        novos[index].descricao_servico = e.target.value;
-                        setTecnicosOS(novos);
-                      }}
-                      className="h-9 text-sm rounded-lg"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 w-9 p-0 text-destructive hover:text-destructive shrink-0"
-                    onClick={() => {
-                      const novos = tecnicosOS.filter((_, i) => i !== index);
-                      setTecnicosOS(novos);
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground -mt-2">
+            A comissão do Técnico Principal é calculada sobre o valor total da OS. Se mais de um técnico
+            realizou serviços diferentes nesta OS, vincule cada um ao seu serviço na etapa
+            "Serviços, Produtos e Peças" para que a comissão seja calculada sobre o valor de cada serviço.
+          </p>
         )}
 
         {/* Tipo de Serviço */}

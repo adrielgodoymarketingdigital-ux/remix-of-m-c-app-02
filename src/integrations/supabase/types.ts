@@ -2858,6 +2858,9 @@ export type Database = {
           funcionario_id: string
           id: string
           os_id: string
+          preco_servico_snapshot: number | null
+          servico_id: string | null
+          servico_nome_snapshot: string | null
         }
         Insert: {
           comissao_calculada_snapshot?: number | null
@@ -2868,6 +2871,9 @@ export type Database = {
           funcionario_id: string
           id?: string
           os_id: string
+          preco_servico_snapshot?: number | null
+          servico_id?: string | null
+          servico_nome_snapshot?: string | null
         }
         Update: {
           comissao_calculada_snapshot?: number | null
@@ -2878,6 +2884,9 @@ export type Database = {
           funcionario_id?: string
           id?: string
           os_id?: string
+          preco_servico_snapshot?: number | null
+          servico_id?: string | null
+          servico_nome_snapshot?: string | null
         }
         Relationships: [
           {
