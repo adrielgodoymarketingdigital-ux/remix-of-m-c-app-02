@@ -17,6 +17,7 @@ export interface OSFuncionario {
   comissao_calculada_snapshot: number | null;
   avarias: any;
   cliente: { nome: string } | null;
+  tecnicos_os: { descricao_servico: string | null; comissao_calculada_snapshot: number | null }[];
 }
 
 export interface DesempenhoFuncionario {
@@ -66,6 +67,27 @@ export function useDesempenhoFuncionario(funcionarioId: string | null, dataInici
 
       const { data: ordens } = await query.order("created_at", { ascending: false });
 
+      // Fetch multi-técnico rows for this employee (OS with 2+ serviços lançados
+      // via os_tecnicos têm uma comissão própria por linha, que não aparece no
+      // snapshot único de ordens_servico e precisa ser somada por OS).
+      const osIds = (ordens || []).map((o: any) => o.id);
+      const { data: tecnicosOS } = osIds.length > 0
+        ? await supabase
+            .from("os_tecnicos")
+            .select("os_id, descricao_servico, comissao_calculada_snapshot")
+            .eq("funcionario_id", funcionarioId)
+            .in("os_id", osIds)
+        : { data: [] as any[] };
+
+      const tecnicosPorOS: Record<string, { descricao_servico: string | null; comissao_calculada_snapshot: number | null }[]> = {};
+      (tecnicosOS || []).forEach((t: any) => {
+        if (!tecnicosPorOS[t.os_id]) tecnicosPorOS[t.os_id] = [];
+        tecnicosPorOS[t.os_id].push({
+          descricao_servico: t.descricao_servico,
+          comissao_calculada_snapshot: t.comissao_calculada_snapshot,
+        });
+      });
+
       // Fetch tipos_servico for name mapping (fallback for old OS without snapshot)
       const { data: tipos } = await supabase
         .from("tipos_servico")
@@ -88,8 +110,13 @@ export function useDesempenhoFuncionario(funcionarioId: string | null, dataInici
         };
       });
 
+      const ordensComTecnicos: OSFuncionario[] = (ordens || []).map((o: any) => ({
+        ...o,
+        tecnicos_os: tecnicosPorOS[o.id] || [],
+      }));
+
       return {
-        ordens: (ordens || []) as OSFuncionario[],
+        ordens: ordensComTecnicos,
         tiposServico,
         comissoesTipoServico,
       };

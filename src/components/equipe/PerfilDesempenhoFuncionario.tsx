@@ -38,6 +38,13 @@ function resolverComissaoOS(
 ): number | null {
   if (!isOSComissionavel(os)) return 0;
 
+  // OS com múltiplos serviços lançados para o mesmo funcionário (os_tecnicos)
+  // têm uma comissão por linha — soma todas em vez de usar só o snapshot
+  // único da OS, que reflete apenas o primeiro serviço/técnico.
+  if (os.tecnicos_os && os.tecnicos_os.length > 0) {
+    return os.tecnicos_os.reduce((acc, t) => acc + (t.comissao_calculada_snapshot || 0), 0);
+  }
+
   if (os.comissao_calculada_snapshot != null) {
     return os.comissao_calculada_snapshot;
   }
@@ -306,9 +313,19 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                               <TableCell>{os.cliente?.nome || "—"}</TableCell>
                               <TableCell>{os.dispositivo_marca} {os.dispositivo_modelo}</TableCell>
                               <TableCell>
-                                {nomeTipo
-                                  ? <Badge variant="outline" className="text-xs">{nomeTipo}</Badge>
-                                  : <span className="text-muted-foreground">—</span>}
+                                {os.tecnicos_os && os.tecnicos_os.length > 1 ? (
+                                  <div className="flex flex-col gap-1">
+                                    {os.tecnicos_os.map((t, idx) => (
+                                      <Badge key={idx} variant="outline" className="text-xs w-fit">
+                                        {t.descricao_servico || nomeTipo || "Serviço"}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : nomeTipo ? (
+                                  <Badge variant="outline" className="text-xs">{nomeTipo}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <Badge variant="secondary" className="text-xs">{os.status || "—"}</Badge>
