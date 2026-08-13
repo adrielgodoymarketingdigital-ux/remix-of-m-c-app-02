@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
-import { User, Wrench, ClipboardList, CalendarIcon, Search } from "lucide-react";
+import { User, Wrench, ClipboardList, CalendarIcon, Search, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -70,6 +70,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
   const [dataFim, setDataFim] = useState<Date | undefined>(endOfMonth(mesReferencia ?? new Date()));
   const [statusFiltro, setStatusFiltro] = useState("todos");
   const [buscaNumeroOS, setBuscaNumeroOS] = useState("");
+  const [osDetalhe, setOsDetalhe] = useState<OSFuncionario | null>(null);
   const { statusList } = useOSStatusConfig();
 
   // Ao abrir o dialog para um funcionário, sincroniza o período com o mês
@@ -300,6 +301,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Valor</TableHead>
                           <TableHead className="text-right">Comissão</TableHead>
+                          <TableHead className="text-center">Detalhes</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -338,6 +340,17 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                                   ? <span className="font-medium text-primary"><ValorMonetario valor={comissao} /></span>
                                   : <span className="text-muted-foreground">—</span>}
                               </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => setOsDetalhe(os)}
+                                  title="Ver serviços e comissões desta OS"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
                             </TableRow>
                           );
                         })}
@@ -350,6 +363,77 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
           </div>
         )}
       </DialogContent>
+
+      {/* Detalhe de serviços e comissões de uma OS específica */}
+      <Dialog open={!!osDetalhe} onOpenChange={(v) => !v && setOsDetalhe(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              OS {osDetalhe?.numero_os}
+            </DialogTitle>
+          </DialogHeader>
+          {osDetalhe && (() => {
+            const nomeTipo = resolverNomeTipoServico(osDetalhe, tiposServico);
+            const linhas = osDetalhe.tecnicos_os && osDetalhe.tecnicos_os.length > 0
+              ? osDetalhe.tecnicos_os.map((t, idx) => ({
+                  key: idx,
+                  descricao: t.descricao_servico || nomeTipo || "Serviço",
+                  comissao: t.comissao_calculada_snapshot,
+                }))
+              : [{
+                  key: 0,
+                  descricao: nomeTipo || "Serviço",
+                  comissao: resolverComissaoOS(osDetalhe, comissoesTipoServico),
+                }];
+            const totalComissaoOS = linhas.reduce((acc, l) => acc + (l.comissao || 0), 0);
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <p><span className="font-medium">Cliente:</span> {osDetalhe.cliente?.nome || "—"}</p>
+                  <p><span className="font-medium">Data:</span> {formatDate(osDetalhe.created_at)}</p>
+                  <p><span className="font-medium">Dispositivo:</span> {osDetalhe.dispositivo_marca} {osDetalhe.dispositivo_modelo}</p>
+                  <p>
+                    <span className="font-medium">Status:</span>{" "}
+                    <Badge variant="secondary" className="text-xs">{osDetalhe.status || "—"}</Badge>
+                  </p>
+                  <p><span className="font-medium">Valor Total da OS:</span> <ValorMonetario valor={osDetalhe.total} /></p>
+                </div>
+
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Serviço Realizado</TableHead>
+                        <TableHead className="text-right">Comissão</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {linhas.map((l) => (
+                        <TableRow key={l.key}>
+                          <TableCell>{l.descricao}</TableCell>
+                          <TableCell className="text-right">
+                            {l.comissao !== null
+                              ? <span className="font-medium text-primary"><ValorMonetario valor={l.comissao} /></span>
+                              : <span className="text-muted-foreground">—</span>}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="text-sm">
+                    <span className="font-medium">Comissão Total da OS: </span>
+                    <span className="font-bold text-primary"><ValorMonetario valor={totalComissaoOS} /></span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
