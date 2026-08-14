@@ -45,20 +45,45 @@ interface SalvarOrdemServicoParams {
   onOpenChange: (open: boolean) => void;
 }
 
+interface ComissaoConfig {
+  tipo_servico_id: string;
+  comissao_tipo: string;
+  comissao_valor: number;
+}
+
 /**
- * Calcula a comissão do Técnico Principal somando, serviço a serviço, a
- * comissão configurada para o tipo de serviço cujo nome está CONTIDO no
- * nome do item em formData.servicos (comparação case-insensitive, com
- * trim). Isso substitui o cálculo antigo que aplicava uma única % (a do
- * tipoServicoId selecionado na Etapa 4) sobre o TOTAL da OS — errado quando
- * a OS tem múltiplos serviços com comissões diferentes entre si.
+ * Acha, entre os tipos de serviço com comissão configurada para o
+ * funcionário, o de nome mais específico (mais longo) CONTIDO no nome do
+ * serviço informado (comparação case-insensitive, com trim).
  *
  * Usa "contém" em vez de igualdade exata porque, na prática, o nome do
  * serviço lançado na OS costuma incluir modelo/peça/detalhes (ex: "FRONTAL
  * IPHONE 13 PRO MAX _*O.CHINA*_ (TROCA DE CI)"), enquanto o Tipo de Serviço
- * configurado é um nome curto e genérico (ex: "TROCA DE FRONTAL"). Quando
- * mais de um tipo configurado bate, usa o nome mais longo (mais
- * específico) para reduzir falsos positivos.
+ * configurado é um nome curto e genérico (ex: "TROCA DE FRONTAL").
+ */
+function encontrarComissaoPorNomeServico(
+  nomeServico: string,
+  tiposComComissao: TipoServicoResumo[],
+  comissaoPorTipoServicoId: Map<string, ComissaoConfig>,
+): ComissaoConfig | undefined {
+  const nomeServicoNormalizado = nomeServico.trim().toLowerCase();
+  const candidatos = tiposComComissao.filter(t => {
+    const nomeTipoNormalizado = t.nome.trim().toLowerCase();
+    return nomeTipoNormalizado.length > 0
+      && nomeServicoNormalizado.includes(nomeTipoNormalizado);
+  });
+  // Entre os tipos cujo nome bate, prioriza o mais específico (mais longo).
+  const tipoEncontrado = candidatos.sort((a, b) => b.nome.length - a.nome.length)[0];
+  return tipoEncontrado ? comissaoPorTipoServicoId.get(tipoEncontrado.id) : undefined;
+}
+
+/**
+ * Calcula a comissão do Técnico Principal somando, serviço a serviço, a
+ * comissão configurada para o tipo de serviço cujo nome está CONTIDO no
+ * nome do item em formData.servicos. Isso substitui o cálculo antigo que
+ * aplicava uma única % (a do tipoServicoId selecionado na Etapa 4) sobre o
+ * TOTAL da OS — errado quando a OS tem múltiplos serviços com comissões
+ * diferentes entre si.
  *
  * Serviços cujo nome não bate com nenhum tipo de serviço configurado para
  * o funcionário não entram na soma (comissão null para aquele item).
@@ -90,15 +115,7 @@ async function calcularComissaoPorServico(
   let algumEncontrado = false;
 
   for (const servico of servicos) {
-    const nomeServicoNormalizado = servico.nome.trim().toLowerCase();
-    const candidatos = tiposComComissao.filter(t => {
-      const nomeTipoNormalizado = t.nome.trim().toLowerCase();
-      return nomeTipoNormalizado.length > 0
-        && nomeServicoNormalizado.includes(nomeTipoNormalizado);
-    });
-    // Entre os tipos cujo nome bate, prioriza o mais específico (mais longo).
-    const tipoEncontrado = candidatos.sort((a, b) => b.nome.length - a.nome.length)[0];
-    const config = tipoEncontrado ? comissaoPorTipoServicoId.get(tipoEncontrado.id) : undefined;
+    const config = encontrarComissaoPorNomeServico(servico.nome, tiposComComissao, comissaoPorTipoServicoId);
 
     if (config && config.comissao_valor > 0) {
       algumEncontrado = true;
@@ -114,8 +131,17 @@ async function calcularComissaoPorServico(
 /**
  * Salva técnicos da OS com snapshot de comissão individual. A comissão de
  * cada técnico é calculada sobre o preço do serviço específico vinculado a
- * ele (servico_id), não sobre o total da OS — importante quando a OS tem
- * múltiplos serviços com preços/comissões diferentes.
+ * ele (servico_id) — importante quando a OS tem múltiplos serviços com
+ * preços/comissões diferentes.
+ *
+ * A % de comissão usada é a configurada para o tipo de serviço cujo nome
+ * bate com o NOME DO SERVIÇO VINCULADO ao técnico (mesma lógica de
+ * calcularComissaoPorServico) — não o tipoServicoId único da OS inteira
+ * (Etapa de Informações), que pode ser diferente do serviço que esse
+ * técnico específico realizou e fazia a comissão sair errada mesmo depois
+ * de vincular corretamente o técnico ao serviço.
+ * Quando não há serviço vinculado (dados antigos/legados), cai no
+ * fallback antigo: tipoServicoId da OS sobre o total da OS.
  */
 async function salvarTecnicosOS(
   osId: string,
@@ -133,8 +159,24 @@ async function salvarTecnicosOS(
   // Remover técnicos antigos
   await supabase.from("os_tecnicos").delete().eq("os_id", osId);
 
-  // Calcular comissão para cada técnico
   const tsId = tipoServicoId || null;
+  const funcionarioIds = [...new Set(tecnicos.map(t => t.funcionario_id))];
+
+  const [{ data: tiposServicoTodos }, { data: comissoesFuncionarios }] = await Promise.all([
+    supabase.from("tipos_servico").select("id, nome"),
+    funcionarioIds.length > 0
+      ? supabase
+          .from("comissoes_tipo_servico")
+          .select("funcionario_id, tipo_servico_id, comissao_tipo, comissao_valor")
+          .in("funcionario_id", funcionarioIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ]);
+
+  const comissaoPorFuncionarioETipo = new Map<string, ComissaoConfig>();
+  (comissoesFuncionarios || []).forEach((c: any) => {
+    comissaoPorFuncionarioETipo.set(`${c.funcionario_id}:${c.tipo_servico_id}`, c);
+  });
+
   const tecnicosParaInserir = [];
 
   for (const tec of tecnicos) {
@@ -149,23 +191,25 @@ async function salvarTecnicosOS(
       : undefined;
     const baseCalculo = servicoVinculado ? servicoVinculado.preco : totalOS;
 
-    if (tsId) {
-      const { data: comissaoConfig } = await supabase
-        .from("comissoes_tipo_servico")
-        .select("comissao_tipo, comissao_valor")
-        .eq("funcionario_id", tec.funcionario_id)
-        .eq("tipo_servico_id", tsId)
-        .maybeSingle();
+    let comissaoConfig: ComissaoConfig | undefined;
+    if (servicoVinculado) {
+      const tiposComComissaoDoTecnico = (tiposServicoTodos || []).filter(t =>
+        comissaoPorFuncionarioETipo.has(`${tec.funcionario_id}:${t.id}`)
+      );
+      const comissaoPorTipoServicoId = new Map(
+        tiposComComissaoDoTecnico.map(t => [t.id, comissaoPorFuncionarioETipo.get(`${tec.funcionario_id}:${t.id}`)!])
+      );
+      comissaoConfig = encontrarComissaoPorNomeServico(servicoVinculado.nome, tiposComComissaoDoTecnico, comissaoPorTipoServicoId);
+    } else if (tsId) {
+      comissaoConfig = comissaoPorFuncionarioETipo.get(`${tec.funcionario_id}:${tsId}`);
+    }
 
-      if (comissaoConfig && comissaoConfig.comissao_valor > 0) {
-        comissaoTipo = comissaoConfig.comissao_tipo;
-        comissaoValor = comissaoConfig.comissao_valor;
-        if (comissaoConfig.comissao_tipo === "porcentagem") {
-          comissaoCalculada = (baseCalculo > 0 ? baseCalculo : 0) * (comissaoConfig.comissao_valor / 100);
-        } else {
-          comissaoCalculada = comissaoConfig.comissao_valor;
-        }
-      }
+    if (comissaoConfig && comissaoConfig.comissao_valor > 0) {
+      comissaoTipo = comissaoConfig.comissao_tipo;
+      comissaoValor = comissaoConfig.comissao_valor;
+      comissaoCalculada = comissaoConfig.comissao_tipo === "porcentagem"
+        ? (baseCalculo > 0 ? baseCalculo : 0) * (comissaoConfig.comissao_valor / 100)
+        : comissaoConfig.comissao_valor;
     }
 
     tecnicosParaInserir.push({
