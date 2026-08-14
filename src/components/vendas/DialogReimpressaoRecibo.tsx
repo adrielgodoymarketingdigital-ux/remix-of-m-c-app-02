@@ -67,26 +67,39 @@ interface DialogReimpressaoReciboProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   venda: Venda | null;
+  // Quando a venda faz parte de um grupo (múltiplos itens em uma mesma
+  // compra, ligados por grupo_venda), passar todos os itens aqui para que
+  // o recibo liste todos, não só o primeiro.
+  vendasGrupo?: Venda[] | null;
+}
+
+interface ItemReciboCompleto {
+  venda: Venda;
+  dispositivo: Dispositivo | null;
+  produto: any;
 }
 
 export function DialogReimpressaoRecibo({
   open,
   onOpenChange,
   venda,
+  vendasGrupo,
 }: DialogReimpressaoReciboProps) {
   const reciboRef = useRef<HTMLDivElement>(null);
   const { config: configLoja } = useConfiguracaoLoja(venda?.empresa_id);
   const { toast } = useToast();
-  const [dispositivo, setDispositivo] = useState<Dispositivo | null>(null);
   const [clienteCompleto, setClienteCompleto] = useState<any>(null);
-  const [produto, setProduto] = useState<any>(null);
+  const [itensCompletos, setItensCompletos] = useState<ItemReciboCompleto[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Itens da venda (grupo completo, ou só a venda avulsa quando não há grupo)
+  const itensVenda = vendasGrupo && vendasGrupo.length > 1 ? vendasGrupo : (venda ? [venda] : []);
 
   useEffect(() => {
     if (open && venda) {
       carregarDadosCompletos();
     }
-  }, [open, venda]);
+  }, [open, venda, vendasGrupo]);
 
   const carregarDadosCompletos = async () => {
     if (!venda) return;
@@ -94,67 +107,63 @@ export function DialogReimpressaoRecibo({
     try {
       setLoading(true);
 
-      // Buscar dados completos do cliente
+      // Buscar dados completos do cliente (mesmo cliente para todo o grupo)
       if (venda.cliente_id) {
         const { data: cliente } = await supabase
           .from("clientes")
           .select("*")
           .eq("id", venda.cliente_id)
           .maybeSingle();
-        
+
         setClienteCompleto(cliente);
       }
 
-      // Buscar dados completos do produto ou peça se for venda de produto
-      if (venda.tipo === "produto") {
-        // Se tem peca_id, buscar na tabela de peças
-        if ((venda as any).peca_id) {
-          const { data: pecaData } = await supabase
-            .from("pecas")
-            .select("*")
-            .eq("id", (venda as any).peca_id)
-            .maybeSingle();
-          
-          if (pecaData) {
-            setProduto(pecaData);
-          }
-        } else if (venda.produto_id) {
-          // Primeiro tentar buscar na tabela de produtos
-          const { data: produtoData } = await supabase
-            .from("produtos")
-            .select("*")
-            .eq("id", venda.produto_id)
-            .maybeSingle();
-          
-          if (produtoData) {
-            setProduto(produtoData);
-          } else {
-            // Se não encontrou em produtos, tentar em peças (fallback para vendas legadas)
+      // Buscar dados completos (produto/peça/dispositivo) de cada item da venda/grupo
+      const itens = await Promise.all(itensVenda.map(async (v): Promise<ItemReciboCompleto> => {
+        let produto: any = null;
+        let dispositivo: Dispositivo | null = null;
+
+        if (v.tipo === "produto") {
+          if ((v as any).peca_id) {
             const { data: pecaData } = await supabase
               .from("pecas")
               .select("*")
-              .eq("id", venda.produto_id)
+              .eq("id", (v as any).peca_id)
               .maybeSingle();
-            
-            if (pecaData) {
-              setProduto(pecaData);
+            if (pecaData) produto = pecaData;
+          } else if (v.produto_id) {
+            const { data: produtoData } = await supabase
+              .from("produtos")
+              .select("*")
+              .eq("id", v.produto_id)
+              .maybeSingle();
+            if (produtoData) {
+              produto = produtoData;
+            } else {
+              // Se não encontrou em produtos, tentar em peças (fallback para vendas legadas)
+              const { data: pecaData } = await supabase
+                .from("pecas")
+                .select("*")
+                .eq("id", v.produto_id)
+                .maybeSingle();
+              if (pecaData) produto = pecaData;
             }
           }
         }
-      }
 
-      // Buscar dados completos do dispositivo se for venda de dispositivo
-      if (venda.tipo === "dispositivo" && venda.dispositivo_id) {
-        const { data: disp } = await supabase
-          .from("dispositivos")
-          .select("*")
-          .eq("id", venda.dispositivo_id)
-          .maybeSingle();
-        
-        if (disp) {
-          setDispositivo(disp as Dispositivo);
+        if (v.tipo === "dispositivo" && v.dispositivo_id) {
+          const { data: disp } = await supabase
+            .from("dispositivos")
+            .select("*")
+            .eq("id", v.dispositivo_id)
+            .maybeSingle();
+          if (disp) dispositivo = disp as Dispositivo;
         }
-      }
+
+        return { venda: v, produto, dispositivo };
+      }));
+
+      setItensCompletos(itens);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       toast({
@@ -213,9 +222,11 @@ export function DialogReimpressaoRecibo({
       const paper = resolvePaperSize(formato, vendasConfig?.largura_mm, vendasConfig?.altura_mm);
       // getThermalPrintCSS gera @page + body para térmica; A4 retorna string vazia
       const cssTermico = getThermalPrintCSS(paper);
-      const titulo = venda?.tipo === "dispositivo"
-        ? `${venda.dispositivos?.marca} ${venda.dispositivos?.modelo}`
-        : (venda?.produtos?.nome || "Produto");
+      const titulo = itensVenda.length > 1
+        ? `${itensVenda.length} itens`
+        : venda?.tipo === "dispositivo"
+          ? `${venda.dispositivos?.marca} ${venda.dispositivos?.modelo}`
+          : (venda?.produtos?.nome || "Produto");
 
       janelaImpressao.document.write(`<!DOCTYPE html>
 <html>
@@ -355,11 +366,13 @@ export function DialogReimpressaoRecibo({
 
   const dataVenda = formatDate(venda.data);
 
-  const descontoManual = Number((venda as any).valor_desconto_manual || 0);
-  const descontoCupom = Number((venda as any).valor_desconto_cupom || 0);
+  // Soma descontos e totais de TODOS os itens da venda/grupo, não só do
+  // primeiro — cada item pode ter seu próprio desconto aplicado no PDV.
+  const descontoManual = itensVenda.reduce((acc, v) => acc + Number((v as any).valor_desconto_manual || 0), 0);
+  const descontoCupom = itensVenda.reduce((acc, v) => acc + Number((v as any).valor_desconto_cupom || 0), 0);
   const totalDescontos = descontoManual + descontoCupom;
-  const totalLiquido = Number(venda.total) - totalDescontos;
-  const valorUnitario = Number(venda.total) / venda.quantidade;
+  const totalBruto = itensVenda.reduce((acc, v) => acc + Number(v.total || 0), 0);
+  const totalLiquido = totalBruto - totalDescontos;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -432,86 +445,97 @@ export function DialogReimpressaoRecibo({
               </div>
             )}
 
-            {showDadosDispositivo && (
-              <div className="recibo-section">
-                <h3>Produto Vendido</h3>
-                <div className="recibo-info">
-                  <span>Produto:</span>
-                  <span>
-                    {venda.tipo === "dispositivo" 
-                      ? `${venda.dispositivos?.marca} ${venda.dispositivos?.modelo}`
-                      : venda.pecas?.nome || venda.produtos?.nome || produto?.nome || "Produto não encontrado"}
-                  </span>
-                </div>
-                {venda.tipo === "dispositivo" && venda.dispositivos && (
-                  <>
+            {showDadosDispositivo && itensCompletos.map((item, idx) => {
+              const v = item.venda;
+              const valorUnitarioItem = Number(v.total) / (v.quantidade || 1);
+              return (
+                <div className="recibo-section" key={v.id}>
+                  <h3>
+                    {itensCompletos.length > 1 ? `Produto Vendido (${idx + 1}/${itensCompletos.length})` : "Produto Vendido"}
+                  </h3>
+                  <div className="recibo-info">
+                    <span>Produto:</span>
+                    <span>
+                      {v.tipo === "dispositivo"
+                        ? `${v.dispositivos?.marca} ${v.dispositivos?.modelo}`
+                        : v.pecas?.nome || v.produtos?.nome || item.produto?.nome || "Produto não encontrado"}
+                    </span>
+                  </div>
+                  {v.tipo === "dispositivo" && v.dispositivos && (
+                    <>
+                      <div className="recibo-info">
+                        <span>Tipo:</span>
+                        <span>{v.dispositivos.tipo}</span>
+                      </div>
+                      {item.dispositivo?.imei && (
+                        <div className="recibo-info">
+                          <span>IMEI:</span>
+                          <span>{item.dispositivo.imei}</span>
+                        </div>
+                      )}
+                      {item.dispositivo?.numero_serie && (
+                        <div className="recibo-info">
+                          <span>Número de Série:</span>
+                          <span>{item.dispositivo.numero_serie}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {v.tipo === "produto" && (item.produto?.sku || v.produtos?.sku) && (
                     <div className="recibo-info">
-                      <span>Tipo:</span>
-                      <span>{venda.dispositivos.tipo}</span>
+                      <span>SKU:</span>
+                      <span>{item.produto?.sku || v.produtos?.sku}</span>
                     </div>
-                    {dispositivo?.imei && (
-                      <div className="recibo-info">
-                        <span>IMEI:</span>
-                        <span>{dispositivo.imei}</span>
-                      </div>
-                    )}
-                    {dispositivo?.numero_serie && (
-                      <div className="recibo-info">
-                        <span>Número de Série:</span>
-                        <span>{dispositivo.numero_serie}</span>
-                      </div>
-                    )}
-                  </>
-                )}
-                {venda.tipo === "produto" && (produto?.sku || venda.produtos?.sku) && (
+                  )}
                   <div className="recibo-info">
-                    <span>SKU:</span>
-                    <span>{produto?.sku || venda.produtos?.sku}</span>
+                    <span>Quantidade:</span>
+                    <span>{v.quantidade}</span>
                   </div>
-                )}
-                <div className="recibo-info">
-                  <span>Quantidade:</span>
-                  <span>{venda.quantidade}</span>
+                  {showValor && (
+                    <div className="recibo-info">
+                      <span>Valor Unitário:</span>
+                      <span>{formatCurrency(valorUnitarioItem)}</span>
+                    </div>
+                  )}
                 </div>
-                {showValor && (
-                  <div className="recibo-info">
-                    <span>Valor Unitário:</span>
-                    <span>{formatCurrency(valorUnitario)}</span>
-                  </div>
-                )}
-              </div>
-            )}
+              );
+            })}
 
-            {showChecklist && venda.tipo === "dispositivo" && dispositivo?.checklist && (() => {
-              const checklistData = (dispositivo.checklist as any)?.entrada || dispositivo.checklist;
+            {showChecklist && itensCompletos.filter(item => item.venda.tipo === "dispositivo" && item.dispositivo?.checklist).map(item => {
+              const checklistData = (item.dispositivo!.checklist as any)?.entrada || item.dispositivo!.checklist;
               const entries = Object.entries(checklistData as Record<string, any>).filter(
-                ([key, val]) => typeof val === 'boolean'
+                ([, val]) => typeof val === 'boolean'
               );
               if (entries.length === 0) return null;
               return (
-                <div className="recibo-section">
-                  <h3>Estado do Aparelho na Venda</h3>
+                <div className="recibo-section" key={item.venda.id}>
+                  <h3>
+                    Estado do Aparelho na Venda
+                    {itensCompletos.length > 1 && item.venda.dispositivos ? ` — ${item.venda.dispositivos.marca} ${item.venda.dispositivos.modelo}` : ""}
+                  </h3>
                   <div className="recibo-checklist">
-                    {entries.map(([item, funciona]) => (
-                      <div key={item} className="recibo-checklist-item">
+                    {entries.map(([itemChecklist, funciona]) => (
+                      <div key={itemChecklist} className="recibo-checklist-item">
                         <span className="recibo-checklist-icon">
                           {funciona ? '✅' : '❌'}
                         </span>
                         <span className="recibo-checklist-label">
-                          {checklistLabels[item] || item}
+                          {checklistLabels[itemChecklist] || itemChecklist}
                         </span>
                       </div>
                     ))}
                   </div>
                 </div>
               );
-            })()}
+            })}
 
-            {showGarantia && venda.tipo === "dispositivo" && (
+            {showGarantia && itensCompletos.some(item => item.venda.tipo === "dispositivo") && (
               <div className="recibo-section">
                 <h3>Termos de Garantia e Direitos do Consumidor</h3>
                 <div className="termos-garantia">
-                  {TERMOS_GARANTIA_CDC(dispositivo?.garantia ? dispositivo?.tempo_garantia : undefined)}
+                  {TERMOS_GARANTIA_CDC(
+                    itensCompletos.find(item => item.venda.tipo === "dispositivo" && item.dispositivo?.garantia)?.dispositivo?.tempo_garantia
+                  )}
                 </div>
               </div>
             )}
@@ -522,7 +546,7 @@ export function DialogReimpressaoRecibo({
                   <>
                     <div style={{ fontSize: '14px', fontWeight: 'normal', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
                       <span>Subtotal:</span>
-                      <span>{formatCurrency(venda.total)}</span>
+                      <span>{formatCurrency(totalBruto)}</span>
                     </div>
                     <div style={{ fontSize: '14px', fontWeight: 'normal', marginBottom: '5px', color: '#e11d48', display: 'flex', justifyContent: 'space-between' }}>
                       <span>Desconto:</span>

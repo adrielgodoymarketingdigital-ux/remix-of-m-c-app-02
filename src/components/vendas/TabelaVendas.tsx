@@ -167,6 +167,7 @@ function getResumoGrupo(vendas: Venda[]): string {
 
 export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebido, onExcluirVenda, onMarcarPendente, onEditarVenda, onCancelarContaAPrazoOS }: TabelaVendasProps) => {
   const [vendaSelecionada, setVendaSelecionada] = useState<Venda | null>(null);
+  const [vendasGrupoSelecionado, setVendasGrupoSelecionado] = useState<Venda[] | null>(null);
   const [dialogReciboAberto, setDialogReciboAberto] = useState(false);
   const [dialogCancelarAberto, setDialogCancelarAberto] = useState(false);
   const [dialogExcluirAberto, setDialogExcluirAberto] = useState(false);
@@ -190,8 +191,9 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     });
   };
 
-  const handleImprimirRecibo = (venda: Venda) => {
+  const handleImprimirRecibo = (venda: Venda, vendasDoGrupo?: Venda[]) => {
     setVendaSelecionada(venda);
+    setVendasGrupoSelecionado(vendasDoGrupo && vendasDoGrupo.length > 1 ? vendasDoGrupo : null);
     setDialogReciboAberto(true);
   };
 
@@ -499,7 +501,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         <span className={`font-semibold ${todasCanceladas ? 'line-through text-muted-foreground' : ''}`}>
                           <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
                         </span>
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
                           <Printer className="h-4 w-4" />
                         </Button>
                       </div>
@@ -536,7 +538,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
           })}
         </div>
 
-        <DialogReimpressaoRecibo open={dialogReciboAberto} onOpenChange={setDialogReciboAberto} venda={vendaSelecionada} />
+        <DialogReimpressaoRecibo open={dialogReciboAberto} onOpenChange={setDialogReciboAberto} venda={vendaSelecionada} vendasGrupo={vendasGrupoSelecionado} />
         <DialogCancelarVenda open={dialogCancelarAberto} onOpenChange={setDialogCancelarAberto} venda={vendaSelecionada} onConfirmar={handleConfirmarCancelamento} cancelando={cancelando} />
         <AlertDialog open={dialogExcluirAberto} onOpenChange={setDialogExcluirAberto}>
           <AlertDialogContent>
@@ -661,7 +663,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     </TableCell>
                     <TableCell>{renderStatusBadge(primeiraVenda)}</TableCell>
                     <TableCell className="text-center">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
                         <Printer className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -711,7 +713,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         </TableBody>
       </Table>
 
-      <DialogReimpressaoRecibo open={dialogReciboAberto} onOpenChange={setDialogReciboAberto} venda={vendaSelecionada} />
+      <DialogReimpressaoRecibo open={dialogReciboAberto} onOpenChange={setDialogReciboAberto} venda={vendaSelecionada} vendasGrupo={vendasGrupoSelecionado} />
       <DialogCancelarVenda open={dialogCancelarAberto} onOpenChange={setDialogCancelarAberto} venda={vendaSelecionada} onConfirmar={handleConfirmarCancelamento} cancelando={cancelando} />
       <AlertDialog open={dialogExcluirAberto} onOpenChange={setDialogExcluirAberto}>
         <AlertDialogContent>
