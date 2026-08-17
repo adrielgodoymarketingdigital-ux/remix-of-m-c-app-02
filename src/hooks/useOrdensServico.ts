@@ -59,6 +59,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
   const [statusFiltro, setStatusFiltro] = useState("todos");
   const [origemFiltro, setOrigemFiltro] = useState("todos");
   const [midiaFiltro, setMidiaFiltro] = useState("todos");
+  const [tecnicoFiltro, setTecnicoFiltro] = useState("todos");
   const [somenteRemessaCorporativa, setSomenteRemessaCorporativa] = useState(false);
   const [dataInicio, setDataInicio] = useState<Date | undefined>(() => startOfMonth(new Date()));
   const [dataFim, setDataFim] = useState<Date | undefined>(() => endOfMonth(new Date()));
@@ -120,8 +121,14 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       resultado = resultado.filter((o) => o.origem_remessa_corporativa === true);
     }
 
+    if (tecnicoFiltro !== "todos") {
+      resultado = tecnicoFiltro === "sem_tecnico"
+        ? resultado.filter((o) => !o.funcionario_id)
+        : resultado.filter((o) => o.funcionario_id === tecnicoFiltro);
+    }
+
     return resultado;
-  }, [busca, origemFiltro, midiaFiltro, somenteRemessaCorporativa, ordensBase]);
+  }, [busca, origemFiltro, midiaFiltro, somenteRemessaCorporativa, tecnicoFiltro, ordensBase]);
 
   useEffect(() => { resolvedUserIdRef.current = resolvedUserIdFromContext; }, [resolvedUserIdFromContext]);
 
@@ -1040,6 +1047,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
     setOrigemFiltro,
     midiaFiltro,
     setMidiaFiltro,
+    tecnicoFiltro,
+    setTecnicoFiltro,
     somenteRemessaCorporativa,
     setSomenteRemessaCorporativa,
     dataInicio,

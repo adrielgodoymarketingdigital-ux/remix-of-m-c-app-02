@@ -41,6 +41,7 @@ import { useAssinatura } from "@/hooks/useAssinatura";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSTracking } from "@/hooks/useOSTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { BuscaOrdemServico } from "@/components/ordens/BuscaOrdemServico";
 import { TabelaOrdensServico } from "@/components/ordens/TabelaOrdensServico";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
@@ -202,7 +203,12 @@ export default function OrdemServicoPage() {
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
   const { compartilharWhatsApp, gerarLink } = useOSTracking();
-  const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
+  const { lojaUserId, isDonoLoja, permissoes, podeCompartilharLink } = useFuncionarioPermissoes();
+  const podeVerTecnicos = isDonoLoja || (permissoes?.recursos?.ver_tecnicos_os ?? false);
+  const { funcionarios } = useFuncionarios(lojaUserId);
+  const tecnicosDisponiveis = podeVerTecnicos
+    ? funcionarios.filter((f) => f.ativo).map((f) => ({ id: f.id, nome: f.nome, cargo: f.cargo }))
+    : undefined;
 
   useEffect(() => {
     const buscarUso = async () => {
@@ -258,6 +264,8 @@ export default function OrdemServicoPage() {
     setOrigemFiltro,
     midiaFiltro,
     setMidiaFiltro,
+    tecnicoFiltro,
+    setTecnicoFiltro,
     somenteRemessaCorporativa,
     setSomenteRemessaCorporativa,
     dataInicio,
@@ -1156,6 +1164,9 @@ export default function OrdemServicoPage() {
                     lojaFiltro={mostrarOsFiliais ? lojaFiltro : undefined}
                     onLojaFiltroChange={mostrarOsFiliais ? setLojaFiltro : undefined}
                     empresasDisponiveis={mostrarOsFiliais ? empresasFiliais : undefined}
+                    tecnicoFiltro={tecnicoFiltro}
+                    onTecnicoFiltroChange={setTecnicoFiltro}
+                    tecnicosDisponiveis={tecnicosDisponiveis}
                   />
                   <TabelaOrdensServico
                     selecaoAtiva={selecaoAtiva}

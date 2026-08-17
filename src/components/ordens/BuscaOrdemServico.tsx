@@ -1,4 +1,4 @@
-import { Search, CalendarIcon, X, Building2, Package, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { Search, CalendarIcon, X, Building2, Package, SlidersHorizontal, RotateCcw, Wrench } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,9 @@ interface BuscaOrdemServicoProps {
   lojaFiltro?: string;
   onLojaFiltroChange?: (value: string) => void;
   empresasDisponiveis?: { id: string; nome: string }[];
+  tecnicoFiltro?: string;
+  onTecnicoFiltroChange?: (value: string) => void;
+  tecnicosDisponiveis?: { id: string; nome: string; cargo?: string | null }[];
   somenteRemessaCorporativa: boolean;
   onSomenteRemessaCorporativaChange: (value: boolean) => void;
 }
@@ -118,6 +121,9 @@ export const BuscaOrdemServico = ({
   lojaFiltro,
   onLojaFiltroChange,
   empresasDisponiveis,
+  tecnicoFiltro,
+  onTecnicoFiltroChange,
+  tecnicosDisponiveis,
   somenteRemessaCorporativa,
   onSomenteRemessaCorporativaChange,
 }: BuscaOrdemServicoProps) => {
@@ -131,10 +137,11 @@ export const BuscaOrdemServico = ({
     onOrigemFiltroChange("todos");
     onMidiaFiltroChange("todos");
     onLojaFiltroChange?.("todos");
+    onTecnicoFiltroChange?.("todos");
     onSomenteRemessaCorporativaChange(false);
   };
 
-  const temFiltro = !!(dataInicio || dataFim || mesFiltro !== "todos" || origemFiltro !== "todos" || midiaFiltro !== "todos" || (lojaFiltro && lojaFiltro !== "todos") || somenteRemessaCorporativa);
+  const temFiltro = !!(dataInicio || dataFim || mesFiltro !== "todos" || origemFiltro !== "todos" || midiaFiltro !== "todos" || (lojaFiltro && lojaFiltro !== "todos") || (tecnicoFiltro && tecnicoFiltro !== "todos") || somenteRemessaCorporativa);
 
   const statusAtivo = statusList.find((s) => s.slug === statusFiltro);
   const labelPeriodo = dataInicio || dataFim
@@ -245,8 +252,8 @@ export const BuscaOrdemServico = ({
                 </div>
               </div>
 
-              {/* Canal + Mídia + Loja */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Canal + Mídia + Técnico + Loja */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <Label className="text-xs text-muted-foreground mb-1.5 block">Canal de origem</Label>
                   <Select value={origemFiltro} onValueChange={onOrigemFiltroChange}>
@@ -279,6 +286,27 @@ export const BuscaOrdemServico = ({
                     </SelectContent>
                   </Select>
                 </div>
+
+                {onTecnicoFiltroChange && tecnicosDisponiveis && tecnicosDisponiveis.length > 0 && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">Técnico</Label>
+                    <Select value={tecnicoFiltro ?? "todos"} onValueChange={onTecnicoFiltroChange}>
+                      <SelectTrigger>
+                        <Wrench className="h-4 w-4 mr-1 shrink-0" />
+                        <SelectValue placeholder="Filtrar por técnico" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os Técnicos</SelectItem>
+                        <SelectItem value="sem_tecnico">Sem técnico</SelectItem>
+                        {tecnicosDisponiveis.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.nome}{t.cargo ? ` (${t.cargo})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {onLojaFiltroChange && empresasDisponiveis && empresasDisponiveis.length > 0 && (
                   <div>
