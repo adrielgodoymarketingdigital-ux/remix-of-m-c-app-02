@@ -38,6 +38,7 @@ import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegal
 import { buscarConfiguracaoLojaPorEmpresa } from "@/hooks/useConfiguracaoLoja";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { BadgeSaudeBateria } from "@/components/dispositivos/BadgeSaudeBateria";
 
 interface TabelaDispositivosProps {
   dispositivos: Dispositivo[];
@@ -268,13 +269,20 @@ export function TabelaDispositivos({
                     <p className="font-semibold">{dispositivo.marca} {dispositivo.modelo}</p>
                     <p className="text-sm text-muted-foreground">{dispositivo.tipo}</p>
                   </div>
-                  <Badge className={`${getTipoBadgeColor(dispositivo.tipo)} text-white text-xs`}>
-                    {dispositivo.quantidade}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge className={`${getTipoBadgeColor(dispositivo.tipo)} text-white text-xs`}>
+                      {dispositivo.quantidade}
+                    </Badge>
+                    {dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null && (
+                      <span className="text-xs font-medium text-foreground">
+                        <BadgeSaudeBateria saudeBateria={dispositivo.saude_bateria} />
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-2 text-sm mb-3">
               <div>
                 <span className="text-muted-foreground">Custo:</span>
@@ -415,15 +423,22 @@ export function TabelaDispositivos({
                 </Badge>
               </TableCell>
               <TableCell>
-                <Badge variant={
-                  dispositivo.condicao === 'novo' ? 'default' :
-                  dispositivo.condicao === 'semi_novo' ? 'secondary' :
-                  'outline'
-                }>
-                  {dispositivo.condicao === 'novo' ? 'Novo' :
-                   dispositivo.condicao === 'semi_novo' ? 'Semi Novo' :
-                   'Usado'}
-                </Badge>
+                <div className="flex flex-col items-start gap-1">
+                  <Badge variant={
+                    dispositivo.condicao === 'novo' ? 'default' :
+                    dispositivo.condicao === 'semi_novo' ? 'secondary' :
+                    'outline'
+                  }>
+                    {dispositivo.condicao === 'novo' ? 'Novo' :
+                     dispositivo.condicao === 'semi_novo' ? 'Semi Novo' :
+                     'Usado'}
+                  </Badge>
+                  {dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null && (
+                    <span className="text-xs font-medium text-foreground">
+                      <BadgeSaudeBateria saudeBateria={dispositivo.saude_bateria} />
+                    </span>
+                  )}
+                </div>
               </TableCell>
               <TableCell>
                 <div className="font-medium">{dispositivo.marca}</div>

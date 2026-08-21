@@ -26,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
+import { BadgeSaudeBateria } from "@/components/dispositivos/BadgeSaudeBateria";
 
 interface CardDispositivoProps {
   dispositivo: Dispositivo;
@@ -337,6 +338,14 @@ export function CardDispositivo({
             <div className="min-w-0">
               <span className="text-muted-foreground">IMEI:</span>
               <p className="font-medium text-xs truncate">{dispositivo.imei}</p>
+            </div>
+          )}
+          {dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null && (
+            <div className="min-w-0">
+              <span className="text-muted-foreground">Saúde da Bateria:</span>
+              <p className="font-medium">
+                <BadgeSaudeBateria saudeBateria={dispositivo.saude_bateria} />
+              </p>
             </div>
           )}
         </div>
