@@ -118,8 +118,8 @@ export const DialogOrdemServicoSimplificada = ({
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormDataSimplificada>(formDataInicial);
 
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clientesFiltrados, setClientesFiltrados] = useState<Cliente[]>([]);
+  const buscaClienteSeqRef = useRef(0);
   const [mostrarSugestoesNome, setMostrarSugestoesNome] = useState(false);
   const [mostrarSugestoesCPF, setMostrarSugestoesCPF] = useState(false);
   const [clienteSelecionadoId, setClienteSelecionadoId] = useState<string | null>(null);
@@ -133,35 +133,10 @@ export const DialogOrdemServicoSimplificada = ({
     setBandeiraSelecionada("");
   }, [open]);
 
-  useEffect(() => {
-    // Aguarda useFuncionarioPermissoes resolver — senão isFuncionario/lojaUserId
-    // ainda estão nos valores padrão (false/null) e a busca cai no usuário errado
-    if (!open || carregandoPermissoes) return;
-    const carregarClientes = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const userId = resolvedUserIdFromContext
-        ?? ((isFuncionario && lojaUserId) ? lojaUserId : user.id);
-
-      let query = supabase
-        .from("clientes")
-        .select("*")
-        .eq("user_id", userId)
-        .is("deleted_at", null)
-        .order("nome");
-
-      if (isFilialCtx && empresaInfoId) {
-        query = query.eq("empresa_id", empresaInfoId);
-      }
-
-      const { data } = await query;
-      setClientes(data || []);
-    };
-    carregarClientes();
-  }, [open, carregandoPermissoes, resolvedUserIdFromContext, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
-
-  const buscarClientes = (termo: string, campo: "nome" | "cpf") => {
+  // Buscar clientes por termo — consulta o banco diretamente a cada busca
+  // (em vez de pré-carregar todos os clientes e filtrar em memória, o que
+  // dependia de um array carregado uma única vez ao abrir o dialog)
+  const buscarClientes = async (termo: string, campo: "nome" | "cpf") => {
     if (termo.length < 2) {
       setClientesFiltrados([]);
       setMostrarSugestoesNome(false);
@@ -169,32 +144,73 @@ export const DialogOrdemServicoSimplificada = ({
       return;
     }
 
-    const termoLower = termo.toLowerCase();
-    const filtrados = clientes
-      .filter((c) => {
-        if (campo === "nome") {
-          return c.nome.toLowerCase().includes(termoLower);
-        }
-        return c.cpf?.includes(termo.replace(/\D/g, ""));
-      })
-      // Nomes que começam com o termo digitado vêm primeiro — evita que um
-      // match no meio do nome empurre pra fora do limite nomes mais
-      // relevantes que começam com o termo buscado
-      .sort((a, b) => {
-        if (campo !== "nome") return 0;
-        const aComeca = a.nome.toLowerCase().startsWith(termoLower);
-        const bComeca = b.nome.toLowerCase().startsWith(termoLower);
-        if (aComeca && !bComeca) return -1;
-        if (!aComeca && bComeca) return 1;
-        return 0;
-      })
-      .slice(0, 8);
+    // Ainda não sabemos se é funcionário/gerente de filial — evita buscar
+    // com identidade provisória
+    if (carregandoPermissoes) return;
 
-    setClientesFiltrados(filtrados);
+    const minhaSeq = ++buscaClienteSeqRef.current;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const userId = resolvedUserIdFromContext
+      ?? ((isFuncionario && lojaUserId) ? lojaUserId : user.id);
+
+    let query = supabase
+      .from("clientes")
+      .select("*")
+      .eq("user_id", userId)
+      .is("deleted_at", null);
+
+    if (isFilialCtx && empresaInfoId) {
+      query = query.eq("empresa_id", empresaInfoId);
+    }
+
     if (campo === "nome") {
-      setMostrarSugestoesNome(filtrados.length > 0);
+      query = query.ilike("nome", `%${termo}%`).order("nome").limit(8);
     } else {
-      setMostrarSugestoesCPF(filtrados.length > 0);
+      const digitos = termo.replace(/\D/g, "");
+      if (!digitos) {
+        setClientesFiltrados([]);
+        setMostrarSugestoesCPF(false);
+        return;
+      }
+      query = query.ilike("cpf", `%${digitos}%`).order("nome").limit(8);
+    }
+
+    const { data, error } = await query;
+
+    // Ignora resultado se já veio uma busca mais recente
+    if (minhaSeq !== buscaClienteSeqRef.current) return;
+
+    if (error) {
+      console.error("[OS Simplificada] Erro ao buscar clientes:", error, { userId, campo, termo, isFilialCtx, empresaInfoId });
+      toast({
+        title: "Não foi possível buscar clientes",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const termoLower = termo.toLowerCase();
+    // Nomes que começam com o termo digitado vêm primeiro — evita que um
+    // match no meio do nome fique acima de nomes mais relevantes
+    const resultado = campo === "nome"
+      ? [...(data || [])].sort((a, b) => {
+          const aComeca = a.nome.toLowerCase().startsWith(termoLower);
+          const bComeca = b.nome.toLowerCase().startsWith(termoLower);
+          if (aComeca && !bComeca) return -1;
+          if (!aComeca && bComeca) return 1;
+          return 0;
+        })
+      : (data || []);
+
+    setClientesFiltrados(resultado);
+    if (campo === "nome") {
+      setMostrarSugestoesNome(resultado.length > 0);
+    } else {
+      setMostrarSugestoesCPF(resultado.length > 0);
     }
   };
 
