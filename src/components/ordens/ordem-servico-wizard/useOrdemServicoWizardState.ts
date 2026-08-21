@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useResolvedUserId } from "@/hooks/useResolvedUserId";
 import { Cliente } from "@/types/cliente";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { AvariasOS } from "@/types/ordem-servico";
@@ -105,6 +106,8 @@ export function useOrdemServicoWizardState({
 
   const [formData, setFormData] = useState<FormData>(formDataVazio);
 
+  const resolvedUserIdFromContext = useResolvedUserId();
+
   // Carregar clientes ao abrir o dialog
   useEffect(() => {
     if (open) {
@@ -112,8 +115,9 @@ export function useOrdemServicoWizardState({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Funcionário sempre usa lojaUserId para ver clientes do proprietário
-        const userId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
+        // Gerente de filial → user_id do proprietário; funcionário → lojaUserId
+        const userId = resolvedUserIdFromContext
+          ?? ((isFuncionario && lojaUserId) ? lojaUserId : user.id);
 
         let query = supabase
           .from("clientes")
@@ -132,7 +136,7 @@ export function useOrdemServicoWizardState({
       };
       carregarClientes();
     }
-  }, [open, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
+  }, [open, resolvedUserIdFromContext, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
 
   // Buscar clientes por termo
   const buscarClientes = (termo: string, campo: 'nome' | 'cpf') => {

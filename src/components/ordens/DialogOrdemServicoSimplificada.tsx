@@ -28,7 +28,7 @@ import { Checklist, AvariasOS } from "@/types/ordem-servico";
 import { encryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { useEmpresaInfo } from "@/hooks/useResolvedUserId";
+import { useEmpresaInfo, useResolvedUserId } from "@/hooks/useResolvedUserId";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
@@ -111,6 +111,7 @@ export const DialogOrdemServicoSimplificada = ({
   const { isFuncionario, lojaUserId } = useFuncionarioPermissoes();
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const { empresaId: empresaInfoId, isFilial: isFilialCtx } = useEmpresaInfo();
+  const resolvedUserIdFromContext = useResolvedUserId();
   const { taxasAtivas, calcularTaxa } = useTaxasCartao();
   const [bandeiraSelecionada, setBandeiraSelecionada] = useState("");
 
@@ -138,7 +139,8 @@ export const DialogOrdemServicoSimplificada = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const userId = (isFuncionario && lojaUserId) ? lojaUserId : user.id;
+      const userId = resolvedUserIdFromContext
+        ?? ((isFuncionario && lojaUserId) ? lojaUserId : user.id);
 
       let query = supabase
         .from("clientes")
@@ -155,7 +157,7 @@ export const DialogOrdemServicoSimplificada = ({
       setClientes(data || []);
     };
     carregarClientes();
-  }, [open, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
+  }, [open, resolvedUserIdFromContext, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
 
   const buscarClientes = (termo: string, campo: "nome" | "cpf") => {
     if (termo.length < 2) {
