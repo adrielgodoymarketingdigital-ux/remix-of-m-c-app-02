@@ -70,6 +70,7 @@ interface UseOrdemServicoWizardStateParams {
   lojaUserId: string | null;
   isFilialCtx: boolean;
   empresaInfoId: string | null;
+  carregandoPermissoes: boolean;
 }
 
 /**
@@ -83,6 +84,7 @@ export function useOrdemServicoWizardState({
   lojaUserId,
   isFilialCtx,
   empresaInfoId,
+  carregandoPermissoes,
 }: UseOrdemServicoWizardStateParams) {
   const [loading, setLoading] = useState(false);
   const [tecnicoId, setTecnicoId] = useState<string | null>(null);
@@ -110,7 +112,9 @@ export function useOrdemServicoWizardState({
 
   // Carregar clientes ao abrir o dialog
   useEffect(() => {
-    if (open) {
+    // Aguarda useFuncionarioPermissoes resolver — senão isFuncionario/lojaUserId
+    // ainda estão nos valores padrão (false/null) e a busca cai no usuário errado
+    if (open && !carregandoPermissoes) {
       const carregarClientes = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -136,7 +140,7 @@ export function useOrdemServicoWizardState({
       };
       carregarClientes();
     }
-  }, [open, resolvedUserIdFromContext, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
+  }, [open, carregandoPermissoes, resolvedUserIdFromContext, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
 
   // Buscar clientes por termo
   const buscarClientes = (termo: string, campo: 'nome' | 'cpf') => {

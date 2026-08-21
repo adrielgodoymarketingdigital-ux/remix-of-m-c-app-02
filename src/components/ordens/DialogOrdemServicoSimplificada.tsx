@@ -108,7 +108,7 @@ export const DialogOrdemServicoSimplificada = ({
   const { toast } = useToast();
   const { trackOSCriada } = useEventTracking();
   const { dispatchEvent } = useEventDispatcher();
-  const { isFuncionario, lojaUserId } = useFuncionarioPermissoes();
+  const { isFuncionario, lojaUserId, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const { empresaId: empresaInfoId, isFilial: isFilialCtx } = useEmpresaInfo();
   const resolvedUserIdFromContext = useResolvedUserId();
@@ -134,7 +134,9 @@ export const DialogOrdemServicoSimplificada = ({
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    // Aguarda useFuncionarioPermissoes resolver — senão isFuncionario/lojaUserId
+    // ainda estão nos valores padrão (false/null) e a busca cai no usuário errado
+    if (!open || carregandoPermissoes) return;
     const carregarClientes = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -157,7 +159,7 @@ export const DialogOrdemServicoSimplificada = ({
       setClientes(data || []);
     };
     carregarClientes();
-  }, [open, resolvedUserIdFromContext, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
+  }, [open, carregandoPermissoes, resolvedUserIdFromContext, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId]);
 
   const buscarClientes = (termo: string, campo: "nome" | "cpf") => {
     if (termo.length < 2) {

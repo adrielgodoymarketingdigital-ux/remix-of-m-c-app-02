@@ -55,7 +55,7 @@ export const DialogOrdemServico = ({
   const { trackOSCriada } = useEventTracking();
   const { disparar: dispararConfetti } = useConfetti();
   const { dispatchEvent } = useEventDispatcher();
-  const { funcionarioId, lojaUserId, isFuncionario, permissoes, isDonoLoja, tecnicoObrigatorioOS } = useFuncionarioPermissoes();
+  const { funcionarioId, lojaUserId, isFuncionario, permissoes, isDonoLoja, tecnicoObrigatorioOS, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { empresaAtiva: empresaAtivaCtx, isProprietario } = useEmpresa();
   const { empresaId: empresaInfoId, isFilial: isFilialCtx } = useEmpresaInfo();
   const { temAcessoModulo } = useAssinatura();
@@ -91,7 +91,7 @@ export const DialogOrdemServico = ({
     handleClienteNomeChange,
     handleClienteCPFChange,
     handleBuscarCEPOS,
-  } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId });
+  } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId, carregandoPermissoes });
 
   const irParaEtapa = (etapa: EtapaWizard) => {
     setCampoComErro(null);
