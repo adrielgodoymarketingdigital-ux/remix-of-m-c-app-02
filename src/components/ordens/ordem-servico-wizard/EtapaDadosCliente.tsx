@@ -78,7 +78,7 @@ export function EtapaDadosCliente({
             className={cn("h-10 rounded-xl", campoComErro === "clienteNome" && "border-destructive")}
           />
           {mostrarSugestoesNome && clientesFiltrados.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+            <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-64 overflow-y-auto">
               {clientesFiltrados.map((cliente) => (
                 <button
                   key={cliente.id}
@@ -127,7 +127,7 @@ export function EtapaDadosCliente({
             className="h-10 rounded-xl"
           />
           {mostrarSugestoesCPF && clientesFiltrados.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+            <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-64 overflow-y-auto">
               {clientesFiltrados.map((cliente) => (
                 <button
                   key={cliente.id}

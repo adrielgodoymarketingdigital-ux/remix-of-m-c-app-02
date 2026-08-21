@@ -169,12 +169,26 @@ export const DialogOrdemServicoSimplificada = ({
       return;
     }
 
-    const filtrados = clientes.filter((c) => {
-      if (campo === "nome") {
-        return c.nome.toLowerCase().includes(termo.toLowerCase());
-      }
-      return c.cpf?.includes(termo.replace(/\D/g, ""));
-    }).slice(0, 5);
+    const termoLower = termo.toLowerCase();
+    const filtrados = clientes
+      .filter((c) => {
+        if (campo === "nome") {
+          return c.nome.toLowerCase().includes(termoLower);
+        }
+        return c.cpf?.includes(termo.replace(/\D/g, ""));
+      })
+      // Nomes que começam com o termo digitado vêm primeiro — evita que um
+      // match no meio do nome empurre pra fora do limite nomes mais
+      // relevantes que começam com o termo buscado
+      .sort((a, b) => {
+        if (campo !== "nome") return 0;
+        const aComeca = a.nome.toLowerCase().startsWith(termoLower);
+        const bComeca = b.nome.toLowerCase().startsWith(termoLower);
+        if (aComeca && !bComeca) return -1;
+        if (!aComeca && bComeca) return 1;
+        return 0;
+      })
+      .slice(0, 8);
 
     setClientesFiltrados(filtrados);
     if (campo === "nome") {
@@ -439,7 +453,7 @@ export const DialogOrdemServicoSimplificada = ({
                   required
                 />
                 {mostrarSugestoesNome && clientesFiltrados.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-64 overflow-y-auto">
                     {clientesFiltrados.map((cliente) => (
                       <button
                         key={cliente.id}
@@ -482,7 +496,7 @@ export const DialogOrdemServicoSimplificada = ({
                   maxLength={18}
                 />
                 {mostrarSugestoesCPF && clientesFiltrados.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-64 overflow-y-auto">
                     {clientesFiltrados.map((cliente) => (
                       <button
                         key={cliente.id}

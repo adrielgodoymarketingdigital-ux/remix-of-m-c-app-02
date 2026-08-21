@@ -151,13 +151,27 @@ export function useOrdemServicoWizardState({
       return;
     }
 
-    const filtrados = clientes.filter(c => {
-      if (campo === 'nome') {
-        return c.nome.toLowerCase().includes(termo.toLowerCase());
-      } else {
-        return c.cpf?.includes(termo.replace(/\D/g, ''));
-      }
-    }).slice(0, 5); // Limitar a 5 sugestões
+    const termoLower = termo.toLowerCase();
+    const filtrados = clientes
+      .filter(c => {
+        if (campo === 'nome') {
+          return c.nome.toLowerCase().includes(termoLower);
+        } else {
+          return c.cpf?.includes(termo.replace(/\D/g, ''));
+        }
+      })
+      // Nomes que começam com o termo digitado vêm primeiro — evita que um
+      // match no meio do nome (ex: "Antonio Jeferson") empurre pra fora do
+      // limite nomes mais relevantes que começam com o termo buscado
+      .sort((a, b) => {
+        if (campo !== 'nome') return 0;
+        const aComeca = a.nome.toLowerCase().startsWith(termoLower);
+        const bComeca = b.nome.toLowerCase().startsWith(termoLower);
+        if (aComeca && !bComeca) return -1;
+        if (!aComeca && bComeca) return 1;
+        return 0;
+      })
+      .slice(0, 8); // Limitar a 8 sugestões
 
     setClientesFiltrados(filtrados);
     if (campo === 'nome') {
