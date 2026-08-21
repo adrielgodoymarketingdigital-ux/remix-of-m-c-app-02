@@ -1,4 +1,4 @@
-import { RefObject } from "react";
+import { RefObject, useId } from "react";
 import { Loader2, User, Check, Search, Contact } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,10 @@ export function EtapaDadosCliente({
   handleClienteCPFChange,
   handleBuscarCEPOS,
 }: EtapaDadosClienteProps) {
+  // Sufixo único por montagem — evita que o navegador ofereça sugestões de
+  // autofill de digitações antigas (autocomplete="off" sozinho é ignorado
+  // por vários navegadores/Android para esse tipo de campo)
+  const instanceId = useId();
   return (
     <div>
       <div className="flex items-start justify-between gap-3 mb-5">
@@ -70,6 +74,7 @@ export function EtapaDadosCliente({
           <CampoLabel htmlFor="clienteNome" texto="Nome" obrigatorio />
           <Input
             id="clienteNome"
+            name={`clienteNome-${instanceId}`}
             value={formData.clienteNome}
             onChange={(e) => handleClienteNomeChange(e.target.value)}
             onFocus={() => formData.clienteNome.length >= 2 && buscarClientes(formData.clienteNome, 'nome')}
@@ -117,6 +122,7 @@ export function EtapaDadosCliente({
           <CampoLabel htmlFor="clienteCPF" texto="CPF / CNPJ" />
           <Input
             id="clienteCPF"
+            name={`clienteCPF-${instanceId}`}
             value={formData.clienteCPF}
             onChange={(e) => handleClienteCPFChange(e.target.value)}
             onFocus={() => formData.clienteCPF.length >= 2 && buscarClientes(formData.clienteCPF, 'cpf')}

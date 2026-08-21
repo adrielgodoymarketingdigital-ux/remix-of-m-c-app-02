@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -105,6 +105,10 @@ export const DialogOrdemServicoSimplificada = ({
   onOpenChange,
   onSuccess,
 }: DialogOrdemServicoSimplificadaProps) => {
+  // Sufixo único por montagem — evita que o navegador ofereça sugestões de
+  // autofill de digitações antigas (autocomplete="off" sozinho é ignorado
+  // por vários navegadores/Android para esse tipo de campo)
+  const instanceId = useId();
   const { toast } = useToast();
   const { trackOSCriada } = useEventTracking();
   const { dispatchEvent } = useEventDispatcher();
@@ -461,6 +465,7 @@ export const DialogOrdemServicoSimplificada = ({
                 <Label htmlFor="clienteNome">Nome *</Label>
                 <Input
                   id="clienteNome"
+                  name={`clienteNome-${instanceId}`}
                   value={formData.clienteNome}
                   onChange={(e) => handleClienteNomeChange(e.target.value)}
                   onFocus={() => formData.clienteNome.length >= 2 && buscarClientes(formData.clienteNome, "nome")}
@@ -503,6 +508,7 @@ export const DialogOrdemServicoSimplificada = ({
                 <Label htmlFor="clienteCPF">CPF / CNPJ</Label>
                 <Input
                   id="clienteCPF"
+                  name={`clienteCPF-${instanceId}`}
                   value={formData.clienteCPF}
                   onChange={(e) => handleClienteCPFChange(e.target.value)}
                   onFocus={() => formData.clienteCPF.length >= 2 && buscarClientes(formData.clienteCPF, "cpf")}
