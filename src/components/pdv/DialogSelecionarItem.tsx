@@ -44,6 +44,7 @@ export interface ItemVenda {
   peca_id?: string;
   imei_dispositivo?: string;
   imei?: string;
+  imei2?: string;
   condicao?: string;
   cor?: string;
   capacidade_gb?: number;
@@ -137,6 +138,7 @@ export const DialogSelecionarItem = ({
       dispositivo_id: dispositivo.id,
       imei_dispositivo: imei,
       imei: dispositivo.imei || undefined,
+      imei2: dispositivo.imei2 || undefined,
       condicao: dispositivo.condicao || undefined,
       tempo_garantia: garantiaMeses,
       modelo_termo_garantia_id: modeloTermoId !== MODELO_TERMO_GLOBAL ? modeloTermoId : undefined,

@@ -6,6 +6,7 @@ export interface Dispositivo {
   cor?: string;
   capacidade_gb?: number;
   imei?: string;
+  imei2?: string;
   numero_serie?: string;
   saude_bateria?: number;
   garantia: boolean;
@@ -43,6 +44,7 @@ export interface FormularioDispositivo {
   cor?: string;
   capacidade_gb?: number;
   imei?: string;
+  imei2?: string;
   numero_serie?: string;
   saude_bateria?: number;
   garantia: boolean;

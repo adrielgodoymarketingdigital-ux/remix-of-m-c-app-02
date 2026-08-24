@@ -164,6 +164,7 @@ const PDV = () => {
         dispositivo_id: dispositivo.id,
         imei_dispositivo: dispositivo.imei || undefined,
         imei: dispositivo.imei || undefined,
+        imei2: dispositivo.imei2 || undefined,
         condicao: dispositivo.condicao || undefined,
         tempo_garantia: dispositivo.tempo_garantia,
         cor: (dispositivo as any).cor || undefined,

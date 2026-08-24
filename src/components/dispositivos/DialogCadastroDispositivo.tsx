@@ -59,6 +59,7 @@ const formSchema = z.object({
   cor: z.string().optional(),
   capacidade_gb: optionalNumber,
   imei: z.string().optional(),
+  imei2: z.string().optional(),
   numero_serie: z.string().optional(),
   saude_bateria: z.preprocess(
     (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
@@ -108,6 +109,7 @@ interface CamposUnidade {
   subtipo_computador: string;
   condicao: 'novo' | 'semi_novo' | 'usado';
   imei: string;
+  imei2: string;
   numero_serie: string;
   saude_bateria: string;
   codigo_barras: string;
@@ -125,6 +127,7 @@ const unidadeVazia = (): CamposUnidade => ({
   subtipo_computador: "",
   condicao: "novo",
   imei: "",
+  imei2: "",
   numero_serie: "",
   saude_bateria: "",
   codigo_barras: "",
@@ -193,6 +196,7 @@ export function DialogCadastroDispositivo({
       cor: "",
       capacidade_gb: undefined,
       imei: "",
+      imei2: "",
       numero_serie: "",
       saude_bateria: undefined,
       condicao: "novo",
@@ -252,6 +256,7 @@ export function DialogCadastroDispositivo({
         cor: dispositivoParaEditar.cor || "",
         capacidade_gb: dispositivoParaEditar.capacidade_gb,
         imei: dispositivoParaEditar.imei || "",
+        imei2: dispositivoParaEditar.imei2 || "",
         numero_serie: dispositivoParaEditar.numero_serie || "",
         saude_bateria: dispositivoParaEditar.saude_bateria,
         codigo_barras: dispositivoParaEditar.codigo_barras || "",
@@ -262,6 +267,7 @@ export function DialogCadastroDispositivo({
         subtipo_computador: dispositivoParaEditar.subtipo_computador || "",
         condicao: dispositivoParaEditar.condicao,
         imei: dispositivoParaEditar.imei || "",
+        imei2: dispositivoParaEditar.imei2 || "",
         numero_serie: dispositivoParaEditar.numero_serie || "",
         saude_bateria: dispositivoParaEditar.saude_bateria?.toString() || "",
         codigo_barras: dispositivoParaEditar.codigo_barras || "",
@@ -292,6 +298,7 @@ export function DialogCadastroDispositivo({
         cor: "",
         capacidade_gb: undefined,
         imei: "",
+        imei2: "",
         numero_serie: "",
         saude_bateria: undefined,
         codigo_barras: "",
@@ -345,6 +352,7 @@ export function DialogCadastroDispositivo({
           subtipo_computador: dados.subtipo_computador,
           condicao: dados.condicao,
           imei: dados.imei || "",
+          imei2: dados.imei2 || "",
           numero_serie: dados.numero_serie,
           saude_bateria: dados.saude_bateria,
           codigo_barras: dados.codigo_barras || null,
@@ -371,6 +379,7 @@ export function DialogCadastroDispositivo({
             subtipo_computador: unidade.subtipo_computador || undefined,
             condicao: unidade.condicao,
             imei: unidade.imei || "",
+            imei2: unidade.imei2 || "",
             numero_serie: unidade.numero_serie || undefined,
             saude_bateria: unidade.saude_bateria ? Number(unidade.saude_bateria) : undefined,
             codigo_barras: unidade.codigo_barras || null,
@@ -561,6 +570,26 @@ export function DialogCadastroDispositivo({
                               <ExternalLink className="h-3 w-3 mr-1" />
                               Verificar IMEI
                             </Button>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1 space-y-1">
+                              <label className="text-sm font-medium">IMEI 2 (dual chip)</label>
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder="Ex: 123456789012345"
+                                  value={unidade.imei2}
+                                  onChange={(e) => atualizarUnidade(idx, "imei2", e.target.value)}
+                                  className="flex-1"
+                                />
+                                <LeitorCodigoBarras
+                                  mostrarInput={false}
+                                  scannerId={`scanner-imei2-unidade-${idx}`}
+                                  titulo="Escanear IMEI 2"
+                                  onCodigoLido={(v) => atualizarUnidade(idx, "imei2", v)}
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
@@ -908,6 +937,30 @@ export function DialogCadastroDispositivo({
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Verificar IMEI
                       </Button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                      <FormField
+                        control={form.control}
+                        name="imei2"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>IMEI 2 (dual chip)</FormLabel>
+                            <FormControl>
+                              <div className="flex gap-2">
+                                <Input placeholder="Ex: 123456789012345" {...field} className="flex-1" />
+                                <LeitorCodigoBarras
+                                  mostrarInput={false}
+                                  scannerId="scanner-imei2-simples"
+                                  titulo="Escanear IMEI 2"
+                                  onCodigoLido={(v) => form.setValue("imei2", v, { shouldDirty: true, shouldTouch: true })}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-2 sm:items-end">

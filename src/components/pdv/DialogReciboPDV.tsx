@@ -33,6 +33,12 @@ function formatarGarantia(meses: number): string {
   return `${meses} ${meses === 1 ? "mês" : "meses"}`;
 }
 
+// Combina IMEI 1 e (se houver) IMEI 2 numa única string para o placeholder {{imei}} do termo — mostra os dois sem exigir um placeholder novo em termos já customizados pela loja.
+function formatarImeisRecibo(imei1?: string, imei2?: string): string | undefined {
+  if (!imei2?.trim()) return imei1 || undefined;
+  return `${imei1 || "—"}\nIMEI 2: ${imei2.trim()}`;
+}
+
 const TERMOS_GARANTIA_PADRAO = {
   termo_com_garantia: `TERMO DE GARANTIA
 
@@ -403,7 +409,7 @@ export function DialogReciboPDV({
       cor: (item as any).cor || undefined,
       capacidade: (item as any).capacidade_gb ? `${(item as any).capacidade_gb} GB` : undefined,
       numero_serie: (item as any).numero_serie || undefined,
-      imei: item.imei_dispositivo || (item as any).imei || undefined,
+      imei: formatarImeisRecibo(item.imei_dispositivo || item.imei, item.imei2),
       garantia_meses: temGarantia ? formatarGarantia(item.tempo_garantia!) : undefined,
       valor: formatCurrency(item.preco * item.quantidade),
       data_venda: dataFormatada,
