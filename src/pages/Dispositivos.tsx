@@ -245,18 +245,18 @@ export default function Dispositivos() {
             </Button>
           )}
 
-          {/* Tabs Estoque / Vendidos */}
+          {/* Tabs Estoque / Vendidos — mobile: grid 3 colunas full-width; desktop (sm:): inline-flex original */}
           <Tabs value={abaAtiva} onValueChange={(v) => setAbaAtiva(v as any)}>
-            <TabsList>
-              <TabsTrigger value="estoque" className="flex items-center gap-2">
+            <TabsList className="grid grid-cols-3 w-full sm:inline-flex sm:w-auto">
+              <TabsTrigger value="estoque" className="flex items-center justify-center gap-2">
                 <Smartphone className="h-4 w-4" />
                 <span>Estoque</span>
               </TabsTrigger>
-              <TabsTrigger value="vendidos" className="flex items-center gap-2">
+              <TabsTrigger value="vendidos" className="flex items-center justify-center gap-2">
                 <ShoppingCart className="h-4 w-4" />
                 <span>Vendidos</span>
               </TabsTrigger>
-              <TabsTrigger value="excluidos" className="flex items-center gap-2">
+              <TabsTrigger value="excluidos" className="flex items-center justify-center gap-2">
                 <Trash2 className="h-4 w-4" />
                 <span>Excluídos</span>
               </TabsTrigger>
