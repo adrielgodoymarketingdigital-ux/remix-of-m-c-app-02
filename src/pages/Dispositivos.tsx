@@ -298,7 +298,8 @@ export default function Dispositivos() {
           )}
 
           <div className="space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
+            {/* Mobile: busca em linha própria + toggle Grade/Lista numa segunda linha. Desktop (sm:): tudo na mesma linha, como antes */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 sm:flex-wrap">
               <div className="relative flex-1 max-w-md flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -312,7 +313,7 @@ export default function Dispositivos() {
                 <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
               </div>
 
-              <div className="flex gap-2 ml-auto">
+              <div className="flex gap-2 sm:ml-auto">
                 <Button
                   variant={visualizacao === "grid" ? "default" : "outline"}
                   onClick={() => setVisualizacao("grid")}
@@ -332,44 +333,47 @@ export default function Dispositivos() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Tipo:</span>
-                <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-                  <SelectTrigger className="w-[180px] rounded-full sm:rounded-md">
-                    <SelectValue placeholder="Todos os tipos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    {tiposDisponiveis.map((tipo) => (
-                      <SelectItem key={tipo} value={tipo}>
-                        {tipo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Mobile: Tipo/Condição em grid 2 colunas + abas de garantia full-width numa linha própria abaixo. Desktop (sm:): flex-wrap numa linha só, como antes */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 sm:flex-wrap">
+              <div className="grid grid-cols-2 gap-2 sm:contents">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm text-muted-foreground shrink-0">Tipo:</span>
+                  <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                    <SelectTrigger className="w-full sm:w-[180px] rounded-full sm:rounded-md">
+                      <SelectValue placeholder="Todos os tipos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      {tiposDisponiveis.map((tipo) => (
+                        <SelectItem key={tipo} value={tipo}>
+                          {tipo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Condição:</span>
-                <Select value={filtroCondicao} onValueChange={setFiltroCondicao}>
-                  <SelectTrigger className="w-[150px] rounded-full sm:rounded-md">
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todas</SelectItem>
-                    <SelectItem value="novo">Novo</SelectItem>
-                    <SelectItem value="semi_novo">Semi Novo</SelectItem>
-                    <SelectItem value="usado">Usado</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm text-muted-foreground shrink-0">Condição:</span>
+                  <Select value={filtroCondicao} onValueChange={setFiltroCondicao}>
+                    <SelectTrigger className="w-full sm:w-[150px] rounded-full sm:rounded-md">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas</SelectItem>
+                      <SelectItem value="novo">Novo</SelectItem>
+                      <SelectItem value="semi_novo">Semi Novo</SelectItem>
+                      <SelectItem value="usado">Usado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <Tabs
                 value={filtroGarantia}
                 onValueChange={(value) => setFiltroGarantia(value as any)}
               >
-                <TabsList className="rounded-full sm:rounded-md">
+                <TabsList className="grid grid-cols-3 w-full rounded-full sm:inline-flex sm:w-auto sm:rounded-md">
                   <TabsTrigger
                     value="todos"
                     className="rounded-full sm:rounded-sm data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
