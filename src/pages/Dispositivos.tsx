@@ -195,14 +195,14 @@ export default function Dispositivos() {
     <AppLayout>
       <main className="flex-1 p-6 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Dispositivos</h1>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-3xl font-bold truncate">Dispositivos</h1>
               <p className="text-muted-foreground">
                 Gerencie o estoque de dispositivos
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="gap-2">
@@ -226,9 +226,13 @@ export default function Dispositivos() {
                 </DropdownMenuContent>
               </DropdownMenu>
               {abaAtiva === "estoque" && (
-                <Button onClick={handleNovoDispositivo}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo Dispositivo
+                <Button
+                  onClick={handleNovoDispositivo}
+                  className="h-9 px-3 text-xs gap-1.5 sm:h-10 sm:px-4 sm:text-sm sm:gap-2"
+                >
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="sm:hidden">Novo</span>
+                  <span className="hidden sm:inline">Novo Dispositivo</span>
                 </Button>
               )}
             </div>
