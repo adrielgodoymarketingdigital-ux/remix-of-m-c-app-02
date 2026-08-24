@@ -10,15 +10,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShoppingCart, Pencil, Trash2, ImageIcon, FileText, Download, Loader2, Lock, Smartphone, Eye, EyeOff } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ShoppingCart, Pencil, Trash2, ImageIcon, FileText, Download, Loader2, Lock, Smartphone, Eye, EyeOff, MoreVertical } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Dispositivo } from "@/types/dispositivo";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
 import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { useNavigate } from "react-router-dom";
@@ -27,6 +33,25 @@ import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGara
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
 import { BadgeSaudeBateria } from "@/components/dispositivos/BadgeSaudeBateria";
+
+// Gradientes da referência visual (mobile) — mantidos como constantes para não
+// hardcodar cor de fundo de página nenhuma, apenas elementos pontuais (badges/botão).
+const GRADIENTE_BADGE_TIPO = "linear-gradient(110deg,#2446d8 0%,#1768f2 54%,#0ba9c7 100%)";
+const GRADIENTE_BOTAO_PDV = "linear-gradient(110deg,#2443d9 0%,#1769f5 55%,#2057f5 100%)";
+
+const getCondicaoPillClasses = (condicao: string) => {
+  switch (condicao) {
+    case "novo":
+      return "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300";
+    case "semi_novo":
+      return "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300";
+    default:
+      return "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300";
+  }
+};
+
+const getCondicaoLabel = (condicao: string) =>
+  condicao === "novo" ? "Novo" : condicao === "semi_novo" ? "Semi Novo" : "Usado";
 
 interface CardDispositivoProps {
   dispositivo: Dispositivo;
@@ -51,12 +76,22 @@ export function CardDispositivo({
 }: CardDispositivoProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
   const [temRecibo, setTemRecibo] = useState(false);
   const [compraId, setCompraId] = useState<string | null>(null);
   const [gerandoRecibo, setGerandoRecibo] = useState(false);
   const [exibirNoCatalogo, setExibirNoCatalogo] = useState(dispositivo.exibir_no_catalogo !== false);
   const [atualizandoCatalogo, setAtualizandoCatalogo] = useState(false);
+  // Confirmação de exclusão controlada (compartilhada entre o layout desktop
+  // e o menu "⋮" do layout mobile, para não duplicar o AlertDialog).
+  const [alertExcluirAberto, setAlertExcluirAberto] = useState(false);
+  // Margem de lucro (%) sobre o preço de venda — mesma fórmula já usada em
+  // Dashboard.tsx (lucro / faturamento * 100), aqui aplicada ao preço unitário.
+  const margemLucroPct =
+    dispositivo.preco && dispositivo.preco > 0 && dispositivo.lucro !== undefined && dispositivo.lucro !== null
+      ? (dispositivo.lucro / dispositivo.preco) * 100
+      : null;
 
   useEffect(() => {
     const verificarRecibo = async () => {
@@ -265,6 +300,310 @@ export function CardDispositivo({
     }
   };
 
+  // Diálogos e alertas compartilhados entre o layout desktop e o layout
+  // mobile (mesma lógica/estado — só o visual do card muda por breakpoint).
+  const dialogsCompartilhados = (
+    <>
+      <Dialog open={dialogGarantiaAberto} onOpenChange={setDialogGarantiaAberto}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Garantia para o Recibo</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Selecione o tempo de garantia que aparecerá no termo de garantia do recibo.
+            </p>
+            <SeletorTempoGarantia
+              value={garantiaMeses}
+              onChange={setGarantiaMeses}
+            />
+          </div>
+          <DialogFooter className="flex-col gap-2">
+            <div className="flex items-center justify-between w-full text-sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDialogEntradaAberto(true)}
+                className="gap-1.5 text-xs border-amber-500/40 text-amber-600 hover:bg-amber-500/5"
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+                {valorEntrada > 0 ? `Entrada: R$ ${valorEntrada.toFixed(2)}` : "Dispositivo de Entrada"}
+              </Button>
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={() => setDialogGarantiaAberto(false)}>
+                Cancelar
+              </Button>
+              <Button className="flex-1" onClick={handleConfirmarVenda}>
+                Ir para o PDV
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DialogDispositivoEntrada
+        open={dialogEntradaAberto}
+        onOpenChange={setDialogEntradaAberto}
+        empresaId={dispositivo.empresa_id || null}
+        onConfirmar={(valor) => {
+          setValorEntrada(valor);
+          setDialogEntradaAberto(false);
+        }}
+      />
+
+      <AlertDialog open={alertExcluirAberto} onOpenChange={setAlertExcluirAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir "{dispositivo.marca} {dispositivo.modelo}"?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onExcluir(dispositivo.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
+  // ==========================================================================
+  // Layout MOBILE — restilização visual (mesmos dados/handlers do desktop).
+  // Ativo apenas abaixo do breakpoint mobile do app (useIsMobile, <768px);
+  // a versão desktop abaixo permanece 100% inalterada.
+  // ==========================================================================
+  if (isMobile) {
+    const condicaoLabel = getCondicaoLabel(dispositivo.condicao);
+    const origemTipo = dispositivo.origem_tipo;
+    const temOrigem = Boolean(origemTipo);
+
+    return (
+      <div className="rounded-[18px] border border-border bg-card shadow-sm overflow-hidden">
+        {/* Área de imagem */}
+        <div className="relative h-32 bg-gradient-to-br from-muted/60 to-muted flex items-center justify-center p-3">
+          {(dispositivo.fotos && dispositivo.fotos.length > 0) || dispositivo.foto_url ? (
+            <>
+              <img
+                src={dispositivo.fotos?.[0] || dispositivo.foto_url || ''}
+                alt={`${dispositivo.marca} ${dispositivo.modelo}`}
+                className="max-w-full max-h-full object-contain"
+              />
+              {dispositivo.fotos && dispositivo.fotos.length > 1 && (
+                <div className="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                  <ImageIcon className="h-2.5 w-2.5" />
+                  <span>{dispositivo.fotos.length}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <ImageIcon className="h-10 w-10 text-muted-foreground" />
+          )}
+
+          {/* Badges sobrepostos — tipo + condição */}
+          <div className="absolute top-1.5 left-1.5 flex flex-col items-start gap-1">
+            <span
+              className="rounded-full px-2 py-0.5 text-[9px] font-semibold text-white shadow-sm"
+              style={{ background: GRADIENTE_BADGE_TIPO }}
+            >
+              {dispositivo.tipo}
+            </span>
+            <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${getCondicaoPillClasses(dispositivo.condicao)}`}>
+              {condicaoLabel}
+            </span>
+            {dispositivo.garantia && (
+              <span className="rounded-full bg-emerald-100 dark:bg-emerald-500/15 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 dark:text-emerald-300">
+                Garantia {dispositivo.tempo_garantia}m
+              </span>
+            )}
+          </div>
+
+          {/* Menu "mais opções" — concentra as ações secundárias do card */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Mais opções"
+                className="absolute top-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm text-foreground"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEditar(dispositivo)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleToggleExibirNoCatalogo} disabled={atualizandoCatalogo}>
+                {exibirNoCatalogo ? (
+                  <EyeOff className="h-4 w-4 mr-2" />
+                ) : (
+                  <Eye className="h-4 w-4 mr-2" />
+                )}
+                {exibirNoCatalogo ? "Ocultar do catálogo" : "Exibir no catálogo"}
+              </DropdownMenuItem>
+              {dispositivo.origem_tipo === 'terceiro' && compraId && (
+                temRecibo ? (
+                  <DropdownMenuItem onClick={handleBaixarRecibo}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Ver Recibo Legal
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={handleGerarReciboLegal} disabled={gerandoRecibo}>
+                    {gerandoRecibo ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-2" />
+                    )}
+                    Gerar Recibo Legal
+                  </DropdownMenuItem>
+                )
+              )}
+              <DropdownMenuItem
+                onClick={() => setAlertExcluirAberto(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="p-3 space-y-2.5">
+          <div className="min-w-0">
+            <h3 className="font-bold text-[15px] leading-tight truncate">{dispositivo.modelo}</h3>
+            <p className="text-xs text-muted-foreground truncate">{dispositivo.marca}</p>
+            {dispositivo.subtipo_computador && (
+              <p className="text-[11px] text-muted-foreground truncate">{dispositivo.subtipo_computador}</p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+              Qtd: {dispositivo.quantidade} unid.
+            </span>
+            {dispositivo.origem_tipo === 'terceiro' && (
+              <span className="inline-flex items-center rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                {temRecibo ? "✓ Recibo" : "Sem Recibo"}
+              </span>
+            )}
+          </div>
+
+          {(dispositivo.capacidade_gb || dispositivo.imei || (dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null)) && (
+            <div className="space-y-1 text-[11px]">
+              {dispositivo.capacidade_gb && (
+                <div className="flex justify-between min-w-0">
+                  <span className="text-muted-foreground">Capacidade</span>
+                  <span className="font-medium truncate ml-2">{dispositivo.capacidade_gb} GB</span>
+                </div>
+              )}
+              {dispositivo.imei && (
+                <div className="flex justify-between min-w-0">
+                  <span className="text-muted-foreground">IMEI</span>
+                  <span className="font-medium truncate ml-2">{dispositivo.imei}</span>
+                </div>
+              )}
+              {dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null && (
+                <div className="flex justify-between items-center min-w-0">
+                  <span className="text-muted-foreground">Bateria</span>
+                  <BadgeSaudeBateria saudeBateria={dispositivo.saude_bateria} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {temOrigem && (
+            <Badge
+              className={`text-[10px] px-2 py-0 h-5 ${origemTipo === 'troca_pdv' ? 'bg-cyan-600 text-white hover:bg-cyan-600' : ''}`}
+              variant={
+                origemTipo === 'terceiro' ? 'default' :
+                origemTipo === 'fornecedor' ? 'secondary' :
+                origemTipo === 'troca_pdv' ? 'default' :
+                'outline'
+              }
+            >
+              {origemTipo === 'terceiro' && '👤 Terceiro'}
+              {origemTipo === 'fornecedor' && '🏢 Fornecedor'}
+              {origemTipo === 'estoque_proprio' && '📦 Estoque'}
+              {origemTipo === 'troca_pdv' && '🔄 Entrada (Troca)'}
+            </Badge>
+          )}
+
+          {/* Bloco de preços com divisórias sutis */}
+          <div className="divide-y divide-border border-t border-border text-xs">
+            <div className="flex justify-between items-center py-1.5">
+              <span className="text-muted-foreground">Custo</span>
+              <span className="font-medium">
+                {podeVerCustos
+                  ? (dispositivo.custo ? <ValorMonetario valor={dispositivo.custo} /> : "-")
+                  : <Lock className="inline h-3 w-3 text-muted-foreground" />
+                }
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-1.5">
+              <span className="text-muted-foreground">Preço de venda</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">
+                {dispositivo.preco ? <ValorMonetario valor={dispositivo.preco} tipo="preco" /> : "-"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-1.5">
+              <span className="text-muted-foreground">Lucro</span>
+              <span className="flex items-center gap-1.5">
+                <span className={dispositivo.lucro && dispositivo.lucro >= 0 ? "font-semibold text-emerald-600 dark:text-emerald-400" : "font-semibold text-red-600 dark:text-red-400"}>
+                  {podeVerLucros
+                    ? (dispositivo.lucro !== undefined && dispositivo.lucro !== null
+                        ? <ValorMonetario valor={dispositivo.lucro} />
+                        : "-")
+                    : <Lock className="inline h-3 w-3 text-muted-foreground" />
+                  }
+                </span>
+                {podeVerLucros && margemLucroPct !== null && (
+                  <span
+                    className={
+                      margemLucroPct >= 0
+                        ? "rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] px-1.5 py-0.5 font-semibold"
+                        : "rounded-full bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-[10px] px-1.5 py-0.5 font-semibold"
+                    }
+                  >
+                    {margemLucroPct.toFixed(0)}%
+                  </span>
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* Botão principal — Vender no PDV (mesmo handler do desktop) */}
+          <button
+            type="button"
+            onClick={handleVender}
+            disabled={dispositivo.quantidade === 0}
+            className="w-full flex flex-col items-center justify-center gap-0.5 rounded-2xl py-2.5 text-white shadow-sm transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: GRADIENTE_BOTAO_PDV }}
+          >
+            <span className="flex items-center gap-1.5 text-sm font-semibold">
+              <ShoppingCart className="h-4 w-4" />
+              Vender no PDV
+            </span>
+            <span className="text-[10px] font-normal text-white/75">1 toque</span>
+          </button>
+        </div>
+
+        {dialogsCompartilhados}
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // Layout DESKTOP — inalterado.
+  // ==========================================================================
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow max-w-full">
       <div className="relative h-40 bg-muted flex items-center justify-center p-2">
@@ -285,7 +624,7 @@ export function CardDispositivo({
         ) : (
           <ImageIcon className="h-16 w-16 text-muted-foreground" />
         )}
-        
+
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           <Badge className={`${getTipoBadgeColor(dispositivo.tipo)} text-white`}>
             {dispositivo.tipo}
@@ -476,82 +815,19 @@ export function CardDispositivo({
             </Tooltip>
           </TooltipProvider>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="w-full text-xs px-1">
-                <Trash2 className="h-4 w-4 mr-1 shrink-0" />
-                <span className="truncate">Excluir</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir "{dispositivo.marca} {dispositivo.modelo}"?
-                  Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => onExcluir(dispositivo.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="w-full text-xs px-1"
+            onClick={() => setAlertExcluirAberto(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-1 shrink-0" />
+            <span className="truncate">Excluir</span>
+          </Button>
         </div>
       </CardContent>
 
-      <Dialog open={dialogGarantiaAberto} onOpenChange={setDialogGarantiaAberto}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Garantia para o Recibo</DialogTitle>
-          </DialogHeader>
-          <div className="py-2 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Selecione o tempo de garantia que aparecerá no termo de garantia do recibo.
-            </p>
-            <SeletorTempoGarantia
-              value={garantiaMeses}
-              onChange={setGarantiaMeses}
-            />
-          </div>
-          <DialogFooter className="flex-col gap-2">
-            <div className="flex items-center justify-between w-full text-sm">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDialogEntradaAberto(true)}
-                className="gap-1.5 text-xs border-amber-500/40 text-amber-600 hover:bg-amber-500/5"
-              >
-                <Smartphone className="h-3.5 w-3.5" />
-                {valorEntrada > 0 ? `Entrada: R$ ${valorEntrada.toFixed(2)}` : "Dispositivo de Entrada"}
-              </Button>
-            </div>
-            <div className="flex gap-2 w-full">
-              <Button variant="outline" className="flex-1" onClick={() => setDialogGarantiaAberto(false)}>
-                Cancelar
-              </Button>
-              <Button className="flex-1" onClick={handleConfirmarVenda}>
-                Ir para o PDV
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <DialogDispositivoEntrada
-        open={dialogEntradaAberto}
-        onOpenChange={setDialogEntradaAberto}
-        empresaId={dispositivo.empresa_id || null}
-        onConfirmar={(valor) => {
-          setValorEntrada(valor);
-          setDialogEntradaAberto(false);
-        }}
-      />
+      {dialogsCompartilhados}
     </Card>
   );
 }

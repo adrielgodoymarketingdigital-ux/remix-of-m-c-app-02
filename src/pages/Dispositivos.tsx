@@ -23,6 +23,7 @@ import { DialogGerenciarTiposGarantia } from "@/components/dispositivos/DialogGe
 import { useDispositivos } from "@/hooks/useDispositivos";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { CardResumoEstoqueDispositivosMobile } from "@/components/dispositivos/CardResumoEstoqueDispositivosMobile";
 import { DialogCadastroDispositivo } from "@/components/dispositivos/DialogCadastroDispositivo";
 import { DialogLimiteAtingido } from "@/components/planos/DialogLimiteAtingido";
 import { TabelaDispositivos } from "@/components/dispositivos/TabelaDispositivos";
@@ -258,19 +259,31 @@ export default function Dispositivos() {
           ) : (
             <>
 
-          {/* Card de Inventário */}
+          {/* Card de Inventário — "Resumo do Estoque" */}
           {(!isFuncionario || permissoes?.recursos?.ver_inventario) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <CardInventario
-                titulo="Estoque de Dispositivos"
-                icon={Smartphone}
-                iconColor="text-violet-500"
-                totalQuantidade={resumoInventario.quantidade}
-                valorCusto={resumoInventario.custo}
-                valorVenda={resumoInventario.venda}
-                valorLucro={resumoInventario.lucro}
-              />
-            </div>
+            <>
+              {/* Mobile: variante visual da referência (só <sm) */}
+              <div className="sm:hidden">
+                <CardResumoEstoqueDispositivosMobile
+                  totalQuantidade={resumoInventario.quantidade}
+                  valorCusto={resumoInventario.custo}
+                  valorVenda={resumoInventario.venda}
+                  valorLucro={resumoInventario.lucro}
+                />
+              </div>
+              {/* Desktop/tablet: inalterado */}
+              <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <CardInventario
+                  titulo="Estoque de Dispositivos"
+                  icon={Smartphone}
+                  iconColor="text-violet-500"
+                  totalQuantidade={resumoInventario.quantidade}
+                  valorCusto={resumoInventario.custo}
+                  valorVenda={resumoInventario.venda}
+                  valorLucro={resumoInventario.lucro}
+                />
+              </div>
+            </>
           )}
 
           <div className="space-y-4">
@@ -282,7 +295,7 @@ export default function Dispositivos() {
                     placeholder="Buscar por marca, modelo, IMEI, série ou código..."
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 h-[52px] sm:h-10 rounded-full sm:rounded-md bg-muted/30 sm:bg-background"
                   />
                 </div>
                 <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
@@ -312,7 +325,7 @@ export default function Dispositivos() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Tipo:</span>
                 <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] rounded-full sm:rounded-md">
                     <SelectValue placeholder="Todos os tipos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -329,7 +342,7 @@ export default function Dispositivos() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Condição:</span>
                 <Select value={filtroCondicao} onValueChange={setFiltroCondicao}>
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-[150px] rounded-full sm:rounded-md">
                     <SelectValue placeholder="Todas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -345,14 +358,29 @@ export default function Dispositivos() {
                 value={filtroGarantia}
                 onValueChange={(value) => setFiltroGarantia(value as any)}
               >
-                <TabsList>
-                  <TabsTrigger value="todos">Todos</TabsTrigger>
-                  <TabsTrigger value="com">Com Garantia</TabsTrigger>
-                  <TabsTrigger value="sem">Sem Garantia</TabsTrigger>
+                <TabsList className="rounded-full sm:rounded-md">
+                  <TabsTrigger
+                    value="todos"
+                    className="rounded-full sm:rounded-sm data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
+                  >
+                    Todos
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="com"
+                    className="rounded-full sm:rounded-sm data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
+                  >
+                    Com Garantia
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="sem"
+                    className="rounded-full sm:rounded-sm data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
+                  >
+                    Sem Garantia
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              <div className="text-sm text-muted-foreground ml-auto">
+              <div className="text-[13px] text-muted-foreground mt-1 mb-3.5 w-full sm:w-auto sm:text-sm sm:ml-auto sm:mt-0 sm:mb-0">
                 {dispositivosFiltrados.length} dispositivo(s) encontrado(s)
               </div>
             </div>
