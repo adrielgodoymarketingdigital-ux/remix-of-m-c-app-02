@@ -499,6 +499,17 @@ export function useAssinatura() {
       return limiteTrialExpirado;
     }
 
+    // Trial com cartão ativo (checkout iniciado, ainda dentro do prazo): mesmo
+    // acesso completo do trial, alinhado com useVerificacaoAcesso que já libera
+    // a entrada no app para esse caso (plano_tipo permanece 'demonstracao')
+    if ((assinatura as any).trial_with_card === true &&
+        (assinatura as any).trial_canceled !== true &&
+        (assinatura.status === 'active' || assinatura.status === 'trialing') &&
+        !trialExpirado) {
+      console.log("🎁 Trial com cartão ativo, liberando acesso completo");
+      return aplicarModulosExtras(LIMITES_POR_PLANO.trial, assinatura);
+    }
+
     // "demonstracao" com status ativo = trial (legado), mas se não ativo = Free
     if (assinatura.plano_tipo === 'demonstracao' && assinatura.status !== 'active' && assinatura.status !== 'trialing') {
       console.log("📋 Demonstração não ativa, aplicando limites Free");
