@@ -69,6 +69,31 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
     }
   };
 
+  // Desenha uma imagem redimensionada proporcionalmente (mantendo a proporção original,
+  // sem esticar) dentro de uma caixa de largura/altura máximas, centralizada quando sobrar
+  // espaço — equivalente a object-fit: contain. O espaço reservado (x/y/larguraMax/alturaMax)
+  // nunca muda, então o layout dos elementos seguintes não depende da proporção da imagem.
+  const adicionarImagemProporcional = (
+    imagem: string,
+    formato: string,
+    x: number,
+    y: number,
+    larguraMax: number,
+    alturaMax: number,
+  ) => {
+    const propriedades = doc.getImageProperties(imagem);
+    const proporcao = propriedades.width / propriedades.height;
+    let larguraFinal = larguraMax;
+    let alturaFinal = larguraMax / proporcao;
+    if (alturaFinal > alturaMax) {
+      alturaFinal = alturaMax;
+      larguraFinal = alturaMax * proporcao;
+    }
+    const xCentralizado = x + (larguraMax - larguraFinal) / 2;
+    const yCentralizado = y + (alturaMax - alturaFinal) / 2;
+    doc.addImage(imagem, formato, xCentralizado, yCentralizado, larguraFinal, alturaFinal);
+  };
+
   // Formatar data com hora (usando horário local do navegador)
   const agora = new Date();
   const dataCompra = dados.compra.data_compra 
@@ -332,7 +357,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       yPos += 3;
       
       try {
-        doc.addImage(documentoFrente, 'JPEG', margemEsquerda, yPos, larguraDoc, alturaDoc);
+        adicionarImagemProporcional(documentoFrente, 'JPEG', margemEsquerda, yPos, larguraDoc, alturaDoc);
       } catch (error) {
         console.warn('Erro ao adicionar documento frente:', error);
         doc.setDrawColor(200);
@@ -358,7 +383,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       yPos += 3;
       
       try {
-        doc.addImage(documentoVerso, 'JPEG', margemEsquerda, yPos, larguraDoc, alturaDoc);
+        adicionarImagemProporcional(documentoVerso, 'JPEG', margemEsquerda, yPos, larguraDoc, alturaDoc);
       } catch (error) {
         console.warn('Erro ao adicionar documento verso:', error);
         doc.setDrawColor(200);
@@ -411,8 +436,8 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       const xFoto = margemEsquerda + (coluna * (larguraFoto + espacoEntre));
       
       try {
-        // Adiciona a imagem ao PDF
-        doc.addImage(fotos[i], 'JPEG', xFoto, yPos, larguraFoto, alturaFoto);
+        // Adiciona a imagem ao PDF, mantendo a proporção original dentro da célula
+        adicionarImagemProporcional(fotos[i], 'JPEG', xFoto, yPos, larguraFoto, alturaFoto);
       } catch (error) {
         console.warn(`Erro ao adicionar foto ${i + 1}:`, error);
         // Se falhar, desenha um placeholder
@@ -484,7 +509,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       yPos += 4;
       
       try {
-        doc.addImage(dados.compra.assinatura_vendedor, 'PNG', margemEsquerda, yPos, larguraAssinatura, alturaAssinatura);
+        adicionarImagemProporcional(dados.compra.assinatura_vendedor, 'PNG', margemEsquerda, yPos, larguraAssinatura, alturaAssinatura);
       } catch (error) {
         console.warn('Erro ao adicionar assinatura do funcionário:', error);
       }
@@ -515,7 +540,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       yPos += 4;
       
       try {
-        doc.addImage(dados.compra.assinatura_cliente, 'PNG', margemEsquerda, yPos, larguraAssinatura, alturaAssinatura);
+        adicionarImagemProporcional(dados.compra.assinatura_cliente, 'PNG', margemEsquerda, yPos, larguraAssinatura, alturaAssinatura);
       } catch (error) {
         console.warn('Erro ao adicionar assinatura do cliente:', error);
       }
