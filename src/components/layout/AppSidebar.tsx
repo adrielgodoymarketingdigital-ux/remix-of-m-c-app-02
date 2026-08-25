@@ -93,6 +93,7 @@ const menuItems = [
   ]},
   { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
   { title: "Pedidos/Encomendas", url: "/pedidos", icon: ClipboardList, modulo: "pedidos" as keyof PermissoesModulos },
+  { title: "Contas", url: "/contas", icon: Receipt, modulo: "contas" as keyof PermissoesModulos },
 
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
   { title: "Financeiro", url: "/financeiro", icon: FileText, modulo: "financeiro" as keyof PermissoesModulos, items: [
