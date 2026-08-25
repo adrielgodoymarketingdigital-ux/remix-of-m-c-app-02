@@ -14,6 +14,7 @@ export interface Conta {
   valor_pago?: number;
   os_numero?: string;
   fornecedor_id?: string;
+  cliente_id?: string;
   data_pagamento?: string;
   forma_pagamento?: string;
   forma_pagamento_entrada?: string;
@@ -29,6 +30,7 @@ export interface FormularioConta {
   categoria?: string;
   descricao?: string;
   fornecedor_id?: string;
+  cliente_id?: string;
   data_pagamento?: string;
   forma_pagamento?: string;
   valor_pago?: number;

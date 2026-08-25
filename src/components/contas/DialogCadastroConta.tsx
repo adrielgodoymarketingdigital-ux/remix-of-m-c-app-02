@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useFornecedores } from "@/hooks/useFornecedores";
+import { useClientes } from "@/hooks/useClientes";
 import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustomizadas";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,6 +51,7 @@ const formSchema = z.object({
   categoria: z.string().optional(),
   descricao: z.string().max(500, "Descrição deve ter no máximo 500 caracteres").optional(),
   fornecedor_id: z.string().optional(),
+  cliente_id: z.string().optional(),
 });
 
 interface DialogCadastroContaProps {
@@ -58,6 +60,8 @@ interface DialogCadastroContaProps {
   onSubmit: (dados: FormularioConta) => Promise<boolean>;
   conta?: Conta | null;
   categoriasExtras?: string[];
+  /** Tipo pré-selecionado ao abrir para cadastro (ex: aba "A Receber" ativa) */
+  tipoInicial?: "pagar" | "receber";
 }
 
 export function DialogCadastroConta({
@@ -66,8 +70,10 @@ export function DialogCadastroConta({
   onSubmit,
   conta,
   categoriasExtras = [],
+  tipoInicial = "pagar",
 }: DialogCadastroContaProps) {
   const { fornecedores } = useFornecedores();
+  const { clientes } = useClientes({ modoSilencioso: true });
   const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas();
   const [registrarEntrada, setRegistrarEntrada] = useState(false);
   const [valorEntrada, setValorEntrada] = useState("");
@@ -85,8 +91,11 @@ export function DialogCadastroConta({
       categoria: "",
       descricao: "",
       fornecedor_id: "",
+      cliente_id: "",
     },
   });
+
+  const tipoSelecionado = form.watch("tipo");
 
   useEffect(() => {
     if (conta) {
@@ -100,6 +109,7 @@ export function DialogCadastroConta({
         categoria: conta.categoria || "",
         descricao: conta.descricao || "",
         fornecedor_id: conta.fornecedor_id || "",
+        cliente_id: conta.cliente_id || "",
       });
       const jaTemEntrada = !!conta.valor_pago && conta.valor_pago > 0;
       setRegistrarEntrada(jaTemEntrada);
@@ -108,7 +118,7 @@ export function DialogCadastroConta({
     } else {
       form.reset({
         nome: "",
-        tipo: "pagar",
+        tipo: tipoInicial,
         valor: 0,
         data: new Date().toISOString().split("T")[0],
         status: "pendente",
@@ -116,22 +126,29 @@ export function DialogCadastroConta({
         categoria: "",
         descricao: "",
         fornecedor_id: "",
+        cliente_id: "",
       });
       setRegistrarEntrada(false);
       setValorEntrada("");
       setFormaPagamentoEntrada("dinheiro");
     }
-  }, [conta, form]);
+  }, [conta, form, open, tipoInicial]);
 
   const valorTotalForm = form.watch("valor");
   const valorEntradaNumero = parseFloat(valorEntrada.replace(",", ".")) || 0;
   const saldoRestante = Math.max(Number(valorTotalForm || 0) - valorEntradaNumero, 0);
 
   const handleSubmit = async (dados: FormularioConta) => {
-    // Converter fornecedor_id vazio para undefined
+    // Converter fornecedor_id/cliente_id vazios para undefined e manter só o
+    // vínculo relevante ao tipo escolhido (pagar -> fornecedor, receber -> cliente)
     const dadosLimpos: FormularioConta = {
       ...dados,
-      fornecedor_id: dados.fornecedor_id && dados.fornecedor_id !== "nenhum" ? dados.fornecedor_id : undefined,
+      fornecedor_id: dados.tipo === "pagar" && dados.fornecedor_id && dados.fornecedor_id !== "nenhum"
+        ? dados.fornecedor_id
+        : undefined,
+      cliente_id: dados.tipo === "receber" && dados.cliente_id && dados.cliente_id !== "nenhum"
+        ? dados.cliente_id
+        : undefined,
     };
 
     if (registrarEntrada && valorEntradaNumero > 0) {
@@ -293,29 +310,55 @@ export function DialogCadastroConta({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="fornecedor_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fornecedor</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um fornecedor (opcional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="nenhum">Nenhum</SelectItem>
-                      {fornecedores.map((f) => (
-                        <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {tipoSelecionado === "receber" ? (
+              <FormField
+                control={form.control}
+                name="cliente_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cliente</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um cliente (opcional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="nenhum">Nenhum</SelectItem>
+                        {clientes.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <FormField
+                control={form.control}
+                name="fornecedor_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fornecedor</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um fornecedor (opcional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="nenhum">Nenhum</SelectItem>
+                        {fornecedores.map((f) => (
+                          <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

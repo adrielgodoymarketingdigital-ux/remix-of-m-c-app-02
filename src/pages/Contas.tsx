@@ -352,6 +352,7 @@ export default function Contas() {
         onOpenChange={setDialogAberto}
         onSubmit={handleSubmit}
         conta={contaEditando}
+        tipoInicial={filtroTipo === "receber" ? "receber" : "pagar"}
       />
     </AppLayout>
   );

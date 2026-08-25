@@ -925,6 +925,7 @@ export type Database = {
       contas: {
         Row: {
           categoria: string | null
+          cliente_id: string | null
           created_at: string | null
           data: string
           data_pagamento: string | null
@@ -946,6 +947,7 @@ export type Database = {
         }
         Insert: {
           categoria?: string | null
+          cliente_id?: string | null
           created_at?: string | null
           data: string
           data_pagamento?: string | null
@@ -967,6 +969,7 @@ export type Database = {
         }
         Update: {
           categoria?: string | null
+          cliente_id?: string | null
           created_at?: string | null
           data?: string
           data_pagamento?: string | null
@@ -992,6 +995,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
         ]
