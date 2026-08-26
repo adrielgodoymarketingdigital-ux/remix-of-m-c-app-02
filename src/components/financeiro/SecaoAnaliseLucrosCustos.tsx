@@ -9,6 +9,8 @@ import { GraficoRanking } from "./GraficoRanking";
 import { TabelaLucros } from "./TabelaLucros";
 import { AnalistaFinanceiro } from "./AnalistaFinanceiro";
 import { DetalhesCardLucros } from "./DetalhesCardLucros";
+import { TabelaVendas } from "@/components/vendas/TabelaVendas";
+import { useVendas } from "@/hooks/useVendas";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useOcultarValores } from "@/contexts/OcultarValoresContext";
 import {
@@ -67,6 +69,7 @@ export function SecaoAnaliseLucrosCustos({
 }: SecaoAnaliseLucrosCustosProps) {
   const { podeVerCustos, podeVerLucros, isFuncionario } = useFuncionarioPermissoes();
   const { valoresOcultos } = useOcultarValores();
+  const { vendas: vendasDetalhadas, loading: loadingVendas, carregarVendas } = useVendas();
 
   const [filtros, setFiltros] = useState<FiltrosPeriodo>({ dataInicio: "", dataFim: "" });
   const [tipoFiltro, setTipoFiltro] = useState("todos");
@@ -74,6 +77,7 @@ export function SecaoAnaliseLucrosCustos({
   const [evolucao, setEvolucao] = useState<EvolucaoMensal[]>([]);
   const [resumo, setResumo] = useState<ResumoFinanceiro>(resumoVazio);
   const [secaoLucroItem, setSecaoLucroItem] = useState(false);
+  const [secaoVendasDetalhadas, setSecaoVendasDetalhadas] = useState(false);
   const [cardAtivo, setCardAtivo] = useState<CardAtivoLucros>(null);
 
   const carregarDados = useCallback(
@@ -88,13 +92,22 @@ export function SecaoAnaliseLucrosCustos({
         calcularLucroPorItem(filtrosRelatorio),
         calcularEvolucaoMensal(filtrosRelatorio),
         calcularResumo(filtrosRelatorio),
+        carregarVendas(f.dataInicio, f.dataFim),
       ]);
 
       setLucros(lucrosData);
       setEvolucao(evolucaoData);
       setResumo(resumoData);
     },
-    [calcularLucroPorItem, calcularEvolucaoMensal, calcularResumo]
+    [calcularLucroPorItem, calcularEvolucaoMensal, calcularResumo, carregarVendas]
+  );
+
+  // Mesmo filtro de tipo usado nos cards/tabela acima — aplicado aqui só na
+  // exibição (client-side), sem refazer a query, já que useVendas já buscou
+  // as vendas do período.
+  const vendasDoPeriodo = useMemo(
+    () => (tipoFiltro === "todos" ? vendasDetalhadas : vendasDetalhadas.filter((v) => v.tipo === tipoFiltro)),
+    [vendasDetalhadas, tipoFiltro]
   );
 
   useEffect(() => {
@@ -266,6 +279,29 @@ export function SecaoAnaliseLucrosCustos({
           <CollapsibleContent>
             <CardContent>
               <TabelaLucros itens={lucros} loading={loading} />
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* Vendas do período agrupadas por venda (múltiplos produtos em uma só linha, expansível) */}
+      <Collapsible open={secaoVendasDetalhadas} onOpenChange={setSecaoVendasDetalhadas}>
+        <Card>
+          <CardHeader>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 w-full text-left">
+                {secaoVendasDetalhadas ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                <CardTitle>Vendas Detalhadas do Período</CardTitle>
+              </button>
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <TabelaVendas vendas={vendasDoPeriodo} loading={loadingVendas} />
             </CardContent>
           </CollapsibleContent>
         </Card>
