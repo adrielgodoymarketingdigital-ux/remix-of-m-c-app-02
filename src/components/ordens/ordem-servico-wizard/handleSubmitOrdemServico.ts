@@ -52,47 +52,154 @@ interface ComissaoConfig {
 }
 
 /**
+ * Palavras-chave de família de aparelho associadas à marca real da OS, para
+ * desambiguar quando o nome do item bate com mais de um Tipo de Serviço
+ * configurado (ex: técnico com "TROCA DE TAMPA IPHONE" e "TROCA DE TAMPA DE
+ * ANDROID" ao mesmo tempo). Apple é a única marca com ecossistema próprio;
+ * qualquer outra marca conhecida (Samsung, Motorola, Xiaomi, LG, etc.) cai
+ * na família Android — aceita tanto o termo genérico "android" quanto o
+ * nome da própria marca no Tipo de Serviço cadastrado.
+ */
+function palavrasChaveDaMarca(dispositivoMarca?: string | null): string[] {
+  const marca = (dispositivoMarca || "").trim().toLowerCase();
+  if (!marca) return [];
+  if (marca === "apple") return ["iphone", "apple", "ios", "ipad"];
+  return ["android", marca];
+}
+
+interface ResultadoMatchServico {
+  config: ComissaoConfig | undefined;
+  ambiguo: boolean;
+  candidatosAmbiguos?: string[];
+}
+
+/**
  * Acha, entre os tipos de serviço com comissão configurada para o
- * funcionário, o de nome mais específico (mais longo) CONTIDO no nome do
- * serviço informado (comparação case-insensitive, com trim).
+ * funcionário, o que "bate" com o nome do serviço informado (comparação
+ * case-insensitive, com trim).
  *
- * Usa "contém" em vez de igualdade exata porque, na prática, o nome do
- * serviço lançado na OS costuma incluir modelo/peça/detalhes (ex: "FRONTAL
- * IPHONE 13 PRO MAX _*O.CHINA*_ (TROCA DE CI)"), enquanto o Tipo de Serviço
- * configurado é um nome curto e genérico (ex: "TROCA DE FRONTAL").
+ * O match é bidirecional (item contém tipo OU tipo contém item) porque, na
+ * prática, a relação de "quem é mais detalhado" varia: às vezes o nome do
+ * serviço lançado na OS é mais longo (ex: "FRONTAL IPHONE 13 PRO MAX
+ * _*O.CHINA*_ (TROCA DE CI)" contém o tipo curto "TROCA DE FRONTAL"), mas
+ * às vezes é o Tipo de Serviço cadastrado para a comissão que é mais
+ * específico que o item digitado na OS (ex: item "TROCA DE TAMPA" vs. tipo
+ * "TROCA DE TAMPA IPHONE") — só checar "item contém tipo" faz esse segundo
+ * caso falhar silenciosamente (comissão 0 para o item, sem aviso). Ver
+ * também o campo itensSemComissaoConfigurada em calcularComissaoPorServico.
+ *
+ * Quando MAIS DE UM tipo bate (ex: variantes de comissão por marca do
+ * mesmo reparo genérico), a ordem de desempate é:
+ *   1. Igualdade exata de nome (sinal mais forte, não depende de marca).
+ *   2. Marca real do aparelho da OS (dispositivoMarca), via
+ *      palavrasChaveDaMarca — NUNCA por tamanho de string, porque "mais
+ *      longo" não tem relação nenhuma com qual aparelho é da OS.
+ *   3. Se nem isso resolver (marca vazia, ou ainda ambíguo mesmo com a
+ *      marca), retorna ambiguo=true em vez de aplicar um percentual no
+ *      chute — quem chama decide o que fazer (hoje: comissão 0 + sinalizar
+ *      para revisão manual).
  */
 function encontrarComissaoPorNomeServico(
   nomeServico: string,
   tiposComComissao: TipoServicoResumo[],
   comissaoPorTipoServicoId: Map<string, ComissaoConfig>,
-): ComissaoConfig | undefined {
+  dispositivoMarca?: string | null,
+): ResultadoMatchServico {
   const nomeServicoNormalizado = nomeServico.trim().toLowerCase();
   const candidatos = tiposComComissao.filter(t => {
     const nomeTipoNormalizado = t.nome.trim().toLowerCase();
     return nomeTipoNormalizado.length > 0
-      && nomeServicoNormalizado.includes(nomeTipoNormalizado);
+      && (nomeServicoNormalizado.includes(nomeTipoNormalizado)
+        || nomeTipoNormalizado.includes(nomeServicoNormalizado));
   });
-  // Entre os tipos cujo nome bate, prioriza o mais específico (mais longo).
-  const tipoEncontrado = candidatos.sort((a, b) => b.nome.length - a.nome.length)[0];
-  return tipoEncontrado ? comissaoPorTipoServicoId.get(tipoEncontrado.id) : undefined;
+
+  if (candidatos.length === 0) {
+    return { config: undefined, ambiguo: false };
+  }
+  if (candidatos.length === 1) {
+    return { config: comissaoPorTipoServicoId.get(candidatos[0].id), ambiguo: false };
+  }
+
+  // Mais de um tipo bate. Igualdade exata de nome vence qualquer coisa —
+  // reduz o conjunto de candidatos aos exatos quando existir pelo menos um.
+  let pool = candidatos;
+  const exatos = candidatos.filter(t => t.nome.trim().toLowerCase() === nomeServicoNormalizado);
+  if (exatos.length > 0) {
+    if (exatos.length === 1) {
+      return { config: comissaoPorTipoServicoId.get(exatos[0].id), ambiguo: false };
+    }
+    pool = exatos;
+  }
+
+  // Ainda ambíguo: tenta desambiguar pela marca real do aparelho da OS.
+  const palavrasChave = palavrasChaveDaMarca(dispositivoMarca);
+  if (palavrasChave.length > 0) {
+    const compativeisComMarca = pool.filter(t => {
+      const nomeTipoNormalizado = t.nome.trim().toLowerCase();
+      return palavrasChave.some(p => nomeTipoNormalizado.includes(p));
+    });
+    if (compativeisComMarca.length === 1) {
+      return { config: comissaoPorTipoServicoId.get(compativeisComMarca[0].id), ambiguo: false };
+    }
+  }
+
+  // Nem match exato nem a marca resolveram: não adivinha por tamanho de
+  // nome. Sinaliza como ambíguo para quem chama decidir (nunca aplicar %
+  // no chute).
+  return {
+    config: undefined,
+    ambiguo: true,
+    candidatosAmbiguos: pool.map(t => t.nome),
+  };
+}
+
+/**
+ * Resultado de calcularComissaoPorServico:
+ * - total: soma das comissões calculadas com sucesso.
+ * - itensSemComissaoConfigurada: nomes de itens que não bateram com NENHUM
+ *   tipo de serviço configurado para o funcionário — contribuem 0 à soma,
+ *   mas ficam registrados em vez de desaparecer silenciosamente.
+ * - itensComissaoAmbigua: itens que bateram com MAIS DE UM tipo configurado
+ *   e nem match exato nem a marca do aparelho resolveram qual usar (ver
+ *   encontrarComissaoPorNomeServico) — também contribuem 0, mas precisam de
+ *   revisão manual porque existe % configurado, só não dá para saber qual.
+ * A UI ainda não exibe esses campos; ficam preparados para uma exibição
+ * futura (ex: aviso ao salvar a OS).
+ */
+interface ResultadoComissaoPorServico {
+  total: number | null;
+  itensSemComissaoConfigurada: string[];
+  itensComissaoAmbigua: { nome: string; candidatos: string[] }[];
 }
 
 /**
  * Calcula a comissão do Técnico Principal somando, serviço a serviço, a
- * comissão configurada para o tipo de serviço cujo nome está CONTIDO no
- * nome do item em formData.servicos. Isso substitui o cálculo antigo que
- * aplicava uma única % (a do tipoServicoId selecionado na Etapa 4) sobre o
- * TOTAL da OS — errado quando a OS tem múltiplos serviços com comissões
- * diferentes entre si.
+ * comissão configurada para o tipo de serviço cujo nome bate (ver
+ * encontrarComissaoPorNomeServico) com o nome do item em formData.servicos.
+ * Isso substitui o cálculo antigo que aplicava uma única % (a do
+ * tipoServicoId selecionado na Etapa 4) sobre o TOTAL da OS — errado quando
+ * a OS tem múltiplos serviços com comissões diferentes entre si.
  *
- * Serviços cujo nome não bate com nenhum tipo de serviço configurado para
- * o funcionário não entram na soma (comissão null para aquele item).
+ * dispositivoMarca é usado só para desambiguar quando um item bate com mais
+ * de um tipo configurado (variantes por marca, ex: tampa de iPhone vs. de
+ * Android) — nunca para decidir se um item bate ou não.
+ *
+ * Itens cujo nome não bate com nenhum tipo de serviço configurado para o
+ * funcionário não entram na soma e são reportados em
+ * itensSemComissaoConfigurada (comissão explicitamente configurada como 0
+ * pelo dono da loja não conta como "sem configuração" — é intencional).
+ * Itens ambíguos (batem com mais de um tipo, marca não resolveu) são
+ * reportados em itensComissaoAmbigua e também não entram na soma — nunca
+ * aplicamos um percentual "no chute".
  */
 async function calcularComissaoPorServico(
   funcId: string,
   servicos: FormData["servicos"],
-): Promise<number | null> {
-  if (servicos.length === 0) return null;
+  dispositivoMarca?: string | null,
+): Promise<ResultadoComissaoPorServico> {
+  if (servicos.length === 0) {
+    return { total: null, itensSemComissaoConfigurada: [], itensComissaoAmbigua: [] };
+  }
 
   const { data: tiposServicoTodos } = await supabase
     .from("tipos_servico")
@@ -113,19 +220,51 @@ async function calcularComissaoPorServico(
 
   let comissaoTotal = 0;
   let algumEncontrado = false;
+  const itensSemComissaoConfigurada: string[] = [];
+  const itensComissaoAmbigua: { nome: string; candidatos: string[] }[] = [];
 
   for (const servico of servicos) {
-    const config = encontrarComissaoPorNomeServico(servico.nome, tiposComComissao, comissaoPorTipoServicoId);
+    const resultado = encontrarComissaoPorNomeServico(
+      servico.nome, tiposComComissao, comissaoPorTipoServicoId, dispositivoMarca
+    );
 
-    if (config && config.comissao_valor > 0) {
+    if (resultado.ambiguo) {
+      itensComissaoAmbigua.push({ nome: servico.nome, candidatos: resultado.candidatosAmbiguos || [] });
+      continue;
+    }
+
+    if (!resultado.config) {
+      itensSemComissaoConfigurada.push(servico.nome);
+      continue;
+    }
+
+    if (resultado.config.comissao_valor > 0) {
       algumEncontrado = true;
-      comissaoTotal += config.comissao_tipo === "porcentagem"
-        ? servico.preco * (config.comissao_valor / 100)
-        : config.comissao_valor;
+      comissaoTotal += resultado.config.comissao_tipo === "porcentagem"
+        ? servico.preco * (resultado.config.comissao_valor / 100)
+        : resultado.config.comissao_valor;
     }
   }
 
-  return algumEncontrado ? comissaoTotal : null;
+  if (itensSemComissaoConfigurada.length > 0) {
+    console.warn(
+      "[comissao] Item(ns) de serviço sem tipo de serviço configurado para o funcionário — não entraram na soma da comissão:",
+      { funcionarioId: funcId, itens: itensSemComissaoConfigurada },
+    );
+  }
+
+  if (itensComissaoAmbigua.length > 0) {
+    console.warn(
+      "[comissao] Item(ns) de serviço com comissão AMBÍGUA (mais de um tipo configurado bate e a marca do aparelho não resolveu) — não entraram na soma, revisão manual necessária:",
+      { funcionarioId: funcId, dispositivoMarca, itens: itensComissaoAmbigua },
+    );
+  }
+
+  return {
+    total: algumEncontrado ? comissaoTotal : null,
+    itensSemComissaoConfigurada,
+    itensComissaoAmbigua,
+  };
 }
 
 /**
@@ -148,7 +287,8 @@ async function salvarTecnicosOS(
   tecnicos: TecnicoOS[],
   servicosOS: FormData["servicos"],
   totalOS: number,
-  tipoServicoId: string | null
+  tipoServicoId: string | null,
+  dispositivoMarca?: string | null,
 ) {
   if (tecnicos.length === 0) {
     // Limpar técnicos existentes se lista vazia
@@ -199,7 +339,16 @@ async function salvarTecnicosOS(
       const comissaoPorTipoServicoId = new Map(
         tiposComComissaoDoTecnico.map(t => [t.id, comissaoPorFuncionarioETipo.get(`${tec.funcionario_id}:${t.id}`)!])
       );
-      comissaoConfig = encontrarComissaoPorNomeServico(servicoVinculado.nome, tiposComComissaoDoTecnico, comissaoPorTipoServicoId);
+      const resultadoMatch = encontrarComissaoPorNomeServico(
+        servicoVinculado.nome, tiposComComissaoDoTecnico, comissaoPorTipoServicoId, dispositivoMarca
+      );
+      comissaoConfig = resultadoMatch.config;
+      if (resultadoMatch.ambiguo) {
+        console.warn(
+          "[comissao] Comissão ambígua para técnico vinculado a serviço específico — não aplicada (revisão manual necessária):",
+          { funcionarioId: tec.funcionario_id, servico: servicoVinculado.nome, dispositivoMarca, candidatos: resultadoMatch.candidatosAmbiguos },
+        );
+      }
     } else if (tsId) {
       comissaoConfig = comissaoPorFuncionarioETipo.get(`${tec.funcionario_id}:${tsId}`);
     }
@@ -414,8 +563,13 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // Múltiplos serviços na OS: cada um pode ter uma comissão configurada
       // diferente — soma a comissão de cada serviço sobre o preço dele,
       // em vez de aplicar uma única % (a do Tipo de Serviço da Etapa 4)
-      // sobre o total da OS inteira.
-      comissaoCalculadaSnapshot = await calcularComissaoPorServico(funcId, formData.servicos);
+      // sobre o total da OS inteira. comissaoTipoSnapshot/comissaoValorSnapshot
+      // ficam null aqui de propósito: não existe uma única % que represente
+      // a soma quando os itens têm percentuais diferentes entre si.
+      const resultadoComissaoPorServico = await calcularComissaoPorServico(
+        funcId, formData.servicos, formData.dispositivoMarca
+      );
+      comissaoCalculadaSnapshot = resultadoComissaoPorServico.total;
     } else if (funcId && tsId) {
       // Buscar comissão configurada para essa combinação
       const { data: comissaoConfig } = await supabase
@@ -483,7 +637,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       if (error) throw error;
 
       // === SALVAR TÉCNICOS DA OS ===
-      await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId);
+      await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca);
 
       // === ATUALIZAR OU CRIAR CONTA A RECEBER AO EDITAR OS ===
       if (ordem.numero_os) {
@@ -673,7 +827,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .maybeSingle();
 
       if (osCriada) {
-        await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId);
+        await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca);
       }
 
       // === BAIXA NO ESTOQUE E REGISTRO DE VENDAS PARA PRODUTOS/PEÇAS ===
