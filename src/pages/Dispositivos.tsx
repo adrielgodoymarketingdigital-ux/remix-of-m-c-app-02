@@ -24,11 +24,11 @@ import { useDispositivos } from "@/hooks/useDispositivos";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { CardResumoEstoqueDispositivosMobile } from "@/components/dispositivos/CardResumoEstoqueDispositivosMobile";
+import { CardResumoEstoqueDispositivosDesktop } from "@/components/dispositivos/CardResumoEstoqueDispositivosDesktop";
 import { DialogCadastroDispositivo } from "@/components/dispositivos/DialogCadastroDispositivo";
 import { DialogLimiteAtingido } from "@/components/planos/DialogLimiteAtingido";
 import { TabelaDispositivos } from "@/components/dispositivos/TabelaDispositivos";
 import { GridDispositivos } from "@/components/dispositivos/GridDispositivos";
-import { CardInventario } from "@/components/produtos/CardInventario";
 import { Dispositivo, FormularioDispositivo } from "@/types/dispositivo";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -282,12 +282,9 @@ export default function Dispositivos() {
                   valorLucro={resumoInventario.lucro}
                 />
               </div>
-              {/* Desktop/tablet: inalterado */}
-              <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <CardInventario
-                  titulo="Estoque de Dispositivos"
-                  icon={Smartphone}
-                  iconColor="text-violet-500"
+              {/* Desktop/tablet: variante visual da referência (>= sm) */}
+              <div className="hidden sm:block">
+                <CardResumoEstoqueDispositivosDesktop
                   totalQuantidade={resumoInventario.quantidade}
                   valorCusto={resumoInventario.custo}
                   valorVenda={resumoInventario.venda}
@@ -307,7 +304,7 @@ export default function Dispositivos() {
                     placeholder="Buscar por marca, modelo, IMEI, série ou código..."
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
-                    className="pl-9 h-[52px] sm:h-10 rounded-full sm:rounded-md bg-muted/30 sm:bg-background"
+                    className="pl-9 h-[52px] sm:h-11 rounded-full sm:rounded-xl bg-muted/30 sm:bg-background"
                   />
                 </div>
                 <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
@@ -317,7 +314,7 @@ export default function Dispositivos() {
                 <Button
                   variant={visualizacao === "grid" ? "default" : "outline"}
                   onClick={() => setVisualizacao("grid")}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 sm:h-11 sm:rounded-xl"
                 >
                   <Grid3x3 className="h-4 w-4" />
                   <span className="hidden sm:inline">Grade</span>
@@ -325,7 +322,7 @@ export default function Dispositivos() {
                 <Button
                   variant={visualizacao === "tabela" ? "default" : "outline"}
                   onClick={() => setVisualizacao("tabela")}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 sm:h-11 sm:rounded-xl"
                 >
                   <TableIcon className="h-4 w-4" />
                   <span className="hidden sm:inline">Lista</span>
@@ -339,7 +336,7 @@ export default function Dispositivos() {
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm text-muted-foreground shrink-0">Tipo:</span>
                   <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-                    <SelectTrigger className="w-full sm:w-[180px] rounded-full sm:rounded-md">
+                    <SelectTrigger className="w-full sm:w-[180px] rounded-full sm:rounded-xl sm:h-11">
                       <SelectValue placeholder="Todos os tipos" />
                     </SelectTrigger>
                     <SelectContent>
@@ -356,7 +353,7 @@ export default function Dispositivos() {
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm text-muted-foreground shrink-0">Condição:</span>
                   <Select value={filtroCondicao} onValueChange={setFiltroCondicao}>
-                    <SelectTrigger className="w-full sm:w-[150px] rounded-full sm:rounded-md">
+                    <SelectTrigger className="w-full sm:w-[150px] rounded-full sm:rounded-xl sm:h-11">
                       <SelectValue placeholder="Todas" />
                     </SelectTrigger>
                     <SelectContent>
@@ -373,22 +370,22 @@ export default function Dispositivos() {
                 value={filtroGarantia}
                 onValueChange={(value) => setFiltroGarantia(value as any)}
               >
-                <TabsList className="grid grid-cols-3 w-full rounded-full sm:inline-flex sm:w-auto sm:rounded-md">
+                <TabsList className="grid grid-cols-3 w-full rounded-full sm:inline-flex sm:w-auto sm:rounded-xl">
                   <TabsTrigger
                     value="todos"
-                    className="rounded-full sm:rounded-sm data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
+                    className="rounded-full sm:rounded-lg data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
                   >
                     Todos
                   </TabsTrigger>
                   <TabsTrigger
                     value="com"
-                    className="rounded-full sm:rounded-sm data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
+                    className="rounded-full sm:rounded-lg data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
                   >
                     Com Garantia
                   </TabsTrigger>
                   <TabsTrigger
                     value="sem"
-                    className="rounded-full sm:rounded-sm data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
+                    className="rounded-full sm:rounded-lg data-[state=active]:text-primary sm:data-[state=active]:text-foreground"
                   >
                     Sem Garantia
                   </TabsTrigger>

@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +27,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
 import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { useNavigate } from "react-router-dom";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
@@ -58,16 +56,6 @@ interface CardDispositivoProps {
   onEditar: (dispositivo: Dispositivo) => void;
   onExcluir: (id: string) => void;
 }
-
-const getTipoBadgeColor = (tipo: string) => {
-  const cores: Record<string, string> = {
-    "Celular": "bg-blue-500",
-    "Tablet": "bg-purple-500",
-    "Notebook/Computador": "bg-green-500",
-    "Relógio Smart": "bg-pink-500",
-  };
-  return cores[tipo] || "bg-gray-500";
-};
 
 export function CardDispositivo({
   dispositivo,
@@ -602,232 +590,225 @@ export function CardDispositivo({
   }
 
   // ==========================================================================
-  // Layout DESKTOP — inalterado.
+  // Layout DESKTOP — restilização visual conforme referência (mesmos dados/
+  // handlers do mobile, só o layout muda: imagem à esquerda, infos à
+  // direita, menu "⋮" concentra as ações secundárias).
   // ==========================================================================
-  return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow max-w-full">
-      <div className="relative h-40 bg-muted flex items-center justify-center p-2">
-        {(dispositivo.fotos && dispositivo.fotos.length > 0) || dispositivo.foto_url ? (
-          <>
-            <img
-              src={dispositivo.fotos?.[0] || dispositivo.foto_url || ''}
-              alt={`${dispositivo.marca} ${dispositivo.modelo}`}
-              className="max-w-full max-h-full object-contain"
-            />
-            {dispositivo.fotos && dispositivo.fotos.length > 1 && (
-              <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                <ImageIcon className="h-3 w-3" />
-                <span>{dispositivo.fotos.length}</span>
-              </div>
-            )}
-          </>
-        ) : (
-          <ImageIcon className="h-16 w-16 text-muted-foreground" />
-        )}
+  const condicaoLabelDesktop = getCondicaoLabel(dispositivo.condicao);
+  const origemTipoDesktop = dispositivo.origem_tipo;
+  const temOrigemDesktop = Boolean(origemTipoDesktop);
 
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          <Badge className={`${getTipoBadgeColor(dispositivo.tipo)} text-white`}>
-            {dispositivo.tipo}
-          </Badge>
-          <Badge variant={
-            dispositivo.condicao === 'novo' ? 'default' :
-            dispositivo.condicao === 'semi_novo' ? 'secondary' :
-            'outline'
-          }>
-            {dispositivo.condicao === 'novo' ? 'Novo' :
-             dispositivo.condicao === 'semi_novo' ? 'Semi Novo' :
-             'Usado'}
-          </Badge>
-          <Badge variant={dispositivo.quantidade > 0 ? "secondary" : "destructive"}>
-            Qtd: {dispositivo.quantidade}
-          </Badge>
-          {dispositivo.origem_tipo === 'terceiro' && (
-            <Badge variant={temRecibo ? "default" : "secondary"}>
-              {temRecibo ? "✓ Recibo" : "Sem Recibo"}
+  const menuAcoesDesktop = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Mais opções"
+          className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm text-foreground"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => onEditar(dispositivo)}>
+          <Pencil className="h-4 w-4 mr-2" />
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleToggleExibirNoCatalogo} disabled={atualizandoCatalogo}>
+          {exibirNoCatalogo ? (
+            <EyeOff className="h-4 w-4 mr-2" />
+          ) : (
+            <Eye className="h-4 w-4 mr-2" />
+          )}
+          {exibirNoCatalogo ? "Ocultar do catálogo" : "Exibir no catálogo"}
+        </DropdownMenuItem>
+        {dispositivo.origem_tipo === 'terceiro' && compraId && (
+          temRecibo ? (
+            <DropdownMenuItem onClick={handleBaixarRecibo}>
+              <Download className="h-4 w-4 mr-2" />
+              Ver Recibo Legal
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={handleGerarReciboLegal} disabled={gerandoRecibo}>
+              {gerandoRecibo ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4 mr-2" />
+              )}
+              Gerar Recibo Legal
+            </DropdownMenuItem>
+          )
+        )}
+        <DropdownMenuItem
+          onClick={() => setAlertExcluirAberto(true)}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Excluir
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  return (
+    <div className="flex h-full flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden hover:shadow-lg transition-shadow max-w-full">
+      <div className="relative grid grid-cols-[46%_54%] gap-3 border-b border-border/70 p-3.5 min-h-[185px]">
+        {menuAcoesDesktop}
+
+        <div className="relative flex items-center justify-center min-w-0">
+          <div className="absolute top-0 left-0 z-[1] flex flex-col items-start gap-1">
+            <span
+              className="rounded-full px-2.5 py-1 text-[10px] font-bold text-white shadow-sm"
+              style={{ background: GRADIENTE_BADGE_TIPO }}
+            >
+              {dispositivo.tipo}
+            </span>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${getCondicaoPillClasses(dispositivo.condicao)}`}>
+              {condicaoLabelDesktop}
+            </span>
+            {dispositivo.garantia && (
+              <span className="rounded-full bg-emerald-100 dark:bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                Garantia {dispositivo.tempo_garantia}m
+              </span>
+            )}
+          </div>
+
+          {(dispositivo.fotos && dispositivo.fotos.length > 0) || dispositivo.foto_url ? (
+            <>
+              <img
+                src={dispositivo.fotos?.[0] || dispositivo.foto_url || ''}
+                alt={`${dispositivo.marca} ${dispositivo.modelo}`}
+                className="max-w-full h-[155px] object-contain"
+              />
+              {dispositivo.fotos && dispositivo.fotos.length > 1 && (
+                <div className="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                  <ImageIcon className="h-2.5 w-2.5" />
+                  <span>{dispositivo.fotos.length}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <ImageIcon className="h-16 w-16 text-muted-foreground" />
+          )}
+        </div>
+
+        <div className="flex flex-col justify-center min-w-0 pl-1">
+          <span className="text-[13px] font-bold text-foreground truncate">{dispositivo.marca}</span>
+          <span className="text-[13px] text-muted-foreground truncate">{dispositivo.modelo}</span>
+          {dispositivo.subtipo_computador && (
+            <span className="text-[11px] text-muted-foreground truncate">{dispositivo.subtipo_computador}</span>
+          )}
+
+          <div className="flex items-center gap-1.5 flex-wrap mt-2 mb-1.5">
+            <span className="inline-flex items-center rounded-lg bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+              Qtd: {dispositivo.quantidade} unid.
+            </span>
+            {dispositivo.origem_tipo === 'terceiro' && (
+              <span className="inline-flex items-center rounded-lg bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                {temRecibo ? "✓ Recibo" : "Sem Recibo"}
+              </span>
+            )}
+          </div>
+
+          {(dispositivo.capacidade_gb || dispositivo.imei || (dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null)) && (
+            <div className="space-y-1 text-[11px] mb-1.5">
+              {dispositivo.capacidade_gb && (
+                <div className="flex justify-between min-w-0">
+                  <span className="text-muted-foreground">Capacidade</span>
+                  <span className="font-medium truncate ml-2">{dispositivo.capacidade_gb} GB</span>
+                </div>
+              )}
+              {dispositivo.imei && (
+                <div className="flex justify-between min-w-0">
+                  <span className="text-muted-foreground">IMEI</span>
+                  <span className="font-medium truncate ml-2">{dispositivo.imei}</span>
+                </div>
+              )}
+              {dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null && (
+                <div className="flex justify-between items-center min-w-0">
+                  <span className="text-muted-foreground">Bateria</span>
+                  <BadgeSaudeBateria saudeBateria={dispositivo.saude_bateria} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {temOrigemDesktop && (
+            <Badge
+              className={`self-start text-[10px] px-2 py-0 h-5 ${origemTipoDesktop === 'troca_pdv' ? 'bg-cyan-600 text-white hover:bg-cyan-600' : ''}`}
+              variant={
+                origemTipoDesktop === 'terceiro' ? 'default' :
+                origemTipoDesktop === 'fornecedor' ? 'secondary' :
+                origemTipoDesktop === 'troca_pdv' ? 'default' :
+                'outline'
+              }
+            >
+              {origemTipoDesktop === 'terceiro' && '👤 Terceiro'}
+              {origemTipoDesktop === 'fornecedor' && '🏢 Fornecedor'}
+              {origemTipoDesktop === 'estoque_proprio' && '📦 Estoque'}
+              {origemTipoDesktop === 'troca_pdv' && '🔄 Entrada (Troca)'}
             </Badge>
           )}
         </div>
-
-        {dispositivo.garantia && (
-          <Badge className="absolute top-2 right-2 bg-green-600">
-            Garantia {dispositivo.tempo_garantia}m
-          </Badge>
-        )}
       </div>
 
-      <CardContent className="p-4 space-y-3 min-w-0">
-        <div>
-          <h3 className="font-bold text-lg">{dispositivo.marca}</h3>
-          <p className="text-sm text-muted-foreground">{dispositivo.modelo}</p>
-          {dispositivo.subtipo_computador && (
-            <p className="text-xs text-muted-foreground">
-              {dispositivo.subtipo_computador}
-            </p>
-          )}
+      <div className="grid grid-cols-3 divide-x divide-border p-3.5">
+        <div className="pr-3 min-w-0">
+          <span className="block text-[10px] text-muted-foreground mb-1.5">Custo</span>
+          <strong className="block text-[12px] font-bold text-foreground truncate">
+            {podeVerCustos
+              ? (dispositivo.custo ? <ValorMonetario valor={dispositivo.custo} /> : "-")
+              : <Lock className="inline h-3 w-3 text-muted-foreground" />
+            }
+          </strong>
         </div>
-
-        <div className="space-y-2 text-sm">
-          {dispositivo.capacidade_gb && (
-            <div className="min-w-0">
-              <span className="text-muted-foreground">Capacidade:</span>
-              <p className="font-medium truncate">{dispositivo.capacidade_gb} GB</p>
-            </div>
-          )}
-          {dispositivo.imei && (
-            <div className="min-w-0">
-              <span className="text-muted-foreground">IMEI:</span>
-              <p className="font-medium text-xs truncate">{dispositivo.imei}</p>
-            </div>
-          )}
-          {dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null && (
-            <div className="min-w-0">
-              <span className="text-muted-foreground">Saúde da Bateria:</span>
-              <p className="font-medium">
-                <BadgeSaudeBateria saudeBateria={dispositivo.saude_bateria} />
-              </p>
-            </div>
-          )}
+        <div className="px-3 min-w-0">
+          <span className="block text-[10px] text-muted-foreground mb-1.5">Preço de venda</span>
+          <strong className="block text-[12px] font-bold text-blue-600 dark:text-blue-400 truncate">
+            {dispositivo.preco ? <ValorMonetario valor={dispositivo.preco} tipo="preco" /> : "-"}
+          </strong>
         </div>
-
-        <div className="border-t pt-3 space-y-1">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Custo:</span>
-            <span>
-              {podeVerCustos
-                ? (dispositivo.custo ? <ValorMonetario valor={dispositivo.custo} /> : "-")
-                : <Lock className="inline h-3 w-3 text-muted-foreground" />
+        <div className="pl-3 min-w-0">
+          <span className="block text-[10px] text-muted-foreground mb-1.5">Lucro potencial</span>
+          <strong className={`block text-[12px] font-bold truncate ${dispositivo.lucro && dispositivo.lucro >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+            {podeVerLucros
+              ? (dispositivo.lucro !== undefined && dispositivo.lucro !== null
+                  ? <ValorMonetario valor={dispositivo.lucro} />
+                  : "-")
+              : <Lock className="inline h-3 w-3 text-muted-foreground" />
+            }
+          </strong>
+          {podeVerLucros && margemLucroPct !== null && (
+            <span
+              className={
+                margemLucroPct >= 0
+                  ? "inline-block mt-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[9px] px-1.5 py-0.5 font-bold"
+                  : "inline-block mt-1.5 rounded-full bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-[9px] px-1.5 py-0.5 font-bold"
               }
+            >
+              {margemLucroPct.toFixed(0)}%
             </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Preço:</span>
-            <span className="font-medium">
-              {dispositivo.preco ? <ValorMonetario valor={dispositivo.preco} tipo="preco" /> : "-"}
-            </span>
-          </div>
-          <div className="flex justify-between text-sm font-bold">
-            <span>Lucro:</span>
-            <span className={
-              dispositivo.lucro && dispositivo.lucro >= 0 ? "text-green-600" : "text-red-600"
-            }>
-              {podeVerLucros
-                ? (dispositivo.lucro !== undefined && dispositivo.lucro !== null
-                    ? <ValorMonetario valor={dispositivo.lucro} />
-                    : "-")
-                : <Lock className="inline h-3 w-3 text-muted-foreground" />
-              }
-            </span>
-          </div>
+          )}
         </div>
+      </div>
 
-        {/* Origem Badge */}
-        {(dispositivo as any).origem_tipo && (
-          <div className="mt-3 pt-3 border-t">
-            <div className="flex items-center justify-between">
-              <Badge className={
-                (dispositivo as any).origem_tipo === 'troca_pdv' ? 'bg-cyan-600 text-white hover:bg-cyan-600' : undefined
-              } variant={
-                (dispositivo as any).origem_tipo === 'terceiro' ? 'default' :
-                (dispositivo as any).origem_tipo === 'fornecedor' ? 'secondary' :
-                (dispositivo as any).origem_tipo === 'troca_pdv' ? 'default' :
-                'outline'
-              }>
-                {(dispositivo as any).origem_tipo === 'terceiro' && '👤 Terceiro'}
-                {(dispositivo as any).origem_tipo === 'fornecedor' && '🏢 Fornecedor'}
-                {(dispositivo as any).origem_tipo === 'estoque_proprio' && '📦 Estoque'}
-                {(dispositivo as any).origem_tipo === 'troca_pdv' && '🔄 Entrada (Troca)'}
-              </Badge>
-            </div>
-          </div>
-        )}
-
-        {dispositivo.origem_tipo === 'terceiro' && compraId && (
-          <div className="pt-1">
-            {temRecibo ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full text-xs"
-                onClick={handleBaixarRecibo}
-                disabled={gerandoRecibo}
-              >
-                <Download className="h-4 w-4 mr-2 shrink-0" />
-                <span className="truncate">Ver Recibo Legal</span>
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full text-xs"
-                onClick={handleGerarReciboLegal}
-                disabled={gerandoRecibo}
-              >
-                {gerandoRecibo ? (
-                  <Loader2 className="h-4 w-4 mr-2 shrink-0 animate-spin" />
-                ) : (
-                  <FileText className="h-4 w-4 mr-2 shrink-0" />
-                )}
-                <span className="truncate">Gerar Recibo Legal</span>
-              </Button>
-            )}
-          </div>
-        )}
-
-        <div className="grid grid-cols-4 gap-1 pt-2">
-          <Button
-            onClick={handleVender}
-            className="w-full text-xs px-1"
-            size="sm"
-            disabled={dispositivo.quantidade === 0}
-          >
-            <ShoppingCart className="h-4 w-4 mr-1 shrink-0" />
-            <span className="truncate">Vender</span>
-          </Button>
-
-          <Button
-            onClick={() => onEditar(dispositivo)}
-            variant="default"
-            size="sm"
-            className="w-full text-xs px-1"
-          >
-            <Pencil className="h-4 w-4 mr-1 shrink-0" />
-            <span className="truncate">Editar</span>
-          </Button>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={handleToggleExibirNoCatalogo}
-                  disabled={atualizandoCatalogo}
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs px-1"
-                >
-                  {exibirNoCatalogo ? (
-                    <Eye className="h-4 w-4 shrink-0" />
-                  ) : (
-                    <EyeOff className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Exibir no catálogo</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <Button
-            variant="destructive"
-            size="sm"
-            className="w-full text-xs px-1"
-            onClick={() => setAlertExcluirAberto(true)}
-          >
-            <Trash2 className="h-4 w-4 mr-1 shrink-0" />
-            <span className="truncate">Excluir</span>
-          </Button>
-        </div>
-      </CardContent>
+      <div className="px-3.5 pb-3.5 mt-auto">
+        <button
+          type="button"
+          onClick={handleVender}
+          disabled={dispositivo.quantidade === 0}
+          className="w-full flex items-center justify-center gap-3 rounded-xl py-3.5 text-white shadow-sm transition-transform active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ background: GRADIENTE_BOTAO_PDV }}
+        >
+          <ShoppingCart className="h-5 w-5" />
+          <span className="flex flex-col items-start leading-tight">
+            <span className="text-sm font-bold">Vender no PDV</span>
+            <span className="text-[10px] font-normal text-white/75">1 toque</span>
+          </span>
+        </button>
+      </div>
 
       {dialogsCompartilhados}
-    </Card>
+    </div>
   );
 }
