@@ -30,7 +30,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormularioCompraDispositivo } from "@/types/origem";
-import { dataHoje } from "@/lib/formatters";
+import { dataHoje, parseValorMonetarioBR, formatarNumeroParaInputBR } from "@/lib/formatters";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrigemPessoas } from "@/hooks/useOrigemPessoas";
 import { useFornecedores } from "@/hooks/useFornecedores";
@@ -50,7 +50,10 @@ const createFormSchema = (modoInline: boolean) => z.object({
   fornecedor_id: z.string().optional(),
   dispositivo_id: modoInline ? z.string().optional() : z.string().min(1, "Selecione um dispositivo"),
   data_compra: z.string().min(1, "Data é obrigatória"),
-  valor_pago: z.coerce.number().min(0, "Valor deve ser maior que zero"),
+  // Texto livre (permite colar valores formatados como "1.500,00" ou "R$ 1.500,00"
+  // sem que o navegador zere o campo, como acontecia com type="number" — ver
+  // parseValorMonetarioBR). O parse para number acontece em handleSubmit.
+  valor_pago: z.string(),
   forma_pagamento: z.enum(['pix', 'dinheiro', 'cartao_debito', 'cartao_credito', 'transferencia', 'boleto']),
   funcionario_responsavel: z.string().optional(),
   unidade: z.string().optional(),
@@ -115,7 +118,7 @@ export function DialogCadastroCompra({
       fornecedor_id: "",
       dispositivo_id: dispositivoId || "",
       data_compra: dataHoje(),
-      valor_pago: 0,
+      valor_pago: "",
       forma_pagamento: 'pix',
       funcionario_responsavel: "",
       unidade: "",
@@ -168,7 +171,7 @@ export function DialogCadastroCompra({
         fornecedor_id: dados.tipo_origem === 'fornecedor' ? dados.fornecedor_id : undefined,
         dispositivo_id: dados.dispositivo_id || '',
         data_compra: dados.data_compra,
-        valor_pago: dados.valor_pago,
+        valor_pago: parseValorMonetarioBR(dados.valor_pago),
         forma_pagamento: dados.forma_pagamento,
         funcionario_responsavel: dados.funcionario_responsavel,
         unidade: dados.unidade,
@@ -459,7 +462,25 @@ export function DialogCadastroCompra({
                         <FormItem>
                           <FormLabel>Valor Pago (R$) *</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.01" {...field} />
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="0,00"
+                              {...field}
+                              onChange={(e) => {
+                                // Permite dígitos, vírgula e ponto livremente (digitando ou
+                                // colando) — o parse de verdade acontece no schema (submit)
+                                // e no blur abaixo. Não usamos type="number" porque ele zera
+                                // silenciosamente ao colar "1.500,00" ou "R$ 1.500,00".
+                                field.onChange(e.target.value.replace(/[^0-9,.]/g, ""));
+                              }}
+                              onBlur={(e) => {
+                                field.onBlur();
+                                if (e.target.value.trim() === "") return;
+                                const numero = parseValorMonetarioBR(e.target.value);
+                                field.onChange(formatarNumeroParaInputBR(numero));
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

@@ -8,6 +8,53 @@ export const formatCurrency = (value: number | null | undefined): string => {
   }).format(value);
 };
 
+/**
+ * Converte uma string digitada ou colada em um campo de valor monetário
+ * (formatos aceitos: "1500", "1500,00", "1.500,00", "R$ 1.500,00",
+ * "R$1500.00") no número decimal correto. Nunca retorna NaN — entrada
+ * vazia ou não numérica resulta em 0.
+ *
+ * Existe porque <input type="number"> zera silenciosamente (input.value
+ * vira "") quando o usuário cola um valor com vírgula decimal ou prefixo
+ * "R$", já que essa sintaxe não é um número float válido para o input
+ * nativo. Usar type="text" + este parser evita essa perda de dado.
+ */
+export function parseValorMonetarioBR(input: string): number {
+  if (!input) return 0;
+
+  let limpo = input.replace(/[^\d,.-]/g, "").trim();
+  if (!limpo) return 0;
+
+  const temVirgula = limpo.includes(",");
+  const temPonto = limpo.includes(".");
+
+  if (temVirgula && temPonto) {
+    // "1.500,00" -> ponto é separador de milhar, vírgula é decimal
+    limpo = limpo.replace(/\./g, "").replace(",", ".");
+  } else if (temVirgula) {
+    // "1500,00" -> vírgula é o separador decimal
+    limpo = limpo.replace(",", ".");
+  } else if (temPonto) {
+    const partes = limpo.split(".");
+    const ultimaParte = partes[partes.length - 1];
+    // "1.500" ou "1.500.000" -> ponto(s) de milhar (dinheiro raramente usa
+    // 3 casas decimais, então 3 dígitos após o único ponto = milhar)
+    if (partes.length > 2 || ultimaParte.length === 3) {
+      limpo = partes.join("");
+    }
+    // caso contrário ("1500.00", "1.5") o ponto já é o separador decimal
+  }
+
+  const numero = parseFloat(limpo);
+  return Number.isNaN(numero) ? 0 : Math.abs(numero);
+}
+
+/** Formata um número para exibição em um input de valor editável, sem o prefixo "R$": 1500 -> "1.500,00" */
+export function formatarNumeroParaInputBR(valor: number): string {
+  if (!Number.isFinite(valor)) return "";
+  return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function parseDate(date: string | Date): Date {
   if (typeof date === "string") {
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
