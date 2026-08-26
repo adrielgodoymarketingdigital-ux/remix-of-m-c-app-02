@@ -8,12 +8,14 @@ import { criarOuAtualizarCliente } from "@/lib/ordemServico/criarOuAtualizarClie
 import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
 import { criarContaAReceberOS } from "@/lib/ordemServico/criarContaAReceberOS";
 import { TaxaCartao } from "@/hooks/useTaxasCartao";
+import {
+  CandidatoAmbiguo,
+  ComissaoConfig,
+  TipoServicoResumo,
+  encontrarComissaoPorNomeServico,
+  formatarMotivoComissao,
+} from "@/lib/ordemServico/comissaoPorTipoServico";
 import { FormData, TecnicoOS } from "./tipos";
-
-interface TipoServicoResumo {
-  id: string;
-  nome: string;
-}
 
 interface SalvarOrdemServicoParams {
   formData: FormData;
@@ -45,114 +47,6 @@ interface SalvarOrdemServicoParams {
   onOpenChange: (open: boolean) => void;
 }
 
-interface ComissaoConfig {
-  tipo_servico_id: string;
-  comissao_tipo: string;
-  comissao_valor: number;
-}
-
-/**
- * Palavras-chave de família de aparelho associadas à marca real da OS, para
- * desambiguar quando o nome do item bate com mais de um Tipo de Serviço
- * configurado (ex: técnico com "TROCA DE TAMPA IPHONE" e "TROCA DE TAMPA DE
- * ANDROID" ao mesmo tempo). Apple é a única marca com ecossistema próprio;
- * qualquer outra marca conhecida (Samsung, Motorola, Xiaomi, LG, etc.) cai
- * na família Android — aceita tanto o termo genérico "android" quanto o
- * nome da própria marca no Tipo de Serviço cadastrado.
- */
-function palavrasChaveDaMarca(dispositivoMarca?: string | null): string[] {
-  const marca = (dispositivoMarca || "").trim().toLowerCase();
-  if (!marca) return [];
-  if (marca === "apple") return ["iphone", "apple", "ios", "ipad"];
-  return ["android", marca];
-}
-
-interface ResultadoMatchServico {
-  config: ComissaoConfig | undefined;
-  ambiguo: boolean;
-  candidatosAmbiguos?: string[];
-}
-
-/**
- * Acha, entre os tipos de serviço com comissão configurada para o
- * funcionário, o que "bate" com o nome do serviço informado (comparação
- * case-insensitive, com trim).
- *
- * O match é bidirecional (item contém tipo OU tipo contém item) porque, na
- * prática, a relação de "quem é mais detalhado" varia: às vezes o nome do
- * serviço lançado na OS é mais longo (ex: "FRONTAL IPHONE 13 PRO MAX
- * _*O.CHINA*_ (TROCA DE CI)" contém o tipo curto "TROCA DE FRONTAL"), mas
- * às vezes é o Tipo de Serviço cadastrado para a comissão que é mais
- * específico que o item digitado na OS (ex: item "TROCA DE TAMPA" vs. tipo
- * "TROCA DE TAMPA IPHONE") — só checar "item contém tipo" faz esse segundo
- * caso falhar silenciosamente (comissão 0 para o item, sem aviso). Ver
- * também o campo itensSemComissaoConfigurada em calcularComissaoPorServico.
- *
- * Quando MAIS DE UM tipo bate (ex: variantes de comissão por marca do
- * mesmo reparo genérico), a ordem de desempate é:
- *   1. Igualdade exata de nome (sinal mais forte, não depende de marca).
- *   2. Marca real do aparelho da OS (dispositivoMarca), via
- *      palavrasChaveDaMarca — NUNCA por tamanho de string, porque "mais
- *      longo" não tem relação nenhuma com qual aparelho é da OS.
- *   3. Se nem isso resolver (marca vazia, ou ainda ambíguo mesmo com a
- *      marca), retorna ambiguo=true em vez de aplicar um percentual no
- *      chute — quem chama decide o que fazer (hoje: comissão 0 + sinalizar
- *      para revisão manual).
- */
-function encontrarComissaoPorNomeServico(
-  nomeServico: string,
-  tiposComComissao: TipoServicoResumo[],
-  comissaoPorTipoServicoId: Map<string, ComissaoConfig>,
-  dispositivoMarca?: string | null,
-): ResultadoMatchServico {
-  const nomeServicoNormalizado = nomeServico.trim().toLowerCase();
-  const candidatos = tiposComComissao.filter(t => {
-    const nomeTipoNormalizado = t.nome.trim().toLowerCase();
-    return nomeTipoNormalizado.length > 0
-      && (nomeServicoNormalizado.includes(nomeTipoNormalizado)
-        || nomeTipoNormalizado.includes(nomeServicoNormalizado));
-  });
-
-  if (candidatos.length === 0) {
-    return { config: undefined, ambiguo: false };
-  }
-  if (candidatos.length === 1) {
-    return { config: comissaoPorTipoServicoId.get(candidatos[0].id), ambiguo: false };
-  }
-
-  // Mais de um tipo bate. Igualdade exata de nome vence qualquer coisa —
-  // reduz o conjunto de candidatos aos exatos quando existir pelo menos um.
-  let pool = candidatos;
-  const exatos = candidatos.filter(t => t.nome.trim().toLowerCase() === nomeServicoNormalizado);
-  if (exatos.length > 0) {
-    if (exatos.length === 1) {
-      return { config: comissaoPorTipoServicoId.get(exatos[0].id), ambiguo: false };
-    }
-    pool = exatos;
-  }
-
-  // Ainda ambíguo: tenta desambiguar pela marca real do aparelho da OS.
-  const palavrasChave = palavrasChaveDaMarca(dispositivoMarca);
-  if (palavrasChave.length > 0) {
-    const compativeisComMarca = pool.filter(t => {
-      const nomeTipoNormalizado = t.nome.trim().toLowerCase();
-      return palavrasChave.some(p => nomeTipoNormalizado.includes(p));
-    });
-    if (compativeisComMarca.length === 1) {
-      return { config: comissaoPorTipoServicoId.get(compativeisComMarca[0].id), ambiguo: false };
-    }
-  }
-
-  // Nem match exato nem a marca resolveram: não adivinha por tamanho de
-  // nome. Sinaliza como ambíguo para quem chama decidir (nunca aplicar %
-  // no chute).
-  return {
-    config: undefined,
-    ambiguo: true,
-    candidatosAmbiguos: pool.map(t => t.nome),
-  };
-}
-
 /**
  * Resultado de calcularComissaoPorServico:
  * - total: soma das comissões calculadas com sucesso.
@@ -163,13 +57,14 @@ function encontrarComissaoPorNomeServico(
  *   e nem match exato nem a marca do aparelho resolveram qual usar (ver
  *   encontrarComissaoPorNomeServico) — também contribuem 0, mas precisam de
  *   revisão manual porque existe % configurado, só não dá para saber qual.
- * A UI ainda não exibe esses campos; ficam preparados para uma exibição
- * futura (ex: aviso ao salvar a OS).
+ * O aviso ao salvar a OS (toast) e o indicador no Perfil de Desempenho do
+ * Funcionário usam esses dois campos para mostrar exatamente quais itens
+ * precisam de revisão manual e por quê.
  */
 interface ResultadoComissaoPorServico {
   total: number | null;
   itensSemComissaoConfigurada: string[];
-  itensComissaoAmbigua: { nome: string; candidatos: string[] }[];
+  itensComissaoAmbigua: { nome: string; candidatos: CandidatoAmbiguo[] }[];
 }
 
 /**
@@ -221,7 +116,7 @@ async function calcularComissaoPorServico(
   let comissaoTotal = 0;
   let algumEncontrado = false;
   const itensSemComissaoConfigurada: string[] = [];
-  const itensComissaoAmbigua: { nome: string; candidatos: string[] }[] = [];
+  const itensComissaoAmbigua: { nome: string; candidatos: CandidatoAmbiguo[] }[] = [];
 
   for (const servico of servicos) {
     const resultado = encontrarComissaoPorNomeServico(
@@ -550,6 +445,11 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     let comissaoValorSnapshot: number | null = null;
     let comissaoCalculadaSnapshot: number | null = null;
     let tipoServicoNomeSnapshot: string | null = null;
+    // Itens que ficaram sem comissão configurada ou ambíguos ao calcular a
+    // comissão do Técnico Principal em OS com múltiplos serviços — usados
+    // para montar o aviso visível ao usuário logo abaixo, junto ao toast de
+    // sucesso do salvamento.
+    let avisoComissaoTexto: string | null = null;
 
     const funcId = tecnicoId || funcionarioId || null;
     const tsId = tipoServicoId || null;
@@ -570,6 +470,21 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         funcId, formData.servicos, formData.dispositivoMarca
       );
       comissaoCalculadaSnapshot = resultadoComissaoPorServico.total;
+
+      const motivos = [
+        ...resultadoComissaoPorServico.itensSemComissaoConfigurada.map(nome =>
+          formatarMotivoComissao(nome, { ambiguo: false })
+        ),
+        ...resultadoComissaoPorServico.itensComissaoAmbigua.map(({ nome, candidatos }) =>
+          formatarMotivoComissao(nome, { ambiguo: true, candidatosAmbiguos: candidatos })
+        ),
+      ];
+      if (motivos.length > 0) {
+        // Sem quebra de linha de propósito: o toast (ToastDescription) não
+        // preserva "\n" no CSS, então itens são separados por " • " para
+        // continuarem legíveis mesmo renderizados em um parágrafo só.
+        avisoComissaoTexto = `⚠️ Comissão do técnico incompleta — revise: ${motivos.join(" • ")}`;
+      }
     } else if (funcId && tsId) {
       // Buscar comissão configurada para essa combinação
       const { data: comissaoConfig } = await supabase
@@ -766,10 +681,17 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         }
       }
 
-      toast({
-        title: "Ordem atualizada",
-        description: "A ordem de serviço foi atualizada com sucesso.",
-      });
+      toast(
+        avisoComissaoTexto
+          ? {
+              title: "Ordem atualizada — comissão precisa de revisão",
+              description: `A ordem de serviço foi atualizada com sucesso. ${avisoComissaoTexto}`,
+            }
+          : {
+              title: "Ordem atualizada",
+              description: "A ordem de serviço foi atualizada com sucesso.",
+            }
+      );
       window.dispatchEvent(new Event("os-salva"));
     } else {
       // Criar nova ordem
@@ -973,10 +895,17 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // Disparar confetti de celebração
       dispararConfetti('celebracao');
 
-      toast({
-        title: "Ordem criada",
-        description: `Ordem de serviço ${numeroOS} criada com sucesso.`,
-      });
+      toast(
+        avisoComissaoTexto
+          ? {
+              title: "Ordem criada — comissão precisa de revisão",
+              description: `Ordem de serviço ${numeroOS} criada com sucesso. ${avisoComissaoTexto}`,
+            }
+          : {
+              title: "Ordem criada",
+              description: `Ordem de serviço ${numeroOS} criada com sucesso.`,
+            }
+      );
 
       window.dispatchEvent(new Event("os-salva"));
 

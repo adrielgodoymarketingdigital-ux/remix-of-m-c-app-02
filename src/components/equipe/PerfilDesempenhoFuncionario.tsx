@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
-import { User, Wrench, ClipboardList, CalendarIcon, Search, Eye } from "lucide-react";
+import { User, Wrench, ClipboardList, CalendarIcon, Search, Eye, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,6 +18,12 @@ import { ptBR } from "date-fns/locale";
 import type { Funcionario } from "@/types/funcionario";
 import { useDesempenhoFuncionario, type OSFuncionario } from "@/hooks/useDesempenhoFuncionario";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
+import {
+  type ComissaoConfig,
+  type TipoServicoResumo,
+  encontrarComissaoPorNomeServico,
+  formatarMotivoComissao,
+} from "@/lib/ordemServico/comissaoPorTipoServico";
 
 interface PerfilDesempenhoFuncionarioProps {
   funcionario: Funcionario | null;
@@ -63,6 +69,98 @@ function resolverNomeTipoServico(
   if (os.tipo_servico_nome_snapshot) return os.tipo_servico_nome_snapshot;
   if (os.tipo_servico_id && tiposServico[os.tipo_servico_id]) return tiposServico[os.tipo_servico_id];
   return null;
+}
+
+interface AlertaComissaoItem {
+  nome: string;
+  motivo: string;
+}
+
+/**
+ * Reavalia, com a configuração de comissão ATUAL, se algum item da OS
+ * ficaria sem comissão configurada ou ambíguo — mesma lógica usada ao
+ * salvar a OS (calcularComissaoPorServico), reaplicada aqui só para
+ * exibição. Só faz sentido quando a comissão foi calculada por soma de
+ * múltiplos serviços do Técnico Principal (2+ itens em
+ * avarias.servicos_realizados, sem "Técnicos por Serviço" vinculado) —
+ * para OS de um serviço só, ou que já usam os_tecnicos, o snapshot
+ * gravado já reflete o item certo e não há ambiguidade a reavaliar.
+ *
+ * Como usa o catálogo/config de HOJE (não o que existia quando a OS foi
+ * salva), é um "melhor esforço": se a configuração mudou desde então, a
+ * explicação pode não bater 100% com o que gerou o valor gravado — mas é
+ * a mesma informação que o dono veria se editasse a OS agora.
+ */
+function avaliarAlertasComissaoOS(
+  os: OSFuncionario,
+  tiposServico: Record<string, string>,
+  comissoesTipoServico: Record<string, { tipo: string; valor: number }>,
+): AlertaComissaoItem[] {
+  if (os.tecnicos_os && os.tecnicos_os.length > 0) return [];
+
+  const servicosRealizados: { nome?: string }[] = Array.isArray(os.avarias?.servicos_realizados)
+    ? os.avarias.servicos_realizados
+    : [];
+  if (servicosRealizados.length < 2) return [];
+
+  const tiposComComissao: TipoServicoResumo[] = Object.entries(tiposServico)
+    .filter(([id]) => id in comissoesTipoServico)
+    .map(([id, nome]) => ({ id, nome }));
+
+  const comissaoPorTipoServicoId = new Map<string, ComissaoConfig>(
+    Object.entries(comissoesTipoServico).map(([id, c]) => [
+      id,
+      { tipo_servico_id: id, comissao_tipo: c.tipo, comissao_valor: c.valor },
+    ]),
+  );
+
+  const alertas: AlertaComissaoItem[] = [];
+  for (const item of servicosRealizados) {
+    if (!item?.nome) continue;
+    const resultado = encontrarComissaoPorNomeServico(
+      item.nome, tiposComComissao, comissaoPorTipoServicoId, os.dispositivo_marca,
+    );
+    if (resultado.ambiguo) {
+      alertas.push({ nome: item.nome, motivo: formatarMotivoComissao(item.nome, resultado) });
+    } else if (!resultado.config) {
+      alertas.push({ nome: item.nome, motivo: formatarMotivoComissao(item.nome, { ambiguo: false }) });
+    }
+  }
+  return alertas;
+}
+
+/**
+ * Ícone de alerta clicável (funciona em touch) ao lado de um valor de
+ * comissão — ao clicar, mostra em um popover quais itens da OS ficaram
+ * sem comissão configurada ou ambíguos, e por quê.
+ */
+function AlertaComissaoIndicador({ alertas }: { alertas: AlertaComissaoItem[] }) {
+  if (alertas.length === 0) return null;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center text-amber-500 hover:text-amber-600"
+          title="Comissão precisa de revisão"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <AlertTriangle className="h-4 w-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 text-sm" align="end">
+        <p className="font-medium mb-2 flex items-center gap-1.5 text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          Comissão pode estar incompleta
+        </p>
+        <ul className="space-y-2 text-muted-foreground">
+          {alertas.map((a, idx) => (
+            <li key={idx}>{a.motivo}</li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, mesReferencia }: PerfilDesempenhoFuncionarioProps) {
@@ -308,6 +406,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                         {ordensFiltradas.map((os) => {
                           const comissao = resolverComissaoOS(os, comissoesTipoServico);
                           const nomeTipo = resolverNomeTipoServico(os, tiposServico);
+                          const alertasComissao = avaliarAlertasComissaoOS(os, tiposServico, comissoesTipoServico);
                           return (
                             <TableRow key={os.id}>
                               <TableCell className="font-medium">{os.numero_os}</TableCell>
@@ -336,9 +435,12 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                                 <ValorMonetario valor={os.total} />
                               </TableCell>
                               <TableCell className="text-right">
-                                {comissao !== null
-                                  ? <span className="font-medium text-primary"><ValorMonetario valor={comissao} /></span>
-                                  : <span className="text-muted-foreground">—</span>}
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {comissao !== null
+                                    ? <span className="font-medium text-primary"><ValorMonetario valor={comissao} /></span>
+                                    : <span className="text-muted-foreground">—</span>}
+                                  <AlertaComissaoIndicador alertas={alertasComissao} />
+                                </div>
                               </TableCell>
                               <TableCell className="text-center">
                                 <Button
@@ -389,6 +491,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                   comissao: resolverComissaoOS(osDetalhe, comissoesTipoServico),
                 }];
             const totalComissaoOS = linhas.reduce((acc, l) => acc + (l.comissao || 0), 0);
+            const alertasComissaoOS = avaliarAlertasComissaoOS(osDetalhe, tiposServico, comissoesTipoServico);
             return (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -431,10 +534,25 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                   </Table>
                 </div>
 
+                {alertasComissaoOS.length > 0 && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
+                    <p className="font-medium flex items-center gap-1.5 mb-1.5">
+                      <AlertTriangle className="h-4 w-4" />
+                      Comissão desta OS pode estar incompleta
+                    </p>
+                    <ul className="space-y-1 list-disc pl-5">
+                      {alertasComissaoOS.map((a, idx) => (
+                        <li key={idx}>{a.motivo}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="flex justify-end">
-                  <div className="text-sm">
+                  <div className="text-sm flex items-center gap-1.5">
                     <span className="font-medium">Comissão Total da OS: </span>
                     <span className="font-bold text-primary"><ValorMonetario valor={totalComissaoOS} /></span>
+                    <AlertaComissaoIndicador alertas={alertasComissaoOS} />
                   </div>
                 </div>
               </div>
