@@ -713,20 +713,20 @@ export function CardDispositivo({
           {(dispositivo.capacidade_gb || dispositivo.imei || (dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null)) && (
             <div className="space-y-1 text-[11px] mb-1.5">
               {dispositivo.capacidade_gb && (
-                <div className="flex justify-between min-w-0">
-                  <span className="text-muted-foreground">Capacidade</span>
-                  <span className="font-medium truncate ml-2">{dispositivo.capacidade_gb} GB</span>
+                <div className="flex items-baseline gap-1.5 min-w-0">
+                  <span className="text-muted-foreground shrink-0">Capacidade:</span>
+                  <span className="font-medium truncate">{dispositivo.capacidade_gb} GB</span>
                 </div>
               )}
               {dispositivo.imei && (
-                <div className="flex justify-between min-w-0">
-                  <span className="text-muted-foreground">IMEI</span>
-                  <span className="font-medium truncate ml-2">{dispositivo.imei}</span>
+                <div className="flex items-baseline gap-1.5 min-w-0">
+                  <span className="text-muted-foreground shrink-0">IMEI:</span>
+                  <span className="font-medium truncate">{dispositivo.imei}</span>
                 </div>
               )}
               {dispositivo.saude_bateria !== undefined && dispositivo.saude_bateria !== null && (
-                <div className="flex justify-between items-center min-w-0">
-                  <span className="text-muted-foreground">Bateria</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-muted-foreground shrink-0">Bateria:</span>
                   <BadgeSaudeBateria saudeBateria={dispositivo.saude_bateria} />
                 </div>
               )}
@@ -753,24 +753,24 @@ export function CardDispositivo({
       </div>
 
       <div className="grid grid-cols-3 divide-x divide-border p-3.5">
-        <div className="pr-3 min-w-0">
+        <div className="px-1.5 first:pl-0 last:pr-0 min-w-0">
           <span className="block text-[10px] text-muted-foreground mb-1.5">Custo</span>
-          <strong className="block text-[12px] font-bold text-foreground truncate">
+          <strong className="block text-[11px] xl:text-[12px] font-bold text-foreground leading-tight break-words">
             {podeVerCustos
               ? (dispositivo.custo ? <ValorMonetario valor={dispositivo.custo} /> : "-")
               : <Lock className="inline h-3 w-3 text-muted-foreground" />
             }
           </strong>
         </div>
-        <div className="px-3 min-w-0">
+        <div className="px-1.5 first:pl-0 last:pr-0 min-w-0">
           <span className="block text-[10px] text-muted-foreground mb-1.5">Preço de venda</span>
-          <strong className="block text-[12px] font-bold text-blue-600 dark:text-blue-400 truncate">
+          <strong className="block text-[11px] xl:text-[12px] font-bold text-blue-600 dark:text-blue-400 leading-tight break-words">
             {dispositivo.preco ? <ValorMonetario valor={dispositivo.preco} tipo="preco" /> : "-"}
           </strong>
         </div>
-        <div className="pl-3 min-w-0">
+        <div className="px-1.5 first:pl-0 last:pr-0 min-w-0">
           <span className="block text-[10px] text-muted-foreground mb-1.5">Lucro potencial</span>
-          <strong className={`block text-[12px] font-bold truncate ${dispositivo.lucro && dispositivo.lucro >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+          <strong className={`block text-[11px] xl:text-[12px] font-bold leading-tight break-words ${dispositivo.lucro && dispositivo.lucro >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
             {podeVerLucros
               ? (dispositivo.lucro !== undefined && dispositivo.lucro !== null
                   ? <ValorMonetario valor={dispositivo.lucro} />
