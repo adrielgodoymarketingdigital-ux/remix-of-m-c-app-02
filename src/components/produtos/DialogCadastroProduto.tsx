@@ -106,6 +106,15 @@ export const DialogCadastroProduto = ({
   const preco = form.watch('preco');
   const lucro = preco - custo;
 
+  // Ao focar num campo numérico que ainda está com o "0" padrão (não editado),
+  // seleciona todo o conteúdo para que o primeiro caractere digitado substitua o zero.
+  // Se o usuário já digitou um valor diferente, não faz nada (edição normal).
+  const selecionarSeZeroPadrao = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (e.target.value === '0') {
+      e.target.select();
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
     if (itemParaEditar) {
@@ -540,7 +549,7 @@ export const DialogCadastroProduto = ({
                   <FormItem>
                     <FormLabel>{temVariacoes ? 'Quantidade (valor padrão)' : 'Quantidade em Estoque'}</FormLabel>
                     <FormControl>
-                      <Input type="number" min="0" {...field} disabled={isFuncionario && !podeEditarProdutos} />
+                      <Input type="number" min="0" {...field} onFocus={selecionarSeZeroPadrao} disabled={isFuncionario && !podeEditarProdutos} />
                     </FormControl>
                     {isFuncionario && !podeEditarProdutos && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -568,6 +577,7 @@ export const DialogCadastroProduto = ({
                             placeholder="0.00"
                             disabled={isFuncionario && !podeEditarProdutos}
                             {...field}
+                            onFocus={selecionarSeZeroPadrao}
                           />
                         </FormControl>
                         <FormMessage />
@@ -595,6 +605,7 @@ export const DialogCadastroProduto = ({
                           placeholder="0.00"
                           disabled={isFuncionario && !podeEditarProdutos}
                           {...field}
+                          onFocus={selecionarSeZeroPadrao}
                         />
                       </FormControl>
                       {isFuncionario && !podeEditarProdutos && (
