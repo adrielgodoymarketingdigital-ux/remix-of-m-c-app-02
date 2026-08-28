@@ -15,6 +15,8 @@ interface EtapaServicosProdutosProps {
   funcionarios: Funcionario[];
   tecnicosOS: TecnicoOS[];
   setTecnicosOS: (tecnicos: TecnicoOS[]) => void;
+  /** Técnico responsável da OS tem "Comissão sobre Lucro" configurada */
+  comissaoLucroAtiva?: boolean;
 }
 
 export function EtapaServicosProdutos({
@@ -24,6 +26,7 @@ export function EtapaServicosProdutos({
   funcionarios,
   tecnicosOS,
   setTecnicosOS,
+  comissaoLucroAtiva = false,
 }: EtapaServicosProdutosProps) {
   return (
     <div>
@@ -39,6 +42,7 @@ export function EtapaServicosProdutos({
           <SelecionadorServico
             value={formData.servicos}
             onChange={(servicos) => setFormData({ ...formData, servicos })}
+            comissaoLucroAtiva={comissaoLucroAtiva}
           />
         </div>
 

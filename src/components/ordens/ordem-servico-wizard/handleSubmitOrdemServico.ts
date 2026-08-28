@@ -11,7 +11,9 @@ import { TaxaCartao } from "@/hooks/useTaxasCartao";
 import {
   CandidatoAmbiguo,
   ComissaoConfig,
+  ComissaoCalculo,
   TipoServicoResumo,
+  calcularComissaoDoItem,
   encontrarComissaoPorNomeServico,
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
@@ -57,14 +59,19 @@ interface SalvarOrdemServicoParams {
  *   e nem match exato nem a marca do aparelho resolveram qual usar (ver
  *   encontrarComissaoPorNomeServico) — também contribuem 0, mas precisam de
  *   revisão manual porque existe % configurado, só não dá para saber qual.
+ * - itensCustoNaoConfirmado: SÓ no modo "Comissão sobre Lucro" — itens com
+ *   custo R$ 0,00 ainda não confirmado no banner da OS. Não dá para calcular
+ *   (preço − custo) × % com segurança, então contribuem 0 até o custo ser
+ *   confirmado (mesmo tratamento seguro dos outros dois casos).
  * O aviso ao salvar a OS (toast) e o indicador no Perfil de Desempenho do
- * Funcionário usam esses dois campos para mostrar exatamente quais itens
+ * Funcionário usam esses campos para mostrar exatamente quais itens
  * precisam de revisão manual e por quê.
  */
 interface ResultadoComissaoPorServico {
   total: number | null;
   itensSemComissaoConfigurada: string[];
   itensComissaoAmbigua: { nome: string; candidatos: CandidatoAmbiguo[] }[];
+  itensCustoNaoConfirmado: string[];
 }
 
 /**
@@ -93,7 +100,7 @@ async function calcularComissaoPorServico(
   dispositivoMarca?: string | null,
 ): Promise<ResultadoComissaoPorServico> {
   if (servicos.length === 0) {
-    return { total: null, itensSemComissaoConfigurada: [], itensComissaoAmbigua: [] };
+    return { total: null, itensSemComissaoConfigurada: [], itensComissaoAmbigua: [], itensCustoNaoConfirmado: [] };
   }
 
   const { data: tiposServicoTodos } = await supabase
@@ -104,6 +111,15 @@ async function calcularComissaoPorServico(
     .from("comissoes_tipo_servico")
     .select("tipo_servico_id, comissao_tipo, comissao_valor")
     .eq("funcionario_id", funcId);
+
+  // Sobre o que a comissão desse funcionário incide (faturamento x lucro).
+  const { data: funcRow } = await supabase
+    .from("loja_funcionarios")
+    .select("comissao_calculo")
+    .eq("id", funcId)
+    .maybeSingle();
+  const comissaoCalculo: ComissaoCalculo =
+    funcRow?.comissao_calculo === "lucro" ? "lucro" : "faturamento";
 
   const comissaoPorTipoServicoId = new Map(
     (comissoesFuncionario || []).map(c => [c.tipo_servico_id, c])
@@ -117,6 +133,7 @@ async function calcularComissaoPorServico(
   let algumEncontrado = false;
   const itensSemComissaoConfigurada: string[] = [];
   const itensComissaoAmbigua: { nome: string; candidatos: CandidatoAmbiguo[] }[] = [];
+  const itensCustoNaoConfirmado: string[] = [];
 
   for (const servico of servicos) {
     const resultado = encontrarComissaoPorNomeServico(
@@ -134,10 +151,24 @@ async function calcularComissaoPorServico(
     }
 
     if (resultado.config.comissao_valor > 0) {
+      // Cada item usa o SEU (preço − custo) e o SEU percentual, isoladamente
+      // (nunca a soma do lucro da OS × um percentual único).
+      const calc = calcularComissaoDoItem(
+        {
+          preco: servico.preco,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          custo: (servico as any).peca_valor ?? servico.custo,
+          custoConfirmado: servico.custo_confirmado,
+        },
+        resultado.config,
+        comissaoCalculo,
+      );
+      if (calc.custoNaoConfirmado) {
+        itensCustoNaoConfirmado.push(servico.nome);
+        continue;
+      }
       algumEncontrado = true;
-      comissaoTotal += resultado.config.comissao_tipo === "porcentagem"
-        ? servico.preco * (resultado.config.comissao_valor / 100)
-        : resultado.config.comissao_valor;
+      comissaoTotal += calc.valor;
     }
   }
 
@@ -155,10 +186,18 @@ async function calcularComissaoPorServico(
     );
   }
 
+  if (itensCustoNaoConfirmado.length > 0) {
+    console.warn(
+      "[comissao] Comissão sobre LUCRO: item(ns) com custo R$ 0,00 não confirmado — não entraram na soma até o custo ser confirmado na OS:",
+      { funcionarioId: funcId, itens: itensCustoNaoConfirmado },
+    );
+  }
+
   return {
     total: algumEncontrado ? comissaoTotal : null,
     itensSemComissaoConfigurada,
     itensComissaoAmbigua,
+    itensCustoNaoConfirmado,
   };
 }
 
@@ -197,7 +236,7 @@ async function salvarTecnicosOS(
   const tsId = tipoServicoId || null;
   const funcionarioIds = [...new Set(tecnicos.map(t => t.funcionario_id))];
 
-  const [{ data: tiposServicoTodos }, { data: comissoesFuncionarios }] = await Promise.all([
+  const [{ data: tiposServicoTodos }, { data: comissoesFuncionarios }, { data: funcsCalculo }] = await Promise.all([
     supabase.from("tipos_servico").select("id, nome"),
     funcionarioIds.length > 0
       ? supabase
@@ -205,11 +244,22 @@ async function salvarTecnicosOS(
           .select("funcionario_id, tipo_servico_id, comissao_tipo, comissao_valor")
           .in("funcionario_id", funcionarioIds)
       : Promise.resolve({ data: [] as any[] }),
+    funcionarioIds.length > 0
+      ? supabase
+          .from("loja_funcionarios")
+          .select("id, comissao_calculo")
+          .in("id", funcionarioIds)
+      : Promise.resolve({ data: [] as { id: string; comissao_calculo: string | null }[] }),
   ]);
 
   const comissaoPorFuncionarioETipo = new Map<string, ComissaoConfig>();
   (comissoesFuncionarios || []).forEach((c: any) => {
     comissaoPorFuncionarioETipo.set(`${c.funcionario_id}:${c.tipo_servico_id}`, c);
+  });
+
+  const comissaoCalculoPorFuncionario = new Map<string, ComissaoCalculo>();
+  (funcsCalculo || []).forEach((f: { id: string; comissao_calculo: string | null }) => {
+    comissaoCalculoPorFuncionario.set(f.id, f.comissao_calculo === "lucro" ? "lucro" : "faturamento");
   });
 
   const tecnicosParaInserir = [];
@@ -249,11 +299,28 @@ async function salvarTecnicosOS(
     }
 
     if (comissaoConfig && comissaoConfig.comissao_valor > 0) {
-      comissaoTipo = comissaoConfig.comissao_tipo;
-      comissaoValor = comissaoConfig.comissao_valor;
-      comissaoCalculada = comissaoConfig.comissao_tipo === "porcentagem"
-        ? (baseCalculo > 0 ? baseCalculo : 0) * (comissaoConfig.comissao_valor / 100)
-        : comissaoConfig.comissao_valor;
+      const calculoFunc = comissaoCalculoPorFuncionario.get(tec.funcionario_id) || "faturamento";
+      // Com serviço vinculado: base = preço − custo (modo lucro) do próprio
+      // serviço. Sem vínculo (legado): cai no total da OS como faturamento.
+      const itemCalc = servicoVinculado
+        ? {
+            preco: servicoVinculado.preco,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            custo: (servicoVinculado as any).peca_valor ?? servicoVinculado.custo,
+            custoConfirmado: servicoVinculado.custo_confirmado,
+          }
+        : { preco: baseCalculo > 0 ? baseCalculo : 0, custo: 0, custoConfirmado: true };
+      const calc = calcularComissaoDoItem(itemCalc, comissaoConfig, calculoFunc);
+      if (calc.custoNaoConfirmado) {
+        console.warn(
+          "[comissao] Comissão sobre LUCRO (Técnico por Serviço): custo R$ 0,00 não confirmado — comissão não aplicada até confirmar o custo na OS:",
+          { funcionarioId: tec.funcionario_id, servico: servicoVinculado?.nome },
+        );
+      } else {
+        comissaoTipo = comissaoConfig.comissao_tipo;
+        comissaoValor = comissaoConfig.comissao_valor;
+        comissaoCalculada = calc.valor;
+      }
     }
 
     tecnicosParaInserir.push({
@@ -351,12 +418,16 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         const pecaValor = (s as any).peca_valor;
         const custo = pecaValor !== undefined ? Number(pecaValor) : Number(s.custo || 0);
         const preco = Number(s.preco || 0);
+        // Custo > 0 já é dado real → confirmado automaticamente. Custo 0 só
+        // conta como confirmado se o usuário respondeu ao banner (flag true).
+        const custoConfirmado = custo > 0 || s.custo_confirmado === true;
         return {
           id: s.id,
           nome: s.nome,
           preco,
           custo,
           lucro: preco - custo,
+          custo_confirmado: custoConfirmado || undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           peca_id: (s as any).peca_id || undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -477,6 +548,9 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         ),
         ...resultadoComissaoPorServico.itensComissaoAmbigua.map(({ nome, candidatos }) =>
           formatarMotivoComissao(nome, { ambiguo: true, candidatosAmbiguos: candidatos })
+        ),
+        ...resultadoComissaoPorServico.itensCustoNaoConfirmado.map(nome =>
+          formatarMotivoComissao(nome, { ambiguo: false, custoNaoConfirmado: true })
         ),
       ];
       if (motivos.length > 0) {

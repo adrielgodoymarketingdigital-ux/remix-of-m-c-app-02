@@ -93,6 +93,13 @@ export const DialogOrdemServico = ({
     handleBuscarCEPOS,
   } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId, carregandoPermissoes });
 
+  // Técnico responsável da OS: o técnico principal escolhido na Etapa 4, ou,
+  // quando quem preenche é um funcionário técnico, ele mesmo. Usado para saber
+  // se o banner de confirmação de custo (Comissão sobre Lucro) deve aparecer.
+  const tecnicoResponsavelId = tecnicoId || funcionarioId;
+  const comissaoLucroAtiva = !!tecnicoResponsavelId
+    && funcionarios.some((f) => f.id === tecnicoResponsavelId && f.comissao_calculo === "lucro");
+
   const irParaEtapa = (etapa: EtapaWizard) => {
     setCampoComErro(null);
     setEtapaAtual(etapa);
@@ -328,6 +335,7 @@ export const DialogOrdemServico = ({
                   funcionarios={funcionarios}
                   tecnicosOS={tecnicosOS}
                   setTecnicosOS={setTecnicosOS}
+                  comissaoLucroAtiva={comissaoLucroAtiva}
                 />
               </EtapaCardWrapper>
 
@@ -413,6 +421,7 @@ export const DialogOrdemServico = ({
               funcionarios={funcionarios}
               tecnicosOS={tecnicosOS}
               setTecnicosOS={setTecnicosOS}
+              comissaoLucroAtiva={comissaoLucroAtiva}
             />
           )}
 

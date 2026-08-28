@@ -10,6 +10,8 @@ export interface Servico {
   peca_nome?: string;
   tempo_medio_estimado_horas?: number | null;
   created_at: string;
+  /** custo do item já confirmado (respondido no banner ou custo > 0 na OS) */
+  custo_confirmado?: boolean;
 }
 
 export interface FormularioServico {

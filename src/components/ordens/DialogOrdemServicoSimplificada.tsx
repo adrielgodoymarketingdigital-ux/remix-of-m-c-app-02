@@ -284,7 +284,9 @@ export const DialogOrdemServicoSimplificada = ({
         servicos_realizados: formData.servicos.map((s) => {
           const custo = Number(s.custo || 0);
           const preco = Number(s.preco || 0);
-          return { id: s.id, nome: s.nome, preco, custo, lucro: preco - custo };
+          // custo real (>0) já é confirmado; preserva a flag quando vier do form
+          const custoConfirmado = custo > 0 || (s as { custo_confirmado?: boolean }).custo_confirmado === true;
+          return { id: s.id, nome: s.nome, preco, custo, lucro: preco - custo, custo_confirmado: custoConfirmado || undefined };
         }),
         observacoes_internas: formData.observacoesInternas || undefined,
       };

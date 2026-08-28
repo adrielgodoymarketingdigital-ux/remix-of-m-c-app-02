@@ -18,6 +18,7 @@ interface CriarFuncionarioRequest {
   comissao_escopo?: string | null;
   comissoes_por_cargo?: Record<string, { tipo: string; valor: number; escopo: string }> | null;
   base_comissao?: string | null;
+  comissao_calculo?: string | null;
   empresa_id?: string | null;
 }
 
@@ -70,7 +71,7 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Assinatura inativa. Ative seu plano para cadastrar funcionários." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { nome, email, senha, permissoes, cargo, comissao_tipo, comissao_valor, comissao_escopo, comissoes_por_cargo, base_comissao, empresa_id }: CriarFuncionarioRequest = await req.json();
+    const { nome, email, senha, permissoes, cargo, comissao_tipo, comissao_valor, comissao_escopo, comissoes_por_cargo, base_comissao, comissao_calculo, empresa_id }: CriarFuncionarioRequest = await req.json();
 
     if (!nome || !email || !senha) {
       return new Response(JSON.stringify({ error: "Nome, email e senha são obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -189,6 +190,7 @@ serve(async (req: Request) => {
         comissao_escopo: comissao_escopo || null,
         comissoes_por_cargo: comissoes_por_cargo || null,
         base_comissao: base_comissao || "criacao",
+        comissao_calculo: comissao_calculo || "faturamento",
         empresa_id: empresaIdFuncionario,
       })
       .select()

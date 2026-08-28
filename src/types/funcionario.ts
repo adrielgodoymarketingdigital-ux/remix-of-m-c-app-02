@@ -2,6 +2,14 @@ export type ComissaoTipo = "porcentagem" | "valor_fixo";
 
 export type BaseComissao = "criacao" | "entrega";
 
+/**
+ * Sobre o que a comissão do funcionário incide:
+ * - "faturamento": valor de venda (padrão, comportamento histórico).
+ * - "lucro": valor de venda menos o custo (venda − custo).
+ * Só afeta a Comissão por Tipo de Serviço (Técnico). Ver comissaoPorTipoServico.ts.
+ */
+export type ComissaoCalculo = "faturamento" | "lucro";
+
 export type ComissaoEscopo = 
   | "vendas_produtos" 
   | "vendas_dispositivos" 
@@ -109,6 +117,7 @@ export interface Funcionario {
   comissao_escopo: ComissaoEscopo | null;
   comissoes_por_cargo: Record<string, ComissaoCargo> | null;
   base_comissao?: BaseComissao;
+  comissao_calculo?: ComissaoCalculo;
   convite_token: string | null;
   convite_expira_em: string | null;
   convite_aceito_em: string | null;
@@ -126,6 +135,7 @@ export interface FuncionarioFormData {
   comissao_escopo?: ComissaoEscopo | null;
   comissoes_por_cargo?: Record<string, ComissaoCargo> | null;
   base_comissao?: BaseComissao;
+  comissao_calculo?: ComissaoCalculo;
 }
 
 export const PERMISSOES_DEFAULT: Permissoes = {

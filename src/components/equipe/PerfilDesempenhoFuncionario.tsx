@@ -21,6 +21,7 @@ import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStat
 import {
   type ComissaoConfig,
   type TipoServicoResumo,
+  custoConfirmadoDoItem,
   encontrarComissaoPorNomeServico,
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
@@ -95,13 +96,13 @@ function avaliarAlertasComissaoOS(
   os: OSFuncionario,
   tiposServico: Record<string, string>,
   comissoesTipoServico: Record<string, { tipo: string; valor: number }>,
+  comissaoCalculo: "faturamento" | "lucro" = "faturamento",
 ): AlertaComissaoItem[] {
   if (os.tecnicos_os && os.tecnicos_os.length > 0) return [];
 
-  const servicosRealizados: { nome?: string }[] = Array.isArray(os.avarias?.servicos_realizados)
-    ? os.avarias.servicos_realizados
-    : [];
-  if (servicosRealizados.length < 2) return [];
+  const servicosRealizados: { nome?: string; custo?: number; peca_valor?: number; custo_confirmado?: boolean }[] =
+    Array.isArray(os.avarias?.servicos_realizados) ? os.avarias.servicos_realizados : [];
+  if (servicosRealizados.length === 0) return [];
 
   const tiposComComissao: TipoServicoResumo[] = Object.entries(tiposServico)
     .filter(([id]) => id in comissoesTipoServico)
@@ -120,6 +121,26 @@ function avaliarAlertasComissaoOS(
     const resultado = encontrarComissaoPorNomeServico(
       item.nome, tiposComComissao, comissaoPorTipoServicoId, os.dispositivo_marca,
     );
+    const temPercentual = !!resultado.config && resultado.config.comissao_valor > 0;
+
+    // Custo não confirmado só é problema no modo "lucro" e quando o item tem
+    // um percentual configurado (senão o motivo real já é "sem config").
+    if (
+      comissaoCalculo === "lucro"
+      && temPercentual
+      && resultado.config?.comissao_tipo === "porcentagem"
+      && !custoConfirmadoDoItem(item.peca_valor ?? item.custo, item.custo_confirmado)
+    ) {
+      alertas.push({
+        nome: item.nome,
+        motivo: formatarMotivoComissao(item.nome, { ambiguo: false, custoNaoConfirmado: true }),
+      });
+      continue;
+    }
+
+    // "sem config" / "ambíguo": reavaliação de melhor esforço, só faz sentido
+    // quando a comissão foi somada por múltiplos serviços do Técnico Principal.
+    if (servicosRealizados.length < 2) continue;
     if (resultado.ambiguo) {
       alertas.push({ nome: item.nome, motivo: formatarMotivoComissao(item.nome, resultado) });
     } else if (!resultado.config) {
@@ -196,6 +217,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
 
   const tiposServico = data?.tiposServico || {};
   const comissoesTipoServico = data?.comissoesTipoServico || {};
+  const comissaoCalculo = data?.comissaoCalculo || "faturamento";
 
   const ordensFiltradas = useMemo(() => {
     let ordens = data?.ordens || [];
@@ -406,7 +428,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                         {ordensFiltradas.map((os) => {
                           const comissao = resolverComissaoOS(os, comissoesTipoServico);
                           const nomeTipo = resolverNomeTipoServico(os, tiposServico);
-                          const alertasComissao = avaliarAlertasComissaoOS(os, tiposServico, comissoesTipoServico);
+                          const alertasComissao = avaliarAlertasComissaoOS(os, tiposServico, comissoesTipoServico, comissaoCalculo);
                           return (
                             <TableRow key={os.id}>
                               <TableCell className="font-medium">{os.numero_os}</TableCell>
@@ -491,7 +513,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                   comissao: resolverComissaoOS(osDetalhe, comissoesTipoServico),
                 }];
             const totalComissaoOS = linhas.reduce((acc, l) => acc + (l.comissao || 0), 0);
-            const alertasComissaoOS = avaliarAlertasComissaoOS(osDetalhe, tiposServico, comissoesTipoServico);
+            const alertasComissaoOS = avaliarAlertasComissaoOS(osDetalhe, tiposServico, comissoesTipoServico, comissaoCalculo);
             return (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2 text-sm">

@@ -2089,6 +2089,7 @@ export type Database = {
           ativo: boolean | null
           base_comissao: string | null
           cargo: string | null
+          comissao_calculo: string | null
           comissao_escopo: string | null
           comissao_tipo: string | null
           comissao_valor: number | null
@@ -2110,6 +2111,7 @@ export type Database = {
           ativo?: boolean | null
           base_comissao?: string | null
           cargo?: string | null
+          comissao_calculo?: string | null
           comissao_escopo?: string | null
           comissao_tipo?: string | null
           comissao_valor?: number | null
@@ -2131,6 +2133,7 @@ export type Database = {
           ativo?: boolean | null
           base_comissao?: string | null
           cargo?: string | null
+          comissao_calculo?: string | null
           comissao_escopo?: string | null
           comissao_tipo?: string | null
           comissao_valor?: number | null

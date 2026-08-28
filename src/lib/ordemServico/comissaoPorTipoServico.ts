@@ -4,6 +4,93 @@ export interface ComissaoConfig {
   comissao_valor: number;
 }
 
+/**
+ * Sobre o que a comissão do Técnico incide:
+ * - "faturamento": preço de venda do serviço (comportamento padrão histórico).
+ * - "lucro": preço de venda menos o custo do serviço (venda − custo).
+ * Configurado por funcionário em loja_funcionarios.comissao_calculo.
+ */
+export type ComissaoCalculo = "faturamento" | "lucro";
+
+export interface ComissaoItemInput {
+  preco: number;
+  /** custo do item; quando vier peca_valor lançado na OS, usar ele */
+  custo?: number | null;
+  /** flag explícita respondida no banner "custo R$ 0,00 está correto?" */
+  custoConfirmado?: boolean;
+}
+
+export interface ComissaoItemCalculo {
+  /** comissão do item (0 quando não pôde ser aplicada) */
+  valor: number;
+  /** true quando um percentual/valor > 0 foi efetivamente aplicado */
+  aplicada: boolean;
+  /**
+   * true só no modo "lucro": o custo do item é R$ 0,00 e ainda não foi
+   * confirmado — o item fica pendente e contribui R$ 0,00 à soma, do mesmo
+   * jeito seguro dos itens sem config / ambíguos.
+   */
+  custoNaoConfirmado: boolean;
+  /** base sobre a qual o percentual incidiu (faturamento ou lucro) */
+  base: number;
+}
+
+/**
+ * Um custo de item conta como "confirmado" quando o usuário respondeu
+ * explicitamente ao banner (custoConfirmado === true) OU quando já existe um
+ * custo real lançado (> 0) — nesse segundo caso não faz sentido pedir
+ * confirmação de novo para um dado que já tem valor. O banner de confirmação
+ * só aparece quando o custo é EXATAMENTE 0 e ninguém respondeu ainda.
+ */
+export function custoConfirmadoDoItem(
+  custo?: number | null,
+  custoConfirmado?: boolean,
+): boolean {
+  return custoConfirmado === true || (Number(custo) || 0) > 0;
+}
+
+/**
+ * Comissão de UM item de serviço, isoladamente. Nunca soma o lucro/faturamento
+ * de vários itens para aplicar um único percentual: cada chamada usa o
+ * (preço − custo) OU o preço do próprio item e o seu próprio percentual
+ * configurado — quem chama soma os resultados item a item.
+ *
+ * calculo === "faturamento": base = preço de venda.
+ * calculo === "lucro": base = preço − custo, mas só quando o custo está
+ *   confirmado (ver custoConfirmadoDoItem). Se não estiver, devolve
+ *   custoNaoConfirmado=true e valor 0 — o item precisa de confirmação de
+ *   custo antes de entrar na soma.
+ *
+ * Para comissão em valor fixo (comissao_tipo !== "porcentagem") o valor
+ * independe da base: continua sendo o valor fixo configurado, igual ao
+ * comportamento atual.
+ */
+export function calcularComissaoDoItem(
+  item: ComissaoItemInput,
+  config: Pick<ComissaoConfig, "comissao_tipo" | "comissao_valor">,
+  calculo: ComissaoCalculo,
+): ComissaoItemCalculo {
+  const preco = Number(item.preco) || 0;
+  const custo = Number(item.custo) || 0;
+  const valorConfig = Number(config.comissao_valor) || 0;
+
+  if (valorConfig <= 0) {
+    return { valor: 0, aplicada: false, custoNaoConfirmado: false, base: 0 };
+  }
+
+  if (config.comissao_tipo !== "porcentagem") {
+    // Valor fixo por serviço: não depende de faturamento nem de lucro.
+    return { valor: valorConfig, aplicada: true, custoNaoConfirmado: false, base: preco };
+  }
+
+  if (calculo === "lucro" && !custoConfirmadoDoItem(item.custo, item.custoConfirmado)) {
+    return { valor: 0, aplicada: false, custoNaoConfirmado: true, base: 0 };
+  }
+
+  const base = calculo === "lucro" ? Math.max(0, preco - custo) : preco;
+  return { valor: base * (valorConfig / 100), aplicada: true, custoNaoConfirmado: false, base };
+}
+
 export interface TipoServicoResumo {
   id: string;
   nome: string;
@@ -135,8 +222,14 @@ export function encontrarComissaoPorNomeServico(
  */
 export function formatarMotivoComissao(
   nomeItem: string,
-  resultado: Pick<ResultadoMatchServico, "ambiguo" | "candidatosAmbiguos">,
+  resultado: Pick<ResultadoMatchServico, "ambiguo" | "candidatosAmbiguos"> & {
+    /** modo "lucro": custo do item é R$ 0,00 e ainda não foi confirmado */
+    custoNaoConfirmado?: boolean;
+  },
 ): string {
+  if (resultado.custoNaoConfirmado) {
+    return `"${nomeItem}" — custo não confirmado: não é possível calcular a comissão sobre lucro deste item até confirmar o custo.`;
+  }
   if (resultado.ambiguo) {
     const opcoes = (resultado.candidatosAmbiguos || [])
       .map(c => `${c.nome} (${c.comissaoTipo === "porcentagem" ? `${c.comissaoValor}%` : `R$ ${c.comissaoValor.toFixed(2)}`})`)

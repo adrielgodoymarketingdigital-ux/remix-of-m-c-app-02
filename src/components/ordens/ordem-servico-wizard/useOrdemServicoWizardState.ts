@@ -263,6 +263,8 @@ export function useOrdemServicoWizardState({
         preco: s.preco || 0,
         custo: s.custo || 0,
         lucro: s.lucro || 0,
+        // custo real (>0) já conta como confirmado; senão preserva a flag salva
+        custo_confirmado: (Number(s.custo) || 0) > 0 || s.custo_confirmado === true ? true : undefined,
         quantidade: 1,
         created_at: '',
         user_id: '',

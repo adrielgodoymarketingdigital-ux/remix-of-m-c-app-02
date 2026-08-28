@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SeletorPermissoes } from "./SeletorPermissoes";
 import { ComissoesTipoServicoEditor, ComissaoTipoServicoLocal } from "./ComissoesTipoServicoEditor";
-import type { Funcionario, FuncionarioFormData, Permissoes, ComissaoTipo, ComissaoEscopo, ComissaoCargo, BaseComissao } from "@/types/funcionario";
+import type { Funcionario, FuncionarioFormData, Permissoes, ComissaoTipo, ComissaoEscopo, ComissaoCargo, BaseComissao, ComissaoCalculo } from "@/types/funcionario";
 import { PERMISSOES_DEFAULT, CARGOS_PADRAO, ESCOPOS_POR_CARGO } from "@/types/funcionario";
 import { Loader2, Eye, EyeOff, DollarSign, Percent, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,7 @@ export function DialogCadastroFuncionario({
   const [cargoComissaoAtivo, setCargoComissaoAtivo] = useState<string>("");
 
   const [baseComissao, setBaseComissao] = useState<BaseComissao>("criacao");
+  const [comissaoCalculo, setComissaoCalculo] = useState<ComissaoCalculo>("faturamento");
 
   // Comissões por tipo de serviço
   const [comissoesTipoServico, setComissoesTipoServico] = useState<ComissaoTipoServicoLocal[]>([]);
@@ -131,6 +132,7 @@ export function DialogCadastroFuncionario({
       }
 
       setBaseComissao(funcionario.base_comissao || "criacao");
+      setComissaoCalculo(funcionario.comissao_calculo || "faturamento");
 
       // Load comissões por tipo de serviço
       if (funcionario.id) {
@@ -155,6 +157,7 @@ export function DialogCadastroFuncionario({
       setCargoPersonalizado("");
       setComissoesPorCargo({});
       setBaseComissao("criacao");
+      setComissaoCalculo("faturamento");
       setComissoesTipoServico([]);
     }
   }, [funcionario, open]);
@@ -272,6 +275,7 @@ export function DialogCadastroFuncionario({
       comissao_escopo: primaryEscopo,
       comissoes_por_cargo: Object.keys(comissoesFinais).length > 0 ? comissoesFinais : null,
       base_comissao: baseComissao,
+      comissao_calculo: comissaoCalculo,
     });
 
     // Salvar comissões por tipo de serviço
@@ -299,6 +303,7 @@ export function DialogCadastroFuncionario({
       setCargoPersonalizado("");
       setComissoesPorCargo({});
       setBaseComissao("criacao");
+      setComissaoCalculo("faturamento");
       setComissoesTipoServico([]);
     }
   };
@@ -558,6 +563,37 @@ export function DialogCadastroFuncionario({
                         Data de entrega da OS
                       </Label>
                       <p className="text-xs text-muted-foreground">A comissão entra no relatório na entrega da OS ao cliente</p>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Comissão calculada sobre</Label>
+                <RadioGroup
+                  value={comissaoCalculo}
+                  onValueChange={(v) => setComissaoCalculo(v as ComissaoCalculo)}
+                  className="grid gap-2"
+                >
+                  <div className="flex items-start space-x-3 rounded-md border p-3 hover:bg-muted/50 transition-colors">
+                    <RadioGroupItem value="faturamento" id="calc-faturamento" className="mt-0.5" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="calc-faturamento" className="text-sm font-medium cursor-pointer">
+                        Faturamento (valor de venda)
+                      </Label>
+                      <p className="text-xs text-muted-foreground">O percentual incide sobre o preço de venda do serviço. Padrão.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3 rounded-md border p-3 hover:bg-muted/50 transition-colors">
+                    <RadioGroupItem value="lucro" id="calc-lucro" className="mt-0.5" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="calc-lucro" className="text-sm font-medium cursor-pointer">
+                        Lucro (venda − custo)
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        O percentual incide sobre o lucro de cada serviço (preço − custo). Serviços com custo R$ 0,00 pedem
+                        confirmação na OS antes de entrar na conta.
+                      </p>
                     </div>
                   </div>
                 </RadioGroup>

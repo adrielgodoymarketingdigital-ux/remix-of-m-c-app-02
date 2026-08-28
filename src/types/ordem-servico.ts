@@ -33,6 +33,23 @@ export interface ServicoRealizado {
   preco: number;
   custo: number;
   lucro: number;
+  /**
+   * true quando o custo deste item foi confirmado explicitamente pelo usuário
+   * (respondeu ao banner "custo R$ 0,00 está correto?") ou já tinha custo real
+   * (> 0) no lançamento. Usado pela comissão sobre lucro para saber se pode
+   * calcular (preço − custo) × % ou se o item está pendente de confirmação.
+   * Ausente/false + custo 0 = pendente.
+   */
+  custo_confirmado?: boolean;
+  // Rastreamento da peça vinculada ao serviço (já persistido hoje, aqui
+  // formalizado). custo efetivo do item = peca_valor ?? custo.
+  peca_id?: string;
+  peca_nome?: string;
+  peca_fornecedor_id?: string;
+  peca_fornecedor_nome?: string;
+  peca_status_pagamento?: 'pago' | 'a_pagar';
+  peca_data_pagamento?: string;
+  peca_valor?: number;
 }
 
 export type TipoAssinatura = 'digital' | 'fisica';

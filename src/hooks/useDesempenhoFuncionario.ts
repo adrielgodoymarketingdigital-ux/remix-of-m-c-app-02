@@ -29,25 +29,28 @@ export interface DesempenhoFuncionario {
   ordens: OSFuncionario[];
   tiposServico: Record<string, string>;
   comissoesTipoServico: Record<string, { tipo: string; valor: number }>;
+  /** "faturamento" (padrão) | "lucro" — base da Comissão por Tipo de Serviço */
+  comissaoCalculo: "faturamento" | "lucro";
 }
 
 export function useDesempenhoFuncionario(funcionarioId: string | null, dataInicio?: string | null, dataFim?: string | null) {
   return useQuery({
     queryKey: ["desempenho-funcionario", funcionarioId, dataInicio, dataFim],
     queryFn: async (): Promise<DesempenhoFuncionario> => {
-      if (!funcionarioId) return { ordens: [], tiposServico: {}, comissoesTipoServico: {} };
+      if (!funcionarioId) return { ordens: [], tiposServico: {}, comissoesTipoServico: {}, comissaoCalculo: "faturamento" };
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { ordens: [], tiposServico: {}, comissoesTipoServico: {} };
+      if (!user) return { ordens: [], tiposServico: {}, comissoesTipoServico: {}, comissaoCalculo: "faturamento" };
 
-      // Fetch employee's commission date base config
+      // Fetch employee's commission date base + calculation base config
       const { data: funcData } = await supabase
         .from("loja_funcionarios")
-        .select("base_comissao")
+        .select("base_comissao, comissao_calculo")
         .eq("id", funcionarioId)
         .maybeSingle();
 
       const campoData = funcData?.base_comissao === "entrega" ? "data_saida" : "created_at";
+      const comissaoCalculo: "faturamento" | "lucro" = funcData?.comissao_calculo === "lucro" ? "lucro" : "faturamento";
 
       // Fetch OS assigned to this employee
       let query = supabase
@@ -131,6 +134,7 @@ export function useDesempenhoFuncionario(funcionarioId: string | null, dataInici
         ordens: ordensComTecnicos,
         tiposServico,
         comissoesTipoServico,
+        comissaoCalculo,
       };
     },
     enabled: !!funcionarioId,

@@ -36,9 +36,15 @@ export interface ServicoComPrecoEditado extends Servico {
 interface SelecionadorServicoProps {
   value: (Servico | ServicoComPrecoEditado)[];
   onChange: (servicos: ServicoComPrecoEditado[]) => void;
+  /**
+   * true quando o Técnico responsável desta OS tem "Comissão sobre Lucro"
+   * configurada — nesse caso, itens com custo R$ 0,00 ainda não confirmados
+   * mostram um banner pedindo confirmação (resolve a ambiguidade de custo=0).
+   */
+  comissaoLucroAtiva?: boolean;
 }
 
-export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProps) => {
+export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = false }: SelecionadorServicoProps) => {
   const { servicos, criarServico } = useServicos();
   const { isFuncionario, isDonoLoja, permissoes } = useFuncionarioPermissoes();
   const podeCriarServico = isDonoLoja || (isFuncionario && (permissoes?.recursos?.criar_servico_os ?? false));
@@ -49,6 +55,9 @@ export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProp
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [precoEditando, setPrecoEditando] = useState("");
   const [custoEditando, setCustoEditando] = useState("");
+  // Quando o usuário clica "Não, vou informar o valor" no banner de custo 0:
+  // abre a edição já com foco no campo Custo.
+  const [focarCustoId, setFocarCustoId] = useState<string | null>(null);
   const [pecaExpandidaId, setPecaExpandidaId] = useState<string | null>(null);
   const [mostrarManual, setMostrarManual] = useState(false);
   const [manualNome, setManualNome] = useState("");
@@ -93,24 +102,40 @@ export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProp
       onChange(servicosValue.map(s => {
         if (s.id !== id) return s;
         const custoFinal = custo !== undefined ? custo : (s.peca_valor !== undefined ? s.peca_valor : s.custo);
+        // Informou um custo > 0 → confirma automaticamente o custo do item.
+        const custoConfirmado = (custoFinal ?? 0) > 0 ? true : s.custo_confirmado;
         return {
           ...s,
           preco: novoPreco,
           precoEditado: novoPreco,
           custo: custoFinal ?? s.custo,
           peca_valor: custo !== undefined ? custo : s.peca_valor,
+          custo_confirmado: custoConfirmado,
         };
       }));
     }
     setEditandoId(null);
     setPrecoEditando("");
     setCustoEditando("");
+    setFocarCustoId(null);
   };
 
   const handleCancelarEdicao = () => {
     setEditandoId(null);
     setPrecoEditando("");
     setCustoEditando("");
+    setFocarCustoId(null);
+  };
+
+  // Banner de custo 0 — "Sim, o custo é R$ 0,00 mesmo".
+  const handleConfirmarCustoZero = (id: string) => {
+    onChange(servicosValue.map(s => (s.id === id ? { ...s, custo_confirmado: true } : s)));
+  };
+
+  // Banner de custo 0 — "Não, vou informar o valor": abre edição com foco no custo.
+  const handleInformarCusto = (servico: ServicoComPrecoEditado) => {
+    handleIniciarEdicao(servico);
+    setFocarCustoId(servico.id);
   };
 
   const handleCriarServico = async (dados: ServicoComFornecedor) => {
@@ -396,6 +421,7 @@ export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProp
                             value={custoEditando}
                             onChange={(e) => setCustoEditando(e.target.value)}
                             className="h-8 w-24"
+                            autoFocus={focarCustoId === servico.id}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') { e.preventDefault(); handleConfirmarEdicao(servico.id); }
                               else if (e.key === 'Escape') { handleCancelarEdicao(); }
@@ -411,7 +437,7 @@ export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProp
                             value={precoEditando}
                             onChange={(e) => setPrecoEditando(e.target.value)}
                             className="h-8 w-24"
-                            autoFocus
+                            autoFocus={focarCustoId !== servico.id}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') { e.preventDefault(); handleConfirmarEdicao(servico.id); }
                               else if (e.key === 'Escape') { handleCancelarEdicao(); }
@@ -602,6 +628,45 @@ export const SelecionadorServico = ({ value, onChange }: SelecionadorServicoProp
                         </p>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Banner de confirmação de custo R$ 0,00 — só quando o Técnico
+                    responsável tem "Comissão sobre Lucro" e o item ainda não
+                    teve o custo confirmado. Resolve a ambiguidade de custo=0. */}
+                {comissaoLucroAtiva
+                  && editandoId !== servico.id
+                  && (Number(servico.peca_valor ?? servico.custo ?? 0) === 0)
+                  && servico.custo_confirmado !== true && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
+                    <p className="text-xs text-amber-800 dark:text-amber-300 flex items-start gap-1.5">
+                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>
+                        Este serviço está com custo <strong>R$ 0,00</strong> — isso está correto?
+                        A comissão deste técnico é calculada sobre o lucro (venda − custo).
+                      </span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs"
+                        onClick={() => handleConfirmarCustoZero(servico.id)}
+                      >
+                        <Check className="w-3.5 h-3.5 mr-1" />
+                        Sim, o custo é R$ 0,00 mesmo
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => handleInformarCusto(servico)}
+                      >
+                        <Pencil className="w-3.5 h-3.5 mr-1" />
+                        Não, vou informar o valor
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
