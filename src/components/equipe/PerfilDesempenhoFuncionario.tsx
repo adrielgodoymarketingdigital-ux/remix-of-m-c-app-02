@@ -79,13 +79,16 @@ interface AlertaComissaoItem {
 
 /**
  * Reavalia, com a configuração de comissão ATUAL, se algum item da OS
- * ficaria sem comissão configurada ou ambíguo — mesma lógica usada ao
- * salvar a OS (calcularComissaoPorServico), reaplicada aqui só para
- * exibição. Só faz sentido quando a comissão foi calculada por soma de
- * múltiplos serviços do Técnico Principal (2+ itens em
- * avarias.servicos_realizados, sem "Técnicos por Serviço" vinculado) —
- * para OS de um serviço só, ou que já usam os_tecnicos, o snapshot
- * gravado já reflete o item certo e não há ambiguidade a reavaliar.
+ * ficaria sem comissão configurada, ambíguo, ou — no modo "lucro" — com
+ * custo não confirmado. Mesma lógica/redação usada ao salvar a OS
+ * (calcularComissaoPorServico e salvarTecnicosOS), reaplicada aqui só para
+ * exibição, cobrindo os DOIS fluxos:
+ *  - Técnico Principal: soma de múltiplos serviços (2+ itens em
+ *    avarias.servicos_realizados).
+ *  - "Técnicos por Serviço" (os_tecnicos): cada linha tem snapshot próprio;
+ *    reavaliamos só as linhas cuja comissão ficou nula/zerada, para flagrar
+ *    quando salvarTecnicosOS não aplicou a comissão (ambígua ou custo 0 não
+ *    confirmado no modo lucro).
  *
  * Como usa o catálogo/config de HOJE (não o que existia quando a OS foi
  * salva), é um "melhor esforço": se a configuração mudou desde então, a
@@ -98,11 +101,8 @@ function avaliarAlertasComissaoOS(
   comissoesTipoServico: Record<string, { tipo: string; valor: number }>,
   comissaoCalculo: "faturamento" | "lucro" = "faturamento",
 ): AlertaComissaoItem[] {
-  if (os.tecnicos_os && os.tecnicos_os.length > 0) return [];
-
   const servicosRealizados: { nome?: string; custo?: number; peca_valor?: number; custo_confirmado?: boolean }[] =
     Array.isArray(os.avarias?.servicos_realizados) ? os.avarias.servicos_realizados : [];
-  if (servicosRealizados.length === 0) return [];
 
   const tiposComComissao: TipoServicoResumo[] = Object.entries(tiposServico)
     .filter(([id]) => id in comissoesTipoServico)
@@ -116,6 +116,41 @@ function avaliarAlertasComissaoOS(
   );
 
   const alertas: AlertaComissaoItem[] = [];
+
+  // Caminho "Técnicos por Serviço": a comissão de cada linha é um snapshot
+  // próprio. Só reavaliamos as linhas cuja comissão ficou nula/zerada.
+  if (os.tecnicos_os && os.tecnicos_os.length > 0) {
+    for (const t of os.tecnicos_os) {
+      const nome = t.servico_nome_snapshot || t.descricao_servico || undefined;
+      if (!nome) continue;
+      if ((t.comissao_calculada_snapshot || 0) > 0) continue; // aplicada com sucesso
+      const resultado = encontrarComissaoPorNomeServico(
+        nome, tiposComComissao, comissaoPorTipoServicoId, os.dispositivo_marca,
+      );
+      if (resultado.ambiguo) {
+        alertas.push({ nome, motivo: formatarMotivoComissao(nome, resultado) });
+        continue;
+      }
+      const temPercentual = !!resultado.config && resultado.config.comissao_valor > 0;
+      if (!temPercentual) continue; // sem % configurada = sem comissão, intencional
+      const item = servicosRealizados.find((it) => it?.nome === nome);
+      if (
+        comissaoCalculo === "lucro"
+        && resultado.config?.comissao_tipo === "porcentagem"
+        && item
+        && !custoConfirmadoDoItem(item.peca_valor ?? item.custo, item.custo_confirmado)
+      ) {
+        alertas.push({
+          nome,
+          motivo: formatarMotivoComissao(nome, { ambiguo: false, custoNaoConfirmado: true }),
+        });
+      }
+    }
+    return alertas;
+  }
+
+  if (servicosRealizados.length === 0) return [];
+
   for (const item of servicosRealizados) {
     if (!item?.nome) continue;
     const resultado = encontrarComissaoPorNomeServico(

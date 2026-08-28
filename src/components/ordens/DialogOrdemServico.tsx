@@ -93,12 +93,20 @@ export const DialogOrdemServico = ({
     handleBuscarCEPOS,
   } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId, carregandoPermissoes });
 
-  // Técnico responsável da OS: o técnico principal escolhido na Etapa 4, ou,
-  // quando quem preenche é um funcionário técnico, ele mesmo. Usado para saber
-  // se o banner de confirmação de custo (Comissão sobre Lucro) deve aparecer.
-  const tecnicoResponsavelId = tecnicoId || funcionarioId;
-  const comissaoLucroAtiva = !!tecnicoResponsavelId
-    && funcionarios.some((f) => f.id === tecnicoResponsavelId && f.comissao_calculo === "lucro");
+  // Banner de confirmação de custo (Comissão sobre Lucro): deve aparecer se
+  // QUALQUER técnico envolvido na OS calcula comissão sobre lucro — o técnico
+  // principal da Etapa 4 (tecnicoId), o funcionário técnico que preenche a OS
+  // (funcionarioId), OU qualquer técnico vinculado via "Técnicos por Serviço"
+  // (tecnicosOS). OR no nível da OS: confirmar/preencher o custo nunca
+  // prejudica quem calcula sobre faturamento.
+  const idsTecnicosEnvolvidos = [
+    tecnicoId,
+    funcionarioId,
+    ...tecnicosOS.map((t) => t.funcionario_id),
+  ].filter(Boolean) as string[];
+  const comissaoLucroAtiva = funcionarios.some(
+    (f) => idsTecnicosEnvolvidos.includes(f.id) && f.comissao_calculo === "lucro",
+  );
 
   const irParaEtapa = (etapa: EtapaWizard) => {
     setCampoComErro(null);

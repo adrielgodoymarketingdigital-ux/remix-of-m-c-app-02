@@ -215,7 +215,17 @@ async function calcularComissaoPorServico(
  * de vincular corretamente o técnico ao serviço.
  * Quando não há serviço vinculado (dados antigos/legados), cai no
  * fallback antigo: tipoServicoId da OS sobre o total da OS.
+ *
+ * Retorna os itens cuja comissão NÃO pôde ser aplicada (comissão ambígua, ou
+ * — no modo "lucro" — custo R$ 0,00 não confirmado). Quem chama usa isso para
+ * montar o MESMO aviso visível (toast) do fluxo do Técnico Principal, para
+ * que "Técnicos por Serviço" não zere comissão silenciosamente.
  */
+interface ResultadoSalvarTecnicos {
+  itensCustoNaoConfirmado: { nome: string; tecnico: string }[];
+  itensComissaoAmbigua: { nome: string; tecnico: string; candidatos: CandidatoAmbiguo[] }[];
+}
+
 async function salvarTecnicosOS(
   osId: string,
   tecnicos: TecnicoOS[],
@@ -223,11 +233,13 @@ async function salvarTecnicosOS(
   totalOS: number,
   tipoServicoId: string | null,
   dispositivoMarca?: string | null,
-) {
+): Promise<ResultadoSalvarTecnicos> {
+  const resultado: ResultadoSalvarTecnicos = { itensCustoNaoConfirmado: [], itensComissaoAmbigua: [] };
+
   if (tecnicos.length === 0) {
     // Limpar técnicos existentes se lista vazia
     await supabase.from("os_tecnicos").delete().eq("os_id", osId);
-    return;
+    return resultado;
   }
 
   // Remover técnicos antigos
@@ -247,9 +259,9 @@ async function salvarTecnicosOS(
     funcionarioIds.length > 0
       ? supabase
           .from("loja_funcionarios")
-          .select("id, comissao_calculo")
+          .select("id, nome, comissao_calculo")
           .in("id", funcionarioIds)
-      : Promise.resolve({ data: [] as { id: string; comissao_calculo: string | null }[] }),
+      : Promise.resolve({ data: [] as { id: string; nome: string; comissao_calculo: string | null }[] }),
   ]);
 
   const comissaoPorFuncionarioETipo = new Map<string, ComissaoConfig>();
@@ -258,8 +270,10 @@ async function salvarTecnicosOS(
   });
 
   const comissaoCalculoPorFuncionario = new Map<string, ComissaoCalculo>();
-  (funcsCalculo || []).forEach((f: { id: string; comissao_calculo: string | null }) => {
+  const nomePorFuncionario = new Map<string, string>();
+  (funcsCalculo || []).forEach((f: { id: string; nome: string; comissao_calculo: string | null }) => {
     comissaoCalculoPorFuncionario.set(f.id, f.comissao_calculo === "lucro" ? "lucro" : "faturamento");
+    nomePorFuncionario.set(f.id, f.nome);
   });
 
   const tecnicosParaInserir = [];
@@ -293,6 +307,11 @@ async function salvarTecnicosOS(
           "[comissao] Comissão ambígua para técnico vinculado a serviço específico — não aplicada (revisão manual necessária):",
           { funcionarioId: tec.funcionario_id, servico: servicoVinculado.nome, dispositivoMarca, candidatos: resultadoMatch.candidatosAmbiguos },
         );
+        resultado.itensComissaoAmbigua.push({
+          nome: servicoVinculado.nome,
+          tecnico: nomePorFuncionario.get(tec.funcionario_id) || "técnico",
+          candidatos: resultadoMatch.candidatosAmbiguos || [],
+        });
       }
     } else if (tsId) {
       comissaoConfig = comissaoPorFuncionarioETipo.get(`${tec.funcionario_id}:${tsId}`);
@@ -316,6 +335,10 @@ async function salvarTecnicosOS(
           "[comissao] Comissão sobre LUCRO (Técnico por Serviço): custo R$ 0,00 não confirmado — comissão não aplicada até confirmar o custo na OS:",
           { funcionarioId: tec.funcionario_id, servico: servicoVinculado?.nome },
         );
+        resultado.itensCustoNaoConfirmado.push({
+          nome: servicoVinculado?.nome || tec.descricao_servico || "serviço",
+          tecnico: nomePorFuncionario.get(tec.funcionario_id) || "técnico",
+        });
       } else {
         comissaoTipo = comissaoConfig.comissao_tipo;
         comissaoValor = comissaoConfig.comissao_valor;
@@ -337,6 +360,7 @@ async function salvarTecnicosOS(
   }
 
   await supabase.from("os_tecnicos").insert(tecnicosParaInserir);
+  return resultado;
 }
 
 /**
@@ -579,6 +603,25 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       }
     }
 
+    // Junta ao MESMO aviso visível (toast) os itens cuja comissão não pôde ser
+    // aplicada no fluxo "Técnicos por Serviço" (salvarTecnicosOS) — mesma
+    // redação (formatarMotivoComissao) do fluxo do Técnico Principal, só com o
+    // nome do técnico ao final para identificar qual linha revisar.
+    const aplicarAvisoTecnicosOS = (res: ResultadoSalvarTecnicos) => {
+      const motivos = [
+        ...res.itensComissaoAmbigua.map(({ nome, tecnico, candidatos }) =>
+          `${formatarMotivoComissao(nome, { ambiguo: true, candidatosAmbiguos: candidatos })} (técnico: ${tecnico})`
+        ),
+        ...res.itensCustoNaoConfirmado.map(({ nome, tecnico }) =>
+          `${formatarMotivoComissao(nome, { ambiguo: false, custoNaoConfirmado: true })} (técnico: ${tecnico})`
+        ),
+      ];
+      if (motivos.length === 0) return;
+      avisoComissaoTexto = avisoComissaoTexto
+        ? `${avisoComissaoTexto} • ${motivos.join(" • ")}`
+        : `⚠️ Comissão do técnico incompleta — revise: ${motivos.join(" • ")}`;
+    };
+
     if (ordem) {
       // Atualizar ordem existente
       const { error } = await supabase
@@ -626,7 +669,8 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       if (error) throw error;
 
       // === SALVAR TÉCNICOS DA OS ===
-      await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca);
+      const resTecnicosEdit = await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca);
+      aplicarAvisoTecnicosOS(resTecnicosEdit);
 
       // === ATUALIZAR OU CRIAR CONTA A RECEBER AO EDITAR OS ===
       if (ordem.numero_os) {
@@ -823,7 +867,8 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .maybeSingle();
 
       if (osCriada) {
-        await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca);
+        const resTecnicosCreate = await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca);
+        aplicarAvisoTecnicosOS(resTecnicosCreate);
       }
 
       // === BAIXA NO ESTOQUE E REGISTRO DE VENDAS PARA PRODUTOS/PEÇAS ===
