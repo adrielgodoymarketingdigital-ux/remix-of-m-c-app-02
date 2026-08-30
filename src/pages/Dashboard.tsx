@@ -101,6 +101,9 @@ const Dashboard = () => {
   const [financeiroData, setFinanceiroData] = useState({
     contasHojeTotal: 0,
     contasHojeQtd: 0,
+    receberHojeTotal: 0,
+    receberHojeQtd: 0,
+    receberMesTotal: 0,
     margemLucro: 0,
     custoTotal: 0,
     custoOperacional: 0,
@@ -464,6 +467,34 @@ const Dashboard = () => {
     const totalContasHoje = contasHoje?.reduce((acc, c) => acc + Number(c.valor || 0), 0) || 0;
     const qtdContasHoje = contasHoje?.length || 0;
 
+    // Total a Receber Hoje — mesma query de "Contas a Pagar Hoje", só invertendo tipo → "receber"
+    let qReceberHoje = supabase
+      .from("contas")
+      .select("valor")
+      .eq("user_id", userId)
+      .eq("tipo", "receber")
+      .eq("status", "pendente")
+      .eq("data", hoje);
+    if (ef) qReceberHoje = qReceberHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    const { data: receberHoje } = await qReceberHoje;
+
+    const totalReceberHoje = receberHoje?.reduce((acc, c) => acc + Number(c.valor || 0), 0) || 0;
+    const qtdReceberHoje = receberHoje?.length || 0;
+
+    // Total a Receber do Mês — mesma query, no período (inicio/fim) já filtrado no Dashboard
+    let qReceberMes = supabase
+      .from("contas")
+      .select("valor")
+      .eq("user_id", userId)
+      .eq("tipo", "receber")
+      .eq("status", "pendente")
+      .gte("data", format(inicio, "yyyy-MM-dd"))
+      .lte("data", format(fim, "yyyy-MM-dd"));
+    if (ef) qReceberMes = qReceberMes.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    const { data: receberMes } = await qReceberMes;
+
+    const totalReceberMes = receberMes?.reduce((acc, c) => acc + Number(c.valor || 0), 0) || 0;
+
     const resumo = await calcularResumo({
       dataInicio: format(inicio, "yyyy-MM-dd"),
       dataFim: format(fim, "yyyy-MM-dd"),
@@ -472,6 +503,9 @@ const Dashboard = () => {
     setFinanceiroData({
       contasHojeTotal: totalContasHoje,
       contasHojeQtd: qtdContasHoje,
+      receberHojeTotal: totalReceberHoje,
+      receberHojeQtd: qtdReceberHoje,
+      receberMesTotal: totalReceberMes,
       margemLucro: resumo.margemLucroMedia,
       custoTotal: resumo.custoTotal,
       custoOperacional: resumo.custoOperacional,
@@ -1282,7 +1316,130 @@ const Dashboard = () => {
           </div>
 
           {/* Cards Financeiros */}
-          <div className="grid grid-cols-1 gap-4 mb-6">
+          {/* ===== DESKTOP (>= sm): 8 métricas em grade compacta, estilo dos cards
+               escuros dos atalhos rápidos. Reaproveita exatamente os mesmos
+               dados/cálculos do bloco mobile logo abaixo — só reestilização. ===== */}
+          <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-3 mb-6">
+            {/* Faturamento Total */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="h-9 w-9 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-blue-400" />
+              </div>
+              <p className="text-lg font-bold text-blue-300 leading-tight">
+                <ValorMonetario valor={totalFaturamento} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Faturamento Total</p>
+            </div>
+
+            {/* Lucro Bruto */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="h-9 w-9 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-green-400" />
+              </div>
+              <p className={`text-lg font-bold leading-tight ${financeiroData.lucroTotal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <ValorMonetario valor={financeiroData.lucroTotal} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Lucro Bruto</p>
+            </div>
+
+            {/* Lucro Líquido */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="h-9 w-9 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                <Wallet className="h-4 w-4 text-emerald-400" />
+              </div>
+              <p className={`text-lg font-bold leading-tight ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <ValorMonetario valor={financeiroData.lucroLiquido} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Lucro Líquido</p>
+              <p className="text-[9px] text-slate-500 leading-tight -mt-1">após despesas pagas</p>
+            </div>
+
+            {/* Margem de Lucro */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="h-9 w-9 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                <Percent className="h-4 w-4 text-blue-400" />
+              </div>
+              <p className={`text-lg font-bold leading-tight ${financeiroData.margemLucro >= 0 ? 'text-blue-300' : 'text-red-400'}`}>
+                {financeiroData.margemLucro.toFixed(1)}%
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Margem de Lucro</p>
+            </div>
+
+            {/* Custo Total do Mês */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="h-9 w-9 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                <TrendingDown className="h-4 w-4 text-orange-400" />
+              </div>
+              <p className="text-lg font-bold text-orange-400 leading-tight">
+                <ValorMonetario valor={financeiroData.custoTotal + financeiroData.custoOperacional} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Custo Total do Mês</p>
+            </div>
+
+            {/* Despesas Operacionais */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="h-9 w-9 rounded-xl bg-rose-500/20 flex items-center justify-center">
+                <TrendingDown className="h-4 w-4 text-rose-400" />
+              </div>
+              <p className="text-lg font-bold text-rose-400 leading-tight">
+                <ValorMonetario valor={financeiroData.custoOperacional} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Despesas Operacionais</p>
+            </div>
+
+            {/* Contas a Pagar Hoje */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="flex items-center justify-between">
+                <div className="h-9 w-9 rounded-xl bg-red-500/20 flex items-center justify-center">
+                  <AlertTriangle className="h-4 w-4 text-red-400" />
+                </div>
+                <span className="text-[10px] text-slate-400 shrink-0">{financeiroData.contasHojeQtd} contas</span>
+              </div>
+              <p className="text-lg font-bold text-red-400 leading-tight">
+                <ValorMonetario valor={financeiroData.contasHojeTotal} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Contas a Pagar Hoje</p>
+            </div>
+
+            {/* Taxas de Cartão */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="h-9 w-9 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <CreditCard className="h-4 w-4 text-purple-400" />
+              </div>
+              <p className="text-lg font-bold text-purple-300 leading-tight">
+                <ValorMonetario valor={financeiroData.taxasCartao} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Taxas de Cartão</p>
+            </div>
+
+            {/* Total a Receber Hoje — dinheiro entrando (verde), contraponto de "Contas a Pagar Hoje" */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="flex items-center justify-between">
+                <div className="h-9 w-9 rounded-xl bg-green-500/20 flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 text-green-400" />
+                </div>
+                <span className="text-[10px] text-slate-400 shrink-0">{financeiroData.receberHojeQtd} contas</span>
+              </div>
+              <p className="text-lg font-bold text-green-400 leading-tight">
+                <ValorMonetario valor={financeiroData.receberHojeTotal} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Total a Receber Hoje</p>
+            </div>
+
+            {/* Total a Receber do Mês — período (inicio/fim) já filtrado no Dashboard */}
+            <div className="flex flex-col gap-2 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-white/5 p-4">
+              <div className="h-9 w-9 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <Wallet className="h-4 w-4 text-green-400" />
+              </div>
+              <p className="text-lg font-bold text-green-400 leading-tight">
+                <ValorMonetario valor={financeiroData.receberMesTotal} />
+              </p>
+              <p className="text-[11px] text-slate-400 leading-tight">Total a Receber do Mês</p>
+            </div>
+          </div>
+
+          {/* Cards Financeiros — MOBILE/PWA (inalterado, agora restrito a telas < sm) */}
+          <div className="grid grid-cols-1 gap-4 mb-6 sm:hidden">
             <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-primary">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1381,6 +1538,36 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground mb-1">Taxas de Cartão</p>
               <p className="text-lg sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
                 <ValorMonetario valor={financeiroData.taxasCartao} />
+              </p>
+            </Card>
+
+            {/* Total a Receber Hoje — dinheiro entrando (verde), contraponto de "Contas a Pagar Hoje" */}
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-green-500">
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="text-right">
+                  <p className="text-xl sm:text-2xl font-semibold">{financeiroData.receberHojeQtd}</p>
+                  <p className="text-xs text-muted-foreground">contas</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">Total a Receber Hoje</p>
+              <p className="text-lg sm:text-xl font-semibold text-green-600 dark:text-green-400">
+                <ValorMonetario valor={financeiroData.receberHojeTotal} />
+              </p>
+            </Card>
+
+            {/* Total a Receber do Mês — período (inicio/fim) já filtrado no Dashboard */}
+            <Card className="p-4 sm:p-6 shadow-md rounded-2xl border-l-4 border-l-green-500">
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">Total a Receber do Mês</p>
+              <p className="text-lg sm:text-xl font-semibold text-green-600 dark:text-green-400">
+                <ValorMonetario valor={financeiroData.receberMesTotal} />
               </p>
             </Card>
 
