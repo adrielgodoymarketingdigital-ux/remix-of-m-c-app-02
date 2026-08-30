@@ -25,7 +25,7 @@ import { CardCotacaoDolar } from "@/components/dashboard/CardCotacaoDolar";
 
 import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { useRelatorios } from "@/hooks/useRelatorios";
-import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, getValorFaturavelOS } from "@/lib/vendasFinanceiras";
+import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro } from "@/lib/vendasFinanceiras";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 import { useIdentidade } from "@/hooks/useResolvedUserId";
 import { useDashboardResumo } from "@/hooks/useDashboardResumo";
@@ -365,7 +365,9 @@ const Dashboard = () => {
     const excluirItemOS = (v: any) => {
       if (v.peca_id) return true;
       if (v.observacoes && typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return true;
-      if (v.observacoes === "pagamento_duplo_secundario") return true;
+      // Linha secundária de pagamento duplo: só entra quando é a parte "a receber"
+      // já recebida (custo proporcional já gravado em custo_unitario).
+      if (isPagamentoDuploSecundario(v) && !deveContarSecundarioNoLucro(v)) return true;
       return false;
     };
 
@@ -553,7 +555,7 @@ const Dashboard = () => {
 
     let qVendasHoje = supabase
       .from("vendas")
-      .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id, tipo")
+      .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id, tipo, segunda_forma_pagamento, valor_segunda_forma")
       .eq("user_id", userId)
       .eq("cancelada", false)
       .or(`and(data.gte.${inicioDiaISO},data.lte.${fimDiaISO}),and(data_recebimento.not.is.null,data_recebimento.gte.${inicioDiaISO},data_recebimento.lte.${fimDiaISO})`);
@@ -620,7 +622,9 @@ const Dashboard = () => {
 
     const vendasFiltradas = (vendasHoje || []).filter((v) => {
       if (v.observacoes && typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return false;
-      if (v.observacoes === "pagamento_duplo_secundario") return false;
+      // Linha secundária de pagamento duplo: só entra quando é a parte "a receber"
+      // já recebida (custo proporcional já gravado em custo_unitario).
+      if (isPagamentoDuploSecundario(v as any) && !deveContarSecundarioNoLucro(v as any)) return false;
       if (v.peca_id) return false;
       const dataRef = (v.forma_pagamento === "a_receber" || v.forma_pagamento === "a_prazo") && v.recebido
         ? v.data_recebimento || v.data
@@ -634,16 +638,13 @@ const Dashboard = () => {
     const vendasDispositivosHoje = vendasFiltradas.filter(v => (v as any).tipo === "dispositivo");
 
     const receitaVendas = vendasFiltradas.reduce((acc, v) => acc + getVendaReceitaLiquida(v as any), 0);
-    const custoVendas = vendasFiltradas.reduce((acc, v) => {
-      const custo = Number(v.custo_unitario || 0) * Number(v.quantidade || 1);
-      return acc + custo;
-    }, 0);
+    const custoVendas = vendasFiltradas.reduce((acc, v) => acc + getVendaCustoTotal(v as any), 0);
 
     const receitaProdutosHoje = vendasProdutosHoje.reduce((acc, v) => acc + getVendaReceitaLiquida(v as any), 0);
-    const custoProdutosHoje = vendasProdutosHoje.reduce((acc, v) => Number(v.custo_unitario || 0) * Number(v.quantidade || 1) + acc, 0);
+    const custoProdutosHoje = vendasProdutosHoje.reduce((acc, v) => acc + getVendaCustoTotal(v as any), 0);
 
     const receitaDispositivosHoje = vendasDispositivosHoje.reduce((acc, v) => acc + getVendaReceitaLiquida(v as any), 0);
-    const custoDispositivosHoje = vendasDispositivosHoje.reduce((acc, v) => Number(v.custo_unitario || 0) * Number(v.quantidade || 1) + acc, 0);
+    const custoDispositivosHoje = vendasDispositivosHoje.reduce((acc, v) => acc + getVendaCustoTotal(v as any), 0);
 
     const receitaServicosAvulsosHoje = (avulsosHoje || []).reduce((acc, a) => acc + Number(a.preco || 0), 0);
     const receitaVendasAvulsasHoje = ((vendasAvulsasHoje ?? []) as { valor: number }[])

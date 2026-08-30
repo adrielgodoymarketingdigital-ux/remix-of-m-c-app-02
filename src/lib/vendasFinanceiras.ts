@@ -14,9 +14,20 @@ export interface VendaFinanceiraLike {
   grupo_venda?: string | null;
   segunda_forma_pagamento?: string | null;
   valor_segunda_forma?: number | null;
+  observacoes?: string | null;
 }
 
 const FORMAS_POR_COMPETENCIA = new Set(["a_receber", "a_prazo"]);
+
+/**
+ * Marcador gravado em vendas.observacoes nas linhas auxiliares de "pagamento
+ * duplo" (2ª forma de pagamento). Uma linha secundária "à vista" (pix/dinheiro/
+ * cartão) já está embutida no total da linha principal — nunca entra em
+ * cálculos de lucro/faturamento. Uma linha secundária "a receber"/"a prazo" só
+ * entra quando efetivamente recebida (ver deveContarSecundarioNoLucro e
+ * src/lib/vendas/reconhecerSegundaForma.ts).
+ */
+export const MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO = "pagamento_duplo_secundario";
 
 const toNumber = (value: number | string | null | undefined) => Number(value || 0);
 
@@ -55,6 +66,23 @@ export const isVendaFinanceiramentePendente = (venda: VendaFinanceiraLike) =>
 
 export const isVendaParcelaSubsequente = (venda: VendaFinanceiraLike) =>
   Number(venda.parcela_numero || 0) > 1;
+
+export const isPagamentoDuploSecundario = (venda: VendaFinanceiraLike): boolean =>
+  venda.observacoes === MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO;
+
+/**
+ * Uma linha secundária de pagamento duplo entra em cálculos de lucro/
+ * faturamento somente quando:
+ *  (a) é a parte "a receber"/"a prazo" (as partes à vista já estão no total da
+ *      linha principal — contá-las duplicaria a receita); e
+ *  (b) já foi efetivamente recebida (recebido = true), com a fatia de custo
+ *      proporcional já gravada em custo_unitario pelo fluxo de reconhecimento.
+ * A competência (mês) usa data_recebimento via getVendaDataCompetencia.
+ */
+export const deveContarSecundarioNoLucro = (venda: VendaFinanceiraLike): boolean =>
+  isPagamentoDuploSecundario(venda) &&
+  isVendaPorCompetenciaRecebimento(venda) &&
+  venda.recebido === true;
 
 export const shouldIncludeVendaInFinancialTotals = (venda: VendaFinanceiraLike) => {
   if (venda.cancelada) return false;
@@ -159,9 +187,37 @@ export const getVendaReceitaLiquida = (venda: VendaFinanceiraLike) => {
   return receitaAjustada;
 };
 
+/**
+ * Fração do custo da venda que deve ser reconhecida AGORA (no período da venda).
+ * É 1 para qualquer venda normal. Só é menor que 1 quando a venda tem pagamento
+ * duplo com 2ª forma "a receber" ainda não recebida: nesse caso reconhece-se
+ * apenas a proporção correspondente à parte já recebida da receita
+ * (mesma proporção usada por getVendaReceitaLiquida ao cortar valor_segunda_forma).
+ * O custo restante é reconhecido parcela a parcela quando a 2ª forma é recebida
+ * (ver src/lib/vendas/reconhecerSegundaForma.ts).
+ */
+export const calcularFracaoCustoReconhecidaAgora = (venda: VendaFinanceiraLike): number => {
+  const receitaBase =
+    toNumber(venda.total) -
+    toNumber(venda.valor_desconto_manual) -
+    toNumber(venda.valor_desconto_cupom);
+
+  const valorSegundaAReceber =
+    venda.segunda_forma_pagamento === "a_receber" && toNumber(venda.valor_segunda_forma) > 0
+      ? toNumber(venda.valor_segunda_forma)
+      : 0;
+
+  if (valorSegundaAReceber <= 0 || receitaBase <= 0) return 1;
+
+  const fracao = (receitaBase - valorSegundaAReceber) / receitaBase;
+  if (fracao < 0) return 0;
+  if (fracao > 1) return 1;
+  return fracao;
+};
+
 export const getVendaCustoTotal = (venda: VendaFinanceiraLike) => {
   const custoTotal = toNumber(venda.custo_unitario) * toNumber(venda.quantidade || 1);
-  return custoTotal;
+  return custoTotal * calcularFracaoCustoReconhecidaAgora(venda);
 };
 
 /**
@@ -175,7 +231,16 @@ export const distribuirCustoParcelasGrupo = (vendas: VendaFinanceiraLike[]): Ven
   const semGrupo: VendaFinanceiraLike[] = [];
 
   for (const v of vendas) {
-    if (v.grupo_venda && isVendaPorCompetenciaRecebimento(v) && (Number(v.total_parcelas || 1) > 1)) {
+    // Linhas secundárias de pagamento duplo NÃO entram no rateio por grupo:
+    // a fatia de custo de cada parcela já é gravada exata em custo_unitario no
+    // momento do recebimento (reconhecerSegundaForma). Reagrupá-las aqui
+    // re-mediaria esse custo e quebraria o fechamento.
+    if (
+      v.grupo_venda &&
+      isVendaPorCompetenciaRecebimento(v) &&
+      Number(v.total_parcelas || 1) > 1 &&
+      !isPagamentoDuploSecundario(v)
+    ) {
       const arr = grupos.get(v.grupo_venda);
       if (arr) arr.push(v);
       else grupos.set(v.grupo_venda, [v]);

@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
+import { propagarStatusContaParaVenda } from "@/lib/vendas/reconhecerSegundaForma";
 
 export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
   const [contas, setContas] = useState<Conta[]>([]);
@@ -223,6 +224,31 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
 
       if (error) throw error;
 
+      // Se a conta é uma Conta a Receber vinculada a uma venda ("venda_id:" na
+      // descricao) e mudou para recebido/pendente, propagar para a linha da
+      // venda: reconhecimento diferido da 2ª forma de pagamento "a receber"
+      // (pagamento duplo) e recebimento de vendas a_receber primárias.
+      if (dados.status === "recebido" || dados.status === "pendente") {
+        const { data: contaAtual } = await supabase
+          .from("contas")
+          .select("descricao, tipo, data_pagamento")
+          .eq("id", id)
+          .maybeSingle();
+        if (contaAtual) {
+          await propagarStatusContaParaVenda(
+            {
+              descricao: contaAtual.descricao,
+              tipo: contaAtual.tipo,
+              data_pagamento:
+                (dados as { data_pagamento?: string | null }).data_pagamento ??
+                contaAtual.data_pagamento,
+            },
+            dados.status,
+            targetUserId,
+          );
+        }
+      }
+
       toast({
         title: "Conta atualizada",
         description: "A conta foi atualizada com sucesso.",
@@ -376,6 +402,19 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           .in("id", contasReaisReceber)
           .eq("user_id", targetUserId);
         if (error) throw error;
+
+        // Propagar recebimento para vendas vinculadas (2ª forma de pagamento
+        // "a receber" / vendas a_receber primárias)
+        const idsReais = new Set(contasReaisReceber);
+        for (const conta of contasParaBaixa) {
+          if (idsReais.has(conta.id)) {
+            await propagarStatusContaParaVenda(
+              { descricao: conta.descricao, tipo: conta.tipo, data_pagamento: hoje },
+              "recebido",
+              targetUserId,
+            );
+          }
+        }
       }
 
       // Marcar vendas virtuais como recebidas

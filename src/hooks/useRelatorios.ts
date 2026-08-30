@@ -11,7 +11,7 @@ import {
 } from "@/types/relatorio";
 import { useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod, getValorFaturavelOS } from "@/lib/vendasFinanceiras";
+import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro } from "@/lib/vendasFinanceiras";
 import { useIdentidade } from "./useResolvedUserId";
 
 export const useRelatorios = () => {
@@ -191,7 +191,10 @@ export const useRelatorios = () => {
         if (venda.observacoes && typeof venda.observacoes === 'string' && venda.observacoes.includes('utilizado na OS')) return;
         // Fallback: peças com peca_id são sempre de OS
         if (venda.peca_id) return;
-        if (venda.observacoes === 'pagamento_duplo_secundario') return;
+        // Linha secundária de pagamento duplo: só entra quando é a parte
+        // "a receber" já recebida (com custo proporcional já gravado). As demais
+        // (à vista, ou a receber ainda pendente) ficam de fora.
+        if (isPagamentoDuploSecundario(venda) && !deveContarSecundarioNoLucro(venda)) return;
 
         let itemId: string;
         let itemNome: string;
@@ -844,7 +847,9 @@ export const useRelatorios = () => {
         // Ignorar vendas geradas automaticamente a partir de OS (produtos/peças utilizados)
         if (venda.observacoes && typeof venda.observacoes === 'string' && venda.observacoes.includes('utilizado na OS')) return;
         if (venda.peca_id) return;
-        if (venda.observacoes === 'pagamento_duplo_secundario') return;
+        // Linha secundária de pagamento duplo: só entra quando é a parte
+        // "a receber" já recebida (custo proporcional já gravado).
+        if (isPagamentoDuploSecundario(venda) && !deveContarSecundarioNoLucro(venda)) return;
 
         const dataCompetencia = getVendaDataCompetencia(venda);
         if (!dataCompetencia) return;

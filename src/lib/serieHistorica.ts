@@ -1,9 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import {
+  deveContarSecundarioNoLucro,
   distribuirCustoParcelasGrupo,
   getValorFaturavelOS,
   getVendaCustoTotal,
   getVendaReceitaLiquida,
+  isPagamentoDuploSecundario,
   isVendaInFinancialPeriod,
 } from "@/lib/vendasFinanceiras";
 
@@ -22,7 +24,9 @@ export interface PontoSerieDiaria {
 const excluirItemOS = (v: any) => {
   if (v.peca_id) return true;
   if (v.observacoes && typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return true;
-  if (v.observacoes === "pagamento_duplo_secundario") return true;
+  // Linha secundária de pagamento duplo: só entra quando é a parte "a receber"
+  // já recebida (custo proporcional já gravado em custo_unitario).
+  if (isPagamentoDuploSecundario(v) && !deveContarSecundarioNoLucro(v)) return true;
   return false;
 };
 
