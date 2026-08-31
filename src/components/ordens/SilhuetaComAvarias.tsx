@@ -4,6 +4,10 @@ import { SilhuetaNotebook } from "./silhuetas/SilhuetaNotebook";
 import { SilhuetaTablet } from "./silhuetas/SilhuetaTablet";
 import { SilhuetaComputador } from "./silhuetas/SilhuetaComputador";
 import { SilhuetaRelogioSmart } from "./silhuetas/SilhuetaRelogioSmart";
+import { SilhuetaImpressora } from "./silhuetas/SilhuetaImpressora";
+import { SilhuetaVideoGame } from "./silhuetas/SilhuetaVideoGame";
+import { SilhuetaDesktop } from "./silhuetas/SilhuetaDesktop";
+import { SilhuetaTelevisao } from "./silhuetas/SilhuetaTelevisao";
 
 interface SilhuetaComAvariasProps {
   tipoDispositivo: string;
@@ -46,11 +50,18 @@ export const SilhuetaComAvarias = ({
       case "tablet":
         return <SilhuetaTablet lado={lado} />;
       case "computador":
-      case "desktop":
         return <SilhuetaComputador />;
+      case "desktop":
+        return <SilhuetaDesktop lado={lado} />;
       case "relogio":
       case "smartwatch":
         return <SilhuetaRelogioSmart lado={lado} subtipo={subtipoRelogio} />;
+      case "impressora":
+        return <SilhuetaImpressora lado={lado} />;
+      case "video_game":
+        return <SilhuetaVideoGame lado={lado} />;
+      case "televisao":
+        return <SilhuetaTelevisao lado={lado} />;
       default:
         return <SilhuetaCelular lado={lado} />;
     }

@@ -9,6 +9,10 @@ import { SilhuetaTablet } from "./silhuetas/SilhuetaTablet";
 import { SilhuetaNotebook } from "./silhuetas/SilhuetaNotebook";
 import { SilhuetaComputador } from "./silhuetas/SilhuetaComputador";
 import { SilhuetaRelogioSmart } from "./silhuetas/SilhuetaRelogioSmart";
+import { SilhuetaImpressora } from "./silhuetas/SilhuetaImpressora";
+import { SilhuetaVideoGame } from "./silhuetas/SilhuetaVideoGame";
+import { SilhuetaDesktop } from "./silhuetas/SilhuetaDesktop";
+import { SilhuetaTelevisao } from "./silhuetas/SilhuetaTelevisao";
 
 export interface MarcacaoAvariasProps {
   tipoDispositivo: string;
@@ -59,8 +63,16 @@ export const MarcacaoAvarias = ({
       return <SilhuetaComputador />;
     } else if (tipoNormalizado === 'relogio_smart') {
       return <SilhuetaRelogioSmart lado={lado} subtipo={subtipoRelogio} />;
+    } else if (tipoNormalizado === 'impressora') {
+      return <SilhuetaImpressora lado={lado} />;
+    } else if (tipoNormalizado === 'video_game') {
+      return <SilhuetaVideoGame lado={lado} />;
+    } else if (tipoNormalizado === 'desktop') {
+      return <SilhuetaDesktop lado={lado} />;
+    } else if (tipoNormalizado === 'televisao') {
+      return <SilhuetaTelevisao lado={lado} />;
     }
-    
+
     return (
       <div className="w-full h-full flex items-center justify-center bg-muted rounded-lg border-2 border-dashed border-border">
         <p className="text-muted-foreground text-sm">Selecione um dispositivo</p>
