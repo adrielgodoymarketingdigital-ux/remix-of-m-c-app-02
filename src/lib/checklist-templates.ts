@@ -233,6 +233,48 @@ export const checklistTemplates: Record<string, string[]> = {
     'conectores',
     'pulseira',
     'peca_trocada'
+  ],
+  impressora: [
+    'liga',
+    'qualidade_impressao',
+    'nivel_tinta_toner',
+    'scanner',
+    'conectividade_usb_wifi',
+    'bandeja_papel',
+    'estado_fisico_impressora',
+    'peca_trocada'
+  ],
+  video_game: [
+    'liga',
+    'leitor_disco',
+    'controle_emparelha',
+    'saida_video_hdmi',
+    'conectividade_wifi_rede',
+    'ventoinha_cooler',
+    'portas_usb',
+    'estado_fisico_videogame',
+    'peca_trocada'
+  ],
+  desktop: [
+    'liga_fonte',
+    'video_monitor',
+    'teclado_mouse',
+    'hd_ssd_boot',
+    'portas_usb',
+    'conectividade_wifi_rede',
+    'ventoinha_cooler',
+    'estado_fisico_gabinete',
+    'peca_trocada'
+  ],
+  televisao: [
+    'liga',
+    'tela_manchas',
+    'controle_remoto',
+    'entradas_hdmi_usb',
+    'audio',
+    'wifi_smart_tv',
+    'estado_fisico_tv',
+    'peca_trocada'
   ]
 };
 
@@ -275,7 +317,34 @@ export const checklistLabels: Record<string, string> = {
   sensores: 'Sensores',
   pulseira: 'Pulseira',
   nfc: 'NFC',
-  peca_trocada: 'Peça Trocada'
+  peca_trocada: 'Peça Trocada',
+  // Impressora
+  liga: 'Liga Normalmente',
+  qualidade_impressao: 'Qualidade de Impressão (teste de página)',
+  nivel_tinta_toner: 'Nível de Tinta/Toner',
+  scanner: 'Scanner (se multifuncional)',
+  conectividade_usb_wifi: 'Conectividade USB/Wi-Fi',
+  bandeja_papel: 'Bandeja/Puxador de Papel',
+  estado_fisico_impressora: 'Estado Físico (tampa, botões, carcaça)',
+  // Video Game
+  leitor_disco: 'Leitor de Disco/Unidade Óptica',
+  controle_emparelha: 'Controle Emparelha e Responde',
+  saida_video_hdmi: 'Saída de Vídeo (HDMI)',
+  conectividade_wifi_rede: 'Conectividade Wi-Fi/Rede',
+  ventoinha_cooler: 'Ventoinha/Cooler (ruído, superaquecimento)',
+  estado_fisico_videogame: 'Estado Físico (riscos, tampa, botões)',
+  // Desktop
+  liga_fonte: 'Liga Normalmente (fonte de alimentação)',
+  video_monitor: 'Vídeo/Monitor',
+  teclado_mouse: 'Teclado e Mouse Reconhecidos',
+  hd_ssd_boot: 'HD/SSD Detectado, Sistema Inicializa',
+  estado_fisico_gabinete: 'Estado Físico do Gabinete',
+  // Televisão
+  tela_manchas: 'Tela sem Manchas/Pixels Queimados',
+  controle_remoto: 'Controle Remoto',
+  entradas_hdmi_usb: 'Entradas HDMI/USB',
+  wifi_smart_tv: 'Conectividade Wi-Fi (Smart TV)',
+  estado_fisico_tv: 'Estado Físico (tela, moldura, base/suporte)'
 };
 
 export const getChecklistKey = (tipo: string, sistema?: string, fabricante?: string): string => {
