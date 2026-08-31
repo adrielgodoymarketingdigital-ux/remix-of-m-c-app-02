@@ -35,6 +35,15 @@ import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { ChecklistDispositivo } from "./ChecklistDispositivo";
 import { SelecionadorServico } from "./SelecionadorServico";
 import { ResumoFinanceiro } from "./ResumoFinanceiro";
+import { ComboboxComTextoLivre } from "./ordem-servico-wizard/ComboboxComTextoLivre";
+import {
+  OPCAO_OUTRA,
+  OPCAO_OUTRO_MODELO,
+  OPCAO_OUTRA_COR,
+  getMarcasPorTipo,
+  getModelosPorMarca,
+  getCoresPorMarca,
+} from "@/data/catalogoDispositivos";
 import { resolverIdentidadeOS } from "@/lib/ordemServico/resolverIdentidadeOS";
 import { criarOuAtualizarCliente } from "@/lib/ordemServico/criarOuAtualizarCliente";
 import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
@@ -245,8 +254,33 @@ export const DialogOrdemServicoSimplificada = ({
   const totalServicos = formData.servicos.reduce((sum, s) => sum + s.preco, 0);
   const total = Math.max(0, totalServicos - formData.desconto);
 
+  // Cascata Tipo → Marca → Modelo → Cor a partir do mesmo catálogo/lógica usados
+  // na versão completa do wizard (EtapaDispositivo). Sem catálogo para o tipo,
+  // ou com "Outra" escolhida, os campos dependentes caem em texto livre.
+  const marcasDisponiveis = getMarcasPorTipo(formData.dispositivoTipo);
+  const marcaEhTextoLivre =
+    formData.dispositivoMarca === OPCAO_OUTRA || marcasDisponiveis.length === 0;
+  const modelosDisponiveis = marcaEhTextoLivre
+    ? []
+    : getModelosPorMarca(formData.dispositivoTipo, formData.dispositivoMarca);
+  const coresDisponiveis = marcaEhTextoLivre
+    ? []
+    : getCoresPorMarca(formData.dispositivoTipo, formData.dispositivoMarca);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Marca/Modelo em modo combobox renderizam um <button>, então o required
+    // nativo do <form> não os cobre — valida explicitamente.
+    if (!formData.dispositivoMarca.trim() || !formData.dispositivoModelo.trim()) {
+      toast({
+        title: "Preencha os dados do dispositivo",
+        description: "Marca e modelo são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -579,29 +613,67 @@ export const DialogOrdemServicoSimplificada = ({
               </div>
               <div>
                 <Label htmlFor="dispositivoMarca">Marca *</Label>
-                <Input
-                  id="dispositivoMarca"
-                  value={formData.dispositivoMarca}
-                  onChange={(e) => setFormData({ ...formData, dispositivoMarca: e.target.value })}
-                  required
-                />
+                {marcasDisponiveis.length > 0 ? (
+                  <ComboboxComTextoLivre
+                    id="dispositivoMarca"
+                    value={formData.dispositivoMarca}
+                    opcoes={marcasDisponiveis}
+                    opcaoOutra={OPCAO_OUTRA}
+                    placeholder="Selecione a marca"
+                    buscaPlaceholder="Buscar marca..."
+                    onChange={(value) =>
+                      setFormData({ ...formData, dispositivoMarca: value, dispositivoModelo: "", dispositivoCor: "" })
+                    }
+                  />
+                ) : (
+                  <Input
+                    id="dispositivoMarca"
+                    value={formData.dispositivoMarca}
+                    onChange={(e) => setFormData({ ...formData, dispositivoMarca: e.target.value })}
+                    required
+                  />
+                )}
               </div>
               <div>
                 <Label htmlFor="dispositivoModelo">Modelo *</Label>
-                <Input
-                  id="dispositivoModelo"
-                  value={formData.dispositivoModelo}
-                  onChange={(e) => setFormData({ ...formData, dispositivoModelo: e.target.value })}
-                  required
-                />
+                {modelosDisponiveis.length > 0 ? (
+                  <ComboboxComTextoLivre
+                    id="dispositivoModelo"
+                    value={formData.dispositivoModelo}
+                    opcoes={modelosDisponiveis}
+                    opcaoOutra={OPCAO_OUTRO_MODELO}
+                    placeholder="Selecione o modelo"
+                    buscaPlaceholder="Buscar modelo..."
+                    onChange={(value) => setFormData({ ...formData, dispositivoModelo: value })}
+                  />
+                ) : (
+                  <Input
+                    id="dispositivoModelo"
+                    value={formData.dispositivoModelo}
+                    onChange={(e) => setFormData({ ...formData, dispositivoModelo: e.target.value })}
+                    required
+                  />
+                )}
               </div>
               <div>
                 <Label htmlFor="dispositivoCor">Cor</Label>
-                <Input
-                  id="dispositivoCor"
-                  value={formData.dispositivoCor}
-                  onChange={(e) => setFormData({ ...formData, dispositivoCor: e.target.value })}
-                />
+                {coresDisponiveis.length > 0 ? (
+                  <ComboboxComTextoLivre
+                    id="dispositivoCor"
+                    value={formData.dispositivoCor}
+                    opcoes={coresDisponiveis}
+                    opcaoOutra={OPCAO_OUTRA_COR}
+                    placeholder="Selecione a cor"
+                    buscaPlaceholder="Buscar cor..."
+                    onChange={(value) => setFormData({ ...formData, dispositivoCor: value })}
+                  />
+                ) : (
+                  <Input
+                    id="dispositivoCor"
+                    value={formData.dispositivoCor}
+                    onChange={(e) => setFormData({ ...formData, dispositivoCor: e.target.value })}
+                  />
+                )}
               </div>
               <div>
                 <Label htmlFor="dispositivoNumeroSerie">Número de Série</Label>
