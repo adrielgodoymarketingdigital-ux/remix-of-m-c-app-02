@@ -94,6 +94,19 @@ export interface AdminFinanceiroData {
     payment_date: string | null;
   }>;
   recebido_real_error: string | null;
+  // Novos Assinantes do Mês (mês corrente) — clientes que viraram pagantes de fato
+  novos_assinantes_mes: number;
+  reativacoes_mes: number;
+  renovacoes_mes: number;
+  novos_assinantes_total_pagaram_mes: number;
+  novos_assinantes_detalhes: Array<{
+    user_id: string;
+    nome: string | null;
+    email: string | null;
+    celular: string | null;
+    via: "pix" | "cartao";
+    virou_assinante_em: string;
+  }>;
   historico_crescimento: {
     snapshots: Array<{
       mes: string;
@@ -130,7 +143,7 @@ export interface AdminFinanceiroData {
 
 export function useAdminFinanceiro() {
   return useQuery({
-    queryKey: ["admin-financeiro", "subscribers-and-expired-v11"],
+    queryKey: ["admin-financeiro", "subscribers-and-expired-v12"],
     queryFn: async (): Promise<AdminFinanceiroData> => {
       const { data, error } = await supabase.functions.invoke("admin-financeiro");
       if (error) throw error;

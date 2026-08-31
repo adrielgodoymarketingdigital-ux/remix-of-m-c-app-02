@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
-import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock, Phone, Download } from "lucide-react";
+import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock, Phone, Download, UserPlus } from "lucide-react";
 import { SecaoDesempenhoSistema } from "@/components/admin/SecaoDesempenhoSistema";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { format } from "date-fns";
@@ -43,7 +43,9 @@ export default function AdminFinanceiro() {
   const [buscaExpirados, setBuscaExpirados] = useState("");
   const [mostrarInadimplentes, setMostrarInadimplentes] = useState(false);
   const [mostrarFaltaEntrar, setMostrarFaltaEntrar] = useState(false);
+  const [mostrarNovosAssinantes, setMostrarNovosAssinantes] = useState(false);
   const inadimplentesSectionRef = useRef<HTMLDivElement>(null);
+  const novosAssinantesSectionRef = useRef<HTMLDivElement>(null);
 
   const inadimplenteIds = (data?.inadimplentes_detalhes ?? []).map((u) => u.user_id);
 
@@ -200,6 +202,48 @@ export default function AdminFinanceiro() {
     URL.revokeObjectURL(url);
 
     toast.success(`${usuarios.length} usuário(s) exportado(s) com sucesso!`);
+  };
+
+  const exportarNovosAssinantesCsv = () => {
+    const usuarios = data?.novos_assinantes_detalhes ?? [];
+    if (usuarios.length === 0) {
+      toast.error("Nenhum assinante novo para exportar");
+      return;
+    }
+
+    const escapeCsvValue = (value: string) => {
+      if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
+    const headers = ["Nome", "Telefone", "Email", "Via", "Assinou em"];
+    const rows = usuarios.map((u) => [
+      u.nome || "",
+      u.celular ? aplicarMascaraTelefone(u.celular) : "",
+      u.email || "",
+      u.via === "cartao" ? "Cartão" : "PIX",
+      format(new Date(u.virou_assinante_em), "dd/MM/yyyy"),
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map(escapeCsvValue).join(",")),
+    ].join("\n");
+
+    const BOM = "﻿";
+    const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `novos_assinantes_${format(new Date(), "yyyy-MM-dd_HH-mm")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`${usuarios.length} assinante(s) exportado(s) com sucesso!`);
   };
 
   const { data: inadimplenteProfiles } = useQuery({
@@ -384,6 +428,19 @@ export default function AdminFinanceiro() {
               setMostrarNaoRenovados(true);
               setTimeout(() => {
                 naoRenovadosSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 50);
+            }}
+          />
+          <NovosAssinantesKpi
+            isLoading={isLoading}
+            mes={data?.mes}
+            novos={data?.novos_assinantes_mes ?? 0}
+            reativacoes={data?.reativacoes_mes ?? 0}
+            renovacoes={data?.renovacoes_mes ?? 0}
+            onClick={() => {
+              setMostrarNovosAssinantes(true);
+              setTimeout(() => {
+                novosAssinantesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }, 50);
             }}
           />
@@ -1081,6 +1138,95 @@ export default function AdminFinanceiro() {
           </div>
         )}
 
+        {/* Novos Assinantes do Mês */}
+        {mostrarNovosAssinantes && (
+          <div ref={novosAssinantesSectionRef}>
+            <Card className="border-emerald-500/40">
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <UserPlus className="h-5 w-5 text-emerald-600" />
+                      Novos Assinantes do Mês
+                      <Badge className="ml-1 bg-emerald-600 hover:bg-emerald-600/90">{data?.novos_assinantes_mes ?? 0}</Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Clientes que viraram assinantes pagantes pela primeira vez dentro do mês —
+                      não conta reativação ({data?.reativacoes_mes ?? 0}) nem renovação ({data?.renovacoes_mes ?? 0})
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportarNovosAssinantesCsv}
+                      disabled={(data?.novos_assinantes_detalhes?.length ?? 0) === 0}
+                      className="gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Exportar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setMostrarNovosAssinantes(false)}>
+                      Fechar
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <Skeleton className="h-32 w-full" />
+                ) : (data?.novos_assinantes_detalhes?.length ?? 0) === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum assinante novo neste mês</p>
+                ) : (
+                  <div className="space-y-2">
+                    {data?.novos_assinantes_detalhes?.map((u) => {
+                      const celular = u.celular?.replace(/\D/g, "");
+                      const mensagemWa = encodeURIComponent(
+                        `Olá ${u.nome ?? ""}! Vi que você assinou o Méc App este mês. Posso te ajudar a aproveitar melhor o sistema?`
+                      );
+                      const waUrl = celular ? `https://wa.me/55${celular}?text=${mensagemWa}` : null;
+                      return (
+                        <div key={u.user_id} className="flex items-center justify-between p-3 rounded-lg border border-emerald-200 bg-emerald-50/30 dark:bg-emerald-950/10 gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{u.nome || "Sem nome"}</span>
+                              <Badge variant="outline" className="text-[10px] capitalize">
+                                {u.via === "cartao" ? "Cartão" : "PIX"}
+                              </Badge>
+                              <Badge variant="outline" className="text-emerald-600 border-emerald-400 text-[10px]">
+                                Assinou {formatDate(u.virou_assinante_em)}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{u.email || "—"}</p>
+                            {u.celular && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Phone className="h-3 w-3" />
+                                {u.celular}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {waUrl ? (
+                              <Button asChild size="sm" variant="outline" className="text-green-600 border-green-400 hover:bg-green-50 dark:hover:bg-green-950">
+                                <a href={waUrl} target="_blank" rel="noopener noreferrer">
+                                  <MessageCircle className="h-4 w-4 mr-1" />
+                                  WhatsApp
+                                </a>
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">Sem celular</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Lista completa de assinantes vigentes */}
         <Card>
           <CardHeader>
@@ -1332,6 +1478,69 @@ function KpiCard({
         )}
         {description && <p className="text-xs text-muted-foreground mt-1.5">{description}</p>}
         {onClick && <p className="text-xs text-primary mt-2 font-medium">Clique para ver →</p>}
+      </div>
+    </div>
+  );
+}
+
+function NovosAssinantesKpi({
+  isLoading,
+  mes,
+  novos,
+  reativacoes,
+  renovacoes,
+  onClick,
+}: {
+  isLoading: boolean;
+  mes?: string;
+  novos: number;
+  reativacoes: number;
+  renovacoes: number;
+  onClick: () => void;
+}) {
+  let mesLabel = "";
+  if (mes) {
+    try {
+      mesLabel = format(new Date(mes.replace(/-/g, "/") + "/01"), "MMM/yy", { locale: ptBR });
+    } catch {
+      mesLabel = mes;
+    }
+  }
+  return (
+    <div
+      className="relative rounded-xl border border-emerald-500/20 bg-card overflow-hidden group hover:shadow-lg hover:shadow-black/20 transition-all duration-300 cursor-pointer"
+      onClick={onClick}
+      title="Clique para ver a lista de novos assinantes"
+    >
+      <div className="h-0.5 w-full bg-gradient-to-r from-emerald-500 to-emerald-400" />
+      <div className="p-5">
+        <div className="flex items-start justify-between mb-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest leading-tight">
+            Novos Assinantes do Mês{mesLabel ? ` · ${mesLabel}` : ""}
+          </p>
+          <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-400">
+            <UserPlus className="h-4 w-4" />
+          </div>
+        </div>
+        {isLoading ? (
+          <Skeleton className="h-9 w-40 mb-1" />
+        ) : (
+          <div className="flex items-end gap-4">
+            <div>
+              <p className="text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{novos}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">novos</p>
+            </div>
+            <div className="pb-1">
+              <p className="text-xl font-semibold tracking-tight text-muted-foreground">{reativacoes}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">reativações</p>
+            </div>
+            <div className="pb-1">
+              <p className="text-xl font-semibold tracking-tight text-muted-foreground">{renovacoes}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">renovações</p>
+            </div>
+          </div>
+        )}
+        <p className="text-xs text-primary mt-2 font-medium">Clique para ver →</p>
       </div>
     </div>
   );

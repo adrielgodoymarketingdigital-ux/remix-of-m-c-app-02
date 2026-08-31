@@ -15,22 +15,20 @@ const log = (step: string, details?: unknown) => {
 const MES_NOMES_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
 // Meses excluídos do cálculo de crescimento/projeção por serem dados de migração
-const MESES_MIGRAÇÃO = ["2026-04"];
+// 2026-04 e 2026-05: carga de migração/lançamento (maio teve o pico real de 42 "novos").
+const MESES_MIGRAÇÃO = ["2026-04", "2026-05"];
 
 function buildSnapshots(
   todasAss: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null }>,
   todosProf: Array<{ user_id: string; created_at: string | null }>,
   agora: Date,
-  historicoMeses: number
+  historicoMeses: number,
+  // Data em que cada usuário virou assinante pagante pela 1ª vez (ms epoch).
+  // Fonte única e validada: MIN(paid_at) em pagamentos_pix + data_inicio de assinaturas de cartão.
+  // NÃO usar assinaturas.data_inicio de PIX aqui — ele é sobrescrito a cada renovação
+  // e reconta renovação como assinante novo.
+  primeiroPagamentoPorUser: Map<string, number>
 ) {
-  const primeirasPorUser = new Map<string, Date>();
-  for (const a of todasAss) {
-    if (!a.data_inicio) continue;
-    const di = new Date(a.data_inicio);
-    const atual = primeirasPorUser.get(a.user_id);
-    if (!atual || di < atual) primeirasPorUser.set(a.user_id, di);
-  }
-
   const snapshots = [];
   for (let i = historicoMeses - 1; i >= 0; i--) {
     const refDate = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
@@ -54,7 +52,9 @@ function buildSnapshots(
       return true;
     }).length;
 
-    const novos_pagantes = Array.from(primeirasPorUser.values()).filter((di) => di >= inicioMes && di <= fimMes).length;
+    const novos_pagantes = Array.from(primeiroPagamentoPorUser.values()).filter(
+      (ts) => ts >= inicioMes.getTime() && ts <= fimMes.getTime()
+    ).length;
     const isMigracao = MESES_MIGRAÇÃO.includes(mesStr);
 
     snapshots.push({
@@ -245,6 +245,99 @@ async function pagarmeOperacoesRecebidasNoPeriodo(
 }
 
 
+// ─────────────────────────────────────────────────────────────────────
+// "Novos Assinantes do Mês" — lógica única e já validada manualmente:
+//   • PIX  → cada evento = paid_at de pagamentos_pix (status = 'paid')
+//   • Cartão → 1 evento = data_inicio da assinatura (payment_provider
+//     'pagarme', plano pago). data_inicio de cartão NÃO é sobrescrito nas
+//     renovações; o de PIX é — por isso PIX vem do livro-razão pagamentos_pix.
+//   • Novo assinante  = 1º evento de todos (MIN) cai dentro do mês.
+//   • Reativação      = pagou no mês, 1º evento antes do mês, e houve lacuna
+//                       (> 40 dias sem pagar, ou nenhum pagamento anterior).
+//   • Renovação       = pagou no mês em continuidade (lacuna <= 40 dias).
+// Sem o filtro "migrado" (comparava assinaturas.created_at x 1º pagamento) —
+// era frágil e excluía quem teve trial longo.
+const GAP_NOVO_ASSINANTE_MS = 40 * 24 * 60 * 60 * 1000;
+
+type EventoPagamento = { ts: number; origem: "pix" | "cartao" };
+
+function buildEventosPagamentoPorUser(
+  pagosPix: Array<{ user_id: string; paid_at: string | null }>,
+  assinaturasCartao: Array<{
+    user_id: string;
+    data_inicio: string | null;
+    plano_tipo: string;
+    payment_provider: string | null;
+  }>,
+  planosPagos: string[],
+): Map<string, EventoPagamento[]> {
+  const eventos = new Map<string, EventoPagamento[]>();
+  const push = (userId: string, ev: EventoPagamento) => {
+    const arr = eventos.get(userId);
+    if (arr) arr.push(ev);
+    else eventos.set(userId, [ev]);
+  };
+
+  for (const p of pagosPix) {
+    if (!p.paid_at) continue;
+    const ts = new Date(p.paid_at).getTime();
+    if (Number.isNaN(ts)) continue;
+    push(p.user_id, { ts, origem: "pix" });
+  }
+
+  for (const a of assinaturasCartao) {
+    if (!a.data_inicio) continue;
+    if ((a.payment_provider || "").toLowerCase() !== "pagarme") continue;
+    if (!planosPagos.includes(a.plano_tipo)) continue;
+    const ts = new Date(a.data_inicio).getTime();
+    if (Number.isNaN(ts)) continue;
+    push(a.user_id, { ts, origem: "cartao" });
+  }
+
+  for (const arr of eventos.values()) arr.sort((x, y) => x.ts - y.ts);
+  return eventos;
+}
+
+function calcNovosAssinantesMes(
+  eventos: Map<string, EventoPagamento[]>,
+  mesInicio: Date,
+  mesFimExclusivo: Date,
+) {
+  const ini = mesInicio.getTime();
+  const fim = mesFimExclusivo.getTime();
+
+  let novos = 0;
+  let reativacoes = 0;
+  let renovacoes = 0;
+  let totalPagaram = 0;
+  const novosIds: Array<{ user_id: string; via: "pix" | "cartao"; virou_assinante_em: string }> = [];
+
+  for (const [userId, arr] of eventos) {
+    const primeiro = arr[0].ts;
+    const evNoMes = arr.find((e) => e.ts >= ini && e.ts < fim); // MIN dentro do mês (arr ordenado)
+    if (!evNoMes) continue;
+    totalPagaram++;
+
+    if (primeiro >= ini && primeiro < fim) {
+      novos++;
+      novosIds.push({ user_id: userId, via: arr[0].origem, virou_assinante_em: new Date(primeiro).toISOString() });
+      continue;
+    }
+
+    // MAX evento antes do início do mês (arr ordenado asc)
+    let antes: number | null = null;
+    for (const e of arr) {
+      if (e.ts < ini) antes = e.ts;
+      else break;
+    }
+
+    if (antes === null || evNoMes.ts - antes > GAP_NOVO_ASSINANTE_MS) reativacoes++;
+    else renovacoes++;
+  }
+
+  return { novos, reativacoes, renovacoes, totalPagaram, novosIds };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -347,6 +440,35 @@ serve(async (req) => {
     const { data: todosProfiles } = await supabaseAdmin.auth.admin.listUsers({ perPage: 10000 });
     const todosUsers = (todosProfiles?.users ?? []).map((u) => ({ user_id: u.id, created_at: u.created_at }));
 
+    // ─── Fonte única de "virou assinante pagante" ──────────────────────
+    // PIX: livro-razão real (1ª compra + renovações). Cartão: data_inicio da
+    // assinatura (não é sobrescrito nas renovações de cartão).
+    const PLANOS_PAGOS_KEYS = Object.keys(PRECOS_MES);
+
+    const { data: pagosPixRaw } = await supabaseAdmin
+      .from("pagamentos_pix")
+      .select("user_id, paid_at")
+      .eq("status", "paid")
+      .not("paid_at", "is", null) as { data: Array<{ user_id: string; paid_at: string | null }> | null };
+
+    const { data: assinaturasCartaoRaw } = await supabaseAdmin
+      .from("assinaturas")
+      .select("user_id, data_inicio, plano_tipo, payment_provider")
+      .eq("payment_method", "credit_card")
+      .in("plano_tipo", PLANOS_PAGOS_KEYS) as {
+        data: Array<{ user_id: string; data_inicio: string | null; plano_tipo: string; payment_provider: string | null }> | null;
+      };
+
+    const eventosPagamentoPorUser = buildEventosPagamentoPorUser(
+      pagosPixRaw ?? [],
+      assinaturasCartaoRaw ?? [],
+      PLANOS_PAGOS_KEYS,
+    );
+    const primeiroPagamentoPorUser = new Map<string, number>();
+    for (const [userId, arr] of eventosPagamentoPorUser) {
+      primeiroPagamentoPorUser.set(userId, arr[0].ts);
+    }
+
     // Total atual real: pagarme, status active E dentro do prazo (data_fim no futuro ou nula)
     const totalPagantesAgora = (assinaturasAtivas ?? []).filter((a) =>
       (a.payment_provider || "").toLowerCase() === "pagarme" &&
@@ -354,7 +476,35 @@ serve(async (req) => {
     ).length;
 
     const mesAtualStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
-    const snapshots = buildSnapshots(todasAssinaturas ?? [], todosUsers, agora, 12);
+    const snapshots = buildSnapshots(todasAssinaturas ?? [], todosUsers, agora, 12, primeiroPagamentoPorUser);
+
+    // ─── KPI "Novos Assinantes do Mês" (mês corrente) ──────────────────
+    const mesInicioNovos = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const mesFimNovosExcl = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
+    const novosAssinantesCalc = calcNovosAssinantesMes(eventosPagamentoPorUser, mesInicioNovos, mesFimNovosExcl);
+
+    const { data: novosAssinantesProfiles } = novosAssinantesCalc.novosIds.length
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("user_id, nome, email, celular")
+          .in("user_id", novosAssinantesCalc.novosIds.map((n) => n.user_id))
+      : { data: [] as Array<{ user_id: string; nome: string | null; email: string | null; celular: string | null }> };
+
+    const novos_assinantes_detalhes = novosAssinantesCalc.novosIds
+      .map((n) => {
+        const prof = (novosAssinantesProfiles ?? []).find((p) => p.user_id === n.user_id) as
+          | { nome: string | null; email: string | null; celular: string | null }
+          | undefined;
+        return {
+          user_id: n.user_id,
+          nome: prof?.nome ?? null,
+          email: prof?.email ?? null,
+          celular: prof?.celular ?? null,
+          via: n.via,
+          virou_assinante_em: n.virou_assinante_em,
+        };
+      })
+      .sort((a, b) => new Date(a.virou_assinante_em).getTime() - new Date(b.virou_assinante_em).getTime());
     const ultimoSnap = snapshots[snapshots.length - 1];
 
     const mediaNovoCadastros = calcMediaNovos(snapshots, "novos_cadastros", mesAtualStr);
@@ -662,6 +812,13 @@ serve(async (req) => {
       pagarme_status_breakdown: pagarmeStatusBreakdown,
       pagarme_debug: pagarmeRawDebug,
       historico_crescimento,
+      // Novos Assinantes do Mês (mês corrente) — clientes que viraram pagantes
+      // de fato, separando novo de reativação e de renovação.
+      novos_assinantes_mes: novosAssinantesCalc.novos,
+      reativacoes_mes: novosAssinantesCalc.reativacoes,
+      renovacoes_mes: novosAssinantesCalc.renovacoes,
+      novos_assinantes_total_pagaram_mes: novosAssinantesCalc.totalPagaram,
+      novos_assinantes_detalhes,
       recorrencia_entrou_mes: recorrenciaEntrouMes,
       recorrencia_falta_mes: recorrenciaFaltaMes,
       recorrencia_falta_ate: recorrenciaFaltaUltimaData,
