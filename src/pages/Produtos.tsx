@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { DialogReporEstoque } from '@/components/produtos/DialogReporEstoque';
 import { CardInventario } from '@/components/produtos/CardInventario';
+import { CardInventarioDesktop } from '@/components/produtos/CardInventarioDesktop';
 import { TabelaTrocasGarantia } from '@/components/produtos/TabelaTrocasGarantia';
 import { RankingProdutosDefeito } from '@/components/produtos/RankingProdutosDefeito';
 import { DialogNovaTrocaGarantia } from '@/components/produtos/DialogNovaTrocaGarantia';
@@ -212,7 +213,7 @@ const Produtos = () => {
                 Gerencie seu estoque de produtos e peças
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 sm:items-center sm:justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -305,7 +306,7 @@ const Produtos = () => {
                     placeholder="Buscar por nome, código ou tipo..."
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 sm:rounded-lg"
                   />
                 </div>
                 <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
@@ -315,6 +316,7 @@ const Produtos = () => {
                       variant={ordemFiltro !== 'padrao' ? 'default' : 'outline'}
                       size="icon"
                       title="Ordenar"
+                      className="sm:rounded-lg"
                     >
                       {ordemFiltro === 'menos_estoque' ? (
                         <TrendingDown className="w-4 h-4" />
@@ -346,28 +348,55 @@ const Produtos = () => {
 
               {/* Cards de Inventário */}
               {(!isFuncionario || permissoes?.recursos?.ver_inventario) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <CardInventario
-                    titulo="Estoque de Produtos"
-                    icon={Package}
-                    iconColor="text-blue-500"
-                    totalItens={resumoInventario.produtos.totalItens}
-                    totalQuantidade={resumoInventario.produtos.quantidade}
-                    valorCusto={resumoInventario.produtos.custo}
-                    valorVenda={resumoInventario.produtos.venda}
-                    valorLucro={resumoInventario.produtos.lucro}
-                  />
-                  <CardInventario
-                    titulo="Estoque de Peças"
-                    icon={Wrench}
-                    iconColor="text-orange-500"
-                    totalItens={resumoInventario.pecas.totalItens}
-                    totalQuantidade={resumoInventario.pecas.quantidade}
-                    valorCusto={resumoInventario.pecas.custo}
-                    valorVenda={resumoInventario.pecas.venda}
-                    valorLucro={resumoInventario.pecas.lucro}
-                  />
-                </div>
+                <>
+                  {/* Mobile/PWA (< md) — layout compacto original, inalterado */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
+                    <CardInventario
+                      titulo="Estoque de Produtos"
+                      icon={Package}
+                      iconColor="text-blue-500"
+                      totalItens={resumoInventario.produtos.totalItens}
+                      totalQuantidade={resumoInventario.produtos.quantidade}
+                      valorCusto={resumoInventario.produtos.custo}
+                      valorVenda={resumoInventario.produtos.venda}
+                      valorLucro={resumoInventario.produtos.lucro}
+                    />
+                    <CardInventario
+                      titulo="Estoque de Peças"
+                      icon={Wrench}
+                      iconColor="text-orange-500"
+                      totalItens={resumoInventario.pecas.totalItens}
+                      totalQuantidade={resumoInventario.pecas.quantidade}
+                      valorCusto={resumoInventario.pecas.custo}
+                      valorVenda={resumoInventario.pecas.venda}
+                      valorLucro={resumoInventario.pecas.lucro}
+                    />
+                  </div>
+
+                  {/* Desktop (>= md) — novo visual da referência. Mesmos dados. */}
+                  <div className="hidden md:grid md:grid-cols-1 lg:grid-cols-2 gap-4">
+                    <CardInventarioDesktop
+                      titulo="Estoque de Produtos"
+                      icon={Package}
+                      accent="blue"
+                      totalItens={resumoInventario.produtos.totalItens}
+                      totalQuantidade={resumoInventario.produtos.quantidade}
+                      valorCusto={resumoInventario.produtos.custo}
+                      valorVenda={resumoInventario.produtos.venda}
+                      valorLucro={resumoInventario.produtos.lucro}
+                    />
+                    <CardInventarioDesktop
+                      titulo="Estoque de Peças"
+                      icon={Wrench}
+                      accent="orange"
+                      totalItens={resumoInventario.pecas.totalItens}
+                      totalQuantidade={resumoInventario.pecas.quantidade}
+                      valorCusto={resumoInventario.pecas.custo}
+                      valorVenda={resumoInventario.pecas.venda}
+                      valorLucro={resumoInventario.pecas.lucro}
+                    />
+                  </div>
+                </>
               )}
 
               {/* Filtro por Categoria */}

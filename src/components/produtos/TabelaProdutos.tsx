@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Package, Wrench, ImageOff, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft, DollarSign, Eye, EyeOff } from 'lucide-react';
+import { Pencil, Trash2, Package, Wrench, ImageOff, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft, DollarSign, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ItemEstoque } from '@/types/produto';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ValorMonetario } from '@/components/ui/valor-monetario';
@@ -82,6 +82,10 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const [dialogPrecoAberto, setDialogPrecoAberto] = useState(false);
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
+  // Paginação — só afeta o layout desktop (a lista mobile continua renderizando tudo).
+  const [pagina, setPagina] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(20);
+  useEffect(() => { setPagina(1); }, [items, itensPorPagina]);
   const tabelaWrapperRef = useRef<HTMLDivElement>(null);
   const tabelaRef = useRef<HTMLTableElement>(null);
   const [tabelaVisivel, setTabelaVisivel] = useState(false);
@@ -632,6 +636,17 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   // Desktop: Table layout
   const col = (id: string) => !colunasVisiveis || colunasVisiveis.has(id);
 
+  const totalPaginas = Math.max(1, Math.ceil(items.length / itensPorPagina));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const inicioPagina = (paginaAtual - 1) * itensPorPagina;
+  const itemsPagina = items.slice(inicioPagina, inicioPagina + itensPorPagina);
+  const janelaPaginas = () => {
+    const max = 5;
+    const fim = Math.min(totalPaginas, Math.max(paginaAtual + 2, max));
+    const ini = Math.max(1, fim - max + 1);
+    return Array.from({ length: fim - ini + 1 }, (_, i) => ini + i);
+  };
+
   return (
     <>
       <BarraSelecao />
@@ -670,11 +685,12 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item) => {
+            {itemsPagina.map((item) => {
               const lucro = item.tipo === 'produto' ? item.lucro : item.preco - item.custo;
               const semEstoque = item.quantidade === 0;
               const estoqueNegativo = item.quantidade < 0;
               const estoqueBaixo = item.quantidade > 0 && item.quantidade < 5;
+              const estoqueSaudavel = item.quantidade >= 5;
               const isChecked = selecionados.has(item.id);
 
               return (
@@ -752,19 +768,24 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                       <div className="flex items-center justify-center gap-2">
                         <span>{item.quantidade}</span>
                         {estoqueNegativo && (
-                          <Badge variant="destructive" className="text-xs">
+                          <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
                             Negativo
-                          </Badge>
+                          </span>
                         )}
                         {semEstoque && (
-                          <Badge variant="outline" className="text-xs text-orange-500 border-orange-500">
+                          <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-600 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-400">
                             Sem estoque
-                          </Badge>
+                          </span>
                         )}
                         {estoqueBaixo && (
-                          <Badge variant="secondary" className="text-xs">
+                          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
                             Baixo
-                          </Badge>
+                          </span>
+                        )}
+                        {estoqueSaudavel && (
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400">
+                            Em estoque
+                          </span>
                         )}
                       </div>
                     </TableCell>
@@ -793,7 +814,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                   {col('lucro') && (
                     <TableCell className="text-right">
                       {podeVerLucros ? (
-                        <span className={lucro >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                        <span className={lucro >= 0 ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
                           <ValorMonetario valor={lucro} />
                         </span>
                       ) : (
@@ -802,13 +823,14 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                     </TableCell>
                   )}
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end gap-0.5">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
                               onClick={() => toggleExibirNoCatalogo(item)}
                               disabled={atualizandoCatalogo.has(item.id)}
                             >
@@ -826,6 +848,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
                           onClick={() => onReporEstoque(item)}
                           title="Repor Estoque"
                         >
@@ -835,6 +858,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
                         onClick={() => onEdit(item)}
                         title="Editar"
                       >
@@ -843,6 +867,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 rounded-full text-destructive hover:text-destructive"
                         onClick={() => setItemParaExcluir(item)}
                         title="Excluir"
                       >
@@ -856,6 +881,61 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           </TableBody>
         </table>
       </div>
+
+      {items.length > 0 && (
+        <div className="mt-3 flex flex-col gap-3 rounded-md border px-4 py-3 text-xs text-muted-foreground lg:flex-row lg:items-center lg:justify-between">
+          <span>
+            Mostrando {inicioPagina + 1} a {Math.min(inicioPagina + itensPorPagina, items.length)} de {items.length} {items.length === 1 ? 'item' : 'itens'}
+          </span>
+
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              disabled={paginaAtual <= 1}
+              onClick={() => setPagina(paginaAtual - 1)}
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {janelaPaginas().map((p) => (
+              <Button
+                key={p}
+                variant={p === paginaAtual ? 'default' : 'outline'}
+                size="icon"
+                className="h-8 w-8 rounded-lg text-xs"
+                onClick={() => setPagina(p)}
+              >
+                {p}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              disabled={paginaAtual >= totalPaginas}
+              onClick={() => setPagina(paginaAtual + 1)}
+              aria-label="Próxima página"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span>Itens por página:</span>
+            <select
+              value={itensPorPagina}
+              onChange={(e) => { setItensPorPagina(Number(e.target.value)); setPagina(1); }}
+              className="h-8 rounded-lg border bg-background px-2 text-foreground outline-none"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {tabelaVisivel && precisaScrollH && (
         <div
