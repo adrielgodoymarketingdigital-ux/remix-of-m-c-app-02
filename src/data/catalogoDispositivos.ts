@@ -602,6 +602,103 @@ export const catalogoDispositivos: CatalogoDispositivos = {
       Asus: ["Preto", "Prateado", "Cinza", "Azul"],
     },
   },
+  impressora: {
+    // Lista inicial dos modelos mais comuns na assistência — o fallback "Outro"
+    // cobre o resto (não pretende ser exaustiva).
+    marcas: ["HP", "Epson", "Canon", "Brother", "Samsung", "Lexmark"],
+    modelos: {
+      HP: [
+        "DeskJet Ink Advantage 2136",
+        "DeskJet Ink Advantage 3776",
+        "OfficeJet Pro 7720",
+        "LaserJet Pro M404dn",
+        "LaserJet M1132",
+        "Smart Tank 514",
+        "Smart Tank 754",
+        "Ink Tank 416",
+        "Neverstop Laser 1000w",
+      ],
+      Epson: [
+        "EcoTank L3150",
+        "EcoTank L3250",
+        "EcoTank L4150",
+        "EcoTank L5190",
+        "EcoTank L6161",
+        "WorkForce WF-2830",
+        "Expression ET-2720",
+        "L395",
+        "L396",
+      ],
+      Canon: [
+        "PIXMA G3110",
+        "PIXMA G2110",
+        "PIXMA MG3010",
+        "MegaTank G3110",
+        "imageCLASS MF3010",
+        "PIXMA TS3310",
+      ],
+      Brother: [
+        "DCP-T420W",
+        "DCP-T510W",
+        "HL-L2360DW",
+        "MFC-L2740DW",
+        "DCP-1602",
+        "HL-1202",
+      ],
+      Samsung: ["ML-2165", "SCX-3400", "Xpress M2020", "CLP-365"],
+      Lexmark: ["MS310dn", "MB2236adw", "MX331adn", "E260dn"],
+    },
+    cores: {},
+  },
+  videogame: {
+    marcas: ["Sony", "Microsoft", "Nintendo"],
+    modelos: {
+      Sony: ["PS3", "PS4", "PS4 Slim", "PS4 Pro", "PS5", "PS5 Slim", "PS5 Digital"],
+      Microsoft: [
+        "Xbox 360",
+        "Xbox One",
+        "Xbox One S",
+        "Xbox One X",
+        "Xbox Series S",
+        "Xbox Series X",
+      ],
+      Nintendo: ["Wii", "Wii U", "Switch", "Switch Lite", "Switch OLED"],
+    },
+    cores: {},
+  },
+  desktop: {
+    // Linhas/séries (não modelo exato) — desktops variam muito de configuração.
+    // O fallback "Outro" cobre o que não estiver aqui.
+    marcas: ["Dell", "HP", "Lenovo", "Positivo", "Apple", "Acer", "Asus", "Compaq"],
+    modelos: {
+      Dell: ["OptiPlex", "Inspiron Desktop", "Vostro Desktop", "XPS Desktop", "Alienware Aurora"],
+      HP: ["Pavilion Desktop", "EliteDesk", "ProDesk", "OMEN Desktop"],
+      Lenovo: ["ThinkCentre", "IdeaCentre", "Legion Tower"],
+      Positivo: ["Master", "Union", "Premium", "Duo"],
+      Apple: ["iMac", "Mac Mini", "Mac Pro", "Mac Studio"],
+      Acer: ["Aspire TC", "Veriton", "Predator Orion"],
+      Asus: ["ExpertCenter", "ROG Strix GT", "VivoPC"],
+      Compaq: ["Presario", "Elite"],
+    },
+    cores: {},
+  },
+  televisao: {
+    // Linhas/séries (não modelo exato) — TVs lançam dezenas de modelos por ano.
+    // O fallback "Outro" cobre o que não estiver aqui.
+    marcas: ["Samsung", "LG", "Sony", "Philips", "Philco", "AOC", "Multilaser", "Semp/TCL", "Panasonic"],
+    modelos: {
+      Samsung: ["Crystal UHD", "QLED", "Neo QLED", "The Frame"],
+      LG: ["UHD (série UQ)", "NanoCell", "OLED", "série UR"],
+      Sony: ["Bravia X75", "Bravia X85", "Bravia XR (OLED)"],
+      Philips: ["série 6800", "série 7800", "Ambilight"],
+      Philco: ["PTV LED", "série Ray", "Roku TV"],
+      AOC: ["Roku TV", "LED HD"],
+      Multilaser: ["TL Series", "Smart TV"],
+      "Semp/TCL": ["série P", "série C (Google TV)", "série S"],
+      Panasonic: ["série LX", "série MX"],
+    },
+    cores: {},
+  },
 };
 
 /** Mapeia os valores de dispositivoTipo usados no wizard (ex: "Relogio_Smart") para as chaves do catálogo. */
@@ -610,9 +707,31 @@ const MAPA_TIPO_WIZARD: Record<string, string> = {
   Tablet: "tablet",
   Notebook: "notebook",
   Relogio_Smart: "relogio",
+  Impressora: "impressora",
+  Video_Game: "videogame",
+  Desktop: "desktop",
+  Televisao: "televisao",
 };
 
 export const TIPOS_COM_CATALOGO = Object.keys(catalogoDispositivos);
+
+/**
+ * Lista única de "Tipo de dispositivo" exibida no Select da OS — usada tanto no
+ * wizard completo (EtapaDispositivo) quanto na versão simplificada
+ * (DialogOrdemServicoSimplificada), para as duas telas nunca divergirem.
+ * `value` é o que fica salvo em ordens_servico.dispositivo_tipo.
+ */
+export const TIPOS_DISPOSITIVO_OS: { value: string; label: string }[] = [
+  { value: "Celular", label: "Celular" },
+  { value: "Tablet", label: "Tablet" },
+  { value: "Notebook", label: "Notebook" },
+  { value: "Computador", label: "Computador" },
+  { value: "Relogio_Smart", label: "Relógio Smart" },
+  { value: "Desktop", label: "Desktop" },
+  { value: "Video_Game", label: "Video Game" },
+  { value: "Impressora", label: "Impressora" },
+  { value: "Televisao", label: "Televisão" },
+];
 
 function resolverChaveTipo(tipo: string): string | undefined {
   return MAPA_TIPO_WIZARD[tipo] ?? (tipo ? tipo.toLowerCase() : undefined);

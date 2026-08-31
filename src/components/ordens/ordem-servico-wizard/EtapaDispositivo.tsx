@@ -14,6 +14,7 @@ import {
   OPCAO_OUTRA,
   OPCAO_OUTRO_MODELO,
   OPCAO_OUTRA_COR,
+  TIPOS_DISPOSITIVO_OS,
   getMarcasPorTipo,
   getModelosPorMarca,
   getCoresPorMarca,
@@ -73,6 +74,12 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                   setFormData({
                     ...formData,
                     dispositivoTipo: value,
+                    // Zera Marca/Modelo/Cor: o catálogo de marcas muda por tipo e
+                    // uma marca "órfã" (que não existe no novo tipo) travaria o
+                    // Combobox em texto livre e deixaria o Modelo sem lista.
+                    dispositivoMarca: "",
+                    dispositivoModelo: "",
+                    dispositivoCor: "",
                     dispositivoSistema: "",
                     dispositivoFabricante: "",
                     dispositivoSubtipo: "",
@@ -85,11 +92,9 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Celular">Celular</SelectItem>
-                  <SelectItem value="Tablet">Tablet</SelectItem>
-                  <SelectItem value="Notebook">Notebook</SelectItem>
-                  <SelectItem value="Computador">Computador</SelectItem>
-                  <SelectItem value="Relogio_Smart">Relógio Smart</SelectItem>
+                  {TIPOS_DISPOSITIVO_OS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
