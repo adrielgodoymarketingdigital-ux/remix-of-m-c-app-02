@@ -106,6 +106,7 @@ export interface AdminFinanceiroData {
     celular: string | null;
     via: "pix" | "cartao";
     virou_assinante_em: string;
+    trocou_gateway: boolean;
   }>;
   historico_crescimento: {
     snapshots: Array<{
@@ -143,7 +144,7 @@ export interface AdminFinanceiroData {
 
 export function useAdminFinanceiro() {
   return useQuery({
-    queryKey: ["admin-financeiro", "subscribers-and-expired-v12"],
+    queryKey: ["admin-financeiro", "subscribers-and-expired-v13"],
     queryFn: async (): Promise<AdminFinanceiroData> => {
       const { data, error } = await supabase.functions.invoke("admin-financeiro");
       if (error) throw error;

@@ -15,9 +15,12 @@ const log = (step: string, details?: unknown) => {
 
 const MES_NOMES_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
-// Meses excluídos do cálculo de crescimento/projeção por serem dados de migração
-// 2026-04 e 2026-05: carga de migração/lançamento (maio teve o pico real de 42 "novos").
-const MESES_MIGRAÇÃO = ["2026-04", "2026-05"];
+// Meses excluídos do cálculo de crescimento/projeção por serem dados de migração/lançamento.
+// 2026-03: onda de lançamento no Stripe (~88 "novos" — só visível depois que o
+//   event-stream passou a ler admin_notifications; admin_notifications só existe
+//   desde ~fev/2026, então fev é parcial e jan é zero — série pré-março não é confiável).
+// 2026-04, 2026-05: carga de migração Stripe → Pagar.me.
+const MESES_MIGRAÇÃO = ["2026-03", "2026-04", "2026-05"];
 
 function buildSnapshots(
   todasAss: Array<{ user_id: string; data_inicio: string | null; data_fim: string | null; cancelado_em: string | null }>,
@@ -252,6 +255,11 @@ async function pagarmeOperacoesRecebidasNoPeriodo(
 //   • Cartão → 1 evento = data_inicio da assinatura (payment_provider
 //     'pagarme', plano pago). data_inicio de cartão NÃO é sobrescrito nas
 //     renovações; o de PIX é — por isso PIX vem do livro-razão pagamentos_pix.
+//   • Gateway → 1 evento = created_at de admin_notifications de assinatura
+//     QUE TENHAM evidência de cobrança real (stripe_subscription_id, ou
+//     pagarme_order_id, ou valor_centavos nos dados). Cobre pagamentos
+//     Stripe/Ticto pré-migração: sem isso, quem pagava por outro gateway e
+//     migrou pra PIX/cartão aparecia como "novo" no mês da migração.
 //   • Novo assinante  = 1º evento de todos (MIN) cai dentro do mês.
 //   • Reativação      = pagou no mês, 1º evento antes do mês, e houve lacuna
 //                       (> 40 dias sem pagar, ou nenhum pagamento anterior).
@@ -260,7 +268,22 @@ async function pagarmeOperacoesRecebidasNoPeriodo(
 // era frágil e excluía quem teve trial longo.
 const GAP_NOVO_ASSINANTE_MS = 40 * 24 * 60 * 60 * 1000;
 
-type EventoPagamento = { ts: number; origem: "pix" | "cartao" };
+type OrigemEvento = "pix" | "cartao" | "gateway";
+type EventoPagamento = { ts: number; origem: OrigemEvento };
+
+// Uma notificação de assinatura só entra no event-stream se comprovar cobrança.
+// `nova_assinatura` "companheira" (stripe null, sem order id, sem valor) é ruído.
+function notifTemEvidenciaCobranca(dados: Record<string, unknown> | null): boolean {
+  if (!dados) return false;
+  const stripe = dados["stripe_subscription_id"];
+  const stripeOk =
+    typeof stripe === "string" && stripe !== "" && !stripe.startsWith("sub_pending_");
+  return (
+    stripeOk ||
+    dados["pagarme_order_id"] != null ||
+    dados["valor_centavos"] != null
+  );
+}
 
 function buildEventosPagamentoPorUser(
   pagosPix: Array<{ user_id: string; paid_at: string | null }>,
@@ -270,6 +293,7 @@ function buildEventosPagamentoPorUser(
     plano_tipo: string;
     payment_provider: string | null;
   }>,
+  notifAssinatura: Array<{ created_at: string | null; tipo: string; dados: Record<string, unknown> | null }>,
   planosPagos: string[],
 ): Map<string, EventoPagamento[]> {
   const eventos = new Map<string, EventoPagamento[]>();
@@ -293,6 +317,18 @@ function buildEventosPagamentoPorUser(
     const ts = new Date(a.data_inicio).getTime();
     if (Number.isNaN(ts)) continue;
     push(a.user_id, { ts, origem: "cartao" });
+  }
+
+  for (const n of notifAssinatura) {
+    if (!n.created_at) continue;
+    if (n.tipo !== "nova_assinatura" && n.tipo !== "nova_assinatura_cartao") continue;
+    const dados = n.dados ?? null;
+    const userId = dados && typeof dados["user_id"] === "string" ? (dados["user_id"] as string) : null;
+    if (!userId) continue;
+    if (!notifTemEvidenciaCobranca(dados)) continue;
+    const ts = new Date(n.created_at).getTime();
+    if (Number.isNaN(ts)) continue;
+    push(userId, { ts, origem: "gateway" });
   }
 
   for (const arr of eventos.values()) arr.sort((x, y) => x.ts - y.ts);
@@ -321,7 +357,11 @@ function calcNovosAssinantesMes(
 
     if (primeiro >= ini && primeiro < fim) {
       novos++;
-      novosIds.push({ user_id: userId, via: arr[0].origem, virou_assinante_em: new Date(primeiro).toISOString() });
+      // "via" = como pagou de fato (pix/cartao); evento "gateway" é só rastro de
+      // cobrança, nunca a forma de pagamento exibida.
+      const via: "pix" | "cartao" =
+        (arr.find((e) => e.origem !== "gateway")?.origem as "pix" | "cartao") ?? "pix";
+      novosIds.push({ user_id: userId, via, virou_assinante_em: new Date(primeiro).toISOString() });
       continue;
     }
 
@@ -466,9 +506,32 @@ serve(async (req) => {
         data: Array<{ user_id: string; data_inicio: string | null; plano_tipo: string; payment_provider: string | null }> | null;
       };
 
+    // 3ª fonte de evento: notificações de assinatura COM evidência de cobrança
+    // real (Stripe/Ticto pré-migração, ou PIX antigo sem linha em pagamentos_pix).
+    const { data: notifAssinaturaRaw } = await supabaseAdmin
+      .from("admin_notifications")
+      .select("created_at, tipo, dados")
+      .in("tipo", ["nova_assinatura", "nova_assinatura_cartao"]) as {
+        data: Array<{ created_at: string | null; tipo: string; dados: Record<string, unknown> | null }> | null;
+      };
+
+    // Rastro de gateway externo na linha atual — usado só para o badge cosmético
+    // "trocou de gateway" no drill-down. NÃO afeta contagem.
+    const { data: gatewayIdsRaw } = await supabaseAdmin
+      .from("assinaturas")
+      .select("user_id, stripe_subscription_id, ticto_order_id") as {
+        data: Array<{ user_id: string; stripe_subscription_id: string | null; ticto_order_id: string | null }> | null;
+      };
+    const usersComGatewayId = new Set(
+      (gatewayIdsRaw ?? [])
+        .filter((a) => a.stripe_subscription_id != null || a.ticto_order_id != null)
+        .map((a) => a.user_id),
+    );
+
     const eventosPagamentoPorUser = buildEventosPagamentoPorUser(
       pagosPixRaw ?? [],
       assinaturasCartaoRaw ?? [],
+      notifAssinaturaRaw ?? [],
       PLANOS_PAGOS_KEYS,
     );
     const primeiroPagamentoPorUser = new Map<string, number>();
@@ -509,6 +572,9 @@ serve(async (req) => {
           celular: prof?.celular ?? null,
           via: n.via,
           virou_assinante_em: n.virou_assinante_em,
+          // Badge cosmético: linha tem rastro de gateway externo mas não achamos
+          // cobrança datável pra tirar do "novos". Trate com desconfiança.
+          trocou_gateway: usersComGatewayId.has(n.user_id),
         };
       })
       .sort((a, b) => new Date(a.virou_assinante_em).getTime() - new Date(b.virou_assinante_em).getTime());

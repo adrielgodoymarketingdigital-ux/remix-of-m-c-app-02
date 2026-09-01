@@ -1196,6 +1196,11 @@ export default function AdminFinanceiro() {
                               <Badge variant="outline" className="text-emerald-600 border-emerald-400 text-[10px]">
                                 Assinou {formatDate(u.virou_assinante_em)}
                               </Badge>
+                              {u.trocou_gateway && (
+                                <Badge variant="outline" className="text-amber-600 border-amber-400 text-[10px]">
+                                  trocou de gateway
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-0.5">{u.email || "—"}</p>
                             {u.celular && (
