@@ -150,14 +150,62 @@ export const useServicos = () => {
       // Usar ID do dono se funcionário tem permissão
       const userId = (isFuncionario && podeSincronizarServicos && lojaUserId) ? lojaUserId : user.id;
 
+      // Proteção estrutural (vale para TODAS as contas): excluir fisicamente um
+      // serviço do catálogo que já foi usado em alguma OS quebra qualquer
+      // re-salvamento dessa OS — a FK ordens_servico.servico_id está
+      // ON DELETE SET NULL, mas o snapshot em avarias.servicos_realizados
+      // mantém o id antigo e o wizard tenta regravá-lo, violando a FK.
+      // Bloqueamos a exclusão enquanto houver uso, na coluna servico_id OU
+      // dentro do JSON avarias.servicos_realizados.
+      const [porColuna, porJson] = await Promise.all([
+        supabase
+          .from("ordens_servico")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("servico_id", id),
+        supabase
+          .from("ordens_servico")
+          .select("id")
+          .eq("user_id", userId)
+          .contains("avarias", { servicos_realizados: [{ id }] }),
+      ]);
+
+      if (porColuna.error) throw porColuna.error;
+      if (porJson.error) throw porJson.error;
+
+      const osComUso = new Set<string>([
+        ...(porColuna.data || []).map((o: { id: string }) => o.id),
+        ...(porJson.data || []).map((o: { id: string }) => o.id),
+      ]);
+
+      if (osComUso.size > 0) {
+        const qtd = osComUso.size;
+        toast.error("Não é possível excluir este serviço", {
+          description: `Este serviço está sendo usado em ${qtd} ${qtd === 1 ? "ordem de serviço" : "ordens de serviço"} e não pode ser excluído. Remova-o dessas OS ou mantenha-o no catálogo.`,
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("servicos")
         .delete()
         .eq("id", id)
         .eq("user_id", userId);
 
-      if (error) throw error;
-      
+      if (error) {
+        // Rede de segurança caso a exclusão parta de outra tela sem a
+        // verificação acima (23503 = foreign_key_violation).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const code = (error as any).code;
+        if (code === "23503" || error.message?.toLowerCase().includes("foreign key")) {
+          toast.error("Não é possível excluir este serviço", {
+            description: "Ele está vinculado a ordens de serviço existentes. Remova o vínculo nessas OS ou mantenha o serviço no catálogo.",
+          });
+          return;
+        }
+        throw error;
+      }
+
       toast.success("Serviço excluído com sucesso!");
       await carregarServicos();
     } catch (error) {
