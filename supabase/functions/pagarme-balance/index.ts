@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { nowBrasilia } from "../_shared/tz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,7 +81,8 @@ serve(async (req) => {
       .in("user_id", userIds.length > 0 ? userIds : ["00000000-0000-0000-0000-000000000000"]);
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
 
-    const now = new Date();
+    const now = new Date();            // instante real (UTC) — comparações de expiração
+    const nowBR = nowBrasilia();       // parede de Brasília — apenas para derivar o mês corrente
     const paid = payments.filter((p: any) => p.status === "paid");
     const pending = payments.filter((p: any) => p.status === "pending" && (!p.pix_expiration || new Date(p.pix_expiration) > now));
     const expired = payments.filter((p: any) => p.status === "pending" && p.pix_expiration && new Date(p.pix_expiration) <= now);
@@ -105,9 +107,9 @@ serve(async (req) => {
       planBreakdown[plano].mrr += monthlyPrice;
     }
 
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
-    const monthLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const monthStart = new Date(nowBR.getFullYear(), nowBR.getMonth(), 1).toISOString();
+    const monthEnd = new Date(nowBR.getFullYear(), nowBR.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    const monthLabel = `${nowBR.getFullYear()}-${String(nowBR.getMonth() + 1).padStart(2, "0")}`;
 
     const monthlyPaid = paid.filter((p: any) => p.paid_at && p.paid_at >= monthStart && p.paid_at <= monthEnd);
     const monthlyTotalPaid = monthlyPaid.reduce((s: number, p: any) => s + (p.valor_centavos || 0), 0) / 100;

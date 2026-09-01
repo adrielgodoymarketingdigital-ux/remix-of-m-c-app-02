@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { nowBrasilia } from "../_shared/tz.ts";
 
 Deno.serve(async () => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -6,7 +7,9 @@ Deno.serve(async () => {
   const supabase = createClient(supabaseUrl, serviceKey);
 
   const log = (msg: string) => console.log(`[BACKUP] ${msg}`);
-  const hoje = new Date();
+  // Relógio de parede de Brasília: o runtime é UTC e viraria de dia às 21h BRT,
+  // fazendo o backup semanal (domingo) / mensal (dia 1) rodar um dia adiantado.
+  const hoje = nowBrasilia();
   const diaSemana = hoje.getDay(); // 0 = domingo
   const diaMes = hoje.getDate(); // 1-31
 

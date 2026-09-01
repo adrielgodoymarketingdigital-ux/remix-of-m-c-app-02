@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { nowBrasilia } from "../_shared/tz.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -407,7 +408,13 @@ serve(async (req) => {
       });
     }
 
-    const agora = new Date();
+    // `agora` = relógio de parede de Brasília — usado para derivar mês/dia/ano
+    // (result.mes, janelas de "mês atual", snapshots). O runtime das Edge
+    // Functions é UTC, então `new Date().getMonth()` viraria de mês às 21h BRT.
+    const agora = nowBrasilia();
+    // `agoraInstante` = instante real (UTC) — para comparações "está no prazo
+    // agora?" (data_fim > agora). Timezone-independente; NÃO trocar por nowBrasilia().
+    const agoraInstante = new Date();
 
     // Pagar.me neste projeto é usado APENAS para cobranças PIX avulsas
     // (não há subscriptions na Pagar.me). Por isso o MRR/contagem do
@@ -472,7 +479,7 @@ serve(async (req) => {
     // Total atual real: pagarme, status active E dentro do prazo (data_fim no futuro ou nula)
     const totalPagantesAgora = (assinaturasAtivas ?? []).filter((a) =>
       (a.payment_provider || "").toLowerCase() === "pagarme" &&
-      (!a.data_fim || new Date(a.data_fim) > agora)
+      (!a.data_fim || new Date(a.data_fim) > agoraInstante)
     ).length;
 
     const mesAtualStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
@@ -545,7 +552,7 @@ serve(async (req) => {
     // são residuais sem cobrança recorrente verificável e não contam como "assinante
     // ativo" (pagou nos últimos 30/365 dias), mesmo que ainda tenham acesso liberado.
     const isPagarme = (a: any) => (a.payment_provider || "").toLowerCase() === "pagarme";
-    const dentroDoPrazo = (a: any) => !a.data_fim || new Date(a.data_fim).getTime() > agora.getTime();
+    const dentroDoPrazo = (a: any) => !a.data_fim || new Date(a.data_fim).getTime() > agoraInstante.getTime();
 
     const vigentes = assinaturas.filter((a) => isPagarme(a) && dentroDoPrazo(a));
     const inadimplentes = assinaturas.filter((a) => isPagarme(a) && !dentroDoPrazo(a));
@@ -827,7 +834,7 @@ serve(async (req) => {
       recebido_real_mes_count: recebidoRealMesCount,
       recebido_real_mes_detalhes: recebidoRealDetalhes,
       recebido_real_error: recebidoRealError,
-      last_update: agora.toISOString(),
+      last_update: agoraInstante.toISOString(),
     };
 
     log("✅ Resultado", {
