@@ -2199,6 +2199,56 @@ export type Database = {
           },
         ]
       }
+      motivos_nao_renovacao: {
+        Row: {
+          assinatura_id: string | null
+          ciclo_vencimento_ref: string
+          created_at: string
+          id: string
+          modal_exibido_em: string
+          motivo_categoria: string | null
+          motivo_texto: string | null
+          plano_tipo: string | null
+          respondido_em: string | null
+          status_assinatura: string | null
+          user_id: string
+        }
+        Insert: {
+          assinatura_id?: string | null
+          ciclo_vencimento_ref: string
+          created_at?: string
+          id?: string
+          modal_exibido_em?: string
+          motivo_categoria?: string | null
+          motivo_texto?: string | null
+          plano_tipo?: string | null
+          respondido_em?: string | null
+          status_assinatura?: string | null
+          user_id: string
+        }
+        Update: {
+          assinatura_id?: string | null
+          ciclo_vencimento_ref?: string
+          created_at?: string
+          id?: string
+          modal_exibido_em?: string
+          motivo_categoria?: string | null
+          motivo_texto?: string | null
+          plano_tipo?: string | null
+          respondido_em?: string | null
+          status_assinatura?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "motivos_nao_renovacao_assinatura_id_fkey"
+            columns: ["assinatura_id"]
+            isOneToOne: false
+            referencedRelation: "assinaturas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_rules: {
         Row: {
           active: boolean

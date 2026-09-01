@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useAdminFinanceiro } from "@/hooks/useAdminFinanceiro";
 import { DollarSign, Users, TrendingUp, CreditCard, RefreshCcw, AlertCircle, PieChart as PieIcon, CalendarClock, UserX, UserCheck, History, Search, MessageCircle, AlertTriangle, CheckCircle2, Clock, Phone, Download, UserPlus } from "lucide-react";
 import { SecaoDesempenhoSistema } from "@/components/admin/SecaoDesempenhoSistema";
+import { MotivosNaoRenovacaoAdmin } from "@/components/admin/MotivosNaoRenovacaoAdmin";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -771,6 +772,9 @@ export default function AdminFinanceiro() {
             </Tabs>
           </CardContent>
         </Card>
+
+        {/* Motivos de não renovação (respostas do modal pós-vencimento) */}
+        <MotivosNaoRenovacaoAdmin />
 
         {/* Recebimentos do mês cartão */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

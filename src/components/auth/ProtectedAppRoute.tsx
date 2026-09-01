@@ -4,6 +4,7 @@ import { Loader2, RefreshCw, WifiOff, ShieldX, CreditCard, Lock } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { useVerificacaoAcesso } from "@/hooks/useVerificacaoAcesso";
 import { useNotificationTracking } from "@/hooks/useNotificationTracking";
+import { ModalMotivoNaoRenovacao } from "@/components/assinatura/ModalMotivoNaoRenovacao";
 
 interface ProtectedAppRouteProps {
   children: ReactNode;
@@ -204,9 +205,14 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
   if (status === "trial_expirado") {
     const allowedWhenExpired = ["/plano", "/cadastro-plano", "/auth", "/reset-password", "/suporte"];
     const isAllowed = allowedWhenExpired.some((p) => location.pathname.startsWith(p));
-    
+
     if (isAllowed) {
-      return children;
+      return (
+        <>
+          <ModalMotivoNaoRenovacao statusAcesso={status} assinatura={assinatura} />
+          {children}
+        </>
+      );
     }
     
     // Não permitido - mostrar loading enquanto redireciona
@@ -223,5 +229,11 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
   // Status "liberado" - renderizar conteúdo
   // NOTE: O layout (sidebar/header) deve ser responsabilidade das páginas.
   // Isso evita duplicação quando uma página também usa AppLayout.
-  return children;
+  // ModalMotivoNaoRenovacao é inerte aqui (só dispara em status "trial_expirado").
+  return (
+    <>
+      <ModalMotivoNaoRenovacao statusAcesso={status} assinatura={assinatura} />
+      {children}
+    </>
+  );
 }
