@@ -183,16 +183,20 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
 
       // ── Serviços (OS entregues) recebidos na janela do caixa ────────────────
       // Mesma lógica exata do fechamento real (useCaixa.ts): associação por
-      // "Data no caixa", valor via getValorFaturavelOS, entrada e saldo tratados
-      // como eventos separados (cada um com a sua forma de pagamento).
+      // "Data no caixa" (coluna DATE, sem ambiguidade de fuso — não usar
+      // data_saida, que é hora local sem timezone), valor via getValorFaturavelOS,
+      // entrada e saldo tratados como eventos separados (cada um com a sua forma).
       const janelaFimISO = new Date().toISOString();
+      const janelaIniData = String(caixa.data_abertura).slice(0, 10);
+      const janelaFimData = janelaFimISO.slice(0, 10);
       let queryOs = supabase
         .from("ordens_servico")
         .select("numero_os, total, forma_pagamento, avarias, created_at, data_caixa, data_saida, status, clientes(nome)")
         .eq("user_id", userIdVendas)
         .eq("status", "entregue")
         .is("deleted_at", null)
-        .gte("data_saida", caixa.data_abertura);
+        .gte("data_caixa", janelaIniData)
+        .lte("data_caixa", janelaFimData);
 
       if (caixa.empresa_id) {
         queryOs = queryOs.eq("empresa_id", caixa.empresa_id);

@@ -215,14 +215,20 @@ export function useCaixa() {
     // saldo; data de abertura da OS para a entrada. O valor de cada OS entra
     // TAMBÉM nos totais por forma (dinheiro/pix/cartão), e é gravado somado em
     // total_servicos para a seção visual separada.
+    // Filtra por data_caixa (coluna DATE, sem ambiguidade de fuso) e não por
+    // data_saida — data_saida é gravada como string de hora local sem timezone
+    // e, lida como UTC, cai "antes" da abertura do caixa, escondendo a OS.
     const janelaFimISO = new Date().toISOString();
+    const janelaIniData = String(caixa.data_abertura).slice(0, 10);
+    const janelaFimData = janelaFimISO.slice(0, 10);
     let osQuery = supabase
       .from("ordens_servico")
       .select("numero_os, total, forma_pagamento, avarias, created_at, data_caixa, data_saida, status, clientes(nome)")
       .eq("user_id", userIdVendas)
       .eq("status", "entregue")
       .is("deleted_at", null)
-      .gte("data_saida", caixa.data_abertura);
+      .gte("data_caixa", janelaIniData)
+      .lte("data_caixa", janelaFimData);
     if (caixa.empresa_id) {
       osQuery = osQuery.eq("empresa_id", caixa.empresa_id);
     }
