@@ -35,6 +35,17 @@ export interface PrimeirosPassosState {
   escolherTipo: (tipo: TipoNegocioPP) => Promise<void>;
   dispensar: () => Promise<void>;
   reabrir: () => Promise<void>;
+  /** Cria uma OS real (is_teste=false) que NÃO conta na cota do plano. */
+  criarOsSimples: (dados: DadosOsSimples) => Promise<void>;
+}
+
+export interface DadosOsSimples {
+  clienteNome: string;
+  clienteTelefone?: string;
+  dispositivoTipo: string;
+  dispositivoMarca: string;
+  dispositivoModelo: string;
+  defeito: string;
 }
 
 async function getUserId(): Promise<string | null> {
@@ -220,6 +231,43 @@ export function usePrimeirosPassos(): PrimeirosPassosState {
     [patchOnboarding],
   );
 
+  const criarOsSimples = useCallback(
+    async (dados: DadosOsSimples) => {
+      if (!userId) throw new Error("Sessão não encontrada");
+
+      const { data: cliente, error: errCliente } = await supabase
+        .from("clientes")
+        .insert({
+          user_id: userId,
+          nome: dados.clienteNome.trim(),
+          telefone: dados.clienteTelefone?.trim() || null,
+        } as never)
+        .select("id")
+        .single();
+      if (errCliente) throw errCliente;
+
+      const { error: errOs } = await supabase.from("ordens_servico").insert({
+        user_id: userId,
+        cliente_id: (cliente as { id: string }).id,
+        numero_os: "", // trigger assign_os_number_on_insert preenche
+        dispositivo_tipo: dados.dispositivoTipo,
+        dispositivo_marca: dados.dispositivoMarca.trim(),
+        dispositivo_modelo: dados.dispositivoModelo.trim() || dados.dispositivoMarca.trim(),
+        defeito_relatado: dados.defeito.trim(),
+        status: "pendente",
+        total: 0,
+        is_teste: false, // OS de verdade — aparece nas listas normalmente
+        nao_conta_limite: true, // ...mas não entra na cota mensal do plano
+      } as never);
+      if (errOs) throw errOs;
+
+      await queryClient.invalidateQueries({
+        queryKey: ["primeiros-passos", "contadores", userId],
+      });
+    },
+    [userId, queryClient],
+  );
+
   return {
     loading,
     elegivel,
@@ -233,5 +281,6 @@ export function usePrimeirosPassos(): PrimeirosPassosState {
     escolherTipo,
     dispensar,
     reabrir,
+    criarOsSimples,
   };
 }

@@ -619,6 +619,8 @@ export function useAssinatura() {
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
         .is("deleted_at", null)
+        // OS do card "Primeiros Passos" (nao_conta_limite=true) não entra na cota
+        .eq("nao_conta_limite", false)
         .gte("created_at", inicioMes.toISOString())
         .lte("created_at", fimMes.toISOString());
 
@@ -662,6 +664,8 @@ export function useAssinatura() {
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
         .is("deleted_at", null)
+        // OS do card "Primeiros Passos" (nao_conta_limite=true) não entra na cota
+        .eq("nao_conta_limite", false)
         .gte("created_at", inicioMes.toISOString())
         .lte("created_at", fimMes.toISOString());
 

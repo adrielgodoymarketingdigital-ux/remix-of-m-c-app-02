@@ -11,6 +11,8 @@ export interface OnboardingChecklistItem {
   icon: ReactNode;
   route: string;
   completed: boolean;
+  /** Se presente, roda no lugar de navegar para `route` (ex: abrir dialog). */
+  onClick?: () => void;
 }
 
 interface OnboardingChecklistProps {
@@ -61,7 +63,7 @@ export function OnboardingChecklist({
           {items.map((item) => (
             <button
               key={item.id}
-              onClick={() => navigate(item.route)}
+              onClick={() => (item.onClick ? item.onClick() : navigate(item.route))}
               className={cn(
                 "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-left transition-colors hover:bg-muted",
                 item.completed && "text-primary",
@@ -109,7 +111,7 @@ export function OnboardingChecklist({
         {items.map((item) => (
           <button
             key={item.id}
-            onClick={() => navigate(item.route)}
+            onClick={() => (item.onClick ? item.onClick() : navigate(item.route))}
             className={cn(
               "w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left hover:bg-muted",
               item.completed && "bg-primary/5",

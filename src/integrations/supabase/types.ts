@@ -2553,6 +2553,7 @@ export type Database = {
           id: string
           is_teste: boolean
           localizacao_fisica: string | null
+          nao_conta_limite: boolean
           numero_os: string
           origem_cliente: string | null
           origem_remessa_corporativa: boolean
@@ -2596,6 +2597,7 @@ export type Database = {
           id?: string
           is_teste?: boolean
           localizacao_fisica?: string | null
+          nao_conta_limite?: boolean
           numero_os: string
           origem_cliente?: string | null
           origem_remessa_corporativa?: boolean
@@ -2639,6 +2641,7 @@ export type Database = {
           id?: string
           is_teste?: boolean
           localizacao_fisica?: string | null
+          nao_conta_limite?: boolean
           numero_os?: string
           origem_cliente?: string | null
           origem_remessa_corporativa?: boolean

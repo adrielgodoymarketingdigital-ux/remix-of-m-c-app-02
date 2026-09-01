@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Wrench,
   Package,
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { usePrimeirosPassos } from "@/hooks/usePrimeirosPassos";
 import { OPCOES_TIPO_NEGOCIO } from "@/lib/primeirosPassos";
 import { OnboardingChecklist } from "./OnboardingChecklist";
+import { DialogCriarOsSimples } from "./DialogCriarOsSimples";
 
 const ICONES: Record<string, LucideIcon> = {
   Wrench,
@@ -40,7 +42,10 @@ export function CardPrimeirosPassos() {
     escolherTipo,
     dispensar,
     reabrir,
+    criarOsSimples,
   } = usePrimeirosPassos();
+
+  const [osDialogOpen, setOsDialogOpen] = useState(false);
 
   // Estado 3: dispensado, mas ainda há o que fazer → só o gatilho discreto.
   if (!cardVisivel) {
@@ -117,8 +122,20 @@ export function CardPrimeirosPassos() {
             route: item.rota,
             completed: item.concluido,
             icon: <Icone className="h-4 w-4" />,
+            // "Crie sua primeira OS" abre o formulário curto aqui mesmo, sem
+            // ir para o menu de OS. Já concluído → deixa navegar para ver a OS.
+            onClick:
+              item.id === "criar_os" && !item.concluido
+                ? () => setOsDialogOpen(true)
+                : undefined,
           };
         })}
+      />
+
+      <DialogCriarOsSimples
+        open={osDialogOpen}
+        onOpenChange={setOsDialogOpen}
+        onCriar={criarOsSimples}
       />
     </div>
   );
