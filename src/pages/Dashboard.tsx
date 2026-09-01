@@ -24,6 +24,7 @@ import { CardFeedback } from "@/components/dashboard/CardFeedback";
 import { CardCotacaoDolar } from "@/components/dashboard/CardCotacaoDolar";
 
 import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
+import { CardPrimeirosPassos } from "@/components/onboarding/CardPrimeirosPassos";
 import { useRelatorios } from "@/hooks/useRelatorios";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro } from "@/lib/vendasFinanceiras";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
@@ -871,6 +872,7 @@ const Dashboard = () => {
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
       <TutorialAutoStart />
+      <CardPrimeirosPassos />
 
       {/* ============ TOPO — DESKTOP (layout original, inalterado) ============ */}
       <div className="hidden sm:flex sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
