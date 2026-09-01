@@ -230,7 +230,10 @@ export const DialogCadastroProduto = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto"
+          data-walkthrough="produto-dialog"
+        >
           <DialogHeader>
             <DialogTitle>
               {itemParaEditar ? 'Editar Item' : 'Cadastrar Novo Item'}
@@ -661,7 +664,12 @@ export const DialogCadastroProduto = ({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" className="w-full sm:w-auto" disabled={enviando}>
+                <Button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  disabled={enviando}
+                  data-walkthrough="produto-btn-salvar"
+                >
                   {enviando
                     ? 'Cadastrando...'
                     : temVariacoes

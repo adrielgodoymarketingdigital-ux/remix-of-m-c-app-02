@@ -940,7 +940,11 @@ const PDV = () => {
                   </span>
                   <h2 className="text-lg sm:text-xl font-semibold">Itens da Venda</h2>
                 </div>
-                <Button size="sm" onClick={() => setDialogItemAberto(true)}>
+                <Button
+                  size="sm"
+                  onClick={() => setDialogItemAberto(true)}
+                  data-walkthrough="pdv-adicionar-item"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="hidden xs:inline">Adicionar</span> Item
                 </Button>
@@ -1292,6 +1296,7 @@ const PDV = () => {
                 size="lg"
                 onClick={finalizarVenda}
                 disabled={finalizando || itensCarrinho.length === 0 || !caixaEstaAberto}
+                data-walkthrough="pdv-finalizar"
               >
                 {finalizando ? "Finalizando..." : "Finalizar Venda"}
               </Button>

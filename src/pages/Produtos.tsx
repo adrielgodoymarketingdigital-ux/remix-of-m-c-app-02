@@ -275,7 +275,7 @@ const Produtos = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
               {abaAtiva === 'estoque' ? (
-                <Button onClick={handleNovoItem}>
+                <Button onClick={handleNovoItem} data-walkthrough="produtos-novo-item">
                   <Plus className="w-4 h-4 mr-2" />
                   Novo Item
                 </Button>

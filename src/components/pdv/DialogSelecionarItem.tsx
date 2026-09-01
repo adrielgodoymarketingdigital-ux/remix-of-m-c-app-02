@@ -178,7 +178,7 @@ export const DialogSelecionarItem = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
+      <DialogContent className="sm:max-w-4xl" data-walkthrough="pdv-selecionar-item">
         <DialogHeader>
           <DialogTitle>Adicionar Item à Venda</DialogTitle>
         </DialogHeader>

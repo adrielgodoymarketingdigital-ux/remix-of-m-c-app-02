@@ -7,6 +7,7 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 import { TutorialProvider } from "@/components/tutorial/TutorialContext";
 import { TutorialOverlay } from "@/components/tutorial/TutorialOverlay";
+import { OnboardingWalkthroughHost } from "@/components/onboarding/OnboardingWalkthroughHost";
 import { CardLimitesFree } from "@/components/planos/CardLimitesFree";
 import { TrialBanner } from "@/components/trial/TrialBanner";
 import { FreeTrialTimer } from "@/components/trial/FreeTrialTimer";
@@ -68,6 +69,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             <BotaoOcultarValores />
             {/* Tutorial system */}
             <TutorialOverlay />
+            {/* Walkthroughs curtos do onboarding (?walkthrough=<key>) */}
+            <OnboardingWalkthroughHost />
           </div>
         </SidebarProvider>
       </TutorialProvider>
