@@ -11,6 +11,12 @@ import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
 import { Users, ArrowDownCircle, ArrowUpCircle, Wallet, Wrench } from "lucide-react";
 import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento } from "@/lib/formaPagamento";
+import {
+  agregarServicosNoCaixa,
+  derivarEventosRecebimentoOS,
+  isVendaDeItemOS,
+  type OrdemParaCaixa,
+} from "@/lib/caixa/servicosCaixa";
 
 interface ResumoFechamento {
   total_dinheiro: number;
@@ -81,7 +87,14 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         query = query.eq("empresa_id", caixa.empresa_id);
       }
 
-      const { data: vendas } = await query;
+      const { data: vendasRaw } = await query;
+
+      // Produtos/peças consumidos numa OS geram linha em `vendas` ("utilizado na OS").
+      // Esse valor já está no total da OS (contabilizado via total_servicos abaixo) —
+      // remover aqui evita contar 2x. Mesmo filtro do fechamento real (useCaixa.ts).
+      const vendas = (vendasRaw ?? []).filter(
+        (v: { observacoes?: string | null }) => !isVendaDeItemOS(v.observacoes),
+      );
 
       const formasCartao = ["debito", "credito", "credito_parcelado"];
 
@@ -168,15 +181,18 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       setVendaFuncionarios(breakdownFunc);
       setVendasPorForma(breakdownCompleto);
 
-      // Buscar OS entregues no período do caixa
+      // ── Serviços (OS entregues) recebidos na janela do caixa ────────────────
+      // Mesma lógica exata do fechamento real (useCaixa.ts): associação por
+      // "Data no caixa", valor via getValorFaturavelOS, entrada e saldo tratados
+      // como eventos separados (cada um com a sua forma de pagamento).
+      const janelaFimISO = new Date().toISOString();
       let queryOs = supabase
         .from("ordens_servico")
-        .select("numero_os, total, forma_pagamento, avarias, clientes(nome)")
+        .select("numero_os, total, forma_pagamento, avarias, created_at, data_caixa, data_saida, status, clientes(nome)")
         .eq("user_id", userIdVendas)
         .eq("status", "entregue")
         .is("deleted_at", null)
-        .gte("data_saida", caixa.data_abertura)
-        .lte("data_saida", new Date().toISOString());
+        .gte("data_saida", caixa.data_abertura);
 
       if (caixa.empresa_id) {
         queryOs = queryOs.eq("empresa_id", caixa.empresa_id);
@@ -185,27 +201,48 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const { data: osEntregues, error: osEntreguesError } = await queryOs;
       if (osEntreguesError) console.error("Erro ao buscar OS entregues:", osEntreguesError);
 
-      const servicosFiltrados = (osEntregues || [])
-        .filter(os => {
-          const dadosPagamento = (os.avarias as any)?.dados_pagamento;
-          const forma = dadosPagamento?.forma || os.forma_pagamento || "";
-          // Excluir OS a prazo ainda pendentes
-          return forma !== 'a_prazo' || (dadosPagamento?.entrada > 0);
-        })
-        .map(os => {
-          const dadosPagamento = (os.avarias as any)?.dados_pagamento;
-          const entrada = Number(dadosPagamento?.entrada || 0);
-          const forma = dadosPagamento?.forma || os.forma_pagamento || "";
-          return {
-            numero_os: os.numero_os,
-            cliente_nome: (os.clientes as any)?.nome || "Cliente não informado",
-            forma_pagamento: forma,
-            total: entrada > 0 ? entrada : Number(os.total || 0),
-          };
+      type OSRow = OrdemParaCaixa & { numero_os: string | null };
+      const osRows = (osEntregues || []) as unknown as OSRow[];
+      const numerosOs = Array.from(
+        new Set(osRows.map((o) => o.numero_os).filter((n): n is string => !!n)),
+      );
+      const statusContaPorOs = new Map<string, string>();
+      if (numerosOs.length > 0) {
+        let contasQuery = supabase
+          .from("contas")
+          .select("os_numero, status")
+          .eq("user_id", userIdVendas)
+          .eq("tipo", "receber")
+          .in("os_numero", numerosOs);
+        if (caixa.empresa_id) {
+          contasQuery = contasQuery.or(`empresa_id.eq.${caixa.empresa_id},empresa_id.is.null`);
+        }
+        const { data: contasOs } = await contasQuery;
+        (contasOs || []).forEach((c: { os_numero: string | null; status: string | null }) => {
+          if (c.os_numero && c.status) statusContaPorOs.set(c.os_numero, c.status);
         });
+      }
 
-      setServicosEntregues(servicosFiltrados);
-      setTotalServicos(servicosFiltrados.reduce((acc, s) => acc + s.total, 0));
+      const eventosOS = osRows.flatMap((o) =>
+        derivarEventosRecebimentoOS(o, statusContaPorOs.get(o.numero_os ?? "")),
+      );
+      const servicosAgg = agregarServicosNoCaixa(eventosOS, caixa.data_abertura, janelaFimISO);
+
+      // O valor das OS entra TAMBÉM nos totais por forma (igual ao persistido).
+      total_dinheiro += servicosAgg.total_dinheiro;
+      total_pix += servicosAgg.total_pix;
+      total_cartao += servicosAgg.total_cartao;
+      total_a_receber += servicosAgg.total_a_receber;
+
+      setServicosEntregues(
+        servicosAgg.linhas.map((l) => ({
+          numero_os: l.parte === "entrada" ? `${l.numeroOs} (sinal)` : l.numeroOs,
+          cliente_nome: l.clienteNome,
+          forma_pagamento: l.forma,
+          total: l.valor,
+        })),
+      );
+      setTotalServicos(servicosAgg.total_servicos);
 
       // Buscar movimentações do caixa
       const { data: movimentacoes } = await supabase

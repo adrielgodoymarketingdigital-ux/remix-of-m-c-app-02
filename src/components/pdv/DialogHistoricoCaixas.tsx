@@ -85,7 +85,7 @@ export function DialogHistoricoCaixas({ open, onOpenChange }: DialogHistoricoCai
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-muted-foreground">
                   <div>
                     <p>PIX</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.total_pix)}</p>
@@ -97,6 +97,10 @@ export function DialogHistoricoCaixas({ open, onOpenChange }: DialogHistoricoCai
                   <div>
                     <p>A receber</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.total_a_receber)}</p>
+                  </div>
+                  <div>
+                    <p>Serviços (OS)</p>
+                    <p className="font-medium text-foreground">{formatCurrency(c.total_servicos ?? 0)}</p>
                   </div>
                 </div>
 

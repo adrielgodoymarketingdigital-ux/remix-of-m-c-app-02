@@ -19,6 +19,7 @@ import {
   QrCode,
   CreditCard,
   Calendar,
+  Wrench,
 } from "lucide-react";
 
 interface DialogStatusCaixaProps {
@@ -173,6 +174,13 @@ export function DialogStatusCaixa({
                     Total de Vendas:
                   </span>
                   <span className="font-medium">{formatCurrency(caixaAtual.total_vendas)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Wrench className="h-4 w-4" />
+                    Serviços (OS):
+                  </span>
+                  <span className="font-medium">{formatCurrency(caixaAtual.total_servicos ?? 0)}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">

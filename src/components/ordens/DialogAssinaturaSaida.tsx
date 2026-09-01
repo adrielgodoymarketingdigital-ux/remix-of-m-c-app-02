@@ -23,6 +23,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { checklistIcons } from "@/lib/checklist-icons";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
+import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
 
 const FORMAS_PAGAMENTO = [
   { value: 'dinheiro', label: 'Dinheiro', icon: Banknote },
@@ -178,6 +180,9 @@ export const DialogAssinaturaSaida = ({
         avarias: novasAvarias as any,
         status: "entregue",
         data_saida: `${dataRecebimento}T${new Date().toTimeString().split(" ")[0]}`,
+        // "Data no caixa" (DATE puro) — referência canônica para associar o
+        // recebimento desta OS a um caixa no fechamento.
+        data_caixa: dataRecebimento,
         tempo_gasto_horas: tempoGastoEmHoras,
       };
 
@@ -324,6 +329,38 @@ export const DialogAssinaturaSaida = ({
             });
           }
         }
+      }
+
+      // Se a "Data no caixa" cair em um caixa JÁ FECHADO (ex.: entrega
+      // retroativa), ajusta os totais congelados desse caixa. Caixa aberto se
+      // resolve sozinho no próximo fechamento. Nunca bloqueia a entrega.
+      try {
+        const { data: contaAtual } = await supabase
+          .from("contas")
+          .select("status")
+          .eq("user_id", effectiveUserId)
+          .eq("os_numero", ordem.numero_os)
+          .eq("tipo", "receber")
+          .maybeSingle();
+
+        const ordemBase = ordem as unknown as OrdemParaCaixa & { forma_pagamento?: string | null };
+        await ajustarCaixasFechadosOS({
+          ordemAntes: { ...ordemBase },
+          ordemDepois: {
+            ...ordemBase,
+            status: "entregue",
+            avarias: novasAvarias as unknown as OrdemParaCaixa["avarias"],
+            forma_pagamento: formaSelecionada || ordemBase.forma_pagamento || null,
+            data_caixa: dataRecebimento,
+            data_saida: updateData.data_saida,
+          },
+          statusContaAntes: null,
+          statusContaDepois: contaAtual?.status ?? null,
+          userIdCaixa: effectiveUserId,
+          empresaId: empresaIdParaUpdate,
+        });
+      } catch (e) {
+        console.error("[DialogAssinaturaSaida] ajuste de caixa fechado falhou:", e);
       }
 
       toast({

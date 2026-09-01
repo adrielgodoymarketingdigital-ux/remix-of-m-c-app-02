@@ -7,6 +7,8 @@ import { resolverIdentidadeOS } from "@/lib/ordemServico/resolverIdentidadeOS";
 import { criarOuAtualizarCliente } from "@/lib/ordemServico/criarOuAtualizarCliente";
 import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
 import { criarContaAReceberOS } from "@/lib/ordemServico/criarContaAReceberOS";
+import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
+import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
 import { TaxaCartao } from "@/hooks/useTaxasCartao";
 import {
   CandidatoAmbiguo,
@@ -47,6 +49,12 @@ interface SalvarOrdemServicoParams {
   navigate: (path: string) => void;
   onSuccess: () => void;
   onOpenChange: (open: boolean) => void;
+  /**
+   * true quando a OS está sendo criada pelo card "Primeiros Passos" do
+   * Dashboard: entra com nao_conta_limite=true (fora da cota do plano) e
+   * suprime o redirect automático para /financeiro pós-save.
+   */
+  primeiraOsOnboarding?: boolean;
 }
 
 /**
@@ -233,6 +241,10 @@ async function salvarTecnicosOS(
   totalOS: number,
   tipoServicoId: string | null,
   dispositivoMarca?: string | null,
+  // Ids de serviço do catálogo que AINDA existem (ver salvarOrdemServico).
+  // Usado para não gravar em os_tecnicos.servico_id um id de serviço já
+  // excluído fisicamente do catálogo.
+  servicoIdsValidos: Set<string> = new Set(),
 ): Promise<ResultadoSalvarTecnicos> {
   const resultado: ResultadoSalvarTecnicos = { itensCustoNaoConfirmado: [], itensComissaoAmbigua: [] };
 
@@ -346,11 +358,19 @@ async function salvarTecnicosOS(
       }
     }
 
+    // Serviço manual (id "manual_*") mantém o comportamento antigo; serviço de
+    // catálogo só é gravado se ainda existir — id órfão vira null.
+    const servicoIdParaGravar = servicoVinculado
+      ? (servicoVinculado.id.startsWith("manual_") || servicoIdsValidos.has(servicoVinculado.id)
+          ? servicoVinculado.id
+          : null)
+      : null;
+
     tecnicosParaInserir.push({
       os_id: osId,
       funcionario_id: tec.funcionario_id,
       descricao_servico: tec.descricao_servico || null,
-      servico_id: servicoVinculado ? servicoVinculado.id : null,
+      servico_id: servicoIdParaGravar,
       servico_nome_snapshot: servicoVinculado ? servicoVinculado.nome : null,
       preco_servico_snapshot: servicoVinculado ? servicoVinculado.preco : null,
       comissao_tipo_snapshot: comissaoTipo,
@@ -394,6 +414,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     navigate,
     onSuccess,
     onOpenChange,
+    primeiraOsOnboarding,
   } = params;
 
   // Validar técnico obrigatório antes de qualquer operação
@@ -529,9 +550,34 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       avariasData.dados_pagamento = undefined;
     }
 
+    // Sanea servico_id contra o catálogo ATUAL: um serviço pode ter sido
+    // excluído fisicamente do catálogo (tela Serviços) depois que a OS foi
+    // criada. O snapshot em avarias.servicos_realizados preserva o id antigo;
+    // regravá-lo em ordens_servico.servico_id viola a FK
+    // ordens_servico_servico_id_fkey e derruba o salvamento inteiro. Ids que
+    // não existem mais no catálogo viram null (coluna nullable; o vínculo real
+    // já se perdeu quando o serviço foi apagado — a FK está ON DELETE SET NULL).
+    const idsServicoReferenciados = [...new Set(
+      [
+        ...formData.servicos.map(s => s.id),
+        ...tecnicosOS.map(t => t.servico_id),
+      ].filter((id): id is string => !!id && !id.startsWith('manual_'))
+    )];
+    const idsServicoValidos = new Set<string>();
+    if (idsServicoReferenciados.length > 0) {
+      const { data: servicosCatalogoAtual } = await supabase
+        .from("servicos")
+        .select("id")
+        .in("id", idsServicoReferenciados);
+      (servicosCatalogoAtual || []).forEach((s: { id: string }) => idsServicoValidos.add(s.id));
+    }
+    const servicoIdAindaExiste = (id: string | null | undefined): id is string =>
+      !!id && !id.startsWith('manual_') && idsServicoValidos.has(id);
+
     // Pegar o primeiro serviço para salvar no campo servico_id (para relatórios)
-    // Ignorar serviços manuais (ID não é UUID válido)
-    const primeiroServicoCatalogo = formData.servicos.find(s => !s.id.startsWith('manual_'));
+    // Ignorar serviços manuais (ID não é UUID válido) e serviços de catálogo
+    // que já não existem mais (evita violar a FK ao regravar).
+    const primeiroServicoCatalogo = formData.servicos.find(s => servicoIdAindaExiste(s.id));
     const primeiroServicoId = primeiroServicoCatalogo?.id || null;
     const primeiroServico = formData.servicos.length > 0 ? formData.servicos[0] : null;
 
@@ -623,6 +669,20 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     };
 
     if (ordem) {
+      // Status da conta a receber ANTES da edição — usado para o ajuste
+      // retroativo de caixas fechados (getValorFaturavelOS depende dele).
+      let statusContaAntesOS: string | null = null;
+      if (ordem.numero_os) {
+        const { data: contaAntes } = await supabase
+          .from("contas")
+          .select("status")
+          .eq("user_id", effectiveUserId)
+          .eq("os_numero", ordem.numero_os)
+          .eq("tipo", "receber")
+          .maybeSingle();
+        statusContaAntesOS = contaAntes?.status ?? null;
+      }
+
       // Atualizar ordem existente
       const { error } = await supabase
         .from("ordens_servico")
@@ -669,7 +729,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       if (error) throw error;
 
       // === SALVAR TÉCNICOS DA OS ===
-      const resTecnicosEdit = await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca);
+      const resTecnicosEdit = await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos);
       aplicarAvisoTecnicosOS(resTecnicosEdit);
 
       // === ATUALIZAR OU CRIAR CONTA A RECEBER AO EDITAR OS ===
@@ -799,6 +859,45 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         }
       }
 
+      // === AJUSTE RETROATIVO DE CAIXA(S) FECHADO(S) ===
+      // Se a forma/valor de pagamento de uma OS já entregue mudou e o caixa
+      // daquele período já foi fechado, corrige os totais congelados dele.
+      // Nunca bloqueia o salvamento (erros são logados internamente).
+      if (ordem.numero_os) {
+        const { data: contaDepois } = await supabase
+          .from("contas")
+          .select("status")
+          .eq("user_id", effectiveUserId)
+          .eq("os_numero", ordem.numero_os)
+          .eq("tipo", "receber")
+          .maybeSingle();
+
+        const dataSaidaDepois =
+          formData.status === "entregue"
+            ? (formData.dataSaida ? formData.dataSaida.toISOString() : new Date().toISOString())
+            : null;
+
+        const ordemBaseCaixa = ordem as unknown as OrdemParaCaixa & { data_caixa?: string | null };
+        await ajustarCaixasFechadosOS({
+          ordemAntes: { ...ordemBaseCaixa },
+          ordemDepois: {
+            ...ordemBaseCaixa,
+            status: formData.status,
+            forma_pagamento: formData.formaPagamento || null,
+            avarias: avariasData as unknown as OrdemParaCaixa["avarias"],
+            total: total > 0 ? total : null,
+            created_at: formData.dataEntrada.toISOString(),
+            data_saida: dataSaidaDepois,
+            // A edição pelo wizard não altera a "Data no caixa" definida na entrega.
+            data_caixa: ordemBaseCaixa.data_caixa ?? null,
+          },
+          statusContaAntes: statusContaAntesOS,
+          statusContaDepois: contaDepois?.status ?? null,
+          userIdCaixa: effectiveUserId,
+          empresaId: empresaId,
+        });
+      }
+
       toast(
         avisoComissaoTexto
           ? {
@@ -847,6 +946,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
           comissao_calculada_snapshot: comissaoCalculadaSnapshot,
           tipo_servico_nome_snapshot: tipoServicoNomeSnapshot,
           status: formData.status || "aguardando_aprovacao",
+          nao_conta_limite: primeiraOsOnboarding === true,
           created_at: formData.dataEntrada.toISOString(),
           data_saida: formData.status === "entregue"
             ? (formData.dataSaida ? formData.dataSaida.toISOString() : new Date().toISOString())
@@ -867,7 +967,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .maybeSingle();
 
       if (osCriada) {
-        const resTecnicosCreate = await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca);
+        const resTecnicosCreate = await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos);
         aplicarAvisoTecnicosOS(resTecnicosCreate);
       }
 
@@ -901,8 +1001,16 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
             }
           }
 
-          // 2. Registrar na tabela de vendas para contabilização no faturamento
+          // 2. Registrar na tabela de vendas (movimentação de estoque / relatórios
+          //    de itens). Estas linhas são marcadas com "utilizado na OS" e ficam
+          //    FORA de todo cálculo de receita/caixa (o valor já está no total da
+          //    OS, contabilizado via total_servicos) — mas mesmo assim devem
+          //    refletir a forma de pagamento REAL da OS, o status de recebido
+          //    correto e a data (antes: 'pix'/false/data nula, sempre).
           // Peças são tratadas como produtos no banco (tipo_produto só aceita 'produto' ou 'dispositivo')
+          const formaPagamentoOS = (formData.formaPagamento || 'dinheiro') as
+            'dinheiro' | 'pix' | 'debito' | 'credito' | 'credito_parcelado' | 'a_receber' | 'a_prazo';
+          const recebidoOS = formaPagamentoOS !== 'a_prazo' && formaPagamentoOS !== 'a_receber';
           const { error: vendaError } = await supabase
             .from('vendas')
             .insert({
@@ -911,10 +1019,11 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
               quantidade: produto.quantidade,
               total: produto.preco_total,
               custo_unitario: produto.custo_unitario,
-              forma_pagamento: 'pix' as const, // Default para OS
+              forma_pagamento: formaPagamentoOS,
               user_id: effectiveUserId,
               cliente_id: clienteId,
-              recebido: false, // Será recebido quando a OS for finalizada
+              data: dataHoje(),
+              recebido: recebidoOS,
               observacoes: `Peça/Produto utilizado na OS ${numeroOS}`,
             });
 
@@ -1034,8 +1143,10 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         clienteNome: formData.clienteNome,
       });
 
-      // Navegar para próximo passo se ainda não visualizou lucro e tem acesso ao módulo
-      if (!onboardingData?.step_lucro_visualizado && temAcessoModulo('financeiro')) {
+      // Navegar para próximo passo se ainda não visualizou lucro e tem acesso ao módulo.
+      // Suprimido quando a OS vem do card "Primeiros Passos": ali o usuário deve
+      // continuar no Dashboard, sem ser jogado para /financeiro.
+      if (!primeiraOsOnboarding && !onboardingData?.step_lucro_visualizado && temAcessoModulo('financeiro')) {
         setTimeout(() => navigate('/financeiro'), 1000);
       }
     }

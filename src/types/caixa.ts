@@ -10,6 +10,8 @@ export interface Caixa {
   total_pix: number;
   total_cartao: number;
   total_a_receber: number;
+  /** Soma faturável das OS entregues no período (também rateada nos totais por forma acima). */
+  total_servicos: number | null;
   observacoes: string | null;
   status: 'aberto' | 'fechado';
   created_at: string;

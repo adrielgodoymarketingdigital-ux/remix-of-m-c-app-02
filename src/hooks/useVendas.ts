@@ -9,6 +9,7 @@ import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useIdentidade } from "./useResolvedUserId";
 import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
+import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -897,6 +898,9 @@ export const useVendas = () => {
 
         // Caixa(s) já fechado(s) que englobam a data da venda — ajustar os totais
         // congelados no fechamento pela diferença de valor.
+        // Linhas "utilizado na OS" NÃO entram no caixa por si (o valor da OS
+        // inteira entra via total_servicos / ajustarCaixasFechadosOS pelo fluxo
+        // da OS) — ajustá-las aqui corromperia o total do caixa.
         try {
           const userIdCaixa = vendaOriginal.user_id;
           const caixasQuery = supabase
@@ -925,7 +929,12 @@ export const useVendas = () => {
             return null;
           };
 
-          const coluna = colunaPorForma(vendaOriginal.forma_pagamento);
+          // Linhas "utilizado na OS" não entram no caixa por si só (o valor da OS
+          // inteira entra via total_servicos / ajustarCaixasFechadosOS pelo fluxo
+          // da OS) — ajustá-las aqui corromperia o total do caixa.
+          const coluna = isVendaDeItemOS(vendaOriginal.observacoes)
+            ? null
+            : colunaPorForma(vendaOriginal.forma_pagamento);
 
           if (coluna) {
             for (const caixa of caixasAfetados ?? []) {

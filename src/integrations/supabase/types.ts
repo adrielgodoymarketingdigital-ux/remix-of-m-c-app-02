@@ -384,6 +384,7 @@ export type Database = {
           total_cartao: number | null
           total_dinheiro: number | null
           total_pix: number | null
+          total_servicos: number | null
           total_vendas: number | null
           user_id: string
         }
@@ -402,6 +403,7 @@ export type Database = {
           total_cartao?: number | null
           total_dinheiro?: number | null
           total_pix?: number | null
+          total_servicos?: number | null
           total_vendas?: number | null
           user_id: string
         }
@@ -420,6 +422,7 @@ export type Database = {
           total_cartao?: number | null
           total_dinheiro?: number | null
           total_pix?: number | null
+          total_servicos?: number | null
           total_vendas?: number | null
           user_id?: string
         }
@@ -2537,6 +2540,7 @@ export type Database = {
           comissao_tipo_snapshot: string | null
           comissao_valor_snapshot: number | null
           created_at: string | null
+          data_caixa: string | null
           data_saida: string | null
           defeito_relatado: string
           deleted_at: string | null
@@ -2623,6 +2627,7 @@ export type Database = {
           comissao_tipo_snapshot?: string | null
           comissao_valor_snapshot?: number | null
           created_at?: string | null
+          data_caixa?: string | null
           data_saida?: string | null
           defeito_relatado?: string
           deleted_at?: string | null
@@ -4878,6 +4883,7 @@ export type Database = {
           comissao_tipo_snapshot: string | null
           comissao_valor_snapshot: number | null
           created_at: string | null
+          data_caixa: string | null
           data_saida: string | null
           defeito_relatado: string | null
           deleted_at: string | null
@@ -4913,6 +4919,7 @@ export type Database = {
           comissao_tipo_snapshot?: string | null
           comissao_valor_snapshot?: number | null
           created_at?: string | null
+          data_caixa?: string | null
           data_saida?: string | null
           defeito_relatado?: string | null
           deleted_at?: string | null
@@ -4950,6 +4957,7 @@ export type Database = {
           comissao_tipo_snapshot?: string | null
           comissao_valor_snapshot?: number | null
           created_at?: string | null
+          data_caixa?: string | null
           data_saida?: string | null
           defeito_relatado?: string | null
           deleted_at?: string | null

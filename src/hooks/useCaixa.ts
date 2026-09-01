@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { agruparVendasPorFormaPagamento, BreakdownFormaPagamento } from "@/lib/formaPagamento";
+import {
+  agregarServicosNoCaixa,
+  derivarEventosRecebimentoOS,
+  isVendaDeItemOS,
+  type OrdemParaCaixa,
+} from "@/lib/caixa/servicosCaixa";
 
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
@@ -139,9 +145,16 @@ export function useCaixa() {
       vendasQuery = vendasQuery.eq("empresa_id", caixa.empresa_id);
     }
 
-    const { data: vendas, error: vendasError } = await vendasQuery;
+    const { data: vendasRaw, error: vendasError } = await vendasQuery;
 
     if (vendasError) throw vendasError;
+
+    // Produtos/peças consumidos numa OS geram linha em `vendas` (marcada com
+    // "utilizado na OS"). O valor desses itens JÁ está no total da OS e será
+    // contabilizado via total_servicos — removê-los aqui evita contar 2x.
+    const vendas = (vendasRaw ?? []).filter(
+      (v: { observacoes?: string | null }) => !isVendaDeItemOS(v.observacoes),
+    );
 
     // Vendas avulsas (tabela separada de vendas, sem empresa_id/cancelada — usa soft delete)
     const { data: vendasAvulsas, error: vendasAvulsasError } = await supabase
@@ -197,6 +210,58 @@ export function useCaixa() {
       .filter(m => m.tipo === "suprimento")
       .reduce((acc, m) => acc + Number(m.valor), 0);
 
+    // ── Serviços (OS entregues) recebidos na janela do caixa ──────────────────
+    // Associação por DATA: "Data no caixa" (ordens_servico.data_caixa) para o
+    // saldo; data de abertura da OS para a entrada. O valor de cada OS entra
+    // TAMBÉM nos totais por forma (dinheiro/pix/cartão), e é gravado somado em
+    // total_servicos para a seção visual separada.
+    const janelaFimISO = new Date().toISOString();
+    let osQuery = supabase
+      .from("ordens_servico")
+      .select("numero_os, total, forma_pagamento, avarias, created_at, data_caixa, data_saida, status, clientes(nome)")
+      .eq("user_id", userIdVendas)
+      .eq("status", "entregue")
+      .is("deleted_at", null)
+      .gte("data_saida", caixa.data_abertura);
+    if (caixa.empresa_id) {
+      osQuery = osQuery.eq("empresa_id", caixa.empresa_id);
+    }
+    const { data: osEntregues, error: osError } = await osQuery;
+    if (osError) throw osError;
+
+    type OSRow = OrdemParaCaixa & { numero_os: string | null };
+    const osRows = (osEntregues ?? []) as unknown as OSRow[];
+    const numerosOs = Array.from(
+      new Set(osRows.map((o) => o.numero_os).filter((n): n is string => !!n)),
+    );
+    const statusContaPorOs = new Map<string, string>();
+    if (numerosOs.length > 0) {
+      let contasQuery = supabase
+        .from("contas")
+        .select("os_numero, status")
+        .eq("user_id", userIdVendas)
+        .eq("tipo", "receber")
+        .in("os_numero", numerosOs);
+      if (caixa.empresa_id) {
+        contasQuery = contasQuery.or(`empresa_id.eq.${caixa.empresa_id},empresa_id.is.null`);
+      }
+      const { data: contasOs } = await contasQuery;
+      (contasOs ?? []).forEach((c: { os_numero: string | null; status: string | null }) => {
+        if (c.os_numero && c.status) statusContaPorOs.set(c.os_numero, c.status);
+      });
+    }
+
+    const eventosOS = osRows.flatMap((o) =>
+      derivarEventosRecebimentoOS(o, statusContaPorOs.get(o.numero_os ?? "")),
+    );
+    const servicosAgg = agregarServicosNoCaixa(eventosOS, caixa.data_abertura, janelaFimISO);
+
+    total_dinheiro += servicosAgg.total_dinheiro;
+    total_pix += servicosAgg.total_pix;
+    total_cartao += servicosAgg.total_cartao;
+    total_a_receber += servicosAgg.total_a_receber;
+    const total_servicos = servicosAgg.total_servicos;
+
     const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
     const saldo_final = saldoFinalContado !== undefined
       ? saldoFinalContado
@@ -211,6 +276,7 @@ export function useCaixa() {
         total_pix,
         total_cartao,
         total_a_receber,
+        total_servicos,
         total_vendas,
         saldo_final,
         observacoes: observacoes || caixa.observacoes,

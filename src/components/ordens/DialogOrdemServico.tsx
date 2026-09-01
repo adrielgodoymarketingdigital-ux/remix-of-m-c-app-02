@@ -41,6 +41,11 @@ interface DialogOrdemServicoProps {
   onOpenChange: (open: boolean) => void;
   ordem: OrdemServico | null;
   onSuccess: () => void;
+  /**
+   * true quando o dialog é aberto pelo card "Primeiros Passos" do Dashboard:
+   * a OS entra fora da cota do plano e sem redirect pós-save para /financeiro.
+   */
+  primeiraOsOnboarding?: boolean;
 }
 
 const TOTAL_ETAPAS: EtapaWizard = 7;
@@ -50,6 +55,7 @@ export const DialogOrdemServico = ({
   onOpenChange,
   ordem,
   onSuccess,
+  primeiraOsOnboarding,
 }: DialogOrdemServicoProps) => {
   const { toast } = useToast();
   const { trackOSCriada } = useEventTracking();
@@ -174,6 +180,7 @@ export const DialogOrdemServico = ({
         navigate,
         onSuccess,
         onOpenChange,
+        primeiraOsOnboarding,
       });
     } finally {
       setLoading(false);

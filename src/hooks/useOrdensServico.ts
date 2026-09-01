@@ -8,12 +8,15 @@ import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-re
 import { dataHoje } from "@/lib/formatters";
 import { useIdentidade } from "./useResolvedUserId";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 
 export interface OrdemServico {
   id: string;
   numero_os: string;
   created_at: string;
   data_saida: string | null;
+  /** "Data no caixa" do recebimento (DATE puro) — ver migration data_caixa. */
+  data_caixa?: string | null;
   defeito_relatado: string;
   total: number | null;
   status: string | null;
@@ -522,15 +525,17 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       // 3. Atualizar o status da ordem (somente do usuário atual)
       const updateData: any = { status: novoStatus as any };
 
-      // Preencher data_saida quando status muda para "entregue"
+      // Preencher data_saida + "Data no caixa" quando status muda para "entregue"
       if (novoStatus === "entregue") {
         updateData.data_saida = dataRecebimento
           ? `${dataRecebimento}T${new Date().toTimeString().split(" ")[0]}`
           : new Date().toISOString();
+        updateData.data_caixa = dataRecebimento || dataHoje();
       }
-      // Limpar data_saida se sair de "entregue" para outro status
+      // Limpar data_saida + data_caixa se sair de "entregue" para outro status
       if (statusAnterior === "entregue" && novoStatus !== "entregue" && novoStatus !== "garantia") {
         updateData.data_saida = null;
+        updateData.data_caixa = null;
       }
       // Ao ir para garantia, NUNCA alterar data_saida — preservar sempre o valor original
       // A data_saida representa quando a OS foi entregue ao cliente, não quando entrou em garantia
@@ -753,6 +758,37 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           title: "Status atualizado",
           description: "Status alterado, mas houve um erro ao atualizar o financeiro.",
         });
+      }
+
+      // Ajuste retroativo de caixa(s) FECHADO(s): só quando a transição
+      // envolve "entregue" (passou a ser / deixou de ser). Caixa aberto se
+      // resolve no próprio fechamento. Nunca bloqueia o fluxo.
+      if (novoStatus === "entregue" || statusAnterior === "entregue") {
+        try {
+          const { data: contaAtualOS } = await supabase
+            .from("contas")
+            .select("status")
+            .eq("user_id", userId)
+            .eq("os_numero", ordem.numero_os)
+            .eq("tipo", "receber")
+            .maybeSingle();
+
+          const dataCaixaDepois =
+            novoStatus === "entregue"
+              ? (dataRecebimento || dataHoje())
+              : (novoStatus !== "garantia" ? null : (ordem.data_caixa ?? null));
+
+          await ajustarCaixasFechadosOS({
+            ordemAntes: { ...ordem, status: statusAnterior },
+            ordemDepois: { ...ordem, status: novoStatus, data_caixa: dataCaixaDepois },
+            statusContaAntes: statusAnterior === "entregue" ? "recebido" : null,
+            statusContaDepois: contaAtualOS?.status ?? null,
+            userIdCaixa: userId,
+            empresaId: empresaId ?? null,
+          });
+        } catch (ajusteErr) {
+          console.error("[atualizarStatus] ajuste de caixa fechado falhou:", ajusteErr);
+        }
       }
     } catch (error) {
       console.error("Erro ao atualizar status:", error);

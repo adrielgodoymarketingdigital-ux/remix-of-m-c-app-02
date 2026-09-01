@@ -54,6 +54,11 @@ interface DialogOrdemServicoSimplificadaProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  /**
+   * true quando o dialog é aberto pelo card "Primeiros Passos" do Dashboard:
+   * a OS entra fora da cota do plano (nao_conta_limite=true).
+   */
+  primeiraOsOnboarding?: boolean;
 }
 
 interface FormDataSimplificada {
@@ -114,6 +119,7 @@ export const DialogOrdemServicoSimplificada = ({
   open,
   onOpenChange,
   onSuccess,
+  primeiraOsOnboarding,
 }: DialogOrdemServicoSimplificadaProps) => {
   // Sufixo único por montagem — evita que o navegador ofereça sugestões de
   // autofill de digitações antigas (autocomplete="off" sozinho é ignorado
@@ -358,6 +364,7 @@ export const DialogOrdemServicoSimplificada = ({
           forma_pagamento: (formData.formaPagamento as any) || null,
           servico_id: primeiroServicoId,
           status: "aguardando_aprovacao",
+          nao_conta_limite: primeiraOsOnboarding === true,
           empresa_id: empresaId,
           origem_cliente: formData.origemCliente || null,
           tipo_midia: formData.tipoMidia || null,
