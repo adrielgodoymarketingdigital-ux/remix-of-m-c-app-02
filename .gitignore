@@ -29,6 +29,11 @@ dist-ssr
 supabase/functions/.env
 supabase/functions/.env.*
 
+# Dados exportados do Supabase para scripts de recálculo/auditoria
+# (contêm dados reais de clientes/financeiro — nunca versionar)
+scripts/recalculo-comissao/*.csv
+scripts/recalculo-comissao/output/
+
 # Android / Bubblewrap
 android.keystore
 app-release-signed.apk

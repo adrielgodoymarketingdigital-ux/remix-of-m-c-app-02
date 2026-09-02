@@ -71,6 +71,11 @@ interface SalvarOrdemServicoParams {
  *   custo R$ 0,00 ainda não confirmado no banner da OS. Não dá para calcular
  *   (preço − custo) × % com segurança, então contribuem 0 até o custo ser
  *   confirmado (mesmo tratamento seguro dos outros dois casos).
+ * - itensFallbackTipoFormulario: itens cuja comissão FOI aplicada e ENTROU na
+ *   soma, mas usando o Tipo de Serviço selecionado no formulário da OS
+ *   (Etapa 4) como fallback — o nome do serviço não casou sozinho com nenhum
+ *   Tipo cadastrado. Não é problema de pagamento; é só um empurrão para o
+ *   dono renomear o serviço no catálogo. Gera aviso BRANDO (ℹ️), não "revise".
  * O aviso ao salvar a OS (toast) e o indicador no Perfil de Desempenho do
  * Funcionário usam esses campos para mostrar exatamente quais itens
  * precisam de revisão manual e por quê.
@@ -80,6 +85,7 @@ interface ResultadoComissaoPorServico {
   itensSemComissaoConfigurada: string[];
   itensComissaoAmbigua: { nome: string; candidatos: CandidatoAmbiguo[] }[];
   itensCustoNaoConfirmado: string[];
+  itensFallbackTipoFormulario: string[];
 }
 
 /**
@@ -101,14 +107,27 @@ interface ResultadoComissaoPorServico {
  * Itens ambíguos (batem com mais de um tipo, marca não resolveu) são
  * reportados em itensComissaoAmbigua e também não entram na soma — nunca
  * aplicamos um percentual "no chute".
+ *
+ * FALLBACK DO TIPO DO FORMULÁRIO (item "B"): quando a OS tem EXATAMENTE 1
+ * serviço e o match por nome falha (sem config OU ambíguo mesmo após o
+ * desempate por valor idêntico), mas o Tipo de Serviço selecionado no
+ * formulário da OS (tipoServicoIdFallback, o dropdown da Etapa 4) tem uma
+ * comissão > 0 configurada para esse funcionário, a comissão é aplicada com
+ * ESSA config — porém na BASE CORRETA por serviço (preço, ou preço − custo
+ * no modo lucro) e com a proteção de custo não confirmado ativa. O fallback
+ * NUNCA tem prioridade sobre um match por nome bem-sucedido, e o item entra
+ * em itensFallbackTipoFormulario para gerar o aviso brando (renomeie o
+ * serviço). Só vale para 1 serviço: com 2+ não existe um único dropdown que
+ * represente cada serviço.
  */
 async function calcularComissaoPorServico(
   funcId: string,
   servicos: FormData["servicos"],
   dispositivoMarca?: string | null,
+  tipoServicoIdFallback?: string | null,
 ): Promise<ResultadoComissaoPorServico> {
   if (servicos.length === 0) {
-    return { total: null, itensSemComissaoConfigurada: [], itensComissaoAmbigua: [], itensCustoNaoConfirmado: [] };
+    return { total: null, itensSemComissaoConfigurada: [], itensComissaoAmbigua: [], itensCustoNaoConfirmado: [], itensFallbackTipoFormulario: [] };
   }
 
   const { data: tiposServicoTodos } = await supabase
@@ -137,30 +156,50 @@ async function calcularComissaoPorServico(
     t => comissaoPorTipoServicoId.has(t.id)
   );
 
+  // Fallback do Tipo de Serviço do formulário (Etapa 4) — só para OS de 1
+  // serviço e só quando aquele tipo tem comissão > 0 para o funcionário.
+  const configFallbackFormulario =
+    servicos.length === 1 && tipoServicoIdFallback
+      ? comissaoPorTipoServicoId.get(tipoServicoIdFallback)
+      : undefined;
+
   let comissaoTotal = 0;
   let algumEncontrado = false;
   const itensSemComissaoConfigurada: string[] = [];
   const itensComissaoAmbigua: { nome: string; candidatos: CandidatoAmbiguo[] }[] = [];
   const itensCustoNaoConfirmado: string[] = [];
+  const itensFallbackTipoFormulario: string[] = [];
 
   for (const servico of servicos) {
     const resultado = encontrarComissaoPorNomeServico(
       servico.nome, tiposComComissao, comissaoPorTipoServicoId, dispositivoMarca
     );
 
-    if (resultado.ambiguo) {
-      itensComissaoAmbigua.push({ nome: servico.nome, candidatos: resultado.candidatosAmbiguos || [] });
+    // Match por nome (inclui desempate por marca e por valor idêntico) tem
+    // SEMPRE prioridade. Só quando ele não resolve é que o fallback do
+    // formulário entra — e apenas se tiver comissão > 0.
+    const matchPorNomeResolveu = !!resultado.config && !resultado.ambiguo;
+    const usarFallback =
+      !matchPorNomeResolveu
+      && !!configFallbackFormulario
+      && Number(configFallbackFormulario.comissao_valor) > 0;
+
+    if (!matchPorNomeResolveu && !usarFallback) {
+      if (resultado.ambiguo) {
+        itensComissaoAmbigua.push({ nome: servico.nome, candidatos: resultado.candidatosAmbiguos || [] });
+      } else {
+        itensSemComissaoConfigurada.push(servico.nome);
+      }
       continue;
     }
 
-    if (!resultado.config) {
-      itensSemComissaoConfigurada.push(servico.nome);
-      continue;
-    }
+    const config = usarFallback ? configFallbackFormulario! : resultado.config!;
 
-    if (resultado.config.comissao_valor > 0) {
+    if (config.comissao_valor > 0) {
       // Cada item usa o SEU (preço − custo) e o SEU percentual, isoladamente
-      // (nunca a soma do lucro da OS × um percentual único).
+      // (nunca a soma do lucro da OS × um percentual único). Isso vale
+      // TAMBÉM quando a config veio do fallback: a base continua sendo o
+      // preço do serviço, nunca o total da OS.
       const calc = calcularComissaoDoItem(
         {
           preco: servico.preco,
@@ -168,7 +207,7 @@ async function calcularComissaoPorServico(
           custo: (servico as any).peca_valor ?? servico.custo,
           custoConfirmado: servico.custo_confirmado,
         },
-        resultado.config,
+        config,
         comissaoCalculo,
       );
       if (calc.custoNaoConfirmado) {
@@ -177,6 +216,7 @@ async function calcularComissaoPorServico(
       }
       algumEncontrado = true;
       comissaoTotal += calc.valor;
+      if (usarFallback) itensFallbackTipoFormulario.push(servico.nome);
     }
   }
 
@@ -201,11 +241,19 @@ async function calcularComissaoPorServico(
     );
   }
 
+  if (itensFallbackTipoFormulario.length > 0) {
+    console.info(
+      "[comissao] Comissão aplicada via fallback do Tipo de Serviço do formulário (nome do serviço não casou sozinho) — considere renomear o serviço no catálogo:",
+      { funcionarioId: funcId, tipoServicoIdFallback, itens: itensFallbackTipoFormulario },
+    );
+  }
+
   return {
     total: algumEncontrado ? comissaoTotal : null,
     itensSemComissaoConfigurada,
     itensComissaoAmbigua,
     itensCustoNaoConfirmado,
+    itensFallbackTipoFormulario,
   };
 }
 
@@ -582,8 +630,13 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     const primeiroServico = formData.servicos.length > 0 ? formData.servicos[0] : null;
 
     // === SNAPSHOT DA COMISSÃO ===
-    let comissaoTipoSnapshot: string | null = null;
-    let comissaoValorSnapshot: number | null = null;
+    // tipo/valor do snapshot ficam sempre null: o motor único é item-a-item
+    // (calcularComissaoPorServico) e não existe uma única % que represente a
+    // soma quando os serviços têm percentuais diferentes. Esses dois campos
+    // não são lidos por nenhum cálculo nem exibição — só
+    // comissao_calculada_snapshot importa.
+    const comissaoTipoSnapshot: string | null = null;
+    const comissaoValorSnapshot: number | null = null;
     let comissaoCalculadaSnapshot: number | null = null;
     let tipoServicoNomeSnapshot: string | null = null;
     // Itens que ficaram sem comissão configurada ou ambíguos ao calcular a
@@ -591,6 +644,10 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     // para montar o aviso visível ao usuário logo abaixo, junto ao toast de
     // sucesso do salvamento.
     let avisoComissaoTexto: string | null = null;
+    // Aviso BRANDO (ℹ️): a comissão FOI calculada e paga, mas via fallback do
+    // Tipo de Serviço do formulário. Não muda o título do toast nem bloqueia
+    // nada — só sugere renomear o serviço no catálogo.
+    let avisoComissaoBrando: string | null = null;
 
     const funcId = tecnicoId || funcionarioId || null;
     const tsId = tipoServicoId || null;
@@ -600,15 +657,31 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       tipoServicoNomeSnapshot = tipoEncontrado?.nome || null;
     }
 
-    if (funcId && formData.servicos.length > 1) {
-      // Múltiplos serviços na OS: cada um pode ter uma comissão configurada
-      // diferente — soma a comissão de cada serviço sobre o preço dele,
-      // em vez de aplicar uma única % (a do Tipo de Serviço da Etapa 4)
-      // sobre o total da OS inteira. comissaoTipoSnapshot/comissaoValorSnapshot
-      // ficam null aqui de propósito: não existe uma única % que represente
-      // a soma quando os itens têm percentuais diferentes entre si.
+    if (funcId && formData.servicos.length > 0) {
+      // MOTOR ÚNICO de comissão do Técnico Principal (Sistema B), para OS com
+      // 1 OU N serviços: soma, serviço a serviço, a comissão configurada para
+      // o Tipo de Serviço cujo nome bate com o do item, aplicada sobre o
+      // PREÇO daquele serviço (ou preço − custo, no modo "lucro"), com a
+      // proteção de "custo R$ 0,00 não confirmado".
+      //
+      // Antes, OS com exatamente 1 serviço caía num ramo à parte que fazia
+      // (total da OS) × % do Tipo de Serviço da Etapa 4 — o que (a) usava como
+      // base o total da OS, incluindo produtos e já descontado, em vez do
+      // preço do serviço; (b) nunca aplicava a comissão sobre lucro; (c)
+      // ignorava a proteção de custo não confirmado; (d) casava pela seleção
+      // da Etapa 4 em vez do nome do serviço realmente lançado. Ver P1-c em
+      // docs/COMISSAO.md.
+      //
+      // comissaoTipoSnapshot/comissaoValorSnapshot ficam null de propósito:
+      // não existe uma única % que represente a soma quando os itens têm
+      // percentuais diferentes entre si, e esses campos não são usados em
+      // nenhum cálculo nem exibição (só comissao_calculada_snapshot é lido).
+      //
+      // tsId (Tipo de Serviço do formulário) entra só como FALLBACK para OS
+      // de 1 serviço quando o match por nome falha — nunca sobrepõe um match
+      // por nome bem-sucedido. Ver calcularComissaoPorServico.
       const resultadoComissaoPorServico = await calcularComissaoPorServico(
-        funcId, formData.servicos, formData.dispositivoMarca
+        funcId, formData.servicos, formData.dispositivoMarca, tsId
       );
       comissaoCalculadaSnapshot = resultadoComissaoPorServico.total;
 
@@ -629,23 +702,12 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         // continuarem legíveis mesmo renderizados em um parágrafo só.
         avisoComissaoTexto = `⚠️ Comissão do técnico incompleta — revise: ${motivos.join(" • ")}`;
       }
-    } else if (funcId && tsId) {
-      // Buscar comissão configurada para essa combinação
-      const { data: comissaoConfig } = await supabase
-        .from("comissoes_tipo_servico")
-        .select("comissao_tipo, comissao_valor")
-        .eq("funcionario_id", funcId)
-        .eq("tipo_servico_id", tsId)
-        .maybeSingle();
 
-      if (comissaoConfig && comissaoConfig.comissao_valor > 0) {
-        comissaoTipoSnapshot = comissaoConfig.comissao_tipo;
-        comissaoValorSnapshot = comissaoConfig.comissao_valor;
-        if (comissaoConfig.comissao_tipo === "porcentagem") {
-          comissaoCalculadaSnapshot = (total > 0 ? total : 0) * (comissaoConfig.comissao_valor / 100);
-        } else {
-          comissaoCalculadaSnapshot = comissaoConfig.comissao_valor;
-        }
+      const brandos = resultadoComissaoPorServico.itensFallbackTipoFormulario.map(nome =>
+        formatarMotivoComissao(nome, { ambiguo: false, fallbackTipoFormulario: true })
+      );
+      if (brandos.length > 0) {
+        avisoComissaoBrando = `ℹ️ ${brandos.join(" • ")}`;
       }
     }
 
@@ -898,17 +960,14 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         });
       }
 
-      toast(
-        avisoComissaoTexto
-          ? {
-              title: "Ordem atualizada — comissão precisa de revisão",
-              description: `A ordem de serviço foi atualizada com sucesso. ${avisoComissaoTexto}`,
-            }
-          : {
-              title: "Ordem atualizada",
-              description: "A ordem de serviço foi atualizada com sucesso.",
-            }
-      );
+      toast({
+        // O aviso BRANDO (fallback do tipo do formulário) NÃO deixa o título
+        // como "precisa de revisão" — a comissão foi calculada normalmente.
+        title: avisoComissaoTexto ? "Ordem atualizada — comissão precisa de revisão" : "Ordem atualizada",
+        description: ["A ordem de serviço foi atualizada com sucesso.", avisoComissaoTexto, avisoComissaoBrando]
+          .filter(Boolean)
+          .join(" "),
+      });
       window.dispatchEvent(new Event("os-salva"));
     } else {
       // Criar nova ordem
@@ -1123,17 +1182,12 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // Disparar confetti de celebração
       dispararConfetti('celebracao');
 
-      toast(
-        avisoComissaoTexto
-          ? {
-              title: "Ordem criada — comissão precisa de revisão",
-              description: `Ordem de serviço ${numeroOS} criada com sucesso. ${avisoComissaoTexto}`,
-            }
-          : {
-              title: "Ordem criada",
-              description: `Ordem de serviço ${numeroOS} criada com sucesso.`,
-            }
-      );
+      toast({
+        title: avisoComissaoTexto ? "Ordem criada — comissão precisa de revisão" : "Ordem criada",
+        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, avisoComissaoTexto, avisoComissaoBrando]
+          .filter(Boolean)
+          .join(" "),
+      });
 
       window.dispatchEvent(new Event("os-salva"));
 

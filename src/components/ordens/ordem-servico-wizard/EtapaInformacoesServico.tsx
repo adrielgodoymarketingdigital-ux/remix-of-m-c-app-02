@@ -187,9 +187,10 @@ export function EtapaInformacoesServico({
 
         {podeVerTecnicos && funcionarios.length > 0 && (
           <p className="text-xs text-muted-foreground -mt-2">
-            A comissão do Técnico Principal é calculada sobre o valor total da OS. Se mais de um técnico
-            realizou serviços diferentes nesta OS, vincule cada um ao seu serviço na etapa
-            "Serviços, Produtos e Peças" para que a comissão seja calculada sobre o valor de cada serviço.
+            A comissão do Técnico Principal é calculada serviço a serviço: cada serviço usa a comissão
+            configurada para o Tipo de Serviço correspondente, sobre o preço daquele serviço (ou preço −
+            custo, na comissão sobre lucro). Se técnicos diferentes realizaram serviços diferentes nesta
+            OS, vincule cada um ao seu serviço na etapa "Serviços, Produtos e Peças".
           </p>
         )}
 

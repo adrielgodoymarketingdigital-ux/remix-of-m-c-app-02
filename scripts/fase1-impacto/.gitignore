@@ -1,0 +1,5 @@
+# Artefatos gerados — contêm dados reais de produção (e-mails, nº de OS,
+# nomes de serviço). Não versionar.
+raw.json
+impacto-os.csv
+impacto-por-conta.csv

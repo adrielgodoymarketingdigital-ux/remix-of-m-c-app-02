@@ -116,11 +116,17 @@ export interface ResultadoMatchServico {
  * qualquer outra marca conhecida (Samsung, Motorola, Xiaomi, LG, etc.) cai
  * na família Android — aceita tanto o termo genérico "android" quanto o
  * nome da própria marca no Tipo de Serviço cadastrado.
+ *
+ * A marca de família Apple é reconhecida mesmo quando a loja grava no campo
+ * `dispositivo_marca` algo diferente de "apple" — na prática é comuníssimo o
+ * cadastro vir como "iPhone", "iphone 13", "iPad", "iOS". Qualquer um desses
+ * termos (por contains) marca a OS como família Apple.
  */
 export function palavrasChaveDaMarca(dispositivoMarca?: string | null): string[] {
   const marca = (dispositivoMarca || "").trim().toLowerCase();
   if (!marca) return [];
-  if (marca === "apple") return ["iphone", "apple", "ios", "ipad"];
+  const ehApple = ["apple", "iphone", "ipad", "ipod", "ios"].some(t => marca.includes(t));
+  if (ehApple) return ["iphone", "apple", "ios", "ipad"];
   return ["android", marca];
 }
 
@@ -144,8 +150,13 @@ export function palavrasChaveDaMarca(dispositivoMarca?: string | null): string[]
  *   2. Marca real do aparelho da OS (dispositivoMarca), via
  *      palavrasChaveDaMarca — NUNCA por tamanho de string, porque "mais
  *      longo" não tem relação nenhuma com qual aparelho é da OS.
- *   3. Se nem isso resolver (marca vazia, ou ainda ambíguo mesmo com a
- *      marca), retorna ambiguo=true em vez de aplicar um percentual no
+ *   3. Se todos os candidatos restantes resultam na MESMA comissão (mesmo
+ *      comissao_tipo e mesmo comissao_valor), aplica esse valor: qual
+ *      duplicado "ganhou" é irrelevante quando o resultado é idêntico
+ *      (ex.: tipos "TROCA DE FRONTAL", "troca de frontal" e "FRONTAL" todos
+ *      a 3% — cadastro duplicado do mesmo reparo).
+ *   4. Se nem isso resolver (marca vazia, ou ainda ambíguo com valores
+ *      diferentes), retorna ambiguo=true em vez de aplicar um percentual no
  *      chute — quem chama decide o que fazer (hoje: comissão 0 + sinalizar
  *      para revisão manual).
  *
@@ -195,11 +206,34 @@ export function encontrarComissaoPorNomeServico(
     if (compativeisComMarca.length === 1) {
       return { config: comissaoPorTipoServicoId.get(compativeisComMarca[0].id), ambiguo: false };
     }
+    // A marca estreitou o conjunto (mas não a 1): segue o desempate só com
+    // os candidatos compatíveis com a marca.
+    if (compativeisComMarca.length > 1) {
+      pool = compativeisComMarca;
+    }
   }
 
-  // Nem match exato nem a marca resolveram: não adivinha por tamanho de
-  // nome. Sinaliza como ambíguo para quem chama decidir (nunca aplicar %
-  // no chute).
+  // Desempate por valor idêntico: se TODOS os candidatos restantes têm a
+  // mesma comissão (tipo + valor), o resultado independe de qual escolher —
+  // aplica em vez de marcar ambíguo. Cobre o cadastro duplicado do mesmo
+  // reparo com nomes ligeiramente diferentes.
+  const configsPool = pool
+    .map(t => comissaoPorTipoServicoId.get(t.id))
+    .filter((c): c is ComissaoConfig => !!c);
+  if (configsPool.length === pool.length && configsPool.length > 0) {
+    const ref = configsPool[0];
+    const todasIguais = configsPool.every(
+      c => c.comissao_tipo === ref.comissao_tipo
+        && Number(c.comissao_valor) === Number(ref.comissao_valor),
+    );
+    if (todasIguais) {
+      return { config: ref, ambiguo: false };
+    }
+  }
+
+  // Nem match exato, nem a marca, nem valor idêntico resolveram: não
+  // adivinha por tamanho de nome. Sinaliza como ambíguo para quem chama
+  // decidir (nunca aplicar % no chute).
   return {
     config: undefined,
     ambiguo: true,
@@ -225,8 +259,17 @@ export function formatarMotivoComissao(
   resultado: Pick<ResultadoMatchServico, "ambiguo" | "candidatosAmbiguos"> & {
     /** modo "lucro": custo do item é R$ 0,00 e ainda não foi confirmado */
     custoNaoConfirmado?: boolean;
+    /**
+     * A comissão FOI aplicada, mas via fallback do Tipo de Serviço escolhido
+     * no formulário da OS (Etapa 4) porque o nome do serviço não casou
+     * sozinho com nenhum Tipo cadastrado. Aviso brando — não bloqueia nada.
+     */
+    fallbackTipoFormulario?: boolean;
   },
 ): string {
+  if (resultado.fallbackTipoFormulario) {
+    return `"${nomeItem}" — comissão aplicada pelo Tipo de Serviço selecionado no formulário; renomeie o serviço no catálogo para casar automaticamente e dispensar essa seleção.`;
+  }
   if (resultado.custoNaoConfirmado) {
     return `"${nomeItem}" — custo não confirmado: não é possível calcular a comissão sobre lucro deste item até confirmar o custo.`;
   }
