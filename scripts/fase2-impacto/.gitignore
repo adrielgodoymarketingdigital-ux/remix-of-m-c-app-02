@@ -1,0 +1,5 @@
+# Artefatos gerados — dados reais de produção. Não versionar.
+raw.json
+r1-snapshot-null.csv
+r2-os-tecnico-only.csv
+delta-por-conta.csv

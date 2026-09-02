@@ -25,6 +25,7 @@ import {
   encontrarComissaoPorNomeServico,
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
+import { comissaoOsDoSnapshot } from "@/lib/comissao/comissaoOsDoSnapshot";
 
 interface PerfilDesempenhoFuncionarioProps {
   funcionario: Funcionario | null;
@@ -39,28 +40,18 @@ function isOSComissionavel(os: OSFuncionario): boolean {
   return !!os.status && STATUS_COMISSIONAVEIS.includes(os.status.trim().toLowerCase());
 }
 
-function resolverComissaoOS(
-  os: OSFuncionario,
-  comissoesFallback: Record<string, { tipo: string; valor: number }>,
-): number | null {
-  if (!isOSComissionavel(os)) return 0;
-
-  // OS com múltiplos serviços lançados para o mesmo funcionário (os_tecnicos)
-  // têm uma comissão por linha — soma todas em vez de usar só o snapshot
-  // único da OS, que reflete apenas o primeiro serviço/técnico.
-  if (os.tecnicos_os && os.tecnicos_os.length > 0) {
-    return os.tecnicos_os.reduce((acc, t) => acc + (t.comissao_calculada_snapshot || 0), 0);
-  }
-
-  if (os.comissao_calculada_snapshot != null) {
-    return os.comissao_calculada_snapshot;
-  }
-
-  if (!os.total || !os.tipo_servico_id) return null;
-  const config = comissoesFallback[os.tipo_servico_id];
-  if (!config || !config.valor) return null;
-  if (config.tipo === "porcentagem") return os.total * (config.valor / 100);
-  return config.valor;
+/**
+ * Comissão da OS = SEMPRE o snapshot do Sistema B (mesma regra que o card
+ * "Comissões a Pagar" usa via comissaoOsDoSnapshot). Sem fallback de cálculo
+ * paralelo na tela: se não há snapshot, devolve null e a UI mostra "—".
+ * os.tecnicos_os já vem filtrado por funcionário em useDesempenhoFuncionario.
+ */
+function resolverComissaoOS(os: OSFuncionario): number | null {
+  return comissaoOsDoSnapshot({
+    status: os.status,
+    comissao_calculada_snapshot: os.comissao_calculada_snapshot,
+    tecnicosDoFuncionario: os.tecnicos_os ?? [],
+  });
 }
 
 function resolverNomeTipoServico(
@@ -281,7 +272,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
   const totalOS = ordensComissionaveis.length;
   const totalValor = ordensComissionaveis.reduce((acc, o) => acc + (o.total || 0), 0);
   const totalComissao = ordensComissionaveis.reduce((acc, o) => {
-    const c = resolverComissaoOS(o, comissoesTipoServico);
+    const c = resolverComissaoOS(o);
     return acc + (c || 0);
   }, 0);
 
@@ -461,7 +452,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                       </TableHeader>
                       <TableBody>
                         {ordensFiltradas.map((os) => {
-                          const comissao = resolverComissaoOS(os, comissoesTipoServico);
+                          const comissao = resolverComissaoOS(os);
                           const nomeTipo = resolverNomeTipoServico(os, tiposServico);
                           const alertasComissao = avaliarAlertasComissaoOS(os, tiposServico, comissoesTipoServico, comissaoCalculo);
                           return (
@@ -545,7 +536,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                   key: 0,
                   descricao: nomeTipo || "Serviço",
                   valorServico: osDetalhe.total,
-                  comissao: resolverComissaoOS(osDetalhe, comissoesTipoServico),
+                  comissao: resolverComissaoOS(osDetalhe),
                 }];
             const totalComissaoOS = linhas.reduce((acc, l) => acc + (l.comissao || 0), 0);
             const alertasComissaoOS = avaliarAlertasComissaoOS(osDetalhe, tiposServico, comissoesTipoServico, comissaoCalculo);

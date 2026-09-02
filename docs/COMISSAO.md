@@ -10,9 +10,19 @@
 
 ## Resumo executivo
 
-Existem **dois motores de cálculo de comissão completamente separados**, que
-**não se conciliam** e podem mostrar números diferentes para o mesmo funcionário
-no mesmo mês:
+> **Status pós-Fase 2 (2026-09-02):** os dois motores foram **conciliados para
+> a comissão de OS**. O card "Comissões a Pagar" e o "Perfil de Desempenho"
+> agora leem o MESMO valor — o snapshot do Sistema B — via o helper único
+> [`src/lib/comissao/comissaoOsDoSnapshot.ts`](../src/lib/comissao/comissaoOsDoSnapshot.ts).
+> O Sistema A (escopo/cargo) só continua responsável pela **comissão de venda
+> de produto/peça** (e pela comissão de OS de quem NÃO configurou "Comissão
+> por Tipo de Serviço"). `DashboardComissaoFuncionario.tsx` (código morto) foi
+> removido. Detalhes: P0-a, P1-a e P1-c abaixo. A seção histórica a seguir
+> descreve o estado ANTES das correções.
+
+Historicamente existiam **dois motores de cálculo de comissão completamente
+separados**, que **não se conciliavam** e podiam mostrar números diferentes
+para o mesmo funcionário no mesmo mês:
 
 | # | Nome informal | Onde é configurado | Como calcula | Onde é salvo | Onde aparece |
 |---|---|---|---|---|---|
@@ -27,12 +37,11 @@ no mesmo mês:
   marca, aviso de custo não confirmado, comissão item-a-item, faturamento×lucro)
   vivem **só no Sistema B** (a OS de 1 serviço só passou a usar o mesmo motor
   na Fase 1 — ver P1-c).
-- O card **"Comissões a Pagar"** que o dono usa para pagar a equipe é 100%
-  Sistema A. Numa loja que adotou "Comissão por Tipo de Serviço", esse card
-  frequentemente mostra **R$ 0** para os técnicos, enquanto cada "Perfil de
-  Desempenho" mostra o valor real. E vice-versa.
+- ~~O card **"Comissões a Pagar"** que o dono usa para pagar a equipe é 100%
+  Sistema A e mostra **R$ 0** para técnicos com "Comissão por Tipo de Serviço".~~
+  **Corrigido na Fase 2** — o card lê o snapshot (P0-a).
 
-Ver a lista priorizada na **Parte 5**.
+Ver a lista priorizada na **Parte 5** (itens ✅ = já corrigidos nas Fases 1 e 2).
 
 ---
 
@@ -343,41 +352,61 @@ Casos conhecidos que caem em "ambíguo" (ver
 
 Prioridade por impacto em **pagamento real de funcionário**.
 
-### 🔴 P0-a — Dois motores irreconciliáveis para comissão de OS
+### ✅ P0-a — Dois motores irreconciliáveis para comissão de OS — **CORRIGIDO na Fase 2 (2026-09-02)**
 
-- **O quê:** "Comissões a Pagar" / tabela do Dashboard de Equipe usam o Sistema A
-  (`%` do escopo × soma das OS). O "Perfil de Desempenho", aberto **da mesma
-  tela**, usa o Sistema B (soma dos snapshots item a item). Não há conciliação.
-- **Efeito:** o número que o dono usa para pagar (card "Comissões a Pagar") e o
-  detalhamento por funcionário mostram valores diferentes. Numa loja que adotou
-  "Comissão por Tipo de Serviço" sem preencher `comissao_escopo`, o card ignora
-  os técnicos (R$ 0).
-- **Arquivos:** `useComissoes.ts`, `DashboardEquipe.tsx` vs
-  `useDesempenhoFuncionario.ts`, `PerfilDesempenhoFuncionario.tsx`.
-- **Decisão de produto necessária:** qual motor é a verdade? (Recomendação:
-  Sistema B — snapshot — é o único item a item, com lucro e com trilha de
-  auditoria; o Sistema A deveria ler os snapshots para OS e ficar só com vendas.)
+- **O quê (era):** "Comissões a Pagar" / tabela do Dashboard de Equipe usavam o
+  Sistema A (`%` do escopo × soma das OS); o "Perfil de Desempenho", aberto da
+  mesma tela, usava o Sistema B (soma dos snapshots). Sem conciliação. Loja que
+  adotou "Comissão por Tipo de Serviço" sem `comissao_escopo` → card ignorava os
+  técnicos (R$ 0), Perfil mostrava o real.
+- **Correção:** helper único
+  [`comissaoOsDoSnapshot.ts`](../src/lib/comissao/comissaoOsDoSnapshot.ts) —
+  comissão de OS = **sempre** o snapshot do Sistema B:
+  - OS não entregue → 0;
+  - funcionário tem linha(s) em `os_tecnicos` na OS → Σ dessas linhas
+    (o snapshot do nível-OS é ignorado — sem dupla contagem);
+  - senão `ordens_servico.comissao_calculada_snapshot` → esse valor;
+  - senão → `null` (Perfil mostra "—", a soma trata como 0).
+  `useComissoes` / `useComissoesSerieMensal` passaram a: (a) buscar
+  `comissoes_tipo_servico` para saber quem tem config; (b) para quem TEM,
+  somar os snapshots das OS onde é Técnico Principal (mesmíssimo conjunto que o
+  Perfil, via `comissaoOsDoSnapshot`); (c) para quem NÃO tem, seguir no
+  Sistema A. `calcularComissaoSistemaA` agora devolve `{ total, parteVendas,
+  parteOS }` — a `parteOS` é substituída pelo snapshot para quem tem config; a
+  `parteVendas` continua Sistema A para todo mundo (até a Fase 3).
+- **Impacto medido (`scripts/fase2-impacto/`, jul–set/2026):** só **1 conta**
+  muda — `glaucio.reis@hotmail.com`: "Comissões a Pagar" sai de **R$ 0** para
+  **R$ 3.522,17 (jul) / R$ 2.266,40 (ago) / R$ 149,09 (set parcial)** — que é o
+  valor que o Perfil já mostrava. **Todas as outras contas: R$ 0 de mudança.**
+- **Arquivos:** novo `src/lib/comissao/comissaoOsDoSnapshot.ts`;
+  `src/hooks/useComissoes.ts`; `src/components/equipe/PerfilDesempenhoFuncionario.tsx`
+  (usa o helper, sem fallback); `src/components/equipe/DashboardEquipe.tsx`
+  (ℹ️ explicando o efeito retroativo).
+- **Testes:** [`scripts/fase2-comissao-unificada/testes-regressao.mjs`](../scripts/fase2-comissao-unificada/testes-regressao.mjs)
+  e [`scripts/fase2-impacto/`](../scripts/fase2-impacto/).
 
-### 🔴 P0-b — Comissão de venda de produto é sobre faturamento BRUTO e conta vendas apagadas
+### 🔴 P0-b — Comissão de venda de produto é sobre faturamento BRUTO (Fase 3)
 
-- **O quê:** `useComissoes.ts` e `DashboardComissaoFuncionario.tsx` somam
-  `vendas.total` **sem subtrair** `valor_desconto_manual` / `valor_desconto_cupom`
-  e **sem filtrar `deleted_at IS NULL`** (só filtram `cancelada = false`).
+- **O quê:** `useComissoes.ts` soma `vendas.total` **sem subtrair**
+  `valor_desconto_manual` / `valor_desconto_cupom`.
 - **Efeito:** funcionário recebe comissão sobre o valor cheio de vendas com
-  desconto, e sobre vendas que foram soft-deletadas.
-- **Arquivos:** `useComissoes.ts` (query `vendas`, ~linha 129 e ~276),
-  `DashboardComissaoFuncionario.tsx` (~linha 40).
+  desconto.
+- **Parcialmente tratado na Fase 2:** as queries de `vendas` do `useComissoes`
+  passaram a filtrar `deleted_at IS NULL` (vendas soft-deletadas não contam
+  mais). Falta subtrair os descontos — **escopo da Fase 3**.
+- **Arquivo:** `useComissoes.ts` (queries `vendas`). `DashboardComissaoFuncionario.tsx`
+  foi removido (era código morto).
 
-### 🟠 P1-a — "Sua Comissão do Mês" (funcionário) diverge do Dashboard do dono
+### ✅ P1-a — "Sua Comissão do Mês" (funcionário) divergia do Dashboard do dono — **RESOLVIDO na Fase 2 (removido)**
 
-- **O quê:** `DashboardComissaoFuncionario.tsx`, no ramo legado
-  (`comissao_tipo` sem `comissoes_por_cargo`), faz
-  `comissaoTotal = (vendasProdutos + vendasDispositivos + totalServicos) × %`
-  **ignorando `comissao_escopo`** — sempre "tudo". `useComissoes` respeita o
-  escopo. Também: a query `vendasAnt` não exclui `pagamento_duplo_secundario`.
-- **Efeito:** o funcionário vê uma comissão estimada maior/menor do que a que o
-  dono vê para ele, na mesma competência.
-- **Arquivo:** `DashboardComissaoFuncionario.tsx` (~linhas 101-107).
+- **O quê (era):** `DashboardComissaoFuncionario.tsx`, no ramo legado, fazia
+  `comissaoTotal = (vendas + serviços) × %` ignorando `comissao_escopo`.
+- **Descoberta na Fase 2:** o componente **não era importado nem renderizado em
+  lugar nenhum** — código morto (tinha histórico git, foi usado e removido da
+  UI). "Sua Comissão do Mês" não existia para nenhum usuário.
+- **Correção:** arquivo **deletado**. Se um dia voltar um card para o
+  funcionário, ele deve nascer lendo o snapshot (helper `comissaoOsDoSnapshot`),
+  não recalculando.
 
 ### 🟠 P1-b — Modo "Comissão sobre Lucro" só existe no Sistema B
 
@@ -447,17 +476,13 @@ Prioridade por impacto em **pagamento real de funcionário**.
   Etapa 4 não representa um serviço em particular quando há vários.
 - **Texto de UI** em `EtapaInformacoesServico.tsx` atualizado para descrever o
   cálculo serviço a serviço.
-- **Ponta solta (levar para a Fase 2):** com B, quase toda OS de 1 serviço
-  passa a ter snapshot real, então o **fallback de exibição** em
-  `resolverComissaoOS` (`PerfilDesempenhoFuncionario.tsx`, passo 3-4) quase
-  não é mais alcançado. Ainda assim, quando o snapshot fica `null` (nem nome
-  nem Tipo do formulário casaram), esse passo pode mostrar `os.total × %` do
-  `tipo_servico_id` da Etapa 4 se o técnico tiver config para aquele tipo — um
-  valor que o snapshot (base de pagamento) não tem. E `avaliarAlertasComissaoOS`
-  só reavalia "sem config / ambíguo" para OS com **2+** serviços
-  (`servicosRealizados.length < 2` → `continue`), então a OS de 1 serviço não
-  ganha o ícone ⚠️ nesses casos. Nada disso muda o valor **gravado**; é só
-  inconsistência de tela. Corrigir junto com a Fase 2.
+- **✅ Ponta solta do `resolverComissaoOS` — RESOLVIDA na Fase 2:** o fallback
+  de exibição (`os.total × config atual`) foi **removido**. `resolverComissaoOS`
+  agora delega tudo ao helper `comissaoOsDoSnapshot` — sem snapshot, mostra
+  "—". O Perfil e o card "Comissões a Pagar" passam a exibir sempre o mesmo
+  número por construção. `avaliarAlertasComissaoOS` continua só reavaliando
+  "sem config / ambíguo" para OS com 2+ serviços (o ⚠️ da OS de 1 serviço
+  segue via toast no save) — melhoria menor deixada para depois.
 
 ### 🟡 P2-a — `valor_fixo` em vendas conta linhas de `vendas`, não vendas
 
@@ -468,27 +493,31 @@ Prioridade por impacto em **pagamento real de funcionário**.
 - **Arquivo:** `useComissoes.ts` (~linha 61-64); `DashboardComissaoFuncionario.tsx`
   (`qtdVendas = (vendas||[]).length`).
 
-### 🟡 P2-b — Snapshots ficam obsoletos; Sistema A recalcula ao vivo
+### ✅ P2-b — Snapshots obsoletos vs recálculo ao vivo — **MITIGADO na Fase 2**
 
-- **O quê:** `comissao_calculada_snapshot` só é regravado ao criar/editar a OS.
-  Mudar a config depois: o Perfil segue mostrando o valor antigo (o que é
-  correto do ponto de vista "foi isso que combinamos quando fechou a OS"), mas o
-  Dashboard de Equipe recalcula tudo com o `comissao_valor` de hoje. Divergem
-  retroativamente, inclusive para meses fechados.
+- **O quê (era):** `comissao_calculada_snapshot` só é regravado ao criar/editar
+  a OS. Mudar a config depois: o Perfil mostrava o valor antigo; o Dashboard de
+  Equipe recalculava ao vivo com o `comissao_valor` de hoje → divergiam
+  retroativamente, inclusive meses fechados.
+- **Depois da Fase 2:** o Dashboard de Equipe também lê o snapshot → mudar a %
+  **não** altera mais meses passados (fica MAIS estável, não menos). Resta a
+  variação natural de P2-d (uma OS entregue/editada depois entra no mês dela) —
+  coberta pelo aviso `ℹ️` adicionado ao card "Comissões a Pagar".
 
 ### 🟡 P2-c — Filtros divergentes entre as queries
 
-| Filtro | `useComissoes` (A) | `DashboardComissaoFuncionario` (A') | `useDesempenhoFuncionario` (B) |
-|---|:--:|:--:|:--:|
-| `deleted_at IS NULL` em `ordens_servico` | ✅ | ✅ | ✅ |
-| `deleted_at IS NULL` em `vendas` | ❌ | ❌ | n/a |
-| `is_teste = false` em `ordens_servico` | ❌ | ❌ | ✅ |
-| `empresa_id` (multi-empresa) | ❌ | ❌ | ❌ |
-| exclui `pagamento_duplo_secundario` | ✅ (mês atual e anterior) | ✅ atual / ❌ anterior | n/a |
-| `nao_conta_limite` (1ª OS de onboarding) | não trata | não trata | não trata |
+| Filtro | `useComissoes` (A) | `useDesempenhoFuncionario` (B) |
+|---|:--:|:--:|
+| `deleted_at IS NULL` em `ordens_servico` | ✅ | ✅ |
+| `deleted_at IS NULL` em `vendas` | ✅ (Fase 2) | n/a |
+| `is_teste = false` em `ordens_servico` | ✅ (Fase 2) | ✅ |
+| `empresa_id` (multi-empresa) | ❌ | ❌ |
+| exclui `pagamento_duplo_secundario` | ✅ | n/a |
+| `nao_conta_limite` (1ª OS de onboarding) | não trata | não trata |
 
-- **Efeito:** OS de teste entram na comissão do dashboard mas não no Perfil;
-  filiais são misturadas em todas as telas; vendas apagadas contam (ver P0-b).
+- **Depois da Fase 2:** `useComissoes` alinhou `is_teste` e `deleted_at` (vendas)
+  com o Perfil. Resta o **`empresa_id`** — bug transversal (multi-empresa mistura
+  filiais em todas as telas de comissão), merece item próprio fora deste ciclo.
 
 ### 🟡 P2-d — "Comissões a Pagar" de um mês fechado pode mudar depois
 

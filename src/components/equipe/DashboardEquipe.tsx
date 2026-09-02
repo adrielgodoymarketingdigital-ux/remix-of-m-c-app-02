@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import {
   DollarSign, Users, TrendingUp, Eye, CalendarIcon, ChevronLeft, ChevronRight,
-  Search, SlidersHorizontal, Download, ArrowUpRight, ArrowDownRight,
+  Search, SlidersHorizontal, Download, ArrowUpRight, ArrowDownRight, Info,
 } from "lucide-react";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Button } from "@/components/ui/button";
@@ -206,7 +206,26 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Comissões a Pagar</CardTitle>
+            <div className="flex items-center gap-1.5">
+              <CardTitle className="text-sm font-medium">Comissões a Pagar</CardTitle>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Como este valor é calculado"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 text-xs leading-relaxed" align="start">
+                  Cada OS entra com a comissão calculada <strong>no momento em que foi salva</strong>
+                  {" "}(por tipo de serviço, item a item). Por isso o total de um mês anterior pode
+                  mudar se uma OS daquele período for <strong>entregue</strong> ou <strong>editada</strong>
+                  {" "}depois. O detalhamento por técnico está no botão <span className="font-medium">Perfil</span>.
+                </PopoverContent>
+              </Popover>
+            </div>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
               <DollarSign className="h-4 w-4 text-red-600 dark:text-red-300" />
             </span>
