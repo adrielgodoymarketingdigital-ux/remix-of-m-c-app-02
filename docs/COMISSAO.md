@@ -19,6 +19,21 @@
 > por Tipo de Serviço"). `DashboardComissaoFuncionario.tsx` (código morto) foi
 > removido. Detalhes: P0-a, P1-a e P1-c abaixo. A seção histórica a seguir
 > descreve o estado ANTES das correções.
+>
+> **Status pós-Fase 3 (2026-09-03):** o Sistema B ganhou um **vínculo direto
+> `servicos.tipo_servico_id`** (FK nullable → `tipos_servico`, `ON DELETE SET
+> NULL`). No cálculo da comissão de OS (`calcularComissaoPorServico` e
+> `salvarTecnicosOS`), quando o serviço de catálogo do item tem esse vínculo, o
+> Tipo é usado **DIRETO** — sem correspondência de nome, sem desempate por
+> marca, sem ambiguidade (novo `resolverComissaoDoServico` em
+> [`comissaoPorTipoServico.ts`](../src/lib/ordemServico/comissaoPorTipoServico.ts)).
+> Serviço sem vínculo mantém **exatamente** o fluxo Fase 1 (match por nome
+> B+c1+c2). Vínculo sem % para o técnico → comissão R$ 0,00 intencional (aviso
+> brando `ℹ️`, não "revise"). **Nenhuma OS existente muda de valor** com a
+> entrega — só OS novas ou re-salvas. Tela nova: catálogo "Tipos de Serviço"
+> em `/servicos` com contador de serviços vinculados e mesclagem de tipos
+> duplicados. Backfill das OS antigas afetadas = tarefa separada (dry-run
+> primeiro). Detalhes: P3-e abaixo.
 
 Historicamente existiam **dois motores de cálculo de comissão completamente
 separados**, que **não se conciliavam** e podiam mostrar números diferentes
@@ -67,6 +82,18 @@ Biblioteca pura, sem I/O. É o coração do Sistema B.
     `valor = base × (comissao_valor / 100)`.
 - `palavrasChaveDaMarca(marca)` → `["iphone","apple","ios","ipad"]` para Apple;
   `["android", <marca>]` para qualquer outra marca.
+- `resolverComissaoDoServico(nomeServico, tipoServicoIdVinculado, tiposComComissao, mapaConfig, dispositivoMarca)`
+  **(Fase 3)** → ponto de entrada único da resolução por item:
+  - `tipoServicoIdVinculado` presente (de `servicos.tipo_servico_id`) → usa esse
+    Tipo DIRETO. Config com valor > 0 → aplica; sem config / valor 0 →
+    `{ config: undefined, viaVinculoDireto: true, vinculoSemConfig: true }`
+    (comissão 0 intencional, aviso brando).
+  - ausente → delega a `encontrarComissaoPorNomeServico` (abaixo). O vínculo
+    SEMPRE vence o nome quando existir.
+- `sugerirTipoServicoPorNome(nomeServico, tipos)` **(Fase 3)** → versão "nível
+  loja" (sem funcionário, sem marca) da regra de nome, para o assistente de
+  vinculação em massa pré-preencher `servicos.tipo_servico_id` só onde o match
+  é único ou exato (nunca nos ambíguos).
 - `encontrarComissaoPorNomeServico(nomeServico, tiposComComissao, mapaConfig, dispositivoMarca)`
   → acha o "Tipo de Serviço" cujo nome casa com o nome do item:
   1. **Match bidirecional** case-insensitive: `item.includes(tipo) || tipo.includes(item)`.
@@ -195,6 +222,7 @@ implementação** — ver Parte 5, bug P1.
 | `tipos_servico` | `20260310192246` | Catálogo de "Tipos de Serviço" (por `user_id`) |
 | `comissoes_tipo_servico` (`funcionario_id`, `tipo_servico_id`, `comissao_tipo`, `comissao_valor`, `UNIQUE(func, tipo)`) | `20260310192246` | Sistema B — config por funcionário × tipo |
 | `ordens_servico.tipo_servico_id` | `20260310192246` | Tipo escolhido na Etapa 4 da OS |
+| `servicos.tipo_servico_id` (FK nullable → `tipos_servico`, `ON DELETE SET NULL`) | `20260903120000` | **Fase 3** — vínculo direto do item de catálogo ao Tipo; tem prioridade sobre o match por nome |
 | `ordens_servico.comissao_tipo_snapshot / comissao_valor_snapshot / comissao_calculada_snapshot / tipo_servico_nome_snapshot` | `20260310204135` | Sistema B — valor congelado no save da OS |
 | `os_tecnicos` (+ `comissao_*_snapshot`) | `20260410202052` | Múltiplos técnicos por OS |
 | `os_tecnicos.servico_id / servico_nome_snapshot / preco_servico_snapshot` | `20260813120000` | Vincula o técnico ao serviço específico (antes era sobre o total da OS) |
@@ -317,6 +345,13 @@ Serviço", os três números divergem. Casos típicos:
 ---
 
 ## Parte 4 — Regras de desempate / ambiguidade (Sistema B)
+
+**Passo 0 (Fase 3) — vínculo direto:** antes de qualquer regra de nome,
+`resolverComissaoDoServico` checa `servicos.tipo_servico_id` do item. Se houver
+vínculo, o Tipo é usado direto e **nada abaixo se aplica** (nem marca, nem
+ambiguidade). Sem % configurada para o técnico nesse Tipo → comissão 0
+intencional (`itensVinculoSemConfig`, aviso brando). O que segue vale só para
+itens **sem** vínculo.
 
 Implementadas em `encontrarComissaoPorNomeServico`
 ([`comissaoPorTipoServico.ts`](../src/lib/ordemServico/comissaoPorTipoServico.ts)):
@@ -537,6 +572,30 @@ Prioridade por impacto em **pagamento real de funcionário**.
 
 - Ver Parte 4. Solução é de dados (não permitir/mesclar nomes iguais) + talvez
   desempate por `tipo_servico_id` gravado na OS.
+- **Fase 3:** a tela "Tipos de Serviço" (`/servicos`) ganhou **mesclagem de
+  duplicados** — agrupa por nome normalizado (minúsculas, espaços colapsados),
+  o dono escolhe o sobrevivente e os vínculos (`comissoes_tipo_servico` com
+  tratamento do `UNIQUE(func,tipo)`, `servicos.tipo_servico_id`,
+  `ordens_servico.tipo_servico_id`) são transferidos antes de apagar. Reduz a
+  ambiguidade na origem para os itens sem vínculo direto.
+
+### 🟢 P3-e — Vínculo direto Serviço → Tipo (Fase 3) só vale para OS novas/re-salvas
+
+- **O quê:** `servicos.tipo_servico_id` passou a ter prioridade sobre o match
+  por nome em `calcularComissaoPorServico` / `salvarTecnicosOS`. Mas
+  `comissao_calculada_snapshot` continua congelado no save — OS já existentes
+  não recalculam sozinhas ao criar o vínculo.
+- **Consequência aceita:** depois que a loja vincula seus serviços (manual +
+  assistente em massa), as OS antigas afetadas precisam de um **backfill** que
+  recompute o snapshot pela mesma lógica pura (`resolverComissaoDoServico`).
+  Backfill = tarefa separada, com **dry-run + relatório** antes de aplicar,
+  escopada só às contas que vincularam algo. A lógica de cálculo já está
+  reutilizável (funções puras em `comissaoPorTipoServico.ts`); ver
+  `scripts/recalculo-comissao/` como molde.
+- **Perfil de Desempenho / alertas:** `PerfilDesempenhoFuncionario.tsx` ainda
+  reavalia "melhor esforço" via `encontrarComissaoPorNomeServico` (sem
+  considerar o vínculo). Só afeta o ícone ⚠️, não o valor pago (que é o
+  snapshot). Alinhar é melhoria menor deixada para depois.
 
 ### 🟢 P3-c — Fallback legado do Perfil sempre em faturamento
 

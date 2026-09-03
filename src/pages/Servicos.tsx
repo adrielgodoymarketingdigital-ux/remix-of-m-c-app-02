@@ -1,18 +1,24 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Wand2 } from "lucide-react";
 import { useServicos } from "@/hooks/useServicos";
+import { useTiposServico } from "@/hooks/useTiposServico";
 import { DialogCadastroServico, DadosSubmitServico } from "@/components/servicos/DialogCadastroServico";
 import { GerenciadorTiposServico } from "@/components/servicos/GerenciadorTiposServico";
+import { AssistenteVinculacaoTiposDialog } from "@/components/servicos/AssistenteVinculacaoTiposDialog";
 import { TabelaServicos } from "@/components/servicos/TabelaServicos";
 import { Servico } from "@/types/servico";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 export default function Servicos() {
   const [busca, setBusca] = useState("");
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [assistenteAberto, setAssistenteAberto] = useState(false);
+  const [soSemTipo, setSoSemTipo] = useState(false);
   const [servicoParaEditar, setServicoParaEditar] = useState<Servico | null>(null);
 
   const {
@@ -21,24 +27,37 @@ export default function Servicos() {
     criarServico,
     atualizarServico,
     excluirServico,
+    vincularTiposEmMassa,
   } = useServicos();
+  const { tiposServico } = useTiposServico();
+
+  const tipoNomePorId = useMemo(
+    () => Object.fromEntries(tiposServico.map((t) => [t.id, t.nome])) as Record<string, string>,
+    [tiposServico],
+  );
 
   const servicosFiltrados = useMemo(() => {
-    if (!busca.trim()) return servicos;
+    let lista = servicos;
+    if (soSemTipo) lista = lista.filter((s) => !s.tipo_servico_id);
+    if (busca.trim()) {
+      const termo = busca.toLowerCase().trim();
+      lista = lista.filter(
+        (servico) =>
+          servico.nome.toLowerCase().includes(termo) ||
+          servico.codigo?.toLowerCase().includes(termo)
+      );
+    }
+    return lista;
+  }, [servicos, busca, soSemTipo]);
 
-    const termo = busca.toLowerCase().trim();
-    return servicos.filter(
-      (servico) =>
-        servico.nome.toLowerCase().includes(termo) ||
-        servico.codigo?.toLowerCase().includes(termo)
-    );
-  }, [servicos, busca]);
+  const qtdSemTipo = useMemo(() => servicos.filter((s) => !s.tipo_servico_id).length, [servicos]);
 
   const handleSubmit = async (dados: DadosSubmitServico) => {
     const dadosServico = {
       ...dados,
       quantidade: dados.quantidade ?? 0,
       peca_id: dados.peca_id || null,
+      tipo_servico_id: dados.tipo_servico_id || null,
     };
 
     if (servicoParaEditar) {
@@ -76,13 +95,19 @@ export default function Servicos() {
                 Gerencie os serviços oferecidos
               </p>
             </div>
-            <Button onClick={handleNovoServico}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Serviço
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setAssistenteAberto(true)}>
+                <Wand2 className="mr-2 h-4 w-4" />
+                Vincular tipos automaticamente
+              </Button>
+              <Button onClick={handleNovoServico}>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Serviço
+              </Button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -91,6 +116,12 @@ export default function Servicos() {
                 onChange={(e) => setBusca(e.target.value)}
                 className="pl-9"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch id="so-sem-tipo" checked={soSemTipo} onCheckedChange={setSoSemTipo} />
+              <Label htmlFor="so-sem-tipo" className="text-sm text-muted-foreground cursor-pointer">
+                Somente sem tipo vinculado ({qtdSemTipo})
+              </Label>
             </div>
             <div className="text-sm text-muted-foreground">
               {servicosFiltrados.length} serviço(s) encontrado(s)
@@ -106,6 +137,7 @@ export default function Servicos() {
           ) : (
             <TabelaServicos
               servicos={servicosFiltrados}
+              tipoNomePorId={tipoNomePorId}
               onEditar={handleEditar}
               onExcluir={handleExcluir}
             />
@@ -121,6 +153,14 @@ export default function Servicos() {
         onOpenChange={setDialogAberto}
         onSubmit={handleSubmit}
         servicoParaEditar={servicoParaEditar}
+      />
+
+      <AssistenteVinculacaoTiposDialog
+        open={assistenteAberto}
+        onOpenChange={setAssistenteAberto}
+        servicos={servicos}
+        tiposServico={tiposServico}
+        onAplicar={vincularTiposEmMassa}
       />
     </AppLayout>
   );

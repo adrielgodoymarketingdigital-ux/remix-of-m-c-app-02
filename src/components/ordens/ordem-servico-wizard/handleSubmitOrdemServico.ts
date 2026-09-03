@@ -16,7 +16,7 @@ import {
   ComissaoCalculo,
   TipoServicoResumo,
   calcularComissaoDoItem,
-  encontrarComissaoPorNomeServico,
+  resolverComissaoDoServico,
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
 import { FormData, TecnicoOS } from "./tipos";
@@ -76,6 +76,11 @@ interface SalvarOrdemServicoParams {
  *   (Etapa 4) como fallback — o nome do serviço não casou sozinho com nenhum
  *   Tipo cadastrado. Não é problema de pagamento; é só um empurrão para o
  *   dono renomear o serviço no catálogo. Gera aviso BRANDO (ℹ️), não "revise".
+ * - itensVinculoSemConfig: itens cujo serviço de catálogo ESTÁ vinculado a um
+ *   Tipo de Serviço (`servicos.tipo_servico_id`), mas o técnico não tem
+ *   percentual configurado para esse Tipo. Comissão R$ 0,00 INTENCIONAL —
+ *   aviso BRANDO (ℹ️), nunca "revise": o dono vinculou de propósito e só não
+ *   configurou o quanto pagar.
  * O aviso ao salvar a OS (toast) e o indicador no Perfil de Desempenho do
  * Funcionário usam esses campos para mostrar exatamente quais itens
  * precisam de revisão manual e por quê.
@@ -86,12 +91,20 @@ interface ResultadoComissaoPorServico {
   itensComissaoAmbigua: { nome: string; candidatos: CandidatoAmbiguo[] }[];
   itensCustoNaoConfirmado: string[];
   itensFallbackTipoFormulario: string[];
+  itensVinculoSemConfig: string[];
 }
 
 /**
  * Calcula a comissão do Técnico Principal somando, serviço a serviço, a
- * comissão configurada para o tipo de serviço cujo nome bate (ver
- * encontrarComissaoPorNomeServico) com o nome do item em formData.servicos.
+ * comissão do Tipo de Serviço do item. Para cada item a resolução é (ver
+ * resolverComissaoDoServico):
+ *   1. Se o serviço de catálogo do item tem `tipo_servico_id` vinculado →
+ *      usa ESSE Tipo DIRETO (sem match de nome, sem marca, sem ambiguidade).
+ *      Sem % configurada para o técnico nesse Tipo → comissão 0 intencional
+ *      (itensVinculoSemConfig, aviso brando).
+ *   2. Sem vínculo → cai no match por nome histórico
+ *      (encontrarComissaoPorNomeServico: bidirecional + exato + marca + valor
+ *      idêntico) e, para OS de 1 serviço, no fallback do Tipo da Etapa 4.
  * Isso substitui o cálculo antigo que aplicava uma única % (a do
  * tipoServicoId selecionado na Etapa 4) sobre o TOTAL da OS — errado quando
  * a OS tem múltiplos serviços com comissões diferentes entre si.
@@ -127,7 +140,7 @@ async function calcularComissaoPorServico(
   tipoServicoIdFallback?: string | null,
 ): Promise<ResultadoComissaoPorServico> {
   if (servicos.length === 0) {
-    return { total: null, itensSemComissaoConfigurada: [], itensComissaoAmbigua: [], itensCustoNaoConfirmado: [], itensFallbackTipoFormulario: [] };
+    return { total: null, itensSemComissaoConfigurada: [], itensComissaoAmbigua: [], itensCustoNaoConfirmado: [], itensFallbackTipoFormulario: [], itensVinculoSemConfig: [] };
   }
 
   const { data: tiposServicoTodos } = await supabase
@@ -138,6 +151,24 @@ async function calcularComissaoPorServico(
     .from("comissoes_tipo_servico")
     .select("tipo_servico_id, comissao_tipo, comissao_valor")
     .eq("funcionario_id", funcId);
+
+  // Vínculo direto: serviço de catálogo → Tipo de Serviço. Tem prioridade
+  // absoluta sobre o match por nome. Buscado sempre no catálogo ATUAL (não no
+  // snapshot da OS), então re-salvar uma OS antiga já passa a considerar
+  // vínculos criados depois. Ids "manual_*" não são de catálogo.
+  const idsCatalogo = [...new Set(
+    servicos.map(s => s.id).filter((id): id is string => !!id && !id.startsWith("manual_"))
+  )];
+  const vinculoPorServicoId = new Map<string, string>();
+  if (idsCatalogo.length > 0) {
+    const { data: servicosCatalogo } = await supabase
+      .from("servicos")
+      .select("id, tipo_servico_id")
+      .in("id", idsCatalogo);
+    (servicosCatalogo || []).forEach((s: { id: string; tipo_servico_id: string | null }) => {
+      if (s.tipo_servico_id) vinculoPorServicoId.set(s.id, s.tipo_servico_id);
+    });
+  }
 
   // Sobre o que a comissão desse funcionário incide (faturamento x lucro).
   const { data: funcRow } = await supabase
@@ -169,22 +200,36 @@ async function calcularComissaoPorServico(
   const itensComissaoAmbigua: { nome: string; candidatos: CandidatoAmbiguo[] }[] = [];
   const itensCustoNaoConfirmado: string[] = [];
   const itensFallbackTipoFormulario: string[] = [];
+  const itensVinculoSemConfig: string[] = [];
 
   for (const servico of servicos) {
-    const resultado = encontrarComissaoPorNomeServico(
-      servico.nome, tiposComComissao, comissaoPorTipoServicoId, dispositivoMarca
+    const resultado = resolverComissaoDoServico(
+      servico.nome,
+      vinculoPorServicoId.get(servico.id),
+      tiposComComissao,
+      comissaoPorTipoServicoId,
+      dispositivoMarca,
     );
 
-    // Match por nome (inclui desempate por marca e por valor idêntico) tem
-    // SEMPRE prioridade. Só quando ele não resolve é que o fallback do
-    // formulário entra — e apenas se tiver comissão > 0.
-    const matchPorNomeResolveu = !!resultado.config && !resultado.ambiguo;
+    // Serviço vinculado a um Tipo, mas sem % para o técnico: comissão R$ 0,00
+    // INTENCIONAL (aviso brando ℹ️, nunca "revise"). O fallback do formulário
+    // NÃO entra aqui — o dono vinculou de propósito.
+    if (resultado.vinculoSemConfig) {
+      itensVinculoSemConfig.push(servico.nome);
+      continue;
+    }
+
+    // Vínculo direto (com config) e match por nome resolvido têm SEMPRE
+    // prioridade. Só quando nada resolve é que o fallback do formulário entra
+    // — e apenas para serviço SEM vínculo, com comissão > 0.
+    const resolveu = !!resultado.config && !resultado.ambiguo;
     const usarFallback =
-      !matchPorNomeResolveu
+      !resolveu
+      && !resultado.viaVinculoDireto
       && !!configFallbackFormulario
       && Number(configFallbackFormulario.comissao_valor) > 0;
 
-    if (!matchPorNomeResolveu && !usarFallback) {
+    if (!resolveu && !usarFallback) {
       if (resultado.ambiguo) {
         itensComissaoAmbigua.push({ nome: servico.nome, candidatos: resultado.candidatosAmbiguos || [] });
       } else {
@@ -248,12 +293,20 @@ async function calcularComissaoPorServico(
     );
   }
 
+  if (itensVinculoSemConfig.length > 0) {
+    console.info(
+      "[comissao] Item(ns) com serviço vinculado a um Tipo de Serviço, mas sem % configurada para o técnico — comissão R$ 0,00 intencional (não é 'revise'):",
+      { funcionarioId: funcId, itens: itensVinculoSemConfig },
+    );
+  }
+
   return {
     total: algumEncontrado ? comissaoTotal : null,
     itensSemComissaoConfigurada,
     itensComissaoAmbigua,
     itensCustoNaoConfirmado,
     itensFallbackTipoFormulario,
+    itensVinculoSemConfig,
   };
 }
 
@@ -307,8 +360,13 @@ async function salvarTecnicosOS(
 
   const tsId = tipoServicoId || null;
   const funcionarioIds = [...new Set(tecnicos.map(t => t.funcionario_id))];
+  // Ids de serviço de catálogo referenciados pelos técnicos (para buscar o
+  // vínculo direto servico → Tipo de Serviço). "manual_*" não é catálogo.
+  const idsCatalogoTecnicos = [...new Set(
+    tecnicos.map(t => t.servico_id).filter((id): id is string => !!id && !id.startsWith("manual_"))
+  )];
 
-  const [{ data: tiposServicoTodos }, { data: comissoesFuncionarios }, { data: funcsCalculo }] = await Promise.all([
+  const [{ data: tiposServicoTodos }, { data: comissoesFuncionarios }, { data: funcsCalculo }, { data: servicosCatalogoVinculo }] = await Promise.all([
     supabase.from("tipos_servico").select("id, nome"),
     funcionarioIds.length > 0
       ? supabase
@@ -322,7 +380,15 @@ async function salvarTecnicosOS(
           .select("id, nome, comissao_calculo")
           .in("id", funcionarioIds)
       : Promise.resolve({ data: [] as { id: string; nome: string; comissao_calculo: string | null }[] }),
+    idsCatalogoTecnicos.length > 0
+      ? supabase.from("servicos").select("id, tipo_servico_id").in("id", idsCatalogoTecnicos)
+      : Promise.resolve({ data: [] as { id: string; tipo_servico_id: string | null }[] }),
   ]);
+
+  const vinculoPorServicoId = new Map<string, string>();
+  (servicosCatalogoVinculo || []).forEach((s: { id: string; tipo_servico_id: string | null }) => {
+    if (s.tipo_servico_id) vinculoPorServicoId.set(s.id, s.tipo_servico_id);
+  });
 
   const comissaoPorFuncionarioETipo = new Map<string, ComissaoConfig>();
   (comissoesFuncionarios || []).forEach((c: any) => {
@@ -358,11 +424,24 @@ async function salvarTecnicosOS(
       const comissaoPorTipoServicoId = new Map(
         tiposComComissaoDoTecnico.map(t => [t.id, comissaoPorFuncionarioETipo.get(`${tec.funcionario_id}:${t.id}`)!])
       );
-      const resultadoMatch = encontrarComissaoPorNomeServico(
-        servicoVinculado.nome, tiposComComissaoDoTecnico, comissaoPorTipoServicoId, dispositivoMarca
+      // Vínculo direto (servicos.tipo_servico_id) tem prioridade sobre o nome.
+      const resultadoMatch = resolverComissaoDoServico(
+        servicoVinculado.nome,
+        vinculoPorServicoId.get(servicoVinculado.id),
+        tiposComComissaoDoTecnico,
+        comissaoPorTipoServicoId,
+        dispositivoMarca,
       );
       comissaoConfig = resultadoMatch.config;
-      if (resultadoMatch.ambiguo) {
+      if (resultadoMatch.vinculoSemConfig) {
+        // Serviço vinculado a um Tipo, mas este técnico não tem % para ele:
+        // comissão R$ 0,00 intencional — não é ambiguidade, não gera aviso
+        // "revise" (mesmo tratamento do Técnico Principal).
+        console.info(
+          "[comissao] Técnico por serviço: serviço vinculado a um Tipo sem % configurada para o técnico — comissão R$ 0,00 intencional:",
+          { funcionarioId: tec.funcionario_id, servico: servicoVinculado.nome },
+        );
+      } else if (resultadoMatch.ambiguo) {
         console.warn(
           "[comissao] Comissão ambígua para técnico vinculado a serviço específico — não aplicada (revisão manual necessária):",
           { funcionarioId: tec.funcionario_id, servico: servicoVinculado.nome, dispositivoMarca, candidatos: resultadoMatch.candidatosAmbiguos },
@@ -703,9 +782,14 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         avisoComissaoTexto = `⚠️ Comissão do técnico incompleta — revise: ${motivos.join(" • ")}`;
       }
 
-      const brandos = resultadoComissaoPorServico.itensFallbackTipoFormulario.map(nome =>
-        formatarMotivoComissao(nome, { ambiguo: false, fallbackTipoFormulario: true })
-      );
+      const brandos = [
+        ...resultadoComissaoPorServico.itensFallbackTipoFormulario.map(nome =>
+          formatarMotivoComissao(nome, { ambiguo: false, fallbackTipoFormulario: true })
+        ),
+        ...resultadoComissaoPorServico.itensVinculoSemConfig.map(nome =>
+          formatarMotivoComissao(nome, { ambiguo: false, vinculoSemConfig: true })
+        ),
+      ];
       if (brandos.length > 0) {
         avisoComissaoBrando = `ℹ️ ${brandos.join(" • ")}`;
       }

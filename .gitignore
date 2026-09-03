@@ -29,10 +29,31 @@ dist-ssr
 supabase/functions/.env
 supabase/functions/.env.*
 
-# Dados exportados do Supabase para scripts de recálculo/auditoria
-# (contêm dados reais de clientes/financeiro — nunca versionar)
-scripts/recalculo-comissao/*.csv
-scripts/recalculo-comissao/output/
+# ===========================================================================
+# REDE DE SEGURANÇA — nada aqui deve ir para o repositório público.
+# Contexto: em 2026-09 um `git add .` sem revisão commitou dumps com dados
+# reais de cliente. Os padrões abaixo evitam a reincidência.
+# ===========================================================================
+
+# Dumps / exports ad-hoc (Supabase, planilhas, auditoria). NUNCA versionar —
+# contêm dados reais de clientes/financeiro.
+/*.csv
+scripts/**/*.csv
+comissoes_export.csv
+os_export.csv
+
+# Scripts locais de investigação / recálculo / migração pontual (não são
+# código de produto; frequentemente têm e-mails e IDs reais hardcoded).
+scripts/recalculo-comissao/
+scripts/investigacao-cliente-compartilhado/
+scripts/_local/
+/_scratch/
+
+# Arquivo de contexto local do Codex (mesmo conteúdo do CLAUDE.md).
+AGENTS.md
+
+# Temporários da CLI do Supabase.
+supabase/.temp/
 
 # Android / Bubblewrap
 android.keystore

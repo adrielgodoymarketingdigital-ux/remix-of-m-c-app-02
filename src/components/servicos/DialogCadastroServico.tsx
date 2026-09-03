@@ -25,9 +25,13 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Check, Plus, X } from "lucide-react";
 import { Servico } from "@/types/servico";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTiposServico } from "@/hooks/useTiposServico";
+
+const NENHUM_TIPO = "__nenhum__";
 
 const formSchema = z.object({
   codigo: z.string().optional(),
@@ -35,6 +39,7 @@ const formSchema = z.object({
   custo: z.coerce.number().min(0, "Custo deve ser maior ou igual a zero"),
   preco: z.coerce.number().min(0, "Preço deve ser maior ou igual a zero"),
   peca_id: z.string().optional(),
+  tipo_servico_id: z.string().optional(),
   tempo_medio_estimado: z.string().optional(),
 }).refine((data) => data.preco >= data.custo, {
   message: "Preço de venda deve ser maior ou igual ao custo",
@@ -61,6 +66,9 @@ export function DialogCadastroServico({
   servicoParaEditar,
 }: DialogCadastroServicoProps) {
   const [pecas, setPecas] = useState<Array<{ id: string; nome: string }>>([]);
+  const { tiposServico, criar: criarTipoServico } = useTiposServico();
+  const [criandoTipo, setCriandoTipo] = useState(false);
+  const [novoTipoNome, setNovoTipoNome] = useState("");
 
   // Tempo médio estimado é sempre persistido em horas decimais
   // (tempo_medio_estimado_horas), mas o usuário pode digitar em minutos ou
@@ -75,6 +83,7 @@ export function DialogCadastroServico({
       custo: 0,
       preco: 0,
       peca_id: undefined,
+      tipo_servico_id: undefined,
       tempo_medio_estimado: "",
     },
   });
@@ -108,6 +117,8 @@ export function DialogCadastroServico({
   };
 
   useEffect(() => {
+    setCriandoTipo(false);
+    setNovoTipoNome("");
     if (servicoParaEditar) {
       form.reset({
         codigo: servicoParaEditar.codigo || "",
@@ -115,6 +126,7 @@ export function DialogCadastroServico({
         custo: servicoParaEditar.custo,
         preco: servicoParaEditar.preco,
         peca_id: servicoParaEditar.peca_id || undefined,
+        tipo_servico_id: servicoParaEditar.tipo_servico_id || undefined,
         tempo_medio_estimado: definirUnidadeEValor(servicoParaEditar.tempo_medio_estimado_horas),
       });
     } else {
@@ -125,10 +137,22 @@ export function DialogCadastroServico({
         custo: 0,
         preco: 0,
         peca_id: undefined,
+        tipo_servico_id: undefined,
         tempo_medio_estimado: "",
       });
     }
   }, [servicoParaEditar, form]);
+
+  const handleCriarTipo = async () => {
+    const nome = novoTipoNome.trim();
+    if (!nome) return;
+    const novo = await criarTipoServico(nome);
+    if (novo) {
+      form.setValue("tipo_servico_id", novo.id);
+      setCriandoTipo(false);
+      setNovoTipoNome("");
+    }
+  };
 
   useEffect(() => {
     const carregarPecas = async () => {
@@ -172,6 +196,10 @@ export function DialogCadastroServico({
     const { tempo_medio_estimado, ...resto } = data;
     await onSubmit({
       ...resto,
+      tipo_servico_id:
+        resto.tipo_servico_id && resto.tipo_servico_id !== NENHUM_TIPO
+          ? resto.tipo_servico_id
+          : undefined,
       tempo_medio_estimado_horas: tempoMedioEstimadoHoras,
     });
     form.reset();
@@ -242,6 +270,77 @@ export function DialogCadastroServico({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="tipo_servico_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Serviço (para comissão) — Opcional</FormLabel>
+                  {criandoTipo ? (
+                    <div className="flex gap-2">
+                      <Input
+                        autoFocus
+                        placeholder="Nome do novo tipo de serviço"
+                        value={novoTipoNome}
+                        onChange={(e) => setNovoTipoNome(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); handleCriarTipo(); }
+                        }}
+                      />
+                      <Button type="button" size="icon" className="shrink-0" onClick={handleCriarTipo} disabled={!novoTipoNome.trim()}>
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="shrink-0"
+                        onClick={() => { setCriandoTipo(false); setNovoTipoNome(""); }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 items-center">
+                      <Select
+                        onValueChange={(value) => field.onChange(value === NENHUM_TIPO ? undefined : value)}
+                        value={field.value || NENHUM_TIPO}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Selecione um tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NENHUM_TIPO}>— Nenhum —</SelectItem>
+                          {tiposServico.map((tipo) => (
+                            <SelectItem key={tipo.id} value={tipo.id}>
+                              {tipo.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="shrink-0"
+                        title="Criar novo tipo de serviço"
+                        onClick={() => setCriandoTipo(true)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Quando vinculado, a comissão do técnico para este serviço usa o percentual deste
+                    Tipo direto, sem depender do nome. Sem vínculo, o cálculo cai na correspondência por nome.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

@@ -249,6 +249,111 @@ export function encontrarComissaoPorNomeServico(
 }
 
 /**
+ * Resultado de `resolverComissaoDoServico`: além do que
+ * `encontrarComissaoPorNomeServico` já devolve, sinaliza se a decisão veio do
+ * VÍNCULO DIRETO (`servicos.tipo_servico_id`) e, nesse caminho, se o
+ * funcionário não tem % configurada para o Tipo vinculado.
+ */
+export interface ResultadoResolucaoComissao extends ResultadoMatchServico {
+  /** true quando o Tipo saiu de `servicos.tipo_servico_id`, não do nome */
+  viaVinculoDireto: boolean;
+  /**
+   * Só no caminho de vínculo direto: o serviço ESTÁ vinculado a um Tipo, mas o
+   * funcionário não tem linha em `comissoes_tipo_servico` para esse Tipo (ou o
+   * valor é 0). Comissão do item = R$ 0,00 INTENCIONAL — não é "revise", é o
+   * dono tendo vinculado sem configurar o percentual daquele técnico.
+   */
+  vinculoSemConfig: boolean;
+}
+
+/**
+ * Resolve a comissão de UM item de serviço priorizando o VÍNCULO DIRETO
+ * (`servicos.tipo_servico_id`) sobre a correspondência por nome.
+ *
+ * - `tipoServicoIdVinculado` presente → usa esse Tipo DIRETO: sem match de
+ *   nome, sem desempate por marca, sem ambiguidade. Se o funcionário tem
+ *   config com valor > 0 para o Tipo, devolve ela; senão devolve
+ *   `config: undefined` + `vinculoSemConfig: true` (comissão 0 intencional).
+ * - `tipoServicoIdVinculado` ausente (serviço manual, serviço sem vínculo, ou
+ *   dado legado) → delega a `encontrarComissaoPorNomeServico` (fluxo histórico
+ *   Fase 1 B+c1+c2: match bidirecional + exato + marca + valor idêntico).
+ *
+ * O vínculo SEMPRE vence o nome quando existir — mesmo que o nome bateria com
+ * um Tipo diferente.
+ */
+export function resolverComissaoDoServico(
+  nomeServico: string,
+  tipoServicoIdVinculado: string | null | undefined,
+  tiposComComissao: TipoServicoResumo[],
+  comissaoPorTipoServicoId: Map<string, ComissaoConfig>,
+  dispositivoMarca?: string | null,
+): ResultadoResolucaoComissao {
+  if (tipoServicoIdVinculado) {
+    const config = comissaoPorTipoServicoId.get(tipoServicoIdVinculado);
+    if (config && Number(config.comissao_valor) > 0) {
+      return { config, ambiguo: false, viaVinculoDireto: true, vinculoSemConfig: false };
+    }
+    return { config: undefined, ambiguo: false, viaVinculoDireto: true, vinculoSemConfig: true };
+  }
+  const r = encontrarComissaoPorNomeServico(
+    nomeServico, tiposComComissao, comissaoPorTipoServicoId, dispositivoMarca,
+  );
+  return { ...r, viaVinculoDireto: false, vinculoSemConfig: false };
+}
+
+/**
+ * Normaliza um nome para comparação: minúsculas, sem espaços nas pontas e com
+ * sequências de espaços internas colapsadas em um só. Base tanto da sugestão
+ * automática de Tipo (assistente de vinculação em massa) quanto do
+ * agrupamento de Tipos "iguais/parecidos" da ferramenta de mesclagem.
+ */
+export function normalizarNomeParaComparacao(nome: string): string {
+  return (nome || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export interface SugestaoTipoPorNome {
+  /** id do Tipo sugerido, ou null quando não há candidato ou é ambíguo */
+  tipoId: string | null;
+  /** true quando MAIS DE UM Tipo casa e o nome exato não desempata */
+  ambiguo: boolean;
+  candidatos: TipoServicoResumo[];
+}
+
+/**
+ * Versão "nível loja" (sem funcionário, sem marca de aparelho) da mesma regra
+ * de casamento de nome de `encontrarComissaoPorNomeServico`, para o assistente
+ * de vinculação em massa sugerir `servicos.tipo_servico_id`:
+ *
+ *   1. match bidirecional case-insensitive (item contém tipo OU tipo contém item)
+ *   2. 0 candidatos → { tipoId: null }
+ *   3. 1 candidato → sugere ele
+ *   4. >1 candidato → se exatamente 1 tem nome idêntico, sugere esse; senão
+ *      ambiguo=true e NÃO sugere nada (fica para revisão manual).
+ *
+ * Nunca desempata por tamanho de string.
+ */
+export function sugerirTipoServicoPorNome(
+  nomeServico: string,
+  tipos: TipoServicoResumo[],
+): SugestaoTipoPorNome {
+  const alvo = normalizarNomeParaComparacao(nomeServico);
+  if (!alvo) return { tipoId: null, ambiguo: false, candidatos: [] };
+
+  const candidatos = tipos.filter(t => {
+    const n = normalizarNomeParaComparacao(t.nome);
+    return n.length > 0 && (alvo.includes(n) || n.includes(alvo));
+  });
+
+  if (candidatos.length === 0) return { tipoId: null, ambiguo: false, candidatos: [] };
+  if (candidatos.length === 1) return { tipoId: candidatos[0].id, ambiguo: false, candidatos };
+
+  const exatos = candidatos.filter(t => normalizarNomeParaComparacao(t.nome) === alvo);
+  if (exatos.length === 1) return { tipoId: exatos[0].id, ambiguo: false, candidatos };
+
+  return { tipoId: null, ambiguo: true, candidatos };
+}
+
+/**
  * Explica em texto curto, para exibição na interface, por que um item não
  * entrou na soma da comissão — mesma frase tanto no aviso ao salvar a OS
  * quanto no indicador do Perfil de Desempenho, para não haver duas
@@ -265,8 +370,17 @@ export function formatarMotivoComissao(
      * sozinho com nenhum Tipo cadastrado. Aviso brando — não bloqueia nada.
      */
     fallbackTipoFormulario?: boolean;
+    /**
+     * O serviço está VINCULADO a um Tipo (`servicos.tipo_servico_id`), mas o
+     * técnico não tem % configurada para esse Tipo. Comissão R$ 0,00
+     * intencional — aviso brando, não "revise".
+     */
+    vinculoSemConfig?: boolean;
   },
 ): string {
+  if (resultado.vinculoSemConfig) {
+    return `"${nomeItem}" — vinculado a um Tipo de Serviço, mas sem percentual configurado para este técnico; comissão R$ 0,00 (ajuste em Equipe se quiser pagar por este tipo).`;
+  }
   if (resultado.fallbackTipoFormulario) {
     return `"${nomeItem}" — comissão aplicada pelo Tipo de Serviço selecionado no formulário; renomeie o serviço no catálogo para casar automaticamente e dispensar essa seleção.`;
   }

@@ -28,16 +28,20 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TabelaServicosProps {
   servicos: Servico[];
+  tipoNomePorId?: Record<string, string>;
   onEditar: (servico: Servico) => void;
   onExcluir: (id: string) => void;
 }
 
 export function TabelaServicos({
   servicos,
+  tipoNomePorId = {},
   onEditar,
   onExcluir,
 }: TabelaServicosProps) {
   const isMobile = useIsMobile();
+  const nomeTipo = (servico: Servico) =>
+    servico.tipo_servico_id ? tipoNomePorId[servico.tipo_servico_id] : undefined;
 
   if (servicos.length === 0) {
     return (
@@ -63,9 +67,14 @@ export function TabelaServicos({
                   {servico.codigo || "-"}
                 </p>
               </div>
-              {servico.peca_nome && (
-                <Badge variant="secondary" className="text-xs">{servico.peca_nome}</Badge>
-              )}
+              <div className="flex flex-col items-end gap-1">
+                {servico.peca_nome && (
+                  <Badge variant="secondary" className="text-xs">{servico.peca_nome}</Badge>
+                )}
+                {nomeTipo(servico) && (
+                  <Badge variant="outline" className="text-xs">Tipo: {nomeTipo(servico)}</Badge>
+                )}
+              </div>
             </div>
             
             <div className="grid grid-cols-3 gap-2 text-sm mb-3">
@@ -133,6 +142,7 @@ export function TabelaServicos({
           <TableRow>
             <TableHead>Código</TableHead>
             <TableHead>Nome</TableHead>
+            <TableHead>Tipo de Serviço</TableHead>
             <TableHead>Peça Vinculada</TableHead>
             <TableHead className="text-right">Custo</TableHead>
             <TableHead className="text-right">Preço</TableHead>
@@ -147,6 +157,13 @@ export function TabelaServicos({
                 {servico.codigo || "-"}
               </TableCell>
               <TableCell>{servico.nome}</TableCell>
+              <TableCell>
+                {nomeTipo(servico) ? (
+                  <Badge variant="outline">{nomeTipo(servico)}</Badge>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
               <TableCell>
                 {servico.peca_nome ? (
                   <Badge variant="secondary">{servico.peca_nome}</Badge>

@@ -140,6 +140,55 @@ export const useServicos = () => {
     }
   };
 
+  /**
+   * Vincula, em lote, serviços do catálogo a Tipos de Serviço
+   * (servicos.tipo_servico_id) — usado pelo assistente de vinculação em massa.
+   * Agrupa por tipo para fazer 1 UPDATE por Tipo em vez de 1 por serviço.
+   * Só grava os pares recebidos; a UI já filtra fora serviços já vinculados
+   * e os casos ambíguos.
+   */
+  const vincularTiposEmMassa = async (
+    pares: { servicoId: string; tipoServicoId: string }[]
+  ): Promise<number> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+      const userId = (isFuncionario && podeSincronizarServicos && lojaUserId) ? lojaUserId : user.id;
+
+      const porTipo = new Map<string, string[]>();
+      for (const p of pares) {
+        if (!p.servicoId || !p.tipoServicoId) continue;
+        const lista = porTipo.get(p.tipoServicoId) || [];
+        lista.push(p.servicoId);
+        porTipo.set(p.tipoServicoId, lista);
+      }
+
+      let atualizados = 0;
+      for (const [tipoServicoId, servicoIds] of porTipo) {
+        const { error } = await supabase
+          .from("servicos")
+          .update({ tipo_servico_id: tipoServicoId })
+          .in("id", servicoIds)
+          .eq("user_id", userId);
+        if (error) throw error;
+        atualizados += servicoIds.length;
+      }
+
+      toast.success(
+        atualizados === 1
+          ? "1 serviço vinculado a um tipo."
+          : `${atualizados} serviços vinculados a tipos.`
+      );
+      await carregarServicos();
+      return atualizados;
+    } catch (error) {
+      console.error("Erro ao vincular tipos em massa:", error);
+      toast.error("Erro ao vincular serviços aos tipos");
+      await carregarServicos();
+      return 0;
+    }
+  };
+
   const excluirServico = async (id: string) => {
     try {
       const {
@@ -255,5 +304,6 @@ export const useServicos = () => {
     criarServico,
     atualizarServico,
     excluirServico,
+    vincularTiposEmMassa,
   };
 };

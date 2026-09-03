@@ -3652,6 +3652,7 @@ export type Database = {
           peca_id: string | null
           preco: number | null
           quantidade: number
+          tipo_servico_id: string | null
           user_id: string
         }
         Insert: {
@@ -3665,6 +3666,7 @@ export type Database = {
           peca_id?: string | null
           preco?: number | null
           quantidade?: number
+          tipo_servico_id?: string | null
           user_id: string
         }
         Update: {
@@ -3678,6 +3680,7 @@ export type Database = {
           peca_id?: string | null
           preco?: number | null
           quantidade?: number
+          tipo_servico_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -3686,6 +3689,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servicos_tipo_servico_id_fkey"
+            columns: ["tipo_servico_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_servico"
             referencedColumns: ["id"]
           },
           {
