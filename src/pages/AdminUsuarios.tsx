@@ -15,6 +15,7 @@ import { NotificacoesAdmin } from "@/components/admin/NotificacoesAdmin";
 import { DialogBloquearUsuario } from "@/components/admin/DialogBloquearUsuario";
 import { DialogDeletarUsuario } from "@/components/admin/DialogDeletarUsuario";
 import { DialogConcederAcesso } from "@/components/admin/DialogConcederAcesso";
+import { LiberacoesUsuariosPanel } from "@/components/admin/LiberacoesUsuariosPanel";
 import { 
   Users, 
   UserCheck, 
@@ -621,7 +622,7 @@ export default function AdminUsuarios() {
           {/* TABS */}
           <Tabs value={abaAtiva} onValueChange={setAbaAtiva}>
             <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-              <TabsList className="grid w-max md:w-full grid-cols-7 min-w-[600px]">
+              <TabsList className="grid w-max md:w-full grid-cols-8 min-w-[680px]">
                 <TabsTrigger value="todos" className="text-[10px] md:text-xs px-2">
                   Todos ({usuariosFiltrados.length})
                 </TabsTrigger>
@@ -642,6 +643,9 @@ export default function AdminUsuarios() {
                 </TabsTrigger>
                 <TabsTrigger value="funil" className="text-[10px] md:text-xs text-violet-600 px-2">
                   📊 Funil
+                </TabsTrigger>
+                <TabsTrigger value="liberacoes" className="text-[10px] md:text-xs text-green-600 px-2">
+                  🔓 Liberações
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -756,6 +760,10 @@ export default function AdminUsuarios() {
 
             <TabsContent value="funil" className="mt-4">
               <FunilConversaoCompleto />
+            </TabsContent>
+
+            <TabsContent value="liberacoes" className="mt-4">
+              <LiberacoesUsuariosPanel />
             </TabsContent>
 
           </Tabs>

@@ -134,6 +134,7 @@ export type Database = {
           data_proxima_cobranca: string | null
           free_trial_ends_at: string | null
           id: string
+          liberacao_temp_id: string | null
           modulos_extras: Json | null
           motivo_cancelamento: string | null
           pagarme_card_id: string | null
@@ -171,6 +172,7 @@ export type Database = {
           data_proxima_cobranca?: string | null
           free_trial_ends_at?: string | null
           id?: string
+          liberacao_temp_id?: string | null
           modulos_extras?: Json | null
           motivo_cancelamento?: string | null
           pagarme_card_id?: string | null
@@ -208,6 +210,7 @@ export type Database = {
           data_proxima_cobranca?: string | null
           free_trial_ends_at?: string | null
           id?: string
+          liberacao_temp_id?: string | null
           modulos_extras?: Json | null
           motivo_cancelamento?: string | null
           pagarme_card_id?: string | null
@@ -2019,6 +2022,81 @@ export type Database = {
           plano_tipo?: string | null
           processado?: boolean | null
           tipo?: string
+        }
+        Relationships: []
+      }
+      liberacoes_temporarias: {
+        Row: {
+          admin_id: string
+          bloqueado_admin_anterior: boolean | null
+          bloqueado_tipo_anterior: string | null
+          concedido_em: string
+          created_at: string
+          data_fim_anterior: string | null
+          data_proxima_cobranca_anterior: string | null
+          duracao_texto: string | null
+          email: string | null
+          era_pagante_real: boolean
+          estado: string
+          expira_em: string
+          id: string
+          motivo: string | null
+          plano_anterior: string | null
+          plano_concedido: string
+          revertido_em: string | null
+          revertido_por: string | null
+          status_anterior: string | null
+          status_concedido: string
+          trial_with_card_anterior: boolean | null
+          user_id: string
+        }
+        Insert: {
+          admin_id: string
+          bloqueado_admin_anterior?: boolean | null
+          bloqueado_tipo_anterior?: string | null
+          concedido_em?: string
+          created_at?: string
+          data_fim_anterior?: string | null
+          data_proxima_cobranca_anterior?: string | null
+          duracao_texto?: string | null
+          email?: string | null
+          era_pagante_real?: boolean
+          estado?: string
+          expira_em: string
+          id?: string
+          motivo?: string | null
+          plano_anterior?: string | null
+          plano_concedido: string
+          revertido_em?: string | null
+          revertido_por?: string | null
+          status_anterior?: string | null
+          status_concedido: string
+          trial_with_card_anterior?: boolean | null
+          user_id: string
+        }
+        Update: {
+          admin_id?: string
+          bloqueado_admin_anterior?: boolean | null
+          bloqueado_tipo_anterior?: string | null
+          concedido_em?: string
+          created_at?: string
+          data_fim_anterior?: string | null
+          data_proxima_cobranca_anterior?: string | null
+          duracao_texto?: string | null
+          email?: string | null
+          era_pagante_real?: boolean
+          estado?: string
+          expira_em?: string
+          id?: string
+          motivo?: string | null
+          plano_anterior?: string | null
+          plano_concedido?: string
+          revertido_em?: string | null
+          revertido_por?: string | null
+          status_anterior?: string | null
+          status_concedido?: string
+          trial_with_card_anterior?: boolean | null
+          user_id?: string
         }
         Relationships: []
       }
