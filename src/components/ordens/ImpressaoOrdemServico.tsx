@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { AvariasOS } from "@/types/ordem-servico";
@@ -25,6 +25,21 @@ const CONFIG_80MM_PADRAO: Layout80mmConfig = {
   mostrar_custos_adicionais: true,
 };
 
+// Escolha de formato POR IMPRESSÃO (A4 x 80mm), lembrada entre impressões de
+// OS. Chave dedicada: NÃO compartilha com o formato dos recibos de venda/PDV
+// (SeletorFormatoPapelDialog usa "ultimo_formato_papel_impressao"). A OS só
+// suporta 'a4' | '80mm' — 58mm/personalizado não se aplicam aqui.
+const CHAVE_FORMATO_OS = "ultimo_formato_papel_os";
+
+function lerFormatoOSSalvo(): 'a4' | '80mm' | null {
+  try {
+    const v = localStorage.getItem(CHAVE_FORMATO_OS);
+    return v === '80mm' || v === 'a4' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 interface ImpressaoOrdemServicoProps {
   ordem: OrdemServico;
   configuracaoLoja?: ConfiguracaoLoja;
@@ -44,7 +59,24 @@ export const ImpressaoOrdemServico = ({
     ...configuracaoLoja?.layout_os_config,
   };
 
-  const is80mm = layoutConfig.formato_papel === '80mm';
+  // Formato escolhido para ESTA impressão. Prioridade: última escolha salva
+  // (localStorage, chave dedicada) → formato configurado pela loja
+  // (layout_os_config.formato_papel) → 'a4'. Se o usuário não tocar nos
+  // botões do modal, o resultado é idêntico ao comportamento anterior.
+  const [formatoEscolhido, setFormatoEscolhido] = useState<'a4' | '80mm'>(
+    () => lerFormatoOSSalvo() ?? (layoutConfig.formato_papel === '80mm' ? '80mm' : 'a4'),
+  );
+  const is80mm = formatoEscolhido === '80mm';
+
+  const escolherFormato = (f: 'a4' | '80mm') => {
+    setFormatoEscolhido(f);
+    try {
+      localStorage.setItem(CHAVE_FORMATO_OS, f);
+    } catch {
+      /* ignore — modo privado / storage indisponível */
+    }
+  };
+
   const c80: Layout80mmConfig = {
     ...CONFIG_80MM_PADRAO,
     ...layoutConfig.config_80mm,
@@ -76,7 +108,7 @@ export const ImpressaoOrdemServico = ({
     if (!portalEl) return;
     document.body.appendChild(portalEl);
 
-    const is80mmFormat = layoutConfig.formato_papel === '80mm';
+    const is80mmFormat = is80mm;
     if (is80mmFormat) {
       document.body.classList.add('print-80mm');
     }
@@ -104,7 +136,7 @@ export const ImpressaoOrdemServico = ({
       document.body.classList.remove('print-duas-os-horizontal');
       pageStyleEl?.remove();
     };
-  }, [portalEl, layoutConfig.formato_papel, layoutConfig.duas_os_por_folha, layoutConfig.duas_os_orientacao, is80mm]);
+  }, [portalEl, formatoEscolhido, is80mm, layoutConfig.duas_os_por_folha, layoutConfig.duas_os_orientacao]);
 
   // Detect mobile browsers (Android or iOS)
   const isAndroid = /android/i.test(navigator.userAgent);
@@ -144,7 +176,7 @@ export const ImpressaoOrdemServico = ({
         } catch { /* manter src original se falhar ou expirar */ }
       }));
     }
-    const is80mmFormat = layoutConfig.formato_papel === '80mm';
+    const is80mmFormat = is80mm;
     const isHorizontalMode = !is80mmFormat && layoutConfig.duas_os_por_folha && layoutConfig.duas_os_orientacao === 'horizontal';
 
     // Extract CSS custom properties from :root (needed for hsl(var(--...)) references)
@@ -555,12 +587,38 @@ export const ImpressaoOrdemServico = ({
     <>
       {/* Print buttons - visible only on screen */}
       <div className="print-trigger-container">
-        <button onClick={handlePrint} className="print-trigger-button">
-          Imprimir Agora
-        </button>
-        <button onClick={onFecharImpressao} className="print-close-button">
-          {isStandalone ? "Voltar" : "Cancelar"}
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", minWidth: "240px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 600, opacity: 0.7 }}>
+              Formato de impressão
+            </span>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              {(["a4", "80mm"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => escolherFormato(f)}
+                  className="print-trigger-button"
+                  style={
+                    formatoEscolhido === f
+                      ? { flex: 1 }
+                      : { flex: 1, background: "hsl(var(--secondary))", color: "hsl(var(--secondary-foreground))" }
+                  }
+                >
+                  {f === "a4" ? "A4" : "80mm"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <button onClick={handlePrint} className="print-trigger-button" style={{ flex: 1 }}>
+              Imprimir Agora
+            </button>
+            <button onClick={onFecharImpressao} className="print-close-button">
+              {isStandalone ? "Voltar" : "Cancelar"}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 80mm: use dedicated receipt-style component */}
