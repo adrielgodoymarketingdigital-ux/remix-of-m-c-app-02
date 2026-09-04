@@ -577,11 +577,17 @@ All colors MUST be HSL.
 }
 
 /* Duas OS por folha A4 — base
-   Sem margem na folha (@page margin: 0).
-   Vertical (portrait): 210×297mm. 2 slots + 1mm divider → cada slot 104.5mm × 297mm.
-     Scale = 104.5 / 194 ≈ 0.539 → conteúdo de 194mm cabe exatamente no slot.
-   Horizontal (landscape): 297×210mm. 2 slots + 1mm divider → cada slot 148mm × 210mm.
-     Scale = 148 / 194 ≈ 0.763 → conteúdo de 194mm cabe exatamente no slot.
+   Margem de segurança de 8mm nas 4 bordas (@page margin: 8mm, os mesmos 8mm já
+   validados em produção no A4 de 1 OS) — impressoras reais não imprimem
+   borda-a-borda; sem essa margem o conteúdo é cortado nas bordas físicas da
+   folha (confirmado em impressão física: início de palavra cortado à esquerda).
+   Os números abaixo (e os das regras @media print logo adiante, via CSS custom
+   properties) vêm de getDuasOSGeometria() em src/lib/paper-size-utils.ts —
+   qualquer mudança de margem/geometria deve ser feita lá primeiro.
+   Vertical (portrait): área útil 194×281mm (210×297 menos 8mm x2). 2 slots +
+     1mm divisor → cada slot 96.5mm × 281mm. Scale = 96.5/194 ≈ 0.4974.
+   Horizontal (landscape): área útil 281×194mm (297×210 menos 8mm x2). 2 slots +
+     1mm divisor → cada slot 140mm × 194mm. Scale = 140/194 ≈ 0.7216.
 */
 .impressao-duas-os-wrapper {
   display: flex;
@@ -599,7 +605,7 @@ All colors MUST be HSL.
 
 .impressao-duas-os-slot > * {
   transform-origin: top left;
-  transform: scale(0.539);
+  transform: scale(0.4974);
   width: 194mm !important;
   max-width: 194mm !important;
   position: absolute;
@@ -607,28 +613,28 @@ All colors MUST be HSL.
   left: 0;
 }
 
-/* Vertical (portrait): folha em pé 210×297mm sem margem */
+/* Vertical (portrait): área útil 194×281mm dentro da folha 210×297mm */
 .impressao-duas-os-vertical {
-  width: 210mm;
+  width: 194mm;
 }
 
 .impressao-duas-os-vertical .impressao-duas-os-slot {
-  width: 104.5mm;
-  height: 297mm;
+  width: 96.5mm;
+  height: 281mm;
 }
 
-/* Horizontal (landscape): folha deitada 297×210mm sem margem */
+/* Horizontal (landscape): área útil 281×194mm dentro da folha 297×210mm */
 .impressao-duas-os-horizontal {
-  width: 297mm;
+  width: 281mm;
 }
 
 .impressao-duas-os-horizontal .impressao-duas-os-slot {
-  width: 148mm;
-  height: 210mm;
+  width: 140mm;
+  height: 194mm;
 }
 
 .impressao-duas-os-horizontal .impressao-duas-os-slot > * {
-  transform: scale(0.763);
+  transform: scale(0.7216);
 }
 
 /* Linha de corte vertical (entre as duas OS) */
@@ -643,11 +649,11 @@ All colors MUST be HSL.
 }
 
 .impressao-duas-os-vertical .impressao-duas-os-corte {
-  height: 297mm;
+  height: 281mm;
 }
 
 .impressao-duas-os-horizontal .impressao-duas-os-corte {
-  height: 210mm;
+  height: 194mm;
 }
 
 .impressao-duas-os-corte-label {
@@ -683,47 +689,48 @@ All colors MUST be HSL.
     left: 0 !important;
   }
 
-  /* Vertical (portrait) A4: 210×297mm — cada slot ocupa metade da largura */
+  /* Vertical (portrait) A4 — geometria injetada como CSS custom property por
+     print-page-duas-os (ver useEffect em ImpressaoOrdemServico.tsx); os
+     valores literais no fallback do var() são só rede de segurança e devem
+     bater com getDuasOSGeometria('vertical'). */
   .impressao-duas-os-vertical {
-    width: 210mm !important;
+    width: var(--duas-os-largura-mm, 194mm) !important;
   }
 
   .impressao-duas-os-vertical .impressao-duas-os-slot {
-    width: 104.5mm !important;
-    height: 297mm !important;
+    width: var(--duas-os-slot-largura-mm, 96.5mm) !important;
+    height: var(--duas-os-altura-mm, 281mm) !important;
   }
 
-  /* Scale = 104.5 / 194 ≈ 0.539 — já definido fora do @media, mas garantimos aqui */
   .impressao-duas-os-vertical .impressao-duas-os-slot > * {
-    transform: scale(0.539) !important;
+    transform: scale(var(--duas-os-scale, 0.4974)) !important;
     width: 194mm !important;
     max-width: 194mm !important;
   }
 
   .impressao-duas-os-vertical .impressao-duas-os-corte {
-    height: 297mm !important;
+    height: var(--duas-os-altura-mm, 281mm) !important;
     border-left: 1pt dashed #aaa !important;
   }
 
-  /* Horizontal (landscape) A4: 297×210mm — cada slot ocupa metade da largura */
+  /* Horizontal (landscape) A4 — mesma fonte de verdade, geometria('horizontal') */
   .impressao-duas-os-horizontal {
-    width: 297mm !important;
+    width: var(--duas-os-largura-mm, 281mm) !important;
   }
 
   .impressao-duas-os-horizontal .impressao-duas-os-slot {
-    width: 148mm !important;
-    height: 210mm !important;
+    width: var(--duas-os-slot-largura-mm, 140mm) !important;
+    height: var(--duas-os-altura-mm, 194mm) !important;
   }
 
-  /* Scale = 148 / 194 ≈ 0.763 — já definido fora do @media, mas garantimos aqui */
   .impressao-duas-os-horizontal .impressao-duas-os-slot > * {
-    transform: scale(0.763) !important;
+    transform: scale(var(--duas-os-scale, 0.7216)) !important;
     width: 194mm !important;
     max-width: 194mm !important;
   }
 
   .impressao-duas-os-horizontal .impressao-duas-os-corte {
-    height: 210mm !important;
+    height: var(--duas-os-altura-mm, 194mm) !important;
     border-left: 1pt dashed #aaa !important;
   }
 
@@ -732,7 +739,7 @@ All colors MUST be HSL.
   }
 
   body.print-duas-os-horizontal #print-root {
-    width: 297mm !important;
+    width: var(--duas-os-largura-mm, 281mm) !important;
   }
 
   /* Fontes ampliadas para modo 2 OS por folha (compensa a escala 0.5 e melhora legibilidade) */

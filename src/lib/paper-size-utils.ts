@@ -201,6 +201,56 @@ ${getCupom80mmOSBaseCSS()}
   `;
 }
 
+// Margem de segurança do layout "2 OS por folha" (A4). Antes era `@page { margin: 0 }`
+// com o conteúdo encostado literalmente na borda física da folha — a maioria das
+// impressoras não imprime borda-a-borda de verdade (existe uma faixa não-imprimível
+// de hardware, tipicamente 3-6mm, às vezes mais no lado de alimentação do papel), e
+// o que cai nela é cortado pelo driver/impressora. Confirmado em impressão física:
+// início das palavras cortado na coluna esquerda.
+//
+// Reaproveita os mesmos 8mm já usados (e já validados em produção) no @page do A4
+// de 1 OS por folha (index.css). Bônus: 210mm - 2×8mm = 194mm, a mesma largura de
+// conteúdo já usada em todo o resto do layout da OS.
+export const DUAS_OS_MARGEM_MM = 8;
+const DUAS_OS_DIVISOR_MM = 1;
+const DUAS_OS_CONTEUDO_LARGURA_MM = 194;
+
+export interface DuasOSGeometria {
+  /** Largura da folha física A4 na orientação (210 ou 297mm). */
+  paginaLarguraMm: number;
+  /** Altura da folha física A4 na orientação (297 ou 210mm). */
+  paginaAlturaMm: number;
+  /** Largura útil já descontada a margem de segurança nos dois lados. */
+  areaLarguraMm: number;
+  /** Altura útil já descontada a margem de segurança em cima e embaixo. */
+  areaAlturaMm: number;
+  /** Largura de cada uma das duas colunas (área útil menos o divisor, /2). */
+  slotLarguraMm: number;
+  /** Altura de cada coluna — igual à altura útil da página. */
+  slotAlturaMm: number;
+  /** Fator de escala pra o conteúdo de 194mm caber exatamente na coluna. */
+  scale: number;
+}
+
+/** Geometria do layout "2 OS por folha" com a margem de segurança já aplicada. */
+export function getDuasOSGeometria(orientacao: "vertical" | "horizontal"): DuasOSGeometria {
+  const paginaLarguraMm = orientacao === "horizontal" ? 297 : 210;
+  const paginaAlturaMm = orientacao === "horizontal" ? 210 : 297;
+  const areaLarguraMm = paginaLarguraMm - 2 * DUAS_OS_MARGEM_MM;
+  const areaAlturaMm = paginaAlturaMm - 2 * DUAS_OS_MARGEM_MM;
+  const slotLarguraMm = (areaLarguraMm - DUAS_OS_DIVISOR_MM) / 2;
+  const scale = slotLarguraMm / DUAS_OS_CONTEUDO_LARGURA_MM;
+  return {
+    paginaLarguraMm,
+    paginaAlturaMm,
+    areaLarguraMm,
+    areaAlturaMm,
+    slotLarguraMm,
+    slotAlturaMm: areaAlturaMm,
+    scale,
+  };
+}
+
 /**
  * Generates thermal print CSS styles.
  */

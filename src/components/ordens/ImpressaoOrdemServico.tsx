@@ -12,6 +12,8 @@ import {
   getCupom80mmOSPrintDocCSS,
   resolverAlturaCupom80mm,
   CUPOM_80MM_ALTURA_FALLBACK_MM,
+  getDuasOSGeometria,
+  DUAS_OS_MARGEM_MM,
 } from "@/lib/paper-size-utils";
 
 // Converte <img> externas (logo) para data URI base64 dentro do HTML serializado,
@@ -318,14 +320,25 @@ export const ImpressaoOrdemServico = ({
       document.body.classList.add('print-duas-os-horizontal');
     }
 
-    // Injetar @page sem margem para duas OS (o conteúdo já é dimensionado para a folha inteira)
+    // Injetar @page com margem de segurança pra duas OS (evita cortar conteúdo nas
+    // bordas físicas da folha — impressoras reais não imprimem borda-a-borda) +
+    // as variáveis CSS que index.css consome pra dimensionar as colunas de acordo.
     let pageStyleEl: HTMLStyleElement | null = null;
     if (isDuasOS) {
+      const geo = getDuasOSGeometria(isHorizontal ? 'horizontal' : 'vertical');
       pageStyleEl = document.createElement('style');
       pageStyleEl.id = 'print-page-duas-os';
-      pageStyleEl.textContent = isHorizontal
-        ? '@media print { @page { size: A4 landscape; margin: 0; } }'
-        : '@media print { @page { size: A4 portrait; margin: 0; } }';
+      pageStyleEl.textContent = `
+        @media print {
+          @page { size: A4 ${isHorizontal ? 'landscape' : 'portrait'}; margin: ${DUAS_OS_MARGEM_MM}mm; }
+          :root {
+            --duas-os-largura-mm: ${geo.areaLarguraMm}mm;
+            --duas-os-altura-mm: ${geo.areaAlturaMm}mm;
+            --duas-os-slot-largura-mm: ${geo.slotLarguraMm}mm;
+            --duas-os-scale: ${geo.scale};
+          }
+        }
+      `;
       document.head.appendChild(pageStyleEl);
     }
 
@@ -359,6 +372,10 @@ export const ImpressaoOrdemServico = ({
     }
     // handlePrintAndroid trata só A4 agora (80mm vai por print80mm()).
     const isHorizontalMode = layoutConfig.duas_os_por_folha && layoutConfig.duas_os_orientacao === 'horizontal';
+    // Geometria de duas-OS com a margem de segurança já aplicada (mesma fonte de
+    // verdade usada na injeção do desktop e em index.css via CSS vars).
+    const geoDuasOsVertical = getDuasOSGeometria('vertical');
+    const geoDuasOsHorizontal = getDuasOSGeometria('horizontal');
 
     const cssVars = extractRootCssVars();
 
@@ -547,21 +564,23 @@ export const ImpressaoOrdemServico = ({
     .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info { font-size: 8pt !important; }
     .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-sm { font-size: 9pt !important; }
     .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-xs { font-size: 7pt !important; }
-    ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : '@page { size: A4 portrait; margin: 0; }'}
+    ${isHorizontalMode
+      ? `@page { size: A4 landscape; margin: ${DUAS_OS_MARGEM_MM}mm; }`
+      : `@page { size: A4 portrait; margin: ${DUAS_OS_MARGEM_MM}mm; }`}
     @media print {
       * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; height: auto !important; -webkit-text-size-adjust: none !important; }
       .impressao-duas-os-wrapper { page-break-inside: avoid !important; break-inside: avoid !important; }
       .impressao-duas-os-slot { overflow: hidden !important; position: relative !important; }
       .impressao-duas-os-slot > * { transform-origin: top left; width: 194mm !important; max-width: 194mm !important; position: absolute !important; top: 0 !important; left: 0 !important; }
-      .impressao-duas-os-vertical { width: 210mm !important; height: 297mm !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-slot { width: 104.5mm !important; height: 297mm !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-slot > * { transform: scale(0.539) !important; }
-      .impressao-duas-os-vertical .impressao-duas-os-corte { width: 1mm !important; height: 297mm !important; }
-      .impressao-duas-os-horizontal { width: 297mm !important; height: 210mm !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: 148mm !important; height: 210mm !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(0.763) !important; }
-      .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 1mm !important; height: 210mm !important; }
+      .impressao-duas-os-vertical { width: ${geoDuasOsVertical.areaLarguraMm}mm !important; height: ${geoDuasOsVertical.areaAlturaMm}mm !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-slot { width: ${geoDuasOsVertical.slotLarguraMm}mm !important; height: ${geoDuasOsVertical.slotAlturaMm}mm !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-slot > * { transform: scale(${geoDuasOsVertical.scale}) !important; }
+      .impressao-duas-os-vertical .impressao-duas-os-corte { width: 1mm !important; height: ${geoDuasOsVertical.areaAlturaMm}mm !important; }
+      .impressao-duas-os-horizontal { width: ${geoDuasOsHorizontal.areaLarguraMm}mm !important; height: ${geoDuasOsHorizontal.areaAlturaMm}mm !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-slot { width: ${geoDuasOsHorizontal.slotLarguraMm}mm !important; height: ${geoDuasOsHorizontal.slotAlturaMm}mm !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-slot > * { transform: scale(${geoDuasOsHorizontal.scale}) !important; }
+      .impressao-duas-os-horizontal .impressao-duas-os-corte { width: 1mm !important; height: ${geoDuasOsHorizontal.areaAlturaMm}mm !important; }
     }
   </style>
 </head>
