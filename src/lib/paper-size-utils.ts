@@ -94,14 +94,26 @@ export function getCupom80mmOSBaseCSS(): string {
 
 /**
  * CSS completo do DOCUMENTO ISOLADO de impressão 80mm da OS.
- * = page-level (@page 80mm auto, sem margem) + reset + base .cupom-* +
+ * = page-level (@page 80mm fixo, sem margem) + reset + base .cupom-* +
  *   fallback para as classes utilitárias que SilhuetaComAvarias usa
  *   (Tailwind não existe no documento isolado).
  * Nenhuma regra do index.css é herdada aqui — este é o único @page.
+ *
+ * Altura FIXA (400mm) em vez de "auto": `size: 80mm auto` mistura um
+ * comprimento com a palavra-chave `auto`, o que NÃO existe na gramática
+ * formal da propriedade `size` do @page (W3C CSS Paged Media Module Level 3
+ * define `size = <length>{1,2} | auto | ...` — `auto` só é válido sozinho).
+ * Isso faz o comportamento variar por navegador/contexto: em "Salvar como
+ * PDF" no Chrome (sem impressora física) a declaração inteira pode ser
+ * descartada, caindo no papel padrão (A4) — exatamente o sintoma original.
+ * Numa impressora térmica real de bobina contínua, quem decide onde cortar
+ * é o driver/hardware (mídia "Roll Paper"/"80mm x Continuous"), não o valor
+ * de altura do @page — então uma altura fixa generosa não piora a impressão
+ * física real e resolve o comportamento imprevisível no preview/PDF.
  */
 export function getCupom80mmOSPrintDocCSS(): string {
   return `
-    @page { size: 80mm auto; margin: 0; }
+    @page { size: 80mm 400mm; margin: 0; }
     html, body { margin: 0; padding: 0; background: #fff; }
     body { width: 80mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
