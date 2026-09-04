@@ -92,28 +92,68 @@ export function getCupom80mmOSBaseCSS(): string {
   `;
 }
 
+// `size: 80mm auto` mistura um comprimento com a palavra-chave `auto`, o que
+// NÃO existe na gramática formal da propriedade `size` do @page (W3C CSS
+// Paged Media Module Level 3 define `size = <length>{1,2} | auto | ...` —
+// `auto` só é válido sozinho). Isso faz o comportamento variar por
+// navegador/contexto: em "Salvar como PDF" no Chrome (sem impressora física)
+// a declaração inteira é descartada, caindo no papel padrão (Letter/A4) —
+// confirmado empiricamente via `chrome --print-to-pdf` (MediaBox virou
+// 612x792pt = Letter). Por isso o @page usa sempre um valor NUMÉRICO de
+// altura — medido a partir do conteúdo real (ver resolverAlturaCupom80mm),
+// com um valor fixo só como rede de segurança quando a medição falha.
+export const CUPOM_80MM_ALTURA_FALLBACK_MM = 400;
+const CUPOM_80MM_ALTURA_MIN_MM = 30;
+const CUPOM_80MM_ALTURA_MAX_MM = 500;
+const CUPOM_80MM_ALTURA_MARGEM_MM = 10;
+
+// Constante fixa da spec do CSS: 1px CSS = 1/96 de polegada, SEMPRE — não
+// depende do DPI real da tela, de devicePixelRatio nem do zoom do navegador.
+// É por isso que unidades absolutas (mm/in/pt) são consistentes entre tela e
+// impressão: as duas passam pela mesma referência fixa.
+const CSS_PX_POR_MM = 96 / 25.4;
+
+/** Converte px CSS (getBoundingClientRect/offsetHeight) para mm. */
+export function pxParaMm(px: number): number {
+  return px / CSS_PX_POR_MM;
+}
+
+/**
+ * Resolve a altura (mm) do @page do cupom 80mm a partir da altura (px) do
+ * .cupom-80mm-container já renderizado. Valida contra [MIN,MAX] e soma a
+ * margem de segurança; fora da faixa — medição falhou, retornou 0/NaN, ou um
+ * valor absurdamente grande/pequeno — usa o fallback fixo. O piso (MIN) é tão
+ * importante quanto o teto (MAX): um valor medido pequeno demais arriscaria
+ * CORTAR conteúdo real numa impressora física, o que é pior que desperdiçar
+ * papel.
+ */
+export function resolverAlturaCupom80mm(
+  alturaMedidaPx: number | null | undefined,
+): { alturaMm: number; usouFallback: boolean } {
+  const medidaMm = typeof alturaMedidaPx === "number" ? pxParaMm(alturaMedidaPx) : NaN;
+  if (
+    Number.isFinite(medidaMm) &&
+    medidaMm >= CUPOM_80MM_ALTURA_MIN_MM &&
+    medidaMm <= CUPOM_80MM_ALTURA_MAX_MM
+  ) {
+    return {
+      alturaMm: Math.min(medidaMm + CUPOM_80MM_ALTURA_MARGEM_MM, CUPOM_80MM_ALTURA_MAX_MM),
+      usouFallback: false,
+    };
+  }
+  return { alturaMm: CUPOM_80MM_ALTURA_FALLBACK_MM, usouFallback: true };
+}
+
 /**
  * CSS completo do DOCUMENTO ISOLADO de impressão 80mm da OS.
- * = page-level (@page 80mm fixo, sem margem) + reset + base .cupom-* +
+ * = page-level (@page 80mm x alturaMm, sem margem) + reset + base .cupom-* +
  *   fallback para as classes utilitárias que SilhuetaComAvarias usa
  *   (Tailwind não existe no documento isolado).
  * Nenhuma regra do index.css é herdada aqui — este é o único @page.
- *
- * Altura FIXA (400mm) em vez de "auto": `size: 80mm auto` mistura um
- * comprimento com a palavra-chave `auto`, o que NÃO existe na gramática
- * formal da propriedade `size` do @page (W3C CSS Paged Media Module Level 3
- * define `size = <length>{1,2} | auto | ...` — `auto` só é válido sozinho).
- * Isso faz o comportamento variar por navegador/contexto: em "Salvar como
- * PDF" no Chrome (sem impressora física) a declaração inteira pode ser
- * descartada, caindo no papel padrão (A4) — exatamente o sintoma original.
- * Numa impressora térmica real de bobina contínua, quem decide onde cortar
- * é o driver/hardware (mídia "Roll Paper"/"80mm x Continuous"), não o valor
- * de altura do @page — então uma altura fixa generosa não piora a impressão
- * física real e resolve o comportamento imprevisível no preview/PDF.
  */
-export function getCupom80mmOSPrintDocCSS(): string {
+export function getCupom80mmOSPrintDocCSS(alturaMm: number = CUPOM_80MM_ALTURA_FALLBACK_MM): string {
   return `
-    @page { size: 80mm 400mm; margin: 0; }
+    @page { size: 80mm ${alturaMm}mm; margin: 0; }
     html, body { margin: 0; padding: 0; background: #fff; }
     body { width: 80mm; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

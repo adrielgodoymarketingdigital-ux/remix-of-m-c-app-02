@@ -7,7 +7,12 @@ import { obterTermoGarantia, LAYOUT_PADRAO } from "@/lib/termo-garantia-utils";
 import { ImpressaoCupom80mm } from "./ImpressaoCupom80mm";
 import { ImpressaoA4Padrao } from "./ImpressaoA4Padrao";
 import { ImpressaoA4Tech } from "./ImpressaoA4Tech";
-import { getCupom80mmOSBaseCSS, getCupom80mmOSPrintDocCSS } from "@/lib/paper-size-utils";
+import {
+  getCupom80mmOSBaseCSS,
+  getCupom80mmOSPrintDocCSS,
+  resolverAlturaCupom80mm,
+  CUPOM_80MM_ALTURA_FALLBACK_MM,
+} from "@/lib/paper-size-utils";
 
 // Converte <img> externas (logo) para data URI base64 dentro do HTML serializado,
 // evitando bloqueio de CORS no documento isolado. Timeout de 4s por imagem.
@@ -44,6 +49,121 @@ function extractRootCssVars(): string {
   } catch {
     return '';
   }
+}
+
+// Monta o documento isolado do cupom 80mm. Usado duas vezes por print80mm():
+// 1) sem script (documento de PROVA, só pra medir a altura real renderizada);
+// 2) com script (documento FINAL, com a altura já calculada, que efetivamente
+// imprime). Mesma função nas duas chamadas — garante que o que foi medido e o
+// que imprime têm exatamente a mesma forma (sem divergência tela-vs-impressão).
+function buildCupom80mmDoc(
+  numeroOS: string | number,
+  cssVars: string,
+  contentHtml: string,
+  alturaMm: number,
+  incluirScriptDeImpressao: boolean,
+): string {
+  const script = incluirScriptDeImpressao
+    ? `
+  <script>
+    (function() {
+      var printed = false;
+      function doPrint() {
+        if (printed) return;
+        printed = true;
+        window.__printed = true;
+        window.focus();
+        window.print();
+        window.onafterprint = function() {
+          try {
+            var p = window.parent;
+            if (p && typeof p.__osPrint80mmDone === 'function') p.__osPrint80mmDone();
+            p.document.getElementById('print-iframe-android')?.remove();
+          } catch (e) {}
+        };
+      }
+      var images = document.querySelectorAll('img');
+      if (images.length === 0) {
+        setTimeout(doPrint, 300);
+      } else {
+        var promises = Array.from(images).map(function(img) {
+          if (img.complete) return Promise.resolve();
+          return new Promise(function(resolve) {
+            img.onload = resolve;
+            img.onerror = function() { img.style.display = 'none'; resolve(); };
+          });
+        });
+        Promise.all(promises).then(function() { setTimeout(doPrint, 300); });
+      }
+      setTimeout(doPrint, 4000);
+    })();
+  </script>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>OS #${numeroOS}</title>
+  <style>
+    ${cssVars}
+    ${getCupom80mmOSPrintDocCSS(alturaMm)}
+  </style>
+</head>
+<body>
+  <div id="print-root">${contentHtml}</div>${script}
+</body>
+</html>`;
+}
+
+// Mede a altura real (px) do .cupom-80mm-container dentro de um documento
+// IDÊNTICO em forma ao que vai imprimir (mesmo buildCupom80mmDoc), carregado
+// num <iframe> oculto descartável — elimina qualquer divergência entre o
+// preview em tela e o documento de impressão. Sem script de auto-print (senão
+// dispararia uma impressão indesejada durante a medição). Nunca rejeita: em
+// caso de timeout/erro, resolve null e quem chama decide o fallback.
+function medirAlturaCupom80mmPx(htmlDocProva: string): Promise<number | null> {
+  return new Promise((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe-medicao-80mm';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '1px';
+    iframe.style.height = '1px';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    iframe.style.border = '0';
+
+    let resolvido = false;
+    const finalizar = (valor: number | null) => {
+      if (resolvido) return;
+      resolvido = true;
+      clearTimeout(timeoutId);
+      iframe.remove();
+      resolve(valor);
+    };
+
+    // Rede de segurança: se onload/rAF nunca disparar, não trava a impressão —
+    // segue com o fallback fixo (resolverAlturaCupom80mm trata null como falha).
+    const timeoutId = setTimeout(() => finalizar(null), 2000);
+
+    iframe.onload = () => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        try {
+          const el = iframe.contentDocument?.querySelector('.cupom-80mm-container');
+          const altura = el ? el.getBoundingClientRect().height : null;
+          finalizar(altura && altura > 0 ? altura : null);
+        } catch {
+          finalizar(null);
+        }
+      }));
+    };
+
+    document.body.appendChild(iframe);
+    iframe.srcdoc = htmlDocProva;
+  });
 }
 
 // Ciclo de vida do <iframe> oculto usado para imprimir um documento isolado
@@ -519,6 +639,14 @@ export const ImpressaoOrdemServico = ({
 
   // Impressão 80mm — documento ISOLADO para todos os dispositivos (desktop e PWA).
   // Nada do index.css é herdado: o único @page é o do getCupom80mmOSPrintDocCSS().
+  //
+  // Altura do @page calculada em duas fases (em vez de um valor fixo genérico,
+  // que desperdiçaria papel de bobina numa impressora térmica real):
+  //   1) monta um documento de PROVA (sem script de impressão) com a altura de
+  //      fallback, carrega num iframe descartável e mede a altura real
+  //      renderizada do .cupom-80mm-container;
+  //   2) usa essa medida (com margem de segurança) pra montar o documento
+  //      FINAL, que é o que efetivamente imprime.
   const print80mm = async () => {
     if (!portalEl) return;
 
@@ -528,54 +656,21 @@ export const ImpressaoOrdemServico = ({
     let contentHtml = contentEl.outerHTML;
     contentHtml = await inlineImagesAsBase64(contentEl, contentHtml);
 
-    const htmlDoc = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>OS #${ordem.numero_os}</title>
-  <style>
-    ${extractRootCssVars()}
-    ${getCupom80mmOSPrintDocCSS()}
-  </style>
-</head>
-<body>
-  <div id="print-root">${contentHtml}</div>
-  <script>
-    (function() {
-      var printed = false;
-      function doPrint() {
-        if (printed) return;
-        printed = true;
-        window.__printed = true;
-        window.focus();
-        window.print();
-        window.onafterprint = function() {
-          try {
-            var p = window.parent;
-            if (p && typeof p.__osPrint80mmDone === 'function') p.__osPrint80mmDone();
-            p.document.getElementById('print-iframe-android')?.remove();
-          } catch (e) {}
-        };
-      }
-      var images = document.querySelectorAll('img');
-      if (images.length === 0) {
-        setTimeout(doPrint, 300);
-      } else {
-        var promises = Array.from(images).map(function(img) {
-          if (img.complete) return Promise.resolve();
-          return new Promise(function(resolve) {
-            img.onload = resolve;
-            img.onerror = function() { img.style.display = 'none'; resolve(); };
-          });
-        });
-        Promise.all(promises).then(function() { setTimeout(doPrint, 300); });
-      }
-      setTimeout(doPrint, 4000);
-    })();
-  </script>
-</body>
-</html>`;
+    const cssVars = extractRootCssVars();
+    const numeroOS = ordem.numero_os;
+
+    const docProva = buildCupom80mmDoc(numeroOS, cssVars, contentHtml, CUPOM_80MM_ALTURA_FALLBACK_MM, false);
+    const alturaMedidaPx = await medirAlturaCupom80mmPx(docProva);
+
+    const { alturaMm, usouFallback } = resolverAlturaCupom80mm(alturaMedidaPx);
+    if (usouFallback) {
+      console.warn(
+        '[ImpressaoOrdemServico] Não foi possível medir a altura do cupom 80mm com confiança — usando altura fixa de segurança.',
+        { alturaMedidaPx, alturaMmFallback: alturaMm },
+      );
+    }
+
+    const htmlDoc = buildCupom80mmDoc(numeroOS, cssVars, contentHtml, alturaMm, true);
 
     // Desktop non-PWA: fechar o preview após imprimir, igual ao fluxo A4. O
     // afterprint dispara na janela do iframe; o script interno chama este hook
