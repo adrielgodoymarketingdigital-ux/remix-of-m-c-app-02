@@ -7,6 +7,88 @@ import { obterTermoGarantia, LAYOUT_PADRAO } from "@/lib/termo-garantia-utils";
 import { ImpressaoCupom80mm } from "./ImpressaoCupom80mm";
 import { ImpressaoA4Padrao } from "./ImpressaoA4Padrao";
 import { ImpressaoA4Tech } from "./ImpressaoA4Tech";
+import { getCupom80mmOSBaseCSS, getCupom80mmOSPrintDocCSS } from "@/lib/paper-size-utils";
+
+// Converte <img> externas (logo) para data URI base64 dentro do HTML serializado,
+// evitando bloqueio de CORS no documento isolado. Timeout de 4s por imagem.
+async function inlineImagesAsBase64(contentEl: Element, html: string): Promise<string> {
+  let out = html;
+  const imgs = Array.from(contentEl.querySelectorAll('img'));
+  await Promise.all(imgs.map(async (img) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(img.src, { mode: 'cors', signal: controller.signal });
+      clearTimeout(timeoutId);
+      const blob = await res.blob();
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      out = out.replace(img.src, b64);
+    } catch { /* manter src original se falhar ou expirar */ }
+  }));
+  return out;
+}
+
+// Copia as CSS custom properties do :root para uma string ":root { ... }" —
+// necessário porque as silhuetas usam fill="hsl(var(--muted))" etc.
+function extractRootCssVars(): string {
+  try {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const varNames = ['--background','--foreground','--primary','--primary-foreground','--secondary','--secondary-foreground','--muted','--muted-foreground','--accent','--accent-foreground','--border','--input','--ring','--radius'];
+    const vars = varNames.map(v => `${v}: ${rootStyles.getPropertyValue(v)};`).join('\n');
+    return `:root { ${vars} }`;
+  } catch {
+    return '';
+  }
+}
+
+// Ciclo de vida do <iframe> oculto usado para imprimir um documento isolado
+// (srcdoc). Extraído de handlePrintAndroid para ser reaproveitado por print80mm.
+// window.open()+Blob é cronicamente instável no Chrome Android — o iframe com
+// srcdoc carrega no mesmo processo e iframe.contentWindow.print() é reconhecido.
+function printViaIframe(htmlDoc: string, isIOS: boolean) {
+  document.getElementById('print-iframe-android')?.remove();
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'print-iframe-android';
+  iframe.style.position = 'fixed';
+  // iOS Safari não calcula layout de iframe 0x0 (área imprimível vazia → página
+  // em branco). Damos tamanho real mas fora da viewport visível.
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '1px';
+  iframe.style.height = '1px';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+
+  // O script embutido no htmlDoc chama window.print() após as imagens
+  // carregarem (fallback 4s). No iOS o script interno às vezes não dispara a
+  // partir de srcdoc — reforçamos daqui após 2 rAF (garante 1 frame pintado),
+  // checando __printed para não competir com o doPrint() interno.
+  iframe.onload = () => {
+    if (isIOS) {
+      const reforcarPrint = () => {
+        const win = iframe.contentWindow as (Window & { __printed?: boolean }) | null;
+        if (!win || win.__printed) return;
+        try {
+          win.focus();
+          win.print();
+        } catch { /* ignore — script interno cobre o fallback */ }
+      };
+      setTimeout(() => {
+        requestAnimationFrame(() => requestAnimationFrame(reforcarPrint));
+      }, 1000);
+    }
+  };
+
+  iframe.srcdoc = htmlDoc;
+}
 
 const CONFIG_80MM_PADRAO: Layout80mmConfig = {
   mostrar_logo: true,
@@ -108,12 +190,9 @@ export const ImpressaoOrdemServico = ({
     if (!portalEl) return;
     document.body.appendChild(portalEl);
 
-    const is80mmFormat = is80mm;
-    if (is80mmFormat) {
-      document.body.classList.add('print-80mm');
-    }
-
-    const isDuasOS = !is80mmFormat && layoutConfig.duas_os_por_folha;
+    // 80mm agora imprime sempre por print80mm() (documento isolado) — nada a
+    // fazer aqui nesse caso. A classe body.print-80mm foi removida.
+    const isDuasOS = !is80mm && layoutConfig.duas_os_por_folha;
     const isHorizontal = isDuasOS && layoutConfig.duas_os_orientacao === 'horizontal';
     if (isHorizontal) {
       document.body.classList.add('print-duas-os-horizontal');
@@ -132,7 +211,6 @@ export const ImpressaoOrdemServico = ({
 
     return () => {
       portalEl.remove();
-      document.body.classList.remove('print-80mm');
       document.body.classList.remove('print-duas-os-horizontal');
       pageStyleEl?.remove();
     };
@@ -152,41 +230,17 @@ export const ImpressaoOrdemServico = ({
     if (!portalEl) return;
 
     // Get the print content
-    const contentEl = portalEl.querySelector('.impressao-ordem-container, .cupom-80mm-container, .impressao-duas-os-wrapper');
+    const contentEl = portalEl.querySelector('.impressao-ordem-container, .impressao-duas-os-wrapper');
     let contentHtml = contentEl ? contentEl.outerHTML : portalEl.innerHTML;
 
     // Converter imagens externas (logo) para base64 para evitar bloqueio de CORS na nova janela.
-    // Timeout de 4s por imagem para não travar a impressão caso a rede esteja lenta/instável.
     if (contentEl) {
-      const imgs = Array.from(contentEl.querySelectorAll('img'));
-      await Promise.all(imgs.map(async (img) => {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 4000);
-          const res = await fetch(img.src, { mode: 'cors', signal: controller.signal });
-          clearTimeout(timeoutId);
-          const blob = await res.blob();
-          const b64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          contentHtml = contentHtml.replace(img.src, b64);
-        } catch { /* manter src original se falhar ou expirar */ }
-      }));
+      contentHtml = await inlineImagesAsBase64(contentEl, contentHtml);
     }
-    const is80mmFormat = is80mm;
-    const isHorizontalMode = !is80mmFormat && layoutConfig.duas_os_por_folha && layoutConfig.duas_os_orientacao === 'horizontal';
+    // handlePrintAndroid trata só A4 agora (80mm vai por print80mm()).
+    const isHorizontalMode = layoutConfig.duas_os_por_folha && layoutConfig.duas_os_orientacao === 'horizontal';
 
-    // Extract CSS custom properties from :root (needed for hsl(var(--...)) references)
-    let cssVars = '';
-    try {
-      const rootStyles = getComputedStyle(document.documentElement);
-      const varNames = ['--background','--foreground','--primary','--primary-foreground','--secondary','--secondary-foreground','--muted','--muted-foreground','--accent','--accent-foreground','--border','--input','--ring','--radius'];
-      const vars = varNames.map(v => `${v}: ${rootStyles.getPropertyValue(v)};`).join('\n');
-      cssVars = `:root { ${vars} }`;
-    } catch { /* ignore */ }
+    const cssVars = extractRootCssVars();
 
     // Extract only print-related CSS rules (not ALL Tailwind classes)
     let printCSS = '';
@@ -228,7 +282,7 @@ export const ImpressaoOrdemServico = ({
     ${printCSS}
     /* Essential resets */
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { margin: 0; padding: ${!is80mmFormat && layoutConfig.duas_os_por_folha ? '0' : '4mm'}; background: white; color: black; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; padding: ${layoutConfig.duas_os_por_folha ? '0' : '4mm'}; background: white; color: black; font-family: system-ui, -apple-system, sans-serif; }
     #print-root { position: static !important; overflow: visible !important; width: 100% !important; height: auto !important; display: block !important; }
     .impressao-ordem-container {
       width: 100% !important; max-width: 194mm !important; margin: 0 auto !important;
@@ -350,24 +404,7 @@ export const ImpressaoOrdemServico = ({
     .impressao-custos-resumo > div { display: flex; justify-content: space-between; }
     svg { display: inline-block; vertical-align: middle; }
     .print-trigger-container { display: none !important; }
-    /* Cupom 80mm styles - optimized for thermal printers */
-    .cupom-80mm-container { width: 72mm; margin: 0 auto; padding: 2mm; font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #000; font-weight: 500; line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .cupom-section { margin-bottom: 2mm; padding-bottom: 2mm; }
-    .cupom-center { text-align: center; }
-    .cupom-border-bottom { border-bottom: 1.5px dashed #000; padding-bottom: 2mm; }
-    .cupom-loja-nome { font-weight: 900; font-size: 11pt; letter-spacing: 0.3px; }
-    .cupom-small { font-size: 8.5pt; color: #000; font-weight: 600; }
-    .cupom-os-numero { font-size: 12pt; font-weight: 900; }
-    .cupom-section-title { font-weight: 900; font-size: 9pt; margin-bottom: 1mm; text-decoration: underline; letter-spacing: 0.5px; }
-    .cupom-line-between { display: flex; justify-content: space-between; font-weight: 600; }
-    .cupom-total { font-size: 13pt; font-weight: 900; text-align: center; border-top: 2px dashed #000; border-bottom: 2px dashed #000; padding: 2.5mm 0; }
-    .cupom-logo { max-width: 28mm; max-height: 14mm; }
-    .cupom-checklist-item { display: flex; align-items: center; gap: 1.5mm; font-size: 7.5pt; font-weight: 500; }
-    .cupom-termo { font-size: 6.5pt; color: #000; white-space: pre-line; font-weight: 500; }
-    .cupom-assinaturas { margin-top: 3mm; border-top: 1.5px dashed #000; padding-top: 2mm; }
-    .cupom-assinatura-bloco { text-align: center; margin-bottom: 2mm; }
-    .cupom-linha-assinatura { border-bottom: 1.5px solid #000; width: 90%; margin: 3mm auto 1mm; }
-    .cupom-assinatura-img { max-width: 30mm; max-height: 10mm; }
+    /* 80mm não passa mais por aqui — imprime via print80mm() (doc isolado). */
     /* Duas OS por folha — screen: dimensões baseadas em viewport para funcionar em mobile */
     .impressao-duas-os-wrapper { display: flex; flex-direction: row; align-items: flex-start; background: white; gap: 0; overflow: hidden; width: 100vw; }
     .impressao-duas-os-slot { overflow: hidden; position: relative; flex-shrink: 0; }
@@ -390,7 +427,7 @@ export const ImpressaoOrdemServico = ({
     .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info { font-size: 8pt !important; }
     .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-sm { font-size: 9pt !important; }
     .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-loja-info .text-xs { font-size: 7pt !important; }
-    ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : (is80mmFormat ? '@page { size: 80mm auto; margin: 0; } body { width: 80mm; padding: 0; }' : '@page { size: A4 portrait; margin: 0; }')}
+    ${isHorizontalMode ? '@page { size: A4 landscape; margin: 0; }' : '@page { size: A4 portrait; margin: 0; }'}
     @media print {
       * { box-sizing: border-box; box-shadow: none !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; width: 100% !important; height: auto !important; -webkit-text-size-adjust: none !important; }
@@ -408,7 +445,7 @@ export const ImpressaoOrdemServico = ({
     }
   </style>
 </head>
-<body ${is80mmFormat ? 'class="print-80mm"' : ''}>
+<body>
   <div id="print-root">
     ${contentHtml}
   </div>
@@ -477,64 +514,89 @@ export const ImpressaoOrdemServico = ({
 </body>
 </html>`;
 
-    // window.print() chamado dentro de uma popup (window.open) navegada via Blob URL
-    // é um padrão cronicamente instável no Chrome Android — o Android Print Service
-    // fica "Preparing preview..." para sempre porque o documento nunca veio de uma
-    // navegação de rede real. Um <iframe> oculto na própria página, com srcdoc, é o
-    // padrão confiável: o conteúdo carrega no mesmo documento/processo, e
-    // iframe.contentWindow.print() é reconhecido normalmente pelo Android.
-    const iframeAnterior = document.getElementById('print-iframe-android');
-    iframeAnterior?.remove();
+    printViaIframe(htmlDoc, isIOS);
+  };
 
-    const iframe = document.createElement('iframe');
-    iframe.id = 'print-iframe-android';
-    iframe.style.position = 'fixed';
-    // iOS Safari não calcula layout (e por consequência não imprime) um iframe
-    // com dimensões 0x0 — a "área imprimível" fica vazia e a página sai em
-    // branco. Damos um tamanho real ao iframe mas o deixamos fora da viewport
-    // visível, o que funciona tanto no Safari quanto no Chrome Android.
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '1px';
-    iframe.style.height = '1px';
-    iframe.style.opacity = '0';
-    iframe.style.pointerEvents = 'none';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
+  // Impressão 80mm — documento ISOLADO para todos os dispositivos (desktop e PWA).
+  // Nada do index.css é herdado: o único @page é o do getCupom80mmOSPrintDocCSS().
+  const print80mm = async () => {
+    if (!portalEl) return;
 
-    // O próprio script embutido em htmlDoc chama window.print() (que dentro do
-    // iframe se refere ao seu próprio contentWindow) após aguardar as imagens
-    // carregarem, com fallback de 4s.
-    // iOS Safari, diferente do Chrome Android, às vezes não dispara o print
-    // corretamente a partir do script interno do iframe quando ele foi aberto
-    // via srcdoc — chamamos contentWindow.print() explicitamente daqui como
-    // reforço. `iframe.onload` dispara quando o HTML terminou de parsear, mas
-    // não garante que o layout já foi pintado (fontes/imagens/reflow), então
-    // aguardamos dois requestAnimationFrame (garante ao menos 1 frame pintado)
-    // antes de reforçar — e checamos window.__printed para nunca competir com
-    // o doPrint() interno que possa já estar em andamento.
-    iframe.onload = () => {
-      if (isIOS) {
-        const reforcarPrint = () => {
-          const win = iframe.contentWindow as (Window & { __printed?: boolean }) | null;
-          if (!win || win.__printed) return;
+    const contentEl = portalEl.querySelector('.cupom-80mm-container');
+    if (!contentEl) return;
+
+    let contentHtml = contentEl.outerHTML;
+    contentHtml = await inlineImagesAsBase64(contentEl, contentHtml);
+
+    const htmlDoc = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>OS #${ordem.numero_os}</title>
+  <style>
+    ${extractRootCssVars()}
+    ${getCupom80mmOSPrintDocCSS()}
+  </style>
+</head>
+<body>
+  <div id="print-root">${contentHtml}</div>
+  <script>
+    (function() {
+      var printed = false;
+      function doPrint() {
+        if (printed) return;
+        printed = true;
+        window.__printed = true;
+        window.focus();
+        window.print();
+        window.onafterprint = function() {
           try {
-            win.focus();
-            win.print();
-          } catch { /* ignore — o script interno do iframe já cobre o fallback */ }
+            var p = window.parent;
+            if (p && typeof p.__osPrint80mmDone === 'function') p.__osPrint80mmDone();
+            p.document.getElementById('print-iframe-android')?.remove();
+          } catch (e) {}
         };
-        setTimeout(() => {
-          requestAnimationFrame(() => requestAnimationFrame(reforcarPrint));
-        }, 1000);
       }
-    };
+      var images = document.querySelectorAll('img');
+      if (images.length === 0) {
+        setTimeout(doPrint, 300);
+      } else {
+        var promises = Array.from(images).map(function(img) {
+          if (img.complete) return Promise.resolve();
+          return new Promise(function(resolve) {
+            img.onload = resolve;
+            img.onerror = function() { img.style.display = 'none'; resolve(); };
+          });
+        });
+        Promise.all(promises).then(function() { setTimeout(doPrint, 300); });
+      }
+      setTimeout(doPrint, 4000);
+    })();
+  </script>
+</body>
+</html>`;
 
-    iframe.srcdoc = htmlDoc;
+    // Desktop non-PWA: fechar o preview após imprimir, igual ao fluxo A4. O
+    // afterprint dispara na janela do iframe; o script interno chama este hook
+    // no window pai de forma síncrona (antes de remover o próprio iframe).
+    const w = window as Window & { __osPrint80mmDone?: () => void };
+    if (!isMobile && !isStandalone) {
+      w.__osPrint80mmDone = () => {
+        delete w.__osPrint80mmDone;
+        setTimeout(() => onFecharImpressao(), 300);
+      };
+    }
+    printViaIframe(htmlDoc, isIOS);
   };
 
   // Trigger print
   const handlePrint = () => {
-    const isDuasOS = !is80mm && (layoutConfig.duas_os_por_folha ?? false);
+    // 80mm: sempre documento isolado, qualquer dispositivo.
+    if (is80mm) {
+      print80mm();
+      return;
+    }
 
     // PWA (standalone) e Android: sempre usar nova janela com HTML completo,
     // inclusive no modo 2 OS por folha (o CSS de scale/dimensões já está embutido no htmlDoc)
@@ -621,13 +683,18 @@ export const ImpressaoOrdemServico = ({
         </div>
       </div>
 
-      {/* 80mm: use dedicated receipt-style component */}
+      {/* 80mm: use dedicated receipt-style component.
+          CSS do cupom vem do helper (fonte única, mesma da impressão) — o
+          preview em tela injeta as classes .cupom-* aqui. */}
       {is80mm ? (
-        <ImpressaoCupom80mm
-          ordem={ordem}
-          configuracaoLoja={configuracaoLoja}
-          config80mm={c80}
-        />
+        <>
+          <style dangerouslySetInnerHTML={{ __html: getCupom80mmOSBaseCSS() }} />
+          <ImpressaoCupom80mm
+            ordem={ordem}
+            configuracaoLoja={configuracaoLoja}
+            config80mm={c80}
+          />
+        </>
       ) : duasOsPorFolha ? (
         <div
           ref={duasOsContainerRef}
