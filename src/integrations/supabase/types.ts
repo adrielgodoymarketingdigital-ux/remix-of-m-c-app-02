@@ -947,6 +947,7 @@ export type Database = {
           recorrente: boolean | null
           status: Database["public"]["Enums"]["status_conta"] | null
           tipo: Database["public"]["Enums"]["tipo_conta"]
+          usa_historico_pagamentos: boolean
           user_id: string
           valor: number
           valor_pago: number | null
@@ -969,6 +970,7 @@ export type Database = {
           recorrente?: boolean | null
           status?: Database["public"]["Enums"]["status_conta"] | null
           tipo: Database["public"]["Enums"]["tipo_conta"]
+          usa_historico_pagamentos?: boolean
           user_id: string
           valor: number
           valor_pago?: number | null
@@ -991,6 +993,7 @@ export type Database = {
           recorrente?: boolean | null
           status?: Database["public"]["Enums"]["status_conta"] | null
           tipo?: Database["public"]["Enums"]["tipo_conta"]
+          usa_historico_pagamentos?: boolean
           user_id?: string
           valor?: number
           valor_pago?: number | null
@@ -3132,6 +3135,59 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      pagamentos_contas: {
+        Row: {
+          conta_id: string
+          created_at: string
+          data_pagamento: string
+          empresa_id: string | null
+          estornado: boolean
+          estornado_em: string | null
+          estornado_motivo: string | null
+          forma_pagamento: string | null
+          id: string
+          observacao: string | null
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          conta_id: string
+          created_at?: string
+          data_pagamento?: string
+          empresa_id?: string | null
+          estornado?: boolean
+          estornado_em?: string | null
+          estornado_motivo?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          observacao?: string | null
+          user_id: string
+          valor: number
+        }
+        Update: {
+          conta_id?: string
+          created_at?: string
+          data_pagamento?: string
+          empresa_id?: string | null
+          estornado?: boolean
+          estornado_em?: string | null
+          estornado_motivo?: string | null
+          forma_pagamento?: string | null
+          id?: string
+          observacao?: string | null
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_contas_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "contas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pagamentos_pix: {
         Row: {

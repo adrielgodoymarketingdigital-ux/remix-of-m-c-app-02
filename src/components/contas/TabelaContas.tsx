@@ -23,7 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Pencil, Trash2, CheckCircle } from "lucide-react";
-import { Conta } from "@/types/conta";
+import { Conta, PagamentoConta } from "@/types/conta";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
@@ -37,6 +37,24 @@ interface TabelaContasProps {
   contasSelecionadas: string[];
   onToggleSelecao: (id: string) => void;
   onToggleTodas: () => void;
+  // Modelo novo (recebimento parcial) — opcionais; DialogConfirmarBaixa cai no
+  // fluxo antigo quando a conta não usa histórico ou estes não são passados.
+  onRegistrarPagamento?: (
+    contaId: string,
+    dados: { valor: number; forma?: string; data: string; observacao?: string },
+  ) => Promise<{ ok: boolean; quitou: boolean }>;
+  onEstornarPagamento?: (pagamentoId: string, motivo: string) => Promise<boolean>;
+  listarPagamentos?: (contaId: string) => Promise<PagamentoConta[]>;
+}
+
+// Total e saldo dependem do modelo: conta antiga guarda o saldo em `valor`
+// (com a entrada em `valor_pago`); conta nova guarda o total em `valor`.
+function calcTotalFalta(conta: Conta) {
+  const pago = Number(conta.valor_pago || 0);
+  if (conta.usa_historico_pagamentos) {
+    return { total: Number(conta.valor), falta: Math.max(Number(conta.valor) - pago, 0) };
+  }
+  return { total: Number(conta.valor) + pago, falta: Number(conta.valor) };
 }
 
 export function TabelaContas({
@@ -47,6 +65,9 @@ export function TabelaContas({
   contasSelecionadas,
   onToggleSelecao,
   onToggleTodas,
+  onRegistrarPagamento,
+  onEstornarPagamento,
+  listarPagamentos,
 }: TabelaContasProps) {
   const isMobile = useIsMobile();
   const [contaBaixa, setContaBaixa] = useState<Conta | null>(null);
@@ -111,9 +132,12 @@ export function TabelaContas({
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                   {getTipoBadge(conta.tipo)}
                   {getStatusBadge(conta.status)}
+                  {conta.usa_historico_pagamentos && conta.status === "pendente" && Number(conta.valor_pago || 0) > 0 && (
+                    <Badge variant="outline" className="text-amber-600 border-amber-400">Parcial</Badge>
+                  )}
                 </div>
               </div>
               
@@ -121,22 +145,28 @@ export function TabelaContas({
                 {(conta.valor_pago != null && conta.valor_pago > 0 && conta.status === 'pendente') ? (
                   <div className="rounded-lg border p-3 space-y-1.5">
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Total da OS:</span>
-                      <span className="font-semibold"><ValorMonetario valor={conta.valor + conta.valor_pago} /></span>
+                      <span className="text-muted-foreground">{conta.usa_historico_pagamentos ? 'Total:' : 'Total da OS:'}</span>
+                      <span className="font-semibold"><ValorMonetario valor={calcTotalFalta(conta).total} /></span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-green-600">✓ Entrada paga:</span>
+                      <span className="text-green-600">✓ {conta.usa_historico_pagamentos ? 'Recebido' : 'Entrada paga'}:</span>
                       <span className="font-semibold text-green-600"><ValorMonetario valor={conta.valor_pago} /></span>
                     </div>
                     <div className="border-t pt-1.5 flex justify-between items-center">
-                      <span className="text-orange-600 font-medium">Falta receber:</span>
-                      <span className="font-bold text-orange-600"><ValorMonetario valor={conta.valor} /></span>
+                      <span className="text-orange-600 font-medium">{conta.usa_historico_pagamentos ? `Falta ${conta.tipo === 'pagar' ? 'pagar' : 'receber'}:` : 'Falta receber:'}</span>
+                      <span className="font-bold text-orange-600"><ValorMonetario valor={calcTotalFalta(conta).falta} /></span>
                     </div>
                   </div>
                 ) : (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Valor:</span>
                     <span className="font-semibold"><ValorMonetario valor={conta.valor} /></span>
+                  </div>
+                )}
+                {conta.tipo === 'receber' && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cliente:</span>
+                    <span>{conta.cliente_nome || "—"}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
@@ -207,6 +237,19 @@ export function TabelaContas({
             </Card>
           );
         })}
+
+        <DialogConfirmarBaixa
+          conta={contaBaixa}
+          open={contaBaixa !== null}
+          onOpenChange={(open) => { if (!open) setContaBaixa(null); }}
+          onConfirmar={async (id, tipo, formaPagamento) => {
+            await onMarcarComoPaga(id, tipo, formaPagamento);
+            return true;
+          }}
+          onRegistrarPagamento={onRegistrarPagamento}
+          onEstornarPagamento={onEstornarPagamento}
+          listarPagamentos={listarPagamentos}
+        />
       </div>
     );
   }
@@ -224,6 +267,7 @@ export function TabelaContas({
               />
             </TableHead>
             <TableHead>Nome</TableHead>
+            <TableHead>Cliente</TableHead>
             <TableHead>Tipo</TableHead>
             <TableHead>Categoria</TableHead>
             <TableHead>Valor</TableHead>
@@ -259,14 +303,15 @@ export function TabelaContas({
                     )}
                   </div>
                 </TableCell>
+                <TableCell className="text-sm">{conta.tipo === 'receber' ? (conta.cliente_nome || "—") : "—"}</TableCell>
                 <TableCell>{getTipoBadge(conta.tipo)}</TableCell>
                 <TableCell>{conta.categoria || "-"}</TableCell>
                 <TableCell>
                   {(conta.valor_pago != null && conta.valor_pago > 0 && conta.status === 'pendente') ? (
                     <div className="space-y-0.5">
-                      <p className="text-xs text-muted-foreground">Total: <span className="font-medium text-foreground"><ValorMonetario valor={conta.valor + conta.valor_pago} /></span></p>
-                      <p className="text-xs text-green-600">✓ Entrada: <ValorMonetario valor={conta.valor_pago} /></p>
-                      <p className="font-semibold text-orange-600">Falta: <ValorMonetario valor={conta.valor} /></p>
+                      <p className="text-xs text-muted-foreground">Total: <span className="font-medium text-foreground"><ValorMonetario valor={calcTotalFalta(conta).total} /></span></p>
+                      <p className="text-xs text-green-600">✓ {conta.usa_historico_pagamentos ? 'Pago' : 'Entrada'}: <ValorMonetario valor={conta.valor_pago} /></p>
+                      <p className="font-semibold text-orange-600">Falta: <ValorMonetario valor={calcTotalFalta(conta).falta} /></p>
                     </div>
                   ) : (
                     <p className="font-semibold"><ValorMonetario valor={conta.valor} /></p>
@@ -280,7 +325,14 @@ export function TabelaContas({
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{getStatusBadge(conta.status)}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {getStatusBadge(conta.status)}
+                    {conta.usa_historico_pagamentos && conta.status === "pendente" && Number(conta.valor_pago || 0) > 0 && (
+                      <Badge variant="outline" className="text-amber-600 border-amber-400">Parcial</Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     {conta.status === "pendente" && (
@@ -342,6 +394,9 @@ export function TabelaContas({
           await onMarcarComoPaga(id, tipo, formaPagamento);
           return true;
         }}
+        onRegistrarPagamento={onRegistrarPagamento}
+        onEstornarPagamento={onEstornarPagamento}
+        listarPagamentos={listarPagamentos}
       />
     </div>
   );

@@ -11,7 +11,7 @@ import { DialogConfirmarBaixa } from "@/components/contas/DialogConfirmarBaixa";
 import { DialogInadimplentes } from "./DialogInadimplentes";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
-import { Conta, FormularioConta } from "@/types/conta";
+import { Conta, FormularioConta, PagamentoConta } from "@/types/conta";
 import {
   TrendingDown,
   TrendingUp,
@@ -43,6 +43,12 @@ interface SecaoContasPagarReceberProps {
   onExcluirConta: (id: string) => Promise<boolean>;
   onMarcarComoPaga: (id: string, tipo: "pagar" | "receber", formaPagamento?: string) => Promise<boolean>;
   categoriasExtras?: string[];
+  onRegistrarPagamento?: (
+    contaId: string,
+    dados: { valor: number; forma?: string; data: string; observacao?: string },
+  ) => Promise<{ ok: boolean; quitou: boolean }>;
+  onEstornarPagamento?: (pagamentoId: string, motivo: string) => Promise<boolean>;
+  listarPagamentos?: (contaId: string) => Promise<PagamentoConta[]>;
 }
 
 export function SecaoContasPagarReceber({
@@ -52,6 +58,9 @@ export function SecaoContasPagarReceber({
   onExcluirConta,
   onMarcarComoPaga,
   categoriasExtras = [],
+  onRegistrarPagamento,
+  onEstornarPagamento,
+  listarPagamentos,
 }: SecaoContasPagarReceberProps) {
   const isMobile = useIsMobile();
 
@@ -341,6 +350,9 @@ export function SecaoContasPagarReceber({
                         <ListaContasSimples
                           contas={contasAReceberPorTipo.servicos}
                           onMarcarComoPaga={onMarcarComoPaga}
+                          onRegistrarPagamento={onRegistrarPagamento}
+                          onEstornarPagamento={onEstornarPagamento}
+                          listarPagamentos={listarPagamentos}
                         />
                       </div>
                     )}
@@ -350,6 +362,9 @@ export function SecaoContasPagarReceber({
                         <ListaContasSimples
                           contas={contasAReceberPorTipo.dispositivos}
                           onMarcarComoPaga={onMarcarComoPaga}
+                          onRegistrarPagamento={onRegistrarPagamento}
+                          onEstornarPagamento={onEstornarPagamento}
+                          listarPagamentos={listarPagamentos}
                         />
                       </div>
                     )}
@@ -359,6 +374,9 @@ export function SecaoContasPagarReceber({
                         <ListaContasSimples
                           contas={contasAReceberPorTipo.outros}
                           onMarcarComoPaga={onMarcarComoPaga}
+                          onRegistrarPagamento={onRegistrarPagamento}
+                          onEstornarPagamento={onEstornarPagamento}
+                          listarPagamentos={listarPagamentos}
                         />
                       </div>
                     )}
@@ -379,6 +397,9 @@ export function SecaoContasPagarReceber({
                     }}
                     onExcluir={onExcluirConta}
                     onMarcarComoPaga={onMarcarComoPaga}
+                    onRegistrarPagamento={onRegistrarPagamento}
+                    onEstornarPagamento={onEstornarPagamento}
+                    listarPagamentos={listarPagamentos}
                     contasSelecionadas={contasSelecionadas}
                     onToggleSelecao={(id) => {
                       setContasSelecionadas((prev) =>
@@ -448,9 +469,18 @@ export function SecaoContasPagarReceber({
 function ListaContasSimples({
   contas,
   onMarcarComoPaga,
+  onRegistrarPagamento,
+  onEstornarPagamento,
+  listarPagamentos,
 }: {
   contas: Conta[];
   onMarcarComoPaga: (id: string, tipo: "pagar" | "receber", formaPagamento?: string) => Promise<boolean>;
+  onRegistrarPagamento?: (
+    contaId: string,
+    dados: { valor: number; forma?: string; data: string; observacao?: string },
+  ) => Promise<{ ok: boolean; quitou: boolean }>;
+  onEstornarPagamento?: (pagamentoId: string, motivo: string) => Promise<boolean>;
+  listarPagamentos?: (contaId: string) => Promise<PagamentoConta[]>;
 }) {
   const [contaBaixa, setContaBaixa] = useState<Conta | null>(null);
 
@@ -496,6 +526,9 @@ function ListaContasSimples({
         onConfirmar={async (id, tipo, formaPagamento) => {
           return await onMarcarComoPaga(id, tipo, formaPagamento);
         }}
+        onRegistrarPagamento={onRegistrarPagamento}
+        onEstornarPagamento={onEstornarPagamento}
+        listarPagamentos={listarPagamentos}
       />
     </>
   );

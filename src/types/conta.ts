@@ -18,6 +18,26 @@ export interface Conta {
   data_pagamento?: string;
   forma_pagamento?: string;
   forma_pagamento_entrada?: string;
+  /** true = usa a tabela pagamentos_contas (recebimento parcial + recibo). Contas antigas = false. */
+  usa_historico_pagamentos?: boolean;
+  /** Nome do cliente vinculado, resolvido via JOIN (read-only, não persiste). */
+  cliente_nome?: string;
+}
+
+/** Uma linha de recebimento/pagamento parcial de uma conta (tabela pagamentos_contas). */
+export interface PagamentoConta {
+  id: string;
+  conta_id: string;
+  user_id: string;
+  empresa_id?: string | null;
+  valor: number;
+  data_pagamento: string;
+  forma_pagamento?: string | null;
+  observacao?: string | null;
+  estornado: boolean;
+  estornado_em?: string | null;
+  estornado_motivo?: string | null;
+  created_at: string;
 }
 
 export interface FormularioConta {

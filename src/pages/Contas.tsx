@@ -55,6 +55,9 @@ export default function Contas() {
     excluirConta,
     marcarComoPaga,
     marcarVariasComoPaga,
+    registrarPagamentoParcial,
+    estornarPagamento,
+    listarPagamentos,
   } = useContas();
 
   const { fornecedores } = useFornecedores();
@@ -343,6 +346,9 @@ export default function Contas() {
             contasSelecionadas={contasSelecionadas}
             onToggleSelecao={handleToggleSelecao}
             onToggleTodas={handleToggleTodas}
+            onRegistrarPagamento={registrarPagamentoParcial}
+            onEstornarPagamento={estornarPagamento}
+            listarPagamentos={listarPagamentos}
           />
         )}
       </main>

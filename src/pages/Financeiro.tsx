@@ -38,7 +38,16 @@ export default function Financeiro() {
     calcularResumo,
   } = useRelatorios();
 
-  const { contas, criarConta, atualizarConta, excluirConta, marcarComoPaga } = useContas();
+  const {
+    contas,
+    criarConta,
+    atualizarConta,
+    excluirConta,
+    marcarComoPaga,
+    registrarPagamentoParcial,
+    estornarPagamento,
+    listarPagamentos,
+  } = useContas();
   const { todasCategorias } = useCategoriasDespesas();
   const { config: configLoja } = useConfiguracaoLoja();
 
@@ -222,6 +231,9 @@ export default function Financeiro() {
               onAtualizarConta={atualizarConta}
               onExcluirConta={excluirConta}
               onMarcarComoPaga={marcarComoPaga}
+              onRegistrarPagamento={registrarPagamentoParcial}
+              onEstornarPagamento={estornarPagamento}
+              listarPagamentos={listarPagamentos}
               categoriasExtras={todasCategorias()}
             />
           )}

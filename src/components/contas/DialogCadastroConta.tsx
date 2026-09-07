@@ -381,7 +381,15 @@ export function DialogCadastroConta({
               )}
             />
 
-            {conta && (
+            {conta && conta.usa_historico_pagamentos && (
+              <p className="text-xs text-muted-foreground rounded-lg border p-3">
+                Para registrar recebimentos parciais desta conta, use o botão
+                <strong> {conta.tipo === "pagar" ? "Pagar" : "Receber"} </strong>
+                na listagem — cada pagamento gera um recibo e fica no histórico.
+              </p>
+            )}
+
+            {conta && !conta.usa_historico_pagamentos && (
               <div className="rounded-lg border p-3 space-y-3">
                 <div className="flex flex-row items-center justify-between">
                   <div className="space-y-0.5">

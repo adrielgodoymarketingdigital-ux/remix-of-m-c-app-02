@@ -375,6 +375,7 @@ export const DialogOrdemServicoSimplificada = ({
         const entradaPaga = formData.mostrarEntrada ? formData.valorEntrada : 0;
         await criarContaAReceberOS({
           numeroOS,
+          clienteId,
           clienteNome: formData.clienteNome,
           defeitoRelatado: formData.defeitoRelatado,
           total,

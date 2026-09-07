@@ -1184,6 +1184,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
 
         await criarContaAReceberOS({
           numeroOS,
+          clienteId,
           clienteNome: formData.clienteNome,
           defeitoRelatado: formData.defeitoRelatado,
           total,

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Conta, FormularioConta } from "@/types/conta";
+import { Conta, FormularioConta, PagamentoConta } from "@/types/conta";
 import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
@@ -27,7 +27,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
 
       let query = supabase
         .from("contas")
-        .select("*")
+        .select("*, cliente:clientes!contas_cliente_id_fkey(nome)")
         .eq("user_id", targetUserId)
         .order("data", { ascending: false });
       if (empresaFiltro) {
@@ -74,7 +74,11 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         }, 'useContas.queryOSExcluidas'),
       ]);
 
-      const contasData = (contasResult.data || []) as Conta[];
+      // Normaliza o embed `cliente:{nome}` para o campo plano `cliente_nome`.
+      const contasData = ((contasResult.data || []) as Array<Record<string, unknown>>).map((c) => {
+        const { cliente, ...resto } = c as { cliente?: { nome?: string } | null };
+        return { ...resto, cliente_nome: cliente?.nome ?? undefined } as Conta;
+      });
 
       // Identificar vendas que já têm conta vinculada (via descricao com venda_id:)
       const vendasComConta = new Set<string>();
@@ -130,6 +134,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           descricao: `venda_id:${v.id}`,
           user_id: v.user_id,
           created_at: v.data || new Date().toISOString(),
+          usa_historico_pagamentos: false,
+          cliente_nome: v.clientes?.nome || undefined,
         };
       });
 
@@ -166,7 +172,13 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       }
 
       const targetUserId = resolvedUserIdFromContext ?? user.id;
-      const insertData: Record<string, unknown> = { ...dados, user_id: targetUserId };
+      // Toda conta criada a partir de agora usa o histórico de pagamentos
+      // (recebimento parcial + recibo). Contas antigas seguem com a flag false.
+      const insertData: Record<string, unknown> = {
+        ...dados,
+        user_id: targetUserId,
+        usa_historico_pagamentos: true,
+      };
       if (empresaFiltro) insertData.empresa_id = empresaFiltro;
       const { error } = await supabase.from("contas").insert(insertData);
 
@@ -304,10 +316,151 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     }
   };
 
+  const listarPagamentos = async (contaId: string): Promise<PagamentoConta[]> => {
+    const { data, error } = await supabase
+      .from("pagamentos_contas")
+      .select("*")
+      .eq("conta_id", contaId)
+      .order("data_pagamento", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) {
+      console.error("Erro ao listar pagamentos:", error);
+      return [];
+    }
+    return (data || []) as PagamentoConta[];
+  };
+
+  // Registra um recebimento/pagamento parcial numa conta do modelo novo.
+  // O trigger sync_conta_from_pagamentos recalcula valor_pago/status.
+  const registrarPagamentoParcial = async (
+    contaId: string,
+    dados: { valor: number; forma?: string; data: string; observacao?: string },
+  ): Promise<{ ok: boolean; quitou: boolean }> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { ok: false, quitou: false };
+      const targetUserId = resolvedUserIdFromContext ?? user.id;
+
+      const { data: conta } = await supabase
+        .from("contas")
+        .select("user_id, empresa_id, tipo, descricao, valor, valor_pago")
+        .eq("id", contaId)
+        .maybeSingle();
+      if (!conta) return { ok: false, quitou: false };
+
+      const { error } = await supabase.from("pagamentos_contas").insert({
+        conta_id: contaId,
+        user_id: conta.user_id,
+        empresa_id: conta.empresa_id ?? null,
+        valor: dados.valor,
+        data_pagamento: dados.data,
+        forma_pagamento: dados.forma || null,
+        observacao: dados.observacao || null,
+      });
+      if (error) throw error;
+
+      // Relê a conta para ver se o trigger fechou o saldo.
+      const { data: contaPos } = await supabase
+        .from("contas")
+        .select("status, data_pagamento, descricao, tipo")
+        .eq("id", contaId)
+        .maybeSingle();
+
+      const quitou = contaPos?.status === "recebido" || contaPos?.status === "pago";
+      if (quitou && contaPos) {
+        await propagarStatusContaParaVenda(
+          { descricao: contaPos.descricao, tipo: contaPos.tipo, data_pagamento: contaPos.data_pagamento },
+          "recebido",
+          targetUserId,
+        );
+      }
+
+      window.dispatchEvent(new CustomEvent("conta-atualizada"));
+      await carregarContas();
+      toast({
+        title: quitou ? "Conta quitada" : "Recebimento registrado",
+        description: quitou ? "O saldo foi zerado." : "Pagamento parcial registrado. O saldo foi atualizado.",
+      });
+      return { ok: true, quitou };
+    } catch (error) {
+      console.error("Erro ao registrar pagamento parcial:", error);
+      toast({
+        title: "Erro ao registrar pagamento",
+        description: "Não foi possível registrar o recebimento.",
+        variant: "destructive",
+      });
+      return { ok: false, quitou: false };
+    }
+  };
+
+  // Estorna (soft-delete) um pagamento. O trigger recalcula: se a conta estava
+  // quitada e o estorno reabre saldo, ela volta para 'pendente'.
+  const estornarPagamento = async (pagamentoId: string, motivo: string): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      const targetUserId = resolvedUserIdFromContext ?? user.id;
+
+      const { data: pag } = await supabase
+        .from("pagamentos_contas")
+        .select("conta_id")
+        .eq("id", pagamentoId)
+        .maybeSingle();
+
+      const { error } = await supabase
+        .from("pagamentos_contas")
+        .update({ estornado: true, estornado_em: new Date().toISOString(), estornado_motivo: motivo || null })
+        .eq("id", pagamentoId);
+      if (error) throw error;
+
+      if (pag?.conta_id) {
+        const { data: contaPos } = await supabase
+          .from("contas")
+          .select("status, descricao, tipo, data_pagamento")
+          .eq("id", pag.conta_id)
+          .maybeSingle();
+        // Se voltou a ficar pendente, reverte o reconhecimento na venda vinculada.
+        if (contaPos?.status === "pendente") {
+          await propagarStatusContaParaVenda(
+            { descricao: contaPos.descricao, tipo: contaPos.tipo, data_pagamento: contaPos.data_pagamento },
+            "pendente",
+            targetUserId,
+          );
+        }
+      }
+
+      window.dispatchEvent(new CustomEvent("conta-atualizada"));
+      await carregarContas();
+      toast({ title: "Pagamento estornado", description: "O saldo da conta foi recalculado." });
+      return true;
+    } catch (error) {
+      console.error("Erro ao estornar pagamento:", error);
+      toast({ title: "Erro ao estornar", description: "Não foi possível estornar o pagamento.", variant: "destructive" });
+      return false;
+    }
+  };
+
   const marcarComoPaga = async (id: string, tipo: 'pagar' | 'receber', formaPagamento?: string) => {
     // Se é uma conta virtual de venda, marcar a venda como recebida
     if (id.startsWith("venda_") && tipo === "receber") {
       return await atualizarConta(id, { status: "recebido" });
+    }
+
+    // Conta do modelo novo: quitar = registrar um pagamento do valor do saldo.
+    const contaAlvo = contas.find(c => c.id === id);
+    if (contaAlvo?.usa_historico_pagamentos) {
+      const saldo = Math.max(Number(contaAlvo.valor) - Number(contaAlvo.valor_pago || 0), 0);
+      if (saldo <= 0.005) {
+        toast({ title: "Conta já quitada", description: "Não há saldo a receber/pagar." });
+        return true;
+      }
+      const res = await registrarPagamentoParcial(id, {
+        valor: saldo,
+        forma: formaPagamento,
+        data: new Date().toISOString().slice(0, 10),
+        observacao: "Quitação",
+      });
+      return res.ok;
     }
 
     const status = tipo === 'pagar' ? 'pago' : 'recebido';
@@ -379,12 +532,22 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
 
       const contasParaBaixa = contas.filter(c => ids.includes(c.id) && c.status === 'pendente');
 
-      // Separar contas reais de virtuais (vendas)
-      const contasReaisPagar = contasParaBaixa.filter(c => c.tipo === 'pagar' && !c.id.startsWith("venda_")).map(c => c.id);
-      const contasReaisReceber = contasParaBaixa.filter(c => c.tipo === 'receber' && !c.id.startsWith("venda_")).map(c => c.id);
-      const vendasVirtuais = contasParaBaixa.filter(c => c.id.startsWith("venda_"));
-
       const hoje = new Date().toISOString().slice(0, 10);
+
+      // Contas do modelo novo: quitar = 1 linha de "Quitação" (= saldo) por conta.
+      const contasHistorico = contasParaBaixa.filter(c => c.usa_historico_pagamentos && !c.id.startsWith("venda_"));
+      for (const conta of contasHistorico) {
+        const saldo = Math.max(Number(conta.valor) - Number(conta.valor_pago || 0), 0);
+        if (saldo > 0.005) {
+          await registrarPagamentoParcial(conta.id, { valor: saldo, data: hoje, observacao: "Quitação" });
+        }
+      }
+
+      // Contas do modelo antigo (comportamento inalterado)
+      const contasAntigas = contasParaBaixa.filter(c => !c.usa_historico_pagamentos);
+      const contasReaisPagar = contasAntigas.filter(c => c.tipo === 'pagar' && !c.id.startsWith("venda_")).map(c => c.id);
+      const contasReaisReceber = contasAntigas.filter(c => c.tipo === 'receber' && !c.id.startsWith("venda_")).map(c => c.id);
+      const vendasVirtuais = contasAntigas.filter(c => c.id.startsWith("venda_"));
 
       if (contasReaisPagar.length > 0) {
         const { error } = await supabase
@@ -459,6 +622,9 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     excluirConta,
     marcarComoPaga,
     marcarVariasComoPaga,
+    registrarPagamentoParcial,
+    estornarPagamento,
+    listarPagamentos,
     refetch: carregarContas,
   };
 }
