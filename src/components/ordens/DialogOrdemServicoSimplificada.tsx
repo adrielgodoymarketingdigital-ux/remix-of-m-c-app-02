@@ -15,6 +15,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +30,7 @@ import { Servico } from "@/types/servico";
 import { Checklist, AvariasOS } from "@/types/ordem-servico";
 import { encryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useCatalogoDispositivosCustom } from "@/hooks/useCatalogoDispositivosCustom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useEmpresaInfo, useResolvedUserId } from "@/hooks/useResolvedUserId";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
@@ -264,15 +268,30 @@ export const DialogOrdemServicoSimplificada = ({
   // Cascata Tipo → Marca → Modelo → Cor a partir do mesmo catálogo/lógica usados
   // na versão completa do wizard (EtapaDispositivo). Sem catálogo para o tipo,
   // ou com "Outra" escolhida, os campos dependentes caem em texto livre.
+  const {
+    getTiposCustom,
+    getMarcasCustom,
+    getModelosCustom,
+    getCoresCustom,
+  } = useCatalogoDispositivosCustom();
+
+  const tiposCustom = getTiposCustom();
   const marcasDisponiveis = getMarcasPorTipo(formData.dispositivoTipo);
+  const marcasCustom = getMarcasCustom(formData.dispositivoTipo).map((r) => r.nome);
   const marcaEhTextoLivre =
-    formData.dispositivoMarca === OPCAO_OUTRA || marcasDisponiveis.length === 0;
+    formData.dispositivoMarca === OPCAO_OUTRA || (marcasDisponiveis.length === 0 && marcasCustom.length === 0);
   const modelosDisponiveis = marcaEhTextoLivre
     ? []
     : getModelosPorMarca(formData.dispositivoTipo, formData.dispositivoMarca);
+  const modelosCustom = marcaEhTextoLivre
+    ? []
+    : getModelosCustom(formData.dispositivoTipo, formData.dispositivoMarca).map((r) => r.nome);
   const coresDisponiveis = marcaEhTextoLivre
     ? []
     : getCoresPorMarca(formData.dispositivoTipo, formData.dispositivoMarca);
+  const coresCustom = marcaEhTextoLivre
+    ? []
+    : getCoresCustom(formData.dispositivoTipo, formData.dispositivoMarca).map((r) => r.nome);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -618,19 +637,34 @@ export const DialogOrdemServicoSimplificada = ({
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIPOS_DISPOSITIVO_OS.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
+                    <SelectGroup>
+                      {tiposCustom.length > 0 && <SelectLabel>Cadastrados</SelectLabel>}
+                      {TIPOS_DISPOSITIVO_OS.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                    {tiposCustom.length > 0 && (
+                      <>
+                        <SelectSeparator />
+                        <SelectGroup>
+                          <SelectLabel>Minhas (personalizadas)</SelectLabel>
+                          {tiposCustom.map((t) => (
+                            <SelectItem key={t.id} value={t.nome}>{t.nome}</SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="dispositivoMarca">Marca *</Label>
-                {marcasDisponiveis.length > 0 ? (
+                {(marcasDisponiveis.length > 0 || marcasCustom.length > 0) ? (
                   <ComboboxComTextoLivre
                     id="dispositivoMarca"
                     value={formData.dispositivoMarca}
                     opcoes={marcasDisponiveis}
+                    opcoesCustom={marcasCustom}
                     opcaoOutra={OPCAO_OUTRA}
                     placeholder="Selecione a marca"
                     buscaPlaceholder="Buscar marca..."
@@ -649,11 +683,12 @@ export const DialogOrdemServicoSimplificada = ({
               </div>
               <div>
                 <Label htmlFor="dispositivoModelo">Modelo *</Label>
-                {modelosDisponiveis.length > 0 ? (
+                {(modelosDisponiveis.length > 0 || modelosCustom.length > 0) ? (
                   <ComboboxComTextoLivre
                     id="dispositivoModelo"
                     value={formData.dispositivoModelo}
                     opcoes={modelosDisponiveis}
+                    opcoesCustom={modelosCustom}
                     opcaoOutra={OPCAO_OUTRO_MODELO}
                     placeholder="Selecione o modelo"
                     buscaPlaceholder="Buscar modelo..."
@@ -670,11 +705,12 @@ export const DialogOrdemServicoSimplificada = ({
               </div>
               <div>
                 <Label htmlFor="dispositivoCor">Cor</Label>
-                {coresDisponiveis.length > 0 ? (
+                {(coresDisponiveis.length > 0 || coresCustom.length > 0) ? (
                   <ComboboxComTextoLivre
                     id="dispositivoCor"
                     value={formData.dispositivoCor}
                     opcoes={coresDisponiveis}
+                    opcoesCustom={coresCustom}
                     opcaoOutra={OPCAO_OUTRA_COR}
                     placeholder="Selecione a cor"
                     buscaPlaceholder="Buscar cor..."

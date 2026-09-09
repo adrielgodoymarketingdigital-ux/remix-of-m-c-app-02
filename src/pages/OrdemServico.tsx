@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer, SlidersHorizontal } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer, SlidersHorizontal, Smartphone } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
@@ -89,6 +89,7 @@ const DialogConfiguracaoEtiqueta = lazy(() => import("@/components/ordens/Dialog
 const ImpressaoEtiqueta = lazy(() => import("@/components/ordens/ImpressaoEtiqueta").then((m) => ({ default: m.ImpressaoEtiqueta })));
 const DialogPersonalizarColunas = lazy(() => import("@/components/ordens/DialogPersonalizarColunas").then((m) => ({ default: m.DialogPersonalizarColunas })));
 const DialogConfiguracaoTracking = lazy(() => import("@/components/ordens/DialogConfiguracaoTracking").then((m) => ({ default: m.DialogConfiguracaoTracking })));
+const DialogConfiguracaoCatalogoDispositivos = lazy(() => import("@/components/ordens/DialogConfiguracaoCatalogoDispositivos").then((m) => ({ default: m.DialogConfiguracaoCatalogoDispositivos })));
 
 export default function OrdemServicoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -185,6 +186,7 @@ export default function OrdemServicoPage() {
   const [dialogPersonalizarColunas, setDialogPersonalizarColunas] = useState(false);
   const [dialogTracking, setDialogTracking] = useState(false);
   const [dialogLocalizacao, setDialogLocalizacao] = useState(false);
+  const [dialogCatalogoDispositivos, setDialogCatalogoDispositivos] = useState(false);
   const [selecaoAtiva, setSelecaoAtiva] = useState(false);
   const [itensSelecionados, setItensSelecionados] = useState<Set<string>>(new Set());
   const [dialogExcluirEmLote, setDialogExcluirEmLote] = useState(false);
@@ -838,6 +840,10 @@ export default function OrdemServicoPage() {
                       <MapPin className="h-4 w-4 mr-2" />
                       Localizações Físicas
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setDialogCatalogoDispositivos(true)}>
+                      <Smartphone className="h-4 w-4 mr-2" />
+                      Catálogo de Dispositivos
+                    </DropdownMenuItem>
                     {usoCompartilhamentos.limite !== 0 && (
                       <DropdownMenuItem disabled className="font-mono text-xs opacity-70">
                         <RadioTower className="h-4 w-4 mr-2" />
@@ -1488,6 +1494,12 @@ export default function OrdemServicoPage() {
               </Suspense>
             </DialogContent>
           </Dialog>
+
+          {/* Dialog de Catálogo de Dispositivos (Tipo/Marca/Modelo/Cor personalizados) */}
+          <DialogConfiguracaoCatalogoDispositivos
+            open={dialogCatalogoDispositivos}
+            onOpenChange={setDialogCatalogoDispositivos}
+          />
 
           {/* Impressão de Etiqueta */}
           {ordemParaEtiqueta && (

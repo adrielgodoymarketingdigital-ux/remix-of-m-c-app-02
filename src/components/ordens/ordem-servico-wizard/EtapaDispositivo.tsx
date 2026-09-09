@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel, SelectSeparator } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { UploadFotosOS } from "../UploadFotosOS";
@@ -10,6 +10,7 @@ import { EtapaCabecalho } from "./EtapaCabecalho";
 import { CampoLabel } from "./CampoLabel";
 import { FormData } from "./tipos";
 import { ComboboxComTextoLivre } from "./ComboboxComTextoLivre";
+import { useCatalogoDispositivosCustom } from "@/hooks/useCatalogoDispositivosCustom";
 import {
   OPCAO_OUTRA,
   OPCAO_OUTRO_MODELO,
@@ -40,14 +41,29 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
     }
   }, [campoComErro]);
 
+  const {
+    getTiposCustom,
+    getMarcasCustom,
+    getModelosCustom,
+    getCoresCustom,
+  } = useCatalogoDispositivosCustom();
+
+  const tiposCustom = getTiposCustom();
   const marcasDisponiveis = getMarcasPorTipo(formData.dispositivoTipo);
-  const marcaEhTextoLivre = formData.dispositivoMarca === OPCAO_OUTRA || marcasDisponiveis.length === 0;
+  const marcasCustom = getMarcasCustom(formData.dispositivoTipo).map((r) => r.nome);
+  const marcaEhTextoLivre = formData.dispositivoMarca === OPCAO_OUTRA || (marcasDisponiveis.length === 0 && marcasCustom.length === 0);
   const modelosDisponiveis = marcaEhTextoLivre
     ? []
     : getModelosPorMarca(formData.dispositivoTipo, formData.dispositivoMarca);
+  const modelosCustom = marcaEhTextoLivre
+    ? []
+    : getModelosCustom(formData.dispositivoTipo, formData.dispositivoMarca).map((r) => r.nome);
   const coresDisponiveis = marcaEhTextoLivre
     ? []
     : getCoresPorMarca(formData.dispositivoTipo, formData.dispositivoMarca);
+  const coresCustom = marcaEhTextoLivre
+    ? []
+    : getCoresCustom(formData.dispositivoTipo, formData.dispositivoMarca).map((r) => r.nome);
 
   return (
     <div>
@@ -92,20 +108,35 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIPOS_DISPOSITIVO_OS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {tiposCustom.length > 0 && <SelectLabel>Cadastrados</SelectLabel>}
+                    {TIPOS_DISPOSITIVO_OS.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                  {tiposCustom.length > 0 && (
+                    <>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectLabel>Minhas (personalizadas)</SelectLabel>
+                        {tiposCustom.map((t) => (
+                          <SelectItem key={t.id} value={t.nome}>{t.nome}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
               <CampoLabel htmlFor="dispositivoMarca" texto="Marca" obrigatorio />
-              {marcasDisponiveis.length > 0 ? (
+              {(marcasDisponiveis.length > 0 || marcasCustom.length > 0) ? (
                 <ComboboxComTextoLivre
                   id="dispositivoMarca"
                   value={formData.dispositivoMarca}
                   opcoes={marcasDisponiveis}
+                  opcoesCustom={marcasCustom}
                   opcaoOutra={OPCAO_OUTRA}
                   placeholder="Selecione a marca"
                   buscaPlaceholder="Buscar marca..."
@@ -129,11 +160,12 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
 
             <div>
               <CampoLabel htmlFor="dispositivoModelo" texto="Modelo" obrigatorio />
-              {modelosDisponiveis.length > 0 ? (
+              {(modelosDisponiveis.length > 0 || modelosCustom.length > 0) ? (
                 <ComboboxComTextoLivre
                   id="dispositivoModelo"
                   value={formData.dispositivoModelo}
                   opcoes={modelosDisponiveis}
+                  opcoesCustom={modelosCustom}
                   opcaoOutra={OPCAO_OUTRO_MODELO}
                   placeholder="Selecione o modelo"
                   buscaPlaceholder="Buscar modelo..."
@@ -155,11 +187,12 @@ export function EtapaDispositivo({ formData, setFormData, campoComErro }: EtapaD
 
             <div>
               <CampoLabel htmlFor="dispositivoCor" texto="Cor" />
-              {coresDisponiveis.length > 0 ? (
+              {(coresDisponiveis.length > 0 || coresCustom.length > 0) ? (
                 <ComboboxComTextoLivre
                   id="dispositivoCor"
                   value={formData.dispositivoCor}
                   opcoes={coresDisponiveis}
+                  opcoesCustom={coresCustom}
                   opcaoOutra={OPCAO_OUTRA_COR}
                   placeholder="Selecione a cor"
                   buscaPlaceholder="Buscar cor..."

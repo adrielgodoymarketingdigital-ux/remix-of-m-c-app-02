@@ -10,6 +10,8 @@ interface ComboboxComTextoLivreProps {
   id?: string;
   value: string;
   opcoes: string[];
+  /** Opções cadastradas pela própria loja (Configurações → catálogo de dispositivos) — exibidas num grupo separado, depois das fixas. */
+  opcoesCustom?: string[];
   opcaoOutra: string;
   placeholder?: string;
   buscaPlaceholder?: string;
@@ -29,6 +31,7 @@ export function ComboboxComTextoLivre({
   id,
   value,
   opcoes,
+  opcoesCustom = [],
   opcaoOutra,
   placeholder,
   buscaPlaceholder,
@@ -36,7 +39,8 @@ export function ComboboxComTextoLivre({
   className,
   erro,
 }: ComboboxComTextoLivreProps) {
-  const valorBateComCatalogo = value === "" || opcoes.includes(value);
+  const todasOpcoes = opcoesCustom.length > 0 ? [...opcoes, ...opcoesCustom] : opcoes;
+  const valorBateComCatalogo = value === "" || todasOpcoes.includes(value);
   const [modoTextoLivre, setModoTextoLivre] = useState(!valorBateComCatalogo);
   const [open, setOpen] = useState(false);
 
@@ -44,9 +48,9 @@ export function ComboboxComTextoLivre({
   // e o valor atual não bater mais com o novo catálogo, mantém em modo texto livre;
   // se bater, volta pro combobox.
   useEffect(() => {
-    setModoTextoLivre(!(value === "" || opcoes.includes(value)));
+    setModoTextoLivre(!(value === "" || todasOpcoes.includes(value)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opcoes]);
+  }, [opcoes, opcoesCustom]);
 
   if (modoTextoLivre) {
     return (
@@ -95,13 +99,25 @@ export function ComboboxComTextoLivre({
           <CommandInput placeholder={buscaPlaceholder ?? "Buscar..."} />
           <CommandList>
             <CommandEmpty>Nenhuma opção encontrada.</CommandEmpty>
-            <CommandGroup>
+            <CommandGroup heading={opcoesCustom.length > 0 ? "Cadastradas" : undefined}>
               {opcoes.map((opcao) => (
                 <CommandItem key={opcao} value={opcao} onSelect={() => handleSelecionar(opcao)}>
                   <Check className={cn("mr-2 h-4 w-4", value === opcao ? "opacity-100" : "opacity-0")} />
                   {opcao}
                 </CommandItem>
               ))}
+            </CommandGroup>
+            {opcoesCustom.length > 0 && (
+              <CommandGroup heading="Minhas (personalizadas)">
+                {opcoesCustom.map((opcao) => (
+                  <CommandItem key={opcao} value={opcao} onSelect={() => handleSelecionar(opcao)}>
+                    <Check className={cn("mr-2 h-4 w-4", value === opcao ? "opacity-100" : "opacity-0")} />
+                    {opcao}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            <CommandGroup>
               <CommandItem value={opcaoOutra} onSelect={() => handleSelecionar(opcaoOutra)}>
                 <Check className="mr-2 h-4 w-4 opacity-0" />
                 {opcaoOutra}
