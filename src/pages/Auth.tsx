@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import logoMec from "@/assets/logo-mec-auth.png";
-import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { TurnstileWidget, TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 const Auth = () => {
   const { trackLogin } = useEventTracking();
@@ -30,6 +30,7 @@ const Auth = () => {
   const [nome, setNome] = useState("");
   const [celular, setCelular] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [loading, setLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
@@ -47,10 +48,29 @@ const Auth = () => {
 
     try {
       if (isLogin) {
+        if (!captchaToken) {
+          toast({
+            variant: "destructive",
+            title: "Verificação de segurança pendente",
+            description: "Complete a verificação de segurança para continuar.",
+          });
+          setLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
+          options: {
+            captchaToken,
+          },
         });
+
+        // O token do Turnstile é de uso único: reseta o widget logo após a
+        // tentativa (sucesso ou falha) pra já deixar um token novo pronto
+        // pra próxima, em vez do usuário ficar travado com um token velho.
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
 
         if (error) throw error;
 
@@ -153,6 +173,10 @@ const Auth = () => {
         if (data?.user) {
           // Email já cadastrado: Supabase retorna usuário sem identities
           if (!data.user.identities || data.user.identities.length === 0) {
+            // Token de uso único: reseta pra uma nova tentativa não cair em
+            // captcha_failed sem precisar recarregar a página.
+            turnstileRef.current?.reset();
+            setCaptchaToken(null);
             toast({
               variant: "destructive",
               title: "Email já cadastrado",
@@ -187,6 +211,10 @@ const Auth = () => {
       }
     } catch (error: any) {
       if (isLogin) {
+        // Cobre também o caso de exceção antes do reset já feito logo após o
+        // signInWithPassword (ex: falha de rede) — reset() é idempotente.
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
         toast({
           variant: "destructive",
           title: "Erro",
@@ -194,6 +222,13 @@ const Auth = () => {
         });
         return;
       }
+
+      // Mesmo motivo do login: o token do Turnstile é de uso único, então
+      // reseta o widget após qualquer erro de cadastro pra já deixar um
+      // token novo pronto pra próxima tentativa, sem precisar recarregar a
+      // página (evita o usuário ficar preso repetindo captcha_failed).
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
 
       if (error?.code === "weak_password") {
         toast({
@@ -355,14 +390,16 @@ const Auth = () => {
             </div>
           </div>
 
-          {!isLogin && (
-            <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
-          )}
+          <TurnstileWidget
+            ref={turnstileRef}
+            onVerify={setCaptchaToken}
+            onExpire={() => setCaptchaToken(null)}
+          />
 
           <Button
             type="submit"
             className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.7)] transition-all duration-300"
-            disabled={loading || (!isLogin && !captchaToken)}
+            disabled={loading || !captchaToken}
           >
             {loading ? (
               <>

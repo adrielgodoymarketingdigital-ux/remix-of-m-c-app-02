@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { forwardRef, useEffect, useId, useImperativeHandle, useRef } from "react";
 
 declare global {
   interface Window {
@@ -34,6 +34,13 @@ interface TurnstileWidgetProps {
   onExpire?: () => void;
 }
 
+export interface TurnstileWidgetHandle {
+  /** Reseta o desafio (o token de Turnstile é de uso único: depois de uma
+   * tentativa — sucesso ou falha — o widget precisa ser resetado pra gerar
+   * um token novo na próxima tentativa). */
+  reset: () => void;
+}
+
 /**
  * Widget de verificação anti-bot (Cloudflare Turnstile), usado nas telas de
  * cadastro e de checkout de assinatura — parte da mitigação ao ataque de
@@ -41,27 +48,35 @@ interface TurnstileWidgetProps {
  * fica só no painel do Supabase Auth (cadastro) e nas secrets das Edge
  * Functions (checkout) — nunca no client.
  */
-export function TurnstileWidget({ onVerify, onExpire }: TurnstileWidgetProps) {
-  const containerId = "turnstile-" + useId().replace(/[^a-zA-Z0-9]/g, "");
-  const widgetId = useRef<string | null>(null);
+export const TurnstileWidget = forwardRef<TurnstileWidgetHandle, TurnstileWidgetProps>(
+  function TurnstileWidget({ onVerify, onExpire }, ref) {
+    const containerId = "turnstile-" + useId().replace(/[^a-zA-Z0-9]/g, "");
+    const widgetId = useRef<string | null>(null);
 
-  useEffect(() => {
-    let cancelado = false;
-    carregarScriptTurnstile().then(() => {
-      if (cancelado || !window.turnstile) return;
-      widgetId.current = window.turnstile.render(`#${containerId}`, {
-        sitekey: SITE_KEY,
-        theme: "auto",
-        callback: onVerify,
-        "expired-callback": () => onExpire?.(),
+    useImperativeHandle(ref, () => ({
+      reset: () => {
+        if (widgetId.current && window.turnstile) window.turnstile.reset(widgetId.current);
+      },
+    }));
+
+    useEffect(() => {
+      let cancelado = false;
+      carregarScriptTurnstile().then(() => {
+        if (cancelado || !window.turnstile) return;
+        widgetId.current = window.turnstile.render(`#${containerId}`, {
+          sitekey: SITE_KEY,
+          theme: "auto",
+          callback: onVerify,
+          "expired-callback": () => onExpire?.(),
+        });
       });
-    });
-    return () => {
-      cancelado = true;
-      if (widgetId.current && window.turnstile) window.turnstile.remove(widgetId.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      return () => {
+        cancelado = true;
+        if (widgetId.current && window.turnstile) window.turnstile.remove(widgetId.current);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-  return <div id={containerId} />;
-}
+    return <div id={containerId} />;
+  },
+);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import logoMec from "@/assets/logo-mec-novo.png";
-import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { TurnstileWidget, TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 export default function CompletarCadastro() {
   const navigate = useNavigate();
@@ -22,6 +22,7 @@ export default function CompletarCadastro() {
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   const plan = searchParams.get('plan');
@@ -115,6 +116,10 @@ export default function CompletarCadastro() {
 
     } catch (err: any) {
       console.error("Erro ao criar conta:", err);
+      // Token de uso único: reseta pra uma nova tentativa não cair em
+      // captcha_failed sem precisar recarregar a página.
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
       setErrorMessage(err.message || "Erro ao criar conta. Tente novamente.");
       setStatus('form');
     }
@@ -248,7 +253,11 @@ export default function CompletarCadastro() {
                 />
               </div>
 
-              <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+              <TurnstileWidget
+                ref={turnstileRef}
+                onVerify={setCaptchaToken}
+                onExpire={() => setCaptchaToken(null)}
+              />
 
               <Button
                 type="submit"

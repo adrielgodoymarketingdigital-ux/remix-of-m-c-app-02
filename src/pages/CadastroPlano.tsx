@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import { CartaoCheckoutDialog } from "@/components/planos/CartaoCheckoutDialog";
 import { PixCheckoutDialog } from "@/components/planos/PixCheckoutDialog";
 import { Badge } from "@/components/ui/badge";
 import logoMec from "@/assets/logo-mec-auth.png";
-import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { TurnstileWidget, TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 export default function CadastroPlano() {
   const { trackLogin } = useEventTracking();
@@ -38,6 +38,7 @@ export default function CadastroPlano() {
   const [celular, setCelular] = useState("");
   const [senha, setSenha] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   useEffect(() => {
     if (step === "checkout") trackPageView()
@@ -102,6 +103,10 @@ export default function CadastroPlano() {
 
       if (error) {
         if (error.message.includes("already registered")) {
+          // Token de uso único: reseta pra uma nova tentativa não cair em
+          // captcha_failed sem precisar recarregar a página.
+          turnstileRef.current?.reset();
+          setCaptchaToken(null);
           toast.error("Este email já está cadastrado. Faça login para continuar.");
           return;
         }
@@ -146,6 +151,10 @@ export default function CadastroPlano() {
       }
     } catch (error: any) {
       console.error("Erro ao criar conta:", error);
+      // Mesmo motivo acima: reseta o token de Turnstile após erro de
+      // cadastro pra já deixar um token novo pronto pra próxima tentativa.
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
       toast.error(error.message || "Erro ao criar conta. Tente novamente.");
     } finally {
       setLoading(false);
@@ -300,7 +309,11 @@ export default function CadastroPlano() {
               </div>
 
               {!isLogin && (
-                <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+                <TurnstileWidget
+                  ref={turnstileRef}
+                  onVerify={setCaptchaToken}
+                  onExpire={() => setCaptchaToken(null)}
+                />
               )}
 
               <Button
