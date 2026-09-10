@@ -27,6 +27,7 @@ interface FuncionarioPermissoesResult {
   podeVerContasPagarReceber: boolean;
   podeVerAnaliseLucros: boolean;
   podeVerTotalVendas: boolean;
+  podeVerTecnicos: boolean;
   tecnicoObrigatorioOS: boolean;
   podeCompartilharLink: boolean;
 }
@@ -247,6 +248,18 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
   const podeSincronizarServicos = temAcessoDados('servicos') || temAcessoModulo('servicos');
   const podeSincronizarClientes = temAcessoDados('clientes');
 
+  // "Ver lista de técnicos na Ordem de Serviço" (recursos.ver_tecnicos_os) é
+  // um recurso à parte, default false, numa seção "Outros recursos"
+  // desassociada visualmente do módulo "Ordem de Serviço" — dono libera OS
+  // pro funcionário sem perceber que precisa marcar isso também, e aí o
+  // seletor de Técnico Principal (EtapaInformacoesServico.tsx) some por
+  // inteiro, inclusive pro próprio funcionário se selecionar. Mesmo
+  // raciocínio do fix de podeSincronizarServicos acima: aceitar também o
+  // módulo ordem_servico evita esse buraco sem exigir reconfiguração.
+  const podeVerTecnicos = data?.isDonoLoja
+    ? true
+    : (data?.permissoes?.recursos?.ver_tecnicos_os ?? false) || temAcessoModulo('ordem_servico');
+
   // Config global da loja (salva em configuracoes_loja.layout_os_config)
   const { tecnicoObrigatorioOS: tecnicoObrigatorioOSGlobal } = useOSBehaviorConfig();
 
@@ -272,6 +285,7 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
     podeVerContasPagarReceber: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_contas_pagar_receber ?? false),
     podeVerAnaliseLucros: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_analise_lucros ?? false),
     podeVerTotalVendas: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.ver_total_vendas ?? false),
+    podeVerTecnicos,
     // Lê da config global da loja (configuracoes_loja.layout_os_config.tecnico_obrigatorio_os)
     tecnicoObrigatorioOS: tecnicoObrigatorioOSGlobal,
     podeCompartilharLink: data?.isDonoLoja ? true : (data?.permissoes?.recursos?.compartilhar_link_acompanhamento ?? false),

@@ -205,8 +205,7 @@ export default function OrdemServicoPage() {
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
   const { compartilharWhatsApp, gerarLink } = useOSTracking();
-  const { lojaUserId, isDonoLoja, permissoes, podeCompartilharLink } = useFuncionarioPermissoes();
-  const podeVerTecnicos = isDonoLoja || (permissoes?.recursos?.ver_tecnicos_os ?? false);
+  const { lojaUserId, podeCompartilharLink, podeVerTecnicos } = useFuncionarioPermissoes();
   const { funcionarios } = useFuncionarios(lojaUserId);
   const tecnicosDisponiveis = podeVerTecnicos
     ? funcionarios.filter((f) => f.ativo).map((f) => ({ id: f.id, nome: f.nome, cargo: f.cargo }))
