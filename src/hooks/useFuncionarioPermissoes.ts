@@ -233,7 +233,18 @@ export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {
   const podeSincronizarProdutos = temAcessoDados('produtos_pecas');
   const podeSincronizarOS = temAcessoDados('ordens_servico');
   const podeSincronizarDispositivos = temAcessoDados('dispositivos');
-  const podeSincronizarServicos = temAcessoDados('servicos');
+  // Serviços é um catálogo único da loja (preços/tipos de serviço), não um
+  // dado pessoal do funcionário — não existe "catálogo de serviços próprio
+  // do funcionário" separado do da loja. Por isso aceita módulo OU dados: a
+  // tela de permissões tem dois checkboxes de "Serviços" em seções
+  // diferentes (Módulos → "Serviços", que só libera a página, e
+  // Sincronização de Dados → "Acessar serviços cadastrados", que é o que
+  // decide se a consulta usa o user_id do dono) e é fácil marcar só o
+  // primeiro achando que já basta — nesse caso o funcionário acessava a
+  // página mas via a lista vazia (useServicos.ts caía no user.id dele em vez
+  // do lojaUserId). Aceitar qualquer um dos dois evita esse buraco sem
+  // exigir que o dono resalve a permissão do funcionário já cadastrado.
+  const podeSincronizarServicos = temAcessoDados('servicos') || temAcessoModulo('servicos');
   const podeSincronizarClientes = temAcessoDados('clientes');
 
   // Config global da loja (salva em configuracoes_loja.layout_os_config)
