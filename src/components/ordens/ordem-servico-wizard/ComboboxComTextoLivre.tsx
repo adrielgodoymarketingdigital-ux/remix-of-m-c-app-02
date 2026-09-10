@@ -3,7 +3,7 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandSeparator } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
 interface ComboboxComTextoLivreProps {
@@ -44,13 +44,21 @@ export function ComboboxComTextoLivre({
   const [modoTextoLivre, setModoTextoLivre] = useState(!valorBateComCatalogo);
   const [open, setOpen] = useState(false);
 
-  // Se as opções mudarem (ex: troca de Marca alterando os Modelos/Cores disponíveis)
-  // e o valor atual não bater mais com o novo catálogo, mantém em modo texto livre;
-  // se bater, volta pro combobox.
+  // Chave estável com o conteúdo do catálogo (não a referência das arrays).
+  // O componente pai recria `opcoes`/`opcoesCustom` a cada render (.map/.filter),
+  // então usar as arrays direto como dependência do efeito abaixo disparava a
+  // cada re-render — inclusive logo depois de escolher "Outra", derrubando o
+  // modo texto livre que acabara de ser ativado (o valor "" "batia" com o
+  // catálogo e o efeito revertia modoTextoLivre para false).
+  const catalogoKey = todasOpcoes.join(" ");
+
+  // Se o catálogo realmente mudar de conteúdo (ex: troca de Marca alterando os
+  // Modelos/Cores disponíveis) e o valor atual não bater mais com ele, mantém
+  // em modo texto livre; se bater, volta pro combobox.
   useEffect(() => {
     setModoTextoLivre(!(value === "" || todasOpcoes.includes(value)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opcoes, opcoesCustom]);
+  }, [catalogoKey]);
 
   if (modoTextoLivre) {
     return (
@@ -99,6 +107,17 @@ export function ComboboxComTextoLivre({
           <CommandInput placeholder={buscaPlaceholder ?? "Buscar..."} />
           <CommandList>
             <CommandEmpty>Nenhuma opção encontrada.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value={opcaoOutra}
+                onSelect={() => handleSelecionar(opcaoOutra)}
+                className="font-medium text-primary"
+              >
+                <Check className="mr-2 h-4 w-4 opacity-0" />
+                {opcaoOutra}
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
             <CommandGroup heading={opcoesCustom.length > 0 ? "Cadastradas" : undefined}>
               {opcoes.map((opcao) => (
                 <CommandItem key={opcao} value={opcao} onSelect={() => handleSelecionar(opcao)}>
@@ -117,12 +136,6 @@ export function ComboboxComTextoLivre({
                 ))}
               </CommandGroup>
             )}
-            <CommandGroup>
-              <CommandItem value={opcaoOutra} onSelect={() => handleSelecionar(opcaoOutra)}>
-                <Check className="mr-2 h-4 w-4 opacity-0" />
-                {opcaoOutra}
-              </CommandItem>
-            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>
