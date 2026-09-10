@@ -43,6 +43,7 @@ const Contas = lazy(() => import("./pages/Contas"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Plano = lazy(() => import("./pages/Plano"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
+const Extrato = lazy(() => import("./pages/Extrato"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Vendas = lazy(() => import("./pages/Vendas"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
@@ -321,6 +322,15 @@ function AppRoutes() {
               <ComVerificacaoFuncionario modulo="financeiro">
                 <ComVerificacaoPlano modulo="financeiro">
                   <Financeiro />
+                </ComVerificacaoPlano>
+              </ComVerificacaoFuncionario>
+            </ProtectedAppRoute>
+          } />
+          <Route path="/extrato" element={
+            <ProtectedAppRoute>
+              <ComVerificacaoFuncionario modulo="financeiro">
+                <ComVerificacaoPlano modulo="financeiro">
+                  <Extrato />
                 </ComVerificacaoPlano>
               </ComVerificacaoFuncionario>
             </ProtectedAppRoute>

@@ -84,6 +84,11 @@ export const deveContarSecundarioNoLucro = (venda: VendaFinanceiraLike): boolean
   isVendaPorCompetenciaRecebimento(venda) &&
   venda.recebido === true;
 
+// ATENÇÃO: esta função (e getVendaReceitaLiquida logo abaixo) tem uma réplica
+// em SQL no bloco 1 de fn_extrato_eventos_raw (migration
+// supabase/migrations/20260909150000_extrato_financeiro.sql), usada pela tela
+// Financeiro → Extrato. Se mudar a regra aqui, atualize a migration também —
+// ver script de verificação em scripts/verificar-extrato-financeiro/.
 export const shouldIncludeVendaInFinancialTotals = (venda: VendaFinanceiraLike) => {
   if (venda.cancelada) return false;
   // Para vendas "a_receber"/"a_prazo" parceladas, cada parcela conta individualmente quando recebida
@@ -292,6 +297,11 @@ export type StatusContaOS = string | null | undefined;
  * Decide quanto de uma OS deve entrar em cálculos de faturamento/receita:
  * sem entrada, conta o total; com entrada e saldo pendente ou cancelado,
  * conta só a entrada; com entrada e saldo já baixado, conta o total.
+ *
+ * ATENÇÃO: réplica exata em SQL no bloco 4 de fn_extrato_eventos_raw
+ * (migration supabase/migrations/20260909150000_extrato_financeiro.sql),
+ * usada pela tela Financeiro → Extrato. Se mudar esta função, atualize a
+ * migration também — ver scripts/verificar-extrato-financeiro/.
  */
 export const getValorFaturavelOS = (
   ordem: OrdemFaturavelLike,

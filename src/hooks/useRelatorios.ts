@@ -33,6 +33,13 @@ export const useRelatorios = () => {
       : new Date(year, month - 1, day, 0, 0, 0, 0);
   };
 
+  // ATENÇÃO: réplica em SQL no bloco 5 de fn_extrato_eventos_raw (migration
+  // supabase/migrations/20260909150000_extrato_financeiro.sql), usada pela
+  // tela Financeiro → Extrato. Se mudar esta função, atualize a migration
+  // também — ver scripts/verificar-extrato-financeiro/. O filtro
+  // `.eq("status", "recebido")` em calcularReceitaManual (logo abaixo) também
+  // tem réplica lá — é ele que mantém a linha-espelho do Serviço Avulso
+  // (status='pago', bug de nomenclatura) fora dessa contagem.
   const isContaReceitaManual = (conta: { os_numero?: string | null; descricao?: string | null }) => {
     const descricao = conta.descricao ?? "";
     const ehContaDeOS = Boolean(conta.os_numero);

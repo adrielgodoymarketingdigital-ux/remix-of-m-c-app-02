@@ -98,6 +98,7 @@ const menuItems = [
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
   { title: "Financeiro", url: "/financeiro", icon: FileText, modulo: "financeiro" as keyof PermissoesModulos, items: [
     { title: "💰 Financeiro", url: "/financeiro", modulo: "financeiro" as keyof PermissoesModulos },
+    { title: "📒 Extrato", url: "/extrato", modulo: "financeiro" as keyof PermissoesModulos },
     { title: "📊 Relatórios", url: "/relatorios", modulo: "relatorios" as keyof PermissoesModulos },
   ]},
   { title: "Equipe", url: "/equipe", icon: Users, modulo: "equipe" as keyof PermissoesModulos },

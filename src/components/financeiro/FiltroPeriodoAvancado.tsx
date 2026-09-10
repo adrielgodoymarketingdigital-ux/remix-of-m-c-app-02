@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar, Filter } from "lucide-react";
+import { nowBrasilia } from "@/lib/dataBrasilia";
 
 export interface FiltrosPeriodo {
   dataInicio: string;
@@ -52,16 +53,19 @@ export function FiltroPeriodoAvancado({
 }: FiltroPeriodoAvancadoProps) {
   const [preset, setPreset] = useState<PresetType>("mes_atual");
   const [mesSelecionado, setMesSelecionado] = useState(
-    String(new Date().getMonth() + 1).padStart(2, "0")
+    String(nowBrasilia().getUTCMonth() + 1).padStart(2, "0")
   );
   const [anoSelecionado, setAnoSelecionado] = useState(
-    new Date().getFullYear().toString()
+    nowBrasilia().getUTCFullYear().toString()
   );
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
 
   const calcularFiltros = (p: PresetType): FiltrosPeriodo => {
-    const hoje = new Date();
+    // hoje é um Date "de parede" de Brasília (ver src/lib/dataBrasilia.ts) — a
+    // partir daqui só usar getters/setters UTC* nele, nunca os locais (que
+    // reinterpretariam o instante no fuso do navegador, não no de Brasília).
+    const hoje = nowBrasilia();
     const formatDate = (d: Date) => d.toISOString().split("T")[0];
 
     switch (p) {
@@ -69,17 +73,17 @@ export function FiltroPeriodoAvancado({
         return { dataInicio: formatDate(hoje), dataFim: formatDate(hoje) };
       case "ontem": {
         const ontem = new Date(hoje);
-        ontem.setDate(ontem.getDate() - 1);
+        ontem.setUTCDate(ontem.getUTCDate() - 1);
         return { dataInicio: formatDate(ontem), dataFim: formatDate(ontem) };
       }
       case "7dias": {
         const seteDias = new Date(hoje);
-        seteDias.setDate(seteDias.getDate() - 6);
+        seteDias.setUTCDate(seteDias.getUTCDate() - 6);
         return { dataInicio: formatDate(seteDias), dataFim: formatDate(hoje) };
       }
       case "mes_atual": {
-        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        const inicioMes = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 1));
+        const fimMes = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + 1, 0));
         return { dataInicio: formatDate(inicioMes), dataFim: formatDate(fimMes) };
       }
       case "por_mes": {

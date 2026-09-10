@@ -235,7 +235,15 @@ export type Database = {
           user_id?: string
           valor_desconto?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_liberacao_temp_id_fkey"
+            columns: ["liberacao_temp_id"]
+            isOneToOne: false
+            referencedRelation: "liberacoes_temporarias"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       avisos_sistema: {
         Row: {
@@ -438,6 +446,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      catalogo_dispositivos_custom: {
+        Row: {
+          created_at: string
+          empresa_id: string | null
+          id: string
+          marca_nome: string | null
+          nivel: string
+          nome: string
+          tipo_valor: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          marca_nome?: string | null
+          nivel: string
+          nome: string
+          tipo_valor?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          marca_nome?: string | null
+          nivel?: string
+          nome?: string
+          tipo_valor?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       categorias_despesas: {
         Row: {
@@ -830,6 +871,7 @@ export type Database = {
           termo_responsabilidade_config: Json | null
           updated_at: string | null
           user_id: string
+          valor_hora_referencia: number | null
           whatsapp: string | null
         }
         Insert: {
@@ -873,6 +915,7 @@ export type Database = {
           termo_responsabilidade_config?: Json | null
           updated_at?: string | null
           user_id: string
+          valor_hora_referencia?: number | null
           whatsapp?: string | null
         }
         Update: {
@@ -916,6 +959,7 @@ export type Database = {
           termo_responsabilidade_config?: Json | null
           updated_at?: string | null
           user_id?: string
+          valor_hora_referencia?: number | null
           whatsapp?: string | null
         }
         Relationships: [
@@ -1000,17 +1044,24 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "contas_empresa_id_fkey"
-            columns: ["empresa_id"]
+            foreignKeyName: "contas_cliente_id_fkey"
+            columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "empresas"
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "contas_cliente_id_fkey"
             columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "clientes"
+            referencedRelation: "clientes_ativos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
@@ -1250,56 +1301,6 @@ export type Database = {
         }
         Relationships: []
       }
-      grupo_compatibilidade_modelos: {
-        Row: {
-          grupo_id: string
-          id: string
-          marca: string
-          modelo: string
-        }
-        Insert: {
-          grupo_id: string
-          id?: string
-          marca: string
-          modelo: string
-        }
-        Update: {
-          grupo_id?: string
-          id?: string
-          marca?: string
-          modelo?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "grupo_compatibilidade_modelos_grupo_id_fkey"
-            columns: ["grupo_id"]
-            isOneToOne: false
-            referencedRelation: "grupos_compatibilidade_pelicula"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      grupos_compatibilidade_pelicula: {
-        Row: {
-          criado_em: string
-          criado_por: string | null
-          id: string
-          nome: string
-        }
-        Insert: {
-          criado_em?: string
-          criado_por?: string | null
-          id?: string
-          nome: string
-        }
-        Update: {
-          criado_em?: string
-          criado_por?: string | null
-          id?: string
-          nome?: string
-        }
-        Relationships: []
-      }
       dispositivo_imeis: {
         Row: {
           created_at: string | null
@@ -1375,6 +1376,7 @@ export type Database = {
           garantia: boolean | null
           id: string
           imei: string | null
+          imei2: string | null
           lucro: number | null
           marca: string
           modelo: string
@@ -1408,6 +1410,7 @@ export type Database = {
           garantia?: boolean | null
           id?: string
           imei?: string | null
+          imei2?: string | null
           lucro?: number | null
           marca: string
           modelo: string
@@ -1441,6 +1444,7 @@ export type Database = {
           garantia?: boolean | null
           id?: string
           imei?: string | null
+          imei2?: string | null
           lucro?: number | null
           marca?: string
           modelo?: string
@@ -1953,6 +1957,56 @@ export type Database = {
           },
         ]
       }
+      grupo_compatibilidade_modelos: {
+        Row: {
+          grupo_id: string
+          id: string
+          marca: string
+          modelo: string
+        }
+        Insert: {
+          grupo_id: string
+          id?: string
+          marca: string
+          modelo: string
+        }
+        Update: {
+          grupo_id?: string
+          id?: string
+          marca?: string
+          modelo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupo_compatibilidade_modelos_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_compatibilidade_pelicula"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_compatibilidade_pelicula: {
+        Row: {
+          criado_em: string
+          criado_por: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          criado_em?: string
+          criado_por?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          criado_em?: string
+          criado_por?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       historico_bloqueios: {
         Row: {
           acao: string
@@ -2173,7 +2227,7 @@ export type Database = {
           ativo: boolean | null
           base_comissao: string | null
           cargo: string | null
-          comissao_calculo: string | null
+          comissao_calculo: string
           comissao_escopo: string | null
           comissao_tipo: string | null
           comissao_valor: number | null
@@ -2195,7 +2249,7 @@ export type Database = {
           ativo?: boolean | null
           base_comissao?: string | null
           cargo?: string | null
-          comissao_calculo?: string | null
+          comissao_calculo?: string
           comissao_escopo?: string | null
           comissao_tipo?: string | null
           comissao_valor?: number | null
@@ -2217,7 +2271,7 @@ export type Database = {
           ativo?: boolean | null
           base_comissao?: string | null
           cargo?: string | null
-          comissao_calculo?: string | null
+          comissao_calculo?: string
           comissao_escopo?: string | null
           comissao_tipo?: string | null
           comissao_valor?: number | null
@@ -2649,6 +2703,7 @@ export type Database = {
           servico_status_pagamento: string | null
           status: string | null
           tempo_garantia: number | null
+          tempo_gasto_horas: number | null
           tipo_midia: string | null
           tipo_os: string
           tipo_servico_id: string | null
@@ -2664,6 +2719,7 @@ export type Database = {
           comissao_tipo_snapshot?: string | null
           comissao_valor_snapshot?: number | null
           created_at?: string | null
+          data_caixa?: string | null
           data_saida?: string | null
           defeito_relatado: string
           deleted_at?: string | null
@@ -2693,6 +2749,7 @@ export type Database = {
           servico_status_pagamento?: string | null
           status?: string | null
           tempo_garantia?: number | null
+          tempo_gasto_horas?: number | null
           tipo_midia?: string | null
           tipo_os?: string
           tipo_servico_id?: string | null
@@ -2738,6 +2795,7 @@ export type Database = {
           servico_status_pagamento?: string | null
           status?: string | null
           tempo_garantia?: number | null
+          tempo_gasto_horas?: number | null
           tipo_midia?: string | null
           tipo_os?: string
           tipo_servico_id?: string | null
@@ -2877,6 +2935,7 @@ export type Database = {
           created_at: string
           dados_antes: Json | null
           dados_depois: Json | null
+          descricao: string | null
           id: string
           os_id: string
           user_id: string
@@ -2886,6 +2945,7 @@ export type Database = {
           created_at?: string
           dados_antes?: Json | null
           dados_depois?: Json | null
+          descricao?: string | null
           id?: string
           os_id: string
           user_id: string
@@ -2895,6 +2955,7 @@ export type Database = {
           created_at?: string
           dados_antes?: Json | null
           dados_depois?: Json | null
+          descricao?: string | null
           id?: string
           os_id?: string
           user_id?: string
@@ -3786,6 +3847,7 @@ export type Database = {
           peca_id: string | null
           preco: number | null
           quantidade: number
+          tempo_medio_estimado_horas: number | null
           tipo_servico_id: string | null
           user_id: string
         }
@@ -3800,6 +3862,7 @@ export type Database = {
           peca_id?: string | null
           preco?: number | null
           quantidade?: number
+          tempo_medio_estimado_horas?: number | null
           tipo_servico_id?: string | null
           user_id: string
         }
@@ -3814,6 +3877,7 @@ export type Database = {
           peca_id?: string | null
           preco?: number | null
           quantidade?: number
+          tempo_medio_estimado_horas?: number | null
           tipo_servico_id?: string | null
           user_id?: string
         }
@@ -3823,13 +3887,6 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "servicos_tipo_servico_id_fkey"
-            columns: ["tipo_servico_id"]
-            isOneToOne: false
-            referencedRelation: "tipos_servico"
             referencedColumns: ["id"]
           },
           {
@@ -3844,6 +3901,13 @@ export type Database = {
             columns: ["peca_id"]
             isOneToOne: false
             referencedRelation: "pecas_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servicos_tipo_servico_id_fkey"
+            columns: ["tipo_servico_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_servico"
             referencedColumns: ["id"]
           },
         ]
@@ -5027,7 +5091,6 @@ export type Database = {
           comissao_tipo_snapshot: string | null
           comissao_valor_snapshot: number | null
           created_at: string | null
-          data_caixa: string | null
           data_saida: string | null
           defeito_relatado: string | null
           deleted_at: string | null
@@ -5063,7 +5126,6 @@ export type Database = {
           comissao_tipo_snapshot?: string | null
           comissao_valor_snapshot?: number | null
           created_at?: string | null
-          data_caixa?: string | null
           data_saida?: string | null
           defeito_relatado?: string | null
           deleted_at?: string | null
@@ -5101,7 +5163,6 @@ export type Database = {
           comissao_tipo_snapshot?: string | null
           comissao_valor_snapshot?: number | null
           created_at?: string | null
-          data_caixa?: string | null
           data_saida?: string | null
           defeito_relatado?: string | null
           deleted_at?: string | null
@@ -5470,6 +5531,56 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string
       }
+      fn_extrato_eventos_raw: {
+        Args: {
+          p_data_fim?: string
+          p_data_inicio?: string
+          p_empresa_id: string
+          p_is_filial: boolean
+          p_user_id: string
+        }
+        Returns: {
+          data: string
+          descricao: string
+          origem: string
+          referencia_id: string
+          tipo: string
+          valor: number
+        }[]
+      }
+      fn_extrato_lista: {
+        Args: {
+          p_data_fim: string
+          p_data_inicio: string
+          p_empresa_id: string
+          p_is_filial: boolean
+          p_limit?: number
+          p_offset?: number
+          p_user_id: string
+        }
+        Returns: {
+          data: string
+          descricao: string
+          origem: string
+          referencia_id: string
+          tipo: string
+          valor: number
+        }[]
+      }
+      fn_extrato_resumo: {
+        Args: {
+          p_data_fim: string
+          p_data_inicio: string
+          p_empresa_id: string
+          p_is_filial: boolean
+          p_user_id: string
+        }
+        Returns: {
+          entradas_periodo: number
+          saidas_periodo: number
+          saldo_atual: number
+        }[]
+      }
       generate_os_number:
         | { Args: never; Returns: string }
         | { Args: { p_user_id: string }; Returns: string }
@@ -5680,12 +5791,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5709,11 +5820,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5734,11 +5845,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5759,11 +5870,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5776,11 +5887,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
