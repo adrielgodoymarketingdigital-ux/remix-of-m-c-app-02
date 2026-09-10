@@ -6,6 +6,8 @@ import {
   PAGARME_PLAN_IDS,
   type PlanoTipoPago,
 } from "../_shared/planos-config.ts";
+import { detectarRajadaSuspeita, marcarContaSuspeita } from "../_shared/antiRajadaCadastro.ts";
+import { validarTurnstile } from "../_shared/turnstile.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,9 +91,10 @@ serve(async (req) => {
 
     // ── 2. Validar body ──────────────────────────────────────────────
     const body = await req.json();
-    const { plan_code, card_token, cpf, holder_name, billing_address, coupon_id } = body as {
+    const { plan_code, card_token, turnstile_token, cpf, holder_name, billing_address, coupon_id } = body as {
       plan_code?: string;
       card_token?: string;
+      turnstile_token?: string;
       cpf?: string;
       holder_name?: string;
       coupon_id?: string | null;
@@ -103,6 +106,28 @@ serve(async (req) => {
         country?: string;
       };
     };
+
+    // ── 2b. Turnstile (mitigação anti-carding, 2026-09-09) ────────────
+    const ipCliente = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? undefined;
+    if (!(await validarTurnstile(turnstile_token, ipCliente))) {
+      log("Turnstile inválido", { userId });
+      return new Response(
+        JSON.stringify({ error: "Verificação de segurança falhou. Recarregue a página e tente novamente." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── 2c. Rate limit anti-fraude (mitigação rápida, 2026-09-09) ─────
+    const supabaseUrlEnv = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceRoleKeyEnv = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    if (await detectarRajadaSuspeita(supabaseUrlEnv, serviceRoleKeyEnv, userId)) {
+      await marcarContaSuspeita(supabaseUrlEnv, serviceRoleKeyEnv, userId);
+      log("Bloqueado por rate limit anti-fraude", { userId });
+      return new Response(
+        JSON.stringify({ error: "Não foi possível processar sua solicitação. Tente novamente mais tarde ou contate o suporte." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!plan_code || !VALID_PLANS.includes(plan_code as PlanoTipoPago)) {
       return new Response(

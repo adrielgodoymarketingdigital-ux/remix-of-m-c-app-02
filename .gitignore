@@ -46,6 +46,7 @@ os_export.csv
 # código de produto; frequentemente têm e-mails e IDs reais hardcoded).
 scripts/recalculo-comissao/
 scripts/investigacao-cliente-compartilhado/
+scripts/verificar-extrato-financeiro/
 scripts/_local/
 /_scratch/
 

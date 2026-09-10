@@ -30,6 +30,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { useCupom } from "@/hooks/useCupom";
 import { CupomField } from "@/components/planos/CupomField";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 interface PixCheckoutDialogProps {
   open: boolean;
@@ -77,15 +78,21 @@ export function PixCheckoutDialog({
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [cpf, setCpf] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const { toast } = useToast();
   const cupom = useCupom();
+
+  // Fluxo renovação (userId/userEmail vindos de link sem sessão) usa outra
+  // edge function (create-pix-order-renovacao), fora do escopo desta
+  // mitigação — o Turnstile só se aplica ao fluxo normal autenticado.
+  const isRenovacao = !!(userId && userEmail);
 
   useEffect(() => {
     if (open && cupomInicial) cupom.validarCodigo(cupomInicial);
   }, [open]);
 
   const cpfDigits = cpf.replace(/\D/g, "");
-  const canGeneratePix = cpfDigits.length === 11;
+  const canGeneratePix = cpfDigits.length === 11 && (isRenovacao || !!captchaToken);
 
   const formatCPF = (value: string) => {
     const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -124,7 +131,7 @@ export function PixCheckoutDialog({
         // Fluxo normal: usuário autenticado
         const { data: fnData, error: fnError } = await supabase.functions.invoke(
           "create-pix-order",
-          { body: { plan_code: planoKey, cpf: cpfDigits, coupon_id: cupom.desconto?.cupomId ?? null } }
+          { body: { plan_code: planoKey, cpf: cpfDigits, turnstile_token: captchaToken, coupon_id: cupom.desconto?.cupomId ?? null } }
         );
         if (fnError) {
           let message = fnError.message;
@@ -155,7 +162,7 @@ export function PixCheckoutDialog({
     } finally {
       setLoading(false);
     }
-  }, [planoKey, cpfDigits, canGeneratePix, toast, userId, userEmail, cupom]);
+  }, [planoKey, cpfDigits, canGeneratePix, toast, userId, userEmail, cupom, captchaToken]);
 
   // Reset ao abrir/fechar
   useEffect(() => {
@@ -169,6 +176,7 @@ export function PixCheckoutDialog({
       setPaymentConfirmed(false);
       setCopied(false);
       setCpf("");
+      setCaptchaToken(null);
       cupom.limpar();
     }
   }, [open]);
@@ -345,6 +353,10 @@ export function PixCheckoutDialog({
                 {...cupom}
                 precoOriginalCentavos={Math.round(planoPreco * 100)}
               />
+
+              {!isRenovacao && (
+                <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+              )}
 
               <Button
                 onClick={gerarPix}

@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import logoMec from "@/assets/logo-mec-auth.png";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 const Auth = () => {
   const { trackLogin } = useEventTracking();
@@ -28,6 +29,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [nome, setNome] = useState("");
   const [celular, setCelular] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
@@ -111,6 +113,16 @@ const Auth = () => {
           return;
         }
 
+        if (!captchaToken) {
+          toast({
+            variant: "destructive",
+            title: "Verificação de segurança pendente",
+            description: "Complete a verificação de segurança para continuar.",
+          });
+          setLoading(false);
+          return;
+        }
+
         // Capturar tracking antes do signUp para incluir no raw_user_meta_data
         // O trigger handle_new_user (SECURITY DEFINER) lê esses campos e grava no profile
         const tracking = getTrackingParams();
@@ -119,6 +131,7 @@ const Auth = () => {
           email,
           password: senha,
           options: {
+            captchaToken: captchaToken ?? undefined,
             data: {
               nome: nome,
               celular: celularNumeros,
@@ -342,10 +355,14 @@ const Auth = () => {
             </div>
           </div>
 
+          {!isLogin && (
+            <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+          )}
+
           <Button
             type="submit"
             className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.7)] transition-all duration-300"
-            disabled={loading}
+            disabled={loading || (!isLogin && !captchaToken)}
           >
             {loading ? (
               <>

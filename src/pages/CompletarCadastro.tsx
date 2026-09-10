@@ -9,17 +9,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import logoMec from "@/assets/logo-mec-novo.png";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 export default function CompletarCadastro() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   const [status, setStatus] = useState<'loading' | 'form' | 'creating' | 'success' | 'error'>('loading');
   const [email, setEmail] = useState("");
   const [nome, setNome] = useState("");
   const [celular, setCelular] = useState("");
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   const plan = searchParams.get('plan');
@@ -60,6 +62,11 @@ export default function CompletarCadastro() {
       return;
     }
 
+    if (!captchaToken) {
+      setErrorMessage("Complete a verificação de segurança para continuar.");
+      return;
+    }
+
     setStatus('creating');
 
     try {
@@ -68,6 +75,7 @@ export default function CompletarCadastro() {
         email,
         password: senha,
         options: {
+          captchaToken,
           data: { nome, celular: celularNumeros },
           emailRedirectTo: `${window.location.origin}/dashboard`
         }
@@ -240,9 +248,12 @@ export default function CompletarCadastro() {
                 />
               </div>
 
+              <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+
               <Button
                 type="submit"
                 className="w-full bg-[hsl(24_100%_50%)] hover:bg-[hsl(24_100%_45%)] text-white font-semibold h-12"
+                disabled={!captchaToken}
               >
                 Criar Conta e Ativar Plano
               </Button>

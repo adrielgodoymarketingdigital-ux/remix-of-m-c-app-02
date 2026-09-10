@@ -16,6 +16,7 @@ import { CartaoCheckoutDialog } from "@/components/planos/CartaoCheckoutDialog";
 import { PixCheckoutDialog } from "@/components/planos/PixCheckoutDialog";
 import { Badge } from "@/components/ui/badge";
 import logoMec from "@/assets/logo-mec-auth.png";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 export default function CadastroPlano() {
   const { trackLogin } = useEventTracking();
@@ -36,6 +37,7 @@ export default function CadastroPlano() {
   const [email, setEmail] = useState("");
   const [celular, setCelular] = useState("");
   const [senha, setSenha] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (step === "checkout") trackPageView()
@@ -67,6 +69,12 @@ export default function CadastroPlano() {
         return;
       }
 
+      if (!captchaToken) {
+        toast.error("Complete a verificação de segurança para continuar.");
+        setLoading(false);
+        return;
+      }
+
       // Capturar tracking antes do signUp para incluir no raw_user_meta_data
       // O trigger handle_new_user (SECURITY DEFINER) lê esses campos e grava no profile
       const tracking = getTrackingParams();
@@ -75,6 +83,7 @@ export default function CadastroPlano() {
         email,
         password: senha,
         options: {
+          captchaToken,
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             nome,
@@ -290,10 +299,14 @@ export default function CadastroPlano() {
                 />
               </div>
 
-              <Button 
-                type="submit" 
+              {!isLogin && (
+                <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+              )}
+
+              <Button
+                type="submit"
                 className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.7)] transition-all duration-300"
-                disabled={loading}
+                disabled={loading || (!isLogin && !captchaToken)}
               >
                 {loading ? (
                   <>

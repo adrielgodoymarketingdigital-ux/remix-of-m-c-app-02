@@ -5,6 +5,8 @@ import {
   PLANO_NOMES,
   type PlanoTipoPago,
 } from "../_shared/planos-config.ts";
+import { detectarRajadaSuspeita, marcarContaSuspeita } from "../_shared/antiRajadaCadastro.ts";
+import { validarTurnstile } from "../_shared/turnstile.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,7 +132,34 @@ serve(async (req) => {
 
     // ── 2. Validar body ──────────────────────────────────────────────
     const body = await req.json();
-    const { plan_code, cpf, coupon_id } = body as { plan_code?: string; cpf?: string; coupon_id?: string | null };
+    const { plan_code, cpf, coupon_id, turnstile_token } = body as {
+      plan_code?: string;
+      cpf?: string;
+      coupon_id?: string | null;
+      turnstile_token?: string;
+    };
+
+    // ── 2a. Turnstile (mitigação anti-carding, 2026-09-09) ────────────
+    const ipCliente = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? undefined;
+    if (!(await validarTurnstile(turnstile_token, ipCliente))) {
+      log("Turnstile inválido", { userId });
+      return new Response(
+        JSON.stringify({ error: "Verificação de segurança falhou. Recarregue a página e tente novamente." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── 2b. Rate limit anti-fraude (mitigação rápida, 2026-09-09) ─────
+    const supabaseUrlEnv = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceRoleKeyEnv = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    if (await detectarRajadaSuspeita(supabaseUrlEnv, serviceRoleKeyEnv, userId)) {
+      await marcarContaSuspeita(supabaseUrlEnv, serviceRoleKeyEnv, userId);
+      log("Bloqueado por rate limit anti-fraude", { userId });
+      return new Response(
+        JSON.stringify({ error: "Não foi possível processar sua solicitação. Tente novamente mais tarde ou contate o suporte." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!plan_code || !VALID_PLANS.includes(plan_code as PlanoTipoPago)) {
       log("plan_code inválido", { plan_code });
@@ -161,7 +190,7 @@ serve(async (req) => {
     const displayName = PLANO_NOMES[plano];
     log("Plano validado", { plano, fullAmount, displayName });
 
-    // ── 2b. Verificar upgrade (pro-rata) ─────────────────────────────
+    // ── 2c. Verificar upgrade (pro-rata) ─────────────────────────────
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""

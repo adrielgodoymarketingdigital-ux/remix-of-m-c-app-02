@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useCupom } from "@/hooks/useCupom";
 import { CupomField } from "@/components/planos/CupomField";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
 
 // Public Key da Pagar.me (segura para o frontend — usada apenas para tokenizar cartões)
 const PAGARME_PUBLIC_KEY = "pk_p096KVAIDFNmGjNk";
@@ -133,6 +134,7 @@ export function CartaoCheckoutDialog({
     estado: "",
   });
   const [cepLoading, setCepLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const cardDigits = sanitizeDigits(cardNumber);
   const expiryDigits = sanitizeDigits(expiry);
@@ -156,6 +158,7 @@ export function CartaoCheckoutDialog({
     cvv.length <= 4 &&
     isValidCPF(cpfDigits) &&
     billingComplete &&
+    !!captchaToken &&
     !loading;
 
   const resetForm = () => {
@@ -167,6 +170,7 @@ export function CartaoCheckoutDialog({
     setBilling({ cep: "", logradouro: "", numero: "", complemento: "", bairro: "", cidade: "", estado: "" });
     setError(null);
     setSuccess(false);
+    setCaptchaToken(null);
     cupom.limpar();
   };
 
@@ -267,6 +271,7 @@ export function CartaoCheckoutDialog({
           body: {
             plan_code: planoKey,
             card_token: cardToken,
+            turnstile_token: captchaToken,
             holder_name: holderName.trim(),
             cpf: cpfDigits,
             billing_address: {
@@ -631,6 +636,8 @@ export function CartaoCheckoutDialog({
                   <span>{error}</span>
                 </div>
               )}
+
+              <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
 
               <Button
                 type="submit"
