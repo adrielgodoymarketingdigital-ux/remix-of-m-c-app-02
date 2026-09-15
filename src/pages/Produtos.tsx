@@ -34,7 +34,7 @@ import { DialogNovaTrocaGarantia } from '@/components/produtos/DialogNovaTrocaGa
 import { useTrocasGarantia } from '@/hooks/useTrocasGarantia';
 
 const Produtos = () => {
-  const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque } = useProdutos();
+  const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque, renomearVariacao, adicionarVariacaoAoGrupo, removerDoGrupo } = useProdutos();
   const { categorias, categoriasArvore, carregarCategorias, criarCategoria, atualizarCategoria, excluirCategoria } = useCategoriasProdutos();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
   const { obterContagemProdutosMes, assinatura } = useAssinatura();
@@ -172,6 +172,14 @@ const Produtos = () => {
 
   const handleSubmit = async (dados: FormularioProduto) => {
     if (itemParaEditar) {
+      // Tipo mudou: converte primeiro (reaproveita a mesma lógica com
+      // pré-flight/checagem de FK do botão "Tornar Produto/Peça" em massa,
+      // só que pra 1 item) e SÓ ENTÃO aplica o resto da edição (nome, preço
+      // etc.) — evita duplicar a lógica de conversão aqui.
+      if (dados.tipo !== itemParaEditar.tipo) {
+        const convertido = await alterarTipoEmMassa([{ id: itemParaEditar.id, tipo: itemParaEditar.tipo }], dados.tipo);
+        if (!convertido) return false; // bloqueado ou falhou — motivo específico já mostrado em toast
+      }
       return await atualizar(itemParaEditar.id, dados);
     } else {
       return await criar(dados);
@@ -509,6 +517,10 @@ const Produtos = () => {
         onSubmitPecaComVariacoes={criarPecaComVariacoes}
         itemParaEditar={itemParaEditar}
         categorias={categorias}
+        todosItens={items}
+        onRenomearVariacao={renomearVariacao}
+        onAdicionarVariacaoAoGrupo={adicionarVariacaoAoGrupo}
+        onRemoverDoGrupo={removerDoGrupo}
       />
 
       {/* Dialog de Importação */}

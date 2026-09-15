@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ItemEstoque, FormularioProduto, VariacaoInput } from '@/types/produto';
+import { ItemEstoque, FormularioProduto, VariacaoInput, getPaiIdVariacao } from '@/types/produto';
 import { CategoriaProduto } from '@/types/categoria-produto';
 import { ordenarCategoriasHierarquicamente } from '@/lib/categorias';
 import { formatCurrency } from '@/lib/formatters';
@@ -40,6 +40,7 @@ import { FormularioFornecedor } from '@/types/fornecedor';
 import { Plus, Lock, Trash2, ArrowDownToLine } from 'lucide-react';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { toast } from 'sonner';
+import { SecaoVariacoesGrupo } from './SecaoVariacoesGrupo';
 
 const formSchema = z.object({
   tipo: z.enum(['produto', 'peca'], {
@@ -67,6 +68,22 @@ interface DialogCadastroProdutoProps {
   onSubmitPecaComVariacoes?: (nomeBase: string, variacoes: VariacaoInput[], categoriaId?: string, fornecedorId?: string) => Promise<boolean>;
   itemParaEditar?: ItemEstoque | null;
   categorias?: CategoriaProduto[];
+  /** Todos os itens já carregados (produtos + peças) — usado só pra achar os
+   * irmãos de variação de itemParaEditar sem disparar uma query nova. */
+  todosItens?: ItemEstoque[];
+  onRenomearVariacao?: (id: string, tipo: 'produto' | 'peca', novoLabel: string) => Promise<boolean>;
+  onAdicionarVariacaoAoGrupo?: (grupoRootId: string, tipo: 'produto' | 'peca', dados: {
+    nome: string;
+    label: string;
+    quantidade: number;
+    custo: number;
+    preco: number;
+    preco_atacado: number | null;
+    codigo_barras?: string;
+    categoria_id?: string | null;
+    fornecedor_id?: string | null;
+  }) => Promise<boolean>;
+  onRemoverDoGrupo?: (id: string, tipo: 'produto' | 'peca') => Promise<boolean>;
 }
 
 export const DialogCadastroProduto = ({
@@ -77,6 +94,10 @@ export const DialogCadastroProduto = ({
   onSubmitPecaComVariacoes,
   itemParaEditar,
   categorias = [],
+  todosItens = [],
+  onRenomearVariacao,
+  onAdicionarVariacaoAoGrupo,
+  onRemoverDoGrupo,
 }: DialogCadastroProdutoProps) => {
   const [fotos, setFotos] = useState<string[]>([]);
   const [dialogFornecedorAberto, setDialogFornecedorAberto] = useState(false);
@@ -85,6 +106,22 @@ export const DialogCadastroProduto = ({
   const [temVariacoes, setTemVariacoes] = useState(false);
   const [variacoes, setVariacoes] = useState<VariacaoInput[]>([]);
   const [enviando, setEnviando] = useState(false);
+
+  // Grupo de variações do item em edição: se ele tem pai (é uma variação) ou
+  // é raiz de um grupo (outros itens apontam pra ele), grupoVariacoes traz
+  // TODOS os membros (raiz + variações); senão fica vazio e a seção some.
+  // Usa a lista já carregada em memória (todosItens) em vez de nova query.
+  const grupoVariacoes = useMemo(() => {
+    if (!itemParaEditar) return [];
+    const raizId = getPaiIdVariacao(itemParaEditar) || itemParaEditar.id;
+    const grupo = todosItens.filter(
+      (i) => i.tipo === itemParaEditar.tipo && (i.id === raizId || getPaiIdVariacao(i) === raizId)
+    );
+    return grupo.length > 1 ? grupo : [];
+  }, [itemParaEditar, todosItens]);
+
+  const paiIdAtual = itemParaEditar ? getPaiIdVariacao(itemParaEditar) : null;
+  const raizDoGrupoAtual = paiIdAtual ? grupoVariacoes.find((i) => i.id === paiIdAtual) : undefined;
 
   const form = useForm<FormularioProduto>({
     resolver: zodResolver(formSchema),
@@ -236,8 +273,17 @@ export const DialogCadastroProduto = ({
         >
           <DialogHeader>
             <DialogTitle>
-              {itemParaEditar ? 'Editar Item' : 'Cadastrar Novo Item'}
+              {itemParaEditar
+                ? paiIdAtual
+                  ? `Editar Variação de "${raizDoGrupoAtual?.nome ?? '...'}"`
+                  : 'Editar Item'
+                : 'Cadastrar Novo Item'}
             </DialogTitle>
+            {itemParaEditar && grupoVariacoes.length > 1 && !paiIdAtual && (
+              <p className="text-xs text-muted-foreground">
+                Este item é a raiz de um grupo com {grupoVariacoes.length - 1} variação(ões) — veja a seção "Variações deste item" abaixo.
+              </p>
+            )}
           </DialogHeader>
 
           <Form {...form}>
@@ -253,7 +299,6 @@ export const DialogCadastroProduto = ({
                         onValueChange={(v) => { field.onChange(v); setTemVariacoes(false); setVariacoes([]); }}
                         value={field.value}
                         className="flex gap-4"
-                        disabled={!!itemParaEditar}
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="produto" id="produto" />
@@ -265,6 +310,11 @@ export const DialogCadastroProduto = ({
                         </div>
                       </RadioGroup>
                     </FormControl>
+                    {itemParaEditar && field.value !== itemParaEditar.tipo && (
+                      <p className="text-xs text-muted-foreground">
+                        Ao salvar, este item será convertido de {itemParaEditar.tipo === 'produto' ? 'Produto' : 'Peça'} pra {field.value === 'produto' ? 'Produto' : 'Peça'} (o ID é preservado — vendas e vínculos continuam apontando pro mesmo item). Se houver algum vínculo que impeça a conversão, você verá o motivo específico antes de qualquer alteração.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -349,6 +399,18 @@ export const DialogCadastroProduto = ({
                   </FormItem>
                 )}
               />
+
+              {itemParaEditar && grupoVariacoes.length > 1 && onRenomearVariacao && onAdicionarVariacaoAoGrupo && onRemoverDoGrupo && (
+                <SecaoVariacoesGrupo
+                  grupo={grupoVariacoes}
+                  itemAtualId={itemParaEditar.id}
+                  tipo={itemParaEditar.tipo}
+                  podeEditar={!isFuncionario || podeEditarProdutos}
+                  onRenomear={onRenomearVariacao}
+                  onAdicionar={onAdicionarVariacaoAoGrupo}
+                  onRemoverDoGrupo={onRemoverDoGrupo}
+                />
+              )}
 
               {!itemParaEditar && (
                 <div className="flex items-start gap-2">

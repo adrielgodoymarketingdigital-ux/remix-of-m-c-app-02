@@ -5,6 +5,7 @@ import { ItemEstoque, Produto, Peca, FormularioProduto, VariacaoInput } from '@/
 import { useFuncionarioPermissoes } from './useFuncionarioPermissoes';
 import { useAssinatura } from './useAssinatura';
 import { useIdentidade } from './useResolvedUserId';
+import { executarConversaoTipo, renomearVariacao as renomearVariacaoCore, adicionarVariacaoAoGrupo as adicionarVariacaoAoGrupoCore, removerDoGrupo as removerDoGrupoCore } from '@/lib/produtos/conversaoTipo';
 
 export const useProdutos = () => {
   const [items, setItems] = useState<ItemEstoque[]>([]);
@@ -676,93 +677,60 @@ export const useProdutos = () => {
     }
   }, [carregarTodos, resolvedUserId, empresaFiltro]);
 
+  // Wrapper fino: resolve userId/empresaId e traduz o resultado estruturado
+  // de executarConversaoTipo (src/lib/produtos/conversaoTipo.ts) em
+  // toast+carregarTodos. A lógica de negócio (pré-flight, cópia de campos,
+  // decisão sobre raiz de grupo) vive só lá — testável direto por
+  // scripts/testar-conversao-produtos-pecas/, sem duplicação.
   const alterarTipoEmMassa = useCallback(async (itensParaAlterar: { id: string; tipo: 'produto' | 'peca' }[], novoTipo: 'produto' | 'peca') => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
-
       const userId = resolvedUserId ?? user.id;
 
-      // Separar itens que precisam mudar de tipo dos que já são do tipo correto
-      const itensParaMover = itensParaAlterar.filter(i => i.tipo !== novoTipo);
-      if (itensParaMover.length === 0) {
+      const resultado = await executarConversaoTipo(supabase, itensParaAlterar, novoTipo, userId, empresaFiltro ?? null);
+
+      if (resultado.jaEstavamCertos) {
         toast.info('Todos os itens selecionados já são do tipo desejado.');
         return true;
       }
 
-      const itensUnicos = Array.from(new Map(itensParaMover.map((item) => [item.id, item])).values());
+      if (resultado.erro) throw new Error(resultado.erro);
 
-      const tabelaOrigem = novoTipo === 'produto' ? 'pecas' : 'produtos';
-      const tabelaDestino = novoTipo === 'produto' ? 'produtos' : 'pecas';
-      const ids = itensUnicos.map(i => i.id);
-
-      // Buscar dados dos itens na tabela de origem
-      const { data: itensOriginais, error: erroSelect } = await supabase
-        .from(tabelaOrigem)
-        .select('*')
-        .in('id', ids)
-        .eq('user_id', userId);
-
-      if (erroSelect) throw erroSelect;
-      if (!itensOriginais || itensOriginais.length === 0) {
-        toast.error('Nenhum item encontrado para alterar.');
+      if (!resultado.ok) {
+        const [primeiroMotivo] = resultado.bloqueios.values();
+        toast.error(
+          resultado.totalSolicitado === 1 ? 'Não foi possível converter este item' : `Nenhum dos ${resultado.totalSolicitado} itens pôde ser convertido`,
+          { description: resultado.totalSolicitado === 1 ? primeiroMotivo : 'Todos têm vínculos que impedem a conversão (vendas, serviços, trocas de garantia ou variações).' }
+        );
         return false;
       }
 
-      if (itensOriginais.length !== ids.length) {
-        throw new Error('Nem todos os itens selecionados puderam ser encontrados para a alteração.');
+      toast.success(`${resultado.convertidos.length} ${resultado.convertidos.length === 1 ? 'item alterado' : 'itens alterados'} para ${novoTipo === 'produto' ? 'Produto' : 'Peça'}!`);
+
+      if (resultado.idsQueEramVariacao.length > 0) {
+        toast.info(
+          resultado.idsQueEramVariacao.length === 1
+            ? 'O item convertido deixou de fazer parte do grupo de variações original.'
+            : `${resultado.idsQueEramVariacao.length} itens convertidos deixaram de fazer parte do grupo de variações original.`,
+          { description: 'Grupos de variação só existem dentro do mesmo tipo (produto ou peça).' }
+        );
       }
 
-      // Inserir na tabela de destino preservando o mesmo ID para não quebrar seleções já salvas no catálogo
-      const novosItens = itensOriginais.map((item: any) => ({
-        id: item.id,
-        nome: item.nome,
-        quantidade: item.quantidade || 0,
-        custo: item.custo || 0,
-        preco: item.preco || 0,
-        user_id: userId,
-        empresa_id: item.empresa_id ?? empresaFiltro ?? null,
-        created_at: item.created_at,
-        codigo_barras: item.codigo_barras || null,
-        fotos: item.fotos || [],
-        fornecedor_id: item.fornecedor_id || null,
-        categoria_id: item.categoria_id || null,
-        ...(novoTipo === 'produto'
-          ? {
-              sku: item.sku || null,
-              lucro: Number(item.preco || 0) - Number(item.custo || 0),
-            }
-          : {}),
-      }));
-
-      const { error: erroInsert } = await supabase
-        .from(tabelaDestino)
-        .insert(novosItens as any);
-
-      if (erroInsert) throw erroInsert;
-
-      // Excluir da tabela de origem; se falhar, remove a cópia para evitar duplicidade silenciosa
-      const { error: erroDelete } = await supabase
-        .from(tabelaOrigem)
-        .delete()
-        .in('id', ids)
-        .eq('user_id', userId);
-
-      if (erroDelete) {
-        const { error: erroRollback } = await supabase
-          .from(tabelaDestino)
-          .delete()
-          .in('id', ids)
-          .eq('user_id', userId);
-
-        if (erroRollback) {
-          console.error('Erro ao desfazer conversão após falha:', erroRollback);
-        }
-
-        throw new Error('Não foi possível concluir a alteração de tipo. Verifique se os itens possuem vínculos com outras operações antes de tentar novamente.');
+      const avisosDosConvertidos = [...new Set(resultado.convertidos.filter((id) => resultado.avisos.has(id)).map((id) => resultado.avisos.get(id)!))];
+      if (avisosDosConvertidos.length > 0) {
+        toast.info(avisosDosConvertidos.length === 1 ? 'Atenção' : `Atenção (${avisosDosConvertidos.length} itens)`, {
+          description: avisosDosConvertidos.join(' '),
+        });
       }
 
-      toast.success(`${itensOriginais.length} ${itensOriginais.length === 1 ? 'item alterado' : 'itens alterados'} para ${novoTipo === 'produto' ? 'Produto' : 'Peça'}!`);
+      if (resultado.bloqueios.size > 0) {
+        const motivos = [...new Set(resultado.bloqueios.values())];
+        toast.error(
+          `${resultado.bloqueios.size} ${resultado.bloqueios.size === 1 ? 'item não pôde' : 'itens não puderam'} ser convertido(s)`,
+          { description: motivos.join(' ') }
+        );
+      }
 
       await carregarTodos();
       return true;
@@ -771,6 +739,86 @@ export const useProdutos = () => {
       return false;
     }
   }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+
+  // Renomeia só o rótulo da variação (ex: "iPhone 11" → "iPhone 11 Pro Max"),
+  // sem mexer em mais nada do item. Usado na seção "Variações deste item" do
+  // dialog de edição — variacao_label era write-once (só na criação em lote)
+  // até esta função existir.
+  const renomearVariacao = useCallback(async (id: string, tipo: 'produto' | 'peca', novoLabel: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+      const userId = resolvedUserId ?? user.id;
+
+      const resultado = await renomearVariacaoCore(supabase, id, tipo, novoLabel, userId);
+      if (!resultado.ok) throw new Error(resultado.erro);
+
+      toast.success('Nome da variação atualizado!');
+      await carregarTodos();
+      return true;
+    } catch (error: any) {
+      toast.error('Erro ao renomear variação', { description: error.message });
+      return false;
+    }
+  }, [carregarTodos, resolvedUserId]);
+
+  // Adiciona UMA variação nova a um grupo JÁ EXISTENTE (diferente de
+  // criarProdutoComVariacoes/criarPecaComVariacoes, que sempre criam um grupo
+  // novo com raiz nova) — aponta produto_pai_id/peca_pai_id pro id da raiz
+  // do grupo já existente.
+  const adicionarVariacaoAoGrupo = useCallback(async (
+    grupoRootId: string,
+    tipo: 'produto' | 'peca',
+    dados: {
+      nome: string;
+      label: string;
+      quantidade: number;
+      custo: number;
+      preco: number;
+      preco_atacado: number | null;
+      codigo_barras?: string;
+      categoria_id?: string | null;
+      fornecedor_id?: string | null;
+    },
+  ) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+      const userId = resolvedUserId ?? user.id;
+
+      const resultado = await adicionarVariacaoAoGrupoCore(supabase, grupoRootId, tipo, dados, userId, empresaFiltro ?? null);
+      if (!resultado.ok) throw new Error(resultado.erro);
+
+      toast.success('Variação adicionada ao grupo!');
+      await carregarTodos();
+      return true;
+    } catch (error: any) {
+      toast.error('Erro ao adicionar variação', { description: error.message });
+      return false;
+    }
+  }, [carregarTodos, resolvedUserId, empresaFiltro]);
+
+  // Desvincula um item do grupo de variações (vira item avulso) — NÃO
+  // exclui. Exclusão de verdade já tem fluxo próprio (com checagem de FK) na
+  // lista principal; duplicar isso aqui só aumentaria a chance de excluir por
+  // engano um item com vínculos (vendas, serviços) sem a checagem completa.
+  const removerDoGrupo = useCallback(async (id: string, tipo: 'produto' | 'peca') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+      const userId = resolvedUserId ?? user.id;
+
+      const resultado = await removerDoGrupoCore(supabase, id, tipo, userId);
+      if (!resultado.ok) throw new Error(resultado.erro);
+
+      toast.success('Item desvinculado do grupo de variações.');
+      await carregarTodos();
+      return true;
+    } catch (error: any) {
+      toast.error('Erro ao remover do grupo', { description: error.message });
+      return false;
+    }
+  }, [carregarTodos, resolvedUserId]);
 
   const alterarPrecoEmMassa = useCallback(async (
     itens: { id: string; tipo: 'produto' | 'peca' }[],
@@ -892,5 +940,8 @@ export const useProdutos = () => {
     criarProdutoComVariacoes,
     criarPecaComVariacoes,
     reporEstoque,
+    renomearVariacao,
+    adicionarVariacaoAoGrupo,
+    removerDoGrupo,
   };
 };

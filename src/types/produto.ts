@@ -46,6 +46,11 @@ export interface Peca {
 
 export type ItemEstoque = Produto | Peca;
 
+/** produto_pai_id ou peca_pai_id, conforme o tipo do item — narrowing por
+ * discriminated union (item.tipo), sem precisar de acesso dinâmico/`any`. */
+export const getPaiIdVariacao = (item: ItemEstoque): string | null =>
+  item.tipo === 'produto' ? item.produto_pai_id ?? null : item.peca_pai_id ?? null;
+
 export interface FormularioProduto {
   tipo: TipoProduto;
   codigo?: string;
