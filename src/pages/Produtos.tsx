@@ -34,7 +34,7 @@ import { DialogNovaTrocaGarantia } from '@/components/produtos/DialogNovaTrocaGa
 import { useTrocasGarantia } from '@/hooks/useTrocasGarantia';
 
 const Produtos = () => {
-  const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque, renomearVariacao, adicionarVariacaoAoGrupo, removerDoGrupo } = useProdutos();
+  const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, adicionarFotoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque, renomearVariacao, adicionarVariacaoAoGrupo, removerDoGrupo } = useProdutos();
   const { categorias, categoriasArvore, carregarCategorias, criarCategoria, atualizarCategoria, excluirCategoria } = useCategoriasProdutos();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
   const { obterContagemProdutosMes, assinatura } = useAssinatura();
@@ -485,6 +485,7 @@ const Produtos = () => {
                   onCategorizarEmMassa={categorizarEmMassa}
                   onAlterarTipoEmMassa={alterarTipoEmMassa}
                   onAlterarPrecoEmMassa={alterarPrecoEmMassa}
+                  onAdicionarFotoEmMassa={adicionarFotoEmMassa}
                   onReporEstoque={(item) => setItemParaRepor(item)}
                   onAtualizado={carregarTodos}
                 />

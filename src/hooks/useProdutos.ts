@@ -875,6 +875,71 @@ export const useProdutos = () => {
     }
   }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
+  // Adiciona UMA foto (já enviada ao Storage previamente — recebe só a URL)
+  // ao array `fotos` de cada item selecionado, preservando as fotos que já
+  // existiam. Itens que já estão no limite de 5 fotos são pulados (não é
+  // erro — reportado à parte pro chamador decidir como avisar o usuário).
+  const adicionarFotoEmMassa = useCallback(async (
+    itens: { id: string; tipo: 'produto' | 'peca' }[],
+    urlFoto: string
+  ) => {
+    const MAX_FOTOS = 5;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const userId = resolvedUserId ?? user.id;
+
+      const pulados: { id: string; nome: string }[] = [];
+      const atualizacoes: { id: string; tipo: 'produto' | 'peca'; novasFotos: string[] }[] = [];
+
+      for (const { id, tipo } of itens) {
+        const item = items.find(i => i.id === id && i.tipo === tipo);
+        const fotosAtuais = item?.fotos ?? [];
+        if (fotosAtuais.length >= MAX_FOTOS) {
+          pulados.push({ id, nome: item?.nome ?? id });
+          continue;
+        }
+        atualizacoes.push({ id, tipo, novasFotos: [...fotosAtuais, urlFoto] });
+      }
+
+      const resultados = await Promise.all(
+        atualizacoes.map(({ id, tipo, novasFotos }) => {
+          const tabela = tipo === 'produto' ? 'produtos' : 'pecas';
+          return supabase
+            .from(tabela)
+            .update({ fotos: novasFotos } as any)
+            .eq('id', id)
+            .eq('user_id', userId);
+        })
+      );
+
+      const comErro = resultados.filter(r => r.error);
+      const atualizados = atualizacoes.length - comErro.length;
+
+      if (atualizados > 0) {
+        toast.success(`${atualizados} ${atualizados === 1 ? 'item atualizado' : 'itens atualizados'} com a nova imagem!`);
+      }
+      if (comErro.length > 0) {
+        toast.error(`Erro ao adicionar imagem em ${comErro.length} ${comErro.length === 1 ? 'item' : 'itens'}`, {
+          description: comErro[0].error?.message,
+        });
+      }
+      if (pulados.length > 0) {
+        toast.warning(
+          `${pulados.length} ${pulados.length === 1 ? 'item foi pulado' : 'itens foram pulados'} por já estar${pulados.length === 1 ? '' : 'em'} no limite de ${MAX_FOTOS} fotos`,
+          { description: pulados.map(p => p.nome).join(', ') }
+        );
+      }
+
+      await carregarTodos();
+      return { atualizados, pulados: pulados.length };
+    } catch (error: any) {
+      toast.error('Erro ao adicionar imagem em massa', { description: error.message });
+      return { atualizados: 0, pulados: 0 };
+    }
+  }, [carregarTodos, items, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+
   const reporEstoque = useCallback(async (id: string, tipo: 'produto' | 'peca', quantidadeAdicional: number) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -936,6 +1001,7 @@ export const useProdutos = () => {
     categorizarEmMassa,
     alterarTipoEmMassa,
     alterarPrecoEmMassa,
+    adicionarFotoEmMassa,
     importarEmLote,
     criarProdutoComVariacoes,
     criarPecaComVariacoes,

@@ -22,13 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Package, Wrench, ImageOff, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft, DollarSign, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, Package, Wrench, ImageOff, ImagePlus, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft, DollarSign, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ItemEstoque } from '@/types/produto';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ValorMonetario } from '@/components/ui/valor-monetario';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { DialogAlterarPrecoEmMassa } from './DialogAlterarPrecoEmMassa';
+import { DialogAdicionarFotoEmMassa } from './DialogAdicionarFotoEmMassa';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -42,6 +43,7 @@ interface TabelaProdutosProps {
   onCategorizarEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], categoriaId: string | null) => Promise<boolean>;
   onAlterarTipoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], novoTipo: 'produto' | 'peca') => Promise<boolean>;
   onAlterarPrecoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], novoPreco: number, novoPrecoAtacado: number | null) => Promise<boolean>;
+  onAdicionarFotoEmMassa?: (itens: { id: string; tipo: 'produto' | 'peca' }[], urlFoto: string) => Promise<{ atualizados: number; pulados: number }>;
   onReporEstoque?: (item: ItemEstoque) => void;
   onAtualizado?: () => void;
   colunasVisiveis?: Set<string>;
@@ -70,7 +72,7 @@ const FotoProduto = ({ fotos, tamanho = 'sm' }: { fotos?: string[]; tamanho?: 's
   );
 };
 
-export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onReporEstoque, onAtualizado, colunasVisiveis }: TabelaProdutosProps) => {
+export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onAdicionarFotoEmMassa, onReporEstoque, onAtualizado, colunasVisiveis }: TabelaProdutosProps) => {
   const [itemParaExcluir, setItemParaExcluir] = useState<ItemEstoque | null>(null);
   const [atualizandoCatalogo, setAtualizandoCatalogo] = useState<Set<string>>(new Set());
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -80,6 +82,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const [mostrarSeletorCategoria, setMostrarSeletorCategoria] = useState(false);
   const [alterandoTipo, setAlterandoTipo] = useState(false);
   const [dialogPrecoAberto, setDialogPrecoAberto] = useState(false);
+  const [dialogFotoAberto, setDialogFotoAberto] = useState(false);
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
   // Paginação — só afeta o layout desktop (a lista mobile continua renderizando tudo).
@@ -371,6 +374,16 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
               Alterar Preço ({selecionados.size})
             </Button>
           )}
+          {onAdicionarFotoEmMassa && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDialogFotoAberto(true)}
+            >
+              <ImagePlus className="w-4 h-4 mr-1" />
+              Adicionar Imagem ({selecionados.size})
+            </Button>
+          )}
           {onCategorizarEmMassa && categorias && categorias.length > 0 && (
             <Button
               variant="outline"
@@ -627,6 +640,18 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
             itensSelecionados={items.filter((i) => selecionados.has(i.id))}
 
             onConfirmar={onAlterarPrecoEmMassa}
+          />
+        )}
+
+        {onAdicionarFotoEmMassa && (
+          <DialogAdicionarFotoEmMassa
+            open={dialogFotoAberto}
+            onOpenChange={(open) => {
+              setDialogFotoAberto(open);
+              if (!open) setSelecionados(new Set());
+            }}
+            itensSelecionados={items.filter((i) => selecionados.has(i.id))}
+            onConfirmar={onAdicionarFotoEmMassa}
           />
         )}
       </>
@@ -1040,6 +1065,18 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           itensSelecionados={items.filter((i) => selecionados.has(i.id))}
           todosItems={todosItems ?? items}
           onConfirmar={onAlterarPrecoEmMassa}
+        />
+      )}
+
+      {onAdicionarFotoEmMassa && (
+        <DialogAdicionarFotoEmMassa
+          open={dialogFotoAberto}
+          onOpenChange={(open) => {
+            setDialogFotoAberto(open);
+            if (!open) setSelecionados(new Set());
+          }}
+          itensSelecionados={items.filter((i) => selecionados.has(i.id))}
+          onConfirmar={onAdicionarFotoEmMassa}
         />
       )}
     </>
