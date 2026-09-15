@@ -218,11 +218,25 @@ export const useRelatoriosVendas = () => {
         .eq("user_id", userId)
         .in("status", ["finalizado", "entregue", "concluida"]);
 
-      if (filtros.dataInicio) {
-        query = query.gte("updated_at", filtros.dataInicio);
-      }
-      if (filtros.dataFim) {
-        query = query.lte("updated_at", filtros.dataFim);
+      // Data do evento = data_caixa ("Data no caixa" do recebimento, ver
+      // migration data_caixa). Fallback: created_at (nunca muda) quando
+      // data_caixa for null (ex. status finalizado/concluida, que não passam
+      // pela confirmação de entrega). JAMAIS updated_at — muda a cada edição
+      // e traz OS antigas pro período errado (mesmo padrão de
+      // useRelatorios.ts / useVendas.ts). data_caixa é DATE puro, sem
+      // necessidade de sufixo de hora no fim do período.
+      if (filtros.dataInicio && filtros.dataFim) {
+        query = query.or(
+          `and(data_caixa.not.is.null,data_caixa.gte.${filtros.dataInicio},data_caixa.lte.${filtros.dataFim}),and(data_caixa.is.null,created_at.gte.${filtros.dataInicio},created_at.lte.${filtros.dataFim}T23:59:59)`
+        );
+      } else if (filtros.dataInicio) {
+        query = query.or(
+          `and(data_caixa.not.is.null,data_caixa.gte.${filtros.dataInicio}),and(data_caixa.is.null,created_at.gte.${filtros.dataInicio})`
+        );
+      } else if (filtros.dataFim) {
+        query = query.or(
+          `and(data_caixa.not.is.null,data_caixa.lte.${filtros.dataFim}),and(data_caixa.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
+        );
       }
       if (empresaFiltroRef.current) { query = isFilialRef.current ? query.eq("empresa_id", empresaFiltroRef.current) : query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`); }
 
@@ -260,9 +274,11 @@ export const useRelatoriosVendas = () => {
         // Todos os status que chegam aqui são finalizados
         item.statusDistribuicao.concluido += 1;
 
-        // Calcular tempo médio de conclusão (em dias)
+        // Calcular tempo médio de conclusão (em dias): created_at → data_caixa
+        // (recebimento). Fallback created_at quando data_caixa for null —
+        // mesmo motivo do filtro acima, nunca updated_at.
         const inicio = new Date(ordem.created_at);
-        const fim = new Date(ordem.updated_at);
+        const fim = new Date(ordem.data_caixa || ordem.created_at);
         const dias = Math.ceil((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
         item.tempoMedioConclusao += dias;
       });
