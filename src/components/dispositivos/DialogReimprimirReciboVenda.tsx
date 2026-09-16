@@ -19,6 +19,7 @@ import {
   FormatoPapel,
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
+import { detectarContextoImpressaoMobile, printViaIframe, urlParaBase64 } from "@/lib/printViaIframe";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -231,8 +232,19 @@ export function DialogReimprimirReciboVenda({
   const imprimirRecibo = async (formato: FormatoPapel) => {
     salvarUltimoFormatoPapel(formato);
 
-    const janelaImpressao = window.open("", "_blank");
-    if (!janelaImpressao) return;
+    const { isMobile, isStandalone, isIOS } = detectarContextoImpressaoMobile();
+    const usarIframe = isMobile || isStandalone;
+
+    // window.open precisa ser chamado de forma síncrona, no mesmo tick do
+    // clique — qualquer await antes dele arrisca o navegador não reconhecer
+    // como originado de gesto do usuário (bloqueio de popup; WebKit ficou
+    // mais rígido nisso em standalone recente). Só abrimos a janela em
+    // branco agora; o conteúdo (htmlDoc) é escrito nela mais abaixo, depois
+    // que os dados assíncronos terminarem. Em mobile/standalone pulamos
+    // isso inteiro — printViaIframe não usa window.open, não tem essa
+    // restrição, e é o caminho já validado em produção (ImpressaoOrdemServico.tsx).
+    const janelaImpressao = usarIframe ? null : window.open("", "_blank");
+    if (!usarIframe && !janelaImpressao) return;
 
     let dispositivosGrupo: DispositivoDoGrupo[] = [
       { id: venda.id, total: venda.total, dispositivo_imei: venda.dispositivo_imei, dispositivo_marca: venda.dispositivo_marca, dispositivo_modelo: venda.dispositivo_modelo },
@@ -267,6 +279,16 @@ export function DialogReimprimirReciboVenda({
           };
         });
       }
+    }
+
+    // Logo em base64 só no caminho mobile/iframe — evita depender de rede
+    // pra carregar o logo no documento isolado (mesma técnica de
+    // ImpressaoOrdemServico.tsx). Desktop mantém a URL direta, sem mudança
+    // de comportamento.
+    let logoSrc = configLoja?.logo_url || null;
+    if (usarIframe && logoSrc) {
+      const logoBase64 = await urlParaBase64(logoSrc);
+      if (logoBase64) logoSrc = logoBase64;
     }
 
     const paper = resolvePaperSize(formato);
@@ -395,7 +417,7 @@ export function DialogReimprimirReciboVenda({
       ? `${cabecalho}${secaoComprador}${secaoProduto}${secaoTermo}${secaoAssinaturas}`
       : `${cabecalho}${secaoComprador}${secaoProduto}${secaoTermo}<div class="recibo-total">VALOR TOTAL: ${formatCurrency(venda.total)}</div>${secaoAssinaturas}`;
 
-    janelaImpressao.document.write(`<!DOCTYPE html>
+    const htmlDoc = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -531,7 +553,7 @@ export function DialogReimprimirReciboVenda({
   <!-- HEADER -->
   <div class="header">
     <div class="header-logo">
-      ${configLoja?.logo_url ? `<div class="logo-chip"><img src="${configLoja.logo_url}" alt="Logo" /></div>` : ''}
+      ${logoSrc ? `<div class="logo-chip"><img src="${logoSrc}" alt="Logo" /></div>` : ''}
       <div class="header-loja">
         <h1>${configLoja?.nome_loja || ''}</h1>
         <p>${configLoja?.cnpj ? `CNPJ: ${configLoja.cnpj}` : ''} ${configLoja?.telefone ? `• Tel: ${configLoja.telefone}` : ''}</p>
@@ -624,8 +646,15 @@ export function DialogReimprimirReciboVenda({
     };
   </script>
 </body>
-</html>`);
-    janelaImpressao.document.close();
+</html>`;
+
+    if (usarIframe) {
+      printViaIframe(htmlDoc, isIOS);
+      return;
+    }
+
+    janelaImpressao!.document.write(htmlDoc);
+    janelaImpressao!.document.close();
   };
 
   const textoTermo = obterTextoTermo();
