@@ -46,7 +46,7 @@ export function detectarContextoImpressaoMobile(): ContextoImpressaoMobile {
  * do iframe nem alcançar `window.parent` — evita repetir essa string mágica
  * em cada um dos documentos que usam essa função.
  */
-export function printViaIframe(htmlDoc: string, isIOS: boolean): void {
+export function printViaIframe(htmlDoc: string, isIOS: boolean, debug = false): void {
   document.getElementById('print-iframe-mobile')?.remove();
 
   const iframe = document.createElement('iframe');
@@ -64,20 +64,31 @@ export function printViaIframe(htmlDoc: string, isIOS: boolean): void {
   document.body.appendChild(iframe);
 
   iframe.onload = () => {
+    if (debug) alert('DEBUG 1/5: iframe onload disparado');
     const win = iframe.contentWindow as (Window & { __printed?: boolean }) | null;
-    if (!win) return;
+    if (!win) {
+      if (debug) alert('DEBUG: contentWindow é null — abortando');
+      return;
+    }
 
     win.addEventListener('afterprint', () => {
+      if (debug) alert('DEBUG 5/5: afterprint disparado, removendo iframe');
       iframe.remove();
     });
 
     if (isIOS) {
       const reforcarPrint = () => {
-        if (win.__printed) return;
+        if (win.__printed) {
+          if (debug) alert('DEBUG: reforço abortado — __printed já true');
+          return;
+        }
+        if (debug) alert('DEBUG 4/5: reforço iOS vai chamar print()');
         try {
           win.focus();
           win.print();
-        } catch { /* ignore — script interno do documento cobre o fallback */ }
+        } catch (e) {
+          if (debug) alert('DEBUG: erro no reforço — ' + String(e));
+        }
       };
       setTimeout(() => {
         requestAnimationFrame(() => requestAnimationFrame(reforcarPrint));

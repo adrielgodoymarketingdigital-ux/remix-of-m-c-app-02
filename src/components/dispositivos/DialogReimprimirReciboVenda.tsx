@@ -636,9 +636,16 @@ export function DialogReimprimirReciboVenda({
 
   <script>
     window.onload = function() {
+      ${usarIframe ? "alert('DEBUG 2/5: script interno onload, aguardando 500ms');" : ""}
       setTimeout(function() {
         window.focus();
-        window.print();
+        window.__printed = true;
+        ${usarIframe ? "alert('DEBUG 3/5: script interno vai chamar print()');" : ""}
+        try {
+          window.print();
+        } catch (e) {
+          ${usarIframe ? "alert('DEBUG: erro no print() interno — ' + String(e));" : ""}
+        }
         window.onafterprint = function() {
           window.close();
         };
@@ -649,7 +656,7 @@ export function DialogReimprimirReciboVenda({
 </html>`;
 
     if (usarIframe) {
-      printViaIframe(htmlDoc, isIOS);
+      printViaIframe(htmlDoc, isIOS, true);
       return;
     }
 
