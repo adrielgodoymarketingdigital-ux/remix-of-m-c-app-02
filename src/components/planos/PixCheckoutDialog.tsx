@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { trackInitiateCheckout } from "@/lib/tracking";
+import { trackTiktokInitiateCheckout } from "@/lib/trackingTiktok";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
@@ -170,6 +171,7 @@ export function PixCheckoutDialog({
       supabase.auth.getUser().then(({ data: { user } }) => {
         trackInitiateCheckout(user?.email, planoPreco);
       });
+      trackTiktokInitiateCheckout(planoPreco);
     } else {
       setPixData(null);
       setError(null);

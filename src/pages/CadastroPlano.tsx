@@ -10,6 +10,7 @@ import { Loader2, Shield, Check, ArrowRight, Phone, CreditCard, QrCode, ChevronR
 import { PLANOS } from "@/types/plano";
 import { trackCompleteRegistration, getTrackingParams, trackInitiateCheckout } from "@/lib/tracking";
 import { trackPageView } from "@/lib/pixel";
+import { trackTiktokPageView } from "@/lib/trackingTiktok";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import { CartaoCheckoutDialog } from "@/components/planos/CartaoCheckoutDialog";
@@ -41,7 +42,10 @@ export default function CadastroPlano() {
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
   useEffect(() => {
-    if (step === "checkout") trackPageView()
+    if (step === "checkout") {
+      trackPageView()
+      trackTiktokPageView()
+    }
   }, [step])
 
   // Check if user is already logged in

@@ -25,6 +25,7 @@ import { FunctionsFetchError, FunctionsRelayError } from "@supabase/functions-js
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
 import { trackInitiateCheckout } from "@/lib/tracking";
+import { trackTiktokInitiateCheckout } from "@/lib/trackingTiktok";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useCupom } from "@/hooks/useCupom";
@@ -110,6 +111,7 @@ export function CartaoCheckoutDialog({
       supabase.auth.getUser().then(({ data: { user } }) => {
         trackInitiateCheckout(user?.email, planoPreco);
       });
+      trackTiktokInitiateCheckout(planoPreco);
       if (cupomInicial) cupom.validarCodigo(cupomInicial);
     }
   }, [open])

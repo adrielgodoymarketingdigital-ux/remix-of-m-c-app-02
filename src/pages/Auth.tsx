@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone, Eye, EyeOff, Mail, KeyRound, CheckCircle2 } from "lucide-react";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import { trackCompleteRegistration, getTrackingParams } from "@/lib/tracking";
+import { trackTiktokPageView, trackTiktokCompleteRegistration } from "@/lib/trackingTiktok";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import {
   Dialog,
@@ -23,6 +24,13 @@ import { TurnstileWidget, TurnstileWidgetHandle } from "@/components/TurnstileWi
 
 const Auth = () => {
   const { trackLogin } = useEventTracking();
+
+  // Pixel do TikTok: SPA não recarrega a página, então o ttq.page() do
+  // index.html não dispara sozinho ao navegar (client-side) até /auth.
+  useEffect(() => {
+    trackTiktokPageView();
+  }, []);
+
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -188,6 +196,7 @@ const Auth = () => {
 
           setTimeout(() => {
             trackCompleteRegistration(data.user.id, email);
+            trackTiktokCompleteRegistration();
           }, 1500);
 
           supabase.functions.invoke('webhook-n8n-cadastro', {
