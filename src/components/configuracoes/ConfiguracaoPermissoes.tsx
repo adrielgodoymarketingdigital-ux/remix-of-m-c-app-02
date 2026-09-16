@@ -32,6 +32,12 @@ export function ConfiguracaoPermissoes() {
           ? "As OS das filiais agora aparecem na matriz."
           : "As OS das filiais ficam separadas por empresa.",
       });
+    } else {
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível atualizar as permissões. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 

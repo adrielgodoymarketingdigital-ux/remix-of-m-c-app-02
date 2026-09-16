@@ -114,7 +114,15 @@ export const UploadLogoLoja = ({
   const handleRemover = async () => {
     if (logoAtual) {
       await removerLogo(logoAtual);
-      await atualizarConfiguracao({ logo_url: null });
+      const sucesso = await atualizarConfiguracao({ logo_url: null });
+      if (!sucesso) {
+        toast({
+          title: "Erro ao remover",
+          description: "Não foi possível remover a logo. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setPreview(null);
     setArquivo(null);

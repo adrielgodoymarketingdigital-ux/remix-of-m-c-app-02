@@ -84,8 +84,11 @@ export const DialogConfiguracaoMensagensWhatsApp = ({
         fullMap[s.slug] = mensagensSalvas[s.slug] || MENSAGENS_PADRAO_FIXAS[s.slug] || MENSAGEM_PADRAO_TEMPLATE;
       });
       setMensagens(fullMap);
-      const tracking = (config.mensagens_whatsapp as Record<string, string>)?.os_tracking;
-      setMensagemTracking(tracking || MENSAGEM_TRACKING_PADRAO);
+      // A mensagem de acompanhamento mora na MESMA coluna que as de status
+      // (mensagens_whatsapp_os), na chave "os_tracking" — nunca colide com
+      // um slug de status real. "mensagens_whatsapp" (sem "_os") não existe
+      // como coluna; era daí que isso lia antes, sempre vazio.
+      setMensagemTracking(mensagensSalvas.os_tracking || MENSAGEM_TRACKING_PADRAO);
       if (statusList.length > 0) {
         setActiveTab(statusList[0].slug);
       }
@@ -118,14 +121,18 @@ export const DialogConfiguracaoMensagensWhatsApp = ({
   const handleSalvar = async () => {
     setSalvando(true);
     try {
-      const mensagensWhatsappAtual = (config?.mensagens_whatsapp as Record<string, string>) || {};
-      await atualizarConfiguracao({
-        mensagens_whatsapp_os: mensagens,
-        mensagens_whatsapp: { ...mensagensWhatsappAtual, os_tracking: mensagemTracking },
+      // Mesma coluna pras mensagens de status e a de acompanhamento — ver
+      // useOSTracking.ts (compartilharWhatsApp), que lê da mesma chave.
+      const sucesso = await atualizarConfiguracao({
+        mensagens_whatsapp_os: { ...mensagens, os_tracking: mensagemTracking },
       });
-      toast.success("Mensagens do WhatsApp salvas com sucesso!");
-      onSave?.();
-      onOpenChange(false);
+      if (sucesso) {
+        toast.success("Mensagens do WhatsApp salvas com sucesso!");
+        onSave?.();
+        onOpenChange(false);
+      } else {
+        toast.error("Erro ao salvar mensagens. Tente novamente.");
+      }
     } catch (error) {
       console.error("Erro ao salvar mensagens:", error);
       toast.error("Erro ao salvar mensagens. Tente novamente.");

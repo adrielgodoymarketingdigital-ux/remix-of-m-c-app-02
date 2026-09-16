@@ -146,13 +146,17 @@ export function useOSTracking() {
     if (!link) return;
 
     const { data: { user } } = await supabase.auth.getUser();
+    // A mensagem de acompanhamento personalizada mora na chave "os_tracking"
+    // dentro de mensagens_whatsapp_os — mesma coluna das mensagens de status
+    // (DialogConfiguracaoMensagensWhatsApp.tsx). "mensagens_whatsapp" (sem
+    // "_os") não é uma coluna real.
     const { data: config } = await supabase
       .from('configuracoes_loja')
-      .select('mensagens_whatsapp')
+      .select('mensagens_whatsapp_os')
       .eq('user_id', lojaUserId ?? user?.id)
       .maybeSingle();
 
-    const mensagens = (config?.mensagens_whatsapp as Record<string, string>) || {};
+    const mensagens = (config?.mensagens_whatsapp_os as Record<string, string>) || {};
     let mensagem = mensagens.os_tracking ||
       `Olá ${nomeCliente}! Acompanhe sua OS #${numeroOS} em tempo real:\n${link}`;
 
