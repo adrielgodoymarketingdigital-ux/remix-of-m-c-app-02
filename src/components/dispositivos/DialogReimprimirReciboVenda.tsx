@@ -513,6 +513,7 @@ export function DialogReimprimirReciboVenda({
     .assinatura-label { font-size: 8px; color: #888; }
 
     @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { margin: 0 !important; }
       .assinaturas { page-break-inside: avoid; break-inside: avoid; }
     }
