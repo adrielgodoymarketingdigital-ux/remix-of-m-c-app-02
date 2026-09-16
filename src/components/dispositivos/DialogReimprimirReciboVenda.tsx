@@ -418,7 +418,12 @@ export function DialogReimprimirReciboVenda({
       margin-bottom: 0;
     }
     .header-logo { display: flex; align-items: center; gap: 10px; }
-    .header-logo img { max-height: 36px; max-width: 80px; object-fit: contain; filter: brightness(0) invert(1); }
+    /* Chip branco atrás do logo — sem isso, um logo sem transparência (jpg,
+       ou png achatado com fundo branco) some por inteiro com o filtro de
+       inversão antigo. O chip garante contraste com o fundo escuro
+       independente do arquivo. */
+    .logo-chip { background: #ffffff; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-chip img { max-height: 44px; max-width: 96px; object-fit: contain; display: block; }
     .header-loja h1 { font-size: 14px; font-weight: 900; letter-spacing: 0.03em; }
     .header-loja p { font-size: 8px; color: #adb5bd; margin-top: 1px; }
     .dados-loja { font-size: 9px; color: #111; margin-top: 2px; line-height: 1.6; font-weight: 600; font-style: normal; }
@@ -526,7 +531,7 @@ export function DialogReimprimirReciboVenda({
   <!-- HEADER -->
   <div class="header">
     <div class="header-logo">
-      ${configLoja?.logo_url ? `<img src="${configLoja.logo_url}" alt="Logo" />` : ''}
+      ${configLoja?.logo_url ? `<div class="logo-chip"><img src="${configLoja.logo_url}" alt="Logo" /></div>` : ''}
       <div class="header-loja">
         <h1>${configLoja?.nome_loja || ''}</h1>
         <p>${configLoja?.cnpj ? `CNPJ: ${configLoja.cnpj}` : ''} ${configLoja?.telefone ? `• Tel: ${configLoja.telefone}` : ''}</p>
