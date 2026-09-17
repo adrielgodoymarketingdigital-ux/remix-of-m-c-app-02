@@ -28,12 +28,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CompraDispositivo, FormularioCompraDispositivo, FormularioOrigemPessoa } from "@/types/origem";
 import { dataHoje } from "@/lib/formatters";
 import { useOrigemPessoas } from "@/hooks/useOrigemPessoas";
 import { useFornecedores } from "@/hooks/useFornecedores";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { UploadFotosCompra } from "./UploadFotosCompra";
+import { DialogCadastroPessoa } from "./DialogCadastroPessoa";
 
 const formSchema = z.object({
   tipo_origem: z.enum(['terceiro', 'fornecedor']),
@@ -76,8 +79,10 @@ export function DialogEditarCompra({
   compra,
 }: DialogEditarCompraProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const { pessoas } = useOrigemPessoas();
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [dialogEditarPessoaAberto, setDialogEditarPessoaAberto] = useState(false);
+
+  const { pessoas, atualizarPessoa, carregarPessoas } = useOrigemPessoas();
   const { fornecedores } = useFornecedores();
 
   const form = useForm<FormValues>({
@@ -115,8 +120,18 @@ export function DialogEditarCompra({
         situacao_conta: compra.situacao_conta || "",
         observacoes: compra.observacoes || "",
       });
+      setFotos(compra.fotos || []);
     }
   }, [compra, open, form]);
+
+  const pessoaSelecionadaId = form.watch("pessoa_id");
+  const pessoaSelecionada = pessoas.find((p) => p.id === pessoaSelecionadaId) || null;
+
+  const handleSalvarEdicaoPessoa = async (dados: FormularioOrigemPessoa) => {
+    if (!pessoaSelecionada) return;
+    await atualizarPessoa(pessoaSelecionada.id, dados);
+    await carregarPessoas();
+  };
 
   const handleSubmit = async (values: FormValues) => {
     if (!compra) return;
@@ -134,6 +149,7 @@ export function DialogEditarCompra({
         condicao_aparelho: values.condicao_aparelho,
         situacao_conta: values.situacao_conta,
         observacoes: values.observacoes,
+        fotos,
       };
 
       await onSubmit(compra.id, dadosCompra);
@@ -148,11 +164,21 @@ export function DialogEditarCompra({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Compra de Dispositivo</DialogTitle>
         </DialogHeader>
+
+        {compra?.termo_pdf_url && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Esta compra já tem um termo em PDF gerado. Editar os dados aqui não atualiza o PDF automaticamente.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -184,30 +210,45 @@ export function DialogEditarCompra({
             />
 
             {tipoOrigemWatch === 'terceiro' ? (
-              <FormField
-                control={form.control}
-                name="pessoa_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pessoa</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a pessoa" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {pessoas.filter(p => p.ativo).map((pessoa) => (
-                          <SelectItem key={pessoa.id} value={pessoa.id}>
-                            {pessoa.nome} {pessoa.cpf_cnpj && `- ${pessoa.cpf_cnpj}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>Pessoa</Label>
+                  {pessoaSelecionada && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDialogEditarPessoaAberto(true)}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Editar dados do vendedor
+                    </Button>
+                  )}
+                </div>
+                <FormField
+                  control={form.control}
+                  name="pessoa_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a pessoa" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {pessoas.filter(p => p.ativo).map((pessoa) => (
+                            <SelectItem key={pessoa.id} value={pessoa.id}>
+                              {pessoa.nome} {pessoa.cpf_cnpj && `- ${pessoa.cpf_cnpj}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             ) : (
               <FormField
                 control={form.control}
@@ -383,6 +424,8 @@ export function DialogEditarCompra({
               )}
             />
 
+            <UploadFotosCompra fotos={fotos} onFotosChange={setFotos} maxFotos={5} />
+
             <div className="flex justify-end gap-3">
               <Button
                 type="button"
@@ -401,5 +444,13 @@ export function DialogEditarCompra({
         </Form>
       </DialogContent>
     </Dialog>
+
+    <DialogCadastroPessoa
+      open={dialogEditarPessoaAberto}
+      onOpenChange={setDialogEditarPessoaAberto}
+      onSubmit={handleSalvarEdicaoPessoa}
+      pessoaParaEditar={pessoaSelecionada}
+    />
+    </>
   );
 }

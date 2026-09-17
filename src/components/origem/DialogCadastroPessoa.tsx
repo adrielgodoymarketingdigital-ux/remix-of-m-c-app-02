@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FormularioOrigemPessoa } from "@/types/origem";
+import { FormularioOrigemPessoa, OrigemPessoa } from "@/types/origem";
 
 const formSchema = z.object({
   tipo: z.enum(['fisica', 'juridica']),
@@ -55,34 +55,61 @@ interface DialogCadastroPessoaProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (dados: FormularioOrigemPessoa) => Promise<void>;
+  pessoaParaEditar?: OrigemPessoa | null;
 }
+
+const defaultValuesVazios: FormValues = {
+  tipo: 'fisica',
+  nome: "",
+  nome_fantasia: "",
+  cpf_cnpj: "",
+  rg: "",
+  data_nascimento: "",
+  telefone: "",
+  email: "",
+  endereco: "",
+  cidade: "",
+  estado: "",
+  cep: "",
+  observacoes: "",
+};
 
 export function DialogCadastroPessoa({
   open,
   onOpenChange,
   onSubmit,
+  pessoaParaEditar,
 }: DialogCadastroPessoaProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      tipo: 'fisica',
-      nome: "",
-      nome_fantasia: "",
-      cpf_cnpj: "",
-      rg: "",
-      data_nascimento: "",
-      telefone: "",
-      email: "",
-      endereco: "",
-      cidade: "",
-      estado: "",
-      cep: "",
-      observacoes: "",
-    },
+    defaultValues: defaultValuesVazios,
   });
 
   const tipoSelecionado = form.watch("tipo");
   const [buscandoCEP, setBuscandoCEP] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    if (pessoaParaEditar) {
+      form.reset({
+        tipo: pessoaParaEditar.tipo,
+        nome: pessoaParaEditar.nome,
+        nome_fantasia: pessoaParaEditar.nome_fantasia || "",
+        cpf_cnpj: pessoaParaEditar.cpf_cnpj || "",
+        rg: pessoaParaEditar.rg || "",
+        data_nascimento: pessoaParaEditar.data_nascimento || "",
+        telefone: pessoaParaEditar.telefone || "",
+        email: pessoaParaEditar.email || "",
+        endereco: pessoaParaEditar.endereco || "",
+        cidade: pessoaParaEditar.cidade || "",
+        estado: pessoaParaEditar.estado || "",
+        cep: pessoaParaEditar.cep || "",
+        observacoes: pessoaParaEditar.observacoes || "",
+      });
+    } else {
+      form.reset(defaultValuesVazios);
+    }
+  }, [open, pessoaParaEditar, form]);
 
   const handleBuscarCEP = async () => {
     const cep = form.getValues("cep");
@@ -124,7 +151,7 @@ export function DialogCadastroPessoa({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cadastrar Pessoa</DialogTitle>
+          <DialogTitle>{pessoaParaEditar ? "Editar Pessoa" : "Cadastrar Pessoa"}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -354,7 +381,7 @@ export function DialogCadastroPessoa({
               >
                 Cancelar
               </Button>
-              <Button type="submit">Cadastrar</Button>
+              <Button type="submit">{pessoaParaEditar ? "Salvar" : "Cadastrar"}</Button>
             </div>
           </form>
         </Form>
