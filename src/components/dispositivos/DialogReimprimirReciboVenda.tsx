@@ -326,6 +326,7 @@ export function DialogReimprimirReciboVenda({
       const pdfBlob = await gerarReciboVendaPDF({
         modo,
         configLoja,
+        logoBase64,
         dataVenda,
         formaPagamentoLabel: FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento,
         valorTotal: venda.total,
