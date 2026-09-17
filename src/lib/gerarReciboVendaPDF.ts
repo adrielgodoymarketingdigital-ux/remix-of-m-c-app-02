@@ -77,55 +77,88 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
     }
   };
 
-  const infoLoja = [
-    dados.configLoja?.cnpj ? `CNPJ: ${dados.configLoja.cnpj}` : "",
-    dados.configLoja?.telefone ? `Tel: ${dados.configLoja.telefone}` : "",
-  ]
-    .filter(Boolean)
-    .join("   ");
+  const cnpjLinha = dados.configLoja?.cnpj ? `CNPJ: ${dados.configLoja.cnpj}` : "";
+  const telLinha = dados.configLoja?.telefone ? `Tel: ${dados.configLoja.telefone}` : "";
+  const infoLoja = [cnpjLinha, telLinha].filter(Boolean).join("   ");
   const titulo = dados.modo === "garantia" ? "TERMO DE GARANTIA" : "RECIBO DE VENDA";
 
   // ===== CABEÇALHO =====
   if (isThermal) {
-    // Largura não cabe o layout lado a lado do A4 — empilha tudo, centralizado.
+    // Mesma caixa escura de marca do A4 — só que empilhada (logo, nome,
+    // CNPJ/tel cada um numa linha, título) em vez de lado a lado, porque a
+    // largura útil (52-76mm) não cabe duas colunas. Cabeçalho "achatado" pra
+    // texto simples sem essa caixa lia como versão simplificada demais.
+    const padding = 3;
+
+    let logoLargura = 0;
+    let logoAltura = 0;
     if (dados.logoBase64) {
       try {
         const props = doc.getImageProperties(dados.logoBase64);
         const proporcao = props.width / props.height;
-        const logoAlturaMax = 14;
-        let logoLargura = larguraUtil * 0.55;
-        let logoAltura = logoLargura / proporcao;
+        logoLargura = Math.min(larguraUtil * 0.45, 22);
+        logoAltura = logoLargura / proporcao;
+        const logoAlturaMax = 11;
         if (logoAltura > logoAlturaMax) {
           logoAltura = logoAlturaMax;
           logoLargura = logoAltura * proporcao;
         }
-        doc.addImage(dados.logoBase64, margin + (larguraUtil - logoLargura) / 2, y, logoLargura, logoAltura);
-        y += logoAltura + 2;
+      } catch {
+        logoLargura = 0;
+        logoAltura = 0;
+      }
+    }
+
+    // CNPJ e telefone em linhas separadas no térmico — juntos numa linha só
+    // estourariam a largura em papel de 58mm.
+    const linhasInfoLoja = [cnpjLinha, telLinha].filter(Boolean);
+
+    const headerAltura =
+      padding * 2 +
+      (logoAltura > 0 ? logoAltura + 3 : 0) +
+      5 + // nome da loja
+      linhasInfoLoja.length * 3.2 +
+      5.5; // título
+
+    doc.setFillColor(...COR_HEADER);
+    doc.roundedRect(margin, y, larguraUtil, headerAltura, 2, 2, "F");
+
+    let contentY = y + padding;
+    if (logoAltura > 0 && dados.logoBase64) {
+      try {
+        const chipPad = 1.2;
+        const chipX = margin + (larguraUtil - logoLargura) / 2 - chipPad;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(chipX, contentY - chipPad, logoLargura + chipPad * 2, logoAltura + chipPad * 2, 1, 1, "F");
+        doc.addImage(dados.logoBase64, margin + (larguraUtil - logoLargura) / 2, contentY, logoLargura, logoAltura);
       } catch {
         // segue sem logo
       }
+      contentY += logoAltura + 3;
     }
-    doc.setFontSize(11);
+
+    doc.setFontSize(9.5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(20, 20, 20);
-    doc.text(dados.configLoja?.nome_loja || "", pageWidth / 2, y, { align: "center" });
-    y += 5;
-    if (infoLoja) {
-      doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    doc.text(dados.configLoja?.nome_loja || "", pageWidth / 2, contentY, { align: "center" });
+    contentY += 5;
+
+    if (linhasInfoLoja.length > 0) {
+      doc.setFontSize(6.5);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(90, 90, 90);
-      doc.text(infoLoja, pageWidth / 2, y, { align: "center" });
-      y += 4;
+      doc.setTextColor(...COR_HEADER_TEXTO_SEC);
+      linhasInfoLoja.forEach((linha) => {
+        doc.text(linha, pageWidth / 2, contentY, { align: "center" });
+        contentY += 3.2;
+      });
     }
-    doc.setFontSize(9);
+
+    doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COR_HEADER);
-    doc.text(titulo, pageWidth / 2, y, { align: "center" });
-    y += 3;
-    doc.setDrawColor(...COR_BORDA);
-    doc.setLineWidth(0.2);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 4;
+    doc.setTextColor(...COR_TITULO);
+    doc.text(titulo, pageWidth / 2, contentY, { align: "center" });
+
+    y += headerAltura + 5;
   } else {
     const headerAltura = 24;
     doc.setFillColor(...COR_HEADER);
