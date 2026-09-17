@@ -15,6 +15,8 @@ import {
   getDuasOSGeometria,
   DUAS_OS_MARGEM_MM,
 } from "@/lib/paper-size-utils";
+import { gerarOrdemServicoPDF } from "@/lib/gerarOrdemServicoPDF";
+import { toast } from "sonner";
 
 // Converte <img> externas (logo) para data URI base64 dentro do HTML serializado,
 // evitando bloqueio de CORS no documento isolado. Timeout de 4s por imagem.
@@ -704,6 +706,40 @@ export const ImpressaoOrdemServico = ({
     printViaIframe(htmlDoc, isIOS);
   };
 
+  // Gera a OS como PDF e compartilha via Web Share API — usado só no caminho
+  // iOS standalone (ver handlePrint). Cai pra download direto se o device
+  // não suportar compartilhar arquivo. Sempre o PDF "completo" (mesma opção
+  // padrão do envio por WhatsApp) — o botão de imprimir não distingue
+  // parte1/termo aqui.
+  const gerarPDFECompartilhar = async () => {
+    try {
+      const pdfBlob = await gerarOrdemServicoPDF(ordem, configuracaoLoja, 'completo');
+      const nomeArquivo = `OS-${ordem.numero_os}.pdf`;
+      const pdfFile = new File([pdfBlob], nomeArquivo, { type: 'application/pdf' });
+
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({ files: [pdfFile], title: nomeArquivo });
+        return;
+      }
+
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nomeArquivo;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 200);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return; // usuário cancelou o compartilhamento
+      console.error('Erro ao gerar/compartilhar PDF da OS:', error);
+      toast.error('Não foi possível gerar o PDF. Tente novamente.');
+    }
+  };
+
   // Trigger print
   const handlePrint = () => {
     // 80mm: sempre documento isolado, qualquer dispositivo.
@@ -721,16 +757,24 @@ export const ImpressaoOrdemServico = ({
       return;
     }
 
-    // iOS (mobile ou standalone): print direto no #print-root, como sempre
-    // funcionou no desktop — iframe.contentWindow.print() passou a ser
-    // silenciosamente ignorado em standalone no Safari 27 (confirmado em
-    // device real com alerts de diagnóstico: print() chamado sem erro,
-    // nenhuma UI de impressão aparece). window.print() precisa ser chamado
-    // de forma síncrona aqui, sem setTimeout nenhum: o Safari iOS consome a
-    // ativação transitória do usuário em ~meio segundo, e o setTimeout(500)
-    // usado no desktop logo abaixo já seria suficiente pra estourar essa
-    // janela e print() ser ignorado silenciosamente (mesma causa raiz
-    // encontrada no Recibo/Termo de Garantia).
+    // iOS standalone (PWA instalada): window.print() é bloqueado pela
+    // própria plataforma — confirmado em device real: funciona numa aba
+    // comum do Safari, falha só dentro do app instalado, mesmo chamando
+    // print() de forma 100% síncrona. Não é timing, é o modo standalone em
+    // si (há precedente da mesma limitação desde o iOS 9 em web apps
+    // fullscreen). Gera PDF e compartilha via Web Share API — mesmo PDF já
+    // usado no envio de OS por WhatsApp (DialogEnviarWhatsApp.tsx).
+    if (isIOS && isStandalone) {
+      gerarPDFECompartilhar();
+      return;
+    }
+
+    // iOS mobile Safari (não-standalone, já descartado acima): print direto
+    // no #print-root, confirmado funcionando numa aba comum — como sempre
+    // funcionou no desktop. window.print() precisa ser chamado de forma
+    // síncrona aqui, sem setTimeout nenhum: o Safari iOS consome a ativação
+    // transitória do usuário em ~meio segundo, e o setTimeout(500) usado no
+    // desktop logo abaixo já seria suficiente pra estourar essa janela.
     if (isIOS) {
       const handleAfterPrint = () => {
         window.removeEventListener('afterprint', handleAfterPrint);

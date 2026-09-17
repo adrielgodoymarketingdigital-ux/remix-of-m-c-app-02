@@ -20,6 +20,8 @@ import {
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
 import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot, urlParaBase64 } from "@/lib/printMobile";
+import { gerarReciboVendaPDF } from "@/lib/gerarReciboVendaPDF";
+import { toast } from "sonner";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -302,14 +304,87 @@ export function DialogReimprimirReciboVenda({
     return formatarTermoDispositivo(textoBase, vars);
   };
 
+  // Gera o Recibo/Termo de Garantia como PDF e compartilha via Web Share API
+  // — usado só no caminho iOS standalone (ver imprimirRecibo). Cai pra
+  // download direto se o device não suportar compartilhar arquivo.
+  const imprimirViaPDFShare = async () => {
+    try {
+      const textoTermoAtual = obterTextoTermo();
+      const multiplos = dispositivosGrupo.length > 1;
+      const dispositivosPDF = dispositivosGrupo.map((disp) => ({
+        marca: disp.dispositivo_marca,
+        modelo: disp.dispositivo_modelo,
+        imei: disp.dispositivo_imei,
+        cor: disp.dispositivo_cor,
+        capacidadeGb: disp.dispositivo_capacidade_gb,
+        condicaoLabel: CONDICAO_LABEL[disp.dispositivo_condicao || ''] || disp.dispositivo_condicao,
+        garantiaLabel: disp.dispositivo_tempo_garantia != null ? formatarGarantia(disp.dispositivo_tempo_garantia) : undefined,
+        total: disp.total,
+        textoTermo: multiplos ? obterTextoTermo(disp) : textoTermoAtual,
+      }));
+
+      const pdfBlob = await gerarReciboVendaPDF({
+        modo,
+        configLoja,
+        dataVenda,
+        formaPagamentoLabel: FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento,
+        valorTotal: venda.total,
+        clienteNome: venda.cliente_nome,
+        clienteCpf: venda.cliente_cpf,
+        clienteTelefone: venda.cliente_telefone,
+        dispositivos: dispositivosPDF,
+      });
+
+      const nomeArquivo = `${modo === 'garantia' ? 'Termo-Garantia' : 'Recibo-Venda'}-${
+        [venda.dispositivo_marca, venda.dispositivo_modelo].filter(Boolean).join('-') || venda.id
+      }.pdf`;
+      const pdfFile = new File([pdfBlob], nomeArquivo, { type: 'application/pdf' });
+
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({ files: [pdfFile], title: nomeArquivo });
+        return;
+      }
+
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nomeArquivo;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 200);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return; // usuário cancelou o compartilhamento
+      console.error('Erro ao gerar/compartilhar PDF do recibo:', error);
+      toast.error('Não foi possível gerar o PDF. Tente novamente.');
+    }
+  };
+
   const imprimirRecibo = async (formato: FormatoPapel) => {
     salvarUltimoFormatoPapel(formato);
 
     const { isMobile, isStandalone, isIOS } = detectarContextoImpressaoMobile();
-    // "Mecanismo mobile" = não usa window.open(). Dentro dele, iOS vai por
-    // #print-root (sem iframe — iframe.contentWindow.print() é ignorado
-    // silenciosamente em standalone no Safari 27); Android continua no
-    // iframe (window.print() no documento principal trava no Chrome Android).
+
+    // iOS standalone (PWA instalada na tela inicial): window.print() é
+    // bloqueado pela própria plataforma — confirmado em device real (Safari
+    // 27, iOS 27, set/2026): funciona normalmente numa aba comum do Safari,
+    // falha SÓ dentro do app instalado, mesmo com a chamada 100% síncrona.
+    // Não existe workaround de JS pra isso (há precedente da mesma limitação
+    // desde o iOS 9 em web apps fullscreen). Caminho: gera PDF e usa a Web
+    // Share API (navigator.share), mesmo padrão já comprovado em produção no
+    // envio de OS por WhatsApp (DialogEnviarWhatsApp.tsx).
+    if (isIOS && isStandalone) {
+      await imprimirViaPDFShare();
+      return;
+    }
+
+    // "Mecanismo mobile" = não usa window.open(). Dentro dele, iOS mobile
+    // Safari (não-standalone, já descartado acima) vai por #print-root —
+    // confirmado funcionando numa aba comum; Android continua no iframe
+    // (window.print() no documento principal trava no Chrome Android).
     const usarMecanismoMobile = isMobile || isStandalone;
     const usarPrintRoot = usarMecanismoMobile && isIOS;
     const usarIframe = usarMecanismoMobile && !isIOS;
