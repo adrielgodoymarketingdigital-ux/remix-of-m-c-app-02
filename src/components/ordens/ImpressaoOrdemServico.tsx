@@ -15,7 +15,7 @@ import {
   getDuasOSGeometria,
   DUAS_OS_MARGEM_MM,
 } from "@/lib/paper-size-utils";
-import { gerarOrdemServicoPDF } from "@/lib/gerarOrdemServicoPDF";
+import { gerarOrdemServicoPDF, gerarOrdemServicoCupom80mmPDF } from "@/lib/gerarOrdemServicoPDF";
 import { toast } from "sonner";
 
 // Converte <img> externas (logo) para data URI base64 dentro do HTML serializado,
@@ -707,14 +707,16 @@ export const ImpressaoOrdemServico = ({
   };
 
   // Gera a OS como PDF e compartilha via Web Share API — usado só no caminho
-  // iOS standalone (ver handlePrint). Cai pra download direto se o device
-  // não suportar compartilhar arquivo. Sempre o PDF "completo" (mesma opção
-  // padrão do envio por WhatsApp) — o botão de imprimir não distingue
-  // parte1/termo aqui.
-  const gerarPDFECompartilhar = async () => {
+  // iOS standalone (ver handlePrint), pros dois formatos (A4 e 80mm). Cai
+  // pra download direto se o device não suportar compartilhar arquivo.
+  // A4 usa sempre o PDF "completo" (mesma opção padrão do envio por
+  // WhatsApp) — o botão de imprimir não distingue parte1/termo aqui.
+  const gerarPDFECompartilhar = async (formato80mm: boolean) => {
     try {
-      const pdfBlob = await gerarOrdemServicoPDF(ordem, configuracaoLoja, 'completo');
-      const nomeArquivo = `OS-${ordem.numero_os}.pdf`;
+      const pdfBlob = formato80mm
+        ? await gerarOrdemServicoCupom80mmPDF(ordem, configuracaoLoja)
+        : await gerarOrdemServicoPDF(ordem, configuracaoLoja, 'completo');
+      const nomeArquivo = formato80mm ? `OS-${ordem.numero_os}-80mm.pdf` : `OS-${ordem.numero_os}.pdf`;
       const pdfFile = new File([pdfBlob], nomeArquivo, { type: 'application/pdf' });
 
       if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [pdfFile] })) {
@@ -742,7 +744,17 @@ export const ImpressaoOrdemServico = ({
 
   // Trigger print
   const handlePrint = () => {
-    // 80mm: sempre documento isolado, qualquer dispositivo.
+    // iOS standalone (PWA instalada): window.print()/iframe é bloqueado pela
+    // própria plataforma em QUALQUER formato — inclusive 80mm, que sempre
+    // caía direto em print80mm() (iframe) sem checar standalone antes disso.
+    // Intercepta aqui, antes do branch de is80mm, pros dois formatos.
+    if (isIOS && isStandalone) {
+      gerarPDFECompartilhar(is80mm);
+      return;
+    }
+
+    // 80mm: sempre documento isolado, qualquer dispositivo (exceto iOS
+    // standalone, já tratado acima).
     if (is80mm) {
       print80mm();
       return;
@@ -754,18 +766,6 @@ export const ImpressaoOrdemServico = ({
     // scale/dimensões já embutido no htmlDoc).
     if (isAndroid) {
       handlePrintAndroid();
-      return;
-    }
-
-    // iOS standalone (PWA instalada): window.print() é bloqueado pela
-    // própria plataforma — confirmado em device real: funciona numa aba
-    // comum do Safari, falha só dentro do app instalado, mesmo chamando
-    // print() de forma 100% síncrona. Não é timing, é o modo standalone em
-    // si (há precedente da mesma limitação desde o iOS 9 em web apps
-    // fullscreen). Gera PDF e compartilha via Web Share API — mesmo PDF já
-    // usado no envio de OS por WhatsApp (DialogEnviarWhatsApp.tsx).
-    if (isIOS && isStandalone) {
-      gerarPDFECompartilhar();
       return;
     }
 

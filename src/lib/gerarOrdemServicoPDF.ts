@@ -78,66 +78,6 @@ export async function gerarOrdemServicoPDF(
   const checklistSaida = avariasData?.checklist?.saida || {};
   const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
 
-  // ===== LOGO DA LOJA =====
-  if (layoutConfig.mostrar_logo_whatsapp && loja?.logo_url) {
-    try {
-      // Tentar adicionar a logo
-      const img = new Image();
-      img.crossOrigin = 'Anonymous';
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => {
-          try {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx?.drawImage(img, 0, 0);
-            const dataUrl = canvas.toDataURL('image/png');
-            
-            // Calcular proporção da logo
-            const maxWidth = 40;
-            const maxHeight = 20;
-            let width = img.width;
-            let height = img.height;
-            
-            if (width > maxWidth) {
-              height = (height * maxWidth) / width;
-              width = maxWidth;
-            }
-            if (height > maxHeight) {
-              width = (width * maxHeight) / height;
-              height = maxHeight;
-            }
-            
-            doc.addImage(dataUrl, 'PNG', margemEsquerda, yPos - 5, width, height);
-            resolve();
-          } catch (e) {
-            console.error('Erro ao processar logo:', e);
-            resolve();
-          }
-        };
-        img.onerror = () => {
-          console.error('Erro ao carregar logo');
-          resolve();
-        };
-        img.src = loja.logo_url!;
-      });
-    } catch (e) {
-      console.error('Erro ao adicionar logo:', e);
-    }
-  }
-
-  // ===== CABEÇALHO =====
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ORDEM DE SERVIÇO', 105, yPos, { align: 'center' });
-  yPos += 8;
-
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`#${ordem.numero_os}`, 105, yPos, { align: 'center' });
-  yPos += 10;
-
   // Status
   const statusMap: Record<string, string> = {
     pendente: 'Pendente',
@@ -150,37 +90,103 @@ export async function gerarOrdemServicoPDF(
     cancelada: 'Cancelada',
   };
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Status: ${statusMap[ordem.status || ''] || ordem.status}`, margemEsquerda, yPos);
-  doc.text(`Data: ${formatarDataHoraBrasil(ordem.created_at)}`, 120, yPos);
-  yPos += 10;
+  // ===== CABEÇALHO (fundo escuro, mesma identidade visual do Recibo de
+  // Venda/Termo de Garantia de dispositivo — ver gerarReciboVendaPDF.ts) =====
+  const headerAltura = 26;
+  doc.setFillColor(26, 26, 46); // #1a1a2e
+  doc.roundedRect(margemEsquerda, yPos, larguraUtil, headerAltura, 2, 2, 'F');
 
-  doc.setDrawColor(200);
-  doc.setLineWidth(0.3);
-  doc.line(margemEsquerda, yPos, margemDireita, yPos);
-  yPos += 8;
-
-  // ===== DADOS DA LOJA =====
-  if (loja) {
-    verificarNovaPagina(35);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ESTABELECIMENTO', margemEsquerda, yPos);
-    yPos += 6;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text(loja.nome_loja, margemEsquerda, yPos);
-    if (loja.cnpj) doc.text(`CNPJ: ${loja.cnpj}`, 120, yPos);
-    yPos += 5;
-
-    if (loja.telefone || loja.whatsapp) {
-      if (loja.telefone) doc.text(`Tel: ${loja.telefone}`, margemEsquerda, yPos);
-      if (loja.whatsapp) doc.text(`WhatsApp: ${loja.whatsapp}`, 100, yPos);
-      yPos += 5;
+  let textoX = margemEsquerda + 5;
+  if (layoutConfig.mostrar_logo_whatsapp && loja?.logo_url) {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      const dataUrl = await new Promise<string | null>((resolve) => {
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx?.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          } catch (e) {
+            console.error('Erro ao processar logo:', e);
+            resolve(null);
+          }
+        };
+        img.onerror = () => {
+          console.error('Erro ao carregar logo');
+          resolve(null);
+        };
+        img.src = loja.logo_url!;
+      });
+      if (dataUrl) {
+        const chipLargura = 26;
+        const chipAltura = headerAltura - 6;
+        const chipX = margemEsquerda + 4;
+        const chipY = yPos + 3;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(chipX, chipY, chipLargura, chipAltura, 1.5, 1.5, 'F');
+        const props = doc.getImageProperties(dataUrl);
+        const proporcao = props.width / props.height;
+        const padding = 2;
+        let larguraImg = chipLargura - padding * 2;
+        let alturaImg = larguraImg / proporcao;
+        if (alturaImg > chipAltura - padding * 2) {
+          alturaImg = chipAltura - padding * 2;
+          larguraImg = alturaImg * proporcao;
+        }
+        doc.addImage(
+          dataUrl,
+          chipX + (chipLargura - larguraImg) / 2,
+          chipY + (chipAltura - alturaImg) / 2,
+          larguraImg,
+          alturaImg
+        );
+        textoX = chipX + chipLargura + 5;
+      }
+    } catch (e) {
+      console.error('Erro ao adicionar logo:', e);
     }
+  }
 
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text(loja?.nome_loja || '', textoX, yPos + 10);
+
+  const infoLojaHeader = [loja?.cnpj ? `CNPJ: ${loja.cnpj}` : '', loja?.telefone ? `Tel: ${loja.telefone}` : '']
+    .filter(Boolean)
+    .join('   ');
+  if (infoLojaHeader) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(173, 181, 189);
+    doc.text(infoLojaHeader, textoX, yPos + 16);
+  }
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(76, 201, 240);
+  doc.text(`OS #${ordem.numero_os}`, margemDireita, yPos + 10, { align: 'right' });
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(173, 181, 189);
+  doc.text(statusMap[ordem.status || ''] || ordem.status || '', margemDireita, yPos + 16, { align: 'right' });
+
+  yPos += headerAltura + 6;
+  doc.setTextColor(0, 0, 0);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(90, 90, 90);
+  doc.text(`Data de abertura: ${formatarDataHoraBrasil(ordem.created_at)}`, margemEsquerda, yPos);
+  yPos += 7;
+
+  // ===== ENDEREÇO DA LOJA (info restante do estabelecimento, fora da caixa) =====
+  if (loja) {
     let endereco = '';
     if (loja.logradouro && loja.numero) {
       endereco = `${loja.logradouro}, ${loja.numero}`;
@@ -190,6 +196,10 @@ export async function gerarOrdemServicoPDF(
     } else if (loja.endereco) {
       endereco = loja.endereco;
     }
+    if (loja.whatsapp) {
+      doc.text(`WhatsApp: ${loja.whatsapp}`, margemEsquerda, yPos);
+      yPos += 4;
+    }
     if (endereco) {
       const linhas = doc.splitTextToSize(`Endereço: ${endereco}`, larguraUtil);
       linhas.forEach((linha: string) => {
@@ -197,11 +207,14 @@ export async function gerarOrdemServicoPDF(
         yPos += 4;
       });
     }
-
-    yPos += 4;
-    doc.line(margemEsquerda, yPos, margemDireita, yPos);
-    yPos += 8;
+    yPos += 2;
   }
+
+  doc.setTextColor(0, 0, 0);
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.3);
+  doc.line(margemEsquerda, yPos, margemDireita, yPos);
+  yPos += 8;
 
   // ===== DADOS DO CLIENTE =====
   verificarNovaPagina(30);
@@ -959,6 +972,443 @@ export async function gerarOrdemServicoPDF(
   doc.text(`Documento gerado em: ${formatarDataHoraBrasil(new Date().toISOString())}`, 105, yPos, { align: 'center' });
 
   // Retornar como Blob
+  return doc.output('blob');
+}
+
+/**
+ * Gera a Ordem de Serviço em formato de cupom térmico 80mm como PDF —
+ * caminho usado no iOS standalone quando o formato 80mm é escolhido, onde
+ * window.print()/iframe (print80mm() em ImpressaoOrdemServico.tsx) é
+ * bloqueado pela plataforma (mesmo motivo já corrigido no caminho A4 desta
+ * função e no Recibo de Venda/Termo de Garantia — ver gerarReciboVendaPDF.ts).
+ *
+ * Cobre o conteúdo mais usado do cupom 80mm em tela
+ * (ImpressaoCupom80mm.tsx): cabeçalho, dados da loja/cliente/dispositivo,
+ * defeito relatado, checklist (texto, sem os ícones/duas colunas da tela),
+ * senha (texto, sem o desenho do padrão de desbloqueio), itens do serviço,
+ * custos adicionais, forma de pagamento, desconto/total, observações
+ * internas, termo de garantia e assinaturas (usa a imagem da assinatura
+ * digital se houver, como no caminho A4). NÃO desenha o diagrama de avarias
+ * visuais (silhueta do aparelho) — mostra só um aviso de texto se houver
+ * avarias registradas, já que replicar aquele desenho em jsPDF é um
+ * trabalho à parte.
+ *
+ * Papel térmico é bobina contínua, não página fixa — mesma técnica de
+ * medição em duas passadas usada em gerarReciboVendaPDF.ts: um doc
+ * descartável desenha o conteúdo inteiro numa altura provisória generosa só
+ * pra descobrir a altura real, depois o doc definitivo já nasce com essa
+ * altura exata.
+ */
+export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: ConfiguracaoLoja): Promise<Blob> {
+  const larguraPagina = 80;
+  const margin = 3;
+
+  const avariasData = (ordem.avarias || {}) as any;
+  const config80 = ((loja?.layout_os_config as any)?.config_80mm || {}) as Record<string, boolean | undefined>;
+  const mostrar = (flag: string, padrao: boolean) => (config80[flag] === undefined ? padrao : !!config80[flag]);
+
+  const statusMap: Record<string, string> = {
+    pendente: 'Pendente',
+    em_andamento: 'Em Andamento',
+    concluida: 'Concluída',
+    aguardando_aprovacao: 'Aguardando Aprovação',
+    finalizado: 'Finalizado',
+    entregue: 'Entregue',
+    aguardando_retirada: 'Aguardando Retirada',
+    cancelada: 'Cancelada',
+  };
+
+  const desenharConteudo = async (doc: jsPDF): Promise<number> => {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const larguraUtil = pageWidth - margin * 2;
+    let y = margin;
+
+    // ===== CABEÇALHO (caixa escura empilhada — mesma identidade visual do
+    // cabeçalho térmico do Recibo de Venda, ver gerarReciboVendaPDF.ts) =====
+    const padding = 3;
+    let logoLargura = 0;
+    let logoAltura = 0;
+    let logoDataUrl: string | null = null;
+    if (mostrar('mostrar_logo', true) && loja?.logo_url) {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        logoDataUrl = await new Promise<string | null>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              ctx?.drawImage(img, 0, 0);
+              resolve(canvas.toDataURL('image/png'));
+            } catch {
+              resolve(null);
+            }
+          };
+          img.onerror = () => resolve(null);
+          img.src = loja.logo_url!;
+        });
+        if (logoDataUrl) {
+          const props = doc.getImageProperties(logoDataUrl);
+          const proporcao = props.width / props.height;
+          logoLargura = Math.min(larguraUtil * 0.45, 22);
+          logoAltura = logoLargura / proporcao;
+          const logoAlturaMax = 11;
+          if (logoAltura > logoAlturaMax) {
+            logoAltura = logoAlturaMax;
+            logoLargura = logoAltura * proporcao;
+          }
+        }
+      } catch {
+        logoDataUrl = null;
+      }
+    }
+
+    const mostrarDadosLoja = mostrar('mostrar_dados_loja', true) && !!loja;
+    const cnpjLinha = mostrarDadosLoja && loja?.cnpj ? `CNPJ: ${loja.cnpj}` : '';
+    const telLinha = mostrarDadosLoja && loja?.telefone ? `Tel: ${loja.telefone}` : '';
+    const linhasInfoLoja = [cnpjLinha, telLinha].filter(Boolean);
+
+    const headerAltura =
+      padding * 2 + (logoAltura > 0 ? logoAltura + 3 : 0) + 5 + linhasInfoLoja.length * 3.2 + 5.5;
+
+    doc.setFillColor(26, 26, 46);
+    doc.roundedRect(margin, y, larguraUtil, headerAltura, 2, 2, 'F');
+
+    let contentY = y + padding;
+    if (logoDataUrl && logoAltura > 0) {
+      try {
+        const chipPad = 1.2;
+        const chipX = margin + (larguraUtil - logoLargura) / 2 - chipPad;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(chipX, contentY - chipPad, logoLargura + chipPad * 2, logoAltura + chipPad * 2, 1, 1, 'F');
+        doc.addImage(logoDataUrl, margin + (larguraUtil - logoLargura) / 2, contentY, logoLargura, logoAltura);
+      } catch {
+        // segue sem logo
+      }
+      contentY += logoAltura + 3;
+    }
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(mostrarDadosLoja ? loja?.nome_loja || '' : '', pageWidth / 2, contentY, { align: 'center' });
+    contentY += 5;
+
+    if (linhasInfoLoja.length > 0) {
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(173, 181, 189);
+      linhasInfoLoja.forEach((linha) => {
+        doc.text(linha, pageWidth / 2, contentY, { align: 'center' });
+        contentY += 3.2;
+      });
+    }
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(76, 201, 240);
+    doc.text('ORDEM DE SERVIÇO', pageWidth / 2, contentY, { align: 'center' });
+
+    y += headerAltura + 4;
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 30, 30);
+    doc.text(`OS #${ordem.numero_os} — ${statusMap[ordem.status || ''] || ordem.status || ''}`, pageWidth / 2, y, {
+      align: 'center',
+    });
+    y += 4;
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(90, 90, 90);
+    doc.text(formatarDataHoraBrasil(ordem.created_at), pageWidth / 2, y, { align: 'center' });
+    y += 5;
+
+    doc.setDrawColor(...([222, 226, 230] as [number, number, number]));
+    doc.setLineWidth(0.2);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 4;
+
+    // ===== helpers de seção =====
+    const tituloSecao = (texto: string) => {
+      doc.setDrawColor(222, 226, 230);
+      doc.setLineWidth(0.2);
+      doc.setFillColor(248, 249, 250);
+      doc.rect(margin, y, larguraUtil, 5.5, 'FD');
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(108, 117, 125);
+      doc.text(texto.toUpperCase(), margin + 2, y + 3.9);
+      y += 8;
+    };
+
+    const linhaTexto = (texto: string, opts: { bold?: boolean } = {}) => {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', opts.bold ? 'bold' : 'normal');
+      doc.setTextColor(35, 35, 35);
+      const linhas = doc.splitTextToSize(texto, larguraUtil - 4);
+      linhas.forEach((linha: string) => {
+        doc.text(linha, margin + 2, y);
+        y += 3.6;
+      });
+    };
+
+    const linhaComValor = (label: string, valor: string, opts: { bold?: boolean; corValor?: [number, number, number] } = {}) => {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', opts.bold ? 'bold' : 'normal');
+      doc.setTextColor(35, 35, 35);
+      doc.text(label, margin + 2, y);
+      doc.setTextColor(...(opts.corValor ?? [35, 35, 35]));
+      doc.text(valor, pageWidth - margin - 2, y, { align: 'right' });
+      y += 4;
+    };
+
+    // ===== CLIENTE =====
+    if (mostrar('mostrar_dados_cliente', true)) {
+      tituloSecao('Cliente');
+      linhaTexto(`Nome: ${ordem.cliente?.nome || 'N/A'}`);
+      linhaTexto(`Tel: ${formatarTelefone(ordem.cliente?.telefone)}`);
+      if (ordem.cliente?.cpf) linhaTexto(`CPF: ${formatarCPFCNPJ(ordem.cliente.cpf)}`);
+      y += 2;
+    }
+
+    // ===== DISPOSITIVO =====
+    if (mostrar('mostrar_dados_dispositivo', true)) {
+      tituloSecao('Dispositivo');
+      linhaTexto(`${ordem.dispositivo_tipo || ''} ${ordem.dispositivo_marca || ''} ${ordem.dispositivo_modelo || ''}`.trim());
+      if (ordem.dispositivo_cor) linhaTexto(`Cor: ${ordem.dispositivo_cor}`);
+      const imeiSerie = ordem.dispositivo_imei || ordem.dispositivo_numero_serie;
+      if (imeiSerie) linhaTexto(`IMEI/Série: ${imeiSerie}`);
+      y += 2;
+    }
+
+    // ===== DEFEITO =====
+    if (mostrar('mostrar_defeito', true) && ordem.defeito_relatado) {
+      tituloSecao('Defeito Relatado');
+      linhaTexto(ordem.defeito_relatado);
+      y += 2;
+    }
+
+    // ===== CHECKLIST (texto — sem os ícones/duas colunas da tela) =====
+    if (mostrar('mostrar_checklist', false)) {
+      const semTeste = avariasData?.checklist?.sem_teste === true;
+      const checklistEntrada = avariasData?.checklist?.entrada || {};
+      const checklistSaida = avariasData?.checklist?.saida || {};
+
+      if (semTeste) {
+        tituloSecao('Checklist Entrada');
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(180, 100, 0);
+        doc.text('Sem teste: aparelho chegou desligado.', margin + 2, y);
+        y += 4;
+      }
+
+      if (Object.keys(checklistEntrada).length > 0) {
+        if (!semTeste) tituloSecao('Checklist Entrada');
+        Object.entries(checklistEntrada).forEach(([nome, status]) => {
+          const nomeFormatado = nome.replace(/_/g, ' ');
+          linhaTexto(`${status ? '✓' : '✗'} ${nomeFormatado}`);
+        });
+        y += 2;
+      }
+
+      if (Object.keys(checklistSaida).length > 0) {
+        tituloSecao('Checklist Saída');
+        Object.entries(checklistSaida).forEach(([nome, status]) => {
+          const nomeFormatado = nome.replace(/_/g, ' ');
+          linhaTexto(`${status ? '✓' : '✗'} ${nomeFormatado}`);
+        });
+        y += 2;
+      }
+    }
+
+    // ===== AVARIAS (aviso — sem o diagrama de silhueta) =====
+    if (mostrar('mostrar_avarias', false) && (avariasData?.avarias_visuais || []).length > 0) {
+      tituloSecao('Avarias');
+      linhaTexto(`${avariasData.avarias_visuais.length} avaria(s) registrada(s) — ver detalhes no app.`);
+      y += 2;
+    }
+
+    // ===== SENHA =====
+    const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
+    if (mostrar('mostrar_senha', true) && senhaDesbloqueio) {
+      tituloSecao('Senha de Desbloqueio');
+      if (senhaDesbloqueio.nao_informada) {
+        linhaTexto('Cliente não quis passar a senha.');
+      } else if (senhaDesbloqueio.tipo === 'padrao' && senhaDesbloqueio.padrao) {
+        linhaTexto(`Sequência: ${senhaDesbloqueio.padrao.join(' → ')}`);
+      } else {
+        const tipoSenha = senhaDesbloqueio.tipo === 'numero' ? 'PIN' : 'Texto';
+        linhaTexto(`${tipoSenha}: ${senhaDesbloqueio.valor || 'N/A'}`);
+      }
+      y += 2;
+    }
+
+    // ===== SERVIÇOS E PRODUTOS =====
+    let servicosRealizados = avariasData?.servicos_realizados || [];
+    if (servicosRealizados.length === 0 && avariasData?.servicos_inline?.length > 0) {
+      servicosRealizados = avariasData.servicos_inline.map((s: any, i: number) => ({
+        id: `inline-${i}`,
+        nome: s.nome,
+        preco: s.valor || 0,
+      }));
+    }
+    const produtosUtilizados = avariasData?.produtos_utilizados || [];
+
+    if (mostrar('mostrar_servicos', true) && (servicosRealizados.length > 0 || produtosUtilizados.length > 0)) {
+      if (servicosRealizados.length > 0) {
+        tituloSecao('Serviços');
+        servicosRealizados.forEach((servico: any) => {
+          linhaComValor(servico.nome, formatarMoeda(servico.preco));
+        });
+        y += 2;
+      }
+      if (produtosUtilizados.length > 0) {
+        tituloSecao('Peças');
+        produtosUtilizados.forEach((produto: any) => {
+          linhaComValor(`${produto.quantidade}x ${produto.nome}`, formatarMoeda(produto.preco_total));
+        });
+        y += 2;
+      }
+    }
+
+    // ===== CUSTOS ADICIONAIS =====
+    const custosAdicionais = avariasData?.custos_adicionais || [];
+    if (mostrar('mostrar_custos_adicionais', true) && custosAdicionais.length > 0) {
+      tituloSecao('Custos Adicionais');
+      custosAdicionais.forEach((custo: any) => {
+        const label =
+          custo.tipo === 'frete' ? 'Frete' : custo.tipo === 'brinde' ? 'Brinde' : custo.descricao || 'Outro';
+        linhaComValor(`${label} (${custo.repassar_cliente ? 'Cliente' : 'Loja'})`, formatarMoeda(custo.valor || 0));
+      });
+      y += 2;
+    }
+
+    // ===== FORMA DE PAGAMENTO =====
+    const formaPagamento = (ordem as any).forma_pagamento;
+    if (mostrar('mostrar_forma_pagamento', true) && formaPagamento) {
+      tituloSecao('Pagamento');
+      linhaTexto(String(formaPagamento));
+      y += 2;
+    }
+
+    // ===== DESCONTO E TOTAL =====
+    if (mostrar('mostrar_valor', true)) {
+      const desconto = avariasData?.dados_pagamento?.desconto || 0;
+      const subtotal = avariasData?.dados_pagamento?.subtotal ?? (desconto > 0 ? (ordem.total || 0) + desconto : undefined);
+      if (desconto > 0 && subtotal !== undefined) {
+        linhaComValor('Subtotal', formatarMoeda(subtotal));
+        linhaComValor('Desconto', `- ${formatarMoeda(desconto)}`, { bold: true, corValor: [180, 0, 0] });
+      }
+      y += 1;
+      doc.setDrawColor(80, 80, 80);
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 4;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(26, 26, 46);
+      doc.text('TOTAL', margin + 2, y);
+      doc.text(formatarMoeda(ordem.total || 0), pageWidth - margin - 2, y, { align: 'right' });
+      y += 4;
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+    }
+
+    // ===== OBSERVAÇÕES INTERNAS =====
+    if (avariasData?.observacoes_internas && avariasData?.mostrar_obs_internas_impressao) {
+      tituloSecao('Observações Internas');
+      linhaTexto(avariasData.observacoes_internas);
+      y += 2;
+    }
+
+    // ===== TERMO DE GARANTIA =====
+    if (mostrar('mostrar_termos_condicoes', false)) {
+      tituloSecao('Termo de Garantia');
+      const termoGarantia = obterTermoGarantia({
+        tempoGarantia: ordem.tempo_garantia,
+        termoConfig: loja?.termo_garantia_config,
+        nomeLoja: loja?.nome_loja,
+        nomeCliente: ordem.cliente?.nome,
+        dispositivo: `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`,
+      });
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      const linhasTermo = doc.splitTextToSize(termoGarantia, larguraUtil - 4);
+      linhasTermo.forEach((linha: string) => {
+        doc.text(linha, margin + 2, y);
+        y += 3.2;
+      });
+      y += 3;
+    }
+
+    // ===== ASSINATURAS =====
+    if (mostrar('mostrar_assinaturas', true)) {
+      const assinaturas = avariasData?.assinaturas || {};
+      const larguraAssinatura = larguraUtil - 4;
+      const alturaAssinatura = 16;
+
+      const blocoAssinatura = (titulo: string, imagemBase64: string | undefined, dataISO: string | undefined) => {
+        y += 3;
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(35, 35, 35);
+        doc.text(titulo, margin + 2, y);
+        y += 2;
+        if (imagemBase64) {
+          try {
+            doc.addImage(imagemBase64, margin + 2, y, larguraAssinatura, alturaAssinatura);
+          } catch {
+            // segue sem a imagem
+          }
+          y += alturaAssinatura + 1;
+          if (dataISO) {
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Data: ${formatarDataHoraBrasil(dataISO)}`, margin + 2, y);
+            y += 4;
+          }
+        } else {
+          y += 6;
+          doc.setDrawColor(120, 120, 120);
+          doc.setLineWidth(0.2);
+          doc.line(margin + 2, y, pageWidth - margin - 2, y);
+          y += 4;
+        }
+      };
+
+      tituloSecao('Assinaturas');
+      blocoAssinatura(
+        'Cliente (Entrada)',
+        assinaturas.cliente_entrada,
+        assinaturas.data_assinatura_entrada
+      );
+      blocoAssinatura('Cliente (Saída)', assinaturas.cliente_saida, assinaturas.data_assinatura_saida);
+      y += 2;
+    }
+
+    // ===== RODAPÉ =====
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(140, 140, 140);
+    const dataGerado = `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    doc.text(dataGerado, pageWidth / 2, y, { align: 'center' });
+    y += 4;
+
+    return y;
+  };
+
+  const docMedicao = new jsPDF({ unit: 'mm', format: [larguraPagina, 1000] });
+  const alturaConteudo = await desenharConteudo(docMedicao);
+  const alturaFinal = Math.max(alturaConteudo + margin, 60);
+
+  const doc = new jsPDF({ unit: 'mm', format: [larguraPagina, alturaFinal] });
+  await desenharConteudo(doc);
   return doc.output('blob');
 }
 
