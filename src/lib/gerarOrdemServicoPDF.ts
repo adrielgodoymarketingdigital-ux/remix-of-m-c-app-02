@@ -47,6 +47,25 @@ const formatarCPFCNPJ = (doc?: string) => {
   return doc;
 };
 
+// Compartilhado entre o desenho de avarias do A4 (gerarOrdemServicoPDF) e do
+// cupom 80mm (gerarOrdemServicoCupom80mmPDF) — mesmas cores/labels usadas na
+// tela (SilhuetaComAvarias).
+const TIPO_AVARIA_LABELS: Record<string, string> = {
+  riscos: 'Riscos',
+  trinca: 'Trinca',
+  amassado: 'Amassado',
+  quebrado: 'Quebrado',
+  outro: 'Outro',
+};
+
+const TIPO_AVARIA_CORES: Record<string, [number, number, number]> = {
+  riscos: [239, 68, 68], // red
+  trinca: [249, 115, 22], // orange
+  amassado: [234, 179, 8], // yellow
+  quebrado: [168, 85, 247], // purple
+  outro: [59, 130, 246], // blue
+};
+
 export type TipoPDFOS = 'completo' | 'primeira_parte' | 'termo_garantia';
 
 export async function gerarOrdemServicoPDF(
@@ -500,21 +519,8 @@ export async function gerarOrdemServicoPDF(
     doc.text('AVARIAS DO DISPOSITIVO', margemEsquerda, yPos);
     yPos += 8;
 
-    const tipoAvariaLabels: Record<string, string> = {
-      riscos: 'Riscos',
-      trinca: 'Trinca',
-      amassado: 'Amassado',
-      quebrado: 'Quebrado',
-      outro: 'Outro'
-    };
-
-    const tipoAvariaCores: Record<string, [number, number, number]> = {
-      riscos: [239, 68, 68],      // red
-      trinca: [249, 115, 22],     // orange
-      amassado: [234, 179, 8],    // yellow
-      quebrado: [168, 85, 247],   // purple
-      outro: [59, 130, 246]       // blue
-    };
+    const tipoAvariaLabels = TIPO_AVARIA_LABELS;
+    const tipoAvariaCores = TIPO_AVARIA_CORES;
 
     // Dimensões do desenho do dispositivo
     const larguraSilhueta = 35;
@@ -985,13 +991,13 @@ export async function gerarOrdemServicoPDF(
  * Cobre o conteúdo mais usado do cupom 80mm em tela
  * (ImpressaoCupom80mm.tsx): cabeçalho, dados da loja/cliente/dispositivo,
  * defeito relatado, checklist (texto, sem os ícones/duas colunas da tela),
- * senha (texto, sem o desenho do padrão de desbloqueio), itens do serviço,
- * custos adicionais, forma de pagamento, desconto/total, observações
- * internas, termo de garantia e assinaturas (usa a imagem da assinatura
- * digital se houver, como no caminho A4). NÃO desenha o diagrama de avarias
- * visuais (silhueta do aparelho) — mostra só um aviso de texto se houver
- * avarias registradas, já que replicar aquele desenho em jsPDF é um
- * trabalho à parte.
+ * senha (texto, sem o desenho do padrão de desbloqueio), avarias visuais
+ * (mesmo desenho de silhueta com marcadores do caminho A4, em escala
+ * reduzida — silhuetas lado a lado, legenda embaixo em vez de ao lado por
+ * falta de largura), itens do serviço, custos adicionais, forma de
+ * pagamento, desconto/total, observações internas, termo de garantia e
+ * assinaturas (usa a imagem da assinatura digital se houver, como no
+ * caminho A4).
  *
  * Papel térmico é bobina contínua, não página fixa — mesma técnica de
  * medição em duas passadas usada em gerarReciboVendaPDF.ts: um doc
@@ -1225,10 +1231,73 @@ export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: 
       }
     }
 
-    // ===== AVARIAS (aviso — sem o diagrama de silhueta) =====
+    // ===== AVARIAS (mesmo desenho de silhueta do A4 — ver mais acima nesta
+    // função gerarOrdemServicoPDF — só em escala reduzida, silhuetas lado a
+    // lado mas legenda embaixo em vez de ao lado, largura não cabe as duas
+    // coisas juntas) =====
     if (mostrar('mostrar_avarias', false) && (avariasData?.avarias_visuais || []).length > 0) {
       tituloSecao('Avarias');
-      linhaTexto(`${avariasData.avarias_visuais.length} avaria(s) registrada(s) — ver detalhes no app.`);
+
+      const avariasVisuais = avariasData.avarias_visuais as any[];
+      const avariasFrente = avariasVisuais.filter((a: any) => a.lado === 'frente');
+      const avariasTraseira = avariasVisuais.filter((a: any) => a.lado === 'traseira');
+
+      const larguraSilhueta = 20;
+      const alturaSilhueta = 34;
+      const gapSilhuetas = 8;
+      const larguraTotalSilhuetas = larguraSilhueta * 2 + gapSilhuetas;
+      const xFrente = margin + (larguraUtil - larguraTotalSilhuetas) / 2;
+      const xTraseira = xFrente + larguraSilhueta + gapSilhuetas;
+      const yDesenho = y + 3;
+
+      const desenharSilhueta = (x: number, yTop: number, titulo: string) => {
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(35, 35, 35);
+        doc.text(titulo, x + larguraSilhueta / 2, yTop - 1.5, { align: 'center' });
+        doc.setDrawColor(100, 100, 100);
+        doc.setLineWidth(0.4);
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(x, yTop, larguraSilhueta, alturaSilhueta, 2, 2, 'FD');
+        doc.setFillColor(230, 230, 230);
+        doc.roundedRect(x + 1.2, yTop + 3, larguraSilhueta - 2.4, alturaSilhueta - 6, 1, 1, 'F');
+      };
+
+      const marcarAvarias = (lista: any[], x: number, yTop: number, offsetNumero: number) => {
+        lista.forEach((avaria: any, index: number) => {
+          const markerX = x + (avaria.x / 100) * larguraSilhueta;
+          const markerY = yTop + (avaria.y / 100) * alturaSilhueta;
+          const cor = TIPO_AVARIA_CORES[avaria.tipo] || [100, 100, 100];
+          doc.setFillColor(cor[0], cor[1], cor[2]);
+          doc.setDrawColor(255, 255, 255);
+          doc.setLineWidth(0.4);
+          doc.circle(markerX, markerY, 1.6, 'FD');
+          doc.setFontSize(4);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(255, 255, 255);
+          doc.text(String(offsetNumero + index + 1), markerX, markerY + 0.5, { align: 'center' });
+        });
+      };
+
+      desenharSilhueta(xFrente, yDesenho, 'FRENTE');
+      marcarAvarias(avariasFrente, xFrente, yDesenho, 0);
+      desenharSilhueta(xTraseira, yDesenho, 'TRASEIRA');
+      marcarAvarias(avariasTraseira, xTraseira, yDesenho, avariasFrente.length);
+
+      y = yDesenho + alturaSilhueta + 5;
+
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      avariasVisuais.forEach((avaria: any, index: number) => {
+        const cor = TIPO_AVARIA_CORES[avaria.tipo] || [100, 100, 100];
+        const tipo = TIPO_AVARIA_LABELS[avaria.tipo] || avaria.tipo;
+        const lado = avaria.lado === 'frente' ? 'F' : 'T';
+        doc.setFillColor(cor[0], cor[1], cor[2]);
+        doc.circle(margin + 3, y - 1, 1.2, 'F');
+        doc.setTextColor(35, 35, 35);
+        doc.text(`${index + 1}. ${tipo} (${lado})`, margin + 6, y);
+        y += 3.6;
+      });
       y += 2;
     }
 
