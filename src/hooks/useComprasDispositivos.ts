@@ -26,7 +26,8 @@ export function useComprasDispositivos() {
             id,
             nome,
             cpf_cnpj,
-            telefone
+            telefone,
+            tipo
           ),
           fornecedores (
             nome
