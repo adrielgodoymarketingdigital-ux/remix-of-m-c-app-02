@@ -1,13 +1,16 @@
 /**
- * Mecanismo de impressão pra mobile/PWA standalone: injeta o documento num
- * <iframe> 1×1px oculto via srcdoc, em vez de window.open() — que é
- * cronicamente instável em Chrome Android (trava em "Preparing preview…")
- * e ficou mais arriscado ainda em iOS standalone recente (WebKit passou a
- * exigir consumo mais estrito de user-activation em window.open(), ver
- * changelog do Safari 27). Validado em produção há meses em
- * ImpressaoOrdemServico.tsx; extraído aqui pra reuso pelos fluxos de recibo
- * (Termo de Garantia, PDV, venda comum) — todos tinham o mesmo
- * window.open() sem tratamento nenhum de mobile.
+ * Mecanismos de impressão pra mobile/PWA standalone.
+ *
+ * Android: `printViaIframe` injeta o documento num <iframe> 1×1px oculto via
+ * srcdoc, em vez de window.open() — cronicamente instável em Chrome Android
+ * (trava em "Preparing preview…").
+ *
+ * iOS: `printViaPrintRoot` injeta direto no documento principal via
+ * #print-root — iframe.contentWindow.print() passou a ser silenciosamente
+ * ignorado em standalone no Safari 27 (set/2026), confirmado em device real
+ * com alerts de diagnóstico (print() chamado sem erro nenhum, nenhuma UI de
+ * impressão aparece). Não há documentação oficial da Apple sobre essa
+ * mudança — só a evidência direta do teste.
  */
 
 export interface ContextoImpressaoMobile {
@@ -97,6 +100,40 @@ export function printViaIframe(htmlDoc: string, isIOS: boolean, debug = false): 
   };
 
   iframe.srcdoc = htmlDoc;
+}
+
+/**
+ * Imprime direto no documento principal via #print-root — caminho iOS, sem
+ * iframe. Reaproveita o mesmo #print-root que ImpressaoOrdemServico.tsx e
+ * ImpressaoTermoResponsabilidade.tsx já usam no caminho desktop (portal +
+ * window.print() síncrono) — ver @media print em index.css, que esconde
+ * #root e mostra #print-root durante a impressão.
+ *
+ * bodyHtml/styleCss são injetados como HTML/CSS GLOBAL na página viva (não é
+ * um documento isolado como no iframe/popup) — todo seletor em styleCss deve
+ * vir prefixado (ex: .recibo-print-*) pra não vazar pro resto do app enquanto
+ * o diálogo de impressão estiver aberto.
+ *
+ * Limpa #print-root no afterprint pra não deixar conteúdo de uma impressão
+ * anterior residual numa próxima chamada.
+ */
+export function printViaPrintRoot(bodyHtml: string, styleCss: string): void {
+  let printRoot = document.getElementById('print-root');
+  if (!printRoot) {
+    printRoot = document.createElement('div');
+    printRoot.id = 'print-root';
+    document.body.appendChild(printRoot);
+  }
+
+  const limpar = () => {
+    printRoot!.innerHTML = '';
+    window.removeEventListener('afterprint', limpar);
+  };
+  window.addEventListener('afterprint', limpar);
+
+  printRoot.innerHTML = `<style>${styleCss}</style>${bodyHtml}`;
+  window.focus();
+  window.print();
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 import {
   Dialog,
@@ -19,7 +19,7 @@ import {
   FormatoPapel,
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
-import { detectarContextoImpressaoMobile, printViaIframe, urlParaBase64 } from "@/lib/printViaIframe";
+import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot, urlParaBase64 } from "@/lib/printMobile";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -165,6 +165,63 @@ export function DialogReimprimirReciboVenda({
     if (open) refetch();
   }, [open]);
 
+  // Pré-busca os dados do grupo ao abrir o diálogo (em vez de no clique do
+  // botão de impressão) — elimina o gap de rede entre o toque do usuário e a
+  // chamada de window.print() no caminho iOS, onde esse atraso pode ser a
+  // causa do print() ser silenciosamente ignorado em standalone.
+  const [dispositivosGrupo, setDispositivosGrupo] = useState<DispositivoDoGrupo[]>([]);
+  const [carregandoGrupo, setCarregandoGrupo] = useState(false);
+
+  useEffect(() => {
+    if (!open || !venda) return;
+    setDispositivosGrupo([
+      { id: venda.id, total: venda.total, dispositivo_imei: venda.dispositivo_imei, dispositivo_marca: venda.dispositivo_marca, dispositivo_modelo: venda.dispositivo_modelo },
+    ]);
+    if (!grupoVendaId) return;
+
+    let cancelado = false;
+    setCarregandoGrupo(true);
+    (async () => {
+      const { data: grupoData } = await supabase
+        .from("vendas")
+        .select("id, dispositivo_id, total, imei_dispositivo, tempo_garantia")
+        .eq("grupo_venda", grupoVendaId)
+        .is("deleted_at", null);
+
+      if (cancelado) return;
+      if (!grupoData || grupoData.length <= 1) {
+        setCarregandoGrupo(false);
+        return;
+      }
+
+      const dispIds = grupoData.map((g) => g.dispositivo_id).filter(Boolean);
+      const { data: disps } = await supabase
+        .from("dispositivos")
+        .select("id, marca, modelo, imei, cor, capacidade_gb, condicao")
+        .in("id", dispIds);
+      if (cancelado) return;
+
+      const dispMap = new Map((disps || []).map((d: any) => [d.id, d]));
+      setDispositivosGrupo(grupoData.map((g: any) => {
+        const disp = dispMap.get(g.dispositivo_id);
+        return {
+          id: g.id,
+          total: Number(g.total || 0),
+          dispositivo_imei: g.imei_dispositivo || disp?.imei,
+          dispositivo_marca: disp?.marca || venda.dispositivo_marca,
+          dispositivo_modelo: disp?.modelo || venda.dispositivo_modelo,
+          dispositivo_cor: disp?.cor,
+          dispositivo_capacidade_gb: disp?.capacidade_gb,
+          dispositivo_condicao: disp?.condicao,
+          dispositivo_tempo_garantia: g.tempo_garantia,
+        };
+      }));
+      setCarregandoGrupo(false);
+    })();
+
+    return () => { cancelado = true; };
+  }, [open, grupoVendaId, venda?.id]);
+
   if (!venda) return null;
 
   const dispConfig = configLoja?.layout_dispositivos_config as any;
@@ -233,60 +290,32 @@ export function DialogReimprimirReciboVenda({
     salvarUltimoFormatoPapel(formato);
 
     const { isMobile, isStandalone, isIOS } = detectarContextoImpressaoMobile();
-    const usarIframe = isMobile || isStandalone;
+    // "Mecanismo mobile" = não usa window.open(). Dentro dele, iOS vai por
+    // #print-root (sem iframe — iframe.contentWindow.print() é ignorado
+    // silenciosamente em standalone no Safari 27); Android continua no
+    // iframe (window.print() no documento principal trava no Chrome Android).
+    const usarMecanismoMobile = isMobile || isStandalone;
+    const usarPrintRoot = usarMecanismoMobile && isIOS;
+    const usarIframe = usarMecanismoMobile && !isIOS;
 
     // window.open precisa ser chamado de forma síncrona, no mesmo tick do
     // clique — qualquer await antes dele arrisca o navegador não reconhecer
-    // como originado de gesto do usuário (bloqueio de popup; WebKit ficou
-    // mais rígido nisso em standalone recente). Só abrimos a janela em
-    // branco agora; o conteúdo (htmlDoc) é escrito nela mais abaixo, depois
-    // que os dados assíncronos terminarem. Em mobile/standalone pulamos
-    // isso inteiro — printViaIframe não usa window.open, não tem essa
-    // restrição, e é o caminho já validado em produção (ImpressaoOrdemServico.tsx).
-    const janelaImpressao = usarIframe ? null : window.open("", "_blank");
-    if (!usarIframe && !janelaImpressao) return;
+    // como originado de gesto do usuário (bloqueio de popup). Só abrimos a
+    // janela em branco agora; o conteúdo (htmlDoc) é escrito nela mais abaixo.
+    // No caminho mobile pulamos isso inteiro.
+    const janelaImpressao = usarMecanismoMobile ? null : window.open("", "_blank");
+    if (!usarMecanismoMobile && !janelaImpressao) return;
 
-    let dispositivosGrupo: DispositivoDoGrupo[] = [
-      { id: venda.id, total: venda.total, dispositivo_imei: venda.dispositivo_imei, dispositivo_marca: venda.dispositivo_marca, dispositivo_modelo: venda.dispositivo_modelo },
-    ];
-    if (grupoVendaId) {
-      const { data: grupoData } = await supabase
-        .from("vendas")
-        .select("id, dispositivo_id, total, imei_dispositivo, tempo_garantia")
-        .eq("grupo_venda", grupoVendaId)
-        .is("deleted_at", null);
+    // dispositivosGrupo já foi pré-buscado ao abrir o diálogo (ver useEffect
+    // acima) — nenhum await de rede aqui, o que mantém o caminho iOS o mais
+    // próximo possível do tick síncrono do clique.
 
-      if (grupoData && grupoData.length > 1) {
-        const dispIds = grupoData.map((g) => g.dispositivo_id).filter(Boolean);
-        const { data: disps } = await supabase
-          .from("dispositivos")
-          .select("id, marca, modelo, imei, cor, capacidade_gb, condicao")
-          .in("id", dispIds);
-
-        const dispMap = new Map((disps || []).map((d: any) => [d.id, d]));
-        dispositivosGrupo = grupoData.map((g: any) => {
-          const disp = dispMap.get(g.dispositivo_id);
-          return {
-            id: g.id,
-            total: Number(g.total || 0),
-            dispositivo_imei: g.imei_dispositivo || disp?.imei,
-            dispositivo_marca: disp?.marca || venda.dispositivo_marca,
-            dispositivo_modelo: disp?.modelo || venda.dispositivo_modelo,
-            dispositivo_cor: disp?.cor,
-            dispositivo_capacidade_gb: disp?.capacidade_gb,
-            dispositivo_condicao: disp?.condicao,
-            dispositivo_tempo_garantia: g.tempo_garantia,
-          };
-        });
-      }
-    }
-
-    // Logo em base64 só no caminho mobile/iframe — evita depender de rede
-    // pra carregar o logo no documento isolado (mesma técnica de
-    // ImpressaoOrdemServico.tsx). Desktop mantém a URL direta, sem mudança
-    // de comportamento.
+    // Logo em base64 no caminho mobile — evita depender de rede pra carregar
+    // o logo (iframe: documento isolado sem acesso à rede da página; iOS
+    // print-root: evita esperar o evento `load` da <img> antes de imprimir).
+    // Desktop mantém a URL direta, sem mudança de comportamento.
     let logoSrc = configLoja?.logo_url || null;
-    if (usarIframe && logoSrc) {
+    if (usarMecanismoMobile && logoSrc) {
       const logoBase64 = await urlParaBase64(logoSrc);
       if (logoBase64) logoSrc = logoBase64;
     }
@@ -295,11 +324,11 @@ export function DialogReimprimirReciboVenda({
     const cssTermico = paper.isThermal ? `
     @page { size: ${paper.pageSize}; margin: 2mm; }
     body { width: ${paper.bodyWidth} !important; max-width: ${paper.bodyMaxWidth} !important; font-size: 9px !important; }
-    .header { flex-direction: column; align-items: flex-start; gap: 6px; border-radius: 0; }
-    .header-titulo { text-align: left; }
-    .grid-2col { grid-template-columns: 1fr !important; }
-    .assinaturas { grid-template-columns: 1fr !important; gap: 10px; }
-    .faixa-data { flex-direction: column; align-items: flex-start; gap: 2px; border-radius: 0; }
+    .recibo-print-header { flex-direction: column; align-items: flex-start; gap: 6px; border-radius: 0; }
+    .recibo-print-header-titulo { text-align: left; }
+    .recibo-print-grid-2col { grid-template-columns: 1fr !important; }
+    .recibo-print-assinaturas { grid-template-columns: 1fr !important; gap: 10px; }
+    .recibo-print-faixa-data { flex-direction: column; align-items: flex-start; gap: 2px; border-radius: 0; }
     ` : '';
 
     const textoTermoAtual = obterTextoTermo();
@@ -349,10 +378,10 @@ export function DialogReimprimirReciboVenda({
 
     const secaoDispositivosGrupo = dispositivosGrupo.length > 1 ? `
   <!-- DISPOSITIVOS DO GRUPO -->
-  <div class="card" style="margin-bottom: 8px;">
-    <div class="card-header">Dispositivos (${dispositivosGrupo.length})</div>
-    <div class="card-body">
-      <table class="tabela-dispositivos">
+  <div class="recibo-print-card" style="margin-bottom: 8px;">
+    <div class="recibo-print-card-header">Dispositivos (${dispositivosGrupo.length})</div>
+    <div class="recibo-print-card-body">
+      <table class="recibo-print-tabela-dispositivos">
         <thead>
           <tr><th>Aparelho</th><th>IMEI</th><th>Valor</th></tr>
         </thead>
@@ -387,18 +416,18 @@ export function DialogReimprimirReciboVenda({
       ? dispositivosGrupo.map((disp) => {
           const textoTermoDisp = obterTextoTermo(disp);
           return `
-        <div class="termo-box" style="margin-bottom: 12px;">
-          <div class="termo-header">
+        <div class="recibo-print-termo-box" style="margin-bottom: 12px;">
+          <div class="recibo-print-termo-header">
             Termo de Garantia — ${disp.dispositivo_marca || ''} ${disp.dispositivo_modelo || ''}
             ${disp.dispositivo_imei ? `(IMEI: ${disp.dispositivo_imei})` : ''}
           </div>
-          <div class="termo-body">${textoTermoDisp.replace(/\n/g, '<br>')}</div>
+          <div class="recibo-print-termo-body">${textoTermoDisp.replace(/\n/g, '<br>')}</div>
         </div>`;
         }).join('')
       : `
-    <div class="termo-box">
-      <div class="termo-header">Termo de Garantia e Direitos do Consumidor</div>
-      <div class="termo-body">${textoTermoAtual.replace(/\n/g, '<br>')}</div>
+    <div class="recibo-print-termo-box">
+      <div class="recibo-print-termo-header">Termo de Garantia e Direitos do Consumidor</div>
+      <div class="recibo-print-termo-body">${textoTermoAtual.replace(/\n/g, '<br>')}</div>
     </div>`;
 
     const secaoAssinaturas = `
@@ -417,19 +446,19 @@ export function DialogReimprimirReciboVenda({
       ? `${cabecalho}${secaoComprador}${secaoProduto}${secaoTermo}${secaoAssinaturas}`
       : `${cabecalho}${secaoComprador}${secaoProduto}${secaoTermo}<div class="recibo-total">VALOR TOTAL: ${formatCurrency(venda.total)}</div>${secaoAssinaturas}`;
 
-    const htmlDoc = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <link rel="icon" type="image/png" href="/pwa-192x192.png">
-  <title>Termo de Garantia - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
-  <style>
+    // cssRecibo/bodyRecibo são reaproveitados nos três caminhos (desktop via
+    // window.open, Android via iframe, iOS via #print-root) — só a "casca"
+    // ao redor muda. Todo seletor vem prefixado com recibo-print- porque o
+    // caminho iOS injeta esse <style> direto na página viva (sem isolamento
+    // de documento), então um nome genérico tipo .card ou .field colidiria
+    // com qualquer outro elemento do app que use essas classes.
+    const cssRecibo = `
     * { box-sizing: border-box; margin: 0; padding: 0; }
     @page { size: A4 portrait; margin: 10mm 12mm; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #1a1a1a; background: white; line-height: 1.5; }
 
     /* HEADER */
-    .header {
+    .recibo-print-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -439,22 +468,22 @@ export function DialogReimprimirReciboVenda({
       border-radius: 6px 6px 0 0;
       margin-bottom: 0;
     }
-    .header-logo { display: flex; align-items: center; gap: 10px; }
+    .recibo-print-header-logo { display: flex; align-items: center; gap: 10px; }
     /* Chip branco atrás do logo — sem isso, um logo sem transparência (jpg,
        ou png achatado com fundo branco) some por inteiro com o filtro de
        inversão antigo. O chip garante contraste com o fundo escuro
        independente do arquivo. */
-    .logo-chip { background: #ffffff; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .logo-chip img { max-height: 44px; max-width: 96px; object-fit: contain; display: block; }
-    .header-loja h1 { font-size: 14px; font-weight: 900; letter-spacing: 0.03em; }
-    .header-loja p { font-size: 8px; color: #adb5bd; margin-top: 1px; }
-    .dados-loja { font-size: 9px; color: #111; margin-top: 2px; line-height: 1.6; font-weight: 600; font-style: normal; }
-    .header-titulo { text-align: right; }
-    .header-titulo h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; color: #4cc9f0; }
-    .header-titulo p { font-size: 8px; color: #adb5bd; margin-top: 2px; }
+    .recibo-print-logo-chip { background: #ffffff; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .recibo-print-logo-chip img { max-height: 44px; max-width: 96px; object-fit: contain; display: block; }
+    .recibo-print-header-loja h1 { font-size: 14px; font-weight: 900; letter-spacing: 0.03em; }
+    .recibo-print-header-loja p { font-size: 8px; color: #adb5bd; margin-top: 1px; }
+    .recibo-print-dados-loja { font-size: 9px; color: #111; margin-top: 2px; line-height: 1.6; font-weight: 600; font-style: normal; }
+    .recibo-print-header-titulo { text-align: right; }
+    .recibo-print-header-titulo h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; color: #4cc9f0; }
+    .recibo-print-header-titulo p { font-size: 8px; color: #adb5bd; margin-top: 2px; }
 
     /* FAIXA NÚMERO */
-    .faixa-data {
+    .recibo-print-faixa-data {
       background: #f0f4ff;
       border: 1px solid #d0d9f0;
       border-top: none;
@@ -467,18 +496,18 @@ export function DialogReimprimirReciboVenda({
       margin-bottom: 8px;
       border-radius: 0 0 4px 4px;
     }
-    .faixa-data strong { color: #1a1a2e; }
+    .recibo-print-faixa-data strong { color: #1a1a2e; }
 
     /* GRID PRINCIPAL */
-    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .recibo-print-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
 
     /* CARDS */
-    .card {
+    .recibo-print-card {
       border: 1px solid #dee2e6;
       border-radius: 6px;
       overflow: hidden;
     }
-    .card-header {
+    .recibo-print-card-header {
       background: #f8f9fa;
       border-bottom: 1px solid #dee2e6;
       padding: 4px 10px;
@@ -488,23 +517,23 @@ export function DialogReimprimirReciboVenda({
       letter-spacing: 0.1em;
       color: #6c757d;
     }
-    .card-body { padding: 8px 10px; }
-    .tabela-dispositivos { width: 100%; border-collapse: collapse; font-size: 9px; }
-    .tabela-dispositivos th { text-align: left; padding: 3px 6px; border-bottom: 1px solid #dee2e6; color: #6c757d; text-transform: uppercase; font-size: 8px; letter-spacing: 0.06em; }
-    .tabela-dispositivos td { padding: 3px 6px; border-bottom: 1px solid #f0f0f0; }
-    .field { margin-bottom: 5px; }
-    .field-label { font-size: 8px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1px; }
-    .field-value { font-size: 11px; font-weight: 600; color: #1a1a1a; border-bottom: 1px solid #e9ecef; padding-bottom: 2px; }
-    .field-value.destaque { font-size: 13px; color: #1a1a2e; font-weight: 900; }
+    .recibo-print-card-body { padding: 8px 10px; }
+    .recibo-print-tabela-dispositivos { width: 100%; border-collapse: collapse; font-size: 9px; }
+    .recibo-print-tabela-dispositivos th { text-align: left; padding: 3px 6px; border-bottom: 1px solid #dee2e6; color: #6c757d; text-transform: uppercase; font-size: 8px; letter-spacing: 0.06em; }
+    .recibo-print-tabela-dispositivos td { padding: 3px 6px; border-bottom: 1px solid #f0f0f0; }
+    .recibo-print-field { margin-bottom: 5px; }
+    .recibo-print-field-label { font-size: 8px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1px; }
+    .recibo-print-field-value { font-size: 11px; font-weight: 600; color: #1a1a1a; border-bottom: 1px solid #e9ecef; padding-bottom: 2px; }
+    .recibo-print-field-value.recibo-print-destaque { font-size: 13px; color: #1a1a2e; font-weight: 900; }
 
     /* TERMO */
-    .termo-box {
+    .recibo-print-termo-box {
       border: 1px solid #dee2e6;
       border-radius: 6px;
       overflow: hidden;
       margin-bottom: 8px;
     }
-    .termo-header {
+    .recibo-print-termo-header {
       background: #1a1a2e;
       color: white;
       padding: 5px 10px;
@@ -513,7 +542,7 @@ export function DialogReimprimirReciboVenda({
       letter-spacing: 0.1em;
       text-transform: uppercase;
     }
-    .termo-body {
+    .recibo-print-termo-body {
       padding: 8px 10px;
       font-size: 9px;
       line-height: 1.6;
@@ -522,7 +551,7 @@ export function DialogReimprimirReciboVenda({
     }
 
     /* ASSINATURAS */
-    .assinaturas {
+    .recibo-print-assinaturas {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
@@ -530,87 +559,86 @@ export function DialogReimprimirReciboVenda({
       padding-top: 8px;
       border-top: 2px solid #1a1a2e;
     }
-    .assinatura-bloco { text-align: center; }
-    .assinatura-linha {
+    .recibo-print-assinatura-bloco { text-align: center; }
+    .recibo-print-assinatura-linha {
       border-bottom: 1.5px solid #333;
       height: 28px;
       margin-bottom: 4px;
     }
-    .assinatura-nome { font-size: 9px; font-weight: 700; color: #1a1a1a; }
-    .assinatura-label { font-size: 8px; color: #888; }
+    .recibo-print-assinatura-nome { font-size: 9px; font-weight: 700; color: #1a1a1a; }
+    .recibo-print-assinatura-label { font-size: 8px; color: #888; }
 
     @media print {
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { margin: 0 !important; }
-      .assinaturas { page-break-inside: avoid; break-inside: avoid; }
+      .recibo-print-assinaturas { page-break-inside: avoid; break-inside: avoid; }
     }
     /* Sobrescreve @page e body para térmica (deve vir por último) */
     ${cssTermico}
-  </style>
-</head>
-<body>
+    `;
 
+    const bodyRecibo = `
   <!-- HEADER -->
-  <div class="header">
-    <div class="header-logo">
-      ${logoSrc ? `<div class="logo-chip"><img src="${logoSrc}" alt="Logo" /></div>` : ''}
-      <div class="header-loja">
+  <div class="recibo-print-header">
+    <div class="recibo-print-header-logo">
+      ${logoSrc ? `<div class="recibo-print-logo-chip"><img src="${logoSrc}" alt="Logo" /></div>` : ''}
+      <div class="recibo-print-header-loja">
         <h1>${configLoja?.nome_loja || ''}</h1>
         <p>${configLoja?.cnpj ? `CNPJ: ${configLoja.cnpj}` : ''} ${configLoja?.telefone ? `• Tel: ${configLoja.telefone}` : ''}</p>
       </div>
     </div>
-    <div class="header-titulo">
+    <div class="recibo-print-header-titulo">
       <h2>${modo === 'garantia' ? 'TERMO DE GARANTIA' : 'RECIBO DE VENDA'}</h2>
       <p>${configLoja?.endereco || ''}</p>
     </div>
   </div>
 
   <!-- FAIXA DATA -->
-  <div class="faixa-data">
+  <div class="recibo-print-faixa-data">
     <span>Data da venda: <strong>${dataVenda}</strong></span>
     <span>Forma de pagamento: <strong>${FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento}</strong></span>
     <span>Valor total: <strong>${formatCurrency(venda.total)}</strong></span>
   </div>
 
   <!-- GRID COMPRADOR + PRODUTO -->
-  <div class="grid-2col">
-    <div class="card">
-      <div class="card-header">Comprador</div>
-      <div class="card-body">
-        <div class="field">
-          <div class="field-label">Nome</div>
-          <div class="field-value">${venda.cliente_nome || '—'}</div>
+  <div class="recibo-print-grid-2col">
+    <div class="recibo-print-card">
+      <div class="recibo-print-card-header">Comprador</div>
+      <div class="recibo-print-card-body">
+        <div class="recibo-print-field">
+          <div class="recibo-print-field-label">Nome</div>
+          <div class="recibo-print-field-value">${venda.cliente_nome || '—'}</div>
         </div>
-        <div class="field">
-          <div class="field-label">CPF</div>
-          <div class="field-value">${venda.cliente_cpf || '—'}</div>
+        <div class="recibo-print-field">
+          <div class="recibo-print-field-label">CPF</div>
+          <div class="recibo-print-field-value">${venda.cliente_cpf || '—'}</div>
         </div>
-        <div class="field">
-          <div class="field-label">Telefone</div>
-          <div class="field-value">${venda.cliente_telefone || '—'}</div>
+        <div class="recibo-print-field">
+          <div class="recibo-print-field-label">Telefone</div>
+          <div class="recibo-print-field-value">${venda.cliente_telefone || '—'}</div>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">Produto</div>
-      <div class="card-body">
-        <div class="field">
-          <div class="field-label">Aparelho</div>
-          <div class="field-value destaque">${venda.dispositivo_marca} ${venda.dispositivo_modelo}</div>
+    <div class="recibo-print-card">
+      <div class="recibo-print-card-header">Produto</div>
+      <div class="recibo-print-card-body">
+        <div class="recibo-print-field">
+          <div class="recibo-print-field-label">Aparelho</div>
+          <div class="recibo-print-field-value recibo-print-destaque">${venda.dispositivo_marca} ${venda.dispositivo_modelo}</div>
         </div>
-        <div class="field">
-          <div class="field-label">IMEI</div>
-          <div class="field-value">${venda.dispositivo_imei || '—'}</div>
+        <div class="recibo-print-field">
+          <div class="recibo-print-field-label">IMEI</div>
+          <div class="recibo-print-field-value">${venda.dispositivo_imei || '—'}</div>
         </div>
-        <div class="field">
-          <div class="field-label">Cor / Capacidade / Condição</div>
-          <div class="field-value">${[venda.dispositivo_cor, venda.dispositivo_capacidade_gb ? venda.dispositivo_capacidade_gb + ' GB' : '', CONDICAO_LABEL[venda.dispositivo_condicao || ''] || venda.dispositivo_condicao].filter(Boolean).join(' • ') || '—'}</div>
+        <div class="recibo-print-field">
+          <div class="recibo-print-field-label">Cor / Capacidade / Condição</div>
+          <div class="recibo-print-field-value">${[venda.dispositivo_cor, venda.dispositivo_capacidade_gb ? venda.dispositivo_capacidade_gb + ' GB' : '', CONDICAO_LABEL[venda.dispositivo_condicao || ''] || venda.dispositivo_condicao].filter(Boolean).join(' • ') || '—'}</div>
         </div>
         ${venda.dispositivo_tempo_garantia ? `
-        <div class="field">
-          <div class="field-label">Garantia</div>
-          <div class="field-value destaque" style="color:#1a1a2e">${formatarGarantia(venda.dispositivo_tempo_garantia)}</div>
+        <div class="recibo-print-field">
+          <div class="recibo-print-field-label">Garantia</div>
+          <div class="recibo-print-field-value recibo-print-destaque" style="color:#1a1a2e">${formatarGarantia(venda.dispositivo_tempo_garantia)}</div>
         </div>` : ''}
       </div>
     </div>
@@ -621,31 +649,47 @@ export function DialogReimprimirReciboVenda({
   ${secaoTermoBox}
 
   <!-- ASSINATURAS -->
-  <div class="assinaturas">
-    <div class="assinatura-bloco">
-      <div class="assinatura-linha"></div>
-      <div class="assinatura-nome">${configLoja?.nome_loja || 'Vendedor'}</div>
-      <div class="assinatura-label">Assinatura do Vendedor</div>
+  <div class="recibo-print-assinaturas">
+    <div class="recibo-print-assinatura-bloco">
+      <div class="recibo-print-assinatura-linha"></div>
+      <div class="recibo-print-assinatura-nome">${configLoja?.nome_loja || 'Vendedor'}</div>
+      <div class="recibo-print-assinatura-label">Assinatura do Vendedor</div>
     </div>
-    <div class="assinatura-bloco">
-      <div class="assinatura-linha"></div>
-      <div class="assinatura-nome">${venda.cliente_nome || 'Comprador'}</div>
-      <div class="assinatura-label">Assinatura do Comprador</div>
+    <div class="recibo-print-assinatura-bloco">
+      <div class="recibo-print-assinatura-linha"></div>
+      <div class="recibo-print-assinatura-nome">${venda.cliente_nome || 'Comprador'}</div>
+      <div class="recibo-print-assinatura-label">Assinatura do Comprador</div>
     </div>
-  </div>
+  </div>`;
+
+    // iOS: sem documento isolado, sem <script> embutido — chamamos
+    // window.print() nós mesmos, direto no documento principal.
+    if (usarPrintRoot) {
+      printViaPrintRoot(bodyRecibo, cssRecibo);
+      return;
+    }
+
+    // Desktop e Android continuam com o documento isolado completo
+    // (DOCTYPE + head + script de auto-print), sem mudança de comportamento.
+    const htmlDoc = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/png" href="/pwa-192x192.png">
+  <title>Termo de Garantia - ${venda.dispositivo_marca} ${venda.dispositivo_modelo}</title>
+  <style>${cssRecibo}</style>
+</head>
+<body>
+${bodyRecibo}
 
   <script>
     window.onload = function() {
-      ${usarIframe ? "alert('DEBUG 2/5: script interno onload, aguardando 500ms');" : ""}
       setTimeout(function() {
         window.focus();
         window.__printed = true;
-        ${usarIframe ? "alert('DEBUG 3/5: script interno vai chamar print()');" : ""}
         try {
           window.print();
-        } catch (e) {
-          ${usarIframe ? "alert('DEBUG: erro no print() interno — ' + String(e));" : ""}
-        }
+        } catch (e) { /* ignore — reforço do printViaIframe cobre o fallback no Android */ }
         window.onafterprint = function() {
           window.close();
         };
@@ -656,7 +700,7 @@ export function DialogReimprimirReciboVenda({
 </html>`;
 
     if (usarIframe) {
-      printViaIframe(htmlDoc, isIOS, true);
+      printViaIframe(htmlDoc, isIOS);
       return;
     }
 
@@ -668,7 +712,7 @@ export function DialogReimprimirReciboVenda({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto" data-print-hide="true">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -715,15 +759,15 @@ export function DialogReimprimirReciboVenda({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button variant="outline" onClick={() => imprimirRecibo('a4')} className="gap-1.5">
+          <Button variant="outline" disabled={carregandoGrupo} onClick={() => imprimirRecibo('a4')} className="gap-1.5">
             <Printer className="h-4 w-4" />
             A4
           </Button>
-          <Button variant="outline" onClick={() => imprimirRecibo('80mm')} className="gap-1.5">
+          <Button variant="outline" disabled={carregandoGrupo} onClick={() => imprimirRecibo('80mm')} className="gap-1.5">
             <Printer className="h-4 w-4" />
             80mm
           </Button>
-          <Button onClick={() => imprimirRecibo('58mm')} className="gap-1.5">
+          <Button disabled={carregandoGrupo} onClick={() => imprimirRecibo('58mm')} className="gap-1.5">
             <Printer className="h-4 w-4" />
             58mm
           </Button>

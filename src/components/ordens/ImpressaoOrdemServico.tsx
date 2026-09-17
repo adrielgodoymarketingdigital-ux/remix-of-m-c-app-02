@@ -712,14 +712,20 @@ export const ImpressaoOrdemServico = ({
       return;
     }
 
-    // PWA (standalone) e Android: sempre usar nova janela com HTML completo,
-    // inclusive no modo 2 OS por folha (o CSS de scale/dimensões já está embutido no htmlDoc)
-    if (isMobile || isStandalone) {
+    // Android (mobile ou standalone): window.print() no documento principal
+    // trava em "Preparing preview..." no Chrome Android — precisa de
+    // documento isolado via iframe. Inclui o modo 2 OS por folha (CSS de
+    // scale/dimensões já embutido no htmlDoc).
+    if (isAndroid) {
       handlePrintAndroid();
       return;
     }
 
-    // Browser (non-standalone): auto-close after print
+    // iOS (mobile ou standalone) e desktop: print direto no #print-root, como
+    // sempre funcionou no desktop — iframe.contentWindow.print() passou a
+    // ser silenciosamente ignorado em standalone no Safari 27 (confirmado em
+    // device real com alerts de diagnóstico: print() chamado sem erro, nenhuma
+    // UI de impressão aparece). Auto-close after print.
     const handleAfterPrint = () => {
       window.removeEventListener('afterprint', handleAfterPrint);
       setTimeout(() => {
