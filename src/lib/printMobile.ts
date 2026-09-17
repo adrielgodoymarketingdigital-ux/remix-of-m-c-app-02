@@ -115,7 +115,10 @@ export function printViaIframe(htmlDoc: string, isIOS: boolean, debug = false): 
  * o diálogo de impressão estiver aberto.
  *
  * Limpa #print-root no afterprint pra não deixar conteúdo de uma impressão
- * anterior residual numa próxima chamada.
+ * anterior residual numa próxima chamada. Tem também um fallback por timeout
+ * (5s): se print() for ignorado silenciosamente (ex: activation expirada) e
+ * afterprint nunca disparar, limpa mesmo assim — sem isso o conteúdo injetado
+ * fica visível por baixo do app pra sempre, quebrando o layout inteiro.
  */
 export function printViaPrintRoot(bodyHtml: string, styleCss: string): void {
   let printRoot = document.getElementById('print-root');
@@ -125,15 +128,24 @@ export function printViaPrintRoot(bodyHtml: string, styleCss: string): void {
     document.body.appendChild(printRoot);
   }
 
+  let limpo = false;
   const limpar = () => {
+    if (limpo) return;
+    limpo = true;
     printRoot!.innerHTML = '';
     window.removeEventListener('afterprint', limpar);
+    clearTimeout(timeoutId);
   };
   window.addEventListener('afterprint', limpar);
+  const timeoutId = setTimeout(limpar, 5000);
 
   printRoot.innerHTML = `<style>${styleCss}</style>${bodyHtml}`;
   window.focus();
-  window.print();
+  try {
+    window.print();
+  } catch {
+    limpar();
+  }
 }
 
 /**
