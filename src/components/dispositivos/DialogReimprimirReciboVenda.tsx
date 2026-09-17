@@ -307,7 +307,7 @@ export function DialogReimprimirReciboVenda({
   // Gera o Recibo/Termo de Garantia como PDF e compartilha via Web Share API
   // — usado só no caminho iOS standalone (ver imprimirRecibo). Cai pra
   // download direto se o device não suportar compartilhar arquivo.
-  const imprimirViaPDFShare = async () => {
+  const imprimirViaPDFShare = async (formato: FormatoPapel) => {
     try {
       const textoTermoAtual = obterTextoTermo();
       const multiplos = dispositivosGrupo.length > 1;
@@ -325,6 +325,7 @@ export function DialogReimprimirReciboVenda({
 
       const pdfBlob = await gerarReciboVendaPDF({
         modo,
+        formato,
         configLoja,
         logoBase64,
         dataVenda,
@@ -338,7 +339,7 @@ export function DialogReimprimirReciboVenda({
 
       const nomeArquivo = `${modo === 'garantia' ? 'Termo-Garantia' : 'Recibo-Venda'}-${
         [venda.dispositivo_marca, venda.dispositivo_modelo].filter(Boolean).join('-') || venda.id
-      }.pdf`;
+      }-${formato}.pdf`;
       const pdfFile = new File([pdfBlob], nomeArquivo, { type: 'application/pdf' });
 
       if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [pdfFile] })) {
@@ -378,7 +379,7 @@ export function DialogReimprimirReciboVenda({
     // Share API (navigator.share), mesmo padrão já comprovado em produção no
     // envio de OS por WhatsApp (DialogEnviarWhatsApp.tsx).
     if (isIOS && isStandalone) {
-      await imprimirViaPDFShare();
+      await imprimirViaPDFShare(formato);
       return;
     }
 

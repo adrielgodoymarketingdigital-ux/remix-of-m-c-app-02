@@ -14,8 +14,11 @@ export interface DispositivoPDFReciboVenda {
   textoTermo: string;
 }
 
+export type FormatoPDFReciboVenda = "a4" | "80mm" | "58mm";
+
 export interface DadosReciboVendaPDF {
   modo: "recibo" | "garantia";
+  formato: FormatoPDFReciboVenda;
   configLoja: ConfiguracaoLoja | null | undefined;
   /** Já pré-buscado pelo chamador (mesmo logoBase64 usado no caminho de impressão) — evita um fetch redundante aqui. */
   logoBase64?: string | null;
@@ -40,66 +43,39 @@ const COR_CARD_HEADER_BG: [number, number, number] = [248, 249, 250]; // #f8f9fa
 const COR_BORDA: [number, number, number] = [222, 226, 230]; // #dee2e6
 const COR_LABEL: [number, number, number] = [108, 117, 125]; // #6c757d
 
+const LARGURA_PAGINA_MM: Record<FormatoPDFReciboVenda, number> = {
+  a4: 210,
+  "80mm": 80,
+  "58mm": 58,
+};
+
+interface OpcoesDesenho {
+  margin: number;
+  isThermal: boolean;
+}
+
 /**
- * Gera o Recibo de Venda / Termo de Garantia de dispositivo como PDF —
- * caminho usado no iOS standalone, onde window.print() é bloqueado pela
- * plataforma (confirmado: funciona em aba comum do Safari, falha só no PWA
- * instalado). O cabeçalho é desenhado manualmente replicando o mesmo visual
- * (fundo escuro, chip de logo, título em destaque) do template HTML em tela
- * — o cabeçalho genérico de pdfHelpers.ts (usado em relatórios) achatava
- * essa identidade visual da loja.
+ * Desenha o documento inteiro num jsPDF já criado com a largura/altura
+ * certas, e devolve o Y final (posição logo depois do último elemento
+ * desenhado) — usado tanto pra medir a altura real do papel térmico (doc
+ * descartável, sem página final) quanto pro desenho definitivo (A4 e
+ * térmico).
  */
-export async function gerarReciboVendaPDF(dados: DadosReciboVendaPDF): Promise<Blob> {
-  const doc = new jsPDF();
-  const margin = 15;
+function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesDesenho): number {
+  const { margin, isThermal } = opts;
   const pageWidth = doc.internal.pageSize.getWidth();
   const larguraUtil = pageWidth - margin * 2;
   let y = margin;
 
+  // Térmico é bobina contínua — a página já foi dimensionada pra caber tudo
+  // (ver gerarReciboVendaPDF), então nunca quebra página aqui.
   const verificarNovaPagina = (espaco = 20) => {
+    if (isThermal) return;
     if (y + espaco > 280) {
       doc.addPage();
       y = margin;
     }
   };
-
-  // ===== CABEÇALHO (fundo escuro, igual ao recibo em tela) =====
-  const headerAltura = 24;
-  doc.setFillColor(...COR_HEADER);
-  doc.roundedRect(margin, y, larguraUtil, headerAltura, 2, 2, "F");
-
-  let textoX = margin + 5;
-  if (dados.logoBase64) {
-    try {
-      const chipLargura = 26;
-      const chipAltura = headerAltura - 6;
-      const chipX = margin + 4;
-      const chipY = y + 3;
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(chipX, chipY, chipLargura, chipAltura, 1.5, 1.5, "F");
-
-      const props = doc.getImageProperties(dados.logoBase64);
-      const proporcao = props.width / props.height;
-      const padding = 2;
-      let larguraImg = chipLargura - padding * 2;
-      let alturaImg = larguraImg / proporcao;
-      if (alturaImg > chipAltura - padding * 2) {
-        alturaImg = chipAltura - padding * 2;
-        larguraImg = alturaImg * proporcao;
-      }
-      const imgX = chipX + (chipLargura - larguraImg) / 2;
-      const imgY = chipY + (chipAltura - alturaImg) / 2;
-      doc.addImage(dados.logoBase64, imgX, imgY, larguraImg, alturaImg);
-      textoX = chipX + chipLargura + 5;
-    } catch {
-      // segue sem logo — não interrompe a geração do PDF por causa disso
-    }
-  }
-
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  doc.text(dados.configLoja?.nome_loja || "", textoX, y + 10);
 
   const infoLoja = [
     dados.configLoja?.cnpj ? `CNPJ: ${dados.configLoja.cnpj}` : "",
@@ -107,62 +83,161 @@ export async function gerarReciboVendaPDF(dados: DadosReciboVendaPDF): Promise<B
   ]
     .filter(Boolean)
     .join("   ");
-  if (infoLoja) {
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...COR_HEADER_TEXTO_SEC);
-    doc.text(infoLoja, textoX, y + 16);
-  }
-
   const titulo = dados.modo === "garantia" ? "TERMO DE GARANTIA" : "RECIBO DE VENDA";
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COR_TITULO);
-  doc.text(titulo, pageWidth - margin - 4, y + 10, { align: "right" });
 
-  if (dados.configLoja?.endereco) {
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...COR_HEADER_TEXTO_SEC);
-    doc.text(dados.configLoja.endereco, pageWidth - margin - 4, y + 16, { align: "right" });
+  // ===== CABEÇALHO =====
+  if (isThermal) {
+    // Largura não cabe o layout lado a lado do A4 — empilha tudo, centralizado.
+    if (dados.logoBase64) {
+      try {
+        const props = doc.getImageProperties(dados.logoBase64);
+        const proporcao = props.width / props.height;
+        const logoAlturaMax = 14;
+        let logoLargura = larguraUtil * 0.55;
+        let logoAltura = logoLargura / proporcao;
+        if (logoAltura > logoAlturaMax) {
+          logoAltura = logoAlturaMax;
+          logoLargura = logoAltura * proporcao;
+        }
+        doc.addImage(dados.logoBase64, margin + (larguraUtil - logoLargura) / 2, y, logoLargura, logoAltura);
+        y += logoAltura + 2;
+      } catch {
+        // segue sem logo
+      }
+    }
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 20, 20);
+    doc.text(dados.configLoja?.nome_loja || "", pageWidth / 2, y, { align: "center" });
+    y += 5;
+    if (infoLoja) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(90, 90, 90);
+      doc.text(infoLoja, pageWidth / 2, y, { align: "center" });
+      y += 4;
+    }
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COR_HEADER);
+    doc.text(titulo, pageWidth / 2, y, { align: "center" });
+    y += 3;
+    doc.setDrawColor(...COR_BORDA);
+    doc.setLineWidth(0.2);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 4;
+  } else {
+    const headerAltura = 24;
+    doc.setFillColor(...COR_HEADER);
+    doc.roundedRect(margin, y, larguraUtil, headerAltura, 2, 2, "F");
+
+    let textoX = margin + 5;
+    if (dados.logoBase64) {
+      try {
+        const chipLargura = 26;
+        const chipAltura = headerAltura - 6;
+        const chipX = margin + 4;
+        const chipY = y + 3;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(chipX, chipY, chipLargura, chipAltura, 1.5, 1.5, "F");
+
+        const props = doc.getImageProperties(dados.logoBase64);
+        const proporcao = props.width / props.height;
+        const padding = 2;
+        let larguraImg = chipLargura - padding * 2;
+        let alturaImg = larguraImg / proporcao;
+        if (alturaImg > chipAltura - padding * 2) {
+          alturaImg = chipAltura - padding * 2;
+          larguraImg = alturaImg * proporcao;
+        }
+        const imgX = chipX + (chipLargura - larguraImg) / 2;
+        const imgY = chipY + (chipAltura - alturaImg) / 2;
+        doc.addImage(dados.logoBase64, imgX, imgY, larguraImg, alturaImg);
+        textoX = chipX + chipLargura + 5;
+      } catch {
+        // segue sem logo
+      }
+    }
+
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text(dados.configLoja?.nome_loja || "", textoX, y + 10);
+
+    if (infoLoja) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...COR_HEADER_TEXTO_SEC);
+      doc.text(infoLoja, textoX, y + 16);
+    }
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COR_TITULO);
+    doc.text(titulo, pageWidth - margin - 4, y + 10, { align: "right" });
+
+    if (dados.configLoja?.endereco) {
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...COR_HEADER_TEXTO_SEC);
+      doc.text(dados.configLoja.endereco, pageWidth - margin - 4, y + 16, { align: "right" });
+    }
+
+    y += headerAltura;
   }
-
-  y += headerAltura;
 
   // ===== FAIXA DE DADOS (data / pagamento / total) =====
-  const faixaAltura = 8;
-  doc.setFillColor(...COR_FAIXA_BG);
-  doc.setDrawColor(...COR_FAIXA_BORDA);
-  doc.setLineWidth(0.2);
-  doc.rect(margin, y, larguraUtil, faixaAltura, "FD");
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(60, 60, 60);
-  const faixaTextoY = y + faixaAltura / 2 + 1.5;
-  doc.text(`Data da venda: ${dados.dataVenda}`, margin + 3, faixaTextoY);
-  doc.text(`Pagamento: ${dados.formaPagamentoLabel}`, pageWidth / 2, faixaTextoY, { align: "center" });
-  doc.text(`Total: ${formatCurrencyPDF(dados.valorTotal)}`, pageWidth - margin - 3, faixaTextoY, { align: "right" });
-  y += faixaAltura + 6;
+  if (isThermal) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Data: ${dados.dataVenda}`, margin, y);
+    y += 4;
+    doc.text(`Pagamento: ${dados.formaPagamentoLabel}`, margin, y);
+    y += 4;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total: ${formatCurrencyPDF(dados.valorTotal)}`, margin, y);
+    y += 6;
+  } else {
+    const faixaAltura = 8;
+    doc.setFillColor(...COR_FAIXA_BG);
+    doc.setDrawColor(...COR_FAIXA_BORDA);
+    doc.setLineWidth(0.2);
+    doc.rect(margin, y, larguraUtil, faixaAltura, "FD");
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(60, 60, 60);
+    const faixaTextoY = y + faixaAltura / 2 + 1.5;
+    doc.text(`Data da venda: ${dados.dataVenda}`, margin + 3, faixaTextoY);
+    doc.text(`Pagamento: ${dados.formaPagamentoLabel}`, pageWidth / 2, faixaTextoY, { align: "center" });
+    doc.text(`Total: ${formatCurrencyPDF(dados.valorTotal)}`, pageWidth - margin - 3, faixaTextoY, { align: "right" });
+    y += faixaAltura + 6;
+  }
 
-  // ===== helpers de seção estilo "card" (header cinza + label) =====
-  const tituloSecao = (titulo: string) => {
+  // ===== helpers de seção =====
+  const tituloSecao = (texto: string) => {
     doc.setDrawColor(...COR_BORDA);
     doc.setLineWidth(0.2);
     doc.setFillColor(...COR_CARD_HEADER_BG);
     doc.rect(margin, y, larguraUtil, 6, "FD");
-    doc.setFontSize(7);
+    doc.setFontSize(isThermal ? 6.5 : 7);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COR_LABEL);
-    doc.text(titulo.toUpperCase(), margin + 3, y + 4.2);
+    doc.text(texto.toUpperCase(), margin + 3, y + 4.2);
     y += 9;
   };
 
+  // Sempre com wrap — em papel térmico (52-76mm úteis) uma linha de campo
+  // "Cor / Capacidade / Condição: ..." estoura a largura fácil.
   const linhaTexto = (texto: string) => {
-    doc.setFontSize(9);
+    doc.setFontSize(isThermal ? 7.5 : 9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(40, 40, 40);
-    doc.text(texto, margin + 3, y);
-    y += 5;
+    const linhas = doc.splitTextToSize(texto, larguraUtil - 6);
+    linhas.forEach((linha: string) => {
+      doc.text(linha, margin + 3, y);
+      y += isThermal ? 4 : 5;
+    });
   };
 
   tituloSecao("COMPRADOR");
@@ -189,11 +264,9 @@ export async function gerarReciboVendaPDF(dados: DadosReciboVendaPDF): Promise<B
     verificarNovaPagina(20);
     // Cabeçalho do termo em navy (igual .termo-header no HTML), não o cinza
     // padrão das outras seções — é o bloco mais "de marca" do documento.
-    doc.setDrawColor(...COR_BORDA);
-    doc.setLineWidth(0.2);
     doc.setFillColor(...COR_HEADER);
     doc.rect(margin, y, larguraUtil, 6, "F");
-    doc.setFontSize(7);
+    doc.setFontSize(isThermal ? 6.5 : 7);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(255, 255, 255);
     doc.text(
@@ -203,40 +276,98 @@ export async function gerarReciboVendaPDF(dados: DadosReciboVendaPDF): Promise<B
     );
     y += 9;
 
-    doc.setFontSize(8);
+    doc.setFontSize(isThermal ? 6.5 : 8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60, 60, 60);
     const linhas = doc.splitTextToSize(disp.textoTermo, larguraUtil - 4);
     linhas.forEach((linha: string) => {
       verificarNovaPagina(5);
       doc.text(linha, margin + 2, y);
-      y += 4;
+      y += isThermal ? 3.4 : 4;
     });
     y += 6;
   });
 
   if (dados.modo !== "garantia") {
     verificarNovaPagina(15);
-    doc.setFontSize(12);
+    doc.setFontSize(isThermal ? 9 : 12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COR_HEADER);
     doc.text(`VALOR TOTAL: ${formatCurrencyPDF(dados.valorTotal)}`, margin, y);
-    y += 10;
+    y += isThermal ? 7 : 10;
   }
 
-  verificarNovaPagina(30);
-  y += 10;
+  // ===== ASSINATURAS =====
+  verificarNovaPagina(isThermal ? 20 : 30);
+  y += isThermal ? 4 : 10;
   doc.setDrawColor(80, 80, 80);
   doc.setLineWidth(0.3);
-  doc.line(margin, y, margin + 80, y);
-  doc.line(pageWidth - margin - 80, y, pageWidth - margin, y);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 100, 100);
-  doc.text("Assinatura do Vendedor", margin, y + 5);
-  doc.text("Assinatura do Comprador", pageWidth - margin - 80, y + 5);
+  if (isThermal) {
+    doc.line(margin, y, pageWidth - margin, y);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Assinatura do Vendedor", margin, y + 4);
+    y += 12;
+    doc.line(margin, y, pageWidth - margin, y);
+    doc.text("Assinatura do Comprador", margin, y + 4);
+    y += 8;
+  } else {
+    doc.line(margin, y, margin + 80, y);
+    doc.line(pageWidth - margin - 80, y, pageWidth - margin, y);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Assinatura do Vendedor", margin, y + 5);
+    doc.text("Assinatura do Comprador", pageWidth - margin - 80, y + 5);
+    y += 12;
+  }
 
-  adicionarRodapePDF(doc, dados.configLoja);
+  // ===== RODAPÉ =====
+  if (isThermal) {
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(140, 140, 140);
+    const dataGerado = `Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    doc.text(dataGerado, pageWidth / 2, y, { align: "center" });
+    y += 4;
+  } else {
+    adicionarRodapePDF(doc, dados.configLoja);
+  }
 
+  return y;
+}
+
+/**
+ * Gera o Recibo de Venda / Termo de Garantia de dispositivo como PDF —
+ * caminho usado no iOS standalone, onde window.print() é bloqueado pela
+ * plataforma (confirmado: funciona em aba comum do Safari, falha só no PWA
+ * instalado). O cabeçalho é desenhado manualmente replicando o mesmo visual
+ * (fundo escuro, chip de logo, título em destaque) do template HTML em tela.
+ *
+ * Papel térmico (80mm/58mm) é bobina contínua, não página fixa — mede a
+ * altura real do conteúdo numa passada de um doc descartável (mesma
+ * largura/margem), depois desenha o doc definitivo já com essa altura
+ * exata. Mesmo raciocínio de duas fases já usado pro cupom 80mm da OS em
+ * ImpressaoOrdemServico.tsx (medir antes de gerar o definitivo), só que
+ * medindo no próprio jsPDF em vez de um iframe de prova.
+ */
+export async function gerarReciboVendaPDF(dados: DadosReciboVendaPDF): Promise<Blob> {
+  const isThermal = dados.formato !== "a4";
+  const larguraPagina = LARGURA_PAGINA_MM[dados.formato];
+  const margin = isThermal ? 3 : 15;
+
+  if (!isThermal) {
+    const doc = new jsPDF();
+    desenharDocumento(doc, dados, { margin, isThermal: false });
+    return doc.output("blob");
+  }
+
+  const docMedicao = new jsPDF({ unit: "mm", format: [larguraPagina, 1000] });
+  const alturaConteudo = desenharDocumento(docMedicao, dados, { margin, isThermal: true });
+  const alturaFinal = Math.max(alturaConteudo + margin, 40);
+
+  const doc = new jsPDF({ unit: "mm", format: [larguraPagina, alturaFinal] });
+  desenharDocumento(doc, dados, { margin, isThermal: true });
   return doc.output("blob");
 }
