@@ -222,6 +222,22 @@ export function DialogReimprimirReciboVenda({
     return () => { cancelado = true; };
   }, [open, grupoVendaId, venda?.id]);
 
+  // Pré-codifica o logo em base64 também, pelo mesmo motivo — era o último
+  // await que sobrava no caminho iOS antes da chamada de print().
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !configLoja?.logo_url) {
+      setLogoBase64(null);
+      return;
+    }
+    let cancelado = false;
+    urlParaBase64(configLoja.logo_url).then((b64) => {
+      if (!cancelado) setLogoBase64(b64);
+    });
+    return () => { cancelado = true; };
+  }, [open, configLoja?.logo_url]);
+
   if (!venda) return null;
 
   const dispConfig = configLoja?.layout_dispositivos_config as any;
@@ -306,19 +322,16 @@ export function DialogReimprimirReciboVenda({
     const janelaImpressao = usarMecanismoMobile ? null : window.open("", "_blank");
     if (!usarMecanismoMobile && !janelaImpressao) return;
 
-    // dispositivosGrupo já foi pré-buscado ao abrir o diálogo (ver useEffect
-    // acima) — nenhum await de rede aqui, o que mantém o caminho iOS o mais
-    // próximo possível do tick síncrono do clique.
-
-    // Logo em base64 no caminho mobile — evita depender de rede pra carregar
-    // o logo (iframe: documento isolado sem acesso à rede da página; iOS
-    // print-root: evita esperar o evento `load` da <img> antes de imprimir).
-    // Desktop mantém a URL direta, sem mudança de comportamento.
-    let logoSrc = configLoja?.logo_url || null;
-    if (usarMecanismoMobile && logoSrc) {
-      const logoBase64 = await urlParaBase64(logoSrc);
-      if (logoBase64) logoSrc = logoBase64;
-    }
+    // dispositivosGrupo (useEffect acima) e o logo em base64 (logoBase64,
+    // useEffect abaixo) já foram pré-buscados ao abrir o diálogo — o caminho
+    // iOS (mais abaixo) não faz NENHUM await antes de chamar print(). Isso não
+    // é só otimização: pesquisa confirma que o Safari iOS consome a "ativação
+    // transitória" do usuário (a permissão implícita que libera print()/
+    // window.open()/etc.) muito mais rápido que outros engines — a ordem de
+    // grandeza é ~meio segundo. Qualquer await antes do print(), mesmo um
+    // fetch rápido, já é suficiente pra essa janela expirar e o navegador
+    // ignorar print() silenciosamente (sem erro, sem UI nenhuma) — foi
+    // exatamente isso que os alerts de diagnóstico anteriores capturaram.
 
     const paper = resolvePaperSize(formato);
     const cssTermico = paper.isThermal ? `
@@ -577,7 +590,11 @@ export function DialogReimprimirReciboVenda({
     ${cssTermico}
     `;
 
-    const bodyRecibo = `
+    // Função em vez de string direta — precisa ser chamada duas vezes com
+    // logoSrc diferente: uma vez de forma síncrona pro caminho iOS (logo já
+    // pré-buscado em base64, ver logoBase64 acima) e outra depois do await
+    // de logo pro caminho desktop/Android.
+    const montarBodyRecibo = (logoSrc: string | null) => `
   <!-- HEADER -->
   <div class="recibo-print-header">
     <div class="recibo-print-header-logo">
@@ -662,12 +679,29 @@ export function DialogReimprimirReciboVenda({
     </div>
   </div>`;
 
-    // iOS: sem documento isolado, sem <script> embutido — chamamos
-    // window.print() nós mesmos, direto no documento principal.
+    // iOS: zero await até aqui — nada de fetch de logo nem de documento
+    // isolado, chamamos window.print() nós mesmos, direto no documento
+    // principal, o mais perto possível do tick síncrono do clique. Usa o
+    // logo já pré-buscado (logoBase64, useEffect acima); se ainda não tiver
+    // resolvido (diálogo aberto há poucos ms), cai pra URL direta — melhor
+    // arriscar um logo sem cache de rede do que perder a janela de ativação
+    // esperando o base64.
     if (usarPrintRoot) {
+      const bodyRecibo = montarBodyRecibo(logoBase64 ?? configLoja?.logo_url ?? null);
       printViaPrintRoot(bodyRecibo, cssRecibo);
       return;
     }
+
+    // Logo em base64 só no caminho Android/iframe — evita depender de rede
+    // pra carregar o logo no documento isolado (mesma técnica de
+    // ImpressaoOrdemServico.tsx). Desktop mantém a URL direta, sem mudança
+    // de comportamento.
+    let logoSrc = configLoja?.logo_url || null;
+    if (usarIframe && logoSrc) {
+      const logoBase64Fetched = await urlParaBase64(logoSrc);
+      if (logoBase64Fetched) logoSrc = logoBase64Fetched;
+    }
+    const bodyRecibo = montarBodyRecibo(logoSrc);
 
     // Desktop e Android continuam com o documento isolado completo
     // (DOCTYPE + head + script de auto-print), sem mudança de comportamento.

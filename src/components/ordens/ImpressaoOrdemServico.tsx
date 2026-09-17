@@ -721,11 +721,29 @@ export const ImpressaoOrdemServico = ({
       return;
     }
 
-    // iOS (mobile ou standalone) e desktop: print direto no #print-root, como
-    // sempre funcionou no desktop — iframe.contentWindow.print() passou a
-    // ser silenciosamente ignorado em standalone no Safari 27 (confirmado em
-    // device real com alerts de diagnóstico: print() chamado sem erro, nenhuma
-    // UI de impressão aparece). Auto-close after print.
+    // iOS (mobile ou standalone): print direto no #print-root, como sempre
+    // funcionou no desktop — iframe.contentWindow.print() passou a ser
+    // silenciosamente ignorado em standalone no Safari 27 (confirmado em
+    // device real com alerts de diagnóstico: print() chamado sem erro,
+    // nenhuma UI de impressão aparece). window.print() precisa ser chamado
+    // de forma síncrona aqui, sem setTimeout nenhum: o Safari iOS consome a
+    // ativação transitória do usuário em ~meio segundo, e o setTimeout(500)
+    // usado no desktop logo abaixo já seria suficiente pra estourar essa
+    // janela e print() ser ignorado silenciosamente (mesma causa raiz
+    // encontrada no Recibo/Termo de Garantia).
+    if (isIOS) {
+      const handleAfterPrint = () => {
+        window.removeEventListener('afterprint', handleAfterPrint);
+        setTimeout(() => {
+          onFecharImpressao();
+        }, 300);
+      };
+      window.addEventListener('afterprint', handleAfterPrint);
+      window.print();
+      return;
+    }
+
+    // Desktop: auto-close after print.
     const handleAfterPrint = () => {
       window.removeEventListener('afterprint', handleAfterPrint);
       setTimeout(() => {
