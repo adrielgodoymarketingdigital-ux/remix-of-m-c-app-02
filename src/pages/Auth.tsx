@@ -49,6 +49,11 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || 'dashboard';
   const planKey = searchParams.get('plan') || 'intermediario_mensal';
+  // Fluxo internacional (MVP de validação /es): cadastro vindo da landing em
+  // espanhol, sinalizado por ?intl=1. Sem esse param o comportamento é
+  // idêntico ao de sempre (fluxo BR). Ver Auth.tsx: valida celular sem
+  // máscara/DDD BR e redireciona pro checkout Hotmart em vez do dashboard.
+  const isIntl = searchParams.get('intl') === '1';
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,8 +122,12 @@ const Auth = () => {
           return;
         }
 
-        const celularNumeros = removerMascara(celular);
-        if (celularNumeros.length < 10 || celularNumeros.length > 11) {
+        // Fluxo BR: exige DDD + celular (10-11 dígitos), igual sempre foi.
+        // Fluxo internacional (isIntl): já validou "não vazio" acima — não
+        // dá pra aplicar o mesmo range de dígitos porque números
+        // internacionais variam de tamanho.
+        const celularNumeros = isIntl ? celular.trim() : removerMascara(celular);
+        if (!isIntl && (celularNumeros.length < 10 || celularNumeros.length > 11)) {
           toast({
             variant: "destructive",
             title: "Erro",
@@ -214,8 +223,15 @@ const Auth = () => {
           description: "Bem-vindo ao Méc! Seu teste gratuito já está ativo.",
         });
 
+        // Fluxo internacional: em vez de cair no dashboard (ainda só em
+        // português), manda pro checkout hospedado da Hotmart — o acesso é
+        // liberado depois via hotmart-webhook quando o pagamento confirmar.
+        const destino = isIntl && import.meta.env.VITE_HOTMART_CHECKOUT_URL
+          ? `${import.meta.env.VITE_HOTMART_CHECKOUT_URL}?email=${encodeURIComponent(email)}`
+          : '/dashboard';
+
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          window.location.href = destino;
         }, 500);
       }
     } catch (error: any) {
@@ -348,11 +364,11 @@ const Auth = () => {
                   id="celular"
                   type="tel"
                   value={celular}
-                  onChange={(e) => setCelular(aplicarMascaraTelefone(e.target.value))}
+                  onChange={(e) => setCelular(isIntl ? e.target.value : aplicarMascaraTelefone(e.target.value))}
                   required={!isLogin}
-                  placeholder="(11) 99999-9999"
+                  placeholder={isIntl ? "+52 55 1234 5678" : "(11) 99999-9999"}
                   className="h-11 bg-slate-800/50 border-white/10 text-white placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-blue-500/20"
-                  maxLength={15}
+                  maxLength={isIntl ? 20 : 15}
                 />
               </div>
             </>

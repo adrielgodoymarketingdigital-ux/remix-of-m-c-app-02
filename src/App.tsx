@@ -26,6 +26,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 // Lazy-loaded pages — split into per-route bundles so o app inicial fica leve no mobile
 const LandingLP1 = lazy(() => import("./pages/LandingLP1"));
 const LandingLP2 = lazy(() => import("./pages/LandingLP2"));
+const LandingES = lazy(() => import("./pages/LandingES"));
 const VideoBoasVindas = lazy(() => import("./pages/VideoBoasVindas"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Obrigado = lazy(() => import("./pages/Obrigado"));
@@ -113,6 +114,7 @@ const PUBLIC_ROUTES_NO_WAIT = [
   "/obrigado",
   "/completar-cadastro",
   "/cadastro-plano",
+  "/es",
 ];
 
 function AppRoutes() {
@@ -152,6 +154,7 @@ function AppRoutes() {
           <Route path="/" element={<Landing />} />
           <Route path="/lp1" element={<LandingLP1 />} />
           <Route path="/lp2" element={<LandingLP2 />} />
+          <Route path="/es" element={<LandingES />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/auth" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
