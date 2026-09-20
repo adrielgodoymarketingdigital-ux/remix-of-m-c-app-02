@@ -11,7 +11,7 @@ import {
 } from "@/types/relatorio";
 import { useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro } from "@/lib/vendasFinanceiras";
+import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro, resolverCustoVendaParaLucro } from "@/lib/vendasFinanceiras";
 import { useIdentidade } from "./useResolvedUserId";
 
 export const useRelatorios = () => {
@@ -234,6 +234,19 @@ export const useRelatorios = () => {
           return;
         }
 
+        // Custo da linha. Sem custo salvo numa linha PARCIAL (parcela), NÃO usa o custo
+        // atual do item (custo cheio contra uma fatia da receita = prejuízo fantasma):
+        // a linha fica fora do lucro até o custo ser confirmado.
+        const custoLinha = resolverCustoVendaParaLucro(venda, itemCusto);
+        if (custoLinha.naoConfirmado) {
+          console.warn("[lucro] custo não confirmado — linha fora do lucro até confirmar o custo:", {
+            vendaId: venda.id,
+            grupoVenda: venda.grupo_venda,
+            total: venda.total,
+          });
+          return;
+        }
+
         // Calcular receita líquida (subtraindo descontos)
         const receitaVenda = getVendaReceitaLiquida(venda);
 
@@ -257,9 +270,7 @@ export const useRelatorios = () => {
         if (!isParcelado || Number(venda.parcela_numero || 1) === 1) {
           item.quantidadeVendida += quantidade;
         }
-        item.custoTotal += venda.custo_unitario && venda.custo_unitario > 0
-          ? getVendaCustoTotal(venda)
-          : itemCusto * quantidade;
+        item.custoTotal += custoLinha.custo;
         item.receitaTotal += receitaVenda;
 
         if (
@@ -861,6 +872,22 @@ export const useRelatorios = () => {
         const dataCompetencia = getVendaDataCompetencia(venda);
         if (!dataCompetencia) return;
 
+        // Sem custo salvo numa linha PARCIAL, não usa o custo atual do item (ver
+        // resolverCustoVendaParaLucro): fica fora do lucro até o custo ser confirmado.
+        const custoReferenciaItem =
+          venda.tipo === "dispositivo" ? Number(venda.dispositivos?.custo || 0)
+          : venda.tipo === "produto" ? Number(venda.produtos?.custo || 0)
+          : 0;
+        const custoLinha = resolverCustoVendaParaLucro(venda, custoReferenciaItem);
+        if (custoLinha.naoConfirmado) {
+          console.warn("[lucro] custo não confirmado — linha fora da evolução mensal:", {
+            vendaId: venda.id,
+            grupoVenda: venda.grupo_venda,
+            total: venda.total,
+          });
+          return;
+        }
+
         const data = new Date(dataCompetencia);
         const mes = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
 
@@ -877,16 +904,7 @@ export const useRelatorios = () => {
         // Para parcelado, somar o total real (valor da parcela × número de parcelas)
         evolucao.receita += getVendaReceitaLiquida(venda);
 
-        // Priorizar custo salvo na venda, fallback para custo atual
-        if (venda.custo_unitario && venda.custo_unitario > 0) {
-          evolucao.custo += getVendaCustoTotal(venda);
-        } else if (venda.tipo === "dispositivo" && venda.dispositivos) {
-          const quantidade = venda.quantidade || 1;
-          evolucao.custo += Number(venda.dispositivos.custo || 0) * quantidade;
-        } else if (venda.tipo === "produto" && venda.produtos) {
-          const quantidade = venda.quantidade || 1;
-          evolucao.custo += Number(venda.produtos.custo || 0) * quantidade;
-        }
+        evolucao.custo += custoLinha.custo;
       });
 
       // Buscar status das contas a receber vinculadas às OS (para não contar saldo pendente/cancelado como receita)

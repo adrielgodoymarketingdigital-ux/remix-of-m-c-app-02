@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useRelatoriosVendas } from "@/hooks/useRelatoriosVendas";
 import { useRelatorios } from "@/hooks/useRelatorios";
+import { AvisoCustoNaoConfirmado } from "@/components/financeiro/AvisoCustoNaoConfirmado";
 import { RelatorioDispositivosComponent } from "@/components/relatorios/RelatorioDispositivos";
 import { RelatorioProdutosComponent } from "@/components/relatorios/RelatorioProdutos";
 import { RelatorioServicosComponent } from "@/components/relatorios/RelatorioServicos";
@@ -417,6 +418,7 @@ export default function Relatorios() {
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-6">
+          <AvisoCustoNaoConfirmado />
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">Relatórios</h1>
             <p className="text-muted-foreground text-sm sm:text-base">

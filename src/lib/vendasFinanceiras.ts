@@ -82,7 +82,25 @@ export const isPagamentoDuploSecundario = (venda: VendaFinanceiraLike): boolean 
 export const deveContarSecundarioNoLucro = (venda: VendaFinanceiraLike): boolean =>
   isPagamentoDuploSecundario(venda) &&
   isVendaPorCompetenciaRecebimento(venda) &&
-  venda.recebido === true;
+  venda.recebido === true &&
+  !isCustoNaoConfirmado(venda);
+
+/**
+ * Parcela secundária de pagamento duplo já recebida, mas sem a fatia de custo
+ * gravada (custo_unitario nulo/0). Acontece quando a parcela foi baixada sem
+ * passar por reconhecerRecebimentoVendaVinculada, ou quando a venda principal
+ * não foi encontrada (cancelada/removida). Não dá para saber qual é o custo
+ * correto — e usar o custo cheio do aparelho contra uma parcela pequena gera
+ * prejuízo fantasma —, então a parcela fica FORA do lucro/faturamento até o
+ * custo ser confirmado (mesmo padrão do "custo não confirmado" das comissões).
+ *
+ * Limitação conhecida: item com custo realmente R$ 0,00 também cai aqui.
+ */
+export const isCustoNaoConfirmado = (venda: VendaFinanceiraLike): boolean =>
+  isPagamentoDuploSecundario(venda) &&
+  isVendaPorCompetenciaRecebimento(venda) &&
+  venda.recebido === true &&
+  toNumber(venda.custo_unitario) <= 0;
 
 // ATENÇÃO: esta função (e getVendaReceitaLiquida logo abaixo) tem uma réplica
 // em SQL no bloco 1 de fn_extrato_eventos_raw (migration
@@ -223,6 +241,48 @@ export const calcularFracaoCustoReconhecidaAgora = (venda: VendaFinanceiraLike):
 export const getVendaCustoTotal = (venda: VendaFinanceiraLike) => {
   const custoTotal = toNumber(venda.custo_unitario) * toNumber(venda.quantidade || 1);
   return custoTotal * calcularFracaoCustoReconhecidaAgora(venda);
+};
+
+/**
+ * A linha reconhece só uma FATIA do item (parcela de pagamento duplo, parcela
+ * de venda a prazo parcelada, ou principal com parte da receita diferida).
+ * Para essas linhas, custo cheio do item nunca é uma estimativa válida.
+ */
+export const isVendaLinhaParcial = (venda: VendaFinanceiraLike): boolean =>
+  isPagamentoDuploSecundario(venda) ||
+  (isVendaPorCompetenciaRecebimento(venda) && toNumber(venda.total_parcelas) > 1) ||
+  calcularFracaoCustoReconhecidaAgora(venda) < 1;
+
+export interface CustoParaLucro {
+  custo: number;
+  /** true → a linha NÃO deve entrar no lucro (nem receita nem custo) até o custo ser confirmado. */
+  naoConfirmado: boolean;
+}
+
+/**
+ * Custo a usar no lucro de uma linha de venda.
+ *  - custo_unitario > 0: custo salvo (com o diferimento proporcional).
+ *  - sem custo salvo + linha INTEIRA (venda simples, sem parcelas): estimativa
+ *    pelo custo atual do item (vendas antigas anteriores ao custo_unitario).
+ *  - sem custo salvo + linha PARCIAL: NÃO aplica o custo cheio do item (era o
+ *    que gerava prejuízo fantasma: aparelho de R$ 6.720 contra parcela de
+ *    R$ 1.930). Se o item tem custo de referência > 0, o custo real é
+ *    desconhecido → naoConfirmado. Se o item realmente custa 0, custo 0.
+ */
+export const resolverCustoVendaParaLucro = (
+  venda: VendaFinanceiraLike,
+  custoReferenciaItem: number,
+): CustoParaLucro => {
+  if (toNumber(venda.custo_unitario) > 0) {
+    return { custo: getVendaCustoTotal(venda), naoConfirmado: false };
+  }
+  if (!isVendaLinhaParcial(venda)) {
+    return { custo: toNumber(custoReferenciaItem) * toNumber(venda.quantidade || 1), naoConfirmado: false };
+  }
+  if (toNumber(custoReferenciaItem) > 0) {
+    return { custo: 0, naoConfirmado: true };
+  }
+  return { custo: 0, naoConfirmado: false };
 };
 
 /**

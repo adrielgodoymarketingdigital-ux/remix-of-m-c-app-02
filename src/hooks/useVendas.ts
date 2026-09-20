@@ -10,6 +10,8 @@ import { useIdentidade } from "./useResolvedUserId";
 import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
+import { cancelarSecundariasEmCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
+import { reconhecerRecebimentoVendaVinculada, MENSAGEM_CUSTO_NAO_CONFIRMADO } from "@/lib/vendas/reconhecerSegundaForma";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -606,12 +608,54 @@ export const useVendas = () => {
 
       if (updateError) throw updateError;
 
+      // Pagamento duplo: cancela junto as parcelas da 2ª forma (linhas secundárias)
+      // e suas contas a receber pendentes. Se alguma parcela já foi recebida, não
+      // mexe em nada — exige estorno manual (só avisa).
+      const cascata = await cancelarSecundariasEmCascata(vendaOriginal, {
+        motivo: motivo ? `${motivo} (cancelamento da venda principal)` : null,
+      });
+
       toast({
         title: "Venda cancelada",
         description: estornarEstoque
           ? "Venda cancelada e estoque estornado com sucesso."
           : "Venda cancelada com sucesso.",
       });
+
+      if (cascata.status === "cancelado" && cascata.parcelasRecebidasParaRevisao === 0) {
+        toast({
+          title: "Parcelas da 2ª forma canceladas",
+          description: `${cascata.secundariasCanceladas} linha(s) do pagamento duplo cancelada(s)${
+            cascata.contasExcluidas > 0
+              ? ` e ${cascata.contasExcluidas} conta(s) a receber pendente(s) removida(s)`
+              : ""
+          }.`,
+        });
+      } else if (cascata.status === "cancelado") {
+        toast({
+          title: "Atenção: parcela(s) já recebida(s) ficaram de fora",
+          description: `${cascata.secundariasCanceladas} parcela(s) pendente(s) foram canceladas${
+            cascata.contasExcluidas > 0 ? ` (${cascata.contasExcluidas} conta(s) a receber removida(s))` : ""
+          }, mas ${cascata.parcelasRecebidasParaRevisao} parcela(s) da 2ª forma já recebida(s) NÃO foram canceladas — faça o estorno manualmente.`,
+          variant: "destructive",
+          duration: 15000,
+        });
+      } else if (cascata.status === "bloqueado_parcela_recebida") {
+        toast({
+          title: "Atenção: parcelas já recebidas",
+          description: `Esta venda tinha ${cascata.parcelasRecebidas} parcela(s) da 2ª forma já recebida(s), e nenhuma foi cancelada automaticamente — faça o estorno manualmente.`,
+          variant: "destructive",
+          duration: 15000,
+        });
+      } else if (cascata.status === "erro") {
+        console.error("❌ Erro na cascata do cancelamento:", cascata.mensagem);
+        toast({
+          title: "Venda cancelada, mas as parcelas da 2ª forma não foram canceladas",
+          description: `Revise as parcelas/contas a receber dessa venda manualmente. (${cascata.mensagem})`,
+          variant: "destructive",
+          duration: 15000,
+        });
+      }
 
       // Recarregar vendas
       await carregarVendas();
@@ -717,16 +761,25 @@ export const useVendas = () => {
       const vendaOriginal = vendas.find((v) => v.id === vendaId);
       if (!vendaOriginal) throw new Error("Venda não encontrada");
 
-      const { error } = await supabase
-        .from("vendas")
-        .update({
-          recebido: true,
-          data_recebimento: new Date().toISOString(),
-        })
-        .eq("id", vendaId)
-        .eq("user_id", vendaOriginal.user_id);
-
-      if (error) throw error;
+      // Mesmo reconhecimento de todos os caminhos de baixa (custo proporcional
+      // em parcelas de pagamento duplo, "custo não confirmado" etc.)
+      const reconhecimento = await reconhecerRecebimentoVendaVinculada(
+        vendaId,
+        new Date().toISOString(),
+        vendaOriginal.user_id as string,
+      );
+      if (reconhecimento.status === "erro") throw new Error(reconhecimento.mensagem);
+      if (reconhecimento.status === "ignorado") {
+        throw new Error("Não foi possível confirmar o recebimento desta venda.");
+      }
+      if (reconhecimento.status === "custo_nao_confirmado") {
+        toast({
+          title: "Custo não confirmado",
+          description: MENSAGEM_CUSTO_NAO_CONFIRMADO[reconhecimento.motivo],
+          variant: "destructive",
+          duration: 15000,
+        });
+      }
 
       // Marcar conta correspondente como recebida
       await supabase.from("contas")

@@ -36,6 +36,7 @@ import { calcularVariacaoPercentual } from "@/lib/variacaoPercentual";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto";
 import { DASHBOARD_HEADER_SLOT_ID } from "@/contexts/DashboardHeaderContext";
+import { AvisoCustoNaoConfirmado } from "@/components/financeiro/AvisoCustoNaoConfirmado";
 
 interface ProdutoVendido {
   nome: string;
@@ -873,6 +874,7 @@ const Dashboard = () => {
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
       <TutorialAutoStart />
       <CardPrimeirosPassos />
+      <div className="mb-4 empty:hidden"><AvisoCustoNaoConfirmado /></div>
 
       {/* ============ TOPO — DESKTOP (layout original, inalterado) ============ */}
       <div className="hidden sm:flex sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">

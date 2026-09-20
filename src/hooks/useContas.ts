@@ -5,7 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
-import { propagarStatusContaParaVenda } from "@/lib/vendas/reconhecerSegundaForma";
+import {
+  propagarStatusContaParaVenda,
+  reconhecerRecebimentoVendaVinculada,
+  MENSAGEM_CUSTO_NAO_CONFIRMADO,
+  type ResultadoReconhecimento,
+} from "@/lib/vendas/reconhecerSegundaForma";
 
 export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
   const [contas, setContas] = useState<Conta[]>([]);
@@ -202,6 +207,18 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     }
   };
 
+  // Parcela recebida sem custo confirmado (ex.: venda principal cancelada): a baixa
+  // segue, mas o usuário é avisado de que a parcela fica fora do lucro.
+  const avisarCustoNaoConfirmado = (resultado?: ResultadoReconhecimento | null) => {
+    if (resultado?.status !== "custo_nao_confirmado") return;
+    toast({
+      title: "Custo não confirmado",
+      description: MENSAGEM_CUSTO_NAO_CONFIRMADO[resultado.motivo],
+      variant: "destructive",
+      duration: 15000,
+    });
+  };
+
   const atualizarConta = async (id: string, dados: Partial<FormularioConta>) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -213,12 +230,15 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       if (id.startsWith("venda_")) {
         const vendaId = id.replace("venda_", "");
         if (dados.status === "recebido") {
-          const { error } = await supabase
-            .from("vendas")
-            .update({ recebido: true, data_recebimento: new Date().toISOString() })
-            .eq("id", vendaId)
-            .eq("user_id", targetUserId);
-          if (error) throw error;
+          // Mesmo reconhecimento das contas reais (custo proporcional / "custo não confirmado")
+          const resultado = await reconhecerRecebimentoVendaVinculada(
+            vendaId,
+            new Date().toISOString(),
+            targetUserId,
+          );
+          if (resultado.status === "erro") throw new Error(resultado.mensagem);
+          if (resultado.status === "ignorado") throw new Error("Venda vinculada não encontrada");
+          avisarCustoNaoConfirmado(resultado);
         }
         toast({
           title: "Conta atualizada",
@@ -247,7 +267,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           .eq("id", id)
           .maybeSingle();
         if (contaAtual) {
-          await propagarStatusContaParaVenda(
+          const resultado = await propagarStatusContaParaVenda(
             {
               descricao: contaAtual.descricao,
               tipo: contaAtual.tipo,
@@ -258,6 +278,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
             dados.status,
             targetUserId,
           );
+          avisarCustoNaoConfirmado(resultado);
         }
       }
 
@@ -368,11 +389,12 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
 
       const quitou = contaPos?.status === "recebido" || contaPos?.status === "pago";
       if (quitou && contaPos) {
-        await propagarStatusContaParaVenda(
+        const resultado = await propagarStatusContaParaVenda(
           { descricao: contaPos.descricao, tipo: contaPos.tipo, data_pagamento: contaPos.data_pagamento },
           "recebido",
           targetUserId,
         );
+        avisarCustoNaoConfirmado(resultado);
       }
 
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
@@ -533,6 +555,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       const contasParaBaixa = contas.filter(c => ids.includes(c.id) && c.status === 'pendente');
 
       const hoje = new Date().toISOString().slice(0, 10);
+      let parcelasSemCusto = 0;
 
       // Contas do modelo novo: quitar = 1 linha de "Quitação" (= saldo) por conta.
       const contasHistorico = contasParaBaixa.filter(c => c.usa_historico_pagamentos && !c.id.startsWith("venda_"));
@@ -571,24 +594,38 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         const idsReais = new Set(contasReaisReceber);
         for (const conta of contasParaBaixa) {
           if (idsReais.has(conta.id)) {
-            await propagarStatusContaParaVenda(
+            const resultado = await propagarStatusContaParaVenda(
               { descricao: conta.descricao, tipo: conta.tipo, data_pagamento: hoje },
               "recebido",
               targetUserId,
             );
+            if (resultado?.status === "custo_nao_confirmado") parcelasSemCusto++;
           }
         }
       }
 
       // Marcar vendas virtuais como recebidas
       if (vendasVirtuais.length > 0) {
+        // Mesmo reconhecimento das contas reais, uma venda por vez.
         const vendaIds = vendasVirtuais.map(v => v.id.replace("venda_", ""));
-        const { error } = await supabase
-          .from("vendas")
-          .update({ recebido: true, data_recebimento: new Date().toISOString() })
-          .in("id", vendaIds)
-          .eq("user_id", targetUserId);
-        if (error) throw error;
+        for (const vendaId of vendaIds) {
+          const resultado = await reconhecerRecebimentoVendaVinculada(
+            vendaId,
+            new Date().toISOString(),
+            targetUserId,
+          );
+          if (resultado.status === "erro") throw new Error(resultado.mensagem);
+          if (resultado.status === "custo_nao_confirmado") parcelasSemCusto++;
+        }
+      }
+
+      if (parcelasSemCusto > 0) {
+        toast({
+          title: "Custo não confirmado",
+          description: `${parcelasSemCusto} parcela(s) foram baixadas sem custo confirmado (venda principal cancelada, removida ou sem custo) e ficam fora do lucro até o custo ser confirmado.`,
+          variant: "destructive",
+          duration: 15000,
+        });
       }
 
       toast({

@@ -24,6 +24,7 @@ import { useConfetti } from "@/hooks/useConfetti";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FiltrosPeriodo } from "@/components/financeiro/FiltroPeriodoAvancado";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { AvisoCustoNaoConfirmado } from "@/components/financeiro/AvisoCustoNaoConfirmado";
 
 export default function Financeiro() {
   const { toast } = useToast();
@@ -146,6 +147,7 @@ export default function Financeiro() {
     <AppLayout>
       <main className="flex-1 p-6 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-8">
+          <AvisoCustoNaoConfirmado />
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
