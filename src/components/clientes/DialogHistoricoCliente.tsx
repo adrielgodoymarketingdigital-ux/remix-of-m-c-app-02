@@ -7,12 +7,17 @@ import {
 } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Cliente } from "@/types/cliente";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Share2 } from "lucide-react";
+import { toast } from "sonner";
+import { useClienteTracking } from "@/hooks/useClienteTracking";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 
 interface DialogHistoricoClienteProps {
   open: boolean;
@@ -28,6 +33,23 @@ export function DialogHistoricoCliente({
   const [loading, setLoading] = useState(true);
   const [vendas, setVendas] = useState<any[]>([]);
   const [ordensServico, setOrdensServico] = useState<any[]>([]);
+
+  const { gerarLink, gerando } = useClienteTracking();
+  const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
+
+  const handleCompartilharLink = async () => {
+    if (!cliente) return;
+    if (!podeCompartilharLink) {
+      toast.error("Você não tem permissão para compartilhar o link de acompanhamento");
+      return;
+    }
+    const link = await gerarLink(cliente.id, lojaUserId ?? undefined);
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    toast.success("Link de acompanhamento copiado!", {
+      description: "O cliente vê todas as OS dele numa única página.",
+    });
+  };
 
   useEffect(() => {
     if (cliente && open) {
@@ -83,7 +105,19 @@ export function DialogHistoricoCliente({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Histórico de {cliente.nome}</DialogTitle>
+          <div className="flex items-center justify-between gap-3 pr-6">
+            <DialogTitle>Histórico de {cliente.nome}</DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCompartilharLink}
+              disabled={gerando}
+              className="shrink-0"
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Compartilhar link
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">

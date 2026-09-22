@@ -78,6 +78,7 @@ const Precificador = lazy(() => import("./pages/Precificador"));
 const Pedidos = lazy(() => import("./pages/Pedidos"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AcompanharOS = lazy(() => import("./pages/AcompanharOS"));
+const AcompanharCliente = lazy(() => import("./pages/AcompanharCliente"));
 const BaixarApp = lazy(() => import("./pages/BaixarApp"));
 const TeamOnboarding = lazy(() => import("./pages/TeamOnboarding"));
 const RenovacaoAssinatura = lazy(() => import("./pages/RenovacaoAssinatura"));
@@ -172,6 +173,7 @@ function AppRoutes() {
           <Route path="/c/:slug" element={<CatalogoPublico />} />
           <Route path="/lp/:slug" element={<LandingPagePublica />} />
           <Route path="/acompanhar/:token" element={<AcompanharOS />} />
+          <Route path="/acompanhar-cliente/:token" element={<AcompanharCliente />} />
           <Route path="/entrada/:itemId" element={<EntradaCorporativa />} />
 
           {/* Rotas protegidas - exigem autenticação + onboarding + trial/assinatura + permissão funcionário */}

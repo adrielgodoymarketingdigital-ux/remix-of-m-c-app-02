@@ -6,10 +6,9 @@ import { TrackingPageConfig, TRACKING_CONFIG_PADRAO } from "@/types/configuracao
 import { CardStatusOS, OSTrackingCardData, lighten } from "@/components/tracking/CardStatusOS";
 import { HeaderLojaTracking } from "@/components/tracking/HeaderLojaTracking";
 
-interface TrackingDados {
-  os: (OSTrackingCardData & {
-    cliente: { nome: string; telefone: string | null } | null;
-  }) | null;
+interface ClienteTrackingDados {
+  clienteNome: string | null;
+  osList: (OSTrackingCardData & { os_id: string })[];
   loja: {
     nome_loja: string | null;
     logo_url: string | null;
@@ -20,68 +19,74 @@ interface TrackingDados {
   } | null;
 }
 
-export default function AcompanharOS() {
+type LinhaClienteTracking = {
+  cliente_nome: string | null;
+  nome_loja: string | null;
+  logo_url: string | null;
+  cor_primaria: string | null;
+  loja_telefone: string | null;
+  loja_endereco: string | null;
+  cores_personalizadas: Record<string, unknown> | null;
+  os_id: string | null;
+  numero_os: string | null;
+  status: string | null;
+  defeito_relatado: string | null;
+  total: number | null;
+  os_created_at: string | null;
+  data_saida: string | null;
+  dispositivo_marca: string | null;
+  dispositivo_modelo: string | null;
+};
+
+// Uma linha por OS (LEFT JOIN no RPC) — cliente sem nenhuma OS ainda vem como
+// 1 linha com os_id nulo, que aqui vira "nenhuma OS" em vez de um card vazio.
+const mapearLinhas = (linhas: LinhaClienteTracking[]): ClienteTrackingDados => {
+  const primeira = linhas[0];
+  const coresPersonalizadas = primeira?.cores_personalizadas || {};
+  const trackingConfig = (coresPersonalizadas.tracking_config as TrackingPageConfig | undefined) || null;
+
+  return {
+    clienteNome: primeira?.cliente_nome ?? null,
+    osList: linhas
+      .filter((l): l is LinhaClienteTracking & { os_id: string; numero_os: string; os_created_at: string } =>
+        !!l.os_id && !!l.numero_os && !!l.os_created_at)
+      .map((l) => ({
+        os_id: l.os_id,
+        numero_os: l.numero_os,
+        status: l.status,
+        defeito_relatado: l.defeito_relatado,
+        total: l.total,
+        created_at: l.os_created_at,
+        data_saida: l.data_saida,
+        dispositivo_marca: l.dispositivo_marca,
+        dispositivo_modelo: l.dispositivo_modelo,
+      })),
+    loja: primeira ? {
+      nome_loja: primeira.nome_loja,
+      logo_url: primeira.logo_url,
+      cor_primaria: primeira.cor_primaria,
+      telefone: primeira.loja_telefone,
+      endereco: primeira.loja_endereco,
+      tracking_config: trackingConfig,
+    } : null,
+  };
+};
+
+export default function AcompanharCliente() {
   const { token } = useParams<{ token: string }>();
-  const [dados, setDados] = useState<TrackingDados | null>(null);
+  const [dados, setDados] = useState<ClienteTrackingDados | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
 
   useEffect(() => {
     if (!token) return;
 
-    type LinhaTracking = {
-      numero_os: string;
-      status: string | null;
-      defeito_relatado: string | null;
-      total: number | null;
-      os_created_at: string;
-      data_saida: string | null;
-      dispositivo_marca: string | null;
-      dispositivo_modelo: string | null;
-      cliente_nome: string | null;
-      cliente_telefone: string | null;
-      nome_loja: string | null;
-      logo_url: string | null;
-      cor_primaria: string | null;
-      loja_telefone: string | null;
-      loja_endereco: string | null;
-      cores_personalizadas: Record<string, unknown> | null;
-    };
-
-    const mapearLinha = (linha: LinhaTracking): TrackingDados => {
-      const coresPersonalizadas = linha.cores_personalizadas || {};
-      const trackingConfig = (coresPersonalizadas.tracking_config as TrackingPageConfig | undefined) || null;
-
-      return {
-        os: {
-          numero_os: linha.numero_os,
-          status: linha.status,
-          defeito_relatado: linha.defeito_relatado,
-          total: linha.total,
-          created_at: linha.os_created_at,
-          data_saida: linha.data_saida,
-          dispositivo_marca: linha.dispositivo_marca,
-          dispositivo_modelo: linha.dispositivo_modelo,
-          cliente: linha.cliente_nome ? { nome: linha.cliente_nome, telefone: linha.cliente_telefone } : null,
-        },
-        loja: {
-          nome_loja: linha.nome_loja,
-          logo_url: linha.logo_url,
-          cor_primaria: linha.cor_primaria,
-          telefone: linha.loja_telefone,
-          endereco: linha.loja_endereco,
-          tracking_config: trackingConfig,
-        },
-      };
-    };
-
     // Carga inicial: incrementa visualizacoes uma unica vez.
     const carregarInicial = async () => {
       try {
-        const { data, error } = await supabase.rpc("get_os_tracking", { p_token: token });
-        const linha = data?.[0];
-        if (error || !linha) { setErro(true); return; }
-        setDados(mapearLinha(linha as LinhaTracking));
+        const { data, error } = await supabase.rpc("get_cliente_tracking", { p_token: token });
+        if (error || !data || data.length === 0) { setErro(true); return; }
+        setDados(mapearLinhas(data as LinhaClienteTracking[]));
       } catch {
         setErro(true);
       } finally {
@@ -91,10 +96,9 @@ export default function AcompanharOS() {
 
     // Polling: so leitura, nao incrementa visualizacoes.
     const atualizarStatus = async () => {
-      const { data, error } = await supabase.rpc("get_os_tracking_status", { p_token: token });
-      const linha = data?.[0];
-      if (error || !linha) return;
-      setDados(mapearLinha(linha as LinhaTracking));
+      const { data, error } = await supabase.rpc("get_cliente_tracking_status", { p_token: token });
+      if (error || !data || data.length === 0) return;
+      setDados(mapearLinhas(data as LinhaClienteTracking[]));
     };
 
     carregarInicial();
@@ -116,7 +120,7 @@ export default function AcompanharOS() {
   );
 
   // ── Erro ─────────────────────────────────────────────────────────
-  if (erro || !dados || !dados.os) return (
+  if (erro || !dados) return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#0a0f1e" }}>
       <div className="max-w-sm w-full rounded-2xl border border-slate-800 bg-slate-900/80 p-8 text-center">
         <AlertCircle className="h-10 w-10 text-slate-500 mx-auto mb-4" />
@@ -126,13 +130,11 @@ export default function AcompanharOS() {
     </div>
   );
 
-  const { os, loja } = dados;
+  const { clienteNome, osList, loja } = dados;
 
-  // Resolver config de cores — tracking_config salvo > cor_primaria da loja > padrão
   const tc: TrackingPageConfig = {
     ...TRACKING_CONFIG_PADRAO,
     ...(loja?.tracking_config || {}),
-    // Se não tem tracking_config, usa a cor_primaria da loja como destaque
     cor_primaria: loja?.tracking_config?.cor_primaria || loja?.cor_primaria || TRACKING_CONFIG_PADRAO.cor_primaria,
   };
   const prim = tc.cor_primaria;
@@ -154,7 +156,33 @@ export default function AcompanharOS() {
 
       <HeaderLojaTracking nomeLoja={loja?.nome_loja ?? null} logoUrl={loja?.logo_url ?? null} telefone={loja?.telefone ?? null} tc={tc} />
 
-      <CardStatusOS os={os} tc={tc} nomeLoja={loja?.nome_loja ?? null} clienteNome={os.cliente?.nome ?? null} />
+      {clienteNome && (
+        <p className="w-full max-w-md text-sm font-medium mb-4 px-1" style={{ color: tc.cor_texto_secundario }}>
+          Ordens de serviço de <span style={{ color: tc.cor_texto, fontWeight: 700 }}>{clienteNome}</span>
+        </p>
+      )}
+
+      {osList.length === 0 ? (
+        <div className="w-full max-w-md rounded-2xl border p-8 text-center"
+          style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
+          <p className="text-sm" style={{ color: tc.cor_texto_secundario }}>
+            Nenhuma ordem de serviço encontrada.
+          </p>
+        </div>
+      ) : (
+        <div className="w-full max-w-md space-y-4">
+          {osList.map((os) => (
+            <CardStatusOS
+              key={os.os_id}
+              os={os}
+              tc={tc}
+              nomeLoja={loja?.nome_loja ?? null}
+              clienteNome={clienteNome}
+              mostrarNomeCliente={false}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Footer */}
       <p className="text-center text-[11px] mt-5" style={{ color: tc.cor_texto_secundario + "50" }}>

@@ -21,11 +21,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, Eye, X, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { Cliente } from "@/types/cliente";
 import { formatCPF, formatPhone } from "@/lib/formatters";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { isAniversarioHoje, isAniversarioEsteMes, formatarDiaAniversario } from "@/hooks/useAniversariantes";
+import { useClienteTracking } from "@/hooks/useClienteTracking";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { toast } from "sonner";
 
 const POR_PAGINA = 50;
 
@@ -48,6 +51,22 @@ export function TabelaClientes({
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [confirmandoMassa, setConfirmandoMassa] = useState(false);
   const [pagina, setPagina] = useState(1);
+
+  const { gerarLink, gerando } = useClienteTracking();
+  const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
+
+  const handleCompartilharLink = async (cliente: Cliente) => {
+    if (!podeCompartilharLink) {
+      toast.error("Você não tem permissão para compartilhar o link de acompanhamento");
+      return;
+    }
+    const link = await gerarLink(cliente.id, lojaUserId ?? undefined);
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    toast.success("Link de acompanhamento copiado!", {
+      description: `Todas as OS de ${cliente.nome} em uma única página.`,
+    });
+  };
 
   // Volta para página 1 quando a lista de clientes muda (busca ou filtro)
   useEffect(() => { setPagina(1); }, [clientes]);
@@ -217,6 +236,16 @@ export function TabelaClientes({
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => handleCompartilharLink(cliente)}
+                disabled={gerando}
+                className="h-9"
+                title="Compartilhar link de acompanhamento"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => onEditar(cliente)}
                 className="h-9"
               >
@@ -318,6 +347,16 @@ export function TabelaClientes({
                       title="Ver histórico"
                     >
                       <Eye className="h-4 w-4" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleCompartilharLink(cliente)}
+                      disabled={gerando}
+                      title="Compartilhar link de acompanhamento"
+                    >
+                      <Share2 className="h-4 w-4" />
                     </Button>
 
                     <Button

@@ -578,6 +578,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cliente_tracking_links: {
+        Row: {
+          ativo: boolean
+          cliente_id: string
+          created_at: string
+          id: string
+          token: string
+          user_id: string
+          visualizacoes: number
+        }
+        Insert: {
+          ativo?: boolean
+          cliente_id: string
+          created_at?: string
+          id?: string
+          token?: string
+          user_id: string
+          visualizacoes?: number
+        }
+        Update: {
+          ativo?: boolean
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          token?: string
+          user_id?: string
+          visualizacoes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_tracking_links_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_tracking_links_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_ativos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cnpj: string | null
@@ -5590,6 +5635,48 @@ export type Database = {
         Returns: string
       }
       gerar_catalogo_slug: { Args: { nome: string }; Returns: string }
+      get_cliente_tracking: {
+        Args: { p_token: string }
+        Returns: {
+          cliente_nome: string
+          cor_primaria: string
+          cores_personalizadas: Json
+          data_saida: string
+          defeito_relatado: string
+          dispositivo_marca: string
+          dispositivo_modelo: string
+          logo_url: string
+          loja_endereco: string
+          loja_telefone: string
+          nome_loja: string
+          numero_os: string
+          os_created_at: string
+          os_id: string
+          status: string
+          total: number
+        }[]
+      }
+      get_cliente_tracking_status: {
+        Args: { p_token: string }
+        Returns: {
+          cliente_nome: string
+          cor_primaria: string
+          cores_personalizadas: Json
+          data_saida: string
+          defeito_relatado: string
+          dispositivo_marca: string
+          dispositivo_modelo: string
+          logo_url: string
+          loja_endereco: string
+          loja_telefone: string
+          nome_loja: string
+          numero_os: string
+          os_created_at: string
+          os_id: string
+          status: string
+          total: number
+        }[]
+      }
       get_loja_owner_id: { Args: never; Returns: string }
       get_next_os_number:
         | { Args: never; Returns: number }

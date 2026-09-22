@@ -107,6 +107,7 @@ src/
 - PWA: manifest, service worker, InstallPrompt, PWAUpdateBanner
 - Catálogo público: /c/:slug (sem auth)
 - Acompanhamento OS: /acompanhar/:token (sem auth)
+- Acompanhamento por cliente (todas as OS dele): /acompanhar-cliente/:token (sem auth)
 - Entrada corporativa pública: /entrada/:remessa_id (sem auth, em desenvolvimento)
 
 ## Rotas protegidas vs públicas
@@ -114,7 +115,7 @@ Públicas (sem ProtectedAppRoute):
   / | /lp1 | /lp2 | /auth | /reset-password | /obrigado
   /completar-cadastro | /cadastro-plano | /instalar-app
   /video-boas-vindas | /onboarding-inicial | /team-onboarding | /renovar
-  /c/:slug | /lp/:slug | /acompanhar/:token | /entrada/:remessa_id
+  /c/:slug | /lp/:slug | /acompanhar/:token | /acompanhar-cliente/:token | /entrada/:remessa_id
 
 Protegidas: todas as demais, com guards de plano e funcionário conforme o módulo
 
