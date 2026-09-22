@@ -57,9 +57,9 @@ export interface OSTrackingCardData {
   dispositivo_modelo: string | null;
 }
 
-const formatCurrency = (v: number) =>
+export const formatCurrency = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
-const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR");
+export const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR");
 
 interface CardStatusOSProps {
   os: OSTrackingCardData;

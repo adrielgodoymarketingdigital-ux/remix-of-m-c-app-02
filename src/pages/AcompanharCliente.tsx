@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowLeft, ChevronRight, ClipboardList } from "lucide-react";
 import { TrackingPageConfig, TRACKING_CONFIG_PADRAO } from "@/types/configuracao-loja";
-import { CardStatusOS, OSTrackingCardData, lighten } from "@/components/tracking/CardStatusOS";
+import {
+  CardStatusOS, OSTrackingCardData, STATUS_CONFIG, formatCurrency, formatDate, lighten,
+} from "@/components/tracking/CardStatusOS";
 import { HeaderLojaTracking } from "@/components/tracking/HeaderLojaTracking";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ClienteTrackingDados {
   clienteNome: string | null;
@@ -72,11 +75,15 @@ const mapearLinhas = (linhas: LinhaClienteTracking[]): ClienteTrackingDados => {
   };
 };
 
+type OSResumo = OSTrackingCardData & { os_id: string };
+
 export default function AcompanharCliente() {
   const { token } = useParams<{ token: string }>();
   const [dados, setDados] = useState<ClienteTrackingDados | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
+  const [osSelecionada, setOsSelecionada] = useState<OSResumo | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!token) return;
@@ -105,6 +112,13 @@ export default function AcompanharCliente() {
     const intervalo = setInterval(atualizarStatus, 15000);
     return () => clearInterval(intervalo);
   }, [token]);
+
+  // Mantem o detalhe aberto em dia com o polling (status pode mudar enquanto o cliente olha).
+  useEffect(() => {
+    if (!osSelecionada || !dados) return;
+    const atualizada = dados.osList.find((os) => os.os_id === osSelecionada.os_id);
+    if (atualizada && atualizada !== osSelecionada) setOsSelecionada(atualizada);
+  }, [dados, osSelecionada]);
 
   // ── Loading ──────────────────────────────────────────────────────
   if (loading) return (
@@ -169,25 +183,141 @@ export default function AcompanharCliente() {
             Nenhuma ordem de serviço encontrada.
           </p>
         </div>
+      ) : isMobile ? (
+        <ListaOSResumoMobile osList={osList} tc={tc} onSelecionar={setOsSelecionada} />
       ) : (
-        <div className="w-full max-w-md space-y-4">
-          {osList.map((os) => (
-            <CardStatusOS
-              key={os.os_id}
-              os={os}
-              tc={tc}
-              nomeLoja={loja?.nome_loja ?? null}
-              clienteNome={clienteNome}
-              mostrarNomeCliente={false}
-            />
-          ))}
-        </div>
+        <TabelaOSResumo osList={osList} tc={tc} onSelecionar={setOsSelecionada} />
       )}
 
       {/* Footer */}
       <p className="text-center text-[11px] mt-5" style={{ color: tc.cor_texto_secundario + "50" }}>
         {tc.mensagem_rodape || `Powered by Méc App`}
       </p>
+
+      {/* Detalhe completo de uma OS — mesmo CardStatusOS do link individual, só revelado sob clique aqui */}
+      {osSelecionada && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 py-8 sm:items-center"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={() => setOsSelecionada(null)}
+        >
+          <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setOsSelecionada(null)}
+              className="mb-3 flex items-center gap-1.5 text-sm font-medium"
+              style={{ color: tc.cor_texto_secundario }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para a lista
+            </button>
+            <CardStatusOS
+              os={osSelecionada}
+              tc={tc}
+              nomeLoja={loja?.nome_loja ?? null}
+              clienteNome={clienteNome}
+              mostrarNomeCliente={false}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Resumo por OS (status + data + valor) — desktop vira tabela, mobile vira lista de cards.
+// Clicar numa linha/card abre o CardStatusOS completo (timeline, defeito, PDF) no modal acima.
+// Nenhuma lógica de status/timeline é duplicada aqui: só rótulo/ícone de STATUS_CONFIG (já
+// exportado por CardStatusOS.tsx) para o resumo — o detalhe em si é sempre o componente real.
+
+function BadgeStatus({ status, tc }: { status: string | null; tc: TrackingPageConfig }) {
+  const cfg = STATUS_CONFIG[status ?? ""] ?? { label: status ?? "Desconhecido", emoji: "❓", icon: ClipboardList };
+  const Icon = cfg.icon;
+  const prim = tc.cor_primaria;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+      style={{ color: prim, background: `${prim}12` }}
+    >
+      <Icon className="h-3 w-3 shrink-0" />
+      {cfg.label}
+    </span>
+  );
+}
+
+interface ListaResumoProps {
+  osList: OSResumo[];
+  tc: TrackingPageConfig;
+  onSelecionar: (os: OSResumo) => void;
+}
+
+function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
+  const prim = tc.cor_primaria;
+  return (
+    <div className="w-full max-w-2xl rounded-2xl border overflow-hidden" style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
+      <table className="w-full text-sm">
+        <thead>
+          <tr style={{ borderBottom: `1px solid ${prim}15` }}>
+            <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Status</th>
+            <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Data</th>
+            <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {osList.map((os) => (
+            <tr
+              key={os.os_id}
+              onClick={() => onSelecionar(os)}
+              className="cursor-pointer transition-colors hover:brightness-110"
+              style={{ borderBottom: `1px solid ${prim}10` }}
+            >
+              <td className="px-4 py-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold" style={{ color: tc.cor_texto }}>#{os.numero_os}</span>
+                  <BadgeStatus status={os.status} tc={tc} />
+                </div>
+              </td>
+              <td className="px-4 py-3" style={{ color: tc.cor_texto }}>
+                {os.created_at ? formatDate(os.created_at) : "—"}
+              </td>
+              <td className="px-4 py-3 text-right font-semibold" style={{ color: tc.cor_texto }}>
+                {os.total != null && os.total > 0 ? formatCurrency(os.total) : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ListaOSResumoMobile({ osList, tc, onSelecionar }: ListaResumoProps) {
+  const prim = tc.cor_primaria;
+  return (
+    <div className="w-full max-w-md space-y-2.5">
+      {osList.map((os) => (
+        <button
+          key={os.os_id}
+          type="button"
+          onClick={() => onSelecionar(os)}
+          className="w-full flex items-center justify-between gap-3 rounded-2xl border p-4 text-left transition-colors active:brightness-110"
+          style={{ background: tc.cor_card, borderColor: `${prim}25` }}
+        >
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold" style={{ color: tc.cor_texto }}>#{os.numero_os}</span>
+              <BadgeStatus status={os.status} tc={tc} />
+            </div>
+            <div className="flex items-center gap-3 text-xs" style={{ color: tc.cor_texto_secundario }}>
+              <span>{os.created_at ? formatDate(os.created_at) : "—"}</span>
+              {os.total != null && os.total > 0 && (
+                <span className="font-semibold" style={{ color: tc.cor_texto }}>{formatCurrency(os.total)}</span>
+              )}
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 shrink-0" style={{ color: tc.cor_texto_secundario }} />
+        </button>
+      ))}
     </div>
   );
 }
