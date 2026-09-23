@@ -1032,6 +1032,19 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           total: (os.total != null && os.total > 0) ? os.total : null,
         };
 
+        // Mesmo padrão de atualizarStatus: ao importar já como "entregue", sem
+        // uma data de saída própria na planilha, preencher com o momento da
+        // importação — nunca deixar status='entregue' com data_saida nula
+        // (isso quebra o fechamento de caixa e o filtro de comissão por
+        // "data de entrega", que dependem de data_saida estar preenchida).
+        // data_saida_estimada=true deixa marcado que essa data é o momento da
+        // importação, não a data real de entrega (que a planilha não traz).
+        if (statusFinal === 'entregue') {
+          insertPayload.data_saida = new Date().toISOString();
+          insertPayload.data_caixa = dataHoje();
+          insertPayload.avarias = { data_saida_estimada: true };
+        }
+
         // Incluir empresa_id para que a OS apareça na filial correta (gerente de filial ou empresa ativa)
         if (empresaIdParaImport) {
           insertPayload.empresa_id = empresaIdParaImport;
