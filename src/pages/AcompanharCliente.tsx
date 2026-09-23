@@ -251,6 +251,9 @@ interface ListaResumoProps {
   onSelecionar: (os: OSResumo) => void;
 }
 
+// data_saida só é preenchida quando a OS já foi entregue — nula = ainda em andamento.
+const formatDataSaidaResumo = (d: string | null) => (d ? formatDate(d) : "Em andamento");
+
 function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
   const prim = tc.cor_primaria;
   return (
@@ -259,7 +262,8 @@ function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
         <thead>
           <tr style={{ borderBottom: `1px solid ${prim}15` }}>
             <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Status</th>
-            <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Data</th>
+            <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Data de Entrada</th>
+            <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Data de Saída</th>
             <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Valor</th>
           </tr>
         </thead>
@@ -279,6 +283,9 @@ function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
               </td>
               <td className="px-4 py-3" style={{ color: tc.cor_texto }}>
                 {os.created_at ? formatDate(os.created_at) : "—"}
+              </td>
+              <td className="px-4 py-3" style={{ color: os.data_saida ? tc.cor_texto : tc.cor_texto_secundario }}>
+                {formatDataSaidaResumo(os.data_saida)}
               </td>
               <td className="px-4 py-3 text-right font-semibold" style={{ color: tc.cor_texto }}>
                 {os.total != null && os.total > 0 ? formatCurrency(os.total) : "—"}
@@ -308,12 +315,15 @@ function ListaOSResumoMobile({ osList, tc, onSelecionar }: ListaResumoProps) {
               <span className="text-sm font-bold" style={{ color: tc.cor_texto }}>#{os.numero_os}</span>
               <BadgeStatus status={os.status} tc={tc} />
             </div>
-            <div className="flex items-center gap-3 text-xs" style={{ color: tc.cor_texto_secundario }}>
-              <span>{os.created_at ? formatDate(os.created_at) : "—"}</span>
-              {os.total != null && os.total > 0 && (
-                <span className="font-semibold" style={{ color: tc.cor_texto }}>{formatCurrency(os.total)}</span>
-              )}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs" style={{ color: tc.cor_texto_secundario }}>
+              <span>Entrada: {os.created_at ? formatDate(os.created_at) : "—"}</span>
+              <span style={{ color: os.data_saida ? tc.cor_texto_secundario : tc.cor_texto_secundario + "80" }}>
+                Saída: {formatDataSaidaResumo(os.data_saida)}
+              </span>
             </div>
+            {os.total != null && os.total > 0 && (
+              <span className="block text-xs font-semibold" style={{ color: tc.cor_texto }}>{formatCurrency(os.total)}</span>
+            )}
           </div>
           <ChevronRight className="h-4 w-4 shrink-0" style={{ color: tc.cor_texto_secundario }} />
         </button>
