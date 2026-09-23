@@ -4,6 +4,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CompraDispositivo, OrigemPessoa } from "@/types/origem";
@@ -11,8 +19,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileText, User, Smartphone, DollarSign, Download, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { FileText, User, Smartphone, DollarSign, Download, Loader2, Images, ImageOff } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
@@ -32,6 +40,41 @@ export function DialogVisualizacaoCompra({
 }: DialogVisualizacaoCompraProps) {
   const { toast } = useToast();
   const [gerandoPDF, setGerandoPDF] = useState(false);
+
+  // Galeria de fotos da compra — grade de thumbnails + lightbox (Carousel)
+  // que abre por cima ao clicar. fotosComErro rastreia fotos cuja URL
+  // assinada expirou (dura 1 ano no bucket compras-fotos) pra mostrar um
+  // aviso em vez de imagem quebrada; fotosCarregadas evita o "pulo" de
+  // layout mostrando um skeleton até o onLoad disparar.
+  const [fotoAmpliadaIndex, setFotoAmpliadaIndex] = useState<number | null>(null);
+  const [fotosComErro, setFotosComErro] = useState<Set<number>>(new Set());
+  const [fotosCarregadas, setFotosCarregadas] = useState<Set<number>>(new Set());
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [indiceAtual, setIndiceAtual] = useState(0);
+
+  useEffect(() => {
+    setFotosComErro(new Set());
+    setFotosCarregadas(new Set());
+    setFotoAmpliadaIndex(null);
+  }, [compra?.id]);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    setIndiceAtual(carouselApi.selectedScrollSnap());
+    const aoSelecionar = () => setIndiceAtual(carouselApi.selectedScrollSnap());
+    carouselApi.on("select", aoSelecionar);
+    return () => {
+      carouselApi.off("select", aoSelecionar);
+    };
+  }, [carouselApi]);
+
+  const marcarFotoComErro = (index: number) => {
+    setFotosComErro((prev) => new Set(prev).add(index));
+  };
+
+  const marcarFotoCarregada = (index: number) => {
+    setFotosCarregadas((prev) => new Set(prev).add(index));
+  };
 
   if (!compra) return null;
 
@@ -226,6 +269,7 @@ export function DialogVisualizacaoCompra({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl sm:max-h-[90vh] overflow-y-auto">
       <DialogHeader>
@@ -370,6 +414,48 @@ export function DialogVisualizacaoCompra({
             </div>
           </div>
 
+          {/* Fotos */}
+          {compra.fotos && compra.fotos.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Images className="h-4 w-4" />
+                <h3>Fotos ({compra.fotos.length})</h3>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {compra.fotos.map((url, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setFotoAmpliadaIndex(index)}
+                    className="relative aspect-square rounded-lg overflow-hidden border border-border/40 hover:border-primary/40 transition-colors bg-muted"
+                  >
+                    {fotosComErro.has(index) ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground p-1">
+                        <ImageOff className="h-5 w-5" />
+                        <span className="text-[9px] text-center leading-tight">Expirada</span>
+                      </div>
+                    ) : (
+                      <>
+                        {!fotosCarregadas.has(index) && (
+                          <div className="absolute inset-0 bg-muted animate-pulse" />
+                        )}
+                        <img
+                          src={url}
+                          alt={`Foto ${index + 1}`}
+                          loading="lazy"
+                          decoding="async"
+                          onLoad={() => marcarFotoCarregada(index)}
+                          onError={() => marcarFotoComErro(index)}
+                          className="w-full h-full object-cover"
+                        />
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Observações */}
           {compra.observacoes && (
             <div className="space-y-2">
@@ -404,5 +490,54 @@ export function DialogVisualizacaoCompra({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Lightbox de fotos — Dialog separado, empilha por cima do de detalhes.
+        Carousel só monta quando o lightbox abre, então startIndex sempre
+        aponta pra foto certa a cada abertura. */}
+    <Dialog open={fotoAmpliadaIndex !== null} onOpenChange={(o) => !o && setFotoAmpliadaIndex(null)}>
+      <DialogContent className="max-w-3xl p-2 sm:p-6">
+        {fotoAmpliadaIndex !== null && compra.fotos && compra.fotos.length > 0 && (
+          <>
+            <Carousel opts={{ startIndex: fotoAmpliadaIndex }} setApi={setCarouselApi} className="w-full">
+              <CarouselContent>
+                {compra.fotos.map((url, index) => (
+                  <CarouselItem key={index}>
+                    <div className="aspect-square sm:aspect-video flex items-center justify-center bg-black/5 rounded-lg overflow-hidden">
+                      {fotosComErro.has(index) ? (
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                          <ImageOff className="h-10 w-10" />
+                          <span className="text-sm">Imagem expirada</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={url}
+                          alt={`Foto ${index + 1}`}
+                          loading="lazy"
+                          decoding="async"
+                          onError={() => marcarFotoComErro(index)}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      )}
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              {compra.fotos.length > 1 && (
+                <>
+                  <CarouselPrevious className="left-2" />
+                  <CarouselNext className="right-2" />
+                </>
+              )}
+            </Carousel>
+            {compra.fotos.length > 1 && (
+              <div className="text-center text-sm text-muted-foreground mt-2">
+                {indiceAtual + 1} / {compra.fotos.length}
+              </div>
+            )}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

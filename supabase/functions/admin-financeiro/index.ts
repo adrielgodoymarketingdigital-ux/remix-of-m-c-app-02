@@ -462,14 +462,28 @@ serve(async (req) => {
     // por payment_provider = 'pagarme'.
     const PAGARME_KEY = Deno.env.get("PAGARME_SECRET_KEY") || "";
 
+    // ─── 0. Contas bloqueadas pelo admin (fraude/abuso) ─────────────────
+    // Excluídas de TODAS as métricas de assinantes abaixo (Assinantes Ativos
+    // e Novos Assinantes do Mês) — bloqueado_admin=true não é desfeito quando
+    // o admin só bloqueia (admin-block-user não mexe em `status`), então sem
+    // esse filtro uma conta de fraude bloqueada mas com status='active'
+    // continuaria contando como assinante de verdade. Ver incidente de
+    // carding 2026-09-09.
+    const { data: contasBloqueadasRaw } = await supabaseAdmin
+      .from("assinaturas")
+      .select("user_id")
+      .eq("bloqueado_admin", true) as { data: Array<{ user_id: string }> | null };
+    const usuariosBloqueados = new Set((contasBloqueadasRaw ?? []).map((a) => a.user_id));
+
     // ─── 1. Dados do banco (assinaturas pagas ativas) ───────────────────
-    const { data: assinaturasAtivas, error: assErr } = await supabaseAdmin
+    const { data: assinaturasAtivasRaw, error: assErr } = await supabaseAdmin
       .from("assinaturas")
       .select("user_id, plano_tipo, status, data_fim, data_proxima_cobranca, payment_method, payment_provider, pagarme_subscription_id, stripe_subscription_id")
       .eq("status", "active")
       .in("plano_tipo", Object.keys(PRECOS_MES));
 
     if (assErr) throw new Error(`DB assinaturas: ${assErr.message}`);
+    const assinaturasAtivas = (assinaturasAtivasRaw ?? []).filter((a) => !usuariosBloqueados.has(a.user_id));
 
     // ─── 1b. Histórico de crescimento (cadastros + pagantes) ────────────
     // Restrito a Pagar.me: é o único provedor com pagamento recorrente/renovação
@@ -528,12 +542,17 @@ serve(async (req) => {
         .map((a) => a.user_id),
     );
 
-    const eventosPagamentoPorUser = buildEventosPagamentoPorUser(
+    const eventosPagamentoPorUserBruto = buildEventosPagamentoPorUser(
       pagosPixRaw ?? [],
       assinaturasCartaoRaw ?? [],
       notifAssinaturaRaw ?? [],
       PLANOS_PAGOS_KEYS,
     );
+    // Mesmo filtro de contas bloqueadas do bloco 0 — sem isso, o pagamento de
+    // uma conta de fraude (bloqueada depois, mas com evento de cobrança no
+    // mês) continuaria contando em "Novos Assinantes do Mês".
+    for (const userId of usuariosBloqueados) eventosPagamentoPorUserBruto.delete(userId);
+    const eventosPagamentoPorUser = eventosPagamentoPorUserBruto;
     const primeiroPagamentoPorUser = new Map<string, number>();
     for (const [userId, arr] of eventosPagamentoPorUser) {
       primeiroPagamentoPorUser.set(userId, arr[0].ts);
