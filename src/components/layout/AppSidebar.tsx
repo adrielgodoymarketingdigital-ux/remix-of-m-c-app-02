@@ -149,15 +149,16 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
-  // true = seção expandida. Ausente/false = recolhida (padrão a cada novo login —
-  // ver clearSessionMeta, que apaga essa chave no logout). Persiste em localStorage
-  // durante a sessão (sobrevive a F5/navegação/fechar aba), só é limpa no logout.
+  // true = seção expandida. Ausente/false = recolhida (padrão a cada novo login,
+  // exceto "atendimento" que já começa expandida — ver clearSessionMeta, que apaga
+  // essa chave no logout). Persiste em localStorage durante a sessão (sobrevive a
+  // F5/navegação/fechar aba), só é limpa no logout.
   const [gruposExpandidos, setGruposExpandidos] = useState<Record<string, boolean>>(() => {
     try {
       const salvo = localStorage.getItem(SIDEBAR_GRUPOS_EXPANDIDOS_KEY);
-      return salvo ? JSON.parse(salvo) : {};
+      return salvo ? JSON.parse(salvo) : { atendimento: true };
     } catch {
-      return {};
+      return { atendimento: true };
     }
   });
   const { badges } = useAdminBadges(isAdmin);

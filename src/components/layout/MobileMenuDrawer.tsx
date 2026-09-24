@@ -135,15 +135,16 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   // Mesma chave do AppSidebar (desktop) — estado compartilhado entre as duas telas.
-  // true = expandida. Ausente/false = recolhida (padrão a cada novo login — a chave
-  // é apagada no logout por clearSessionMeta). Persiste durante a sessão (F5,
-  // navegação, fechar aba), só é limpa no logout explícito.
+  // true = expandida. Ausente/false = recolhida (padrão a cada novo login, exceto
+  // "atendimento" que já começa expandida — a chave é apagada no logout por
+  // clearSessionMeta). Persiste durante a sessão (F5, navegação, fechar aba), só é
+  // limpa no logout explícito.
   const [gruposExpandidos, setGruposExpandidos] = useState<Record<string, boolean>>(() => {
     try {
       const salvo = localStorage.getItem(SIDEBAR_GRUPOS_EXPANDIDOS_KEY);
-      return salvo ? JSON.parse(salvo) : {};
+      return salvo ? JSON.parse(salvo) : { atendimento: true };
     } catch {
-      return {};
+      return { atendimento: true };
     }
   });
   const { badges } = useAdminBadges(isAdmin);
