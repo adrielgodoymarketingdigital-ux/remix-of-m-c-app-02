@@ -77,13 +77,61 @@ const mapearLinhas = (linhas: LinhaClienteTracking[]): ClienteTrackingDados => {
 
 type OSResumo = OSTrackingCardData & { os_id: string };
 
+// Ordem de exibição do filtro de status — mesmas 9 chaves de STATUS_CONFIG (CardStatusOS.tsx),
+// única fonte de verdade dos status reais usados em ordens_servico.
+const STATUS_FILTRO_ORDEM = [
+  "aberta", "aguardando_aprovacao", "em_andamento", "aguardando_peca",
+  "finalizado", "aguardando_retirada", "entregue", "garantia", "cancelada",
+];
+
+interface FiltrosOSState {
+  status: string; // "todos" ou uma chave de STATUS_CONFIG
+  campoData: "entrada" | "saida";
+  dataDe: string | null; // yyyy-mm-dd
+  dataAte: string | null; // yyyy-mm-dd
+}
+
+const paraYMDLocal = (d: Date) => {
+  const semFuso = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return semFuso.toISOString().slice(0, 10);
+};
+const hojeYMD = () => paraYMDLocal(new Date());
+const diasAtrasYMD = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return paraYMDLocal(d);
+};
+
+const FILTRO_PADRAO = (): FiltrosOSState => ({
+  status: "todos",
+  campoData: "entrada",
+  dataDe: diasAtrasYMD(30),
+  dataAte: hojeYMD(),
+});
+
+const osNoFiltro = (os: OSResumo, filtro: FiltrosOSState): boolean => {
+  if (filtro.status !== "todos" && os.status !== filtro.status) return false;
+  if (filtro.dataDe || filtro.dataAte) {
+    const dataRef = filtro.campoData === "entrada" ? os.created_at : os.data_saida;
+    if (!dataRef) return false; // sem data nesse campo (ex.: saída de OS ainda em andamento) = fora do range
+    const d = new Date(dataRef);
+    if (filtro.dataDe && d < new Date(`${filtro.dataDe}T00:00:00`)) return false;
+    if (filtro.dataAte && d > new Date(`${filtro.dataAte}T23:59:59.999`)) return false;
+  }
+  return true;
+};
+
 export default function AcompanharCliente() {
   const { token } = useParams<{ token: string }>();
   const [dados, setDados] = useState<ClienteTrackingDados | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
   const [osSelecionada, setOsSelecionada] = useState<OSResumo | null>(null);
+  const [filtro, setFiltro] = useState<FiltrosOSState>(FILTRO_PADRAO);
   const isMobile = useIsMobile();
+
+  const atualizarFiltro = (novo: Partial<FiltrosOSState>) => setFiltro((f) => ({ ...f, ...novo }));
+  const limparFiltro = () => setFiltro({ status: "todos", campoData: "entrada", dataDe: null, dataAte: null });
 
   useEffect(() => {
     if (!token) return;
@@ -145,6 +193,7 @@ export default function AcompanharCliente() {
   );
 
   const { clienteNome, osList, loja } = dados;
+  const osListFiltrada = osList.filter((os) => osNoFiltro(os, filtro));
 
   const tc: TrackingPageConfig = {
     ...TRACKING_CONFIG_PADRAO,
@@ -183,10 +232,29 @@ export default function AcompanharCliente() {
             Nenhuma ordem de serviço encontrada.
           </p>
         </div>
-      ) : isMobile ? (
-        <ListaOSResumoMobile osList={osList} tc={tc} onSelecionar={setOsSelecionada} />
       ) : (
-        <TabelaOSResumo osList={osList} tc={tc} onSelecionar={setOsSelecionada} />
+        <>
+          <FiltrosOS
+            filtro={filtro}
+            onChange={atualizarFiltro}
+            onLimpar={limparFiltro}
+            tc={tc}
+            totalFiltrado={osListFiltrada.length}
+            totalGeral={osList.length}
+          />
+          {osListFiltrada.length === 0 ? (
+            <div className="w-full max-w-2xl rounded-2xl border p-8 text-center"
+              style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
+              <p className="text-sm" style={{ color: tc.cor_texto_secundario }}>
+                Nenhuma ordem de serviço encontrada com os filtros aplicados.
+              </p>
+            </div>
+          ) : isMobile ? (
+            <ListaOSResumoMobile osList={osListFiltrada} tc={tc} onSelecionar={setOsSelecionada} />
+          ) : (
+            <TabelaOSResumo osList={osListFiltrada} tc={tc} onSelecionar={setOsSelecionada} />
+          )}
+        </>
       )}
 
       {/* Footer */}
@@ -229,6 +297,106 @@ export default function AcompanharCliente() {
 // Clicar numa linha/card abre o CardStatusOS completo (timeline, defeito, PDF) no modal acima.
 // Nenhuma lógica de status/timeline é duplicada aqui: só rótulo/ícone de STATUS_CONFIG (já
 // exportado por CardStatusOS.tsx) para o resumo — o detalhe em si é sempre o componente real.
+
+interface FiltrosOSProps {
+  filtro: FiltrosOSState;
+  onChange: (novo: Partial<FiltrosOSState>) => void;
+  onLimpar: () => void;
+  tc: TrackingPageConfig;
+  totalFiltrado: number;
+  totalGeral: number;
+}
+
+function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral }: FiltrosOSProps) {
+  const prim = tc.cor_primaria;
+  const filtroAtivo = filtro.status !== "todos" || !!filtro.dataDe || !!filtro.dataAte;
+  const campoStyle = {
+    background: tc.cor_fundo,
+    borderColor: `${prim}30`,
+    color: tc.cor_texto,
+    colorScheme: "light" as const,
+  };
+  const labelClass = "text-[10px] uppercase tracking-wider font-medium";
+  const labelStyle = { color: tc.cor_texto_secundario + "80" };
+
+  return (
+    <div className="w-full max-w-2xl rounded-2xl border p-4 mb-4 space-y-3" style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={labelStyle}>Status</label>
+          <select
+            value={filtro.status}
+            onChange={(e) => onChange({ status: e.target.value })}
+            className="text-xs rounded-lg border px-2.5 py-1.5 outline-none"
+            style={campoStyle}
+          >
+            <option value="todos">Todos</option>
+            {STATUS_FILTRO_ORDEM.map((s) => (
+              <option key={s} value={s}>{STATUS_CONFIG[s]?.label ?? s}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={labelStyle}>Filtrar por</label>
+          <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: `${prim}30` }}>
+            {(["entrada", "saida"] as const).map((campo) => (
+              <button
+                key={campo}
+                type="button"
+                onClick={() => onChange({ campoData: campo })}
+                className="text-xs px-2.5 py-1.5 transition-colors whitespace-nowrap"
+                style={{
+                  background: filtro.campoData === campo ? prim : "transparent",
+                  color: filtro.campoData === campo ? "#fff" : tc.cor_texto_secundario,
+                }}
+              >
+                {campo === "entrada" ? "Data de Entrada" : "Data de Saída"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={labelStyle}>De</label>
+          <input
+            type="date"
+            value={filtro.dataDe ?? ""}
+            onChange={(e) => onChange({ dataDe: e.target.value || null })}
+            className="text-xs rounded-lg border px-2.5 py-1.5 outline-none"
+            style={campoStyle}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={labelStyle}>Até</label>
+          <input
+            type="date"
+            value={filtro.dataAte ?? ""}
+            onChange={(e) => onChange({ dataAte: e.target.value || null })}
+            className="text-xs rounded-lg border px-2.5 py-1.5 outline-none"
+            style={campoStyle}
+          />
+        </div>
+
+        {filtroAtivo && (
+          <button
+            type="button"
+            onClick={onLimpar}
+            className="text-xs font-medium underline underline-offset-2 ml-auto"
+            style={{ color: tc.cor_texto_secundario }}
+          >
+            Limpar filtros
+          </button>
+        )}
+      </div>
+
+      <p className="text-xs" style={{ color: tc.cor_texto_secundario }}>
+        Mostrando <span style={{ color: tc.cor_texto, fontWeight: 600 }}>{totalFiltrado}</span> de {totalGeral} ordens de serviço
+      </p>
+    </div>
+  );
+}
 
 function BadgeStatus({ status, tc }: { status: string | null; tc: TrackingPageConfig }) {
   const cfg = STATUS_CONFIG[status ?? ""] ?? { label: status ?? "Desconhecido", emoji: "❓", icon: ClipboardList };
