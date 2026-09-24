@@ -10,6 +10,13 @@ const SESSION_META_KEY = "mec_session_meta";
 const SESSION_SUBSCRIPTION_CACHE_KEY = "mec_subscription_cache";
 const LONG_TERM_WINDOW_DAYS = 90;
 
+/**
+ * Chave de localStorage do estado expandido/recolhido das seções da sidebar
+ * (AppSidebar.tsx e MobileMenuDrawer.tsx). Persiste durante a sessão logada
+ * (sobrevive a F5 e fechar a aba), mas é limpa no logout — ver clearSessionMeta.
+ */
+export const SIDEBAR_GRUPOS_EXPANDIDOS_KEY = "sidebar_grupos_expandidos";
+
 interface SessionMeta {
   userId: string;
   lastActive: string; // ISO string
@@ -75,6 +82,7 @@ export function clearSessionMeta(): void {
   try {
     localStorage.removeItem(SESSION_META_KEY);
     localStorage.removeItem(SESSION_SUBSCRIPTION_CACHE_KEY);
+    localStorage.removeItem(SIDEBAR_GRUPOS_EXPANDIDOS_KEY);
   } catch (e) {
     console.warn("[sessionStorage] Falha ao limpar metadados da sessão:", e);
   }

@@ -2,7 +2,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { clearSessionMeta } from "@/lib/sessionStorage";
+import { clearSessionMeta, SIDEBAR_GRUPOS_EXPANDIDOS_KEY } from "@/lib/sessionStorage";
 import logoMec from "@/assets/logo-mec-sistema.png";
 import {
   Sidebar,
@@ -56,6 +56,8 @@ import {
   ClipboardList,
   PackageCheck,
   Layers,
+  ShieldCheck,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,9 +69,6 @@ import type { PermissoesModulos } from "@/types/funcionario";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
 import { useAssinatura } from "@/hooks/useAssinatura";
 
-// Menu destacado de Novidades
-const novidadesItem = { title: "Novidades", url: "/novidades", icon: Sparkles, modulo: "novidades" as keyof PermissoesModulos };
-
 // Menu de Ajuda: sempre visível para todos os usuários logados, sem restrição de permissão/plano
 const ajudaItem = { title: "Ajuda", url: "/ajuda", icon: HelpCircle };
 
@@ -77,10 +76,8 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, modulo: "dashboard" as keyof PermissoesModulos },
   { title: "PDV", url: "/pdv", icon: ShoppingCart, modulo: "pdv" as keyof PermissoesModulos },
   { title: "Ordem de Serviço", url: "/os", icon: ClipboardCheck, modulo: "ordem_servico" as keyof PermissoesModulos },
-  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos, items: [
-    { title: "📦 Produtos e Peças", url: "/produtos", modulo: "produtos_pecas" as keyof PermissoesModulos },
-    { title: "🛡️ Comp. Película", url: "/compatibilidade-pelicula" },
-  ]},
+  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos },
+  { title: "Comp. Película", url: "/compatibilidade-pelicula", icon: ShieldCheck, modulo: "produtos_pecas" as keyof PermissoesModulos },
   { title: "Serviços", url: "/servicos", icon: WrenchIcon, modulo: "servicos" as keyof PermissoesModulos },
   { title: "Dispositivos", url: "/dispositivos", icon: Tablet, modulo: "dispositivos" as keyof PermissoesModulos },
   { title: "Remessas Corporativas", url: "/remessas", icon: PackageCheck, modulo: "remessas_corporativas" as keyof PermissoesModulos },
@@ -97,7 +94,7 @@ const menuItems = [
 
   { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
   { title: "Financeiro", url: "/financeiro", icon: FileText, modulo: "financeiro" as keyof PermissoesModulos, items: [
-    { title: "💰 Financeiro", url: "/financeiro", modulo: "financeiro" as keyof PermissoesModulos },
+    { title: "💰 Contas a Pagar/Receber", url: "/financeiro", modulo: "financeiro" as keyof PermissoesModulos },
     { title: "📒 Extrato", url: "/extrato", modulo: "financeiro" as keyof PermissoesModulos },
     { title: "📊 Relatórios", url: "/relatorios", modulo: "relatorios" as keyof PermissoesModulos },
   ]},
@@ -110,6 +107,24 @@ const menuItems = [
   { title: "Multi Empresas", url: "/multi-empresas", icon: Building2, modulo: "configuracoes" as keyof PermissoesModulos },
   { title: "Precificador", url: "/precificador", icon: Calculator, modulo: "precificador" as keyof PermissoesModulos },
 ];
+
+// Agrupamento visual do Menu Principal — só organiza a exibição (ordem/rótulos de
+// seção), não altera rotas, filtros de permissão/plano nem o array menuItems acima.
+// A ordem dentro de cada grupo é a lista `urls` (não a ordem original de menuItems).
+// `icon` de cada grupo reaproveita, quando possível, o ícone de um item já existente
+// dentro do próprio grupo (Package = mesmo ícone de "Produtos e Peças", Users = mesmo
+// de "Clientes"/"Equipe", Receipt = mesmo de "Contas", HelpCircle = mesmo de
+// "Suporte"). Wrench (Atendimento) não repete ícone de item, mas já era o sentido do
+// emoji 🛠️ original e já estava importado no arquivo.
+const GRUPOS_MENU: { key: string; label: string; icon: LucideIcon; urls: string[] }[] = [
+  { key: "atendimento", label: "Atendimento", icon: Wrench, urls: ["/dashboard", "/pdv", "/os", "/orcamentos", "/pedidos", "/precificador"] },
+  { key: "estoque", label: "Estoque", icon: Package, urls: ["/produtos", "/compatibilidade-pelicula", "/servicos", "/dispositivos", "/catalogo", "/origem-dispositivos", "/remessas"] },
+  { key: "pessoas", label: "Pessoas", icon: Users, urls: ["/clientes", "/fornecedores", "/equipe"] },
+  { key: "administrativo", label: "Administrativo", icon: Receipt, urls: ["/contas", "/vendas", "/financeiro", "/multi-empresas"] },
+  { key: "conta-suporte", label: "Conta & Suporte", icon: HelpCircle, urls: ["/plano", "/suporte", "/tutoriais", "/baixar-app"] },
+];
+// Sem label visível — Configurações é renderizada solta, sem cabeçalho de seção.
+const GRUPO_CONFIGURACOES = { key: "configuracoes", urls: ["/configuracoes"] };
 
 const adminMenuItems = [
   { title: "Usuários", url: "/admin/usuarios", icon: Users, badgeKey: null },
@@ -134,6 +149,17 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
+  // true = seção expandida. Ausente/false = recolhida (padrão a cada novo login —
+  // ver clearSessionMeta, que apaga essa chave no logout). Persiste em localStorage
+  // durante a sessão (sobrevive a F5/navegação/fechar aba), só é limpa no logout.
+  const [gruposExpandidos, setGruposExpandidos] = useState<Record<string, boolean>>(() => {
+    try {
+      const salvo = localStorage.getItem(SIDEBAR_GRUPOS_EXPANDIDOS_KEY);
+      return salvo ? JSON.parse(salvo) : {};
+    } catch {
+      return {};
+    }
+  });
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
@@ -208,9 +234,6 @@ export function AppSidebar() {
       });
   }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin]);
 
-  // Verificar se novidades está visível (não mostrar durante loading)
-  const novidadesVisivel = !carregandoPermissoes && (!isFuncionario || temAcessoModuloFuncionario(novidadesItem.modulo));
-
   const handleLogout = async () => {
     clearSessionMeta();
     await supabase.auth.signOut();
@@ -222,6 +245,81 @@ export function AppSidebar() {
   };
 
   const isActive = (path: string) => location.pathname === path;
+
+  const toggleGrupo = (key: string) => {
+    setGruposExpandidos(prev => {
+      const novo = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem(SIDEBAR_GRUPOS_EXPANDIDOS_KEY, JSON.stringify(novo)); } catch { /* noop */ }
+      return novo;
+    });
+  };
+
+  // Renderiza um item de menu (com ou sem submenu) — reaproveitado pelos grupos
+  // recolhíveis e pelo item solto "Configurações".
+  const renderMenuItem = (item: (typeof menuItems)[number]) => {
+    const tutorialMap: Record<string, string> = {
+      "/os": "sidebar-os",
+      "/dispositivos": "sidebar-dispositivos",
+      "/vendas": "sidebar-vendas",
+      "/pdv": "sidebar-pdv",
+      "/financeiro": "sidebar-financeiro",
+      "/clientes": "sidebar-clientes",
+      "/configuracoes": "sidebar-configuracoes",
+    };
+    const tutorialAttr = tutorialMap[item.url];
+    const temSubmenu = !!(item.items && item.items.length > 0);
+    const subRotaAtiva = temSubmenu && item.items!.some(sub => location.pathname === sub.url);
+    const estadoManual = expandidos[item.url];
+    const expandido = temSubmenu && (estadoManual !== undefined ? estadoManual : subRotaAtiva);
+    const isItemActive = !temSubmenu && location.pathname === item.url;
+    return (
+      <SidebarMenuItem key={item.title} data-tutorial={tutorialAttr}>
+        <SidebarMenuButton
+          onClick={temSubmenu
+            ? () => setExpandidos(prev => ({ ...prev, [item.url]: !expandido }))
+            : () => navigate(item.url)
+          }
+          isActive={isItemActive}
+          className={
+            temSubmenu && subRotaAtiva && !expandido
+              ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+              : isItemActive
+              ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+          }
+        >
+          {temSubmenu ? (
+            <>
+              <item.icon className="h-5 w-5 shrink-0" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">{item.title}</span>
+                  <ChevronRight className={`h-4 w-4 transition-transform ${expandido ? "rotate-90" : ""}`} />
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <item.icon className="h-5 w-5 shrink-0" />
+              {!collapsed && <span>{item.title}</span>}
+            </>
+          )}
+        </SidebarMenuButton>
+        {!collapsed && expandido && item.items?.map(sub => (
+          <SidebarMenuButton key={sub.url} asChild>
+            <NavLink
+              to={sub.url}
+              end
+              className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all pl-8 text-sm"
+              activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+            >
+              <span>{sub.title}</span>
+            </NavLink>
+          </SidebarMenuButton>
+        ))}
+      </SidebarMenuItem>
+    );
+  };
 
   return (
     <Sidebar collapsible="icon" className={`hidden lg:flex border-r border-white/5 bg-[hsl(222,47%,6%)] ${collapsed ? "w-16" : "w-64"}`}>
@@ -245,115 +343,83 @@ export function AppSidebar() {
           </div>
         )}
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {/* Menu Novidades Destacado */}
-              {novidadesVisivel && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={novidadesItem.url}
-                      end
-                      className="bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-500 hover:to-blue-400 transition-all rounded-md shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)]"
-                      activeClassName="from-blue-500 to-blue-400 text-white font-medium"
-                    >
-                      <novidadesItem.icon className="h-5 w-5" />
-                      {!collapsed && <span className="font-medium">{novidadesItem.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup data-tutorial="sidebar-menu">
-          <SidebarGroupLabel className={`text-slate-500 ${collapsed ? "justify-center" : ""}`}>
-            {!collapsed && "Menu Principal"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {carregandoPermissoes ? (
-                // Skeleton loading para os menus
-                Array.from({ length: 6 }).map((_, i) => (
+        {carregandoPermissoes ? (
+          <SidebarGroup data-tutorial="sidebar-menu">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {Array.from({ length: 6 }).map((_, i) => (
                   <SidebarMenuItem key={i}>
                     <div className="flex items-center gap-3 px-3 py-2">
                       <Skeleton className="h-5 w-5 rounded bg-slate-800" />
                       {!collapsed && <Skeleton className="h-4 w-24 bg-slate-800" />}
                     </div>
                   </SidebarMenuItem>
-                ))
-              ) : (
-                menusVisiveis.map((item) => {
-                  // Map URL to tutorial target
-                  const tutorialMap: Record<string, string> = {
-                    "/os": "sidebar-os",
-                    "/dispositivos": "sidebar-dispositivos",
-                    "/vendas": "sidebar-vendas",
-                    "/pdv": "sidebar-pdv",
-                    "/financeiro": "sidebar-financeiro",
-                    "/clientes": "sidebar-clientes",
-                    "/configuracoes": "sidebar-configuracoes",
-                  };
-                  const tutorialAttr = tutorialMap[item.url];
-                  const temSubmenu = !!(item.items && item.items.length > 0);
-                  const subRotaAtiva = temSubmenu && item.items!.some(sub => location.pathname === sub.url);
-                  const estadoManual = expandidos[item.url];
-                  const expandido = temSubmenu && (estadoManual !== undefined ? estadoManual : subRotaAtiva);
-                  const isItemActive = !temSubmenu && location.pathname === item.url;
-                  return (
-                    <SidebarMenuItem key={item.title} data-tutorial={tutorialAttr}>
-                      <SidebarMenuButton
-                        onClick={temSubmenu
-                          ? () => setExpandidos(prev => ({ ...prev, [item.url]: !expandido }))
-                          : () => navigate(item.url)
-                        }
-                        isActive={isItemActive}
-                        className={
-                          temSubmenu && subRotaAtiva && !expandido
-                            ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                            : isItemActive
-                            ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                            : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                        }
-                      >
-                        {temSubmenu ? (
-                          <>
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            {!collapsed && (
-                              <>
-                                <span className="flex-1 text-left">{item.title}</span>
-                                <ChevronRight className={`h-4 w-4 transition-transform ${expandido ? "rotate-90" : ""}`} />
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            {!collapsed && <span>{item.title}</span>}
-                          </>
-                        )}
-                      </SidebarMenuButton>
-                      {!collapsed && expandido && item.items?.map(sub => (
-                        <SidebarMenuButton key={sub.url} asChild>
-                          <NavLink
-                            to={sub.url}
-                            end
-                            className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all pl-8 text-sm"
-                            activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                          >
-                            <span>{sub.title}</span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      ))}
-                    </SidebarMenuItem>
-                  );
-                })
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <>
+            {GRUPOS_MENU.map((grupo, idx) => {
+              const itensDoGrupo = grupo.urls
+                .map(url => menusVisiveis.find(item => item.url === url))
+                .filter((item): item is typeof menusVisiveis[number] => !!item);
+              if (itensDoGrupo.length === 0) return null;
+              const grupoColapsado = !collapsed && !gruposExpandidos[grupo.key];
+              return (
+                <SidebarGroup
+                  key={grupo.key}
+                  data-tutorial={idx === 0 ? "sidebar-menu" : undefined}
+                  className={grupoColapsado ? "py-0.5" : undefined}
+                >
+                  {/* Cabeçalho de seção — VARIAÇÃO C (mais ousada): painel com fundo e borda
+                      própria (bg-white/[0.06] + border), cor neutra (zinc, família diferente
+                      do slate usado nos itens), tracking bem largo, SEM feedback de hover
+                      (cor estática) — só o cursor-pointer indica que é clicável. */}
+                  <SidebarGroupLabel asChild className={`h-auto mt-2 ${collapsed ? "justify-center" : ""}`}>
+                    <button
+                      type="button"
+                      onClick={() => !collapsed && toggleGrupo(grupo.key)}
+                      className={`w-full flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-2 cursor-pointer text-zinc-500 ${collapsed ? "justify-center" : "justify-between"}`}
+                    >
+                      {!collapsed && (
+                        <>
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <grupo.icon className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                            <span className="truncate text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">{grupo.label}</span>
+                          </span>
+                          <ChevronRight className={`h-3 w-3 shrink-0 text-zinc-600 transition-transform ${grupoColapsado ? "" : "rotate-90"}`} />
+                        </>
+                      )}
+                    </button>
+                  </SidebarGroupLabel>
+                  {!grupoColapsado && (
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {itensDoGrupo.map(renderMenuItem)}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  )}
+                </SidebarGroup>
+              );
+            })}
+
+            {/* Configurações: item solto, sem cabeçalho/rótulo de seção acima */}
+            {(() => {
+              const configItem = menusVisiveis.find(item => item.url === GRUPO_CONFIGURACOES.urls[0]);
+              if (!configItem) return null;
+              return (
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {renderMenuItem(configItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              );
+            })()}
+          </>
+        )}
 
         {isAdmin && (
           <SidebarGroup>

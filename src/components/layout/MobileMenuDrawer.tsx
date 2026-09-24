@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { clearSessionMeta } from "@/lib/sessionStorage";
+import { clearSessionMeta, SIDEBAR_GRUPOS_EXPANDIDOS_KEY } from "@/lib/sessionStorage";
 import {
   Drawer,
   DrawerContent,
@@ -66,10 +66,8 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, modulo: "dashboard" as keyof PermissoesModulos },
   { title: "PDV", url: "/pdv", icon: ShoppingCart, modulo: "pdv" as keyof PermissoesModulos },
   { title: "Ordem de Serviço", url: "/os", icon: ClipboardCheck, modulo: "ordem_servico" as keyof PermissoesModulos },
-  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos, items: [
-    { title: "Produtos e Peças", url: "/produtos", icon: Package },
-    { title: "Comp. Película", url: "/compatibilidade-pelicula", icon: ShieldCheck },
-  ]},
+  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos },
+  { title: "Comp. Película", url: "/compatibilidade-pelicula", icon: ShieldCheck, modulo: "produtos_pecas" as keyof PermissoesModulos },
   { title: "Serviços", url: "/servicos", icon: WrenchIcon, modulo: "servicos" as keyof PermissoesModulos },
   { title: "Dispositivos", url: "/dispositivos", icon: Tablet, modulo: "dispositivos" as keyof PermissoesModulos },
   { title: "Remessas Corporativas", url: "/remessas", icon: PackageCheck, modulo: "remessas_corporativas" as keyof PermissoesModulos },
@@ -90,12 +88,22 @@ const menuItems = [
   { title: "Configurações", url: "/configuracoes", icon: Settings, modulo: "configuracoes" as keyof PermissoesModulos },
   { title: "Suporte", url: "/suporte", icon: HelpCircle, modulo: "suporte" as keyof PermissoesModulos },
   { title: "Plano", url: "/plano", icon: CreditCard, modulo: "plano" as keyof PermissoesModulos },
-  { title: "Novidades", url: "/novidades", icon: Sparkles, modulo: "novidades" as keyof PermissoesModulos },
   { title: "Tutoriais", url: "/tutoriais", icon: Video, modulo: "tutoriais" as keyof PermissoesModulos },
   { title: "Baixar App", url: "/baixar-app", icon: Smartphone, modulo: "suporte" as keyof PermissoesModulos },
   { title: "Multi Empresas", url: "/multi-empresas", icon: Building2, modulo: "configuracoes" as keyof PermissoesModulos },
 ];
 
+// Agrupamento visual do menu — só organiza a exibição (ordem/rótulos de seção),
+// não altera rotas nem os filtros de permissão/plano aplicados a `menuItems` acima.
+// Itens fora de qualquer grupo (hoje só Configurações) ficam soltos, sem rótulo de
+// seção acima — Novidades foi removida do menu (rota /novidades continua ativa).
+const GRUPOS_MENU: { key: string; label: string; urls: string[] }[] = [
+  { key: "atendimento", label: "🛠️ Atendimento", urls: ["/dashboard", "/pdv", "/os", "/orcamentos", "/pedidos"] },
+  { key: "estoque", label: "📦 Estoque", urls: ["/produtos", "/compatibilidade-pelicula", "/servicos", "/dispositivos", "/catalogo", "/origem-dispositivos", "/remessas"] },
+  { key: "pessoas", label: "👥 Pessoas", urls: ["/clientes", "/fornecedores", "/equipe"] },
+  { key: "administrativo", label: "💰 Administrativo", urls: ["/contas", "/vendas", "/relatorios", "/financeiro", "/multi-empresas"] },
+  { key: "conta-suporte", label: "🧭 Conta & Suporte", urls: ["/plano", "/suporte", "/tutoriais", "/baixar-app"] },
+];
 const adminMenuItems = [
   { title: "Usuários", url: "/admin/usuarios", icon: Users, badgeKey: null },
   { title: "Financeiro", url: "/admin/financeiro", icon: CreditCard, badgeKey: null },
@@ -126,6 +134,18 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
+  // Mesma chave do AppSidebar (desktop) — estado compartilhado entre as duas telas.
+  // true = expandida. Ausente/false = recolhida (padrão a cada novo login — a chave
+  // é apagada no logout por clearSessionMeta). Persiste durante a sessão (F5,
+  // navegação, fechar aba), só é limpa no logout explícito.
+  const [gruposExpandidos, setGruposExpandidos] = useState<Record<string, boolean>>(() => {
+    try {
+      const salvo = localStorage.getItem(SIDEBAR_GRUPOS_EXPANDIDOS_KEY);
+      return salvo ? JSON.parse(salvo) : {};
+    } catch {
+      return {};
+    }
+  });
   const { badges } = useAdminBadges(isAdmin);
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
@@ -193,6 +213,79 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
 
   const isActive = (path: string) => location.pathname === path;
 
+  const toggleGrupo = (key: string) => {
+    setGruposExpandidos(prev => {
+      const novo = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem(SIDEBAR_GRUPOS_EXPANDIDOS_KEY, JSON.stringify(novo)); } catch { /* noop */ }
+      return novo;
+    });
+  };
+
+  const renderItem = (item: (typeof menuItems)[number]) => {
+    const tutorialId = tutorialTargetMap[item.url];
+    const temSubmenu = !!(item.items && item.items.length > 0);
+
+    if (temSubmenu) {
+      const expandido = !!expandidos[item.title];
+      return (
+        <div key={item.title}>
+          <button
+            onClick={() => setExpandidos(prev => ({ ...prev, [item.title]: !expandido }))}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
+              "active:scale-[0.98] touch-manipulation",
+              "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+            )}
+          >
+            <item.icon className="h-5 w-5 flex-shrink-0" />
+            <span className="flex-1 text-sm">{item.title}</span>
+            <ChevronRight className={cn("h-4 w-4 text-slate-600 transition-transform", expandido && "rotate-90")} />
+          </button>
+          {expandido && item.items?.map(sub => (
+            <button
+              key={sub.url}
+              onClick={() => handleNavigate(sub.url)}
+              className={cn(
+                "w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-lg transition-colors text-left",
+                "active:scale-[0.98] touch-manipulation",
+                isActive(sub.url)
+                  ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+              )}
+            >
+              <sub.icon className="h-4 w-4 flex-shrink-0" />
+              <span className="flex-1 text-sm">{sub.title}</span>
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <button
+        key={item.title}
+        onClick={() => handleNavigate(item.url)}
+        {...(tutorialId ? { "data-tutorial": tutorialId } : {})}
+        className={cn(
+          "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
+          "active:scale-[0.98] touch-manipulation",
+          isActive(item.url)
+            ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+            : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+        )}
+      >
+        <item.icon className="h-5 w-5 flex-shrink-0" />
+        <span className="flex-1 text-sm">{item.title}</span>
+        <ChevronRight className="h-4 w-4 text-slate-600" />
+      </button>
+    );
+  };
+
+  // Itens que não pertencem a nenhum dos grupos temáticos (Novidades e Configurações)
+  // ficam soltos na lista, sem rótulo de seção acima.
+  const urlsAgrupadas = new Set(GRUPOS_MENU.flatMap(g => g.urls));
+  const itensSoltos = menusVisiveis.filter(item => !urlsAgrupadas.has(item.url));
+
   return (
     <Drawer open={open} onOpenChange={(v) => {
       // Don't close if tutorial is active
@@ -222,65 +315,41 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                 </div>
               ))
             ) : (
-              menusVisiveis.map((item) => {
-                const tutorialId = tutorialTargetMap[item.url];
-                const temSubmenu = !!(item.items && item.items.length > 0);
-
-                if (temSubmenu) {
-                  const expandido = !!expandidos[item.title];
+              <>
+                {GRUPOS_MENU.map((grupo) => {
+                  const itensDoGrupo = grupo.urls
+                    .map(url => menusVisiveis.find(item => item.url === url))
+                    .filter((item): item is typeof menusVisiveis[number] => !!item);
+                  if (itensDoGrupo.length === 0) return null;
+                  const grupoColapsado = !gruposExpandidos[grupo.key];
                   return (
-                    <div key={item.title}>
+                    <div key={grupo.key} className={cn("last:mb-0 mt-2", grupoColapsado ? "mb-1" : "mb-3")}>
+                      {/* Cabeçalho de seção — VARIAÇÃO C (mais ousada): painel com fundo e
+                          borda própria, cor neutra (zinc, família diferente do slate usado
+                          nos itens), tracking bem largo. Mantém active:scale no toque (padrão
+                          já usado em todos os botões do drawer), sem nenhum outro feedback. */}
                       <button
-                        onClick={() => setExpandidos(prev => ({ ...prev, [item.title]: !expandido }))}
-                        className={cn(
-                          "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
-                          "active:scale-[0.98] touch-manipulation",
-                          "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                        )}
+                        type="button"
+                        onClick={() => toggleGrupo(grupo.key)}
+                        className="w-full flex items-center justify-between gap-2 rounded-md border border-white/10 bg-white/[0.06] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500 active:scale-[0.98] touch-manipulation"
                       >
-                        <item.icon className="h-5 w-5 flex-shrink-0" />
-                        <span className="flex-1 text-sm">{item.title}</span>
-                        <ChevronRight className={cn("h-4 w-4 text-slate-600 transition-transform", expandido && "rotate-90")} />
+                        <span>{grupo.label}</span>
+                        <ChevronRight className={cn("h-3 w-3 shrink-0 text-zinc-600 transition-transform", !grupoColapsado && "rotate-90")} />
                       </button>
-                      {expandido && item.items?.map(sub => (
-                        <button
-                          key={sub.url}
-                          onClick={() => handleNavigate(sub.url)}
-                          className={cn(
-                            "w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-lg transition-colors text-left",
-                            "active:scale-[0.98] touch-manipulation",
-                            isActive(sub.url)
-                              ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                              : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                          )}
-                        >
-                          <sub.icon className="h-4 w-4 flex-shrink-0" />
-                          <span className="flex-1 text-sm">{sub.title}</span>
-                        </button>
-                      ))}
+                      {!grupoColapsado && (
+                        <div className="space-y-1">
+                          {itensDoGrupo.map(renderItem)}
+                        </div>
+                      )}
                     </div>
                   );
-                }
-
-                return (
-                  <button
-                    key={item.title}
-                    onClick={() => handleNavigate(item.url)}
-                    {...(tutorialId ? { "data-tutorial": tutorialId } : {})}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
-                      "active:scale-[0.98] touch-manipulation",
-                      isActive(item.url)
-                        ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                    )}
-                  >
-                    <item.icon className="h-5 w-5 flex-shrink-0" />
-                    <span className="flex-1 text-sm">{item.title}</span>
-                    <ChevronRight className="h-4 w-4 text-slate-600" />
-                  </button>
-                );
-              })
+                })}
+                {itensSoltos.length > 0 && (
+                  <div className="space-y-1">
+                    {itensSoltos.map(renderItem)}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
