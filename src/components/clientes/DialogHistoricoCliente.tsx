@@ -18,6 +18,7 @@ import { Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { useClienteTracking } from "@/hooks/useClienteTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { DialogCompartilharClienteLink } from "@/components/clientes/DialogCompartilharClienteLink";
 
 interface DialogHistoricoClienteProps {
   open: boolean;
@@ -36,6 +37,8 @@ export function DialogHistoricoCliente({
 
   const { gerarLink, gerando } = useClienteTracking();
   const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
+  const [dialogCompartilharAberto, setDialogCompartilharAberto] = useState(false);
+  const [linkCompartilhamento, setLinkCompartilhamento] = useState("");
 
   const handleCompartilharLink = async () => {
     if (!cliente) return;
@@ -45,10 +48,8 @@ export function DialogHistoricoCliente({
     }
     const link = await gerarLink(cliente.id, lojaUserId ?? undefined);
     if (!link) return;
-    await navigator.clipboard.writeText(link);
-    toast.success("Link de acompanhamento copiado!", {
-      description: "O cliente vê todas as OS dele numa única página.",
-    });
+    setLinkCompartilhamento(link);
+    setDialogCompartilharAberto(true);
   };
 
   useEffect(() => {
@@ -102,6 +103,7 @@ export function DialogHistoricoCliente({
   if (!cliente) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -225,5 +227,14 @@ export function DialogHistoricoCliente({
         </div>
       </DialogContent>
     </Dialog>
+
+    <DialogCompartilharClienteLink
+      open={dialogCompartilharAberto}
+      onOpenChange={setDialogCompartilharAberto}
+      link={linkCompartilhamento}
+      nomeCliente={cliente.nome}
+      telefoneCliente={cliente.telefone}
+    />
+    </>
   );
 }

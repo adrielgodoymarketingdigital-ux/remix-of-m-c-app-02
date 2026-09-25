@@ -55,6 +55,8 @@ export interface OSTrackingCardData {
   data_saida: string | null;
   dispositivo_marca: string | null;
   dispositivo_modelo: string | null;
+  /** Opcional — só o link por cliente (AcompanharCliente.tsx) traz esse campo hoje. */
+  dispositivo_imei?: string | null;
 }
 
 export const formatCurrency = (v: number) =>

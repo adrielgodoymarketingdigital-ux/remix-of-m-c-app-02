@@ -39,6 +39,7 @@ type LinhaClienteTracking = {
   data_saida: string | null;
   dispositivo_marca: string | null;
   dispositivo_modelo: string | null;
+  dispositivo_imei: string | null;
 };
 
 // Uma linha por OS (LEFT JOIN no RPC) — cliente sem nenhuma OS ainda vem como
@@ -63,6 +64,7 @@ const mapearLinhas = (linhas: LinhaClienteTracking[]): ClienteTrackingDados => {
         data_saida: l.data_saida,
         dispositivo_marca: l.dispositivo_marca,
         dispositivo_modelo: l.dispositivo_modelo,
+        dispositivo_imei: l.dispositivo_imei,
       })),
     loja: primeira ? {
       nome_loja: primeira.nome_loja,
@@ -243,7 +245,7 @@ export default function AcompanharCliente() {
             totalGeral={osList.length}
           />
           {osListFiltrada.length === 0 ? (
-            <div className="w-full max-w-2xl rounded-2xl border p-8 text-center"
+            <div className="w-full max-w-4xl rounded-2xl border p-8 text-center"
               style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
               <p className="text-sm" style={{ color: tc.cor_texto_secundario }}>
                 Nenhuma ordem de serviço encontrada com os filtros aplicados.
@@ -320,7 +322,7 @@ function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral }
   const labelStyle = { color: tc.cor_texto_secundario + "80" };
 
   return (
-    <div className="w-full max-w-2xl rounded-2xl border p-4 mb-4 space-y-3" style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
+    <div className="w-full max-w-4xl rounded-2xl border p-4 mb-4 space-y-3" style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label className={labelClass} style={labelStyle}>Status</label>
@@ -422,14 +424,22 @@ interface ListaResumoProps {
 // data_saida só é preenchida quando a OS já foi entregue — nula = ainda em andamento.
 const formatDataSaidaResumo = (d: string | null) => (d ? formatDate(d) : "Em andamento");
 
+// Mesmo formato usado no card de detalhe (CardStatusOS): marca + modelo, "—" se os dois faltarem.
+const formatModelo = (os: OSResumo) => {
+  const texto = `${os.dispositivo_marca || ""} ${os.dispositivo_modelo || ""}`.trim();
+  return texto || "—";
+};
+
 function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
   const prim = tc.cor_primaria;
   return (
-    <div className="w-full max-w-2xl rounded-2xl border overflow-hidden" style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
+    <div className="w-full max-w-4xl rounded-2xl border overflow-hidden overflow-x-auto" style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
       <table className="w-full text-sm">
         <thead>
           <tr style={{ borderBottom: `1px solid ${prim}15` }}>
             <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Status</th>
+            <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Modelo</th>
+            <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>IMEI</th>
             <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Data de Entrada</th>
             <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Data de Saída</th>
             <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: tc.cor_texto_secundario + "80" }}>Valor</th>
@@ -448,6 +458,12 @@ function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
                   <span className="text-xs font-semibold" style={{ color: tc.cor_texto }}>#{os.numero_os}</span>
                   <BadgeStatus status={os.status} tc={tc} />
                 </div>
+              </td>
+              <td className="px-4 py-3" style={{ color: tc.cor_texto }}>
+                {formatModelo(os)}
+              </td>
+              <td className="px-4 py-3 font-mono text-xs" style={{ color: tc.cor_texto_secundario }}>
+                {os.dispositivo_imei || "—"}
               </td>
               <td className="px-4 py-3" style={{ color: tc.cor_texto }}>
                 {os.created_at ? formatDate(os.created_at) : "—"}
@@ -483,6 +499,14 @@ function ListaOSResumoMobile({ osList, tc, onSelecionar }: ListaResumoProps) {
               <span className="text-sm font-bold" style={{ color: tc.cor_texto }}>#{os.numero_os}</span>
               <BadgeStatus status={os.status} tc={tc} />
             </div>
+            {(os.dispositivo_marca || os.dispositivo_modelo || os.dispositivo_imei) && (
+              <div className="text-xs" style={{ color: tc.cor_texto_secundario }}>
+                {formatModelo(os)}
+                {os.dispositivo_imei && (
+                  <span className="font-mono"> · IMEI: {os.dispositivo_imei}</span>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs" style={{ color: tc.cor_texto_secundario }}>
               <span>Entrada: {os.created_at ? formatDate(os.created_at) : "—"}</span>
               <span style={{ color: os.data_saida ? tc.cor_texto_secundario : tc.cor_texto_secundario + "80" }}>

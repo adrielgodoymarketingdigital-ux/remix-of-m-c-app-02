@@ -28,6 +28,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { isAniversarioHoje, isAniversarioEsteMes, formatarDiaAniversario } from "@/hooks/useAniversariantes";
 import { useClienteTracking } from "@/hooks/useClienteTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { DialogCompartilharClienteLink } from "@/components/clientes/DialogCompartilharClienteLink";
 import { toast } from "sonner";
 
 const POR_PAGINA = 50;
@@ -54,6 +55,7 @@ export function TabelaClientes({
 
   const { gerarLink, gerando } = useClienteTracking();
   const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
+  const [dialogCompartilhar, setDialogCompartilhar] = useState<{ link: string; cliente: Cliente } | null>(null);
 
   const handleCompartilharLink = async (cliente: Cliente) => {
     if (!podeCompartilharLink) {
@@ -62,10 +64,7 @@ export function TabelaClientes({
     }
     const link = await gerarLink(cliente.id, lojaUserId ?? undefined);
     if (!link) return;
-    await navigator.clipboard.writeText(link);
-    toast.success("Link de acompanhamento copiado!", {
-      description: `Todas as OS de ${cliente.nome} em uma única página.`,
-    });
+    setDialogCompartilhar({ link, cliente });
   };
 
   // Volta para página 1 quando a lista de clientes muda (busca ou filtro)
@@ -279,6 +278,15 @@ export function TabelaClientes({
           </Card>
         ))}
         <Paginacao />
+        {dialogCompartilhar && (
+          <DialogCompartilharClienteLink
+            open={!!dialogCompartilhar}
+            onOpenChange={(open) => !open && setDialogCompartilhar(null)}
+            link={dialogCompartilhar.link}
+            nomeCliente={dialogCompartilhar.cliente.nome}
+            telefoneCliente={dialogCompartilhar.cliente.telefone}
+          />
+        )}
       </div>
     );
   }
@@ -400,6 +408,15 @@ export function TabelaClientes({
         </Table>
       </div>
       <Paginacao />
+      {dialogCompartilhar && (
+        <DialogCompartilharClienteLink
+          open={!!dialogCompartilhar}
+          onOpenChange={(open) => !open && setDialogCompartilhar(null)}
+          link={dialogCompartilhar.link}
+          nomeCliente={dialogCompartilhar.cliente.nome}
+          telefoneCliente={dialogCompartilhar.cliente.telefone}
+        />
+      )}
     </div>
   );
 }
