@@ -9,6 +9,7 @@ import {
 } from "@/types/relatorio-vendas";
 import { useToast } from "@/hooks/use-toast";
 import { useIdentidade } from "./useResolvedUserId";
+import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 
 export const useRelatoriosVendas = () => {
   const [loading, setLoading] = useState(false);
@@ -42,11 +43,13 @@ export const useRelatoriosVendas = () => {
         .eq("user_id", userId)
         .eq("tipo", "dispositivo");
 
+      // vendas.data é timestamptz — usar limites em UTC precisos (não a string de
+      // data pura). Ver src/lib/dataBrasilia.ts.
       if (filtros.dataInicio) {
-        query = query.gte("data", filtros.dataInicio);
+        query = query.gte("data", limitesDiaBrasilia(filtros.dataInicio).inicioISO);
       }
       if (filtros.dataFim) {
-        query = query.lte("data", filtros.dataFim);
+        query = query.lte("data", limitesDiaBrasilia(filtros.dataFim).fimISO);
       }
       if (empresaFiltroRef.current) { query = isFilialRef.current ? query.eq("empresa_id", empresaFiltroRef.current) : query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`); }
 
@@ -132,11 +135,13 @@ export const useRelatoriosVendas = () => {
         .eq("user_id", userId)
         .eq("tipo", "produto");
 
+      // vendas.data é timestamptz — usar limites em UTC precisos (não a string de
+      // data pura). Ver src/lib/dataBrasilia.ts.
       if (filtros.dataInicio) {
-        queryVendas = queryVendas.gte("data", filtros.dataInicio);
+        queryVendas = queryVendas.gte("data", limitesDiaBrasilia(filtros.dataInicio).inicioISO);
       }
       if (filtros.dataFim) {
-        queryVendas = queryVendas.lte("data", filtros.dataFim);
+        queryVendas = queryVendas.lte("data", limitesDiaBrasilia(filtros.dataFim).fimISO);
       }
       if (empresaFiltroRef.current) { queryVendas = isFilialRef.current ? queryVendas.eq("empresa_id", empresaFiltroRef.current) : queryVendas.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`); }
 
@@ -224,18 +229,22 @@ export const useRelatoriosVendas = () => {
       // pela confirmação de entrega). JAMAIS updated_at — muda a cada edição
       // e traz OS antigas pro período errado (mesmo padrão de
       // useRelatorios.ts / useVendas.ts). data_caixa é DATE puro, sem
-      // necessidade de sufixo de hora no fim do período.
+      // necessidade de conversão de fuso — mas created_at é timestamptz, e
+      // esse fallback usa limites em UTC precisos pelo mesmo motivo dos
+      // outros pontos deste arquivo (ver src/lib/dataBrasilia.ts).
+      const limiteInicioFallback = filtros.dataInicio ? limitesDiaBrasilia(filtros.dataInicio).inicioISO : null;
+      const limiteFimFallback = filtros.dataFim ? limitesDiaBrasilia(filtros.dataFim).fimISO : null;
       if (filtros.dataInicio && filtros.dataFim) {
         query = query.or(
-          `and(data_caixa.not.is.null,data_caixa.gte.${filtros.dataInicio},data_caixa.lte.${filtros.dataFim}),and(data_caixa.is.null,created_at.gte.${filtros.dataInicio},created_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_caixa.not.is.null,data_caixa.gte.${filtros.dataInicio},data_caixa.lte.${filtros.dataFim}),and(data_caixa.is.null,created_at.gte.${limiteInicioFallback},created_at.lte.${limiteFimFallback})`
         );
       } else if (filtros.dataInicio) {
         query = query.or(
-          `and(data_caixa.not.is.null,data_caixa.gte.${filtros.dataInicio}),and(data_caixa.is.null,created_at.gte.${filtros.dataInicio})`
+          `and(data_caixa.not.is.null,data_caixa.gte.${filtros.dataInicio}),and(data_caixa.is.null,created_at.gte.${limiteInicioFallback})`
         );
       } else if (filtros.dataFim) {
         query = query.or(
-          `and(data_caixa.not.is.null,data_caixa.lte.${filtros.dataFim}),and(data_caixa.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_caixa.not.is.null,data_caixa.lte.${filtros.dataFim}),and(data_caixa.is.null,created_at.lte.${limiteFimFallback})`
         );
       }
       if (empresaFiltroRef.current) { query = isFilialRef.current ? query.eq("empresa_id", empresaFiltroRef.current) : query.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`); }

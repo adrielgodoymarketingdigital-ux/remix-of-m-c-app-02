@@ -6,6 +6,7 @@ import { useIdentidade, applyEmpresaFilter } from "@/hooks/useResolvedUserId";
 import { formatCurrency } from "@/lib/formatters";
 import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento } from "@/lib/formaPagamento";
 import { FiltrosPeriodo } from "./FiltroPeriodoAvancado";
+import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 
 interface SecaoVendasPorFormaPagamentoProps {
   filtros: FiltrosPeriodo;
@@ -30,8 +31,11 @@ export function SecaoVendasPorFormaPagamento({ filtros }: SecaoVendasPorFormaPag
         .eq("user_id", userId)
         .or("cancelada.is.null,cancelada.eq.false");
 
-      if (filtros.dataInicio) query = query.gte("data", filtros.dataInicio);
-      if (filtros.dataFim) query = query.lte("data", `${filtros.dataFim}T23:59:59`);
+      // vendas.data é timestamptz — usar limites em UTC precisos (não a string de
+      // data pura, que o Postgres interpretaria à meia-noite UTC, 3h adiantada
+      // em relação à meia-noite de Brasília). Ver src/lib/dataBrasilia.ts.
+      if (filtros.dataInicio) query = query.gte("data", limitesDiaBrasilia(filtros.dataInicio).inicioISO);
+      if (filtros.dataFim) query = query.lte("data", limitesDiaBrasilia(filtros.dataFim).fimISO);
 
       query = applyEmpresaFilter(query, empresaId, isFilial);
 

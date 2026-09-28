@@ -9,6 +9,7 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { FiltrosPeriodo } from "./FiltroPeriodoAvancado";
+import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 
 interface SecaoLucratividadePorServicoProps {
   filtros: FiltrosPeriodo;
@@ -110,8 +111,10 @@ export function SecaoLucratividadePorServico({ filtros }: SecaoLucratividadePorS
         .not("tempo_gasto_horas", "is", null)
         .gt("tempo_gasto_horas", 0);
 
-      if (filtros.dataInicio) query = query.gte("data_saida", filtros.dataInicio);
-      if (filtros.dataFim) query = query.lte("data_saida", `${filtros.dataFim}T23:59:59`);
+      // ordens_servico.data_saida é timestamptz — usar limites em UTC precisos
+      // (não a string de data pura). Ver src/lib/dataBrasilia.ts.
+      if (filtros.dataInicio) query = query.gte("data_saida", limitesDiaBrasilia(filtros.dataInicio).inicioISO);
+      if (filtros.dataFim) query = query.lte("data_saida", limitesDiaBrasilia(filtros.dataFim).fimISO);
 
       query = applyEmpresaFilter(query, empresaId, isFilial);
 

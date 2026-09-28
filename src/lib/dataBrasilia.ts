@@ -52,3 +52,38 @@ export function nowBrasilia(): Date {
 export function dataBrasiliaISO(instant: Date = new Date()): string {
   return toBrasilia(instant).toISOString().split("T")[0];
 }
+
+/**
+ * Início e fim de um dia de calendário de Brasília (00:00:00.000 e
+ * 23:59:59.999 locais), como timestamps UTC precisos e explícitos —
+ * prontos pra usar em `.gte()/.lte()` contra colunas `timestamptz`.
+ *
+ * Existe porque mandar a string de data pura (ou uma string "YYYY-MM-
+ * DDTHH:mm:ss" sem sufixo de fuso) direto pro Postgres faz ele interpretar
+ * o horário na timezone da SESSÃO do banco — UTC no Supabase, não Brasília
+ * — e qualquer evento entre 21h e meia-noite (horário de Brasília) cai no
+ * dia UTC seguinte, errando o filtro por até 3h (bug confirmado em
+ * useRelatoriosVendas.ts e nas seções de Financeiro — ver DIVIDA-TECNICA.md
+ * pro que ainda não foi migrado pra este helper).
+ *
+ * `dataYYYYMMDD` é a data de calendário de Brasília desejada (normalmente
+ * vinda de `dataBrasiliaISO()`/`FiltroPeriodoAvancado`). O deslocamento
+ * Brasília↔UTC é recalculado a cada chamada via `toBrasilia` (mesmo
+ * mecanismo do resto deste arquivo) em vez de fixar "-03:00" — continua
+ * correto mesmo se a regra de fuso do Brasil mudar no futuro.
+ */
+export function limitesDiaBrasilia(dataYYYYMMDD: string): { inicioISO: string; fimISO: string } {
+  const [year, month, day] = dataYYYYMMDD.split("-").map(Number);
+
+  // Palpite: meia-noite UTC do dia informado. Descobre quanto esse instante
+  // "desliza" quando reinterpretado em Brasília — esse deslocamento é o
+  // mesmo (em Brasília, hoje, sempre 3h) usado pra corrigir início e fim.
+  const palpiteUTC = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+  const palpiteEmBrasilia = toBrasilia(new Date(palpiteUTC)).getTime();
+  const deslocamentoMs = palpiteUTC - palpiteEmBrasilia;
+
+  const inicioISO = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0) + deslocamentoMs).toISOString();
+  const fimISO = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999) + deslocamentoMs).toISOString();
+
+  return { inicioISO, fimISO };
+}

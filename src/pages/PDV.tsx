@@ -53,11 +53,20 @@ import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustom
 import { DialogFormasPagamentoConfig } from "@/components/pdv/DialogFormasPagamentoConfig";
 import { DialogSangria } from "@/components/pdv/DialogSangria";
 
-/** Retorna a data de hoje no formato YYYY-MM-DD no timezone local do usuário.
- * Necessário porque new Date().toISOString() retorna UTC, o que pode salvar
- * a data do dia anterior para usuários no UTC-3 (Brasil) após as 21h. */
-const agora = (): string => new Date().toISOString();
-const dataLocalHoje = agora;
+/**
+ * Timestamp UTC completo do instante atual (ex.: "2026-09-27T00:13:55.178Z"),
+ * não uma data de calendário local — apesar do nome anterior ("dataLocalHoje")
+ * sugerir o contrário. Correto para colunas timestamptz (ex.: vendas.data):
+ * o Postgres guarda o instante exato, sem ambiguidade de fuso.
+ *
+ * ⚠️ NÃO usar como valor de coluna `date` pura (ex.: contas.data) — nesse
+ * caso o Postgres trunca pra data usando o fuso da SESSÃO do banco (UTC),
+ * não Brasília, e uma venda feita entre 21h e meia-noite (horário de
+ * Brasília) grava a data do dia UTC seguinte. Esse uso já existe abaixo
+ * (contas a receber de venda a prazo) e não foi corrigido nesta entrega —
+ * ver DIVIDA-TECNICA.md.
+ */
+const agoraISO = (): string => new Date().toISOString();
 
 const clienteSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -474,7 +483,7 @@ const PDV = () => {
             user_id: userIdParaVenda,
             empresa_id: empresaIdPDV,
             // Campo data é obrigatório para filtros de comissão/relatórios por período
-            data: dataLocalHoje(),
+            data: agoraISO(),
             data_prevista_recebimento: dataPrevisao,
             recebido: formaPagamento !== "a_receber",
             grupo_venda: grupoVendaId,
@@ -527,7 +536,7 @@ const PDV = () => {
                 nome: `Venda - ${nomeItem} - ${nomeCliente}${sufixoParcela}`,
                 tipo: "receber",
                 valor: valorPrimeiraForma,
-                data: dataPrevisao || dataLocalHoje(),
+                data: dataPrevisao || agoraISO(),
                 data_vencimento: dataPrevisao || null,
                 status: "pendente",
                 recorrente: false,
@@ -624,7 +633,7 @@ const PDV = () => {
               user_id: userIdParaVenda,
               empresa_id: empresaIdPDV,
               // Campo data obrigatório para filtros por período
-              data: dataLocalHoje(),
+              data: agoraISO(),
               data_prevista_recebimento: dataPrevisaoSegunda,
               recebido: segundaFormaPagamento !== "a_receber",
               grupo_venda: grupoVendaId,
@@ -652,7 +661,7 @@ const PDV = () => {
                 nome: `Venda - ${item.nome} - ${clienteSelecionado?.nome || "Cliente avulso"}${sufixoParcela} (2ª forma)`,
                 tipo: "receber",
                 valor: valorItemSegundaParcela,
-                data: dataPrevisaoSegunda || dataLocalHoje(),
+                data: dataPrevisaoSegunda || agoraISO(),
                 data_vencimento: dataPrevisaoSegunda || null,
                 status: "pendente",
                 recorrente: false,
@@ -679,7 +688,7 @@ const PDV = () => {
               nome: `Taxa Cartão ${taxaSel.bandeira} - Venda PDV`,
               tipo: "pagar" as const,
               valor: valorTaxa,
-              data: dataLocalHoje(),
+              data: agoraISO(),
               status: "pago" as const,
               recorrente: false,
               categoria: "Taxa de Cartão",
@@ -720,7 +729,7 @@ const PDV = () => {
           formaPagamento: formaPagamento,
           nomeFormaPagamento: getLabelFormaPagamento(formaPagamento),
           numeroParcelas: formaPagamento === "credito_parcelado" ? numeroParcelas : undefined,
-          data: agora(),
+          data: agoraISO(),
           grupoVendaId: grupoVendaId,
           numeroVenda: vendasRegistradas[0]?.numero_venda ?? null,
           empresaId: empresaIdPDV,
