@@ -490,6 +490,7 @@ export const DialogOrdemServicoSimplificada = ({
                     <SelectItem value="google">Google</SelectItem>
                     <SelectItem value="facebook">Facebook</SelectItem>
                     <SelectItem value="youtube">YouTube</SelectItem>
+                    <SelectItem value="chatgpt_ads">ChatGPT Ads</SelectItem>
                     <SelectItem value="indicacao">Indicação</SelectItem>
                     <SelectItem value="outro">Outro</SelectItem>
                   </SelectContent>

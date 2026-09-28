@@ -93,6 +93,7 @@ const ORIGEM_LABELS: Record<string, string> = {
   google: "Google",
   facebook: "Facebook",
   youtube: "YouTube",
+  chatgpt_ads: "ChatGPT Ads",
   indicacao: "Indicação",
   outro: "Outro",
 };
@@ -267,6 +268,7 @@ export const BuscaOrdemServico = ({
                       <SelectItem value="google">Google</SelectItem>
                       <SelectItem value="facebook">Facebook</SelectItem>
                       <SelectItem value="youtube">YouTube</SelectItem>
+                      <SelectItem value="chatgpt_ads">ChatGPT Ads</SelectItem>
                       <SelectItem value="indicacao">Indicação</SelectItem>
                       <SelectItem value="outro">Outro</SelectItem>
                     </SelectContent>
@@ -427,6 +429,7 @@ export const BuscaOrdemServico = ({
               <SelectItem value="google">Google</SelectItem>
               <SelectItem value="facebook">Facebook</SelectItem>
               <SelectItem value="youtube">YouTube</SelectItem>
+              <SelectItem value="chatgpt_ads">ChatGPT Ads</SelectItem>
               <SelectItem value="indicacao">Indicação</SelectItem>
               <SelectItem value="outro">Outro</SelectItem>
             </SelectContent>
