@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormularioPerfilLoja } from "@/components/configuracoes/FormularioPerfilLoja";
 import { UploadLogoLoja } from "@/components/configuracoes/UploadLogoLoja";
+import { AssinaturaLojaConfig } from "@/components/configuracoes/AssinaturaLojaConfig";
 import { BadgeStatusPerfil } from "@/components/configuracoes/BadgeStatusPerfil";
 import { PreviewRecibo } from "@/components/configuracoes/PreviewRecibo";
 import { SeletorTema } from "@/components/configuracoes/SeletorTema";
@@ -183,6 +184,11 @@ export default function Configuracoes() {
               <UploadLogoLoja
                 logoAtual={config?.logo_url}
                 onUploadSuccess={handleUploadLogo}
+              />
+              <AssinaturaLojaConfig
+                assinaturaAtual={config?.assinatura_loja}
+                usarAssinatura={config?.usar_assinatura_loja}
+                onSalvar={handleSalvarDados}
               />
             </TabsContent>
 

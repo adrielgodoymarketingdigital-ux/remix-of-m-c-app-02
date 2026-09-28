@@ -917,6 +917,8 @@ export type Database = {
           updated_at: string | null
           user_id: string
           valor_hora_referencia: number | null
+          assinatura_loja: string | null
+          usar_assinatura_loja: boolean
           whatsapp: string | null
         }
         Insert: {
@@ -961,6 +963,8 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           valor_hora_referencia?: number | null
+          assinatura_loja?: string | null
+          usar_assinatura_loja?: boolean
           whatsapp?: string | null
         }
         Update: {
@@ -1005,6 +1009,8 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           valor_hora_referencia?: number | null
+          assinatura_loja?: string | null
+          usar_assinatura_loja?: boolean
           whatsapp?: string | null
         }
         Relationships: [

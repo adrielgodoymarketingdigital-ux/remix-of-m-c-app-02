@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot, urlParaBase64 } from "@/lib/printMobile";
 import {
   buscarContasReceberOS,
@@ -101,7 +102,7 @@ export function DialogEmitirReciboOS({ open, onOpenChange, ordem }: DialogEmitir
       cnpj: configLoja?.cnpj,
       telefone: configLoja?.telefone,
       endereco: configLoja?.endereco,
-    });
+    }, assinaturaLojaAtiva(configLoja));
 
   const compartilharPDF = async (formato: FormatoReciboOS, comMensagem: boolean) => {
     const dados = dadosRecibo();

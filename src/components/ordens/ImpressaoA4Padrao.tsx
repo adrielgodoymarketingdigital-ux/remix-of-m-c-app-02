@@ -8,6 +8,7 @@ import { checklistIcons } from "@/lib/checklist-icons";
 import { CheckCircle2, XCircle, User, Smartphone, Lock, FileText, DollarSign, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
+import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 
 interface Props {
   ordem: OrdemServico;
@@ -23,6 +24,7 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
   const avariasVisuais = (avariasData?.avarias_visuais || []) as AvariaVisual[];
   const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
   const assinaturas = avariasData?.assinaturas;
+  const assinaturaLoja = assinaturaLojaAtiva(configuracaoLoja);
 
   let servicosRealizados: ServicoRealizado[] = (avariasData?.servicos_realizados || []) as ServicoRealizado[];
   if (servicosRealizados.length === 0 && (avariasData as any)?.servicos_inline?.length > 0) {
@@ -456,6 +458,14 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
                 : `${configuracaoLoja?.endereco?.split(",")[1]?.trim() || "________"}, ___/___/______`}
             </span>
           </div>
+          {assinaturaLoja && (
+            <div className="impressao-assinatura">
+              <div className="impressao-assinatura-digital">
+                <img src={assinaturaLoja} alt="Assinatura da Loja" className="impressao-assinatura-imagem" />
+              </div>
+              <span className="impressao-assinatura-label">Assinatura da Loja</span>
+            </div>
+          )}
         </div>
       )}
     </div>

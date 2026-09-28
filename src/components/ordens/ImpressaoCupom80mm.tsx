@@ -9,6 +9,7 @@ import { checklistIcons } from "@/lib/checklist-icons";
 import { CheckCircle2, XCircle, Smartphone } from "lucide-react";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { obterTermoGarantia } from "@/lib/termo-garantia-utils";
+import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 
 const CONFIG_80MM_PADRAO: Layout80mmConfig = {
   mostrar_logo: true,
@@ -42,6 +43,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
   const avariasVisuais = (avariasData?.avarias_visuais || []) as AvariaVisual[];
   const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
   const assinaturas = avariasData?.assinaturas;
+  const assinaturaLoja = assinaturaLojaAtiva(configuracaoLoja);
   // Suportar ambos os formatos: servicos_realizados (novo) e servicos_inline (onboarding)
   let servicosRealizados: ServicoRealizado[] = (avariasData?.servicos_realizados || []) as ServicoRealizado[];
   if (servicosRealizados.length === 0 && (avariasData as any)?.servicos_inline?.length > 0) {
@@ -354,6 +356,12 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
             )}
             <div className="cupom-small">Assinatura do Cliente (Saída)</div>
           </div>
+          {assinaturaLoja && (
+            <div className="cupom-assinatura-bloco">
+              <img src={assinaturaLoja} alt="Assinatura da Loja" className="cupom-assinatura-img" />
+              <div className="cupom-small">Assinatura da Loja</div>
+            </div>
+          )}
         </div>
       )}
     </div>

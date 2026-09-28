@@ -211,6 +211,9 @@ export interface ConfiguracaoLoja {
   tracking_config?: TrackingPageConfig;
   permissoes_multiempresa?: PermissoesMultiempresa;
   valor_hora_referencia?: number | null;
+  /** Data URI PNG da assinatura da loja — só usada quando usar_assinatura_loja = true. */
+  assinatura_loja?: string | null;
+  usar_assinatura_loja?: boolean;
   created_at: string;
   updated_at: string;
 }

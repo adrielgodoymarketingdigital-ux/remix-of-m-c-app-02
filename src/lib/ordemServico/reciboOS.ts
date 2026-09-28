@@ -3,6 +3,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { toBrasilia } from "@/lib/dataBrasilia";
 import type { AvariasOS, ServicoRealizado, ProdutoUtilizado } from "@/types/ordem-servico";
 import type { RecebimentoOS } from "@/lib/ordemServico/calcularRecebimentoOS";
+import { adicionarImagemContida } from "@/lib/assinaturaLoja";
 
 export type FormatoReciboOS = "a4" | "80mm";
 
@@ -26,6 +27,8 @@ export interface DadosReciboOS {
   aReceber: number;
   /** YYYY-MM-DD ou null (sem prazo) */
   vencimentoSaldo: string | null;
+  /** Data URI da assinatura da loja — só quando ativada (ver assinaturaLojaAtiva). */
+  assinaturaLoja?: string | null;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -51,6 +54,7 @@ export function montarDadosReciboOS(
   ordem: OrdemReciboLike,
   recebimento: RecebimentoOS,
   loja: DadosReciboOS["loja"],
+  assinaturaLoja: string | null = null,
 ): DadosReciboOS {
   const avarias = (ordem.avarias ?? null) as (AvariasOS & { servicos_inline?: { nome: string }[] }) | null;
 
@@ -75,6 +79,7 @@ export function montarDadosReciboOS(
     recebido: recebimento.recebido,
     aReceber: recebimento.aReceber,
     vencimentoSaldo: recebimento.vencimentoSaldo,
+    assinaturaLoja,
   };
 }
 
@@ -114,6 +119,7 @@ export function montarCssReciboOS(formato: FormatoReciboOS): string {
     .recibo-os-destaque { font-size: ${termico ? "14px" : "17px"}; font-weight: 900; text-align: center; padding: 6px 0;
       border-top: 2px dashed #000; border-bottom: 2px dashed #000; margin: 8px 0; }
     .recibo-os-assinatura { margin-top: ${termico ? "14mm" : "22mm"}; text-align: center; }
+    .recibo-os-assinatura-img { display: block; max-width: ${termico ? "45mm" : "60mm"}; max-height: ${termico ? "16mm" : "20mm"}; margin: 0 auto 1mm !important; }
     .recibo-os-rasp { border-top: 1px solid #000; width: 70%; margin: 0 auto 3px !important; }
     .recibo-os-cap { font-size: ${termico ? "10px" : "11px"}; }
   `;
@@ -161,7 +167,8 @@ export function montarBodyReciboOS(d: DadosReciboOS, logoSrc: string | null): st
   <div class="recibo-os-destaque">Valor recebido: ${formatCurrency(d.recebido)}</div>
   ${aReceber}
 
-  <div class="recibo-os-assinatura">
+  <div class="recibo-os-assinatura"${d.assinaturaLoja ? ' style="margin-top: 6mm"' : ""}>
+    ${d.assinaturaLoja ? `<img class="recibo-os-assinatura-img" src="${esc(d.assinaturaLoja)}" alt="Assinatura da Loja">` : ""}
     <div class="recibo-os-rasp"></div>
     <div class="recibo-os-cap">${esc(d.loja.nome_loja || "")}</div>
   </div>
@@ -305,8 +312,16 @@ function desenharReciboPDF(doc: jsPDF, d: DadosReciboOS, logoBase64: string | nu
     linha("Vencimento:", textoVencimento(d));
   }
 
-  // Assinatura
-  y += termico ? 12 : 22;
+  // Assinatura (imagem da loja em cima da linha, quando ativada)
+  if (d.assinaturaLoja) {
+    const alturaMax = termico ? 16 : 20;
+    y += termico ? 4 : 8;
+    const larguraBox = util * 0.7;
+    const desenhada = adicionarImagemContida(doc, d.assinaturaLoja, centro - larguraBox / 2, y, larguraBox, alturaMax);
+    y += (desenhada > 0 ? alturaMax : termico ? 8 : 14) + 1;
+  } else {
+    y += termico ? 12 : 22;
+  }
   doc.setLineWidth(0.3);
   doc.line(centro - util * 0.35, y, centro + util * 0.35, y);
   y += passo * 0.8;

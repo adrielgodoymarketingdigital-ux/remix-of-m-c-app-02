@@ -5,6 +5,7 @@ import { ConfiguracaoLoja, LayoutOSConfig } from '@/types/configuracao-loja';
 import { OrdemServico } from '@/hooks/useOrdensServico';
 import { decryptSenhaDesbloqueio } from './password-encryption';
 import { obterTermoGarantia, LAYOUT_PADRAO } from './termo-garantia-utils';
+import { adicionarImagemContida, assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 
 // Formatar data/hora Brasil
 const formatarDataHoraBrasil = (dataISO: string): string => {
@@ -73,6 +74,7 @@ export async function gerarOrdemServicoPDF(
   loja?: ConfiguracaoLoja,
   tipo: TipoPDFOS = 'completo'
 ): Promise<Blob> {
+  const assinaturaLoja = assinaturaLojaAtiva(loja);
   const doc = new jsPDF();
   const margemEsquerda = 15;
   const margemDireita = 195;
@@ -791,7 +793,12 @@ export async function gerarOrdemServicoPDF(
     });
 
     yT += 10;
-    verificarNovaPaginaTermo(40);
+    verificarNovaPaginaTermo(assinaturaLoja ? 60 : 40);
+    if (assinaturaLoja) {
+      // Assinatura da loja em cima da linha do responsável
+      yT += 18;
+      adicionarImagemContida(docTermo, assinaturaLoja, 110, yT - 19, mD - 110, 18);
+    }
     docTermo.setFontSize(9);
     docTermo.line(mE, yT, 90, yT);
     docTermo.text('Assinatura do Cliente', mE + 15, yT + 5);
@@ -946,16 +953,35 @@ export async function gerarOrdemServicoPDF(
       yPos += alturaAssinatura + 10;
     }
 
+    if (assinaturaLoja) {
+      verificarNovaPagina(45);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Assinatura da Loja:', margemEsquerda, yPos);
+      yPos += 3;
+      doc.setDrawColor(180);
+      doc.setLineWidth(0.3);
+      doc.rect(margemEsquerda, yPos, larguraAssinatura, alturaAssinatura);
+      adicionarImagemContida(doc, assinaturaLoja, margemEsquerda + 2, yPos + 2, larguraAssinatura - 4, alturaAssinatura - 4);
+      yPos += alturaAssinatura + 10;
+    }
+
     doc.setDrawColor(200);
     doc.line(margemEsquerda, yPos, margemDireita, yPos);
     yPos += 8;
   } else {
     // Área para assinaturas manuais (caso não tenha digital)
-    verificarNovaPagina(40);
+    verificarNovaPagina(assinaturaLoja ? 60 : 40);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text('ASSINATURAS', margemEsquerda, yPos);
     yPos += 10;
+
+    if (assinaturaLoja) {
+      // Assinatura da loja em cima da linha do responsável
+      yPos += 16;
+      adicionarImagemContida(doc, assinaturaLoja, 110, yPos - 19, margemDireita - 110, 18);
+    }
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -1458,6 +1484,22 @@ export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: 
         assinaturas.data_assinatura_entrada
       );
       blocoAssinatura('Cliente (Saída)', assinaturas.cliente_saida, assinaturas.data_assinatura_saida);
+      const assinaturaLoja = assinaturaLojaAtiva(loja);
+      if (assinaturaLoja) {
+        // Proporção preservada (blocoAssinatura estica a imagem na largura toda)
+        y += 3;
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(35, 35, 35);
+        doc.text('Loja', margin + 2, y);
+        y += 2;
+        const desenhada = adicionarImagemContida(doc, assinaturaLoja, margin + 2, y, larguraAssinatura, alturaAssinatura);
+        y += (desenhada > 0 ? alturaAssinatura : 6) + 1;
+        doc.setDrawColor(120, 120, 120);
+        doc.setLineWidth(0.2);
+        doc.line(margin + 2, y, pageWidth - margin - 2, y);
+        y += 4;
+      }
       y += 2;
     }
 
