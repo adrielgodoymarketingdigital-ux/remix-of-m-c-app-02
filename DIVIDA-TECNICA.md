@@ -59,3 +59,41 @@ meia-noite de Brasília grava a conta a receber com a data do dia UTC
 seguinte (um dia adiantada). Não corrigido nesta entrega — precisa de
 `dataBrasiliaISO()` (já existe em `src/lib/dataBrasilia.ts`) no lugar de
 `agoraISO()` nesses 3 pontos específicos.
+
+## Conta a receber de OS — edição e entrega desfazem o modelo novo (`pagamentos_contas`)
+
+**Contexto:** levantado em 2026-09-28 durante a investigação do "Emitir Recibo"
+da OS. Números de produção (consulta de leitura, contas `tipo='receber'` com
+`os_numero` preenchido):
+
+- **9.252** contas no modelo antigo (`usa_historico_pagamentos = false`) e
+  **753** no modelo novo (`true`).
+- No modelo novo: **10** contas com `valor` divergente do `ordens_servico.total`
+  e **4** com `valor_pago` divergente da soma dos `pagamentos_contas` não
+  estornados.
+- Das 537 contas do modelo novo com `status='recebido'`, **529 não têm nenhuma
+  linha em `pagamentos_contas`** — a quitação foi gravada direto na conta.
+- **90** OS têm mais de uma conta a receber (duplicatas; 5 delas com mais de
+  uma pendente).
+
+**Causa:** os dois modelos coexistem e só a CRIAÇÃO da OS usa o novo:
+
+- `src/lib/ordemServico/criarContaAReceberOS.ts` (criação) — modelo novo:
+  `valor` = total, entrada vira linha em `pagamentos_contas`, trigger
+  `sync_conta_from_pagamentos` mantém `valor_pago`/`status`.
+- `src/components/ordens/ordem-servico-wizard/handleSubmitOrdemServico.ts`
+  (edição, bloco "ATUALIZAR OU CRIAR CONTA A RECEBER AO EDITAR OS") e
+  `src/components/ordens/DialogAssinaturaSaida.tsx` (entrega) — gravam no
+  modelo ANTIGO (`valor` = saldo, `valor_pago` = entrada, `status='recebido'`
+  direto), inclusive por cima de conta do modelo novo. O trigger não roda
+  nesses updates, então `valor_pago` e o histórico ficam dessincronizados.
+
+**Impacto:** `pagamentos_contas` não pode ser tratado como fonte de verdade
+dos recebimentos de OS, e `contas.valor` tem significado diferente conforme o
+caminho que tocou a conta por último. O recibo da OS
+(`src/lib/ordemServico/calcularRecebimentoOS.ts`) contorna isso ancorando no
+`ordens_servico.total`.
+
+**Não corrigido de propósito:** mexe em fluxo financeiro de produção (edição e
+entrega de OS, caixa, ajuste retroativo de caixas fechados) — precisa de
+entrega dedicada, com plano de migração/backfill das contas já afetadas.

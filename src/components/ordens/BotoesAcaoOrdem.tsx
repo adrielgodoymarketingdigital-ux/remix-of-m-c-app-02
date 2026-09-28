@@ -1,4 +1,4 @@
-import { Eye, Pencil, Printer, Trash2, MessageSquare, FileText, Tag, RadioTower, MoreHorizontal } from "lucide-react";
+import { Eye, Pencil, Printer, Trash2, MessageSquare, FileText, Tag, RadioTower, MoreHorizontal, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -23,6 +23,8 @@ interface BotoesAcaoOrdemProps {
   onCompartilhar?: () => void;
   onImprimirTermo?: () => void;
   onImprimirEtiqueta?: () => void;
+  /** Só no menu "..." — não é uma ação configurável em acoes_principais. */
+  onEmitirRecibo?: () => void;
   termoAtivo?: boolean;
   compacto?: boolean;
   acoesAtivas?: string[];
@@ -39,6 +41,7 @@ export const BotoesAcaoOrdem = ({
   onCompartilhar,
   onImprimirTermo,
   onImprimirEtiqueta,
+  onEmitirRecibo,
   termoAtivo,
   compacto = false,
   acoesAtivas,
@@ -56,6 +59,7 @@ export const BotoesAcaoOrdem = ({
     (!acoesAtivas.includes('etiqueta') && onImprimirEtiqueta) ||
     (!acoesAtivas.includes('termo') && termoAtivo && onImprimirTermo) ||
     (!acoesAtivas.includes('compartilhar') && onCompartilhar) ||
+    onEmitirRecibo ||
     (!acoesAtivas.includes('excluir'))
   );
 
@@ -197,6 +201,12 @@ export const BotoesAcaoOrdem = ({
                 <DropdownMenuItem onClick={onCompartilhar}>
                   <RadioTower className="h-4 w-4 mr-2" />
                   Acompanhamento OS
+                </DropdownMenuItem>
+              )}
+              {onEmitirRecibo && (
+                <DropdownMenuItem onClick={onEmitirRecibo}>
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Emitir Recibo
                 </DropdownMenuItem>
               )}
               {!acoesAtivas?.includes('excluir') && (

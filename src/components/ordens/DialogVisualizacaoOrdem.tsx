@@ -10,12 +10,13 @@ import { SilhuetaComAvarias } from "./SilhuetaComAvarias";
 import { PatternLockVisualizacao } from "./PatternLockVisualizacao";
 import { DialogAssinaturaSaida } from "./DialogAssinaturaSaida";
 import { DialogEnviarWhatsApp } from "./DialogEnviarWhatsApp";
+import { DialogEmitirReciboOS } from "./DialogEmitirReciboOS";
 import {
   User, Smartphone, CheckCircle2, XCircle, PenTool,
   Camera, Hash, Calendar, Clock,
   MapPin, Phone, CreditCard, Wrench, Lock, FileText,
   RadioTower, Copy, ExternalLink, Loader2, Package, History,
-  X, Pencil, DollarSign,
+  X, Pencil, DollarSign, Receipt,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { checklistIcons } from "@/lib/checklist-icons";
@@ -41,6 +42,7 @@ interface DialogVisualizacaoOrdemProps {
 export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, onEditar }: DialogVisualizacaoOrdemProps) => {
   const [dialogAssinaturaSaidaAberto, setDialogAssinaturaSaidaAberto] = useState(false);
   const [dialogWhatsAppAberto, setDialogWhatsAppAberto] = useState(false);
+  const [dialogReciboAberto, setDialogReciboAberto] = useState(false);
   const [linkAcompanhamento, setLinkAcompanhamento] = useState<string | null>(null);
   const [historico, setHistorico] = useState<any[]>([]);
   const { config: configuracaoLoja } = useConfiguracaoLoja(ordem?.empresa_id);
@@ -620,7 +622,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
         </div>
 
         {/* Footer */}
-        <div className="grid grid-cols-2 gap-2 px-3 sm:px-5 py-3 border-t border-border/40 bg-muted/10 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="grid grid-cols-3 gap-2 px-3 sm:px-5 py-3 border-t border-border/40 bg-muted/10 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <Button
             variant="outline"
             size="sm"
@@ -629,6 +631,15 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
           >
             <FaWhatsapp className="h-3.5 w-3.5" />
             WhatsApp
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDialogReciboAberto(true)}
+            className="gap-1.5 text-xs h-9"
+          >
+            <Receipt className="h-3.5 w-3.5" />
+            Emitir Recibo
           </Button>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="text-xs h-9">
             Fechar
@@ -648,6 +659,12 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
         onOpenChange={setDialogWhatsAppAberto}
         ordem={ordem}
         loja={configuracaoLoja || undefined}
+      />
+
+      <DialogEmitirReciboOS
+        open={dialogReciboAberto}
+        onOpenChange={setDialogReciboAberto}
+        ordem={ordem}
       />
     </Dialog>
   );

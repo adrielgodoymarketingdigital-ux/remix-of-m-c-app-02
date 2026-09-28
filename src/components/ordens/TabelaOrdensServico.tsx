@@ -55,6 +55,7 @@ interface TabelaOrdensServicoProps {
   onCompartilhar?: (ordem: OrdemServico) => void;
   onImprimirTermo?: (ordem: OrdemServico) => void;
   onImprimirEtiqueta?: (ordem: OrdemServico) => void;
+  onEmitirRecibo?: (ordem: OrdemServico) => void;
   termoAtivo?: boolean;
   selecaoAtiva?: boolean;
   itensSelecionados?: Set<string>;
@@ -76,6 +77,7 @@ export const TabelaOrdensServico = ({
   onCompartilhar,
   onImprimirTermo,
   onImprimirEtiqueta,
+  onEmitirRecibo,
   termoAtivo,
   selecaoAtiva = false,
   itensSelecionados = new Set(),
@@ -273,6 +275,7 @@ export const TabelaOrdensServico = ({
                       onCompartilhar={() => onCompartilhar?.(ordem)}
                       onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
                       onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
+                      onEmitirRecibo={onEmitirRecibo && !(ordem.avarias as { is_avulso?: boolean } | null)?.is_avulso ? () => onEmitirRecibo(ordem) : undefined}
                       termoAtivo={termoAtivo}
                       acoesAtivas={acoesAtivas}
                       corIconesNeutros="text-foreground"
@@ -549,6 +552,7 @@ export const TabelaOrdensServico = ({
                     onCompartilhar={() => onCompartilhar?.(ordem)}
                     onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
                     onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
+                    onEmitirRecibo={onEmitirRecibo && !(ordem.avarias as { is_avulso?: boolean } | null)?.is_avulso ? () => onEmitirRecibo(ordem) : undefined}
                     termoAtivo={termoAtivo}
                     acoesAtivas={acoesAtivas}
                     compacto

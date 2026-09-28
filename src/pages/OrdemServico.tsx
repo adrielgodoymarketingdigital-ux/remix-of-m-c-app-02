@@ -68,6 +68,7 @@ const DialogOrdemServicoSimplificada = lazy(() => import("@/components/ordens/Di
 const DialogVisualizacaoOrdem = lazy(() => import("@/components/ordens/DialogVisualizacaoOrdem").then((m) => ({ default: m.DialogVisualizacaoOrdem })));
 const DialogAssinaturaSaida = lazy(() => import("@/components/ordens/DialogAssinaturaSaida").then((m) => ({ default: m.DialogAssinaturaSaida })));
 const DialogEnviarWhatsApp = lazy(() => import("@/components/ordens/DialogEnviarWhatsApp").then((m) => ({ default: m.DialogEnviarWhatsApp })));
+const DialogEmitirReciboOS = lazy(() => import("@/components/ordens/DialogEmitirReciboOS").then((m) => ({ default: m.DialogEmitirReciboOS })));
 const DialogConfiguracaoMensagensWhatsApp = lazy(() => import("@/components/ordens/DialogConfiguracaoMensagensWhatsApp").then((m) => ({ default: m.DialogConfiguracaoMensagensWhatsApp })));
 const DialogConfiguracaoTermoGarantia = lazy(() => import("@/components/ordens/DialogConfiguracaoTermoGarantia").then((m) => ({ default: m.DialogConfiguracaoTermoGarantia })));
 const DialogConfiguracaoValorHora = lazy(() => import("@/components/ordens/DialogConfiguracaoValorHora").then((m) => ({ default: m.DialogConfiguracaoValorHora })));
@@ -162,6 +163,7 @@ export default function OrdemServicoPage() {
   const [ordemParaAssinatura, setOrdemParaAssinatura] = useState<OrdemServico | null>(null);
   const [dialogWhatsApp, setDialogWhatsApp] = useState(false);
   const [ordemParaWhatsApp, setOrdemParaWhatsApp] = useState<OrdemServico | null>(null);
+  const [ordemParaRecibo, setOrdemParaRecibo] = useState<OrdemServico | null>(null);
   const [dialogLimiteAtingido, setDialogLimiteAtingido] = useState(false);
   const [dialogNumeracao, setDialogNumeracao] = useState(false);
   const [dialogMensagensWhatsApp, setDialogMensagensWhatsApp] = useState(false);
@@ -641,6 +643,13 @@ export default function OrdemServicoPage() {
     if (!ordemCompleta) return;
     setOrdemParaWhatsApp(ordemCompleta);
     setDialogWhatsApp(true);
+  };
+
+  // Emitir recibo - precisa da OS completa (avarias com serviços e dados_pagamento)
+  const handleEmitirRecibo = async (ordem: OrdemServico) => {
+    const ordemCompleta = await buscarOrdemCompleta(ordem.id);
+    if (!ordemCompleta) return;
+    setOrdemParaRecibo(ordemCompleta);
   };
 
   const handleCompartilhar = async (ordem: OrdemServico) => {
@@ -1237,6 +1246,7 @@ export default function OrdemServicoPage() {
                     onCompartilhar={handleCompartilhar}
                     onImprimirTermo={handleImprimirTermo}
                     onImprimirEtiqueta={handleImprimirEtiqueta}
+                    onEmitirRecibo={handleEmitirRecibo}
                     termoAtivo={(configuracaoLoja?.termo_responsabilidade_config as TermoResponsabilidadeConfig)?.ativo}
                     mostrarColunaLoja={mostrarOsFiliais}
                     resolverNomeLoja={mostrarOsFiliais ? resolverNomeLoja : undefined}
@@ -1422,6 +1432,12 @@ export default function OrdemServicoPage() {
             onOpenChange={setDialogWhatsApp}
             ordem={ordemParaWhatsApp}
             loja={configuracaoLoja || undefined}
+          />
+
+          <DialogEmitirReciboOS
+            open={!!ordemParaRecibo}
+            onOpenChange={(aberto) => { if (!aberto) setOrdemParaRecibo(null); }}
+            ordem={ordemParaRecibo}
           />
 
           {/* Dialog de Configuração de Numeração */}
