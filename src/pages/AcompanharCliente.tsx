@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertCircle, ArrowLeft, ChevronRight, ClipboardList } from "lucide-react";
+import { AlertCircle, ArrowLeft, ChevronRight, ClipboardList, Download, Loader2, Search, X } from "lucide-react";
 import { TrackingPageConfig, TRACKING_CONFIG_PADRAO } from "@/types/configuracao-loja";
 import {
   CardStatusOS, OSTrackingCardData, STATUS_CONFIG, formatCurrency, formatDate, lighten,
@@ -87,6 +87,7 @@ const STATUS_FILTRO_ORDEM = [
 ];
 
 interface FiltrosOSState {
+  busca: string; // IMEI, modelo ou nome do cliente
   status: string; // "todos" ou uma chave de STATUS_CONFIG
   campoData: "entrada" | "saida";
   dataDe: string | null; // yyyy-mm-dd
@@ -105,13 +106,30 @@ const diasAtrasYMD = (n: number) => {
 };
 
 const FILTRO_PADRAO = (): FiltrosOSState => ({
+  busca: "",
   status: "todos",
   campoData: "entrada",
   dataDe: diasAtrasYMD(30),
   dataAte: hojeYMD(),
 });
 
-const osNoFiltro = (os: OSResumo, filtro: FiltrosOSState): boolean => {
+// Minúsculas e sem acento: "iphone" acha "iPhone", "joao" acha "João".
+const normalizar = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+const osNaBusca = (os: OSResumo, busca: string, clienteNome: string | null): boolean => {
+  const termo = normalizar(busca);
+  if (!termo) return true;
+  const texto = normalizar(
+    [os.numero_os, os.dispositivo_marca, os.dispositivo_modelo, os.dispositivo_imei, clienteNome].filter(Boolean).join(" "),
+  );
+  if (texto.includes(termo)) return true;
+  // IMEI digitado com espaço/traço/barra ("35 123456-789012")
+  const digitos = termo.replace(/\D/g, "");
+  return digitos.length >= 4 && (os.dispositivo_imei ?? "").replace(/\D/g, "").includes(digitos);
+};
+
+const osNoFiltro = (os: OSResumo, filtro: FiltrosOSState, clienteNome: string | null): boolean => {
+  if (!osNaBusca(os, filtro.busca, clienteNome)) return false;
   if (filtro.status !== "todos" && os.status !== filtro.status) return false;
   if (filtro.dataDe || filtro.dataAte) {
     const dataRef = filtro.campoData === "entrada" ? os.created_at : os.data_saida;
@@ -133,7 +151,7 @@ export default function AcompanharCliente() {
   const isMobile = useIsMobile();
 
   const atualizarFiltro = (novo: Partial<FiltrosOSState>) => setFiltro((f) => ({ ...f, ...novo }));
-  const limparFiltro = () => setFiltro({ status: "todos", campoData: "entrada", dataDe: null, dataAte: null });
+  const limparFiltro = () => setFiltro({ busca: "", status: "todos", campoData: "entrada", dataDe: null, dataAte: null });
 
   useEffect(() => {
     if (!token) return;
@@ -195,7 +213,7 @@ export default function AcompanharCliente() {
   );
 
   const { clienteNome, osList, loja } = dados;
-  const osListFiltrada = osList.filter((os) => osNoFiltro(os, filtro));
+  const osListFiltrada = osList.filter((os) => osNoFiltro(os, filtro, clienteNome));
 
   const tc: TrackingPageConfig = {
     ...TRACKING_CONFIG_PADRAO,
@@ -243,6 +261,7 @@ export default function AcompanharCliente() {
             tc={tc}
             totalFiltrado={osListFiltrada.length}
             totalGeral={osList.length}
+            onExportar={() => exportarOSParaExcel(osListFiltrada, clienteNome)}
           />
           {osListFiltrada.length === 0 ? (
             <div className="w-full max-w-4xl rounded-2xl border p-8 text-center"
@@ -300,6 +319,36 @@ export default function AcompanharCliente() {
 // Nenhuma lógica de status/timeline é duplicada aqui: só rótulo/ícone de STATUS_CONFIG (já
 // exportado por CardStatusOS.tsx) para o resumo — o detalhe em si é sempre o componente real.
 
+// Exporta exatamente a lista exibida (busca + status + datas já aplicados), na
+// mesma ordem da tela. xlsx carregado só no clique: esta página é pública e
+// abre no celular do cliente, não vale pesar o bundle dela pra todo mundo.
+async function exportarOSParaExcel(osList: OSResumo[], clienteNome: string | null) {
+  const XLSX = await import("xlsx");
+  const linhas = osList.map((os) => ({
+    "OS": os.numero_os,
+    "Cliente": clienteNome ?? "",
+    "Status": STATUS_CONFIG[os.status ?? ""]?.label ?? os.status ?? "",
+    "Modelo": formatModelo(os) === "—" ? "" : formatModelo(os),
+    // String, não número: IMEI tem 15 dígitos e o Excel viraria notação científica
+    "IMEI": os.dispositivo_imei ?? "",
+    "Data de Entrada": os.created_at ? formatDate(os.created_at) : "",
+    "Data de Saída": formatDataSaidaResumo(os.data_saida),
+    "Valor": os.total != null && os.total > 0 ? os.total : null,
+  }));
+  const ws = XLSX.utils.json_to_sheet(linhas);
+  // Coluna Valor (H) como moeda
+  for (let r = 1; r <= linhas.length; r++) {
+    const cel = ws[`H${r + 1}`];
+    if (cel && typeof cel.v === "number") cel.z = '"R$" #,##0.00';
+  }
+  ws["!cols"] = [{ wch: 8 }, { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Acompanhamento");
+  const d = new Date();
+  const dataArquivo = `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
+  XLSX.writeFile(wb, `acompanhamento-os-${dataArquivo}.xlsx`);
+}
+
 interface FiltrosOSProps {
   filtro: FiltrosOSState;
   onChange: (novo: Partial<FiltrosOSState>) => void;
@@ -307,11 +356,24 @@ interface FiltrosOSProps {
   tc: TrackingPageConfig;
   totalFiltrado: number;
   totalGeral: number;
+  onExportar: () => Promise<void>;
 }
 
-function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral }: FiltrosOSProps) {
+function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral, onExportar }: FiltrosOSProps) {
   const prim = tc.cor_primaria;
-  const filtroAtivo = filtro.status !== "todos" || !!filtro.dataDe || !!filtro.dataAte;
+  const [exportando, setExportando] = useState(false);
+  const filtroAtivo = !!filtro.busca.trim() || filtro.status !== "todos" || !!filtro.dataDe || !!filtro.dataAte;
+
+  const handleExportar = async () => {
+    setExportando(true);
+    try {
+      await onExportar();
+    } catch (e) {
+      console.error("Erro ao exportar planilha:", e);
+    } finally {
+      setExportando(false);
+    }
+  };
   const campoStyle = {
     background: tc.cor_fundo,
     borderColor: `${prim}30`,
@@ -323,6 +385,41 @@ function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral }
 
   return (
     <div className="w-full max-w-4xl rounded-2xl border p-4 mb-4 space-y-3" style={{ background: tc.cor_card, borderColor: `${prim}25` }}>
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" style={{ color: tc.cor_texto_secundario }} />
+          <input
+            type="search"
+            value={filtro.busca}
+            onChange={(e) => onChange({ busca: e.target.value })}
+            placeholder="Buscar por IMEI, modelo ou cliente"
+            className="w-full text-xs rounded-lg border pl-8 pr-8 py-2 outline-none [&::-webkit-search-cancel-button]:hidden"
+            style={campoStyle}
+          />
+          {filtro.busca && (
+            <button
+              type="button"
+              onClick={() => onChange({ busca: "" })}
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+              style={{ color: tc.cor_texto_secundario }}
+              aria-label="Limpar busca"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleExportar}
+          disabled={exportando || totalFiltrado === 0}
+          className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-3 py-2 transition-opacity disabled:opacity-40"
+          style={{ background: prim, color: "#fff" }}
+        >
+          {exportando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          Exportar
+        </button>
+      </div>
+
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label className={labelClass} style={labelStyle}>Status</label>
