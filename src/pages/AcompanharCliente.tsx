@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AlertCircle, ArrowLeft, ChevronRight, ClipboardList, Download, Loader2, Search, X } from "lucide-react";
 import { TrackingPageConfig, TRACKING_CONFIG_PADRAO } from "@/types/configuracao-loja";
 import {
-  CardStatusOS, OSTrackingCardData, STATUS_CONFIG, formatCurrency, formatDate, lighten,
+  CardStatusOS, OSTrackingCardData, STATUS_CONFIG, formatCurrency, formatDate, lighten, nomeStatusOS,
 } from "@/components/tracking/CardStatusOS";
 import { HeaderLojaTracking } from "@/components/tracking/HeaderLojaTracking";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -40,6 +40,8 @@ type LinhaClienteTracking = {
   dispositivo_marca: string | null;
   dispositivo_modelo: string | null;
   dispositivo_imei: string | null;
+  /** Nome configurado pela loja (os_status_config) — nulo antes da migration 20260929120000. */
+  status_nome?: string | null;
 };
 
 // Uma linha por OS (LEFT JOIN no RPC) — cliente sem nenhuma OS ainda vem como
@@ -65,6 +67,7 @@ const mapearLinhas = (linhas: LinhaClienteTracking[]): ClienteTrackingDados => {
         dispositivo_marca: l.dispositivo_marca,
         dispositivo_modelo: l.dispositivo_modelo,
         dispositivo_imei: l.dispositivo_imei,
+        status_nome: l.status_nome ?? null,
       })),
     loja: primeira ? {
       nome_loja: primeira.nome_loja,
@@ -126,6 +129,21 @@ const osNaBusca = (os: OSResumo, busca: string, clienteNome: string | null): boo
   // IMEI digitado com espaço/traço/barra ("35 123456-789012")
   const digitos = termo.replace(/\D/g, "");
   return digitos.length >= 4 && (os.dispositivo_imei ?? "").replace(/\D/g, "").includes(digitos);
+};
+
+// Opções do filtro de status: os slugs padrão + qualquer status personalizado
+// que apareça nas OS carregadas, sempre com o nome que a loja configurou
+// (status_nome) quando alguma OS já trouxe esse nome.
+const opcoesStatusFiltro = (osList: OSResumo[]): { slug: string; nome: string }[] => {
+  const nomes = new Map<string, string>();
+  osList.forEach((os) => {
+    if (os.status && !nomes.has(os.status) && os.status_nome) nomes.set(os.status, os.status_nome);
+  });
+  const slugs = [...STATUS_FILTRO_ORDEM];
+  osList.forEach((os) => {
+    if (os.status && !slugs.includes(os.status)) slugs.push(os.status);
+  });
+  return slugs.map((slug) => ({ slug, nome: nomeStatusOS({ status: slug, status_nome: nomes.get(slug) }) }));
 };
 
 const osNoFiltro = (os: OSResumo, filtro: FiltrosOSState, clienteNome: string | null): boolean => {
@@ -255,6 +273,7 @@ export default function AcompanharCliente() {
       ) : (
         <>
           <FiltrosOS
+            opcoesStatus={opcoesStatusFiltro(osList)}
             filtro={filtro}
             onChange={atualizarFiltro}
             onLimpar={limparFiltro}
@@ -327,7 +346,7 @@ async function exportarOSParaExcel(osList: OSResumo[], clienteNome: string | nul
   const linhas = osList.map((os) => ({
     "OS": os.numero_os,
     "Cliente": clienteNome ?? "",
-    "Status": STATUS_CONFIG[os.status ?? ""]?.label ?? os.status ?? "",
+    "Status": nomeStatusOS(os),
     "Modelo": formatModelo(os) === "—" ? "" : formatModelo(os),
     // String, não número: IMEI tem 15 dígitos e o Excel viraria notação científica
     "IMEI": os.dispositivo_imei ?? "",
@@ -357,9 +376,10 @@ interface FiltrosOSProps {
   totalFiltrado: number;
   totalGeral: number;
   onExportar: () => Promise<void>;
+  opcoesStatus: { slug: string; nome: string }[];
 }
 
-function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral, onExportar }: FiltrosOSProps) {
+function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral, onExportar, opcoesStatus }: FiltrosOSProps) {
   const prim = tc.cor_primaria;
   const [exportando, setExportando] = useState(false);
   const filtroAtivo = !!filtro.busca.trim() || filtro.status !== "todos" || !!filtro.dataDe || !!filtro.dataAte;
@@ -430,8 +450,8 @@ function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral, 
             style={campoStyle}
           >
             <option value="todos">Todos</option>
-            {STATUS_FILTRO_ORDEM.map((s) => (
-              <option key={s} value={s}>{STATUS_CONFIG[s]?.label ?? s}</option>
+            {opcoesStatus.map((o) => (
+              <option key={o.slug} value={o.slug}>{o.nome}</option>
             ))}
           </select>
         </div>
@@ -497,9 +517,8 @@ function FiltrosOS({ filtro, onChange, onLimpar, tc, totalFiltrado, totalGeral, 
   );
 }
 
-function BadgeStatus({ status, tc }: { status: string | null; tc: TrackingPageConfig }) {
-  const cfg = STATUS_CONFIG[status ?? ""] ?? { label: status ?? "Desconhecido", emoji: "❓", icon: ClipboardList };
-  const Icon = cfg.icon;
+function BadgeStatus({ os, tc }: { os: OSResumo; tc: TrackingPageConfig }) {
+  const Icon = STATUS_CONFIG[os.status ?? ""]?.icon ?? ClipboardList;
   const prim = tc.cor_primaria;
   return (
     <span
@@ -507,7 +526,7 @@ function BadgeStatus({ status, tc }: { status: string | null; tc: TrackingPageCo
       style={{ color: prim, background: `${prim}12` }}
     >
       <Icon className="h-3 w-3 shrink-0" />
-      {cfg.label}
+      {nomeStatusOS(os)}
     </span>
   );
 }
@@ -553,7 +572,7 @@ function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
               <td className="px-4 py-3">
                 <div className="flex flex-col gap-1">
                   <span className="text-xs font-semibold" style={{ color: tc.cor_texto }}>#{os.numero_os}</span>
-                  <BadgeStatus status={os.status} tc={tc} />
+                  <BadgeStatus os={os} tc={tc} />
                 </div>
               </td>
               <td className="px-4 py-3" style={{ color: tc.cor_texto }}>
@@ -594,7 +613,7 @@ function ListaOSResumoMobile({ osList, tc, onSelecionar }: ListaResumoProps) {
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold" style={{ color: tc.cor_texto }}>#{os.numero_os}</span>
-              <BadgeStatus status={os.status} tc={tc} />
+              <BadgeStatus os={os} tc={tc} />
             </div>
             {(os.dispositivo_marca || os.dispositivo_modelo || os.dispositivo_imei) && (
               <div className="text-xs" style={{ color: tc.cor_texto_secundario }}>

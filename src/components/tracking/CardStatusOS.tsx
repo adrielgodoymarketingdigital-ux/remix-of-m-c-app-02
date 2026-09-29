@@ -57,7 +57,16 @@ export interface OSTrackingCardData {
   dispositivo_modelo: string | null;
   /** Opcional — só o link por cliente (AcompanharCliente.tsx) traz esse campo hoje. */
   dispositivo_imei?: string | null;
+  /** Nome do status configurado pela loja (os_status_config), vindo do RPC. */
+  status_nome?: string | null;
 }
+
+/**
+ * Nome do status para exibir: o que a loja configurou no menu de OS
+ * (status_nome, via RPC) e, na falta dele, o rótulo padrão de STATUS_CONFIG.
+ */
+export const nomeStatusOS = (os: Pick<OSTrackingCardData, "status" | "status_nome">): string =>
+  os.status_nome?.trim() || STATUS_CONFIG[os.status ?? ""]?.label || os.status || "Desconhecido";
 
 export const formatCurrency = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
@@ -77,8 +86,9 @@ export function CardStatusOS({ os, tc, nomeLoja, clienteNome, mostrarNomeCliente
   const [baixandoPDF, setBaixandoPDF] = useState(false);
 
   const statusKey = os.status ?? "";
-  const statusCfg = STATUS_CONFIG[statusKey] ?? {
-    label: os.status ?? "Desconhecido", emoji: "❓", icon: ClipboardList,
+  const statusCfg = {
+    ...(STATUS_CONFIG[statusKey] ?? { emoji: "❓", icon: ClipboardList }),
+    label: nomeStatusOS(os),
   };
   const StatusIcon = statusCfg.icon;
   const cancelada = statusKey === "cancelada";

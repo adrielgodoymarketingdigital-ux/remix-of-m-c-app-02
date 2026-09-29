@@ -5650,6 +5650,7 @@ export type Database = {
           data_saida: string
           defeito_relatado: string
           dispositivo_marca: string
+          dispositivo_imei: string
           dispositivo_modelo: string
           logo_url: string
           loja_endereco: string
@@ -5659,6 +5660,7 @@ export type Database = {
           os_created_at: string
           os_id: string
           status: string
+          status_nome: string
           total: number
         }[]
       }
@@ -5671,6 +5673,7 @@ export type Database = {
           data_saida: string
           defeito_relatado: string
           dispositivo_marca: string
+          dispositivo_imei: string
           dispositivo_modelo: string
           logo_url: string
           loja_endereco: string
@@ -5680,6 +5683,7 @@ export type Database = {
           os_created_at: string
           os_id: string
           status: string
+          status_nome: string
           total: number
         }[]
       }
@@ -5705,6 +5709,7 @@ export type Database = {
           numero_os: string
           os_created_at: string
           status: string
+          status_nome: string
           total: number
         }[]
       }
@@ -5726,6 +5731,7 @@ export type Database = {
           numero_os: string
           os_created_at: string
           status: string
+          status_nome: string
           total: number
         }[]
       }

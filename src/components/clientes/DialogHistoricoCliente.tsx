@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useClienteTracking } from "@/hooks/useClienteTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { DialogCompartilharClienteLink } from "@/components/clientes/DialogCompartilharClienteLink";
+import { useOSStatusConfigContext } from "@/contexts/OSStatusConfigContext";
 
 interface DialogHistoricoClienteProps {
   open: boolean;
@@ -37,6 +38,8 @@ export function DialogHistoricoCliente({
 
   const { gerarLink, gerando } = useClienteTracking();
   const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
+  // Mesmos nomes de status do menu de OS (os_status_config da loja)
+  const { getStatusBySlug } = useOSStatusConfigContext();
   const [dialogCompartilharAberto, setDialogCompartilharAberto] = useState(false);
   const [linkCompartilhamento, setLinkCompartilhamento] = useState("");
 
@@ -210,7 +213,7 @@ export function DialogHistoricoCliente({
                           {formatDate(ordem.created_at)}
                         </p>
                         <Badge variant="outline" className="mt-2">
-                          {ordem.status}
+                          {getStatusBySlug(ordem.status)?.nome ?? ordem.status}
                         </Badge>
                       </div>
                       <div className="text-right">

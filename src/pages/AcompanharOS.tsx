@@ -46,6 +46,8 @@ export default function AcompanharOS() {
       loja_telefone: string | null;
       loja_endereco: string | null;
       cores_personalizadas: Record<string, unknown> | null;
+      /** Nome configurado pela loja (os_status_config) — nulo antes da migration 20260929120000. */
+      status_nome?: string | null;
     };
 
     const mapearLinha = (linha: LinhaTracking): TrackingDados => {
@@ -62,6 +64,7 @@ export default function AcompanharOS() {
           data_saida: linha.data_saida,
           dispositivo_marca: linha.dispositivo_marca,
           dispositivo_modelo: linha.dispositivo_modelo,
+          status_nome: linha.status_nome ?? null,
           cliente: linha.cliente_nome ? { nome: linha.cliente_nome, telefone: linha.cliente_telefone } : null,
         },
         loja: {
