@@ -321,6 +321,37 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   const podeAlterarData = (venda: Venda) =>
     !!onAlterarDataVenda && !venda.cancelada && venda.tipo !== "servico" && !isVendaDeItemOS(venda.observacoes);
 
+  // Motivo exibido no tooltip do calendário desativado (mesmas mensagens de alterarDataVenda.ts).
+  const motivoSemAlterarData = (venda: Venda): string => {
+    if (venda.cancelada) return "Vendas canceladas não podem ter a data alterada.";
+    if (venda.tipo === "servico") return "A data de serviço segue a entrega da OS — altere pela Ordem de Serviço.";
+    if (isVendaDeItemOS(venda.observacoes)) return "Este item foi usado em uma OS — a data acompanha a Ordem de Serviço.";
+    return "A data desta venda não pode ser alterada.";
+  };
+
+  // Tabela desktop: calendário ativo ou, quando a regra não permite, desativado com o motivo no tooltip.
+  const botaoAlterarDataCompacto = (venda: Venda) => {
+    if (!onAlterarDataVenda) return null;
+    if (podeAlterarData(venda)) {
+      return (
+        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(venda); }} className="h-7 w-7 p-0" title="Alterar data da venda">
+          <CalendarDays className="h-4 w-4" />
+        </Button>
+      );
+    }
+    // Botão desativado não dispara eventos de mouse — o span recebe o hover do tooltip.
+    return (
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} onClick={(e) => e.stopPropagation()} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/40 cursor-not-allowed">
+            <CalendarDays className="h-4 w-4" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">{motivoSemAlterarData(venda)}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
   // A data muda para a venda inteira (todas as linhas do grupo) — o diálogo mostra isso.
   const handleAbrirAlterarData = (venda: Venda) => {
     const doGrupo = venda.grupo_venda ? vendas.filter((v) => v.grupo_venda === venda.grupo_venda) : [venda];
@@ -521,7 +552,6 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     const podeMarcarRecebido = ehAReceber && !venda.recebido && !venda.cancelada && !!onMarcarRecebido;
     const podeVoltarPendente = ehAReceber && !venda.cancelada && !!venda.recebido && !!onMarcarPendente;
     const podeEditar = !venda.cancelada && venda.tipo !== "servico" && !!onEditarVenda;
-    const podeData = podeAlterarData(venda);
     const podeCancelarSaldo = venda.tipo === "servico" && !!venda.contaAPrazoPendente && !!onCancelarContaAPrazoOS;
     const podeCancelar = !venda.cancelada && venda.tipo !== "servico" && !!onCancelarVenda;
     const podeExcluir = !!venda.cancelada && venda.tipo !== "servico" && !!onExcluirVenda;
@@ -535,11 +565,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
             <CheckCircle className="h-4 w-4" />
           </Button>
         )}
-        {podeData && (
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(venda); }} className="h-7 w-7 p-0" title="Alterar data da venda">
-            <CalendarDays className="h-4 w-4" />
-          </Button>
-        )}
+        {botaoAlterarDataCompacto(venda)}
         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(venda); }} className="h-7 w-7 p-0" title="Imprimir Recibo">
           <Printer className="h-4 w-4" />
         </Button>
@@ -866,11 +892,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     <TableCell className={TD}>{renderPagamentoCompacto(primeiraVenda, false)}</TableCell>
                     <TableCell className={TD}>
                       <div className="flex items-center justify-center gap-1">
-                        {podeAlterarData(primeiraVenda) && (
-                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(primeiraVenda); }} className="h-7 w-7 p-0" title="Alterar data da venda">
-                            <CalendarDays className="h-4 w-4" />
-                          </Button>
-                        )}
+                        {botaoAlterarDataCompacto(primeiraVenda)}
                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-7 w-7 p-0" title="Imprimir Recibo">
                           <Printer className="h-4 w-4" />
                         </Button>
