@@ -351,14 +351,26 @@ async function exportarOSParaExcel(osList: OSResumo[], clienteNome: string | nul
     // String, não número: IMEI tem 15 dígitos e o Excel viraria notação científica
     "IMEI": os.dispositivo_imei ?? "",
     "Data de Entrada": os.created_at ? formatDate(os.created_at) : "",
-    "Data de Saída": formatDataSaidaResumo(os.data_saida),
+    // Vazio sem data de saída (na tela aparece "Em andamento", mas na planilha a coluna é só de data)
+    "Data de Saída": os.data_saida ? formatDate(os.data_saida) : "",
     "Valor": os.total != null && os.total > 0 ? os.total : null,
   }));
   const ws = XLSX.utils.json_to_sheet(linhas);
-  // Coluna Valor (H) como moeda
-  for (let r = 1; r <= linhas.length; r++) {
-    const cel = ws[`H${r + 1}`];
-    if (cel && typeof cel.v === "number") cel.z = '"R$" #,##0.00';
+  for (let r = 2; r <= linhas.length + 1; r++) {
+    // IMEI (E) e nº da OS (A) com formato de célula Texto ("@"): só o tipo
+    // string não basta — Excel mobile/Numbers/Google Planilhas convertem
+    // sequência longa de dígitos em número e mostram 3.51288E+13.
+    for (const col of ["A", "E"]) {
+      const cel = ws[`${col}${r}`];
+      if (cel && cel.v !== "") {
+        cel.t = "s";
+        cel.v = String(cel.v);
+        cel.z = "@";
+      }
+    }
+    // Valor (H) como moeda
+    const valor = ws[`H${r}`];
+    if (valor && typeof valor.v === "number") valor.z = '"R$" #,##0.00';
   }
   ws["!cols"] = [{ wch: 8 }, { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
