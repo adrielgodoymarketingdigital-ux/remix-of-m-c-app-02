@@ -87,3 +87,24 @@ export function limitesDiaBrasilia(dataYYYYMMDD: string): { inicioISO: string; f
 
   return { inicioISO, fimISO };
 }
+
+/**
+ * Data e hora "de parede" de Brasília de um instante, para preencher
+ * <input type="date"> e <input type="time"> sem depender do fuso do navegador.
+ */
+export function partesDataHoraBrasilia(instante: Date | string): { data: string; hora: string } {
+  const b = toBrasilia(new Date(instante));
+  const iso = b.toISOString(); // campos UTC de `b` = horário de Brasília
+  return { data: iso.slice(0, 10), hora: iso.slice(11, 16) };
+}
+
+/**
+ * Inverso de `partesDataHoraBrasilia`: data (YYYY-MM-DD) + hora (HH:mm) de
+ * Brasília → instante ISO UTC exato, pronto para gravar em timestamptz.
+ * Mesmo deslocamento de `limitesDiaBrasilia` (recalculado para o dia).
+ */
+export function instanteBrasiliaISO(dataYYYYMMDD: string, horaHHmm: string): string {
+  const [h, m] = horaHHmm.split(":").map(Number);
+  const inicioDia = new Date(limitesDiaBrasilia(dataYYYYMMDD).inicioISO).getTime();
+  return new Date(inicioDia + ((h || 0) * 60 + (m || 0)) * 60_000).toISOString();
+}

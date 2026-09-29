@@ -13,6 +13,7 @@ import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { cancelarSecundariasEmCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
 import { reconhecerRecebimentoVendaVinculada, MENSAGEM_CUSTO_NAO_CONFIRMADO } from "@/lib/vendas/reconhecerSegundaForma";
+import { alterarDataVenda as alterarDataVendaNoBanco } from "@/lib/vendas/alterarDataVenda";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -983,8 +984,13 @@ export const useVendas = () => {
               const atualizacao: any = {
                 [coluna]: Number((caixa as any)[coluna] || 0) + diferenca,
                 total_vendas: Number((caixa as any).total_vendas || 0) + diferenca,
-                saldo_final: Number((caixa as any).saldo_final || 0) + diferenca,
               };
+              // saldo_final = saldo_inicial + DINHEIRO + suprimentos - sangrias
+              // (fórmula do fecharCaixa): só muda quando a diferença é em
+              // dinheiro — cartão/PIX/a receber não entram na gaveta.
+              if (coluna === "total_dinheiro") {
+                atualizacao.saldo_final = Number((caixa as any).saldo_final || 0) + diferenca;
+              }
               const { error: erroCaixa } = await supabase
                 .from("caixas")
                 .update(atualizacao)
@@ -1078,6 +1084,67 @@ export const useVendas = () => {
       toast({
         title: "Erro ao editar venda",
         description: error.message || "Não foi possível editar a venda.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  // Corrige a data de uma venda já lançada (venda inteira: todas as linhas do
+  // grupo) e ajusta caixas fechados — ver src/lib/vendas/alterarDataVenda.ts.
+  const alterarDataVenda = async (vendaId: string, novaDataISO: string): Promise<boolean> => {
+    const venda = vendas.find((v) => v.id === vendaId);
+    if (!venda?.user_id) {
+      toast({ title: "Venda não encontrada", variant: "destructive" });
+      return false;
+    }
+    try {
+      const resultado = await alterarDataVendaNoBanco({
+        vendaId,
+        tipo: venda.tipo,
+        userId: venda.user_id,
+        novaDataISO,
+      });
+      if (!resultado.ok) {
+        toast({ title: "Não foi possível alterar a data", description: resultado.erro, variant: "destructive" });
+        return false;
+      }
+
+      const qtdLinhas = Object.keys(resultado.novasDatas).length;
+      toast({
+        title: "Data da venda alterada",
+        description: [
+          qtdLinhas > 1 ? `${qtdLinhas} itens da venda foram movidos juntos.` : null,
+          resultado.caixasAjustados > 0
+            ? `${resultado.caixasAjustados === 1 ? "1 caixa fechado foi ajustado" : "2 caixas fechados foram ajustados"}.`
+            : null,
+        ].filter(Boolean).join(" ") || undefined,
+      });
+      if (resultado.avisoCaixa) {
+        toast({
+          title: "Verifique o caixa",
+          description: "A data foi alterada, mas não foi possível ajustar automaticamente o caixa fechado. Verifique manualmente.",
+          variant: "destructive",
+        });
+      }
+      if (!resultado.historicoGravado) {
+        toast({
+          title: "Histórico não registrado",
+          description: "A data foi alterada, mas não foi possível registrar a alteração no histórico da venda.",
+          variant: "destructive",
+        });
+      }
+
+      const aplicar = (lista: Venda[]) =>
+        lista.map((v) => (resultado.novasDatas[v.id] ? { ...v, data: resultado.novasDatas[v.id] } : v));
+      setVendas(aplicar);
+      setTodasVendas(aplicar);
+      return true;
+    } catch (error) {
+      console.error("❌ Erro ao alterar data da venda:", error);
+      toast({
+        title: "Erro ao alterar data",
+        description: error instanceof Error ? error.message : "Não foi possível alterar a data da venda.",
         variant: "destructive",
       });
       return false;
@@ -1190,6 +1257,7 @@ export const useVendas = () => {
     carregarVendas,
     cancelarVenda,
     editarVenda,
+    alterarDataVenda,
     calcularResumo,
     agruparVendasPorPeriodo,
     calcularResumoAReceber,

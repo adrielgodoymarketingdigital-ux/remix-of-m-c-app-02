@@ -15,7 +15,9 @@ import { DialogEditarVenda } from "./DialogEditarVenda";
 import { formatDateTime, formatDate, formatDataVenda, extrairDataLocal } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart, CalendarClock } from "lucide-react";
+import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart, CalendarClock, CalendarDays } from "lucide-react";
+import { DialogAlterarDataVenda } from "./DialogAlterarDataVenda";
+import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { DialogReimpressaoRecibo } from "./DialogReimpressaoRecibo";
 import { DialogCancelarVenda } from "./DialogCancelarVenda";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -45,6 +47,7 @@ interface TabelaVendasProps {
     total?: number;
   }) => Promise<boolean>;
   onCancelarContaAPrazoOS?: (contaId: string, ordemId: string) => Promise<boolean>;
+  onAlterarDataVenda?: (vendaId: string, novaDataISO: string) => Promise<boolean>;
 }
 
 const tipoLabels: Record<string, string> = {
@@ -165,7 +168,7 @@ function getResumoGrupo(vendas: Venda[]): string {
   return `${nomes.slice(0, 2).join(", ")} +${nomes.length - 2} itens`;
 }
 
-export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebido, onExcluirVenda, onMarcarPendente, onEditarVenda, onCancelarContaAPrazoOS }: TabelaVendasProps) => {
+export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebido, onExcluirVenda, onMarcarPendente, onEditarVenda, onCancelarContaAPrazoOS, onAlterarDataVenda }: TabelaVendasProps) => {
   const [vendaSelecionada, setVendaSelecionada] = useState<Venda | null>(null);
   const [vendasGrupoSelecionado, setVendasGrupoSelecionado] = useState<Venda[] | null>(null);
   const [dialogReciboAberto, setDialogReciboAberto] = useState(false);
@@ -178,6 +181,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   const [excluindo, setExcluindo] = useState(false);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [gruposExpandidos, setGruposExpandidos] = useState<Set<string>>(new Set());
+  const [alvoAlterarData, setAlvoAlterarData] = useState<{ venda: Venda; descricao: string; quantidadeItens: number } | null>(null);
   const isMobile = useIsMobile();
 
   const vendasAgrupadas = useMemo(() => agruparVendas(vendas), [vendas]);
@@ -277,6 +281,44 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     }
   };
 
+  // Serviço (data = entrega da OS), item usado em OS e venda cancelada não têm a data alterada aqui.
+  const podeAlterarData = (venda: Venda) =>
+    !!onAlterarDataVenda && !venda.cancelada && venda.tipo !== "servico" && !isVendaDeItemOS(venda.observacoes);
+
+  // A data muda para a venda inteira (todas as linhas do grupo) — o diálogo mostra isso.
+  const handleAbrirAlterarData = (venda: Venda) => {
+    const doGrupo = venda.grupo_venda ? vendas.filter((v) => v.grupo_venda === venda.grupo_venda) : [venda];
+    setAlvoAlterarData({
+      venda,
+      descricao: doGrupo.length > 1 ? getResumoGrupo(doGrupo) : getNomeItem(venda),
+      quantidadeItens: doGrupo.length,
+    });
+  };
+
+  const botaoAlterarData = (venda: Venda) =>
+    podeAlterarData(venda) ? (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(venda); }}
+        className="h-8 w-8 p-0"
+        title="Alterar data da venda"
+      >
+        <CalendarDays className="h-4 w-4" />
+      </Button>
+    ) : null;
+
+  const dialogAlterarData = onAlterarDataVenda ? (
+    <DialogAlterarDataVenda
+      open={!!alvoAlterarData}
+      onOpenChange={(aberto) => { if (!aberto) setAlvoAlterarData(null); }}
+      venda={alvoAlterarData?.venda ?? null}
+      descricao={alvoAlterarData?.descricao ?? ""}
+      quantidadeItens={alvoAlterarData?.quantidadeItens ?? 1}
+      onSalvar={onAlterarDataVenda}
+    />
+  ) : null;
+
   if (loading) {
     return (
       <div className="space-y-2">
@@ -351,6 +393,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
             <Pencil className="h-4 w-4" />
           </Button>
         )}
+        {botaoAlterarData(venda)}
         <Button variant="ghost" size="sm" onClick={() => handleImprimirRecibo(venda)} className="h-8 w-8 p-0" title="Imprimir Recibo">
           <Printer className="h-4 w-4" />
         </Button>
@@ -501,6 +544,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         <span className={`font-semibold ${todasCanceladas ? 'line-through text-muted-foreground' : ''}`}>
                           <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
                         </span>
+                        {botaoAlterarData(primeiraVenda)}
                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
                           <Printer className="h-4 w-4" />
                         </Button>
@@ -556,6 +600,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         </AlertDialog>
         <DialogEditarVenda open={dialogEditarAberto} onOpenChange={setDialogEditarAberto} venda={vendaSelecionada} onSalvar={handleSalvarEdicao} salvando={salvandoEdicao} />
         {dialogCancelarSaldo}
+        {dialogAlterarData}
       </>
     );
   }
@@ -663,9 +708,12 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     </TableCell>
                     <TableCell>{renderStatusBadge(primeiraVenda)}</TableCell>
                     <TableCell className="text-center">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
-                        <Printer className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        {botaoAlterarData(primeiraVenda)}
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                   {expandido && vendasDoGrupo.map(venda => {
@@ -731,6 +779,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
       </AlertDialog>
       <DialogEditarVenda open={dialogEditarAberto} onOpenChange={setDialogEditarAberto} venda={vendaSelecionada} onSalvar={handleSalvarEdicao} salvando={salvandoEdicao} />
       {dialogCancelarSaldo}
+      {dialogAlterarData}
     </>
   );
 };

@@ -44,7 +44,7 @@ const MESES = [
 ];
 
 export default function Vendas() {
-  const { vendas, todasVendas, loading, carregarVendas, cancelarVenda, editarVenda, marcarComoRecebido, marcarComoPendente, excluirVenda, cancelarContaAPrazoOS } = useVendas();
+  const { vendas, todasVendas, loading, carregarVendas, cancelarVenda, editarVenda, alterarDataVenda, marcarComoRecebido, marcarComoPendente, excluirVenda, cancelarContaAPrazoOS } = useVendas();
   const { podeVerTotalVendas } = useFuncionarioPermissoes();
   const [dialogLayoutAberto, setDialogLayoutAberto] = useState(false);
   const [dataInicio, setDataInicio] = useState("");
@@ -419,6 +419,7 @@ export default function Vendas() {
                 onMarcarPendente={marcarComoPendente}
                 onExcluirVenda={excluirVenda}
                 onEditarVenda={editarVenda}
+                onAlterarDataVenda={alterarDataVenda}
                 onCancelarContaAPrazoOS={cancelarContaAPrazoOS}
               />
             </CardContent>

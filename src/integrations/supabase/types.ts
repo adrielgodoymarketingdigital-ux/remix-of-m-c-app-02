@@ -4756,6 +4756,57 @@ export type Database = {
           },
         ]
       }
+      vendas_alteracoes: {
+        Row: {
+          alterado_por: string
+          alterado_por_nome: string | null
+          caixas_ajustados: number
+          campo: string
+          created_at: string
+          empresa_id: string | null
+          grupo_venda: string | null
+          id: string
+          linhas_afetadas: number
+          origem: string
+          user_id: string
+          valor_antes: string | null
+          valor_depois: string | null
+          venda_id: string
+        }
+        Insert: {
+          alterado_por?: string
+          alterado_por_nome?: string | null
+          caixas_ajustados?: number
+          campo?: string
+          created_at?: string
+          empresa_id?: string | null
+          grupo_venda?: string | null
+          id?: string
+          linhas_afetadas?: number
+          origem: string
+          user_id: string
+          valor_antes?: string | null
+          valor_depois?: string | null
+          venda_id: string
+        }
+        Update: {
+          alterado_por?: string
+          alterado_por_nome?: string | null
+          caixas_ajustados?: number
+          campo?: string
+          created_at?: string
+          empresa_id?: string | null
+          grupo_venda?: string | null
+          id?: string
+          linhas_afetadas?: number
+          origem?: string
+          user_id?: string
+          valor_antes?: string | null
+          valor_depois?: string | null
+          venda_id?: string
+        }
+        Relationships: []
+      }
       vendas_avulsas: {
         Row: {
           created_at: string | null
