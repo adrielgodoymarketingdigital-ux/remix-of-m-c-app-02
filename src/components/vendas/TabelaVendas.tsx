@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -15,7 +15,15 @@ import { DialogEditarVenda } from "./DialogEditarVenda";
 import { formatDateTime, formatDate, formatDataVenda, extrairDataLocal } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart, CalendarClock, CalendarDays } from "lucide-react";
+import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart, CalendarClock, CalendarDays, MoreHorizontal } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DialogAlterarDataVenda } from "./DialogAlterarDataVenda";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { DialogReimpressaoRecibo } from "./DialogReimpressaoRecibo";
@@ -64,6 +72,7 @@ const formaPagamentoLabels: Record<string, string> = {
   debito: "Cartão de Débito",
   pix: "PIX",
   a_receber: "A Receber",
+  a_prazo: "A Prazo",
 };
 
 const tipoColors: Record<string, string> = {
@@ -72,6 +81,10 @@ const tipoColors: Record<string, string> = {
   servico: "bg-purple-500",
   avulsa: "bg-violet-500",
 };
+
+// Padding enxuto das células da tabela desktop (o padrão do shadcn é p-4).
+const TH = "h-11 px-2.5";
+const TD = "px-2.5 py-3";
 
 // Represents either a single sale or a group of sales
 interface VendaOuGrupo {
@@ -166,6 +179,29 @@ function getResumoGrupo(vendas: Venda[]): string {
   const nomes = vendas.map(v => getNomeItem(v));
   if (nomes.length <= 3) return nomes.join(", ");
   return `${nomes.slice(0, 2).join(", ")} +${nomes.length - 2} itens`;
+}
+
+// Texto de uma linha que corta com "…" e mostra o valor completo no tooltip (tabela desktop).
+function TextoTruncado({ texto, tooltip, className = "" }: { texto: string; tooltip?: string; className?: string }) {
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        <span className={`block truncate ${className}`}>{texto}</span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-sm break-words">{tooltip ?? texto}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+// Data em duas linhas (dia / hora) para caber numa coluna estreita.
+function DataVendaCompacta({ data, className = "" }: { data: string; className?: string }) {
+  const [dia, hora] = formatDataVenda(data).split(" ");
+  return (
+    <div className={`leading-tight ${className}`}>
+      <div className="whitespace-nowrap">{dia}</div>
+      {hora && <div className="text-xs text-muted-foreground">{hora}</div>}
+    </div>
+  );
 }
 
 export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebido, onExcluirVenda, onMarcarPendente, onEditarVenda, onCancelarContaAPrazoOS, onAlterarDataVenda }: TabelaVendasProps) => {
@@ -342,13 +378,36 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   const em3Dias = new Date(hoje);
   em3Dias.setDate(hoje.getDate() + 3);
 
-  const renderStatusBadge = (venda: Venda) => {
+  // compacto: versão da tabela desktop — rótulos curtos, valor do saldo vai para o tooltip.
+  const renderStatusBadge = (venda: Venda, compacto = false) => {
     const dataVencimento = venda.data_prevista_recebimento ? new Date(venda.data_prevista_recebimento) : null;
     if (dataVencimento) dataVencimento.setHours(0, 0, 0, 0);
     const isVencida = dataVencimento && dataVencimento < hoje;
     const isVencendo = dataVencimento && dataVencimento >= hoje && dataVencimento <= em3Dias;
 
     if (venda.cancelada) return <Badge variant="destructive" className="text-xs">Cancelada</Badge>;
+    if (compacto && venda.tipo === "servico" && (venda.contaAPrazoPendente || venda.saldoCancelado)) {
+      const pendente = !!venda.contaAPrazoPendente;
+      const valor = venda.contaAPrazoPendente?.valor ?? venda.saldoCancelado?.valor ?? 0;
+      return (
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <Badge
+              variant="outline"
+              className={`max-w-full text-xs px-2 ${pendente
+                ? "bg-orange-500/10 text-orange-600 border-orange-500/30"
+                : "bg-muted text-muted-foreground border-muted-foreground/30"}`}
+            >
+              {pendente ? <CalendarClock className="h-3 w-3 mr-1 shrink-0" /> : <Ban className="h-3 w-3 mr-1 shrink-0" />}
+              <span className="truncate">{pendente ? "Saldo a prazo" : "Saldo não receb."}</span>
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            {pendente ? "Saldo a prazo" : "Saldo não recebido"}: <ValorMonetario valor={valor} tipo="preco" />
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
     if (venda.tipo === "servico" && venda.contaAPrazoPendente) {
       return (
         <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30 text-xs whitespace-nowrap">
@@ -367,7 +426,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     }
     if (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") {
       if (venda.recebido) return <Badge className="bg-green-500 text-xs text-white">Recebido</Badge>;
-      if (isVencida) return <Badge variant="destructive" className="text-xs">A Receber - Vencida</Badge>;
+      if (isVencida) return <Badge variant="destructive" className="text-xs">{compacto ? "Vencida" : "A Receber - Vencida"}</Badge>;
       if (isVencendo) return <Badge className="bg-orange-500 text-xs text-white">A Receber</Badge>;
       return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 text-xs">A Receber</Badge>;
     }
@@ -411,6 +470,120 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
           <Button variant="ghost" size="sm" onClick={() => handleAbrirExcluir(venda)} className="h-8 w-8 p-0 text-destructive hover:text-destructive" title="Excluir Venda">
             <Trash2 className="h-4 w-4" />
           </Button>
+        )}
+      </div>
+    );
+  };
+
+  // Tabela desktop: a antiga coluna "Quantidade" virou prefixo "N×" no item (só quando > 1).
+  const renderItemCompacto = (venda: Venda) => {
+    const nome = getNomeItem(venda);
+    const qtd = venda.quantidade > 1 ? `${venda.quantidade}× ` : "";
+    return <TextoTruncado texto={`${qtd}${nome}`} tooltip={qtd ? `${nome} — Qtd: ${venda.quantidade}` : nome} />;
+  };
+
+  // Tabela desktop: status + forma de pagamento numa coluna só; detalhes (parcela,
+  // segunda forma, previsão de recebimento) aparecem inteiros no tooltip.
+  const renderPagamentoCompacto = (venda: Venda, comDetalhes = true) => {
+    const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
+    const forma = venda.forma_pagamento ? (formaPagamentoLabels[venda.forma_pagamento] || venda.forma_pagamento) : "Não informado";
+    const parcela = comDetalhes && venda.parcela_numero && venda.total_parcelas ? ` (${venda.parcela_numero}/${venda.total_parcelas})` : "";
+    const segundaForma = comDetalhes && venda.segunda_forma_pagamento
+      ? `+ ${formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}${venda.valor_segunda_forma ? ` (R$${Number(venda.valor_segunda_forma).toFixed(2).replace('.', ',')})` : ""}`
+      : null;
+    const previsao = comDetalhes && isAReceber && venda.data_prevista_recebimento ? formatDate(venda.data_prevista_recebimento) : null;
+
+    return (
+      <div className="flex flex-col items-start gap-1 min-w-0">
+        {renderStatusBadge(venda, true)}
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <span className="flex items-center gap-1 max-w-full text-xs text-muted-foreground">
+              <span className="truncate">{forma}{parcela}{segundaForma ? " +1" : ""}</span>
+              {previsao && <Clock className="h-3 w-3 shrink-0" />}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className="space-y-0.5 text-xs">
+              <p>{forma}{parcela}</p>
+              {segundaForma && <p>{segundaForma}</p>}
+              {previsao && <p>Previsão de recebimento: {previsao}</p>}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    );
+  };
+
+  // Tabela desktop: ações frequentes (receber, imprimir) ficam à mostra; o resto vai para o menu "⋯".
+  const renderAcoesVendaCompacto = (venda: Venda) => {
+    const ehAReceber = venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo";
+    const podeMarcarRecebido = ehAReceber && !venda.recebido && !venda.cancelada && !!onMarcarRecebido;
+    const podeVoltarPendente = ehAReceber && !venda.cancelada && !!venda.recebido && !!onMarcarPendente;
+    const podeEditar = !venda.cancelada && venda.tipo !== "servico" && !!onEditarVenda;
+    const podeData = podeAlterarData(venda);
+    const podeCancelarSaldo = venda.tipo === "servico" && !!venda.contaAPrazoPendente && !!onCancelarContaAPrazoOS;
+    const podeCancelar = !venda.cancelada && venda.tipo !== "servico" && !!onCancelarVenda;
+    const podeExcluir = !!venda.cancelada && venda.tipo !== "servico" && !!onExcluirVenda;
+    const temMenu = podeVoltarPendente || podeEditar || podeCancelarSaldo || podeCancelar || podeExcluir;
+    const temDestrutiva = podeCancelarSaldo || podeCancelar || podeExcluir;
+
+    return (
+      <div className="flex items-center justify-center gap-1">
+        {podeMarcarRecebido && (
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onMarcarRecebido?.(venda.id); }} className="h-7 w-7 p-0 text-green-600 hover:text-green-700" title="Marcar como Recebido">
+            <CheckCircle className="h-4 w-4" />
+          </Button>
+        )}
+        {podeData && (
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(venda); }} className="h-7 w-7 p-0" title="Alterar data da venda">
+            <CalendarDays className="h-4 w-4" />
+          </Button>
+        )}
+        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(venda); }} className="h-7 w-7 p-0" title="Imprimir Recibo">
+          <Printer className="h-4 w-4" />
+        </Button>
+        {temMenu && (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-0" title="Mais ações">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              {podeVoltarPendente && (
+                <DropdownMenuItem onClick={() => onMarcarPendente?.(venda.id)} className="text-orange-600 focus:text-orange-700">
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Voltar para Pendente
+                </DropdownMenuItem>
+              )}
+              {podeEditar && (
+                <DropdownMenuItem onClick={() => handleAbrirEditar(venda)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Editar Venda
+                </DropdownMenuItem>
+              )}
+              {temDestrutiva && (podeVoltarPendente || podeEditar) && <DropdownMenuSeparator />}
+              {podeCancelarSaldo && (
+                <DropdownMenuItem onClick={() => handleAbrirCancelarSaldo(venda)} className="text-destructive focus:text-destructive">
+                  <CalendarClock className="h-4 w-4 mr-2" />
+                  Cancelar Saldo a Prazo
+                </DropdownMenuItem>
+              )}
+              {podeCancelar && (
+                <DropdownMenuItem onClick={() => handleAbrirCancelar(venda)} className="text-destructive focus:text-destructive">
+                  <Ban className="h-4 w-4 mr-2" />
+                  Cancelar Venda
+                </DropdownMenuItem>
+              )}
+              {podeExcluir && (
+                <DropdownMenuItem onClick={() => handleAbrirExcluir(venda)} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir Venda
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     );
@@ -608,63 +781,47 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   // Desktop: Table layout
   return (
     <>
-      <Table>
+      {/* table-fixed + larguras fixas: Item e Cliente dividem o espaço que sobra e truncam,
+          então a tabela cabe na largura do card sem scroll horizontal em desktop. */}
+      <Table className="table-fixed min-w-[780px]">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-8"></TableHead>
-            <TableHead>Nº</TableHead>
-            <TableHead>Data</TableHead>
-            <TableHead>Tipo</TableHead>
-            <TableHead>Item</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Quantidade</TableHead>
-            <TableHead>Pagamento</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-center">Ações</TableHead>
+            <TableHead className={`${TH} w-8`}></TableHead>
+            <TableHead className={`${TH} w-16`}>Nº</TableHead>
+            <TableHead className={`${TH} w-[92px]`}>Data</TableHead>
+            <TableHead className={`${TH} w-[120px]`}>Tipo</TableHead>
+            <TableHead className={TH}>Item</TableHead>
+            <TableHead className={TH}>Cliente</TableHead>
+            <TableHead className={`${TH} w-[112px] text-right`}>Valor</TableHead>
+            <TableHead className={`${TH} w-[136px]`}>Pagamento</TableHead>
+            <TableHead className={`${TH} w-[144px] text-center`}>Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {vendasAgrupadas.map((item) => {
             if (item.tipo === "individual" && item.venda) {
               const venda = item.venda;
-              const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
               return (
                 <TableRow key={venda.id} className={venda.cancelada ? 'opacity-60 bg-muted/30' : ''}>
-                  <TableCell></TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{venda.numero_venda || "-"}</TableCell>
-                  <TableCell>{formatDataVenda(venda.data)}</TableCell>
-                  <TableCell><Badge className={tipoColors[venda.tipo]}>{tipoLabels[venda.tipo]}</Badge></TableCell>
-                  <TableCell>{getNomeItem(venda)}</TableCell>
-                  <TableCell>{venda.clientes?.nome || "Cliente não informado"}</TableCell>
-                  <TableCell>{venda.quantidade}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <span>
-                        {venda.forma_pagamento ? formaPagamentoLabels[venda.forma_pagamento] : "Não informado"}
-                        {venda.parcela_numero && venda.total_parcelas && (
-                          <span className="text-muted-foreground ml-1">({venda.parcela_numero}/{venda.total_parcelas})</span>
-                        )}
-                      </span>
-                      {venda.segunda_forma_pagamento && (
-                        <span className="text-xs text-muted-foreground">
-                          + {formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}
-                          {venda.valor_segunda_forma ? ` (R$${Number(venda.valor_segunda_forma).toFixed(2).replace('.', ',')})` : ""}
-                        </span>
-                      )}
-                      {isAReceber && venda.data_prevista_recebimento && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDate(venda.data_prevista_recebimento)}
-                        </span>
-                      )}
-                    </div>
+                  <TableCell className={TD}></TableCell>
+                  <TableCell className={`${TD} text-muted-foreground`}>
+                    <TextoTruncado texto={venda.numero_venda || "-"} />
                   </TableCell>
-                  <TableCell className={`text-right font-medium ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
+                  <TableCell className={TD}><DataVendaCompacta data={venda.data} /></TableCell>
+                  <TableCell className={TD}>
+                    <Badge className={`${tipoColors[venda.tipo]} max-w-full px-2`}>
+                      <span className="truncate">{tipoLabels[venda.tipo]}</span>
+                    </Badge>
+                  </TableCell>
+                  <TableCell className={TD}>{renderItemCompacto(venda)}</TableCell>
+                  <TableCell className={TD}>
+                    <TextoTruncado texto={venda.clientes?.nome || "Cliente não informado"} />
+                  </TableCell>
+                  <TableCell className={`${TD} text-right font-medium whitespace-nowrap ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
                     <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
                   </TableCell>
-                  <TableCell>{renderStatusBadge(venda)}</TableCell>
-                  <TableCell className="text-center">{renderAcoesVenda(venda)}</TableCell>
+                  <TableCell className={TD}>{renderPagamentoCompacto(venda)}</TableCell>
+                  <TableCell className={TD}>{renderAcoesVendaCompacto(venda)}</TableCell>
                 </TableRow>
               );
             }
@@ -676,84 +833,72 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
               const primeiraVenda = vendasDoGrupo[0];
               const todasCanceladas = vendasDoGrupo.every(v => v.cancelada);
               const totalQuantidade = vendasDoGrupo.reduce((acc, v) => acc + (v.quantidade || 1), 0);
+              const listaItens = vendasDoGrupo.map(v => `${v.quantidade > 1 ? `${v.quantidade}× ` : ""}${getNomeItem(v)}`).join(", ");
 
               return (
-                <>
+                <Fragment key={grupoId}>
                   <TableRow
-                    key={grupoId}
                     className={`cursor-pointer hover:bg-muted/50 ${todasCanceladas ? 'opacity-60 bg-muted/30' : 'bg-primary/5'}`}
                     onClick={() => toggleGrupo(grupoId)}
                   >
-                    <TableCell className="w-8">
-                      <div className="flex items-center gap-1">
-                        {expandido ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                      </div>
+                    <TableCell className={TD}>
+                      {expandido ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     </TableCell>
-                    <TableCell className="text-sm">{primeiraVenda.numero_venda || "-"}</TableCell>
-                    <TableCell>{formatDataVenda(primeiraVenda.data)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="border-primary text-primary">
-                        <ShoppingCart className="h-3 w-3 mr-1" />
-                        {vendasDoGrupo.length} itens
+                    <TableCell className={TD}>
+                      <TextoTruncado texto={primeiraVenda.numero_venda || "-"} />
+                    </TableCell>
+                    <TableCell className={TD}><DataVendaCompacta data={primeiraVenda.data} /></TableCell>
+                    <TableCell className={TD}>
+                      <Badge variant="outline" className="border-primary text-primary max-w-full px-2">
+                        <ShoppingCart className="h-3 w-3 mr-1 shrink-0" />
+                        <span className="truncate">{vendasDoGrupo.length} itens</span>
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-medium">{getResumoGrupo(vendasDoGrupo)}</TableCell>
-                    <TableCell>{primeiraVenda.clientes?.nome || "Cliente não informado"}</TableCell>
-                    <TableCell>{totalQuantidade}</TableCell>
-                    <TableCell>
-                      {primeiraVenda.forma_pagamento ? formaPagamentoLabels[primeiraVenda.forma_pagamento] : "Não informado"}
+                    <TableCell className={`${TD} font-medium`}>
+                      <TextoTruncado texto={getResumoGrupo(vendasDoGrupo)} tooltip={`${listaItens} — ${totalQuantidade} un.`} />
                     </TableCell>
-                    <TableCell className={`text-right font-semibold ${todasCanceladas ? 'line-through text-muted-foreground' : ''}`}>
+                    <TableCell className={TD}>
+                      <TextoTruncado texto={primeiraVenda.clientes?.nome || "Cliente não informado"} />
+                    </TableCell>
+                    <TableCell className={`${TD} text-right font-semibold whitespace-nowrap ${todasCanceladas ? 'line-through text-muted-foreground' : ''}`}>
                       <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
                     </TableCell>
-                    <TableCell>{renderStatusBadge(primeiraVenda)}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className={TD}>{renderPagamentoCompacto(primeiraVenda, false)}</TableCell>
+                    <TableCell className={TD}>
                       <div className="flex items-center justify-center gap-1">
-                        {botaoAlterarData(primeiraVenda)}
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
+                        {podeAlterarData(primeiraVenda) && (
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(primeiraVenda); }} className="h-7 w-7 p-0" title="Alterar data da venda">
+                            <CalendarDays className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-7 w-7 p-0" title="Imprimir Recibo">
                           <Printer className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                  {expandido && vendasDoGrupo.map(venda => {
-                    const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
-                    return (
-                      <TableRow key={venda.id} className={`${venda.cancelada ? 'opacity-60 bg-muted/30' : 'bg-muted/20'}`}>
-                        <TableCell className="w-8 pl-6">
-                          <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
-                        </TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{formatDataVenda(venda.data)}</TableCell>
-                        <TableCell><Badge className={`${tipoColors[venda.tipo]} text-xs`}>{tipoLabels[venda.tipo]}</Badge></TableCell>
-                        <TableCell className="text-sm">{getNomeItem(venda)}</TableCell>
-                        <TableCell></TableCell>
-                        <TableCell className="text-sm">{venda.quantidade}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm">
-                              {venda.forma_pagamento ? formaPagamentoLabels[venda.forma_pagamento] : "Não informado"}
-                              {venda.parcela_numero && venda.total_parcelas && (
-                                <span className="text-muted-foreground ml-1">({venda.parcela_numero}/{venda.total_parcelas})</span>
-                              )}
-                            </span>
-                            {isAReceber && venda.data_prevista_recebimento && (
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDate(venda.data_prevista_recebimento)}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className={`text-right font-medium text-sm ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                          <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
-                        </TableCell>
-                        <TableCell>{renderStatusBadge(venda)}</TableCell>
-                        <TableCell className="text-center">{renderAcoesVenda(venda)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </>
+                  {expandido && vendasDoGrupo.map(venda => (
+                    <TableRow key={venda.id} className={`${venda.cancelada ? 'opacity-60 bg-muted/30' : 'bg-muted/20'}`}>
+                      <TableCell className={`${TD} pl-4`}>
+                        <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
+                      </TableCell>
+                      <TableCell className={TD}></TableCell>
+                      <TableCell className={TD}><DataVendaCompacta data={venda.data} className="text-muted-foreground" /></TableCell>
+                      <TableCell className={TD}>
+                        <Badge className={`${tipoColors[venda.tipo]} max-w-full px-2`}>
+                          <span className="truncate">{tipoLabels[venda.tipo]}</span>
+                        </Badge>
+                      </TableCell>
+                      <TableCell className={TD}>{renderItemCompacto(venda)}</TableCell>
+                      <TableCell className={TD}></TableCell>
+                      <TableCell className={`${TD} text-right font-medium whitespace-nowrap ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
+                        <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
+                      </TableCell>
+                      <TableCell className={TD}>{renderPagamentoCompacto(venda)}</TableCell>
+                      <TableCell className={TD}>{renderAcoesVendaCompacto(venda)}</TableCell>
+                    </TableRow>
+                  ))}
+                </Fragment>
               );
             }
             return null;
