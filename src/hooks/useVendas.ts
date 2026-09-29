@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
 import { dataHoje, extrairDataLocal } from "@/lib/formatters";
+import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useIdentidade } from "./useResolvedUserId";
 import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas";
@@ -43,6 +44,11 @@ export const useVendas = () => {
       const user = session?.user;
       if (!user) { setLoading(false); return; }
 
+      // Limites do período em instantes UTC exatos do dia de Brasília (mesmo
+      // helper dos Relatórios, ecf7401) — não depende do fuso do navegador.
+      const inicioISO = dataInicio ? limitesDiaBrasilia(dataInicio).inicioISO : null;
+      const fimISO = dataFim ? limitesDiaBrasilia(dataFim).fimISO : null;
+
       // Usa || em vez de ?? para que null (estado de carregamento) também acione o fallback.
       // ?? só ignora undefined; || ignora null e undefined — necessário porque selfId
       // começa como null no useIdentidade antes de resolver o auth.getUser().
@@ -71,16 +77,9 @@ export const useVendas = () => {
         queryVendas = queryVendas.is("empresa_id", null);
       }
 
-      // O campo `data` em vendas é TIMESTAMP WITH TIME ZONE — usar offset local para filtrar corretamente.
-      if (dataInicio || dataFim) {
-        const tzOffset = new Date().getTimezoneOffset();
-        const tzSign = tzOffset <= 0 ? "+" : "-";
-        const tzHh = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
-        const tzMm = String(Math.abs(tzOffset) % 60).padStart(2, "0");
-        const tz = `${tzSign}${tzHh}:${tzMm}`;
-        if (dataInicio) queryVendas = queryVendas.gte("data", `${dataInicio}T00:00:00${tz}`);
-        if (dataFim) queryVendas = queryVendas.lte("data", `${dataFim}T23:59:59${tz}`);
-      }
+      // `data` em vendas é TIMESTAMPTZ — comparar com instantes UTC do dia de Brasília.
+      if (inicioISO) queryVendas = queryVendas.gte("data", inicioISO);
+      if (fimISO) queryVendas = queryVendas.lte("data", fimISO);
 
       // Carregar ordens de serviço finalizadas (somente do usuário logado)
       // data_saida preenchida apenas em "entregue". Fallback: created_at (nunca muda),
@@ -105,27 +104,20 @@ export const useVendas = () => {
         queryOrdens = queryOrdens.is("empresa_id", null);
       }
 
-      // OS usam timestamps (data_saida, created_at) — manter offset local para comparação correta
-      if (dataInicio || dataFim) {
-        const tzOffset = new Date().getTimezoneOffset();
-        const tzSign = tzOffset <= 0 ? "+" : "-";
-        const tzHh = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
-        const tzMm = String(Math.abs(tzOffset) % 60).padStart(2, "0");
-        const tz = `${tzSign}${tzHh}:${tzMm}`;
-
-        if (dataInicio && dataFim) {
-          queryOrdens = queryOrdens.or(
-            `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tz},data_saida.lte.${dataFim}T23:59:59${tz}),and(data_saida.is.null,created_at.gte.${dataInicio}T00:00:00${tz},created_at.lte.${dataFim}T23:59:59${tz})`
-          );
-        } else if (dataInicio) {
-          queryOrdens = queryOrdens.or(
-            `and(data_saida.not.is.null,data_saida.gte.${dataInicio}T00:00:00${tz}),and(data_saida.is.null,created_at.gte.${dataInicio}T00:00:00${tz})`
-          );
-        } else if (dataFim) {
-          queryOrdens = queryOrdens.or(
-            `and(data_saida.not.is.null,data_saida.lte.${dataFim}T23:59:59${tz}),and(data_saida.is.null,created_at.lte.${dataFim}T23:59:59${tz})`
-          );
-        }
+      // OS: data_saida (entregue) ou, sem ela, created_at — instantes UTC do dia de Brasília.
+      // Valores entre aspas: o ISO tem "." e ":" dentro do filtro or() do PostgREST.
+      if (inicioISO && fimISO) {
+        queryOrdens = queryOrdens.or(
+          `and(data_saida.not.is.null,data_saida.gte."${inicioISO}",data_saida.lte."${fimISO}"),and(data_saida.is.null,created_at.gte."${inicioISO}",created_at.lte."${fimISO}")`
+        );
+      } else if (inicioISO) {
+        queryOrdens = queryOrdens.or(
+          `and(data_saida.not.is.null,data_saida.gte."${inicioISO}"),and(data_saida.is.null,created_at.gte."${inicioISO}")`
+        );
+      } else if (fimISO) {
+        queryOrdens = queryOrdens.or(
+          `and(data_saida.not.is.null,data_saida.lte."${fimISO}"),and(data_saida.is.null,created_at.lte."${fimISO}")`
+        );
       }
 
       // Query vendas avulsas com o mesmo filtro de data
@@ -135,15 +127,8 @@ export const useVendas = () => {
         .eq("user_id", resolvedUserId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
-      if (dataInicio || dataFim) {
-        const tzOffset = new Date().getTimezoneOffset();
-        const tzSign = tzOffset <= 0 ? "+" : "-";
-        const tzHh = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(2, "0");
-        const tzMm = String(Math.abs(tzOffset) % 60).padStart(2, "0");
-        const tz = `${tzSign}${tzHh}:${tzMm}`;
-        if (dataInicio) queryVendasAvulsas = queryVendasAvulsas.gte("created_at", `${dataInicio}T00:00:00${tz}`);
-        if (dataFim) queryVendasAvulsas = queryVendasAvulsas.lte("created_at", `${dataFim}T23:59:59${tz}`);
-      }
+      if (inicioISO) queryVendasAvulsas = queryVendasAvulsas.gte("created_at", inicioISO);
+      if (fimISO) queryVendasAvulsas = queryVendasAvulsas.lte("created_at", fimISO);
 
       // Executar queries em paralelo com retry individual
       const [vendasResult, ordensResult, avulsasResult] = await Promise.allSettled([
@@ -265,7 +250,9 @@ export const useVendas = () => {
 
         return {
           id: ordem.id,
-          data: ordem.updated_at || ordem.created_at,
+          // Mesma data usada no filtro (data_saida, senão created_at). Antes era
+          // updated_at: OS editada depois aparecia com o dia da edição.
+          data: ordem.data_saida || ordem.created_at,
           tipo: "servico" as const,
           cliente_id: ordem.cliente_id,
           dispositivo_id: null,
@@ -369,7 +356,9 @@ export const useVendas = () => {
 
           return {
             id: ordem.id,
-            data: ordem.updated_at || ordem.created_at,
+            // Mesma data usada no filtro (data_saida, senão created_at). Antes era
+          // updated_at: OS editada depois aparecia com o dia da edição.
+          data: ordem.data_saida || ordem.created_at,
             tipo: "servico" as const,
             cliente_id: ordem.cliente_id,
             dispositivo_id: null,

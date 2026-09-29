@@ -1165,7 +1165,10 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
               forma_pagamento: formaPagamentoOS,
               user_id: effectiveUserId,
               cliente_id: clienteId,
-              data: dataHoje(),
+              // Instante real (timestamptz). Antes: dataHoje() ("YYYY-MM-DD"), que o
+              // Postgres grava como meia-noite UTC = 21h do DIA ANTERIOR em Brasília —
+              // a linha caía no filtro de Vendas do dia errado.
+              data: new Date().toISOString(),
               recebido: recebidoOS,
               observacoes: `Peça/Produto utilizado na OS ${numeroOS}`,
             });

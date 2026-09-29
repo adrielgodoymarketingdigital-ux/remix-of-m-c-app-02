@@ -26,6 +26,7 @@ import { Filter, Calendar, Layout, Settings, Search, TrendingUp } from "lucide-r
 import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DialogConfiguracaoLayoutVendas } from "@/components/vendas/DialogConfiguracaoLayoutVendas";
+import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 
 const MESES = [
   { value: "01", label: "Janeiro" },
@@ -162,7 +163,7 @@ export default function Vendas() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const hoje = format(new Date(), "yyyy-MM-dd");
+                    const hoje = dataBrasiliaISO();
                     setTipoFiltroData("periodo");
                     setDataInicio(hoje);
                     setDataFim(hoje);
@@ -175,7 +176,7 @@ export default function Vendas() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const ontem = format(subDays(new Date(), 1), "yyyy-MM-dd");
+                    const ontem = dataBrasiliaISO(subDays(new Date(), 1));
                     setTipoFiltroData("periodo");
                     setDataInicio(ontem);
                     setDataFim(ontem);
@@ -188,8 +189,8 @@ export default function Vendas() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const hoje = format(new Date(), "yyyy-MM-dd");
-                    const seteDiasAtras = format(subDays(new Date(), 7), "yyyy-MM-dd");
+                    const hoje = dataBrasiliaISO();
+                    const seteDiasAtras = dataBrasiliaISO(subDays(new Date(), 7));
                     setTipoFiltroData("periodo");
                     setDataInicio(seteDiasAtras);
                     setDataFim(hoje);
