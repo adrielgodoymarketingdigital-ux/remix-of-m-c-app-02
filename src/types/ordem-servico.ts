@@ -50,6 +50,12 @@ export interface ServicoRealizado {
   peca_status_pagamento?: 'pago' | 'a_pagar';
   peca_data_pagamento?: string;
   peca_valor?: number;
+  /**
+   * true: `preco` é só a mão de obra e a peça vinculada é cobrada pelo custo
+   * (valor da linha = preco + peça; lucro = preco). Ausente nas OS antigas,
+   * em que `preco` já é o valor cheio. Ver lib/ordemServico/totaisPecasOS.
+   */
+  peca_repassada?: boolean;
 }
 
 export type TipoAssinatura = 'digital' | 'fisica';

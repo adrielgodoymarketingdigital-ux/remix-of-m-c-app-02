@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { FiltrosPeriodo } from "./FiltroPeriodoAvancado";
 import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
+import { custoServicosOS, totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
 
 interface SecaoLucratividadePorServicoProps {
   filtros: FiltrosPeriodo;
@@ -102,6 +103,7 @@ export function SecaoLucratividadePorServico({ filtros }: SecaoLucratividadePorS
           numero_os,
           total,
           tempo_gasto_horas,
+          avarias,
           servico_id,
           servico:servicos!ordens_servico_servico_id_fkey(id, nome)
         `)
@@ -141,7 +143,10 @@ export function SecaoLucratividadePorServico({ filtros }: SecaoLucratividadePorS
         const tempoGastoHoras = Number(ordem.tempo_gasto_horas || 0);
         const total = Number(ordem.total || 0);
         const custoMaoDeObra = tempoGastoHoras * valorHora;
-        const lucroReal = total - custoMaoDeObra;
+        // O total já inclui o preço das peças; desconta o custo delas (peça do
+        // serviço + peças/produtos avulsos da OS), antes ignorado.
+        const custoPecas = custoServicosOS(ordem.avarias) + totaisPecasOS(ordem.avarias).custo;
+        const lucroReal = total - custoMaoDeObra - custoPecas;
 
         return {
           id: ordem.id,

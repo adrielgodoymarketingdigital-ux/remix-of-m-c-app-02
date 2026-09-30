@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { custoServicosOS, totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
 
 interface DialogVisualizacaoOrdemProps {
   open: boolean;
@@ -72,7 +73,10 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
     tempoGastoHoras != null && tempoGastoHoras > 0 &&
     valorHoraReferencia != null && valorHoraReferencia > 0;
   const custoMaoDeObra = mostrarCustoMaoDeObra ? tempoGastoHoras * valorHoraReferencia : 0;
-  const lucroRealOS = mostrarCustoMaoDeObra ? (ordem.total || 0) - custoMaoDeObra : null;
+  // O total já inclui o preço das peças; o lucro real desconta também o custo
+  // delas (peça do serviço + peças/produtos avulsos da OS).
+  const custoPecasOS = custoServicosOS(ordem.avarias) + totaisPecasOS(ordem.avarias).custo;
+  const lucroRealOS = mostrarCustoMaoDeObra ? (ordem.total || 0) - custoMaoDeObra - custoPecasOS : null;
 
   const handleAssinaturaSaidaSuccess = () => {
     setDialogAssinaturaSaidaAberto(false);
@@ -271,6 +275,14 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                         <ValorMonetario valor={custoMaoDeObra} tipo="preco" />
                       </span>
                     </div>
+                    {custoPecasOS > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Custo das peças</span>
+                        <span className="font-semibold text-foreground/80">
+                          <ValorMonetario valor={custoPecasOS} tipo="custo" />
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Lucro real</span>
                       <span className="font-bold text-primary">

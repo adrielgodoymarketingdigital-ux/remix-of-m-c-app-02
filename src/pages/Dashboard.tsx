@@ -37,6 +37,7 @@ import { Sparkline } from "@/components/dashboard/Sparkline";
 import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto";
 import { DASHBOARD_HEADER_SLOT_ID } from "@/contexts/DashboardHeaderContext";
 import { AvisoCustoNaoConfirmado } from "@/components/financeiro/AvisoCustoNaoConfirmado";
+import { totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
 
 interface ProdutoVendido {
   nome: string;
@@ -652,7 +653,10 @@ const Dashboard = () => {
     const custoOS = (ordensHoje || []).reduce((acc, o) => {
       const avarias = (o.avarias || {}) as Record<string, any>;
       const servicosRealizados: any[] = avarias.servicos_realizados || [];
-      const custo = servicosRealizados.reduce((s: number, sv: any) => s + Number(sv.custo || 0), 0);
+      // + custo das peças/produtos avulsos da OS — mesma conta do bloco mensal
+      // (antes o "Hoje" deixava esse custo de fora e inflava o lucro).
+      const custo = servicosRealizados.reduce((s: number, sv: any) => s + Number(sv.custo || 0), 0)
+        + totaisPecasOS(avarias).custo;
       return acc + custo;
     }, 0);
 

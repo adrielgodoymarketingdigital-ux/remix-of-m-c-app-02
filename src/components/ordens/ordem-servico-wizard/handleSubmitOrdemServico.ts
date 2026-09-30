@@ -7,6 +7,8 @@ import { resolverIdentidadeOS } from "@/lib/ordemServico/resolverIdentidadeOS";
 import { criarOuAtualizarCliente } from "@/lib/ordemServico/criarOuAtualizarCliente";
 import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
 import { criarContaAReceberOS } from "@/lib/ordemServico/criarContaAReceberOS";
+import { baixarEstoqueNovaOS, sincronizarEstoqueEdicaoOS, ItemOSEstoque } from "@/lib/ordemServico/estoqueItensOS";
+import { lucroLinhaServico, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
 import { TaxaCartao } from "@/hooks/useTaxasCartao";
@@ -20,6 +22,23 @@ import {
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
 import { FormData, TecnicoOS } from "./tipos";
+
+/**
+ * Entrada da comissão de um serviço. Com peça repassada ao cliente pelo custo,
+ * a base é só a mão de obra (preço), em qualquer modo — a peça não gera
+ * comissão nem reduz o lucro da linha. Sem repasse: preço − custo, como antes.
+ */
+function entradaComissaoServico(servico: FormData["servicos"][number]): { preco: number; custo: number; custoConfirmado?: boolean } {
+  if (servico.peca_repassada) {
+    return { preco: Number(servico.preco) || 0, custo: 0, custoConfirmado: true };
+  }
+  return {
+    preco: servico.preco,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    custo: (servico as any).peca_valor ?? servico.custo,
+    custoConfirmado: servico.custo_confirmado,
+  };
+}
 
 interface SalvarOrdemServicoParams {
   formData: FormData;
@@ -245,16 +264,7 @@ async function calcularComissaoPorServico(
       // (nunca a soma do lucro da OS × um percentual único). Isso vale
       // TAMBÉM quando a config veio do fallback: a base continua sendo o
       // preço do serviço, nunca o total da OS.
-      const calc = calcularComissaoDoItem(
-        {
-          preco: servico.preco,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          custo: (servico as any).peca_valor ?? servico.custo,
-          custoConfirmado: servico.custo_confirmado,
-        },
-        config,
-        comissaoCalculo,
-      );
+      const calc = calcularComissaoDoItem(entradaComissaoServico(servico), config, comissaoCalculo);
       if (calc.custoNaoConfirmado) {
         itensCustoNaoConfirmado.push(servico.nome);
         continue;
@@ -461,12 +471,7 @@ async function salvarTecnicosOS(
       // Com serviço vinculado: base = preço − custo (modo lucro) do próprio
       // serviço. Sem vínculo (legado): cai no total da OS como faturamento.
       const itemCalc = servicoVinculado
-        ? {
-            preco: servicoVinculado.preco,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            custo: (servicoVinculado as any).peca_valor ?? servicoVinculado.custo,
-            custoConfirmado: servicoVinculado.custo_confirmado,
-          }
+        ? entradaComissaoServico(servicoVinculado)
         : { preco: baseCalculo > 0 ? baseCalculo : 0, custo: 0, custoConfirmado: true };
       const calc = calcularComissaoDoItem(itemCalc, comissaoConfig, calculoFunc);
       if (calc.custoNaoConfirmado) {
@@ -593,12 +598,15 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         // Custo > 0 já é dado real → confirmado automaticamente. Custo 0 só
         // conta como confirmado se o usuário respondeu ao banner (flag true).
         const custoConfirmado = custo > 0 || s.custo_confirmado === true;
+        // Peça repassada: preco = mão de obra, custo = peça → lucro = mão de obra.
+        const pecaRepassada = s.peca_repassada === true;
         return {
           id: s.id,
           nome: s.nome,
           preco,
           custo,
-          lucro: preco - custo,
+          lucro: lucroLinhaServico({ preco, custo, peca_repassada: pecaRepassada }),
+          peca_repassada: pecaRepassada || undefined,
           custo_confirmado: custoConfirmado || undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           peca_id: (s as any).peca_id || undefined,
@@ -649,7 +657,8 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     };
 
     // Calcular total dos serviços + produtos + custos repassados - desconto
-    const totalServicos = formData.servicos.reduce((sum, s) => sum + s.preco, 0);
+    // Serviço com peça repassada: mão de obra + custo da peça (valorLinhaServico).
+    const totalServicos = formData.servicos.reduce((sum, s) => sum + valorLinhaServico(s), 0);
     const totalProdutos = formData.produtos.reduce((sum, p) => sum + p.preco_total, 0);
     const totalCustosRepassados = formData.custosAdicionais
       .filter(c => c.repassar_cliente)
@@ -829,6 +838,16 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         statusContaAntesOS = contaAntes?.status ?? null;
       }
 
+      // Peças/produtos da OS ANTES desta edição, lidos do banco (o objeto `ordem`
+      // da tela pode estar desatualizado) — base da diferença de estoque abaixo.
+      const { data: osAntes } = await supabase
+        .from("ordens_servico")
+        .select("avarias")
+        .eq("id", ordem.id)
+        .eq("user_id", effectiveUserId)
+        .maybeSingle();
+      const itensAntes = ((osAntes?.avarias as { produtos_utilizados?: ItemOSEstoque[] } | null)?.produtos_utilizados ?? []);
+
       // Atualizar ordem existente
       const { error } = await supabase
         .from("ordens_servico")
@@ -873,6 +892,21 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .eq("user_id", effectiveUserId);
 
       if (error) throw error;
+
+      // === ESTOQUE DAS PEÇAS/PRODUTOS ALTERADOS NESTA EDIÇÃO ===
+      // Item adicionado baixa, removido devolve, quantidade alterada ajusta a
+      // diferença. Antes a edição não mexia em estoque nenhum.
+      if (ordem.numero_os) {
+        try {
+          await sincronizarEstoqueEdicaoOS(
+            { userId: effectiveUserId, numeroOS: ordem.numero_os, clienteId, formaPagamento: formData.formaPagamento },
+            itensAntes,
+            formData.produtos,
+          );
+        } catch (erroEstoque) {
+          console.error("[OS] Erro ao atualizar estoque das peças na edição:", erroEstoque);
+        }
+      }
 
       // === SALVAR TÉCNICOS DA OS ===
       const resTecnicosEdit = await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos);
@@ -1115,68 +1149,13 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       }
 
       // === BAIXA NO ESTOQUE E REGISTRO DE VENDAS PARA PRODUTOS/PEÇAS ===
+      // Estoque lido do banco na hora (não o valor carregado na tela) e cada
+      // baixa gravada como linha "utilizado na OS" — ver lib/ordemServico/estoqueItensOS.
       if (formData.produtos.length > 0) {
-        for (const produto of formData.produtos) {
-          // 1. Atualizar estoque na tabela correspondente
-          if (produto.tipo === 'produto') {
-            const { error: estoqueError } = await supabase
-              .from('produtos')
-              .update({
-                quantidade: (produto.estoque_disponivel || 0) - produto.quantidade,
-              })
-              .eq('id', produto.id)
-              .eq('user_id', effectiveUserId);
-
-            if (estoqueError) {
-              console.error('Erro ao atualizar estoque de produto:', estoqueError);
-            }
-          } else if (produto.tipo === 'peca') {
-            const { error: estoqueError } = await supabase
-              .from('pecas')
-              .update({
-                quantidade: (produto.estoque_disponivel || 0) - produto.quantidade,
-              })
-              .eq('id', produto.id)
-              .eq('user_id', effectiveUserId);
-
-            if (estoqueError) {
-              console.error('Erro ao atualizar estoque de peça:', estoqueError);
-            }
-          }
-
-          // 2. Registrar na tabela de vendas (movimentação de estoque / relatórios
-          //    de itens). Estas linhas são marcadas com "utilizado na OS" e ficam
-          //    FORA de todo cálculo de receita/caixa (o valor já está no total da
-          //    OS, contabilizado via total_servicos) — mas mesmo assim devem
-          //    refletir a forma de pagamento REAL da OS, o status de recebido
-          //    correto e a data (antes: 'pix'/false/data nula, sempre).
-          // Peças são tratadas como produtos no banco (tipo_produto só aceita 'produto' ou 'dispositivo')
-          const formaPagamentoOS = (formData.formaPagamento || 'dinheiro') as
-            'dinheiro' | 'pix' | 'debito' | 'credito' | 'credito_parcelado' | 'a_receber' | 'a_prazo';
-          const recebidoOS = formaPagamentoOS !== 'a_prazo' && formaPagamentoOS !== 'a_receber';
-          const { error: vendaError } = await supabase
-            .from('vendas')
-            .insert({
-              tipo: 'produto' as const,
-              produto_id: produto.tipo === 'produto' ? produto.id : null,
-              quantidade: produto.quantidade,
-              total: produto.preco_total,
-              custo_unitario: produto.custo_unitario,
-              forma_pagamento: formaPagamentoOS,
-              user_id: effectiveUserId,
-              cliente_id: clienteId,
-              // Instante real (timestamptz). Antes: dataHoje() ("YYYY-MM-DD"), que o
-              // Postgres grava como meia-noite UTC = 21h do DIA ANTERIOR em Brasília —
-              // a linha caía no filtro de Vendas do dia errado.
-              data: new Date().toISOString(),
-              recebido: recebidoOS,
-              observacoes: `Peça/Produto utilizado na OS ${numeroOS}`,
-            });
-
-          if (vendaError) {
-            console.error('Erro ao registrar venda de produto:', vendaError);
-          }
-        }
+        await baixarEstoqueNovaOS(
+          { userId: effectiveUserId, numeroOS, clienteId, formaPagamento: formData.formaPagamento },
+          formData.produtos,
+        );
       }
 
       // === CRIAR CONTA A RECEBER PARA TODA OS COM VALOR ===

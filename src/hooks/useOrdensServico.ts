@@ -9,6 +9,8 @@ import { dataHoje } from "@/lib/formatters";
 import { useIdentidade } from "./useResolvedUserId";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
+import { estornarEstoqueOS, ItemOSEstoque } from "@/lib/ordemServico/estoqueItensOS";
+import { lucroLinhaServico, totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
 
 export interface OrdemServico {
   id: string;
@@ -403,12 +405,16 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
 
       const lucro = (data || []).reduce((acc, ordem: any) => {
         const servicos = ordem?.avarias?.servicos_realizados || [];
+        // Peças/produtos usados na OS: preço cobrado − custo (antes ficavam de fora)
+        const { receita: receitaPecas, custo: custoPecas } = totaisPecasOS(ordem?.avarias);
         if (servicos.length > 0) {
-          // OS com serviços registrados: soma preco - custo de cada serviço
-          return acc + servicos.reduce((sum: number, s: any) => sum + (Number(s.preco || 0) - Number(s.custo || 0)), 0);
+          // OS com serviços registrados: lucro de cada serviço + peças avulsas.
+          // Serviço com peça repassada pelo custo → lucro = mão de obra.
+          const lucroServicos = servicos.reduce((sum: number, s: any) => sum + lucroLinhaServico(s), 0);
+          return acc + lucroServicos + (receitaPecas - custoPecas);
         }
-        // OS sem serviços (ex: importadas): usa o total como lucro (custo desconhecido)
-        return acc + Number(ordem.total || 0);
+        // OS sem serviços (ex: importadas): o total já inclui as peças; desconta o custo delas
+        return acc + Number(ordem.total || 0) - custoPecas;
       }, 0);
 
       setLucroOrdensEntregues(lucro);
@@ -703,41 +709,12 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             .ilike("nome", `%OS ${ordem.numero_os}%`)
             .eq("tipo", "receber");
 
-          const avariasData = ordem.avarias as any;
-          const produtosUtilizados = avariasData?.produtos_utilizados || [];
-
-          for (const produto of produtosUtilizados) {
-            if (produto.tipo === 'peca') {
-              const { data: pecaAtual } = await supabase
-                .from("pecas")
-                .select("quantidade")
-                .eq("id", produto.id)
-                .eq("user_id", userId)
-                .maybeSingle();
-
-              if (pecaAtual) {
-                await supabase
-                  .from("pecas")
-                  .update({ quantidade: (pecaAtual.quantidade || 0) + produto.quantidade })
-                  .eq("id", produto.id)
-                  .eq("user_id", userId);
-              }
-            } else if (produto.tipo === 'produto') {
-              const { data: produtoAtual } = await supabase
-                .from("produtos")
-                .select("quantidade")
-                .eq("id", produto.id)
-                .eq("user_id", userId)
-                .maybeSingle();
-
-              if (produtoAtual) {
-                await supabase
-                  .from("produtos")
-                  .update({ quantidade: (produtoAtual.quantidade || 0) + produto.quantidade })
-                  .eq("id", produto.id)
-                  .eq("user_id", userId);
-              }
-            }
+          // Devolve só o que de fato foi baixado (linhas "utilizado na OS" ativas),
+          // não tudo o que está no registro — itens adicionados em edições antigas
+          // nunca baixaram estoque e devolvê-los inflaria o estoque.
+          const produtosUtilizados = ((ordem.avarias as { produtos_utilizados?: ItemOSEstoque[] } | null)?.produtos_utilizados) ?? [];
+          if (produtosUtilizados.length > 0 && ordem.numero_os) {
+            await estornarEstoqueOS(userId, ordem.numero_os, produtosUtilizados);
           }
 
           toast({

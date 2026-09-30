@@ -9,6 +9,7 @@ import { CheckCircle2, XCircle, User, Smartphone, Lock, FileText, DollarSign, Pa
 import { Badge } from "@/components/ui/badge";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
+import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 
 interface Props {
   ordem: OrdemServico;
@@ -180,7 +181,7 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
                 {servicosRealizados.map((servico) => (
                   <div key={servico.id} className="impressao-item-linha">
                     <span className="impressao-item-nome">• {servico.nome}</span>
-                    <span className="impressao-item-valor">{formatCurrency(servico.preco)}</span>
+                    <span className="impressao-item-valor">{formatCurrency(valorLinhaServico(servico))}</span>
                   </div>
                 ))}
               </div>

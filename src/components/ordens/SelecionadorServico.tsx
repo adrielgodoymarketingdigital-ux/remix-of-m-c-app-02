@@ -17,6 +17,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format } from "date-fns";
+import { custoLinhaServico, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 
 export interface ServicoComPrecoEditado extends Servico {
   precoOriginal?: number;
@@ -74,7 +75,10 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
   const handleAdicionarServico = (servicoId: string) => {
     const servico = servicos.find(s => s.id === servicoId);
     if (servico && !servicosValue.find(s => s.id === servico.id)) {
-      onChange([...servicosValue, { ...servico, precoOriginal: servico.preco }]);
+      // Serviço com peça vinculada: o preço é só a mão de obra e a peça é
+      // repassada ao cliente pelo custo (somada ao valor da linha).
+      const pecaRepassada = !!(servico.peca_id && servico.peca_nome);
+      onChange([...servicosValue, { ...servico, precoOriginal: servico.preco, peca_repassada: pecaRepassada || undefined }]);
       setOpen(false);
       // Auto-expandir seção de peça se o serviço tem peça vinculada
       if (servico.peca_id && servico.peca_nome) {
@@ -185,7 +189,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
     setMostrarManual(false);
   };
 
-  const total = servicosValue.reduce((sum, s) => sum + s.preco, 0);
+  const total = servicosValue.reduce((sum, s) => sum + valorLinhaServico(s), 0);
 
   // Filtrar serviços já adicionados
   const servicosDisponiveis = servicos.filter(s => !servicosValue.find(sv => sv.id === s.id));
@@ -464,11 +468,21 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm text-muted-foreground"><ValorMonetario valor={servico.preco} tipo="preco" /></p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm text-muted-foreground">
+                          {servico.peca_repassada && <span className="text-xs">Mão de obra </span>}
+                          <ValorMonetario valor={servico.preco} tipo="preco" />
+                        </p>
                         {servico.precoEditado !== undefined && servico.precoOriginal !== servico.preco && (
                           <span className="text-xs text-muted-foreground line-through">
                             <ValorMonetario valor={servico.precoOriginal || 0} tipo="preco" />
+                          </span>
+                        )}
+                        {servico.peca_repassada && (
+                          <span className="text-xs text-muted-foreground">
+                            + peça <ValorMonetario valor={custoLinhaServico(servico)} tipo="preco" />
+                            {' = '}
+                            <strong className="text-foreground"><ValorMonetario valor={valorLinhaServico(servico)} tipo="preco" /></strong>
                           </span>
                         )}
                       </div>

@@ -8,6 +8,7 @@ import {
   isPagamentoDuploSecundario,
   isVendaInFinancialPeriod,
 } from "@/lib/vendasFinanceiras";
+import { totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
 
 export interface PontoSerieDiaria {
   data: string; // yyyy-MM-dd
@@ -166,7 +167,8 @@ export const getSerieHistoricaPeriodo = async (
     const custoOS = ordensDoDia.reduce((acc: number, o: any) => {
       const avarias = o.avarias || {};
       const servicosRealizados: any[] = avarias.servicos_realizados || [];
-      return acc + servicosRealizados.reduce((s: number, sv: any) => s + Number(sv.custo || 0), 0);
+      // + custo das peças/produtos avulsos da OS (o preço deles já está no total)
+      return acc + servicosRealizados.reduce((s: number, sv: any) => s + Number(sv.custo || 0), 0) + totaisPecasOS(avarias).custo;
     }, 0);
 
     const vendasDoDia = vendasDistribuidas.filter((v: any) => isVendaInFinancialPeriod(v, diaRef, diaFim));

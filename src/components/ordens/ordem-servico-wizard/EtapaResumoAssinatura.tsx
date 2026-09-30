@@ -4,6 +4,7 @@ import { AssinaturaDigital } from "../AssinaturaDigital";
 import { TaxaCartao } from "@/hooks/useTaxasCartao";
 import { EtapaCabecalho } from "./EtapaCabecalho";
 import { FormData } from "./tipos";
+import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 
 interface EtapaResumoAssinaturaProps {
   formData: FormData;
@@ -66,7 +67,7 @@ export function EtapaResumoAssinatura({
         taxaCalculada={(() => {
           const taxaSel = taxasAtivas.find(t => t.id === bandeiraSelecionada);
           if (!taxaSel) return { percentual: 0, valor: 0 };
-          const totalServicos = formData.servicos.reduce((sum, s) => sum + s.preco, 0);
+          const totalServicos = formData.servicos.reduce((sum, s) => sum + valorLinhaServico(s), 0);
           const totalProdutos = formData.produtos.reduce((sum, p) => sum + p.preco_total, 0);
           const totalCustosRep = formData.custosAdicionais.filter(c => c.repassar_cliente).reduce((sum, c) => sum + c.valor, 0);
           const subtotal = totalServicos + totalProdutos + totalCustosRep;

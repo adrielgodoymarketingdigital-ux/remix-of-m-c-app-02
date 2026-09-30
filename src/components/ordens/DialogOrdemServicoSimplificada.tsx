@@ -38,6 +38,7 @@ import { useEventTracking } from "@/hooks/useEventTracking";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { ChecklistDispositivo } from "./ChecklistDispositivo";
 import { SelecionadorServico } from "./SelecionadorServico";
+import { custoLinhaServico, lucroLinhaServico, valorLinhaServico, LinhaServicoOS } from "@/lib/ordemServico/totaisPecasOS";
 import { ResumoFinanceiro } from "./ResumoFinanceiro";
 import { ComboboxComTextoLivre } from "./ordem-servico-wizard/ComboboxComTextoLivre";
 import {
@@ -262,7 +263,8 @@ export const DialogOrdemServicoSimplificada = ({
     buscarClientes(valor, "cpf");
   };
 
-  const totalServicos = formData.servicos.reduce((sum, s) => sum + s.preco, 0);
+  // Serviço com peça repassada entra como mão de obra + custo da peça.
+  const totalServicos = formData.servicos.reduce((sum, s) => sum + valorLinhaServico(s), 0);
   const total = Math.max(0, totalServicos - formData.desconto);
 
   // Cascata Tipo → Marca → Modelo → Cor a partir do mesmo catálogo/lógica usados
@@ -342,11 +344,21 @@ export const DialogOrdemServicoSimplificada = ({
             : undefined
         ),
         servicos_realizados: formData.servicos.map((s) => {
-          const custo = Number(s.custo || 0);
+          // Mesmo custo usado no total da linha (peca_valor editado na tela, senão o do serviço)
+          const custo = custoLinhaServico(s as LinhaServicoOS);
           const preco = Number(s.preco || 0);
           // custo real (>0) já é confirmado; preserva a flag quando vier do form
           const custoConfirmado = custo > 0 || (s as { custo_confirmado?: boolean }).custo_confirmado === true;
-          return { id: s.id, nome: s.nome, preco, custo, lucro: preco - custo, custo_confirmado: custoConfirmado || undefined };
+          const pecaRepassada = s.peca_repassada === true;
+          return {
+            id: s.id, nome: s.nome, preco, custo,
+            lucro: lucroLinhaServico({ preco, custo, peca_repassada: pecaRepassada }),
+            custo_confirmado: custoConfirmado || undefined,
+            peca_id: s.peca_id || undefined,
+            peca_nome: s.peca_nome || undefined,
+            peca_valor: (s as LinhaServicoOS).peca_valor != null ? custo : undefined,
+            peca_repassada: pecaRepassada || undefined,
+          };
         }),
         observacoes_internas: formData.observacoesInternas || undefined,
       };

@@ -6,6 +6,7 @@ import { OrdemServico } from '@/hooks/useOrdensServico';
 import { decryptSenhaDesbloqueio } from './password-encryption';
 import { obterTermoGarantia, LAYOUT_PADRAO } from './termo-garantia-utils';
 import { adicionarImagemContida, assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
+import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 
 // Formatar data/hora Brasil
 const formatarDataHoraBrasil = (dataISO: string): string => {
@@ -666,7 +667,7 @@ export async function gerarOrdemServicoPDF(
       servicosRealizados.forEach((servico: any) => {
         verificarNovaPagina(8);
         doc.text(`• ${servico.nome}`, margemEsquerda + 3, yPos);
-        doc.text(formatarMoeda(servico.preco), margemDireita, yPos, { align: 'right' });
+        doc.text(formatarMoeda(valorLinhaServico(servico)), margemDireita, yPos, { align: 'right' });
         yPos += 5;
       });
       yPos += 2;
@@ -1357,7 +1358,7 @@ export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: 
       if (servicosRealizados.length > 0) {
         tituloSecao('Serviços');
         servicosRealizados.forEach((servico: any) => {
-          linhaComValor(servico.nome, formatarMoeda(servico.preco));
+          linhaComValor(servico.nome, formatarMoeda(valorLinhaServico(servico)));
         });
         y += 2;
       }

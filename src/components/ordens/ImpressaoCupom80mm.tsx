@@ -10,6 +10,7 @@ import { CheckCircle2, XCircle, Smartphone } from "lucide-react";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { obterTermoGarantia } from "@/lib/termo-garantia-utils";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
+import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 
 const CONFIG_80MM_PADRAO: Layout80mmConfig = {
   mostrar_logo: true,
@@ -138,7 +139,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
               {servicosRealizados.map((s) => (
                 <div key={s.id} className="cupom-line-between">
                   <span>{s.nome}</span>
-                  <span>{formatCurrency(s.preco)}</span>
+                  <span>{formatCurrency(valorLinhaServico(s))}</span>
                 </div>
               ))}
             </>

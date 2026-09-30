@@ -417,31 +417,38 @@ export const useRelatorios = () => {
           }
         });
 
-        // Processar produtos/peças utilizados na OS
+        // Processar produtos/peças utilizados na OS.
+        // O preço deles JÁ está no total da OS (receita da linha do conserto):
+        // a receita de cada peça é MOVIDA da linha da OS para a linha da peça —
+        // antes era somada de novo (receita da peça contada 2×, lucro inflado).
+        // Se a OS só faturou parte do total (saldo pendente/cancelado), a peça
+        // leva a mesma proporção.
         const produtosUtilizados = avariasData.produtos_utilizados || [];
+        const totalOS = Number(ordem.total || 0);
+        const fatorFaturado = totalOS > 0 ? Math.min(1, itemPreco / totalOS) : 0;
         produtosUtilizados.forEach((produto: any) => {
-          if (produto.custo_unitario > 0) {
-            const prodId = `produto_os_${ordem.id}_${produto.id}`;
-            const prodNome = `${produto.nome} (${ordem.numero_os})`;
+          const prodId = `produto_os_${ordem.id}_${produto.id}`;
+          const prodNome = `${produto.nome} (${ordem.numero_os})`;
 
-            if (!itensMap.has(prodId)) {
-              itensMap.set(prodId, {
-                id: prodId,
-                nome: prodNome,
-                tipo: "produto" as const,
-                quantidadeVendida: 0,
-                custoTotal: 0,
-                receitaTotal: 0,
-                lucroTotal: 0,
-                margemLucro: 0,
-              });
-            }
-
-            const item = itensMap.get(prodId)!;
-            item.quantidadeVendida += produto.quantidade || 1;
-            item.receitaTotal += Number(produto.preco_total || 0);
-            item.custoTotal += Number(produto.custo_unitario || 0) * (produto.quantidade || 1);
+          if (!itensMap.has(prodId)) {
+            itensMap.set(prodId, {
+              id: prodId,
+              nome: prodNome,
+              tipo: "produto" as const,
+              quantidadeVendida: 0,
+              custoTotal: 0,
+              receitaTotal: 0,
+              lucroTotal: 0,
+              margemLucro: 0,
+            });
           }
+
+          const receitaPeca = Number(produto.preco_total || 0) * fatorFaturado;
+          const itemPeca = itensMap.get(prodId)!;
+          itemPeca.quantidadeVendida += produto.quantidade || 1;
+          itemPeca.receitaTotal += receitaPeca;
+          itemPeca.custoTotal += Number(produto.custo_unitario || 0) * (produto.quantidade || 1);
+          item.receitaTotal -= receitaPeca;
         });
       });
 

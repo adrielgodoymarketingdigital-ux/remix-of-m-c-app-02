@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency } from "@/lib/formatters";
+import { custoLinhaServico, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { Separator } from "@/components/ui/separator";
 import { DollarSign, CreditCard, Smartphone, Banknote, Wallet, Package, Calendar, CalendarIcon, Plus, Trash2, Truck, Gift, MoreHorizontal } from "lucide-react";
 import { ProdutoUtilizado, CustoAdicional } from "@/types/ordem-servico";
@@ -22,6 +23,9 @@ interface Servico {
   id: string;
   nome: string;
   preco: number;
+  custo?: number;
+  peca_valor?: number;
+  peca_repassada?: boolean;
 }
 
 interface ResumoFinanceiroProps {
@@ -84,7 +88,8 @@ export const ResumoFinanceiro = ({
   onBandeiraChange,
   taxaCalculada = { percentual: 0, valor: 0 },
 }: ResumoFinanceiroProps) => {
-  const totalServicos = servicos.reduce((sum, servico) => sum + servico.preco, 0);
+  // Serviço com peça repassada entra como mão de obra + custo da peça.
+  const totalServicos = servicos.reduce((sum, servico) => sum + valorLinhaServico(servico), 0);
   const totalProdutos = produtos.reduce((sum, produto) => sum + produto.preco_total, 0);
   // Custos repassados ao cliente somam no total
   const totalCustosRepassados = custosAdicionais
@@ -145,8 +150,15 @@ export const ResumoFinanceiro = ({
             <div className="space-y-1">
               {servicos.map((servico) => (
                 <div key={servico.id} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">• {servico.nome}</span>
-                  <span className="font-medium">{formatCurrency(servico.preco)}</span>
+                  <span className="text-muted-foreground">
+                    • {servico.nome}
+                    {servico.peca_repassada && (
+                      <span className="block pl-3 text-xs">
+                        mão de obra {formatCurrency(servico.preco)} + peça {formatCurrency(custoLinhaServico(servico))}
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-medium">{formatCurrency(valorLinhaServico(servico))}</span>
                 </div>
               ))}
             </div>

@@ -275,6 +275,9 @@ export function useOrdemServicoWizardState({
         peca_status_pagamento: s.peca_status_pagamento || undefined,
         peca_data_pagamento: s.peca_data_pagamento || undefined,
         peca_valor: s.peca_valor !== undefined ? s.peca_valor : undefined,
+        // Preserva a regra com que a linha foi lançada: OS antigas (sem a flag)
+        // continuam com o preço cheio; reabrir não soma a peça ao valor.
+        peca_repassada: s.peca_repassada === true ? true : undefined,
       }));
 
       // Recuperar produtos salvos no campo avarias

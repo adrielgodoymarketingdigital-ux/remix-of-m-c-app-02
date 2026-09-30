@@ -18,6 +18,12 @@ export interface Servico {
    * serviço sem vínculo cai no fluxo de match por nome.
    */
   tipo_servico_id?: string | null;
+  /**
+   * Na OS: serviço com peça vinculada em que `preco` é só a mão de obra e a
+   * peça é repassada ao cliente pelo custo (valor da linha = mão de obra +
+   * peça; lucro = mão de obra). Ver lib/ordemServico/totaisPecasOS.
+   */
+  peca_repassada?: boolean;
 }
 
 export interface FormularioServico {
