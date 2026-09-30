@@ -13,14 +13,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { MessageCircle, Send, User, Clock, CheckCircle2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DialogWhatsAppSuporte, numeroWhatsApp } from '@/components/chat/DialogWhatsAppSuporte';
+import { formatPhone } from '@/lib/formatters';
 import { useChatSuporte } from '@/hooks/useChatSuporte';
-import { ConversaSuporteComUsuario, StatusConversaSuporte } from '@/types/chat-suporte';
+import { StatusConversaSuporte } from '@/types/chat-suporte';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const AdminChatSuporte = () => {
   const [filtroStatus, setFiltroStatus] = useState<string>('todos');
   const [novaMensagem, setNovaMensagem] = useState('');
+  const [dialogWhatsAppAberto, setDialogWhatsAppAberto] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -72,6 +76,10 @@ const AdminChatSuporte = () => {
     const info = variants[status] || variants.aberta;
     return <Badge variant={info.variant} className={info.className}>{info.label}</Badge>;
   };
+
+  // conversaAtiva é tipada sem o usuário — busca na lista (que tem nome/e-mail/celular).
+  const usuarioAtivo = conversaAtiva ? conversas.find((c) => c.id === conversaAtiva.id)?.usuario : undefined;
+  const whatsappDisponivel = !!numeroWhatsApp(usuarioAtivo?.celular);
 
   const estatisticas = {
     total: conversas.length,
@@ -211,10 +219,30 @@ const AdminChatSuporte = () => {
                     <div className="min-w-0">
                       <CardTitle className="text-base sm:text-lg truncate">{conversaAtiva.assunto}</CardTitle>
                       <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                        {(conversaAtiva as ConversaSuporteComUsuario).usuario?.nome} • {(conversaAtiva as ConversaSuporteComUsuario).usuario?.email}
+                        {usuarioAtivo?.nome} • {usuarioAtivo?.email}
+                        {usuarioAtivo?.celular && <> • {formatPhone(usuarioAtivo.celular)}</>}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          {/* span: botão desativado não dispara hover, e o tooltip explica o motivo */}
+                          <span tabIndex={whatsappDisponivel ? -1 : 0}>
+                            <Button
+                              size="sm"
+                              onClick={() => setDialogWhatsAppAberto(true)}
+                              disabled={!whatsappDisponivel}
+                              className="!bg-none !bg-green-600 hover:!bg-green-700 text-white"
+                            >
+                              <MessageCircle className="h-4 w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">WhatsApp</span>
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {whatsappDisponivel ? 'Mandar mensagem no WhatsApp do usuário' : 'Usuário sem celular válido cadastrado'}
+                        </TooltipContent>
+                      </Tooltip>
                       {getStatusBadge(conversaAtiva.status)}
                       <Select
                         value={conversaAtiva.status}
@@ -287,6 +315,16 @@ const AdminChatSuporte = () => {
           </Card>
         </div>
       </main>
+
+      {conversaAtiva && usuarioAtivo?.celular && (
+        <DialogWhatsAppSuporte
+          open={dialogWhatsAppAberto}
+          onOpenChange={setDialogWhatsAppAberto}
+          nome={usuarioAtivo.nome}
+          celular={usuarioAtivo.celular}
+          assunto={conversaAtiva.assunto}
+        />
+      )}
     </AppLayout>
   );
 };

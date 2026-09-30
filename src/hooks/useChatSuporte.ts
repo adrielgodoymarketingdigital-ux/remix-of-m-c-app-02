@@ -24,7 +24,7 @@ export const useChatSuporte = (isAdmin: boolean = false) => {
         const userIds = [...new Set(data.map(c => c.user_id))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('user_id, nome, email')
+          .select('user_id, nome, email, celular')
           .in('user_id', userIds);
 
         const profilesMap = new Map(profiles?.map(p => [p.user_id, p]) || []);

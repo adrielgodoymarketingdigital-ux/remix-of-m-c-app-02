@@ -14,6 +14,7 @@ export interface ConversaSuporteComUsuario extends ConversaSuporte {
   usuario?: {
     nome: string;
     email: string;
+    celular?: string | null;
   };
   ultima_mensagem?: string;
   mensagens_nao_lidas?: number;
