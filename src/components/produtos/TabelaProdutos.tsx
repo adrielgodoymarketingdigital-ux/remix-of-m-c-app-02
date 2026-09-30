@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Pencil, Trash2, Package, Wrench, ImageOff, ImagePlus, Truck, Calendar, Lock, Tag, X, PackagePlus, ArrowRightLeft, DollarSign, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, Package, Wrench, ImageOff, ImagePlus, Truck, Calendar, Lock, Tag, Tags, X, PackagePlus, ArrowRightLeft, DollarSign, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ItemEstoque } from '@/types/produto';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ValorMonetario } from '@/components/ui/valor-monetario';
@@ -30,6 +30,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { DialogAlterarPrecoEmMassa } from './DialogAlterarPrecoEmMassa';
 import { DialogAdicionarFotoEmMassa } from './DialogAdicionarFotoEmMassa';
+import { DialogGerarEtiquetas } from './DialogGerarEtiquetas';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -47,6 +48,8 @@ interface TabelaProdutosProps {
   onReporEstoque?: (item: ItemEstoque) => void;
   onAtualizado?: () => void;
   colunasVisiveis?: Set<string>;
+  /** Nome da loja, opcional na etiqueta de produto. */
+  nomeLoja?: string;
 }
 
 // Componente para exibir thumbnail da foto
@@ -72,7 +75,7 @@ const FotoProduto = ({ fotos, tamanho = 'sm' }: { fotos?: string[]; tamanho?: 's
   );
 };
 
-export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onAdicionarFotoEmMassa, onReporEstoque, onAtualizado, colunasVisiveis }: TabelaProdutosProps) => {
+export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onAdicionarFotoEmMassa, onReporEstoque, onAtualizado, colunasVisiveis, nomeLoja }: TabelaProdutosProps) => {
   const [itemParaExcluir, setItemParaExcluir] = useState<ItemEstoque | null>(null);
   const [atualizandoCatalogo, setAtualizandoCatalogo] = useState<Set<string>>(new Set());
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -83,6 +86,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const [alterandoTipo, setAlterandoTipo] = useState(false);
   const [dialogPrecoAberto, setDialogPrecoAberto] = useState(false);
   const [dialogFotoAberto, setDialogFotoAberto] = useState(false);
+  const [dialogEtiquetasAberto, setDialogEtiquetasAberto] = useState(false);
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
   // Paginação — só afeta o layout desktop (a lista mobile continua renderizando tudo).
@@ -341,6 +345,14 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           <Button variant="ghost" size="sm" onClick={limparSelecao}>
             <X className="w-4 h-4 mr-1" />
             Limpar
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDialogEtiquetasAberto(true)}
+          >
+            <Tags className="w-4 h-4 mr-1" />
+            Gerar Etiquetas ({selecionados.size})
           </Button>
           {onAlterarTipoEmMassa && (
             <>
@@ -654,6 +666,13 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
             onConfirmar={onAdicionarFotoEmMassa}
           />
         )}
+
+        <DialogGerarEtiquetas
+          open={dialogEtiquetasAberto}
+          onOpenChange={setDialogEtiquetasAberto}
+          itensSelecionados={items.filter((i) => selecionados.has(i.id))}
+          nomeLoja={nomeLoja}
+        />
       </>
     );
   }
@@ -1079,6 +1098,13 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           onConfirmar={onAdicionarFotoEmMassa}
         />
       )}
+
+      <DialogGerarEtiquetas
+        open={dialogEtiquetasAberto}
+        onOpenChange={setDialogEtiquetasAberto}
+        itensSelecionados={items.filter((i) => selecionados.has(i.id))}
+        nomeLoja={nomeLoja}
+      />
     </>
   );
 };

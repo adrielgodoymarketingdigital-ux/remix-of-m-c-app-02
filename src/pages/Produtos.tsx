@@ -488,6 +488,7 @@ const Produtos = () => {
                   onAdicionarFotoEmMassa={adicionarFotoEmMassa}
                   onReporEstoque={(item) => setItemParaRepor(item)}
                   onAtualizado={carregarTodos}
+                  nomeLoja={configLoja?.nome_loja}
                 />
               )}
 
