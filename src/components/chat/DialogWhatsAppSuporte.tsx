@@ -19,7 +19,8 @@ interface DialogWhatsAppSuporteProps {
   onOpenChange: (open: boolean) => void;
   nome: string;
   celular: string;
-  assunto: string;
+  /** Trecho da saudação: "Aqui é do suporte do Méc, sobre {sobre}." — ex: 'a sua conversa "X"'. */
+  sobre: string;
 }
 
 /**
@@ -34,17 +35,17 @@ export function numeroWhatsApp(celular: string | null | undefined): string | nul
   return null;
 }
 
-const mensagemPadrao = (nome: string, assunto: string) => {
+const mensagemPadrao = (nome: string, sobre: string) => {
   const primeiroNome = nome.trim().split(/\s+/)[0] || '';
-  return `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! Aqui é do suporte do Méc, sobre a sua conversa "${assunto}".\n\n`;
+  return `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! Aqui é do suporte do Méc, sobre ${sobre}.\n\n`;
 };
 
-export const DialogWhatsAppSuporte = ({ open, onOpenChange, nome, celular, assunto }: DialogWhatsAppSuporteProps) => {
+export const DialogWhatsAppSuporte = ({ open, onOpenChange, nome, celular, sobre }: DialogWhatsAppSuporteProps) => {
   const [mensagem, setMensagem] = useState('');
 
   useEffect(() => {
-    if (open) setMensagem(mensagemPadrao(nome, assunto));
-  }, [open, nome, assunto]);
+    if (open) setMensagem(mensagemPadrao(nome, sobre));
+  }, [open, nome, sobre]);
 
   const numero = numeroWhatsApp(celular);
 

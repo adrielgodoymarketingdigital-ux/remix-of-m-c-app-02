@@ -18,5 +18,6 @@ export interface FeedbackComUsuario extends Feedback {
   usuario?: {
     nome: string;
     email: string;
+    celular?: string | null;
   };
 }

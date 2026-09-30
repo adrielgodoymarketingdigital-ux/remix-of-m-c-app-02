@@ -80,7 +80,7 @@ export const useFeedbacks = () => {
       for (const feedback of data || []) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('user_id, nome, email')
+          .select('user_id, nome, email, celular')
           .eq('user_id', feedback.user_id)
           .maybeSingle();
         

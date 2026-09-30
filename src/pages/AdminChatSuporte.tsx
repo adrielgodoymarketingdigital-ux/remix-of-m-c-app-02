@@ -322,7 +322,7 @@ const AdminChatSuporte = () => {
           onOpenChange={setDialogWhatsAppAberto}
           nome={usuarioAtivo.nome}
           celular={usuarioAtivo.celular}
-          assunto={conversaAtiva.assunto}
+          sobre={`a sua conversa "${conversaAtiva.assunto}"`}
         />
       )}
     </AppLayout>

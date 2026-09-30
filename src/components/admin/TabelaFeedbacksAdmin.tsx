@@ -27,7 +27,9 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Reply, Lightbulb, AlertCircle, TrendingUp, Search, Loader2 } from 'lucide-react';
+import { Eye, Reply, Lightbulb, AlertCircle, TrendingUp, Search, Loader2, MessageCircle } from 'lucide-react';
+import { DialogWhatsAppSuporte, numeroWhatsApp } from '@/components/chat/DialogWhatsAppSuporte';
+import { formatPhone } from '@/lib/formatters';
 import { FeedbackComUsuario, StatusFeedback, TipoFeedback } from '@/types/feedback';
 import { useFeedbacks } from '@/hooks/useFeedbacks';
 import { format } from 'date-fns';
@@ -50,6 +52,7 @@ export const TabelaFeedbacksAdmin = ({
   const [feedbackSelecionado, setFeedbackSelecionado] = useState<FeedbackComUsuario | null>(null);
   const [resposta, setResposta] = useState('');
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [feedbackWhatsApp, setFeedbackWhatsApp] = useState<FeedbackComUsuario | null>(null);
 
   const { responderFeedback, atualizarStatus, loading: loadingAcao } = useFeedbacks();
 
@@ -102,6 +105,30 @@ export const TabelaFeedbacksAdmin = ({
       setDialogAberto(false);
       onAtualizar();
     }
+  };
+
+  // Botão desativado não dispara hover — o span leva o title com o motivo.
+  const botaoWhatsApp = (feedback: FeedbackComUsuario, comTexto = false) => {
+    const disponivel = !!numeroWhatsApp(feedback.usuario?.celular);
+    return (
+      <span title={disponivel ? 'Mandar mensagem no WhatsApp do usuário' : 'Usuário sem celular válido cadastrado'}>
+        <Button
+          variant={comTexto ? 'default' : 'ghost'}
+          size={comTexto ? 'sm' : 'icon'}
+          disabled={!disponivel}
+          onClick={() => {
+            setDialogAberto(false);
+            setFeedbackWhatsApp(feedback);
+          }}
+          className={comTexto
+            ? '!bg-none !bg-green-600 hover:!bg-green-700 text-white'
+            : 'text-green-600 hover:text-green-700'}
+        >
+          <MessageCircle className={comTexto ? 'h-4 w-4 mr-1' : 'h-4 w-4'} />
+          {comTexto && 'WhatsApp'}
+        </Button>
+      </span>
+    );
   };
 
   const handleMudarStatus = async (id: string, status: StatusFeedback) => {
@@ -194,6 +221,7 @@ export const TabelaFeedbacksAdmin = ({
                   <TableCell>{getStatusBadge(feedback.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {botaoWhatsApp(feedback)}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -236,6 +264,10 @@ export const TabelaFeedbacksAdmin = ({
                   <Label className="text-muted-foreground">Usuário</Label>
                   <p className="font-medium">{feedbackSelecionado.usuario?.nome}</p>
                   <p className="text-xs text-muted-foreground">{feedbackSelecionado.usuario?.email}</p>
+                  {feedbackSelecionado.usuario?.celular && (
+                    <p className="text-xs text-muted-foreground">{formatPhone(feedbackSelecionado.usuario.celular)}</p>
+                  )}
+                  <div className="mt-2">{botaoWhatsApp(feedbackSelecionado, true)}</div>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Data</Label>
@@ -303,6 +335,16 @@ export const TabelaFeedbacksAdmin = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {feedbackWhatsApp?.usuario?.celular && (
+        <DialogWhatsAppSuporte
+          open={!!feedbackWhatsApp}
+          onOpenChange={(aberto) => { if (!aberto) setFeedbackWhatsApp(null); }}
+          nome={feedbackWhatsApp.usuario.nome}
+          celular={feedbackWhatsApp.usuario.celular}
+          sobre={`o seu feedback "${feedbackWhatsApp.titulo}"`}
+        />
+      )}
     </>
   );
 };
