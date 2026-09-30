@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { GerenciadorPadroesEtiqueta } from './GerenciadorPadroesEtiqueta';
 
 interface DialogConfiguracoesProdutosProps {
   open: boolean;
@@ -37,7 +38,11 @@ interface DialogConfiguracoesProdutosProps {
   colunasVisiveis: Set<ColunaId>;
   onToggleColuna: (id: ColunaId) => void;
   onResetarColunas: () => void;
+  /** Aba mostrada ao abrir (ex.: "etiquetas" pelo atalho de Gerar Etiquetas). */
+  abaInicial?: AbaConfiguracoesProdutos;
 }
+
+export type AbaConfiguracoesProdutos = 'categorias' | 'colunas' | 'etiquetas';
 
 const CORES_PREDEFINIDAS = [
   // Vermelhos
@@ -72,7 +77,12 @@ export const DialogConfiguracoesProdutos = ({
   colunasVisiveis,
   onToggleColuna,
   onResetarColunas,
+  abaInicial = 'categorias',
 }: DialogConfiguracoesProdutosProps) => {
+  const [aba, setAba] = useState<AbaConfiguracoesProdutos>(abaInicial);
+  useEffect(() => {
+    if (open) setAba(abaInicial);
+  }, [open, abaInicial]);
   const [nome, setNome] = useState('');
   const [cor, setCor] = useState('#3b82f6');
   const [categoriaPaiId, setCategoriaPaiId] = useState<string | null>(null);
@@ -123,15 +133,16 @@ export const DialogConfiguracoesProdutos = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Configurações</DialogTitle>
           </DialogHeader>
 
-          <Tabs defaultValue="categorias">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs value={aba} onValueChange={(v) => setAba(v as AbaConfiguracoesProdutos)}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="categorias">Categorias</TabsTrigger>
-              <TabsTrigger value="colunas">Personalizar Colunas</TabsTrigger>
+              <TabsTrigger value="colunas">Colunas</TabsTrigger>
+              <TabsTrigger value="etiquetas">Etiquetas</TabsTrigger>
             </TabsList>
 
             <TabsContent value="categorias" className="space-y-4 mt-4">
@@ -284,6 +295,10 @@ export const DialogConfiguracoesProdutos = ({
                   Restaurar padrão
                 </Button>
               </div>
+            </TabsContent>
+
+            <TabsContent value="etiquetas" className="mt-4">
+              <GerenciadorPadroesEtiqueta />
             </TabsContent>
           </Tabs>
         </DialogContent>

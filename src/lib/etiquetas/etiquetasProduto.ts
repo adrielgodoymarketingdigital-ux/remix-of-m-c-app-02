@@ -41,35 +41,146 @@ export const CAMPOS_ETIQUETA: { id: CampoEtiqueta; label: string; dica?: string 
 export type FormatoEtiqueta = "termica" | "a4";
 export type TamanhoFonteEtiqueta = "pequeno" | "normal" | "grande";
 
-export interface ModeloFolhaA4 {
+/**
+ * Folha de etiquetas medida pelo próprio usuário (ou uma das sugestões).
+ * Medidas guardadas em mm; a tela mostra em cm. Salva em
+ * configuracoes_loja.etiquetas_padroes (lista JSON) — ver usePadroesEtiqueta.
+ */
+export interface PadraoEtiqueta {
   id: string;
   nome: string;
+  larguraFolhaMm: number;
   larguraMm: number;
   alturaMm: number;
   colunas: number;
-  linhas: number;
-  margemSuperiorMm: number;
-  margemEsquerdaMm: number;
-  espacoHorizontalMm: number;
-  espacoVerticalMm: number;
+  /** null = linhas calculadas pela quantidade de etiquetas na hora da impressão. */
+  linhas: number | null;
 }
 
-// Medidas das folhas Pimaco mais comuns. Margens calculadas para fechar os
-// 210×297mm da folha A4 com as dimensões nominais da etiqueta.
-export const MODELOS_FOLHA_A4: ModeloFolhaA4[] = [
-  { id: "A4351", nome: "Pimaco A4351 — 38,1×21,2mm (65/folha)", larguraMm: 38.1, alturaMm: 21.2, colunas: 5, linhas: 13, margemSuperiorMm: 10.7, margemEsquerdaMm: 4.7, espacoHorizontalMm: 2.5, espacoVerticalMm: 0 },
-  { id: "A4356", nome: "Pimaco A4356 — 63,5×25,4mm (33/folha)", larguraMm: 63.5, alturaMm: 25.4, colunas: 3, linhas: 11, margemSuperiorMm: 8.8, margemEsquerdaMm: 7.2, espacoHorizontalMm: 2.5, espacoVerticalMm: 0 },
-  { id: "A4360", nome: "Pimaco A4360 — 63,5×38,1mm (21/folha)", larguraMm: 63.5, alturaMm: 38.1, colunas: 3, linhas: 7, margemSuperiorMm: 15.1, margemEsquerdaMm: 7.2, espacoHorizontalMm: 2.5, espacoVerticalMm: 0 },
+/** Paginação sempre em papel A4 (29,7cm de altura). */
+export const ALTURA_FOLHA_MM = 297;
+
+// Pontos de partida — margens saem da mesma conta dos padrões do usuário, então
+// o ideal continua sendo medir a folha e salvar um padrão próprio.
+export const SUGESTOES_PIMACO: PadraoEtiqueta[] = [
+  { id: "pimaco-A4351", nome: "Pimaco A4351 — 3,81×2,12cm (5×13)", larguraFolhaMm: 210, larguraMm: 38.1, alturaMm: 21.2, colunas: 5, linhas: 13 },
+  { id: "pimaco-A4356", nome: "Pimaco A4356 — 6,35×2,54cm (3×11)", larguraFolhaMm: 210, larguraMm: 63.5, alturaMm: 25.4, colunas: 3, linhas: 11 },
+  { id: "pimaco-A4360", nome: "Pimaco A4360 — 6,35×3,81cm (3×7)", larguraFolhaMm: 210, larguraMm: 63.5, alturaMm: 38.1, colunas: 3, linhas: 7 },
 ];
 
-export const MODELO_A4_PERSONALIZADO = "personalizado";
+/** Id do padrão "Personalizado" preenchido na hora, sem salvar. */
+export const PADRAO_AVULSO_ID = "personalizado";
+
+export const PADRAO_AVULSO_INICIAL: PadraoEtiqueta = {
+  id: PADRAO_AVULSO_ID,
+  nome: "Personalizado",
+  larguraFolhaMm: 210,
+  larguraMm: 63.5,
+  alturaMm: 25.4,
+  colunas: 3,
+  linhas: null,
+};
+
+export const LIMITES_PADRAO = {
+  larguraFolhaMm: { min: 20, max: 300 },
+  larguraMm: { min: 10, max: 300 },
+  alturaMm: { min: 10, max: ALTURA_FOLHA_MM },
+  colunas: { min: 1, max: 20 },
+  linhas: { min: 1, max: 50 },
+} as const;
+
+function numeroNoIntervalo(v: unknown, min: number, max: number): v is number {
+  return typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
+}
+
+/** Valida um padrão vindo do banco/localStorage; null se estiver incompleto. */
+export function normalizarPadrao(bruto: unknown): PadraoEtiqueta | null {
+  if (!bruto || typeof bruto !== "object") return null;
+  const p = bruto as Record<string, unknown>;
+  const L = LIMITES_PADRAO;
+  if (typeof p.id !== "string" || !p.id || typeof p.nome !== "string") return null;
+  if (!numeroNoIntervalo(p.larguraFolhaMm, L.larguraFolhaMm.min, L.larguraFolhaMm.max)) return null;
+  if (!numeroNoIntervalo(p.larguraMm, L.larguraMm.min, L.larguraMm.max)) return null;
+  if (!numeroNoIntervalo(p.alturaMm, L.alturaMm.min, L.alturaMm.max)) return null;
+  if (!numeroNoIntervalo(p.colunas, L.colunas.min, L.colunas.max)) return null;
+  let linhas: number | null = null;
+  if (p.linhas != null) {
+    if (!numeroNoIntervalo(p.linhas, L.linhas.min, L.linhas.max)) return null;
+    linhas = p.linhas;
+  }
+  return {
+    id: p.id,
+    nome: p.nome,
+    larguraFolhaMm: p.larguraFolhaMm,
+    larguraMm: p.larguraMm,
+    alturaMm: p.alturaMm,
+    colunas: Math.round(p.colunas),
+    linhas: linhas === null ? null : Math.round(linhas),
+  };
+}
+
+export function normalizarPadroes(bruto: unknown): PadraoEtiqueta[] {
+  if (!Array.isArray(bruto)) return [];
+  return bruto.map(normalizarPadrao).filter((p): p is PadraoEtiqueta => p !== null);
+}
+
+export interface LayoutFolha {
+  /** Margem esquerda/direita e espaço entre colunas (iguais). */
+  margemLateralMm: number;
+  margemSuperiorMm: number;
+  espacoLinhasMm: number;
+  linhasPorFolha: number;
+  etiquetasPorFolha: number;
+  /** Motivo quando as medidas não cabem na folha — nada deve ser impresso. */
+  erro: string | null;
+}
+
+const cm = (mm: number) => `${Number((mm / 10).toFixed(2)).toString().replace(".", ",")}cm`;
+
+/**
+ * Layout da grade a partir das medidas do padrão.
+ *
+ * Horizontal: o que sobra da largura da folha é dividido igualmente entre as
+ * duas margens e os espaços entre colunas: (folha − colunas × etiqueta) ÷ (colunas + 1).
+ *
+ * Vertical: com linhas informadas (folha pré-cortada) o bloco fica centralizado
+ * na altura do A4, sem espaço entre linhas; sem linhas (folha corrida) as
+ * etiquetas começam do topo com o mesmo espaçamento da horizontal e cabem
+ * quantas linhas couberem por página.
+ */
+export function calcularLayoutFolha(padrao: PadraoEtiqueta): LayoutFolha {
+  const { larguraFolhaMm, larguraMm, alturaMm, colunas, linhas } = padrao;
+  const invalido = (erro: string): LayoutFolha =>
+    ({ margemLateralMm: 0, margemSuperiorMm: 0, espacoLinhasMm: 0, linhasPorFolha: 0, etiquetasPorFolha: 0, erro });
+
+  const sobraHorizontal = larguraFolhaMm - colunas * larguraMm;
+  if (sobraHorizontal < 0) {
+    return invalido(`${colunas} etiquetas de ${cm(larguraMm)} (${cm(colunas * larguraMm)}) não cabem na largura da folha (${cm(larguraFolhaMm)}).`);
+  }
+  const margemLateralMm = sobraHorizontal / (colunas + 1);
+
+  if (linhas !== null) {
+    const sobraVertical = ALTURA_FOLHA_MM - linhas * alturaMm;
+    if (sobraVertical < 0) {
+      return invalido(`${linhas} linhas de ${cm(alturaMm)} (${cm(linhas * alturaMm)}) não cabem na altura do A4 (29,7cm).`);
+    }
+    return { margemLateralMm, margemSuperiorMm: sobraVertical / 2, espacoLinhasMm: 0, linhasPorFolha: linhas, etiquetasPorFolha: linhas * colunas, erro: null };
+  }
+
+  // Margem em cima e embaixo iguais ao espaço entre linhas: m + n·altura + (n−1)·m + m ≤ 297.
+  const linhasPorFolha = Math.floor((ALTURA_FOLHA_MM - margemLateralMm) / (alturaMm + margemLateralMm));
+  if (linhasPorFolha < 1) {
+    return invalido(`A etiqueta de ${cm(alturaMm)} de altura não cabe na altura do A4 (29,7cm).`);
+  }
+  return { margemLateralMm, margemSuperiorMm: margemLateralMm, espacoLinhasMm: margemLateralMm, linhasPorFolha, etiquetasPorFolha: linhasPorFolha * colunas, erro: null };
+}
 
 export interface ConfigEtiquetas {
   campos: Record<CampoEtiqueta, boolean>;
   formato: FormatoEtiqueta;
   tamanhoFonte: TamanhoFonteEtiqueta;
   termica: { larguraMm: number; alturaMm: number };
-  a4: ModeloFolhaA4;
+  a4: PadraoEtiqueta;
   /** Posição (1-based) da primeira etiqueta na primeira folha A4 — reaproveita folha usada pela metade. */
   posicaoInicial: number;
 }
@@ -89,7 +200,7 @@ export const CONFIG_ETIQUETAS_PADRAO: ConfigEtiquetas = {
   formato: "termica",
   tamanhoFonte: "normal",
   termica: { larguraMm: 40, alturaMm: 25 },
-  a4: MODELOS_FOLHA_A4[0],
+  a4: PADRAO_AVULSO_INICIAL,
   posicaoInicial: 1,
 };
 
@@ -106,7 +217,8 @@ export function carregarConfigEtiquetas(): ConfigEtiquetas {
       ...parcial,
       campos: { ...CONFIG_ETIQUETAS_PADRAO.campos, ...(parcial.campos ?? {}) },
       termica: { ...CONFIG_ETIQUETAS_PADRAO.termica, ...(parcial.termica ?? {}) },
-      a4: { ...CONFIG_ETIQUETAS_PADRAO.a4, ...(parcial.a4 ?? {}) },
+      // Configs antigas (modelo com margens fixas) não passam na validação e voltam ao padrão.
+      a4: normalizarPadrao(parcial.a4) ?? CONFIG_ETIQUETAS_PADRAO.a4,
       posicaoInicial: 1,
     };
   } catch {
@@ -335,12 +447,8 @@ export function contarEtiquetas(itens: ItemEtiqueta[]): number {
   return itens.reduce((acc, i) => acc + Math.max(0, Math.floor(i.quantidade)), 0);
 }
 
-export function etiquetasPorFolha(modelo: ModeloFolhaA4): number {
-  return modelo.colunas * modelo.linhas;
-}
-
 export function contarFolhasA4(total: number, config: ConfigEtiquetas): number {
-  const porFolha = etiquetasPorFolha(config.a4);
+  const porFolha = calcularLayoutFolha(config.a4).etiquetasPorFolha;
   if (!porFolha || !total) return 0;
   const inicio = Math.min(Math.max(config.posicaoInicial, 1), porFolha) - 1;
   return Math.ceil((total + inicio) / porFolha);
@@ -365,7 +473,8 @@ export function montarBodyEtiquetas(itens: ItemEtiqueta[], config: ConfigEtiquet
     return lista.map((item) => `<div class="etq-pagina-termica">${html(item)}</div>`).join("");
   }
 
-  const porFolha = etiquetasPorFolha(config.a4);
+  const porFolha = calcularLayoutFolha(config.a4).etiquetasPorFolha;
+  if (!porFolha) return "";
   const vazias = Math.min(Math.max(config.posicaoInicial, 1), porFolha) - 1;
   const celulas = [...Array.from({ length: vazias }, () => '<div class="etq-celula"></div>'), ...lista.map((item) => `<div class="etq-celula">${html(item)}</div>`)];
   const folhas: string[] = [];
@@ -385,18 +494,30 @@ export function montarCssPagina(config: ConfigEtiquetas): string {
       .etq-pagina-termica:last-child { page-break-after: auto; break-after: auto; }
     `;
   }
-  const m = config.a4;
+  const p = config.a4;
+  const l = calcularLayoutFolha(p);
+  const mm = (v: number) => `${v.toFixed(2)}mm`;
+  // Colunas com largura FIXA em mm (nunca fr/100%) e grade alinhada ao início:
+  // a etiqueta não estica e a posição de cada coluna é exatamente a calculada.
   return `
-    @page { size: A4; margin: 0; }
+    @page { size: ${mm(p.larguraFolhaMm)} ${ALTURA_FOLHA_MM}mm; margin: 0; }
     .etq-folha {
-      width: 210mm; height: 297mm; box-sizing: border-box; overflow: hidden;
-      padding: ${m.margemSuperiorMm}mm 0 0 ${m.margemEsquerdaMm}mm;
-      display: grid; grid-template-columns: repeat(${m.colunas}, ${m.larguraMm}mm); grid-auto-rows: ${m.alturaMm}mm;
-      column-gap: ${m.espacoHorizontalMm}mm; row-gap: ${m.espacoVerticalMm}mm; align-content: start;
+      width: ${mm(p.larguraFolhaMm)}; height: ${ALTURA_FOLHA_MM}mm; box-sizing: border-box; overflow: hidden;
+      padding: ${mm(l.margemSuperiorMm)} 0 0 ${mm(l.margemLateralMm)}; margin: 0;
+      display: grid; grid-template-columns: repeat(${p.colunas}, ${mm(p.larguraMm)}); grid-auto-rows: ${mm(p.alturaMm)};
+      column-gap: ${mm(l.margemLateralMm)}; row-gap: ${mm(l.espacoLinhasMm)};
+      justify-content: start; align-content: start;
       page-break-after: always; break-after: page;
     }
     .etq-folha:last-child { page-break-after: auto; break-after: auto; }
-    .etq-celula { width: ${m.larguraMm}mm; height: ${m.alturaMm}mm; overflow: hidden; }
+    .etq-celula {
+      width: ${mm(p.larguraMm)}; height: ${mm(p.alturaMm)}; overflow: hidden;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    /* iOS imprime via #print-root, cujo CSS global de impressão força width:100% e overflow:visible. */
+    #print-root .etq-folha { width: ${mm(p.larguraFolhaMm)} !important; }
+    #print-root .etq-folha, #print-root .etq-celula, #print-root .etq-etiqueta,
+    #print-root .etq-nome, #print-root .etq-linha, #print-root .etq-loja { overflow: hidden !important; }
   `;
 }
 

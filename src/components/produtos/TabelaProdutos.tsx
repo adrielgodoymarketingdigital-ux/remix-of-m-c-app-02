@@ -50,6 +50,8 @@ interface TabelaProdutosProps {
   colunasVisiveis?: Set<string>;
   /** Nome da loja, opcional na etiqueta de produto. */
   nomeLoja?: string;
+  /** Abre as Configurações de Produtos na aba de padrões de etiqueta. */
+  onGerenciarPadroesEtiqueta?: () => void;
 }
 
 // Componente para exibir thumbnail da foto
@@ -75,7 +77,7 @@ const FotoProduto = ({ fotos, tamanho = 'sm' }: { fotos?: string[]; tamanho?: 's
   );
 };
 
-export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onAdicionarFotoEmMassa, onReporEstoque, onAtualizado, colunasVisiveis, nomeLoja }: TabelaProdutosProps) => {
+export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete, onDeleteBulk, onCategorizarEmMassa, onAlterarTipoEmMassa, onAlterarPrecoEmMassa, onAdicionarFotoEmMassa, onReporEstoque, onAtualizado, colunasVisiveis, nomeLoja, onGerenciarPadroesEtiqueta }: TabelaProdutosProps) => {
   const [itemParaExcluir, setItemParaExcluir] = useState<ItemEstoque | null>(null);
   const [atualizandoCatalogo, setAtualizandoCatalogo] = useState<Set<string>>(new Set());
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -672,6 +674,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           onOpenChange={setDialogEtiquetasAberto}
           itensSelecionados={items.filter((i) => selecionados.has(i.id))}
           nomeLoja={nomeLoja}
+          onGerenciarPadroes={onGerenciarPadroesEtiqueta}
         />
       </>
     );
@@ -1104,6 +1107,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         onOpenChange={setDialogEtiquetasAberto}
         itensSelecionados={items.filter((i) => selecionados.has(i.id))}
         nomeLoja={nomeLoja}
+        onGerenciarPadroes={onGerenciarPadroesEtiqueta}
       />
     </>
   );

@@ -919,6 +919,7 @@ export type Database = {
           valor_hora_referencia: number | null
           assinatura_loja: string | null
           usar_assinatura_loja: boolean
+          etiquetas_padroes: Json
           whatsapp: string | null
         }
         Insert: {
@@ -965,6 +966,7 @@ export type Database = {
           valor_hora_referencia?: number | null
           assinatura_loja?: string | null
           usar_assinatura_loja?: boolean
+          etiquetas_padroes?: Json
           whatsapp?: string | null
         }
         Update: {
@@ -1011,6 +1013,7 @@ export type Database = {
           valor_hora_referencia?: number | null
           assinatura_loja?: string | null
           usar_assinatura_loja?: boolean
+          etiquetas_padroes?: Json
           whatsapp?: string | null
         }
         Relationships: [

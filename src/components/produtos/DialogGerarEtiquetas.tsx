@@ -9,16 +9,17 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertTriangle, Package, Printer, Tags, Wrench } from 'lucide-react';
+import { AlertTriangle, Package, Printer, Ruler, Tags, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { ItemEstoque } from '@/types/produto';
 import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot } from '@/lib/printMobile';
@@ -27,15 +28,15 @@ import {
   CampoEtiqueta,
   ConfigEtiquetas,
   ItemEtiqueta,
-  MODELOS_FOLHA_A4,
-  MODELO_A4_PERSONALIZADO,
+  PADRAO_AVULSO_ID,
+  SUGESTOES_PIMACO,
   TamanhoFonteEtiqueta,
+  calcularLayoutFolha,
   carregarConfigEtiquetas,
   contarEtiquetas,
   contarFolhasA4,
   dimensoesEtiqueta,
   escolherCodigoBarras,
-  etiquetasPorFolha,
   montarBodyEtiquetas,
   montarCssEtiquetas,
   montarCssPagina,
@@ -44,12 +45,16 @@ import {
   renderizarCodigoBarras,
   salvarConfigEtiquetas,
 } from '@/lib/etiquetas/etiquetasProduto';
+import { usePadroesEtiqueta } from '@/hooks/usePadroesEtiqueta';
+import { CampoNumero, CamposPadraoEtiqueta, MiniaturaFolha, ResumoLayoutFolha } from './CamposPadraoEtiqueta';
 
 interface DialogGerarEtiquetasProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itensSelecionados: ItemEstoque[];
   nomeLoja?: string;
+  /** Atalho para as Configurações de Produtos, onde os padrões são criados/editados. */
+  onGerenciarPadroes?: () => void;
 }
 
 // Evita travar o navegador montando milhares de etiquetas num único documento.
@@ -57,51 +62,12 @@ const MAX_ETIQUETAS_POR_IMPRESSAO = 1000;
 const PX_POR_MM = 96 / 25.4;
 const LARGURA_PREVIA_PX = 300;
 
-function parseNumero(texto: string): number {
-  const n = parseFloat(texto.replace(',', '.'));
-  return Number.isFinite(n) ? n : NaN;
-}
-
-// Input numérico que aceita vírgula e só confirma o valor ao sair do campo
-// (evita "pular" o valor enquanto a pessoa ainda está digitando).
-function CampoNumero({ valor, onChange, min, max, inteiro = false, id, className }: {
-  valor: number;
-  onChange: (valor: number) => void;
-  min: number;
-  max: number;
-  inteiro?: boolean;
-  id?: string;
-  className?: string;
-}) {
-  const [texto, setTexto] = useState(String(valor).replace('.', ','));
-  useEffect(() => { setTexto(String(valor).replace('.', ',')); }, [valor]);
-
-  const confirmar = () => {
-    let n = parseNumero(texto);
-    if (!Number.isFinite(n)) n = valor;
-    if (inteiro) n = Math.round(n);
-    n = Math.min(Math.max(n, min), max);
-    setTexto(String(n).replace('.', ','));
-    if (n !== valor) onChange(n);
-  };
-
-  return (
-    <Input
-      id={id}
-      inputMode={inteiro ? 'numeric' : 'decimal'}
-      value={texto}
-      onChange={(e) => setTexto(e.target.value)}
-      onBlur={confirmar}
-      onKeyDown={(e) => { if (e.key === 'Enter') confirmar(); }}
-      className={className ?? 'h-9'}
-    />
-  );
-}
-
-export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, nomeLoja = '' }: DialogGerarEtiquetasProps) => {
+export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, nomeLoja = '', onGerenciarPadroes }: DialogGerarEtiquetasProps) => {
   const [config, setConfig] = useState<ConfigEtiquetas>(carregarConfigEtiquetas);
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [previaId, setPreviaId] = useState<string>('');
+  // Mesma query da aba Etiquetas das Configurações: salvar lá atualiza esta lista.
+  const { padroes, carregando: carregandoPadroes } = usePadroesEtiqueta(open);
 
   // itensSelecionados é recriado a cada render do pai (filter) — reinicia só quando
   // o diálogo abre ou a seleção muda de fato, senão as quantidades digitadas se perdem.
@@ -114,11 +80,24 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
     setPreviaId(ids[0] ?? '');
   }, [open, chaveItens]);
 
+  // O padrão lembrado no navegador pode ter sido editado/excluído (inclusive em
+  // outro aparelho): acompanha a versão salva ou, se sumiu, vira "Personalizado"
+  // com as mesmas medidas.
+  useEffect(() => {
+    if (!open || carregandoPadroes) return;
+    setConfig((c) => {
+      if (c.a4.id === PADRAO_AVULSO_ID || SUGESTOES_PIMACO.some((s) => s.id === c.a4.id)) return c;
+      const salvo = padroes.find((p) => p.id === c.a4.id);
+      if (salvo) return salvo === c.a4 ? c : { ...c, a4: salvo };
+      return { ...c, a4: { ...c.a4, id: PADRAO_AVULSO_ID, nome: 'Personalizado' } };
+    });
+  }, [open, padroes, carregandoPadroes]);
+
   const atualizar = (parcial: Partial<ConfigEtiquetas>) => setConfig((c) => ({ ...c, ...parcial }));
   const alternarCampo = (campo: CampoEtiqueta, marcado: boolean) =>
     setConfig((c) => ({ ...c, campos: { ...c.campos, [campo]: marcado } }));
   const atualizarA4 = (parcial: Partial<ConfigEtiquetas['a4']>) =>
-    setConfig((c) => ({ ...c, a4: { ...c.a4, ...parcial, id: MODELO_A4_PERSONALIZADO, nome: 'Personalizado' } }));
+    setConfig((c) => ({ ...c, a4: { ...c.a4, ...parcial, id: PADRAO_AVULSO_ID, nome: 'Personalizado' } }));
 
   const itensImpressao: ItemEtiqueta[] = useMemo(
     () => itensSelecionados.map((item) => ({ item, quantidade: quantidades[item.id] ?? 1 })),
@@ -127,6 +106,8 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
   const totalEtiquetas = contarEtiquetas(itensImpressao);
   const totalFolhas = config.formato === 'a4' ? contarFolhasA4(totalEtiquetas, config) : 0;
   const { larguraMm, alturaMm } = dimensoesEtiqueta(config);
+  const layoutFolha = calcularLayoutFolha(config.a4);
+  const erroLayout = config.formato === 'a4' ? layoutFolha.erro : null;
 
   // Avisos de código de barras por item (sem código ou longo demais para esta largura).
   const avisosCodigo = useMemo(() => {
@@ -165,6 +146,10 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
       toast.error('Defina a quantidade de pelo menos uma etiqueta.');
       return;
     }
+    if (erroLayout) {
+      toast.error(erroLayout);
+      return;
+    }
     if (totalEtiquetas > MAX_ETIQUETAS_POR_IMPRESSAO) {
       toast.error(`Máximo de ${MAX_ETIQUETAS_POR_IMPRESSAO} etiquetas por impressão. Divida em mais de uma impressão.`);
       return;
@@ -196,8 +181,10 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
   const definirTodas = (fn: (item: ItemEstoque) => number) =>
     setQuantidades(Object.fromEntries(itensSelecionados.map((i) => [i.id, fn(i)])));
 
-  const modeloA4Id = MODELOS_FOLHA_A4.some((m) => m.id === config.a4.id) ? config.a4.id : MODELO_A4_PERSONALIZADO;
-  const porFolha = etiquetasPorFolha(config.a4);
+  const opcoesA4 = [...padroes, ...SUGESTOES_PIMACO];
+  const padraoA4Id = opcoesA4.some((p) => p.id === config.a4.id) ? config.a4.id : PADRAO_AVULSO_ID;
+  const porFolha = Math.max(1, layoutFolha.etiquetasPorFolha);
+  const posicoesVazias = Math.min(Math.max(config.posicaoInicial, 1), porFolha) - 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -326,44 +313,56 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Select
-                    value={modeloA4Id}
-                    onValueChange={(id) => {
-                      const modelo = MODELOS_FOLHA_A4.find((m) => m.id === id);
-                      if (modelo) atualizar({ a4: modelo, posicaoInicial: 1 });
-                      else atualizarA4({});
-                    }}
-                  >
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {MODELOS_FOLHA_A4.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
-                      <SelectItem value={MODELO_A4_PERSONALIZADO}>Personalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={padraoA4Id}
+                      onValueChange={(id) => {
+                        const padrao = opcoesA4.find((p) => p.id === id);
+                        // "Personalizado" parte das medidas atuais, para ajustar um padrão sem mexer nele.
+                        if (padrao) atualizar({ a4: padrao, posicaoInicial: 1 });
+                        else atualizarA4({});
+                      }}
+                    >
+                      <SelectTrigger className="h-9 min-w-0 flex-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {padroes.length > 0 && (
+                          <SelectGroup>
+                            <SelectLabel>Meus padrões</SelectLabel>
+                            {padroes.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                          </SelectGroup>
+                        )}
+                        <SelectGroup>
+                          <SelectLabel>Sugestões</SelectLabel>
+                          {SUGESTOES_PIMACO.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                        </SelectGroup>
+                        <SelectGroup>
+                          <SelectLabel>Avulso</SelectLabel>
+                          <SelectItem value={PADRAO_AVULSO_ID}>Personalizado (só desta vez)</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {onGerenciarPadroes && (
+                      <Button variant="outline" size="sm" className="h-9 shrink-0" onClick={onGerenciarPadroes} title="Cadastrar e editar seus padrões de folha (Configurações)">
+                        <Ruler className="w-4 h-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Gerenciar</span>
+                      </Button>
+                    )}
+                  </div>
 
-                  {modeloA4Id === MODELO_A4_PERSONALIZADO && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {([
-                        ['larguraMm', 'Largura (mm)', 10, 200, false],
-                        ['alturaMm', 'Altura (mm)', 10, 280, false],
-                        ['colunas', 'Colunas', 1, 10, true],
-                        ['linhas', 'Linhas', 1, 30, true],
-                        ['margemSuperiorMm', 'Margem sup. (mm)', 0, 50, false],
-                        ['margemEsquerdaMm', 'Margem esq. (mm)', 0, 50, false],
-                        ['espacoHorizontalMm', 'Espaço horiz. (mm)', 0, 20, false],
-                        ['espacoVerticalMm', 'Espaço vert. (mm)', 0, 20, false],
-                      ] as const).map(([chave, rotulo, min, max, inteiro]) => (
-                        <div key={chave} className="space-y-1">
-                          <Label className="text-xs">{rotulo}</Label>
-                          <CampoNumero valor={config.a4[chave]} min={min} max={max} inteiro={inteiro} onChange={(n) => atualizarA4({ [chave]: n })} />
-                        </div>
-                      ))}
+                  {padraoA4Id === PADRAO_AVULSO_ID && (
+                    <div className="space-y-2 rounded-lg border p-3">
+                      <CamposPadraoEtiqueta idPrefixo="etq-avulso" padrao={config.a4} onChange={atualizarA4} />
+                      <p className="text-[11px] text-muted-foreground">
+                        Usado só nesta impressão. Para reutilizar, salve um padrão em Produtos → Configurações → Etiquetas.
+                      </p>
                     </div>
                   )}
 
+                  <ResumoLayoutFolha padrao={config.a4} />
+
                   <div className="flex items-center gap-2">
                     <Label htmlFor="etq-pos" className="text-xs whitespace-nowrap">Começar na posição</Label>
-                    <CampoNumero id="etq-pos" valor={config.posicaoInicial} min={1} max={porFolha} inteiro onChange={(n) => atualizar({ posicaoInicial: n })} className="h-8 w-20" />
+                    <CampoNumero id="etq-pos" valor={Math.min(config.posicaoInicial, porFolha)} min={1} max={porFolha} inteiro onChange={(n) => atualizar({ posicaoInicial: n })} className="h-8 w-20" />
                     <span className="text-[11px] text-muted-foreground">de {porFolha}</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
@@ -392,6 +391,14 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
               {itensSelecionados.length > 1 && (
                 <p className="text-[11px] text-muted-foreground">Clique num item da lista para ver a prévia dele.</p>
               )}
+              {config.formato === 'a4' && !erroLayout && (
+                <div className="flex items-end gap-3 pt-1">
+                  <MiniaturaFolha padrao={config.a4} vazias={posicoesVazias} ocupadas={totalEtiquetas} larguraPx={120} />
+                  <p className="text-[11px] text-muted-foreground">
+                    Primeira folha: etiquetas preenchidas, posições puladas tracejadas.
+                  </p>
+                </div>
+              )}
             </section>
           </div>
         </div>
@@ -404,7 +411,7 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button onClick={handleImprimir} disabled={totalEtiquetas === 0}>
+          <Button onClick={handleImprimir} disabled={totalEtiquetas === 0 || !!erroLayout}>
             <Printer className="w-4 h-4 mr-2" />
             Imprimir
           </Button>

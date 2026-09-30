@@ -15,7 +15,7 @@ import { useColunasVisiveis } from '@/hooks/useColunasVisiveis';
 import { DialogCadastroProduto } from '@/components/produtos/DialogCadastroProduto';
 import { DialogImportarProdutos } from '@/components/produtos/DialogImportarProdutos';
 import { DialogLimiteAtingido } from '@/components/planos/DialogLimiteAtingido';
-import { DialogConfiguracoesProdutos } from '@/components/produtos/DialogConfiguracoesProdutos';
+import { AbaConfiguracoesProdutos, DialogConfiguracoesProdutos } from '@/components/produtos/DialogConfiguracoesProdutos';
 import { TabelaProdutos } from '@/components/produtos/TabelaProdutos';
 import { ItemEstoque, FormularioProduto } from '@/types/produto';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,6 +49,11 @@ const Produtos = () => {
   const [dialogImportarAberto, setDialogImportarAberto] = useState(false);
   const [dialogLimiteAtingido, setDialogLimiteAtingido] = useState(false);
   const [dialogConfiguracoesAberto, setDialogConfiguracoesAberto] = useState(false);
+  const [abaConfiguracoes, setAbaConfiguracoes] = useState<AbaConfiguracoesProdutos>('categorias');
+  const abrirConfiguracoes = (aba: AbaConfiguracoesProdutos) => {
+    setAbaConfiguracoes(aba);
+    setDialogConfiguracoesAberto(true);
+  };
   const [contadorProdutos, setContadorProdutos] = useState({ usados: 0, limite: -1, ilimitado: true });
   const [itemParaEditar, setItemParaEditar] = useState<ItemEstoque | null>(null);
   const [itemParaRepor, setItemParaRepor] = useState<ItemEstoque | null>(null);
@@ -225,7 +230,7 @@ const Produtos = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setDialogConfiguracoesAberto(true)}
+                onClick={() => abrirConfiguracoes('categorias')}
               >
                 <Settings className="w-4 h-4 mr-2" />
                 Configurações
@@ -489,6 +494,7 @@ const Produtos = () => {
                   onReporEstoque={(item) => setItemParaRepor(item)}
                   onAtualizado={carregarTodos}
                   nomeLoja={configLoja?.nome_loja}
+                  onGerenciarPadroesEtiqueta={() => abrirConfiguracoes('etiquetas')}
                 />
               )}
 
@@ -542,7 +548,7 @@ const Produtos = () => {
         limite={contadorProdutos.limite}
       />
 
-      {/* Dialog de Configurações (Categorias e Colunas) */}
+      {/* Dialog de Configurações (Categorias, Colunas e padrões de Etiqueta) */}
       <DialogConfiguracoesProdutos
         open={dialogConfiguracoesAberto}
         onOpenChange={setDialogConfiguracoesAberto}
@@ -553,6 +559,7 @@ const Produtos = () => {
         colunasVisiveis={colunasVisiveis}
         onToggleColuna={toggleColuna}
         onResetarColunas={resetarColunas}
+        abaInicial={abaConfiguracoes}
       />
 
       {/* Dialog de Reposição de Estoque */}
