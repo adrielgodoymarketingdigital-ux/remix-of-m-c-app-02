@@ -1668,6 +1668,56 @@ export type Database = {
         }
         Relationships: []
       }
+      extrato_lancamentos_manuais: {
+        Row: {
+          categoria: string
+          conta_no_saldo: boolean
+          created_at: string
+          criado_por: string | null
+          data: string
+          empresa_id: string | null
+          id: string
+          motivo: string | null
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria?: string
+          conta_no_saldo?: boolean
+          created_at?: string
+          criado_por?: string | null
+          data?: string
+          empresa_id?: string | null
+          id?: string
+          motivo?: string | null
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          categoria?: string
+          conta_no_saldo?: boolean
+          created_at?: string
+          criado_por?: string | null
+          data?: string
+          empresa_id?: string | null
+          id?: string
+          motivo?: string | null
+          tipo?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extrato_lancamentos_manuais_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           created_at: string
@@ -5645,6 +5695,7 @@ export type Database = {
           p_user_id: string
         }
         Returns: {
+          conta_no_saldo: boolean
           data: string
           descricao: string
           origem: string
@@ -5661,9 +5712,11 @@ export type Database = {
           p_is_filial: boolean
           p_limit?: number
           p_offset?: number
+          p_origens?: string[]
           p_user_id: string
         }
         Returns: {
+          conta_no_saldo: boolean
           data: string
           descricao: string
           origem: string

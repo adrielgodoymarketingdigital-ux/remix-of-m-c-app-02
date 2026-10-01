@@ -34,6 +34,13 @@ const NOMES_FORMA: Record<string, string> = {
   a_prazo: "A Receber",
 };
 
+/** Nome de exibição de uma forma de pagamento (resolve a forma customizada salva em observacoes). */
+export function nomeFormaPagamento(forma: string | null | undefined, observacoes?: string | null): string {
+  if (!forma) return "Não informada";
+  const nomeCustomizado = forma === "outro" ? extrairNomeFormaCustomizada(observacoes) : null;
+  return nomeCustomizado ?? NOMES_FORMA[forma] ?? forma;
+}
+
 const CORES_FORMA: Record<string, BreakdownFormaPagamento["cor"]> = {
   dinheiro: "dinheiro",
   pix: "pix",

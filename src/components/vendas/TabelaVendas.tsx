@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Venda } from "@/types/venda";
+import { getNomeItem } from "@/lib/vendas/itensVenda";
 import { DialogEditarVenda } from "./DialogEditarVenda";
 import { formatDateTime, formatDate, formatDataVenda, extrairDataLocal } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
@@ -150,29 +151,6 @@ function agruparVendas(vendas: Venda[]): VendaOuGrupo[] {
 
   allItems.sort((a, b) => extrairDataLocal(b.date).localeCompare(extrairDataLocal(a.date)));
   return allItems.map(i => i.item);
-}
-
-function getNomeItem(venda: Venda): string {
-  if (venda.tipo === "dispositivo") {
-    if (venda.dispositivos) {
-      return `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`;
-    }
-    // Fallback: nome salvo em observacoes pelo PDV (quando join RLS bloqueia)
-    if (venda.observacoes && venda.observacoes !== "pagamento_duplo_secundario") {
-      return venda.observacoes;
-    }
-  }
-  if (venda.tipo === "servico" && venda.ordens_servico) {
-    return `OS ${venda.ordens_servico.numero_os}`;
-  }
-  if (venda.tipo === "avulsa") {
-    return venda.produtos?.nome || "Venda Avulsa";
-  }
-  if (venda.tipo === "produto") {
-    if (venda.produtos?.nome) return venda.produtos.nome;
-    if (venda.observacoes && venda.observacoes !== "pagamento_duplo_secundario") return venda.observacoes;
-  }
-  return venda.produtos?.nome || venda.pecas?.nome || "-";
 }
 
 function getResumoGrupo(vendas: Venda[]): string {

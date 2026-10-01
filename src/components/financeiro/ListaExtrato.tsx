@@ -2,14 +2,23 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
-import { ArrowUpCircle, ArrowDownCircle, Loader2 } from "lucide-react";
-import type { EventoExtrato, OrigemEventoExtrato } from "@/hooks/useExtratoFinanceiro";
+import { ArrowUpCircle, ArrowDownCircle, Eye, Loader2, Pencil, Trash2 } from "lucide-react";
+import { ORIGENS_PDV, ORIGENS_EDITAVEIS, type EventoExtrato, type OrigemEventoExtrato } from "@/hooks/useExtratoFinanceiro";
+import { temDetalheExtrato } from "@/hooks/useDetalheExtrato";
 
 interface ListaExtratoProps {
   eventos: EventoExtrato[];
   carregando: boolean;
   temMais: boolean;
   onCarregarMais: () => void;
+  /** Abre o popup de detalhes (linhas de venda e de OS). */
+  onVerDetalhes: (evento: EventoExtrato) => void;
+  /** Abre o diálogo de editar (só lançamento manual/balanço). */
+  onEditar: (evento: EventoExtrato) => void;
+  /** Abre a confirmação de exclusão (só lançamento manual/balanço). */
+  onExcluir: (evento: EventoExtrato) => void;
+  /** Texto quando não há linhas (ex.: filtro "Só PDV" sem movimentações). */
+  mensagemVazio?: string;
 }
 
 const LABEL_ORIGEM: Record<OrigemEventoExtrato, string> = {
@@ -19,6 +28,10 @@ const LABEL_ORIGEM: Record<OrigemEventoExtrato, string> = {
   ordem_servico: "Ordem de Serviço",
   conta_receber: "Conta a Receber",
   conta_pagar: "Conta a Pagar",
+  pdv_sangria: "Sangria",
+  pdv_suprimento: "Suprimento",
+  lancamento_manual: "Lançamento Manual",
+  balanco_caixa: "Balanço do Caixa",
 };
 
 /** "2026-06-10" → "10/06/2026", sem passar por Date (evita reinterpretação de fuso horário). */
@@ -27,11 +40,11 @@ const formatarDataBR = (isoDate: string) => {
   return `${dia}/${mes}/${ano}`;
 };
 
-export function ListaExtrato({ eventos, carregando, temMais, onCarregarMais }: ListaExtratoProps) {
+export function ListaExtrato({ eventos, carregando, temMais, onCarregarMais, onVerDetalhes, onEditar, onExcluir, mensagemVazio }: ListaExtratoProps) {
   if (!carregando && eventos.length === 0) {
     return (
       <Card className="p-8 text-center text-sm text-muted-foreground">
-        Nenhuma movimentação neste período.
+        {mensagemVazio ?? "Nenhuma movimentação neste período."}
       </Card>
     );
   }
@@ -64,15 +77,63 @@ export function ListaExtrato({ eventos, carregando, temMais, onCarregarMais }: L
                   )}
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{evento.descricao}</p>
-                    <Badge variant="outline" className="text-[10px] mt-0.5">
-                      {LABEL_ORIGEM[evento.origem] ?? evento.origem}
-                    </Badge>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {ORIGENS_PDV.includes(evento.origem) && (
+                        <Badge className="text-[10px]">PDV</Badge>
+                      )}
+                      <Badge variant="outline" className="text-[10px]">
+                        {LABEL_ORIGEM[evento.origem] ?? evento.origem}
+                      </Badge>
+                      {!evento.conta_no_saldo && (
+                        <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600">
+                          Fora do caixa
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <span className={`text-sm font-semibold shrink-0 ${evento.tipo === "entrada" ? "text-green-600" : "text-destructive"}`}>
-                  {evento.tipo === "entrada" ? "+ " : "− "}
-                  <ValorMonetario valor={evento.valor} />
-                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {temDetalheExtrato(evento) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground"
+                      title="Ver detalhes"
+                      aria-label="Ver detalhes"
+                      onClick={() => onVerDetalhes(evento)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {ORIGENS_EDITAVEIS.includes(evento.origem) && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        title="Editar lançamento"
+                        aria-label="Editar lançamento"
+                        onClick={() => onEditar(evento)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        title="Excluir lançamento"
+                        aria-label="Excluir lançamento"
+                        onClick={() => onExcluir(evento)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                  <span className={`text-sm font-semibold ${evento.tipo === "entrada" ? "text-green-600" : "text-destructive"}`}>
+                    {evento.tipo === "entrada" ? "+ " : "− "}
+                    <ValorMonetario valor={evento.valor} />
+                  </span>
+                </div>
               </div>
             ))}
           </Card>

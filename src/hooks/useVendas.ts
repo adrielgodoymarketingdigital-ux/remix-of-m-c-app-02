@@ -14,6 +14,7 @@ import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { cancelarSecundariasEmCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
 import { reconhecerRecebimentoVendaVinculada, MENSAGEM_CUSTO_NAO_CONFIRMADO } from "@/lib/vendas/reconhecerSegundaForma";
 import { alterarDataVenda as alterarDataVendaNoBanco } from "@/lib/vendas/alterarDataVenda";
+import { SELECT_VENDA_COM_ITENS } from "@/lib/vendas/itensVenda";
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -58,13 +59,7 @@ export const useVendas = () => {
       // Carregar vendas normais (somente do usuário logado)
       let queryVendas = supabase
         .from("vendas")
-        .select(`
-          *,
-          clientes!vendas_cliente_fkey (nome, telefone),
-          dispositivos (tipo, marca, modelo),
-          produtos (nome, sku),
-          pecas (nome)
-        `)
+        .select(SELECT_VENDA_COM_ITENS)
         .eq("user_id", resolvedUserId)
         .is("deleted_at", null)
         .order("data", { ascending: false });
