@@ -71,5 +71,19 @@ export const checklistIcons: Record<string, LucideIcon> = {
   pulseira: Watch,
   touch: Hand,
   nfc: Nfc,
-  peca_trocada: Wrench
+  peca_trocada: Wrench,
+  // Estabilizador
+  tensao_saida: Zap,
+  led_rede: Circle,
+  chave_seletora_voltagem: ToggleRight,
+  tomadas_saida: Cable,
+  // Nobreak
+  autonomia_bateria: Battery,
+  display_lcd: MonitorCheck,
+  alarme_sonoro: Volume2,
+  // Projetor
+  lampada_fonte_luz: Zap,
+  qualidade_imagem: Camera,
+  foco_zoom: Camera,
+  entradas_hdmi_vga_usb: Monitor
 };

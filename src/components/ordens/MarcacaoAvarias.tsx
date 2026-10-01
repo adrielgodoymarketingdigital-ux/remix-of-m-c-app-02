@@ -13,6 +13,9 @@ import { SilhuetaImpressora } from "./silhuetas/SilhuetaImpressora";
 import { SilhuetaVideoGame } from "./silhuetas/SilhuetaVideoGame";
 import { SilhuetaDesktop } from "./silhuetas/SilhuetaDesktop";
 import { SilhuetaTelevisao } from "./silhuetas/SilhuetaTelevisao";
+import { SilhuetaEstabilizador } from "./silhuetas/SilhuetaEstabilizador";
+import { SilhuetaNobreak } from "./silhuetas/SilhuetaNobreak";
+import { SilhuetaProjetor } from "./silhuetas/SilhuetaProjetor";
 
 export interface MarcacaoAvariasProps {
   tipoDispositivo: string;
@@ -71,6 +74,12 @@ export const MarcacaoAvarias = ({
       return <SilhuetaDesktop lado={lado} />;
     } else if (tipoNormalizado === 'televisao') {
       return <SilhuetaTelevisao lado={lado} />;
+    } else if (tipoNormalizado === 'estabilizador') {
+      return <SilhuetaEstabilizador lado={lado} />;
+    } else if (tipoNormalizado === 'nobreak') {
+      return <SilhuetaNobreak lado={lado} />;
+    } else if (tipoNormalizado === 'projetor') {
+      return <SilhuetaProjetor lado={lado} />;
     }
 
     return (

@@ -275,6 +275,36 @@ export const checklistTemplates: Record<string, string[]> = {
     'wifi_smart_tv',
     'estado_fisico_tv',
     'peca_trocada'
+  ],
+  estabilizador: [
+    'liga',
+    'tensao_saida',
+    'led_rede',
+    'chave_seletora_voltagem',
+    'tomadas_saida',
+    'fusivel',
+    'estado_fisico_estabilizador',
+    'peca_trocada'
+  ],
+  nobreak: [
+    'liga',
+    'bateria',
+    'autonomia_bateria',
+    'display_lcd',
+    'tomadas_saida',
+    'alarme_sonoro',
+    'estado_fisico_nobreak',
+    'peca_trocada'
+  ],
+  projetor: [
+    'liga',
+    'lampada_fonte_luz',
+    'qualidade_imagem',
+    'foco_zoom',
+    'entradas_hdmi_vga_usb',
+    'ventoinha_cooler',
+    'estado_fisico_projetor',
+    'peca_trocada'
   ]
 };
 
@@ -344,7 +374,25 @@ export const checklistLabels: Record<string, string> = {
   controle_remoto: 'Controle Remoto',
   entradas_hdmi_usb: 'Entradas HDMI/USB',
   wifi_smart_tv: 'Conectividade Wi-Fi (Smart TV)',
-  estado_fisico_tv: 'Estado Físico (tela, moldura, base/suporte)'
+  estado_fisico_tv: 'Estado Físico (tela, moldura, base/suporte)',
+  // Estabilizador
+  tensao_saida: 'Tensão de Saída (dentro da faixa)',
+  led_rede: 'LED Indicador de Rede/Tensão',
+  chave_seletora_voltagem: 'Chave Seletora de Voltagem (115/220V)',
+  tomadas_saida: 'Tomadas de Saída',
+  fusivel: 'Fusível',
+  estado_fisico_estabilizador: 'Estado Físico (carcaça, cabo)',
+  // Nobreak
+  autonomia_bateria: 'Autonomia da Bateria',
+  display_lcd: 'Display/LCD',
+  alarme_sonoro: 'Alarme Sonoro (teste de falta de energia)',
+  estado_fisico_nobreak: 'Estado Físico (carcaça, cabo, conectores)',
+  // Projetor
+  lampada_fonte_luz: 'Lâmpada/Fonte de Luz',
+  qualidade_imagem: 'Qualidade de Imagem (cor, nitidez)',
+  foco_zoom: 'Foco/Zoom',
+  entradas_hdmi_vga_usb: 'Entradas HDMI/VGA/USB',
+  estado_fisico_projetor: 'Estado Físico (lente, carcaça, controle)'
 };
 
 export const getChecklistKey = (tipo: string, sistema?: string, fabricante?: string): string => {

@@ -8,6 +8,9 @@ import { SilhuetaImpressora } from "./silhuetas/SilhuetaImpressora";
 import { SilhuetaVideoGame } from "./silhuetas/SilhuetaVideoGame";
 import { SilhuetaDesktop } from "./silhuetas/SilhuetaDesktop";
 import { SilhuetaTelevisao } from "./silhuetas/SilhuetaTelevisao";
+import { SilhuetaEstabilizador } from "./silhuetas/SilhuetaEstabilizador";
+import { SilhuetaNobreak } from "./silhuetas/SilhuetaNobreak";
+import { SilhuetaProjetor } from "./silhuetas/SilhuetaProjetor";
 
 interface SilhuetaComAvariasProps {
   tipoDispositivo: string;
@@ -62,6 +65,12 @@ export const SilhuetaComAvarias = ({
         return <SilhuetaVideoGame lado={lado} />;
       case "televisao":
         return <SilhuetaTelevisao lado={lado} />;
+      case "estabilizador":
+        return <SilhuetaEstabilizador lado={lado} />;
+      case "nobreak":
+        return <SilhuetaNobreak lado={lado} />;
+      case "projetor":
+        return <SilhuetaProjetor lado={lado} />;
       default:
         return <SilhuetaCelular lado={lado} />;
     }

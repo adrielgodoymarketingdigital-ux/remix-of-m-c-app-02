@@ -699,6 +699,42 @@ export const catalogoDispositivos: CatalogoDispositivos = {
     },
     cores: {},
   },
+  estabilizador: {
+    marcas: ["APC", "SMS", "Forceline", "Ragtech", "TS Shara", "Intelbras"],
+    modelos: {
+      APC: ["Line-R 600VA", "Line-R 1200VA"],
+      SMS: ["Revolution Speedy", "Revolution Eco", "Universal"],
+      Forceline: ["FL Series", "Slim"],
+      Ragtech: ["Digivolt", "Powervolt"],
+      "TS Shara": ["Powerest", "Compact"],
+      Intelbras: ["EST Series"],
+    },
+    cores: {},
+  },
+  nobreak: {
+    marcas: ["APC", "SMS", "Ragtech", "TS Shara", "Intelbras", "Vertiv"],
+    modelos: {
+      APC: ["Back-UPS", "Smart-UPS", "Back-UPS Pro"],
+      SMS: ["Station II", "Net4+", "Manager III"],
+      Ragtech: ["Easy Line", "Multiline"],
+      "TS Shara": ["UPS Expert", "Compact Senoidal"],
+      Intelbras: ["Nobreak XNB", "Nobreak XF"],
+      Vertiv: ["Liebert PSA", "Liebert GXT"],
+    },
+    cores: {},
+  },
+  projetor: {
+    marcas: ["Epson", "BenQ", "LG", "Sony", "Optoma", "ViewSonic"],
+    modelos: {
+      Epson: ["PowerLite", "Home Cinema", "EB-X series"],
+      BenQ: ["MH series", "TH series", "MW series"],
+      LG: ["ProBeam", "CineBeam"],
+      Sony: ["VPL series"],
+      Optoma: ["HD series", "UHD series"],
+      ViewSonic: ["PA series", "PX series"],
+    },
+    cores: {},
+  },
 };
 
 /** Mapeia os valores de dispositivoTipo usados no wizard (ex: "Relogio_Smart") para as chaves do catálogo. */
@@ -711,6 +747,9 @@ const MAPA_TIPO_WIZARD: Record<string, string> = {
   Video_Game: "videogame",
   Desktop: "desktop",
   Televisao: "televisao",
+  Estabilizador: "estabilizador",
+  Nobreak: "nobreak",
+  Projetor: "projetor",
 };
 
 export const TIPOS_COM_CATALOGO = Object.keys(catalogoDispositivos);
@@ -731,6 +770,9 @@ export const TIPOS_DISPOSITIVO_OS: { value: string; label: string }[] = [
   { value: "Video_Game", label: "Video Game" },
   { value: "Impressora", label: "Impressora" },
   { value: "Televisao", label: "Televisão" },
+  { value: "Estabilizador", label: "Estabilizador" },
+  { value: "Nobreak", label: "Nobreak" },
+  { value: "Projetor", label: "Projetor" },
 ];
 
 function resolverChaveTipo(tipo: string): string | undefined {
