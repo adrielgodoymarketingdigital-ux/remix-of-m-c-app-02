@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import {
   LIMITES_PADRAO,
   PadraoEtiqueta,
+  calcularAlturaFolha,
   calcularLayoutFolha,
 } from '@/lib/etiquetas/etiquetasProduto';
 
@@ -84,7 +85,7 @@ export function CamposPadraoEtiqueta({ padrao, onChange, idPrefixo }: {
   onChange: (parcial: Partial<PadraoEtiqueta>) => void;
   idPrefixo: string;
 }) {
-  const campoCm = (chave: 'larguraFolhaMm' | 'alturaFolhaMm' | 'larguraMm' | 'alturaMm', rotulo: string, dica: string) => (
+  const campoCm = (chave: 'larguraFolhaMm' | 'alturaFolhaMm' | 'espacoFileiraMm' | 'larguraMm' | 'alturaMm', rotulo: string, dica: string) => (
     <div className="space-y-1">
       <Label htmlFor={`${idPrefixo}-${chave}`} className="text-xs">{rotulo}</Label>
       <CampoNumero
@@ -100,8 +101,11 @@ export function CamposPadraoEtiqueta({ padrao, onChange, idPrefixo }: {
 
   return (
     <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-      {campoCm('larguraFolhaMm', 'Largura da folha/rolo (cm)', 'Largura total do papel, de uma borda à outra.')}
-      {campoCm('alturaFolhaMm', 'Altura da folha/rolo (cm)', 'Altura de cada página impressa (A4 = 29,7).')}
+      {campoCm('larguraFolhaMm', 'Largura da folha/papel (cm)', 'Largura total do papel, de uma borda à outra.')}
+      {/* Rolo contínuo (1 fileira): a "folha" é etiqueta + espaço até a próxima — mede-se o espaço, não a folha. */}
+      {padrao.linhas === 1
+        ? campoCm('espacoFileiraMm', 'Espaço entre fileiras (cm)', 'Distância da borda de uma etiqueta até a próxima. Se forem coladas uma na outra sem espaço, deixe 0.')
+        : campoCm('alturaFolhaMm', 'Altura da folha/papel (cm)', 'Altura real da folha (A4 = 29,7).')}
       {campoCm('larguraMm', 'Largura da etiqueta (cm)', 'De uma única etiqueta.')}
       {campoCm('alturaMm', 'Altura da etiqueta (cm)', 'De uma única etiqueta.')}
       <div className="space-y-1">
@@ -122,7 +126,7 @@ export function CamposPadraoEtiqueta({ padrao, onChange, idPrefixo }: {
         />
       </div>
       <p className="col-span-2 text-[11px] text-muted-foreground leading-tight">
-        Linhas: deixe vazio para calcular pela quantidade de etiquetas. Informe quando a folha já vem cortada com um número fixo de linhas — o bloco fica centralizado na altura da folha.
+        Linhas: deixe vazio para calcular pela quantidade de etiquetas. Informe quando a folha já vem cortada com um número fixo de linhas — o bloco fica centralizado na altura da folha. Rolo contínuo: use 1 linha e informe o espaço entre fileiras.
       </p>
     </div>
   );
@@ -166,7 +170,8 @@ export function MiniaturaFolha({ padrao, vazias, ocupadas, larguraPx = 150, altu
 }) {
   const layout = calcularLayoutFolha(padrao);
   if (layout.erro) return null;
-  const escala = Math.min(larguraPx / padrao.larguraFolhaMm, alturaMaxPx / padrao.alturaFolhaMm);
+  const alturaFolhaMm = calcularAlturaFolha(padrao);
+  const escala = Math.min(larguraPx / padrao.larguraFolhaMm, alturaMaxPx / alturaFolhaMm);
   const usadas = Math.min(vazias + ocupadas, layout.etiquetasPorFolha);
   // Folha corrida: desenha só as linhas que vão ser usadas (ex.: 12 etiquetas ÷ 3 colunas = 4 linhas).
   const linhas = padrao.linhas ?? Math.max(1, Math.ceil(usadas / padrao.colunas));
@@ -175,7 +180,7 @@ export function MiniaturaFolha({ padrao, vazias, ocupadas, larguraPx = 150, altu
   return (
     <div
       className="relative bg-white border border-border shadow-sm shrink-0"
-      style={{ width: padrao.larguraFolhaMm * escala, height: padrao.alturaFolhaMm * escala }}
+      style={{ width: padrao.larguraFolhaMm * escala, height: alturaFolhaMm * escala }}
       aria-label="Miniatura da primeira folha"
     >
       {celulas.map((i) => {

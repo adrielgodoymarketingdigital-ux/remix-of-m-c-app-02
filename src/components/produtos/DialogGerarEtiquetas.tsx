@@ -295,7 +295,7 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
                   Térmica avulsa
                 </Button>
                 <Button variant={config.formato === 'a4' ? 'default' : 'outline'} size="sm" onClick={() => atualizar({ formato: 'a4' })}>
-                  Folha/rolo
+                  Folha/Grade
                 </Button>
               </div>
 
