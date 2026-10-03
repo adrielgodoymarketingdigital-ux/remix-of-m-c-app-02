@@ -3,7 +3,6 @@ import { AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  ALTURA_FOLHA_MM,
   LIMITES_PADRAO,
   PadraoEtiqueta,
   calcularLayoutFolha,
@@ -79,13 +78,13 @@ const paraCm = (mm: number) => mm / 10;
 const paraMm = (cm: number) => Math.round(cm * 100) / 10;
 const L = LIMITES_PADRAO;
 
-/** Campos de medida de um padrão de folha (em cm). */
+/** Campos de medida de um padrão de folha/rolo (em cm). */
 export function CamposPadraoEtiqueta({ padrao, onChange, idPrefixo }: {
   padrao: PadraoEtiqueta;
   onChange: (parcial: Partial<PadraoEtiqueta>) => void;
   idPrefixo: string;
 }) {
-  const campoCm = (chave: 'larguraFolhaMm' | 'larguraMm' | 'alturaMm', rotulo: string, dica: string) => (
+  const campoCm = (chave: 'larguraFolhaMm' | 'alturaFolhaMm' | 'larguraMm' | 'alturaMm', rotulo: string, dica: string) => (
     <div className="space-y-1">
       <Label htmlFor={`${idPrefixo}-${chave}`} className="text-xs">{rotulo}</Label>
       <CampoNumero
@@ -101,7 +100,8 @@ export function CamposPadraoEtiqueta({ padrao, onChange, idPrefixo }: {
 
   return (
     <div className="grid grid-cols-2 gap-x-2 gap-y-3">
-      <div className="col-span-2">{campoCm('larguraFolhaMm', 'Largura da folha (cm)', 'Largura total do papel, de uma borda à outra.')}</div>
+      {campoCm('larguraFolhaMm', 'Largura da folha/rolo (cm)', 'Largura total do papel, de uma borda à outra.')}
+      {campoCm('alturaFolhaMm', 'Altura da folha/rolo (cm)', 'Altura de cada página impressa (A4 = 29,7).')}
       {campoCm('larguraMm', 'Largura da etiqueta (cm)', 'De uma única etiqueta.')}
       {campoCm('alturaMm', 'Altura da etiqueta (cm)', 'De uma única etiqueta.')}
       <div className="space-y-1">
@@ -122,7 +122,7 @@ export function CamposPadraoEtiqueta({ padrao, onChange, idPrefixo }: {
         />
       </div>
       <p className="col-span-2 text-[11px] text-muted-foreground leading-tight">
-        Linhas: deixe vazio para calcular pela quantidade de etiquetas. Informe quando a folha já vem cortada com um número fixo de linhas — o bloco fica centralizado na altura do A4.
+        Linhas: deixe vazio para calcular pela quantidade de etiquetas. Informe quando a folha já vem cortada com um número fixo de linhas — o bloco fica centralizado na altura da folha.
       </p>
     </div>
   );
@@ -156,15 +156,17 @@ export function ResumoLayoutFolha({ padrao }: { padrao: PadraoEtiqueta }) {
  * Desenho em escala da primeira folha: posições puladas ("começar na posição")
  * tracejadas e as etiquetas que vão sair preenchidas.
  */
-export function MiniaturaFolha({ padrao, vazias, ocupadas, larguraPx = 150 }: {
+export function MiniaturaFolha({ padrao, vazias, ocupadas, larguraPx = 150, alturaMaxPx = 220 }: {
   padrao: PadraoEtiqueta;
   vazias: number;
   ocupadas: number;
   larguraPx?: number;
+  /** Teto da altura do desenho — rolos longos encolhem em vez de esticar a tela. */
+  alturaMaxPx?: number;
 }) {
   const layout = calcularLayoutFolha(padrao);
   if (layout.erro) return null;
-  const escala = larguraPx / padrao.larguraFolhaMm;
+  const escala = Math.min(larguraPx / padrao.larguraFolhaMm, alturaMaxPx / padrao.alturaFolhaMm);
   const usadas = Math.min(vazias + ocupadas, layout.etiquetasPorFolha);
   // Folha corrida: desenha só as linhas que vão ser usadas (ex.: 12 etiquetas ÷ 3 colunas = 4 linhas).
   const linhas = padrao.linhas ?? Math.max(1, Math.ceil(usadas / padrao.colunas));
@@ -173,7 +175,7 @@ export function MiniaturaFolha({ padrao, vazias, ocupadas, larguraPx = 150 }: {
   return (
     <div
       className="relative bg-white border border-border shadow-sm shrink-0"
-      style={{ width: larguraPx, height: ALTURA_FOLHA_MM * escala }}
+      style={{ width: padrao.larguraFolhaMm * escala, height: padrao.alturaFolhaMm * escala }}
       aria-label="Miniatura da primeira folha"
     >
       {celulas.map((i) => {

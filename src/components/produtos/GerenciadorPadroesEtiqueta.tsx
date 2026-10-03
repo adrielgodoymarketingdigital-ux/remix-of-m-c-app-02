@@ -23,13 +23,13 @@ const cmTexto = (mm: number) => Number((mm / 10).toFixed(2)).toString().replace(
 
 function descricaoPadrao(p: PadraoEtiqueta): string {
   const linhas = p.linhas === null ? 'linhas automáticas' : `${p.linhas} linhas`;
-  return `Folha ${cmTexto(p.larguraFolhaMm)}cm · etiqueta ${cmTexto(p.larguraMm)}×${cmTexto(p.alturaMm)}cm · ${p.colunas} ${p.colunas === 1 ? 'coluna' : 'colunas'} · ${linhas}`;
+  return `Folha ${cmTexto(p.larguraFolhaMm)}×${cmTexto(p.alturaFolhaMm)}cm · etiqueta ${cmTexto(p.larguraMm)}×${cmTexto(p.alturaMm)}cm · ${p.colunas} ${p.colunas === 1 ? 'coluna' : 'colunas'} · ${linhas}`;
 }
 
 /**
  * "Meus padrões de etiqueta" (aba Etiquetas das Configurações de Produtos):
- * cria, edita e exclui as folhas medidas pelo usuário. Mesma fonte de dados
- * (usePadroesEtiqueta) do seletor de folha A4 em Gerar Etiquetas.
+ * cria, edita e exclui as folhas/rolos medidos pelo usuário (qualquer tamanho).
+ * Mesma fonte de dados (usePadroesEtiqueta) do seletor de folha em Gerar Etiquetas.
  */
 export const GerenciadorPadroesEtiqueta = () => {
   const { padroes, carregando, salvando, salvarPadrao, excluirPadrao } = usePadroesEtiqueta();
@@ -56,7 +56,7 @@ export const GerenciadorPadroesEtiqueta = () => {
         <div>
           <h3 className="text-sm font-semibold">{ehNovo ? 'Novo padrão de etiqueta' : 'Editar padrão de etiqueta'}</h3>
           <p className="text-xs text-muted-foreground">
-            Meça sua folha com uma régua. As margens e o espaço entre as colunas são calculados sozinhos.
+            Meça sua folha ou rolo com uma régua (qualquer tamanho: A4, rolo de 8cm, 5,8cm…). As margens e o espaço entre as colunas são calculados sozinhos.
           </p>
         </div>
 
@@ -125,7 +125,7 @@ export const GerenciadorPadroesEtiqueta = () => {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Folhas de etiqueta medidas por você, salvas para a loja toda. Aparecem em "Gerar Etiquetas" no formato Folha A4.
+        Folhas e rolos de etiqueta medidos por você, de qualquer tamanho, salvos para a loja toda. Aparecem em "Gerar Etiquetas" no formato Folha/rolo.
       </p>
       <Button size="sm" className="w-full" onClick={() => setEditando({ ...PADRAO_AVULSO_INICIAL, id: crypto.randomUUID(), nome: '' })}>
         <Plus className="w-4 h-4 mr-1" />

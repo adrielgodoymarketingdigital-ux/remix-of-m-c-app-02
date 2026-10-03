@@ -295,7 +295,7 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
                   Térmica avulsa
                 </Button>
                 <Button variant={config.formato === 'a4' ? 'default' : 'outline'} size="sm" onClick={() => atualizar({ formato: 'a4' })}>
-                  Folha A4
+                  Folha/rolo
                 </Button>
               </div>
 
@@ -406,7 +406,7 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
         <DialogFooter className="gap-2 sm:items-center">
           <span className="text-xs text-muted-foreground sm:mr-auto">
             {totalEtiquetas} {totalEtiquetas === 1 ? 'etiqueta' : 'etiquetas'}
-            {config.formato === 'a4' && totalFolhas > 0 && ` · ${totalFolhas} ${totalFolhas === 1 ? 'folha' : 'folhas'} A4`}
+            {config.formato === 'a4' && totalFolhas > 0 && ` · ${totalFolhas} ${totalFolhas === 1 ? 'folha' : 'folhas'}`}
           </span>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
