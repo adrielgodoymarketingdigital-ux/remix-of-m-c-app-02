@@ -109,7 +109,7 @@ serve(async (req) => {
     );
     const cardData = await cardRes.json();
     if (!cardRes.ok) {
-      log("Erro ao criar cartão", { body: cardData });
+      log("Erro ao criar cartão", { status: cardRes.status, erro: extractGatewayMessage(cardData) });
       throw new Error(
         extractGatewayMessage(cardData) || "Falha ao salvar novo cartão."
       );
@@ -131,7 +131,7 @@ serve(async (req) => {
     );
     const subData = await subRes.json();
     if (!subRes.ok) {
-      log("Erro ao atualizar subscription", { body: subData });
+      log("Erro ao atualizar subscription", { status: subRes.status, erro: extractGatewayMessage(subData) });
       throw new Error(
         extractGatewayMessage(subData) ||
           "Falha ao vincular novo cartão à assinatura."

@@ -251,7 +251,7 @@ serve(async (req) => {
       });
       const customerData = await customerRes.json();
       if (!customerRes.ok) {
-        log("Erro ao criar customer", { body: customerData });
+        log("Erro ao criar customer", { status: customerRes.status, erro: extractGatewayMessage(customerData) });
         throw new Error(
           extractGatewayMessage(customerData) ||
             "Falha ao criar cliente na Pagar.me."
@@ -298,7 +298,6 @@ serve(async (req) => {
     log("Criando subscription na Pagar.me", {
       plan_id: pagarmePlanId,
       customer_id: customerId,
-      billing_address: billingAddressPayload,
     });
     // Cria na API, grava no banco e, se a conta já tinha outra assinatura
     // (upgrade), cancela a anterior depois de gravar o id novo.

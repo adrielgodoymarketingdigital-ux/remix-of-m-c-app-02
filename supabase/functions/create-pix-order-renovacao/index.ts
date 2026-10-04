@@ -162,7 +162,7 @@ serve(async (req: Request) => {
     const pagarmeData = await pagarmeRes.json();
 
     if (!pagarmeRes.ok) {
-      log("Erro Pagar.me", { status: pagarmeRes.status, body: pagarmeData });
+      log("Erro Pagar.me", { status: pagarmeRes.status, erro: pagarmeData?.message ?? null });
       throw new Error(pagarmeData?.message ?? "Erro ao criar cobrança PIX.");
     }
 

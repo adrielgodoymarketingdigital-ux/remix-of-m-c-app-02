@@ -351,7 +351,7 @@ serve(async (req) => {
     );
 
     if (!pagarmeRes.ok) {
-      log("Erro Pagar.me", { status: pagarmeRes.status, body: pagarmeData });
+      log("Erro Pagar.me", { status: pagarmeRes.status, erro: initialGatewayMessage || pagarmeData?.message || null });
       throw new Error(
         buildPixFailureMessage(
           initialGatewayMessage ||
@@ -391,7 +391,7 @@ serve(async (req) => {
     const pixCopyPaste = lastTransaction?.qr_code ?? qrCode;
 
     if (!qrCode) {
-      log("QR Code não retornado pela Pagar.me", { charge, gatewayMessage });
+      log("QR Code não retornado pela Pagar.me", { orderId: pagarmeData.id, chargeId: charge?.id, chargeStatus: charge?.status, gatewayMessage });
       throw new Error(buildPixFailureMessage(gatewayMessage));
     }
 

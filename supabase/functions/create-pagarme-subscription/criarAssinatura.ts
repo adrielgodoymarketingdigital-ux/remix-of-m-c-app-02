@@ -56,10 +56,10 @@ export async function criarEGravarAssinatura(
   const subData = await subRes.json();
 
   if (!subRes.ok) {
+    // Só status e mensagem: o payload tem endereço de cobrança e token do cartão.
     log("Erro ao criar subscription", {
       status: subRes.status,
-      body: JSON.stringify(subData),
-      payload_sent: JSON.stringify(subscriptionPayload),
+      erro: extractGatewayMessage(subData),
     });
     throw new Error(
       extractGatewayMessage(subData) ||
@@ -82,7 +82,7 @@ export async function criarEGravarAssinatura(
     chargeStatus,
     lastTransactionStatus: lastTransaction?.status,
     acquirerMessage: lastTransaction?.acquirer_message,
-    gatewayResponse: JSON.stringify(lastTransaction?.gateway_response),
+    gatewayCode: lastTransaction?.gateway_response?.code ?? null,
   });
 
   // "pending" na primeira cobrança é normal na Pagar.me — significa processando
