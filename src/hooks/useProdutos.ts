@@ -5,7 +5,11 @@ import { ItemEstoque, Produto, Peca, FormularioProduto, VariacaoInput } from '@/
 import { useFuncionarioPermissoes } from './useFuncionarioPermissoes';
 import { useAssinatura } from './useAssinatura';
 import { useIdentidade } from './useResolvedUserId';
+import { montarEntradaEstoque, mensagemSucessoEntrada, traduzirErroEntradaEstoque, type CamposEntradaEstoque } from '@/lib/estoque/montarEntradaEstoque';
 import { executarConversaoTipo, renomearVariacao as renomearVariacaoCore, adicionarVariacaoAoGrupo as adicionarVariacaoAoGrupoCore, removerDoGrupo as removerDoGrupoCore } from '@/lib/produtos/conversaoTipo';
+
+/** Dados opcionais da compra numa reposição (tela Repor Estoque). */
+export type DadosCompraEntrada = Omit<CamposEntradaEstoque, 'tipo' | 'itemId' | 'quantidade'>;
 
 export const useProdutos = () => {
   const [items, setItems] = useState<ItemEstoque[]>([]);
@@ -940,41 +944,65 @@ export const useProdutos = () => {
     }
   }, [carregarTodos, items, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
 
-  const reporEstoque = useCallback(async (id: string, tipo: 'produto' | 'peca', quantidadeAdicional: number) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-
-      const userId = resolvedUserId ?? user.id;
-      const tabela = tipo === 'produto' ? 'produtos' : 'pecas';
-
-      const { data: atual, error: erroSelect } = await supabase
-        .from(tabela)
-        .select('quantidade')
-        .eq('id', id)
-        .eq('user_id', userId)
-        .single();
-
-      if (erroSelect) throw erroSelect;
-
-      const novaQuantidade = (atual?.quantidade || 0) + quantidadeAdicional;
-
-      const { error: erroUpdate } = await supabase
-        .from(tabela)
-        .update({ quantidade: novaQuantidade } as any)
-        .eq('id', id)
-        .eq('user_id', userId);
-
-      if (erroUpdate) throw erroUpdate;
-
-      toast.success(`Estoque atualizado! +${quantidadeAdicional} unidades adicionadas.`);
-      await carregarTodos();
-      return true;
-    } catch (error: any) {
-      toast.error('Erro ao repor estoque', { description: error.message });
+  // Entrada de estoque atômica via RPC (soma quantidade, custo médio opcional,
+  // conta a pagar opcional e histórico em entradas_estoque). Sem `compra`, só soma
+  // a quantidade — mas também fica registrada no histórico.
+  const reporEstoque = useCallback(async (
+    id: string,
+    tipo: 'produto' | 'peca',
+    quantidadeAdicional: number,
+    compra: DadosCompraEntrada = {},
+  ) => {
+    const montagem = montarEntradaEstoque({ tipo, itemId: id, quantidade: quantidadeAdicional, ...compra });
+    if (!montagem.ok) {
+      toast.error('Erro ao repor estoque', { description: montagem.erro });
       return false;
     }
-  }, [carregarTodos, resolvedUserId, empresaFiltro, lojaUserId, podeSincronizarProdutos, isFuncionario]);
+    const params = montagem.params!;
+    const itemAntes = items.find((i) => i.id === id && i.tipo === tipo);
+
+    try {
+      const { data, error } = await supabase.rpc('registrar_entrada_estoque', {
+        p_item_tipo: params.p_item_tipo,
+        p_item_id: params.p_item_id,
+        p_quantidade: params.p_quantidade,
+        p_custo_unitario: params.p_custo_unitario ?? undefined,
+        p_fornecedor_id: params.p_fornecedor_id ?? undefined,
+        p_gerar_conta: params.p_gerar_conta,
+        p_pago: params.p_pago,
+        p_forma_pagamento: params.p_forma_pagamento ?? undefined,
+        p_observacao: params.p_observacao ?? undefined,
+        p_atualizar_custo_medio: params.p_atualizar_custo_medio,
+      });
+      if (error) {
+        toast.error('Erro ao repor estoque', { description: traduzirErroEntradaEstoque(error) });
+        return false;
+      }
+
+      const resultado = Array.isArray(data) ? data[0] : data;
+      const valorConta = params.p_gerar_conta && params.p_custo_unitario !== null
+        ? Math.round(params.p_custo_unitario * 100) * params.p_quantidade / 100
+        : null;
+      toast.success(mensagemSucessoEntrada({
+        quantidade: params.p_quantidade,
+        quantidadeFinal: Number(resultado?.quantidade_final ?? (itemAntes?.quantidade ?? 0) + params.p_quantidade),
+        atualizouCusto: params.p_atualizar_custo_medio,
+        custoAnterior: itemAntes?.custo,
+        custoFinal: resultado?.custo_final,
+        contaGerada: !!resultado?.conta_id,
+        valorConta,
+        pago: params.p_pago,
+      }));
+
+      await carregarTodos();
+      // Dashboard escuta este evento para recarregar contas a pagar.
+      if (resultado?.conta_id) window.dispatchEvent(new CustomEvent('conta-atualizada'));
+      return true;
+    } catch (error: any) {
+      toast.error('Erro ao repor estoque', { description: traduzirErroEntradaEstoque(error) });
+      return false;
+    }
+  }, [carregarTodos, items]);
 
   // Realtime: recarrega quando outro usuário (ex: funcionário) inserir/atualizar/excluir
   useEffect(() => {

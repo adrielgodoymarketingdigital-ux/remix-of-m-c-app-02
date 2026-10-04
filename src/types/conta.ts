@@ -67,6 +67,8 @@ export const CATEGORIAS_CONTA = [
   'Internet',
   'Telefone',
   'Fornecedores',
+  // Usada pelas contas que a reposição de estoque cria (registrar_entrada_estoque).
+  'Compra de Mercadoria',
   'Salários',
   'Impostos',
   'Marketing',
