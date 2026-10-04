@@ -20,6 +20,8 @@ export interface Conta {
   forma_pagamento_entrada?: string;
   /** true = usa a tabela pagamentos_contas (recebimento parcial + recibo). Contas antigas = false. */
   usa_historico_pagamentos?: boolean;
+  /** true = compra de mercadoria para estoque: sai do caixa, mas não abate o lucro (o custo entra na venda). */
+  compra_estoque?: boolean;
   /** Nome do cliente vinculado, resolvido via JOIN (read-only, não persiste). */
   cliente_nome?: string;
 }
@@ -55,6 +57,7 @@ export interface FormularioConta {
   forma_pagamento?: string;
   valor_pago?: number;
   forma_pagamento_entrada?: string;
+  compra_estoque?: boolean;
 }
 
 export const CATEGORIAS_CONTA = [

@@ -52,6 +52,7 @@ const formSchema = z.object({
   descricao: z.string().max(500, "Descrição deve ter no máximo 500 caracteres").optional(),
   fornecedor_id: z.string().optional(),
   cliente_id: z.string().optional(),
+  compra_estoque: z.boolean().default(false),
 });
 
 interface DialogCadastroContaProps {
@@ -94,6 +95,7 @@ export function DialogCadastroConta({
       descricao: "",
       fornecedor_id: "",
       cliente_id: "",
+      compra_estoque: false,
     },
   });
 
@@ -112,6 +114,7 @@ export function DialogCadastroConta({
         descricao: conta.descricao || "",
         fornecedor_id: conta.fornecedor_id || "",
         cliente_id: conta.cliente_id || "",
+        compra_estoque: conta.compra_estoque === true,
       });
       const jaTemEntrada = !!conta.valor_pago && conta.valor_pago > 0;
       setRegistrarEntrada(jaTemEntrada);
@@ -129,6 +132,7 @@ export function DialogCadastroConta({
         descricao: "",
         fornecedor_id: "",
         cliente_id: "",
+        compra_estoque: false,
       });
       setRegistrarEntrada(false);
       setValorEntrada("");
@@ -162,6 +166,17 @@ export function DialogCadastroConta({
         ? dados.cliente_id
         : undefined,
     };
+
+    // Compra de mercadoria só existe em conta a pagar. O campo só vai para o
+    // banco quando ligado (ou quando a conta já estava marcada e está sendo
+    // desmarcada): assim, cadastrar/editar contas comuns continua funcionando
+    // mesmo que este código chegue antes da migration da coluna.
+    const compraEstoque = dados.tipo === "pagar" && dados.compra_estoque === true;
+    if (compraEstoque || conta?.compra_estoque) {
+      dadosLimpos.compra_estoque = compraEstoque;
+    } else {
+      delete dadosLimpos.compra_estoque;
+    }
 
     if (registrarEntrada && valorEntradaNumero > 0) {
       dadosLimpos.valor_pago = valorEntradaNumero;
@@ -367,6 +382,29 @@ export function DialogCadastroConta({
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {tipoSelecionado === "pagar" && (
+              <FormField
+                control={form.control}
+                name="compra_estoque"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>Compra de mercadoria para estoque (não abate o lucro)</FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Sai do caixa, mas o custo só entra no lucro quando a mercadoria for vendida
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value === true}
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />

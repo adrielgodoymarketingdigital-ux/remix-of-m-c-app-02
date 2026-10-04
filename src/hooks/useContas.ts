@@ -591,6 +591,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
                 descricao: conta.descricao || null,
                 fornecedor_id: conta.fornecedor_id || null,
                 user_id: targetUserId,
+                // Só envia quando marcada (default da coluna é false).
+                ...(conta.compra_estoque ? { compra_estoque: true } : {}),
               });
 
               toast({

@@ -1030,6 +1030,7 @@ export type Database = {
         Row: {
           categoria: string | null
           cliente_id: string | null
+          compra_estoque: boolean
           created_at: string | null
           data: string
           data_pagamento: string | null
@@ -1053,6 +1054,7 @@ export type Database = {
         Insert: {
           categoria?: string | null
           cliente_id?: string | null
+          compra_estoque?: boolean
           created_at?: string | null
           data: string
           data_pagamento?: string | null
@@ -1076,6 +1078,7 @@ export type Database = {
         Update: {
           categoria?: string | null
           cliente_id?: string | null
+          compra_estoque?: boolean
           created_at?: string | null
           data?: string
           data_pagamento?: string | null
@@ -1667,6 +1670,108 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      entradas_estoque: {
+        Row: {
+          conta_id: string | null
+          created_at: string
+          criado_por: string | null
+          custo_anterior: number | null
+          custo_resultante: number | null
+          custo_total: number | null
+          custo_unitario: number | null
+          data: string
+          empresa_id: string | null
+          fornecedor_id: string | null
+          id: string
+          item_nome: string
+          item_tipo: string
+          observacao: string | null
+          peca_id: string | null
+          produto_id: string | null
+          quantidade: number
+          quantidade_anterior: number | null
+          user_id: string
+        }
+        Insert: {
+          conta_id?: string | null
+          created_at?: string
+          criado_por?: string | null
+          custo_anterior?: number | null
+          custo_resultante?: number | null
+          custo_total?: number | null
+          custo_unitario?: number | null
+          data?: string
+          empresa_id?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          item_nome: string
+          item_tipo: string
+          observacao?: string | null
+          peca_id?: string | null
+          produto_id?: string | null
+          quantidade: number
+          quantidade_anterior?: number | null
+          user_id: string
+        }
+        Update: {
+          conta_id?: string | null
+          created_at?: string
+          criado_por?: string | null
+          custo_anterior?: number | null
+          custo_resultante?: number | null
+          custo_total?: number | null
+          custo_unitario?: number | null
+          data?: string
+          empresa_id?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          item_nome?: string
+          item_tipo?: string
+          observacao?: string | null
+          peca_id?: string | null
+          produto_id?: string | null
+          quantidade?: number
+          quantidade_anterior?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entradas_estoque_conta_id_fkey"
+            columns: ["conta_id"]
+            isOneToOne: false
+            referencedRelation: "contas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_estoque_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_estoque_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_estoque_peca_id_fkey"
+            columns: ["peca_id"]
+            isOneToOne: false
+            referencedRelation: "pecas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entradas_estoque_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       extrato_lancamentos_manuais: {
         Row: {
@@ -5901,6 +6006,26 @@ export type Database = {
       }
       is_funcionario_of: { Args: { owner_user_id: string }; Returns: boolean }
       mark_as_client: { Args: { p_user_id: string }; Returns: boolean }
+      registrar_entrada_estoque: {
+        Args: {
+          p_atualizar_custo_medio?: boolean
+          p_custo_unitario?: number
+          p_forma_pagamento?: string
+          p_fornecedor_id?: string
+          p_gerar_conta?: boolean
+          p_item_id: string
+          p_item_tipo: string
+          p_observacao?: string
+          p_pago?: boolean
+          p_quantidade: number
+        }
+        Returns: {
+          conta_id: string
+          custo_final: number
+          entrada_id: string
+          quantidade_final: number
+        }[]
+      }
       registrar_pontos_fidelidade: {
         Args: {
           p_cliente_id: string

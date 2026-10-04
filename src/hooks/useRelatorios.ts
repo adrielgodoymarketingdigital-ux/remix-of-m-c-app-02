@@ -13,6 +13,7 @@ import { useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro, resolverCustoVendaParaLucro } from "@/lib/vendasFinanceiras";
 import { useIdentidade } from "./useResolvedUserId";
+import { ehDespesaOperacional } from "@/lib/financeiro/despesasOperacionais";
 
 export const useRelatorios = () => {
   const [loading, setLoading] = useState(false);
@@ -546,18 +547,9 @@ export const useRelatorios = () => {
       const { data: contas, error } = await query;
       if (error) throw error;
 
-      // Excluir peças de OS do custo operacional (já entram no custo total de produtos/peças)
-      const contasOperacionais = (contas || []).filter((conta: any) => {
-        const nome = String(conta.nome || "");
-        const descricao = String(conta.descricao || "");
-
-        const vinculadaOS = Boolean(conta.os_numero);
-        const pecaPorNome = /^peça\s*:/i.test(nome);
-        const pecaPorDescricao = /utilizada no servi[çc]o/i.test(descricao);
-        const pecaPorPadraoOS = /\(OS\s*\d+/i.test(nome) && /peça/i.test(nome);
-
-        return !(vinculadaOS || pecaPorNome || pecaPorDescricao || pecaPorPadraoOS);
-      });
+      // Excluir peças de OS (já entram no custo total de produtos/peças) e
+      // compras de mercadoria para estoque (custo entra no lucro na venda)
+      const contasOperacionais = (contas || []).filter(ehDespesaOperacional);
 
       // Store raw accounts for detail view
       const contasDetalhes: ContaPagaDetalhe[] = contasOperacionais.map((c: any) => ({
@@ -851,15 +843,9 @@ export const useRelatorios = () => {
       if (contaReceberError) throw contaReceberError;
       if (taxasCartaoError) throw taxasCartaoError;
 
-      // Filtrar contas operacionais (excluir peças de OS já contabilizadas nos custos diretos)
-      const contasOperacionais = (contasPagar || []).filter((conta: any) => {
-        const nome = String(conta.nome || "");
-        const descricao = String(conta.descricao || "");
-        const pecaPorNome = /^peça\s*:/i.test(nome);
-        const pecaPorDescricao = /utilizada no servi[çc]o/i.test(descricao);
-        const pecaPorPadraoOS = /\(OS\s*\d+/i.test(nome) && /peça/i.test(nome);
-        return !(pecaPorNome || pecaPorDescricao || pecaPorPadraoOS);
-      });
+      // Filtrar contas operacionais (excluir peças de OS já contabilizadas nos custos diretos
+      // e compras de mercadoria para estoque)
+      const contasOperacionais = (contasPagar || []).filter(ehDespesaOperacional);
 
       // Agrupar por mês
       const evolucaoMap = new Map<string, EvolucaoMensal>();
