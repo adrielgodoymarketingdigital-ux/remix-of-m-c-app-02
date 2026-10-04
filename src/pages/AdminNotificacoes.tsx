@@ -27,25 +27,31 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AppLayout } from "@/components/layout/AppLayout";
 
-const tipoIcone = {
+const tipoIcone: Record<string, typeof Bell> = {
   novo_trial: UserPlus,
   nova_assinatura: CreditCard,
   cancelamento: XCircle,
   pagamento_falhou: AlertTriangle,
+  falha_cartao_ignorada: AlertTriangle,
+  cancelamento_cartao_falhou: XCircle,
 };
 
-const tipoCor = {
+const tipoCor: Record<string, string> = {
   novo_trial: 'text-blue-500 bg-blue-50',
   nova_assinatura: 'text-green-500 bg-green-50',
   cancelamento: 'text-red-500 bg-red-50',
   pagamento_falhou: 'text-yellow-500 bg-yellow-50',
+  falha_cartao_ignorada: 'text-amber-600 bg-amber-50',
+  cancelamento_cartao_falhou: 'text-red-500 bg-red-50',
 };
 
-const tipoLabel = {
+const tipoLabel: Record<string, string> = {
   novo_trial: 'Novo Trial',
   nova_assinatura: 'Nova Assinatura',
   cancelamento: 'Cancelamento',
   pagamento_falhou: 'Pagamento Falhou',
+  falha_cartao_ignorada: 'Cobrança de cartão antiga falhou (período pago por PIX)',
+  cancelamento_cartao_falhou: 'Falha ao cancelar cartão antigo',
 };
 
 function NotificationCard({
@@ -55,9 +61,10 @@ function NotificationCard({
   notification: AdminNotification;
   onMarkAsRead: (id: string) => void;
 }) {
-  const Icone = tipoIcone[notification.tipo];
-  const cor = tipoCor[notification.tipo];
-  const label = tipoLabel[notification.tipo];
+  // Tipo sem mapeamento (ex.: os da Ticto) não pode derrubar a página: sino + o próprio tipo.
+  const Icone = tipoIcone[notification.tipo] ?? Bell;
+  const cor = tipoCor[notification.tipo] ?? 'text-muted-foreground bg-muted';
+  const label = tipoLabel[notification.tipo] ?? notification.tipo;
 
   return (
     <Card className={cn(
@@ -313,6 +320,8 @@ export default function AdminNotificacoes() {
                       <SelectItem value="nova_assinatura">Nova Assinatura</SelectItem>
                       <SelectItem value="cancelamento">Cancelamento</SelectItem>
                       <SelectItem value="pagamento_falhou">Pagamento Falhou</SelectItem>
+                      <SelectItem value="falha_cartao_ignorada">Cobrança de cartão antiga falhou (período pago por PIX)</SelectItem>
+                      <SelectItem value="cancelamento_cartao_falhou">Falha ao cancelar cartão antigo</SelectItem>
                     </SelectContent>
                   </Select>
 

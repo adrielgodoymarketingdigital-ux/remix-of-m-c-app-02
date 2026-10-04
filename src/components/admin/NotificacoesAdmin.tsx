@@ -26,6 +26,8 @@ const tipoIcone: Record<string, typeof Bell> = {
   pagamento_falhou: AlertTriangle,
   reembolso_ticto: RefreshCw,
   ticto_usuario_nao_encontrado: HelpCircle,
+  falha_cartao_ignorada: AlertTriangle,
+  cancelamento_cartao_falhou: XCircle,
 };
 
 const tipoCor: Record<string, string> = {
@@ -39,6 +41,8 @@ const tipoCor: Record<string, string> = {
   pagamento_falhou: 'text-yellow-500',
   reembolso_ticto: 'text-red-600',
   ticto_usuario_nao_encontrado: 'text-yellow-600',
+  falha_cartao_ignorada: 'text-amber-600',
+  cancelamento_cartao_falhou: 'text-red-500',
 };
 
 function NotificationItem({

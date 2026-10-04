@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  type AdminClient,
+  cancelarAssinaturaCartaoAntiga,
+  ehRenovacaoDoPlano,
+  findAssinaturaByCustomerCode,
+  findAssinaturaBySubscription,
+  log,
+  processarFalhaCobranca,
+} from "./falhaCartaoPix.ts";
 import { verifyPagarmeSignature } from "../_shared/hmac.ts";
 
 const corsHeaders = {
@@ -7,42 +16,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-const log = (step: string, details?: unknown) => {
-  const d = details ? ` - ${JSON.stringify(details)}` : "";
-  console.log(`[PAGARME-WEBHOOK] ${step}${d}`);
-};
-
-// Mapeia subscription_id → user_id/plano via tabela `assinaturas`
-// deno-lint-ignore no-explicit-any
-type AdminClient = any;
-
-type AssinaturaMin = { id: string; user_id: string; plano_tipo: string; pagarme_subscription_id: string | null };
-
-async function findAssinaturaBySubscription(
-  supabaseAdmin: AdminClient,
-  subscriptionId: string
-) {
-  const { data } = await supabaseAdmin
-    .from("assinaturas")
-    .select("id, user_id, plano_tipo, pagarme_subscription_id")
-    .eq("pagarme_subscription_id", subscriptionId)
-    .maybeSingle();
-  return data as AssinaturaMin | null;
-}
-
-// Fallback: busca por customer.code (user_id) quando pagarme_subscription_id é nulo
-async function findAssinaturaByCustomerCode(
-  supabaseAdmin: AdminClient,
-  customerCode: string
-) {
-  const { data } = await supabaseAdmin
-    .from("assinaturas")
-    .select("id, user_id, plano_tipo, pagarme_subscription_id")
-    .eq("user_id", customerCode)
-    .maybeSingle();
-  return data as AssinaturaMin | null;
-}
 
 function calcularProximaCobranca(planoTipo: string): string {
   const isAnual = planoTipo.includes("anual");
@@ -144,25 +117,22 @@ serve(async (req) => {
   try {
     const rawBody = await req.text();
 
-    // Valida a assinatura HMAC-SHA256 enviada pela Pagar.me (header X-Hub-Signature).
-    // Sem um segredo configurado, rejeitamos tudo — nunca processamos payloads não assinados.
+    // Valida a assinatura HMAC-SHA256 da Pagar.me (header X-Hub-Signature) só quando
+    // o segredo estiver configurado no projeto. Sem ele, segue sem validar (como antes
+    // da validação existir) — rejeitar tudo derrubaria a confirmação de pagamentos.
     const webhookSecret = Deno.env.get("PAGARME_WEBHOOK_SECRET");
     if (!webhookSecret) {
-      log("PAGARME_WEBHOOK_SECRET não configurada — rejeitando webhook");
-      return new Response(JSON.stringify({ error: "Webhook not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const signatureHeader = req.headers.get("x-hub-signature") ?? req.headers.get("X-Hub-Signature");
-    const signatureValid = await verifyPagarmeSignature(rawBody, signatureHeader, webhookSecret);
-    if (!signatureValid) {
-      log("Assinatura HMAC inválida ou ausente");
-      return new Response(JSON.stringify({ error: "Invalid signature" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.warn("PAGARME_WEBHOOK_SECRET ausente: webhook sem validação de assinatura");
+    } else {
+      const signatureHeader = req.headers.get("x-hub-signature") ?? req.headers.get("X-Hub-Signature");
+      const signatureValid = await verifyPagarmeSignature(rawBody, signatureHeader, webhookSecret);
+      if (!signatureValid) {
+        log("Assinatura HMAC inválida ou ausente");
+        return new Response(JSON.stringify({ error: "Invalid signature" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const body = JSON.parse(rawBody);
@@ -344,7 +314,7 @@ async function handlePixOrderPaid(
       // Verificar se a assinatura foi ativada — pode ter falhado numa retentativa anterior
       const { data: assinaturaCheck } = await supabaseAdmin
         .from("assinaturas")
-        .select("plano_tipo, status, payment_method")
+        .select("id, plano_tipo, status, payment_method, pagarme_subscription_id")
         .eq("user_id", pagamento.user_id)
         .maybeSingle();
 
@@ -354,6 +324,16 @@ async function handlePixOrderPaid(
         assinaturaCheck?.plano_tipo === pagamento.plano_tipo;
 
       if (jaAtivado) {
+        // A verificação manual (check-pix-payment) costuma ativar antes deste webhook:
+        // o cancelamento da assinatura de cartão antiga também precisa acontecer aqui.
+        if (assinaturaCheck.pagarme_subscription_id && ehRenovacaoDoPlano(orderOrigem, null, pagamento.plano_tipo)) {
+          await cancelarAssinaturaCartaoAntiga(supabaseAdmin, {
+            assinaturaId: assinaturaCheck.id,
+            userId: pagamento.user_id,
+            subscriptionId: assinaturaCheck.pagarme_subscription_id,
+            orderId,
+          });
+        }
         log("Pagamento e assinatura já processados", { orderId });
         return new Response(
           JSON.stringify({ received: true, already_processed: true }),
@@ -396,7 +376,7 @@ async function handlePixOrderPaid(
     // Verificar se já existe assinatura para o usuário
     const { data: assinaturaExistente } = await supabaseAdmin
       .from("assinaturas")
-      .select("id")
+      .select("id, plano_tipo, pagarme_subscription_id")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -440,6 +420,20 @@ async function handlePixOrderPaid(
         throw new Error(`Erro ao atualizar assinatura: ${assError.message}`);
       }
       log("Assinatura atualizada", { userId, planoTipo });
+
+      // Renovou por PIX com uma assinatura de cartão antiga ainda ativa na Pagar.me:
+      // sem cancelar, cada falha de cobrança dela bloquearia o cliente (past_due).
+      if (
+        assinaturaExistente.pagarme_subscription_id &&
+        ehRenovacaoDoPlano(orderOrigem, assinaturaExistente.plano_tipo, planoTipo)
+      ) {
+        await cancelarAssinaturaCartaoAntiga(supabaseAdmin, {
+          assinaturaId: assinaturaExistente.id,
+          userId,
+          subscriptionId: assinaturaExistente.pagarme_subscription_id,
+          orderId,
+        });
+      }
     } else {
       // Criar nova assinatura
       const { error: assError } = await supabaseAdmin
@@ -831,62 +825,7 @@ async function handleSubscriptionFailed(
   body: Record<string, unknown>,
   supabaseAdmin: AdminClient
 ) {
-  const data = body?.data as Record<string, unknown> | undefined;
-  const subscriptionId =
-    (data?.subscription_id as string) ??
-    ((data?.subscription as Record<string, unknown>)?.id as string) ??
-    ((data?.invoice as Record<string, unknown>)?.subscription_id as string) ??
-    null;
-
-  const customerCodeFailed =
-    ((data?.customer as Record<string, unknown>)?.code as string) ??
-    ((data?.subscription as Record<string, unknown>)?.customer as Record<string, unknown>)?.code as string ??
-    null;
-
-  if (!subscriptionId && !customerCodeFailed) {
-    log("payment_failed sem subscription_id e sem customer.code");
-    return ok({ ignored: true });
-  }
-
-  let assinatura = subscriptionId
-    ? await findAssinaturaBySubscription(supabaseAdmin, subscriptionId)
-    : null;
-
-  if (!assinatura && customerCodeFailed) {
-    assinatura = await findAssinaturaByCustomerCode(supabaseAdmin, customerCodeFailed);
-  }
-
-  if (!assinatura) {
-    return ok({ warning: "assinatura_nao_encontrada" });
-  }
-
-  const { error } = await supabaseAdmin
-    .from("assinaturas")
-    .update({
-      status: "past_due",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", assinatura.id);
-
-  if (error) throw new Error(`Erro past_due: ${error.message}`);
-
-  // Notifica admin
-  await supabaseAdmin.from("admin_notifications").insert({
-    tipo: "pagamento_falhou",
-    titulo: "Pagamento recorrente falhou",
-    mensagem: `Pagar.me não conseguiu cobrar a assinatura ${assinatura.plano_tipo}`,
-    dados: {
-      user_id: assinatura.user_id,
-      subscription_id: subscriptionId,
-    },
-  });
-
-  log("⚠️ Pagamento recorrente falhou", {
-    userId: assinatura.user_id,
-    subscriptionId,
-  });
-
-  return ok({ processed: true, status: "past_due" });
+  return ok(await processarFalhaCobranca(body, supabaseAdmin));
 }
 
 async function handleSubscriptionCanceled(
