@@ -68,14 +68,23 @@ serve(async (req) => {
 
     const { data: assinatura } = await supabaseAdmin
       .from("assinaturas")
-      .select("id, pagarme_subscription_id, pagarme_customer_id")
+      .select("id, pagarme_subscription_id, pagarme_customer_id, payment_method, status")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (!assinatura?.pagarme_subscription_id || !assinatura?.pagarme_customer_id) {
       return new Response(
-        JSON.stringify({ error: "Nenhuma assinatura Pagar.me encontrada." }),
+        JSON.stringify({ error: "Sua assinatura não é cobrada no cartão, então não há cartão para trocar." }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Só assinatura recorrente no cartão: com PIX o pagarme_subscription_id pode ser
+    // de uma assinatura de cartão antiga, e o PATCH voltaria a cobrar por ela.
+    if (assinatura.payment_method !== "credit_card") {
+      return new Response(
+        JSON.stringify({ error: "Sua assinatura é paga por PIX, então não há cartão para trocar." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -145,6 +154,8 @@ serve(async (req) => {
         card_id: newCardId,
         last_four_digits: cardData.last_four_digits,
         brand: cardData.brand,
+        // past_due: a cobrança pendente fica para a nova tentativa automática da Pagar.me.
+        status_assinatura: assinatura.status,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

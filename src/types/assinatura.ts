@@ -27,6 +27,7 @@ export interface Assinatura {
   user_id: string;
   payment_provider?: string | null;
   pagarme_subscription_id?: string | null;
+  payment_method?: string | null;
   ticto_order_id?: string | null;
   plano_tipo: PlanoTipo;
   status: StatusAssinatura;

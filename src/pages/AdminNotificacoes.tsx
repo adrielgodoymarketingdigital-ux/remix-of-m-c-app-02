@@ -34,6 +34,7 @@ const tipoIcone: Record<string, typeof Bell> = {
   pagamento_falhou: AlertTriangle,
   falha_cartao_ignorada: AlertTriangle,
   cancelamento_cartao_falhou: XCircle,
+  cancelamento_pagarme_falhou: XCircle,
 };
 
 const tipoCor: Record<string, string> = {
@@ -43,6 +44,7 @@ const tipoCor: Record<string, string> = {
   pagamento_falhou: 'text-yellow-500 bg-yellow-50',
   falha_cartao_ignorada: 'text-amber-600 bg-amber-50',
   cancelamento_cartao_falhou: 'text-red-500 bg-red-50',
+  cancelamento_pagarme_falhou: 'text-red-500 bg-red-50',
 };
 
 const tipoLabel: Record<string, string> = {
@@ -52,6 +54,7 @@ const tipoLabel: Record<string, string> = {
   pagamento_falhou: 'Pagamento Falhou',
   falha_cartao_ignorada: 'Cobrança de cartão antiga falhou (período pago por PIX)',
   cancelamento_cartao_falhou: 'Falha ao cancelar cartão antigo',
+  cancelamento_pagarme_falhou: 'Falha ao cancelar assinatura na Pagar.me',
 };
 
 function NotificationCard({
@@ -322,6 +325,7 @@ export default function AdminNotificacoes() {
                       <SelectItem value="pagamento_falhou">Pagamento Falhou</SelectItem>
                       <SelectItem value="falha_cartao_ignorada">Cobrança de cartão antiga falhou (período pago por PIX)</SelectItem>
                       <SelectItem value="cancelamento_cartao_falhou">Falha ao cancelar cartão antigo</SelectItem>
+                      <SelectItem value="cancelamento_pagarme_falhou">Falha ao cancelar assinatura na Pagar.me</SelectItem>
                     </SelectContent>
                   </Select>
 

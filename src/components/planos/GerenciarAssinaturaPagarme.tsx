@@ -143,14 +143,18 @@ export function GerenciarAssinaturaPagarme({
         { body: { card_token } }
       );
       if (error) {
-        const ctx = (error as { context?: { error?: string } }).context;
-        throw new Error(ctx?.error || error.message || "Falha ao trocar cartão.");
+        // O context do erro do supabase-js é a Response: a mensagem clara está no corpo.
+        const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
+        throw new Error(corpo?.error || error.message || "Falha ao trocar cartão.");
       }
       toast({
         title: "Cartão atualizado!",
-        description: data?.last_four_digits
-          ? `Novo cartão final ${data.last_four_digits} salvo com sucesso.`
-          : "Próximas cobranças usarão o novo cartão.",
+        description:
+          data?.status_assinatura === "past_due"
+            ? "Cartão atualizado; a cobrança será tentada novamente automaticamente."
+            : data?.last_four_digits
+              ? `Novo cartão final ${data.last_four_digits} salvo com sucesso.`
+              : "Próximas cobranças usarão o novo cartão.",
       });
       setTrocaOpen(false);
       resetForm();
@@ -176,8 +180,8 @@ export function GerenciarAssinaturaPagarme({
         { body: {} }
       );
       if (error) {
-        const ctx = (error as { context?: { error?: string } }).context;
-        throw new Error(ctx?.error || error.message || "Falha ao cancelar.");
+        const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
+        throw new Error(corpo?.error || error.message || "Falha ao cancelar.");
       }
 
       const motivo = motivoCancelamento === "Outro motivo" ? motivoCustom : motivoCancelamento;

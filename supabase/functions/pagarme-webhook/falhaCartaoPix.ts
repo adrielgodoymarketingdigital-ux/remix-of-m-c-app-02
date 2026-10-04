@@ -4,8 +4,11 @@
 // assinatura, o tratamento das falhas de cobrança e o cancelamento da
 // assinatura de cartão na renovação por PIX (testáveis sem subir o servidor).
 
-// deno-lint-ignore no-explicit-any
-export type AdminClient = any;
+import { type AdminClient, avisarAdmin } from "../_shared/pagarmeAssinatura.ts";
+
+export type { AdminClient };
+// O cancelamento da sub de cartão antiga também é usado pelo upgrade no cartão.
+export { cancelarAssinaturaCartaoAntiga } from "../_shared/pagarmeAssinatura.ts";
 
 export type AssinaturaMin = {
   id: string;
@@ -16,7 +19,6 @@ export type AssinaturaMin = {
   data_fim: string | null;
 };
 
-const PAGARME_API = "https://api.pagar.me/core/v5";
 const DOIS_DIAS_MS = 2 * 24 * 60 * 60 * 1000;
 
 const COLUNAS_ASSINATURA = "id, user_id, plano_tipo, pagarme_subscription_id, payment_method, data_fim";
@@ -79,14 +81,6 @@ export function ehRenovacaoDoPlano(
 }
 
 const dataBR = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-
-async function avisarAdmin(supabaseAdmin: AdminClient, aviso: Record<string, unknown>) {
-  try {
-    await supabaseAdmin.from("admin_notifications").insert(aviso);
-  } catch (err) {
-    log("⚠️ Erro ao gravar aviso para o admin", { error: String(err) });
-  }
-}
 
 /** Trata subscription/invoice/charge payment_failed. Retorna o payload da resposta. */
 export async function processarFalhaCobranca(
@@ -175,61 +169,4 @@ export async function processarFalhaCobranca(
   });
 
   return { processed: true, status: "past_due" };
-}
-
-/**
- * Cancela na Pagar.me a assinatura de cartão que sobrou quando o cliente renova
- * por PIX. Limpa pagarme_subscription_id no banco ANTES de chamar a API: assim o
- * subscription.canceled que a Pagar.me dispara em seguida não encontra a linha e
- * não marca a assinatura como canceled. Nunca lança — em qualquer falha só avisa
- * o admin e o webhook segue.
- */
-export async function cancelarAssinaturaCartaoAntiga(
-  supabaseAdmin: AdminClient,
-  params: { assinaturaId: string; userId: string; subscriptionId: string; orderId: string },
-  opts: { fetchFn?: typeof fetch; pagarmeKey?: string | undefined } = {}
-): Promise<"cancelada" | "falhou"> {
-  const { assinaturaId, userId, subscriptionId, orderId } = params;
-  const fetchFn = opts.fetchFn ?? fetch;
-  const pagarmeKey = "pagarmeKey" in opts ? opts.pagarmeKey : Deno.env.get("PAGARME_SECRET_KEY");
-
-  const falhou = async (motivo: string) => {
-    log("⚠️ Não foi possível cancelar a assinatura de cartão antiga", { userId, subscriptionId, motivo });
-    await avisarAdmin(supabaseAdmin, {
-      tipo: "cancelamento_cartao_falhou",
-      titulo: "Renovou por PIX, mas a assinatura de cartão antiga não foi cancelada",
-      mensagem: `Cancele a assinatura ${subscriptionId} manualmente na Pagar.me. Motivo: ${motivo}`,
-      dados: { user_id: userId, subscription_id: subscriptionId, pagarme_order_id: orderId, motivo },
-    });
-    return "falhou" as const;
-  };
-
-  try {
-    const { error: errLimpar } = await supabaseAdmin
-      .from("assinaturas")
-      .update({ pagarme_subscription_id: null })
-      .eq("id", assinaturaId)
-      .eq("pagarme_subscription_id", subscriptionId);
-    // Sem limpar o banco, cancelar na Pagar.me faria o subscription.canceled marcar a assinatura como canceled.
-    if (errLimpar) return await falhou(`erro ao limpar pagarme_subscription_id: ${errLimpar.message}`);
-
-    if (!pagarmeKey) return await falhou("PAGARME_SECRET_KEY não configurada");
-
-    const res = await fetchFn(`${PAGARME_API}/subscriptions/${subscriptionId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${btoa(`${pagarmeKey}:`)}`,
-      },
-    });
-    if (!res.ok) {
-      const corpo = await res.text().catch(() => "");
-      return await falhou(`Pagar.me respondeu ${res.status}: ${corpo.substring(0, 200)}`);
-    }
-
-    log("🧹 Assinatura de cartão antiga cancelada (renovação por PIX)", { userId, subscriptionId, orderId });
-    return "cancelada";
-  } catch (err) {
-    return await falhou(String(err));
-  }
 }

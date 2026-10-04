@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -117,6 +117,9 @@ export function CartaoCheckoutDialog({
   }, [open])
 
   const [loading, setLoading] = useState(false);
+  // Trava síncrona contra duplo clique/Enter: o `loading` do estado só chega no próximo
+  // render, e dois envios no mesmo render criariam duas assinaturas (cobrança dupla).
+  const enviandoRef = useRef(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -164,6 +167,7 @@ export function CartaoCheckoutDialog({
     !loading;
 
   const resetForm = () => {
+    enviandoRef.current = false;
     setCardNumber("");
     setHolderName("");
     setExpiry("");
@@ -248,7 +252,8 @@ export function CartaoCheckoutDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || enviandoRef.current) return;
+    enviandoRef.current = true;
 
     setLoading(true);
     setError(null);
@@ -335,6 +340,8 @@ export function CartaoCheckoutDialog({
         resetForm();
       }, 1800);
     } catch (err) {
+      // Só libera em caso de erro; no sucesso o diálogo fecha e resetForm libera.
+      enviandoRef.current = false;
       const msg = err instanceof Error ? err.message : "Erro inesperado.";
       setError(msg);
       toast({

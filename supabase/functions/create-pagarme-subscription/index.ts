@@ -8,6 +8,7 @@ import {
 } from "../_shared/planos-config.ts";
 import { detectarRajadaSuspeita, marcarContaSuspeita } from "../_shared/antiRajadaCadastro.ts";
 import { validarTurnstile } from "../_shared/turnstile.ts";
+import { criarEGravarAssinatura, extractGatewayMessage } from "./criarAssinatura.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,18 +40,6 @@ const isValidCPF = (cpf: string) => {
   digit = (sum * 10) % 11;
   if (digit === 10) digit = 0;
   return digit === Number(cpf[10]);
-};
-
-const extractGatewayMessage = (payload: unknown): string | null => {
-  if (!payload || typeof payload !== "object") return null;
-  const errors = (payload as Record<string, unknown>).errors;
-  if (Array.isArray(errors) && errors.length > 0) {
-    const first = errors[0] as Record<string, unknown>;
-    if (typeof first?.message === "string") return first.message;
-  }
-  const message = (payload as Record<string, unknown>).message;
-  if (typeof message === "string") return message;
-  return null;
 };
 
 serve(async (req) => {
@@ -230,7 +219,7 @@ serve(async (req) => {
     // ── 5. Reaproveitar/criar customer ───────────────────────────────
     const { data: existing } = await supabaseAdmin
       .from("assinaturas")
-      .select("pagarme_customer_id")
+      .select("pagarme_customer_id, pagarme_subscription_id")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -311,120 +300,15 @@ serve(async (req) => {
       customer_id: customerId,
       billing_address: billingAddressPayload,
     });
-    const subRes = await fetch(`${PAGARME_API}/subscriptions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: pagarmeAuth,
-      },
-      body: JSON.stringify(subscriptionPayload),
+    // Cria na API, grava no banco e, se a conta já tinha outra assinatura
+    // (upgrade), cancela a anterior depois de gravar o id novo.
+    const { subData, paymentApproved } = await criarEGravarAssinatura(supabaseAdmin, {
+      userId,
+      plano,
+      customerId,
+      subscriptionPayload,
+      subscriptionIdAnterior: existing?.pagarme_subscription_id ?? null,
     });
-    const subData = await subRes.json();
-
-    if (!subRes.ok) {
-      log("Erro ao criar subscription", {
-        status: subRes.status,
-        body: JSON.stringify(subData),
-        payload_sent: JSON.stringify(subscriptionPayload),
-      });
-      throw new Error(
-        extractGatewayMessage(subData) ||
-          "Falha ao criar assinatura na Pagar.me."
-      );
-    }
-
-    // ── 7. Verificar status da primeira cobrança ─────────────────────
-    const currentCharge = subData.current_charge ?? subData.charges?.[0];
-    const chargeStatus = currentCharge?.status;
-    const lastTransaction = currentCharge?.last_transaction;
-    const cardId =
-      lastTransaction?.card?.id ??
-      currentCharge?.card?.id ??
-      null;
-
-    log("Subscription criada", {
-      subscriptionId: subData.id,
-      subscriptionStatus: subData.status,
-      chargeStatus,
-      lastTransactionStatus: lastTransaction?.status,
-      acquirerMessage: lastTransaction?.acquirer_message,
-      gatewayResponse: JSON.stringify(lastTransaction?.gateway_response),
-    });
-
-    // "pending" na primeira cobrança é normal na Pagar.me — significa processando
-    const paymentApproved =
-      subData.status === "active" ||
-      subData.status === "pending" ||
-      chargeStatus === "paid" ||
-      chargeStatus === "captured" ||
-      chargeStatus === "pending" ||
-      chargeStatus === "processing";
-
-    if (
-      chargeStatus === "failed" ||
-      lastTransaction?.status === "not_authorized" ||
-      lastTransaction?.status === "refused"
-    ) {
-      const reason =
-        extractGatewayMessage(lastTransaction?.gateway_response) ||
-        lastTransaction?.acquirer_message ||
-        "Cartão recusado pela operadora.";
-      log("Cobrança recusada", { reason });
-      throw new Error(`Pagamento recusado: ${reason}`);
-    }
-
-    // ── 8. Atualizar/criar registro em assinaturas ───────────────────
-    const isAnual = plano.includes("anual");
-    const dataInicio = new Date().toISOString();
-    const dataFim = new Date(
-      Date.now() + (isAnual ? 365 : 30) * 24 * 60 * 60 * 1000
-    ).toISOString();
-
-    const baseData = {
-      plano_tipo: plano,
-      status: paymentApproved ? "active" : "pending",
-      data_inicio: dataInicio,
-      data_fim: dataFim,
-      data_proxima_cobranca: dataFim,
-      payment_provider: "pagarme",
-      payment_method: "credit_card",
-      pagarme_customer_id: customerId,
-      pagarme_subscription_id: subData.id,
-      pagarme_card_id: cardId,
-      updated_at: dataInicio,
-    };
-
-    const { data: assinaturaExistente } = await supabaseAdmin
-      .from("assinaturas")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (assinaturaExistente) {
-      await supabaseAdmin
-        .from("assinaturas")
-        .update(baseData)
-        .eq("user_id", userId);
-
-      // Remover bloqueio "ate_assinar"
-      await supabaseAdmin
-        .from("assinaturas")
-        .update({
-          bloqueado_admin: false,
-          bloqueado_admin_em: null,
-          bloqueado_admin_motivo: null,
-          bloqueado_tipo: null,
-        })
-        .eq("user_id", userId)
-        .eq("bloqueado_tipo", "ate_assinar");
-
-      log("Assinatura atualizada", { userId });
-    } else {
-      await supabaseAdmin
-        .from("assinaturas")
-        .insert({ user_id: userId, ...baseData });
-      log("Assinatura criada", { userId });
-    }
 
     // ── 9. Notificação admin (se aprovada) ───────────────────────────
     if (paymentApproved) {

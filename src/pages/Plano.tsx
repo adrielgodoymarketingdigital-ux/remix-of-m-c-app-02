@@ -172,6 +172,13 @@ export default function Plano() {
     }
   };
 
+  // Trocar cartão só para assinatura recorrente no cartão — inclusive past_due, que é
+  // quem mais precisa. Com PIX o pagarme_subscription_id pode ser de um cartão antigo.
+  const podeTrocarCartao =
+    assinatura?.payment_method === "credit_card" &&
+    !!assinatura?.pagarme_subscription_id &&
+    ["active", "trialing", "past_due"].includes(assinatura.status);
+
   const MOSTRAR_PLANO_ULTRA = true;
 
   const planosFiltrados = Object.entries(PLANOS).filter(([key]) =>
@@ -518,8 +525,7 @@ export default function Plano() {
                         )}
                       </div>
                     )}
-                    {assinatura.payment_provider === "pagarme" &&
-                      assinatura.status === "active" && (
+                    {podeTrocarCartao && (
                         <GerenciarAssinaturaPagarme
                           dataProximaCobranca={assinatura.data_proxima_cobranca}
                           onChanged={recarregar}
@@ -555,6 +561,13 @@ export default function Plano() {
                             <strong>Ação necessária:</strong> Escolha um plano abaixo para continuar usando todas as funcionalidades.
                           </AlertDescription>
                         </Alert>
+                        {/* Cobrança recusada no cartão: trocar o cartão resolve sem assinar de novo. */}
+                        {podeTrocarCartao && (
+                          <GerenciarAssinaturaPagarme
+                            dataProximaCobranca={assinatura?.data_proxima_cobranca}
+                            onChanged={recarregar}
+                          />
+                        )}
                       </div>
                     </>
                   ) : (
