@@ -1,3 +1,5 @@
+import { CATEGORIA_COMPRA_MERCADORIA } from "@/lib/financeiro/marcacaoCompraEstoque";
+
 export interface Conta {
   id: string;
   nome: string;
@@ -68,7 +70,7 @@ export const CATEGORIAS_CONTA = [
   'Telefone',
   'Fornecedores',
   // Usada pelas contas que a reposição de estoque cria (registrar_entrada_estoque).
-  'Compra de Mercadoria',
+  CATEGORIA_COMPRA_MERCADORIA,
   'Salários',
   'Impostos',
   'Marketing',

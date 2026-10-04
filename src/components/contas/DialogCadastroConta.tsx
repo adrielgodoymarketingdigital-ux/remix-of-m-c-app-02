@@ -33,6 +33,11 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Conta, FormularioConta, CATEGORIAS_CONTA } from "@/types/conta";
+import {
+  AVISO_SEM_MARCACAO_COMPRA,
+  decidirMarcacaoCompraEstoque,
+  deveAvisarSemMarcacao,
+} from "@/lib/financeiro/marcacaoCompraEstoque";
 
 const FORMAS_PAGAMENTO_ENTRADA = [
   { value: "dinheiro", label: "Dinheiro" },
@@ -81,6 +86,8 @@ export function DialogCadastroConta({
   const [formaPagamentoEntrada, setFormaPagamentoEntrada] = useState("dinheiro");
   // Trava de envio: um segundo clique antes do primeiro terminar não cria outra conta.
   const enviandoRef = useRef(false);
+  // true quando compra_estoque foi marcada pela escolha da categoria (não pelo usuário).
+  const [marcacaoCompraAutomatica, setMarcacaoCompraAutomatica] = useState(false);
 
   const form = useForm<FormularioConta>({
     resolver: zodResolver(formSchema),
@@ -100,8 +107,12 @@ export function DialogCadastroConta({
   });
 
   const tipoSelecionado = form.watch("tipo");
+  const categoriaSelecionada = form.watch("categoria");
+  const compraEstoqueMarcada = form.watch("compra_estoque");
 
   useEffect(() => {
+    // Abrir/editar nunca muda a marcação sozinho: o estado vem da conta (ou false).
+    setMarcacaoCompraAutomatica(false);
     if (conta) {
       form.reset({
         nome: conta.nome,
@@ -313,7 +324,23 @@ export function DialogCadastroConta({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={(valor) => {
+                        const anterior = field.value;
+                        field.onChange(valor);
+                        if (!valor) return;
+                        // Só a escolha do usuário mexe na caixinha compra_estoque.
+                        const novo = decidirMarcacaoCompraEstoque({
+                          tipo: form.getValues("tipo"),
+                          categoriaAnterior: anterior,
+                          categoriaNova: valor,
+                          estado: { marcada: form.getValues("compra_estoque") === true, automatica: marcacaoCompraAutomatica },
+                        });
+                        form.setValue("compra_estoque", novo.marcada);
+                        setMarcacaoCompraAutomatica(novo.automatica);
+                      }}
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
@@ -392,19 +419,31 @@ export function DialogCadastroConta({
                 control={form.control}
                 name="compra_estoque"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel>Compra de mercadoria para estoque (não abate o lucro)</FormLabel>
-                      <p className="text-xs text-muted-foreground">
-                        Sai do caixa, mas o custo só entra no lucro quando a mercadoria for vendida
-                      </p>
+                  <FormItem className="rounded-lg border p-3 space-y-2">
+                    <div className="flex flex-row items-center justify-between">
+                      <div className="space-y-0.5">
+                        <FormLabel>Compra de mercadoria para estoque (não abate o lucro)</FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Sai do caixa, mas o custo só entra no lucro quando a mercadoria for vendida
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value === true}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked === true);
+                            setMarcacaoCompraAutomatica(false);
+                          }}
+                        />
+                      </FormControl>
                     </div>
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value === true}
-                        onCheckedChange={(checked) => field.onChange(checked === true)}
-                      />
-                    </FormControl>
+                    {deveAvisarSemMarcacao({
+                      tipo: tipoSelecionado,
+                      categoria: categoriaSelecionada,
+                      marcada: compraEstoqueMarcada === true,
+                    }) && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500">{AVISO_SEM_MARCACAO_COMPRA}</p>
+                    )}
                   </FormItem>
                 )}
               />
