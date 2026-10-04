@@ -9,6 +9,7 @@ const EVENTO = JSON.stringify({ type: "teste.ignorado", id: "evt_teste" });
 async function comWebhook(
   segredo: string | null,
   testar: () => Promise<void>,
+  envExtra: Record<string, string> = {},
 ): Promise<string> {
   const env: Record<string, string> = {
     PATH: Deno.env.get("PATH") ?? "",
@@ -19,6 +20,7 @@ async function comWebhook(
   const denoDir = Deno.env.get("DENO_DIR");
   if (denoDir) env.DENO_DIR = denoDir;
   if (segredo) env.PAGARME_WEBHOOK_SECRET = segredo;
+  Object.assign(env, envExtra);
 
   const proc = new Deno.Command(Deno.execPath(), {
     args: ["run", "--allow-net", "--allow-env", "--allow-read", "--no-lock", new URL("./index.ts", import.meta.url).pathname],
@@ -79,4 +81,14 @@ Deno.test("com PAGARME_WEBHOOK_SECRET: assinatura inválida ou ausente → 401, 
       json: { received: true, ignored: true },
     });
   });
+});
+
+Deno.test("com PAGARME_ACCOUNT_ID: evento sem account.id ou de outra conta → 403; conta certa → processa", async () => {
+  await comWebhook(null, async () => {
+    assertEquals(await post(EVENTO), { status: 403, json: { error: "Forbidden" } });
+    const outraConta = JSON.stringify({ type: "teste.ignorado", id: "evt", account: { id: "acc_outra" } });
+    assertEquals((await post(outraConta)).status, 403);
+    const contaCerta = JSON.stringify({ type: "teste.ignorado", id: "evt", account: { id: "acc_certa" } });
+    assertEquals(await post(contaCerta), { status: 200, json: { received: true, ignored: true } });
+  }, { PAGARME_ACCOUNT_ID: "acc_certa" });
 });

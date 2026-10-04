@@ -1,7 +1,7 @@
 // Supabase em memória para os testes das edge functions: só o que elas usam
-// (select/eq/is/maybeSingle/update/insert). `falhar` simula erro do banco.
+// (select/eq/is/maybeSingle/update/insert/delete). `falhar` simula erro do banco.
 type Linha = Record<string, unknown>;
-type Op = "select" | "update" | "insert";
+type Op = "select" | "update" | "insert" | "delete";
 
 export function bancoFake(
   tabelas: Record<string, Linha[]>,
@@ -17,6 +17,10 @@ export function bancoFake(
       if (erro) return { data: null, error: { message: erro } };
       if (op === "update") linhas().forEach((r) => Object.assign(r, payload));
       if (op === "insert") (tabelas[tabela] ??= []).push({ ...payload });
+      if (op === "delete") {
+        const apagar = new Set(linhas());
+        tabelas[tabela] = tabelas[tabela].filter((r) => !apagar.has(r));
+      }
       return { data: op === "select" ? linhas() : null, error: null };
     };
     // deno-lint-ignore no-explicit-any
@@ -26,6 +30,7 @@ export function bancoFake(
       is: (c: string, v: unknown) => (filtros.push([c, v]), b),
       update: (p: Linha) => ((op = "update"), (payload = p), b),
       insert: (p: Linha) => ((op = "insert"), (payload = p), b),
+      delete: () => ((op = "delete"), b),
       maybeSingle: () => {
         const r = executar();
         return Promise.resolve({ data: r.data?.[0] ?? null, error: r.error });
