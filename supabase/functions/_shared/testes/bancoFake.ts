@@ -1,5 +1,5 @@
 // Supabase em memória para os testes das edge functions: só o que elas usam
-// (select/eq/is/maybeSingle/update/insert/delete). `falhar` simula erro do banco.
+// (select/eq/is/in/maybeSingle/update/insert/delete). `falhar` simula erro do banco.
 type Linha = Record<string, unknown>;
 type Op = "select" | "update" | "insert" | "delete";
 
@@ -11,7 +11,11 @@ export function bancoFake(
     let op: Op = "select";
     let payload: Linha = {};
     const filtros: [string, unknown][] = [];
-    const linhas = () => (tabelas[tabela] ??= []).filter((r) => filtros.every(([c, v]) => r[c] === v));
+    const filtrosIn: [string, unknown[]][] = [];
+    const linhas = () =>
+      (tabelas[tabela] ??= []).filter((r) =>
+        filtros.every(([c, v]) => r[c] === v) && filtrosIn.every(([c, vs]) => vs.includes(r[c]))
+      );
     const executar = () => {
       const erro = falhar(tabela, op, payload);
       if (erro) return { data: null, error: { message: erro } };
@@ -28,6 +32,7 @@ export function bancoFake(
       select: () => b,
       eq: (c: string, v: unknown) => (filtros.push([c, v]), b),
       is: (c: string, v: unknown) => (filtros.push([c, v]), b),
+      in: (c: string, vs: unknown[]) => (filtrosIn.push([c, vs]), b),
       update: (p: Linha) => ((op = "update"), (payload = p), b),
       insert: (p: Linha) => ((op = "insert"), (payload = p), b),
       delete: () => ((op = "delete"), b),

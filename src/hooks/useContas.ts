@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
+import { cancelarParcelaDaContaExcluida } from "@/lib/vendas/estornoParcelaSecundaria";
 import {
   propagarStatusContaParaVenda,
   reconhecerRecebimentoVendaVinculada,
@@ -317,12 +318,35 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         return false;
       }
 
+      // Conta de parcela da 2ª forma (pagamento duplo): a parcela em `vendas` é
+      // cancelada junto — senão ela continua recebida/pendente sem a conta e fica
+      // presa no aviso de custo não confirmado (a tela de Vendas não mostra a linha).
+      const { data: contaAntes } = await supabase
+        .from("contas")
+        .select("descricao")
+        .eq("id", id)
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+
       await excluirContaPorId(id, targetUserId);
 
-      toast({
-        title: "Conta excluída",
-        description: "A conta foi excluída com sucesso.",
-      });
+      const parcela = await cancelarParcelaDaContaExcluida(contaAntes?.descricao, targetUserId);
+
+      if (parcela.status === "erro") {
+        toast({
+          title: "Conta excluída, mas a parcela da venda não foi cancelada",
+          description: `Estorne a parcela pelo aviso de custo não confirmado. (${parcela.mensagem})`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Conta excluída",
+          description:
+            parcela.status === "parcela_cancelada"
+              ? "A conta e a parcela do pagamento duplo ligada a ela foram canceladas."
+              : "A conta foi excluída com sucesso.",
+        });
+      }
 
       await carregarContas();
       return true;

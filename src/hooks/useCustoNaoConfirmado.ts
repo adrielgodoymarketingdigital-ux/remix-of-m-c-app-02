@@ -2,12 +2,18 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useIdentidade } from "@/hooks/useResolvedUserId";
 import { isCustoNaoConfirmado, MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO } from "@/lib/vendasFinanceiras";
+import { gruposComPrincipalAtiva } from "@/lib/vendas/estornoParcelaSecundaria";
 
 export interface ParcelaCustoNaoConfirmado {
   id: string;
   total: number;
   dataRecebimento: string | null;
   descricao: string;
+  /**
+   * Venda principal cancelada/removida: a parcela pode ser estornada pelo aviso.
+   * Com a principal ativa, o caminho é confirmar o custo na venda.
+   */
+  podeEstornar: boolean;
 }
 
 /**
@@ -25,7 +31,7 @@ export function useCustoNaoConfirmado() {
     queryFn: async (): Promise<ParcelaCustoNaoConfirmado[]> => {
       let query = supabase
         .from("vendas")
-        .select("id, total, custo_unitario, recebido, cancelada, forma_pagamento, observacoes, data_recebimento, dispositivos(marca, modelo), produtos(nome)")
+        .select("id, total, custo_unitario, recebido, cancelada, forma_pagamento, observacoes, data_recebimento, grupo_venda, dispositivos(marca, modelo), produtos(nome)")
         .eq("user_id", userId as string)
         .eq("observacoes", MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO)
         .eq("recebido", true)
@@ -39,8 +45,11 @@ export function useCustoNaoConfirmado() {
       const { data, error } = await query;
       if (error) throw error;
 
-      return (data || [])
-        .filter((v) => v.cancelada !== true && isCustoNaoConfirmado(v))
+      const pendentes = (data || []).filter((v) => v.cancelada !== true && isCustoNaoConfirmado(v));
+      const grupos = [...new Set(pendentes.map((v) => v.grupo_venda).filter((g): g is string => !!g))];
+      const principaisAtivas = await gruposComPrincipalAtiva(userId as string, grupos);
+
+      return pendentes
         .map((v) => ({
           id: v.id,
           total: Number(v.total || 0),
@@ -49,11 +58,13 @@ export function useCustoNaoConfirmado() {
             [v.dispositivos?.marca, v.dispositivos?.modelo].filter(Boolean).join(" ") ||
             v.produtos?.nome ||
             "Item",
+          podeEstornar: !v.grupo_venda || !principaisAtivas.has(v.grupo_venda),
         }));
     },
   });
 
   return {
+    userId,
     parcelas,
     quantidade: parcelas.length,
     total: parcelas.reduce((acc, p) => acc + p.total, 0),
