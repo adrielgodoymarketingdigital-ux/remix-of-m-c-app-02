@@ -121,6 +121,8 @@ export interface Funcionario {
   convite_token: string | null;
   convite_expira_em: string | null;
   convite_aceito_em: string | null;
+  /** Linha do próprio dono ("Incluir meu usuário como funcionário"): sem login, não conta no limite. */
+  eh_dono?: boolean;
   created_at: string;
   updated_at: string;
 }

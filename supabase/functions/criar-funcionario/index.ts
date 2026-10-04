@@ -106,7 +106,9 @@ serve(async (req: Request) => {
     }
 
     const { count: totalFuncionarios } = await supabaseAdmin
-      .from("loja_funcionarios").select("id", { count: "exact", head: true }).eq("loja_user_id", lojaUserIdEfetivo);
+      .from("loja_funcionarios").select("id", { count: "exact", head: true }).eq("loja_user_id", lojaUserIdEfetivo)
+      // A linha do próprio dono ("Incluir meu usuário como funcionário") não ocupa vaga do plano.
+      .eq("eh_dono", false);
 
     const plano = assinatura.plano_tipo;
     let limite = 0;

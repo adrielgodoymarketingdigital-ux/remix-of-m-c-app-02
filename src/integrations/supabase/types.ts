@@ -2340,6 +2340,7 @@ export type Database = {
           convite_expira_em: string | null
           convite_token: string | null
           created_at: string | null
+          eh_dono: boolean
           email: string
           empresa_id: string | null
           funcionario_user_id: string | null
@@ -2362,6 +2363,7 @@ export type Database = {
           convite_expira_em?: string | null
           convite_token?: string | null
           created_at?: string | null
+          eh_dono?: boolean
           email: string
           empresa_id?: string | null
           funcionario_user_id?: string | null
@@ -2384,6 +2386,7 @@ export type Database = {
           convite_expira_em?: string | null
           convite_token?: string | null
           created_at?: string | null
+          eh_dono?: boolean
           email?: string
           empresa_id?: string | null
           funcionario_user_id?: string | null

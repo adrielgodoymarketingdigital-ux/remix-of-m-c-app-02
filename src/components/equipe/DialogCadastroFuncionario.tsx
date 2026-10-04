@@ -309,6 +309,8 @@ export function DialogCadastroFuncionario({
   };
 
   const isEdicao = !!funcionario;
+  // Linha do próprio dono: sem login, então sem e-mail e sem permissões (ele é dono).
+  const ehDono = funcionario?.eh_dono === true;
   
   const comissaoExemplo = (cargo: string) => {
     const config = getComissaoCargo(cargo);
@@ -406,10 +408,12 @@ export function DialogCadastroFuncionario({
       <DialogContent className="max-w-2xl sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEdicao ? "Editar Funcionário" : "Cadastrar Funcionário"}
+            {ehDono ? "Minha comissão" : isEdicao ? "Editar Funcionário" : "Cadastrar Funcionário"}
           </DialogTitle>
           <DialogDescription>
-            {isEdicao
+            {ehDono
+              ? "Seu nome, cargo e comissão como funcionário. Suas permissões de dono não mudam."
+              : isEdicao
               ? "Atualize os dados e permissões do funcionário."
               : "Adicione um novo funcionário e defina suas permissões de acesso."}
           </DialogDescription>
@@ -428,6 +432,7 @@ export function DialogCadastroFuncionario({
               />
             </div>
 
+            {!ehDono && (
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -445,6 +450,7 @@ export function DialogCadastroFuncionario({
                 </p>
               )}
             </div>
+            )}
 
             {!isEdicao && (
               <div className="space-y-2">
@@ -651,10 +657,12 @@ export function DialogCadastroFuncionario({
             </div>
           </div>
 
-          <div className="border rounded-lg p-4 bg-muted/30">
-            <h3 className="font-semibold mb-4">Permissões de Acesso</h3>
-            <SeletorPermissoes permissoes={permissoes} onChange={setPermissoes} />
-          </div>
+          {!ehDono && (
+            <div className="border rounded-lg p-4 bg-muted/30">
+              <h3 className="font-semibold mb-4">Permissões de Acesso</h3>
+              <SeletorPermissoes permissoes={permissoes} onChange={setPermissoes} />
+            </div>
+          )}
 
           <DialogFooter>
             <Button

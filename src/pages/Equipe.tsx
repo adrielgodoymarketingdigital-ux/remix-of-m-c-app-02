@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, AlertCircle, BarChart3, ChevronDown } from "lucide-react";
+import { Users, Plus, AlertCircle, BarChart3, ChevronDown, UserCheck } from "lucide-react";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { TabelaFuncionarios } from "@/components/equipe/TabelaFuncionarios";
 import { DialogCadastroFuncionario } from "@/components/equipe/DialogCadastroFuncionario";
@@ -14,6 +14,9 @@ import type { Funcionario, FuncionarioFormData } from "@/types/funcionario";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { useDonoComoFuncionario } from "@/hooks/useDonoComoFuncionario";
+import { contarVagasUsadas } from "@/lib/equipe/donoFuncionario.core";
 
 export default function Equipe() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -30,6 +33,7 @@ export default function Equipe() {
     excluirFuncionario,
     reenviarConvite,
   } = useFuncionarios();
+  const donoFuncionario = useDonoComoFuncionario(funcionarios);
 
   // Limites por plano
   const getLimiteFuncionarios = () => {
@@ -43,7 +47,9 @@ export default function Equipe() {
   };
 
   const limiteFuncionarios = getLimiteFuncionarios();
-  const podeAdicionarMais = funcionarios.length < limiteFuncionarios;
+  // A linha do próprio dono não ocupa vaga do plano.
+  const vagasUsadas = contarVagasUsadas(funcionarios);
+  const podeAdicionarMais = vagasUsadas < limiteFuncionarios;
   const planoPermiteEquipe = limiteFuncionarios > 0;
 
   const handleSalvar = async (dados: FuncionarioFormData & { senha?: string }): Promise<{ id: string } | void> => {
@@ -123,6 +129,37 @@ export default function Equipe() {
           </div>
         </div>
 
+        {/* Fora do bloqueio por plano: o dono pode se incluir também no Free e no Básico. */}
+        {donoFuncionario.souDono && (
+          <Card>
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <div>
+                  <p className="font-medium">Incluir meu usuário como funcionário</p>
+                  <p className="text-sm text-muted-foreground">
+                    Para se escolher como vendedor e técnico e calcular comissão para você. Não ocupa vaga do plano
+                    e não muda suas permissões de dono. Ao desligar, seu histórico é mantido.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 self-end sm:self-auto">
+                {donoFuncionario.incluido && donoFuncionario.linhaDono && (
+                  <Button variant="outline" size="sm" onClick={() => handleEditar(donoFuncionario.linhaDono!)}>
+                    Minha comissão
+                  </Button>
+                )}
+                <Switch
+                  checked={donoFuncionario.incluido}
+                  disabled={donoFuncionario.definir.isPending}
+                  onCheckedChange={(incluir) => donoFuncionario.definir.mutate(incluir)}
+                  aria-label="Incluir meu usuário como funcionário"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {!planoPermiteEquipe && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
@@ -135,7 +172,7 @@ export default function Equipe() {
           </Alert>
         )}
 
-        {planoPermiteEquipe && !podeAdicionarMais && funcionarios.length > 0 && (
+        {planoPermiteEquipe && !podeAdicionarMais && vagasUsadas > 0 && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -169,7 +206,7 @@ export default function Equipe() {
                 <CardHeader>
                   <CardTitle>Funcionários</CardTitle>
                   <CardDescription>
-                    {funcionarios.length} de {limiteFuncionarios === 999 ? "∞" : limiteFuncionarios} funcionário(s)
+                    {vagasUsadas} de {limiteFuncionarios === 999 ? "∞" : limiteFuncionarios} funcionário(s)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

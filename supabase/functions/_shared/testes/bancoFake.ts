@@ -20,7 +20,11 @@ export function bancoFake(
       const erro = falhar(tabela, op, payload);
       if (erro) return { data: null, error: { message: erro } };
       if (op === "update") linhas().forEach((r) => Object.assign(r, payload));
-      if (op === "insert") (tabelas[tabela] ??= []).push({ ...payload });
+      if (op === "insert") {
+        const nova = { id: crypto.randomUUID(), ...payload };
+        (tabelas[tabela] ??= []).push(nova);
+        return { data: [nova], error: null };
+      }
       if (op === "delete") {
         const apagar = new Set(linhas());
         tabelas[tabela] = tabelas[tabela].filter((r) => !apagar.has(r));

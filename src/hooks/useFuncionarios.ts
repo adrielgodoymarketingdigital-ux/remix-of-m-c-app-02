@@ -119,7 +119,9 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
     mutationFn: async ({ id, dados }: { id: string; dados: Partial<FuncionarioFormData> }) => {
       // Se o email mudou, atualiza via edge function (precisa atualizar no Supabase Auth também)
       const funcionarioAtual = funcionarios.find(f => f.id === id);
-      const emailMudou = dados.email !== undefined && dados.email !== funcionarioAtual?.email;
+      // Linha do dono não tem login: e-mail e permissões não se aplicam a ela.
+      const ehDono = funcionarioAtual?.eh_dono === true;
+      const emailMudou = !ehDono && dados.email !== undefined && dados.email !== funcionarioAtual?.email;
       if (emailMudou) {
         const response = await supabase.functions.invoke("atualizar-funcionario", {
           body: { funcionario_id: id, email: dados.email },
@@ -146,7 +148,7 @@ export function useFuncionarios(lojaUserIdOverride?: string | null) {
         updated_at: new Date().toISOString(),
       };
       if (dados.nome !== undefined) updateData.nome = dados.nome;
-      if (dados.permissoes !== undefined) updateData.permissoes = JSON.parse(JSON.stringify(dados.permissoes)) as Json;
+      if (dados.permissoes !== undefined && !ehDono) updateData.permissoes = JSON.parse(JSON.stringify(dados.permissoes)) as Json;
       if (dados.cargo !== undefined) updateData.cargo = dados.cargo || null;
       if (dados.comissao_tipo !== undefined) updateData.comissao_tipo = dados.comissao_tipo || null;
       if (dados.comissao_valor !== undefined) updateData.comissao_valor = dados.comissao_valor || 0;

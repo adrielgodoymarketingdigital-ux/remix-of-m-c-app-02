@@ -180,7 +180,9 @@ export function TabelaFuncionarios({
           </TableHeader>
           <TableBody>
             {linhasExibidas.map((funcionario) => {
-              const statusConvite = getStatusConvite(funcionario);
+              // Linha do próprio dono: sem login, sem convite e sem excluir (apagaria o histórico das OS).
+              const ehDono = funcionario.eh_dono === true;
+              const statusConvite = ehDono ? "aceito" : getStatusConvite(funcionario);
               const modulosAtivos = getModulosAtivos(funcionario);
               const cargoColor = funcionario.cargo ? (CARGO_COLORS[funcionario.cargo] || "bg-muted text-muted-foreground") : "";
               
@@ -188,7 +190,10 @@ export function TabelaFuncionarios({
                 <TableRow key={funcionario.id}>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{funcionario.nome}</p>
+                      <p className="font-medium flex items-center gap-2">
+                        {funcionario.nome}
+                        {ehDono && <Badge variant="secondary" className="text-xs">Você (dono)</Badge>}
+                      </p>
                       <p className="text-sm text-muted-foreground">{funcionario.email}</p>
                     </div>
                   </TableCell>
@@ -224,7 +229,9 @@ export function TabelaFuncionarios({
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     <div className="flex flex-wrap gap-1 max-w-[300px]">
-                      {modulosAtivos.length > 0 ? (
+                      {ehDono ? (
+                        <span className="text-sm text-muted-foreground">Acesso total (dono)</span>
+                      ) : modulosAtivos.length > 0 ? (
                         modulosAtivos.slice(0, 3).map((modulo) => (
                           <Badge key={modulo} variant="outline" className="text-xs">{modulo}</Badge>
                         ))
@@ -253,13 +260,18 @@ export function TabelaFuncionarios({
                             <Mail className="h-4 w-4 mr-2" />Reenviar convite
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => onToggleAtivo(funcionario.id, !funcionario.ativo)}>
-                          <Power className="h-4 w-4 mr-2" />{funcionario.ativo ? "Desativar" : "Ativar"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setFuncionarioExcluir(funcionario)} className="text-destructive focus:text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />Excluir
-                        </DropdownMenuItem>
+                        {/* O dono liga/desliga pelo interruptor do topo da tela. */}
+                        {!ehDono && (
+                          <>
+                            <DropdownMenuItem onClick={() => onToggleAtivo(funcionario.id, !funcionario.ativo)}>
+                              <Power className="h-4 w-4 mr-2" />{funcionario.ativo ? "Desativar" : "Ativar"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setFuncionarioExcluir(funcionario)} className="text-destructive focus:text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" />Excluir
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
