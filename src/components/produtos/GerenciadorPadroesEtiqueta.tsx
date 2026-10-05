@@ -17,14 +17,16 @@ import {
   calcularAlturaFolha,
   calcularLayoutFolha,
 } from '@/lib/etiquetas/etiquetasProduto';
+import { LIMITES_AJUSTE_VERTICAL_MM, clampAjusteVertical, formatarAjusteVertical } from '@/lib/etiquetas/ajusteVertical';
 import { usePadroesEtiqueta } from '@/hooks/usePadroesEtiqueta';
-import { CamposPadraoEtiqueta, MiniaturaFolha, ResumoLayoutFolha } from './CamposPadraoEtiqueta';
+import { CampoNumero, CamposPadraoEtiqueta, MiniaturaFolha, ResumoLayoutFolha } from './CamposPadraoEtiqueta';
 
 const cmTexto = (mm: number) => Number((mm / 10).toFixed(2)).toString().replace('.', ',');
 
 function descricaoPadrao(p: PadraoEtiqueta): string {
   const linhas = p.linhas === null ? 'linhas automáticas' : `${p.linhas} linhas`;
-  return `Folha ${cmTexto(p.larguraFolhaMm)}×${cmTexto(calcularAlturaFolha(p))}cm · etiqueta ${cmTexto(p.larguraMm)}×${cmTexto(p.alturaMm)}cm · ${p.colunas} ${p.colunas === 1 ? 'coluna' : 'colunas'} · ${linhas}`;
+  const ajuste = p.ajusteVerticalMm ? ` · ajuste ${formatarAjusteVertical(p.ajusteVerticalMm)}` : '';
+  return `Folha ${cmTexto(p.larguraFolhaMm)}×${cmTexto(calcularAlturaFolha(p))}cm · etiqueta ${cmTexto(p.larguraMm)}×${cmTexto(p.alturaMm)}cm · ${p.colunas} ${p.colunas === 1 ? 'coluna' : 'colunas'} · ${linhas}${ajuste}`;
 }
 
 /**
@@ -99,6 +101,21 @@ export const GerenciadorPadroesEtiqueta = () => {
           onChange={(parcial) => setEditando({ ...editando, ...parcial })}
         />
         <ResumoLayoutFolha padrao={editando} />
+
+        <div className="space-y-1">
+          <Label htmlFor="padrao-ajuste" className="text-xs">Ajuste vertical (mm)</Label>
+          <CampoNumero
+            id="padrao-ajuste"
+            valor={editando.ajusteVerticalMm}
+            min={LIMITES_AJUSTE_VERTICAL_MM.min}
+            max={LIMITES_AJUSTE_VERTICAL_MM.max}
+            onChange={(n) => setEditando({ ...editando, ajusteVerticalMm: clampAjusteVertical(Math.round(n * 10) / 10) })}
+            className="h-9 w-24"
+          />
+          <p className="text-[11px] text-muted-foreground leading-tight">
+            Se o topo da etiqueta sai cortado, aumente este valor (positivo desce o conteúdo). Meça com "Imprimir etiqueta de teste" em Gerar Etiquetas.
+          </p>
+        </div>
 
         <div className="flex items-end gap-3">
           <MiniaturaFolha

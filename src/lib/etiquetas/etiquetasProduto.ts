@@ -12,6 +12,18 @@ import JsBarcode from "jsbarcode";
 import { ItemEstoque } from "@/types/produto";
 import { formatCurrency } from "@/lib/formatters";
 import { getPrintScript } from "@/lib/print-utils";
+import { clampAjusteVertical, formatarAjusteVertical, paddingVerticalComAjuste } from "./ajusteVertical.ts";
+import {
+  ALTURA_FOLHA_MM,
+  LIMITES_PADRAO,
+  PadraoEtiqueta,
+  normalizarPadrao,
+  normalizarPadroes,
+} from "./padraoEtiqueta.ts";
+
+// Padrão de folha e validação ficam em padraoEtiqueta.ts (puro, testado com Deno).
+export { ALTURA_FOLHA_MM, LIMITES_PADRAO, normalizarPadrao, normalizarPadroes };
+export type { PadraoEtiqueta };
 
 // ── Configuração ────────────────────────────────────────────────────────────
 
@@ -41,52 +53,18 @@ export const CAMPOS_ETIQUETA: { id: CampoEtiqueta; label: string; dica?: string 
 export type FormatoEtiqueta = "termica" | "a4";
 export type TamanhoFonteEtiqueta = "pequeno" | "normal" | "grande";
 
-/**
- * Folha/rolo de etiquetas medido pelo próprio usuário (ou uma das sugestões) —
- * qualquer tamanho de papel: A4, rolo de 80mm, rolo de 58mm etc.
- * Medidas guardadas em mm; a tela mostra em cm. Salva em
- * configuracoes_loja.etiquetas_padroes (lista JSON) — ver usePadroesEtiqueta.
- */
-export interface PadraoEtiqueta {
-  id: string;
-  nome: string;
-  larguraFolhaMm: number;
-  larguraMm: number;
-  alturaMm: number;
-  colunas: number;
-  /** null = linhas calculadas pela quantidade de etiquetas na hora da impressão. */
-  linhas: number | null;
-  /**
-   * Espaço vertical entre o fim de uma fileira e o início da próxima (mm).
-   * Para rolo contínuo (linhas = 1) é a distância real entre etiquetas.
-   * Para folha pré-cortada com várias fileiras, normalmente é 0 e a folha
-   * tem sua própria altura fixa (alturaFolhaMm).
-   */
-  espacoFileiraMm: number;
-  /**
-   * Altura física da folha/papel (mm). Para rolo contínuo (linhas = 1),
-   * é calculada automaticamente como alturaMm + espacoFileiraMm — não pedir
-   * ao usuário nesse caso. Para folha pré-cortada (ex: A4), é a altura real
-   * da folha, informada pelo usuário.
-   */
-  alturaFolhaMm: number;
-}
-
 /** Altura da folha: para rolo contínuo (1 fileira) é etiqueta + espaço; senão é o valor informado. */
 export function calcularAlturaFolha(padrao: Pick<PadraoEtiqueta, "linhas" | "alturaMm" | "espacoFileiraMm" | "alturaFolhaMm">): number {
   if (padrao.linhas === 1) return padrao.alturaMm + padrao.espacoFileiraMm;
   return padrao.alturaFolhaMm;
 }
 
-/** Valor padrão (compatibilidade com padrões salvos antes desta mudança). */
-export const ALTURA_FOLHA_MM = 297;
-
 // Pontos de partida — margens saem da mesma conta dos padrões do usuário, então
 // o ideal continua sendo medir a folha e salvar um padrão próprio.
 export const SUGESTOES_PIMACO: PadraoEtiqueta[] = [
-  { id: "pimaco-A4351", nome: "Pimaco A4351 — 3,81×2,12cm (5×13)", larguraFolhaMm: 210, espacoFileiraMm: 0, alturaFolhaMm: ALTURA_FOLHA_MM, larguraMm: 38.1, alturaMm: 21.2, colunas: 5, linhas: 13 },
-  { id: "pimaco-A4356", nome: "Pimaco A4356 — 6,35×2,54cm (3×11)", larguraFolhaMm: 210, espacoFileiraMm: 0, alturaFolhaMm: ALTURA_FOLHA_MM, larguraMm: 63.5, alturaMm: 25.4, colunas: 3, linhas: 11 },
-  { id: "pimaco-A4360", nome: "Pimaco A4360 — 6,35×3,81cm (3×7)", larguraFolhaMm: 210, espacoFileiraMm: 0, alturaFolhaMm: ALTURA_FOLHA_MM, larguraMm: 63.5, alturaMm: 38.1, colunas: 3, linhas: 7 },
+  { id: "pimaco-A4351", nome: "Pimaco A4351 — 3,81×2,12cm (5×13)", larguraFolhaMm: 210, espacoFileiraMm: 0, alturaFolhaMm: ALTURA_FOLHA_MM, larguraMm: 38.1, alturaMm: 21.2, colunas: 5, linhas: 13, ajusteVerticalMm: 0 },
+  { id: "pimaco-A4356", nome: "Pimaco A4356 — 6,35×2,54cm (3×11)", larguraFolhaMm: 210, espacoFileiraMm: 0, alturaFolhaMm: ALTURA_FOLHA_MM, larguraMm: 63.5, alturaMm: 25.4, colunas: 3, linhas: 11, ajusteVerticalMm: 0 },
+  { id: "pimaco-A4360", nome: "Pimaco A4360 — 6,35×3,81cm (3×7)", larguraFolhaMm: 210, espacoFileiraMm: 0, alturaFolhaMm: ALTURA_FOLHA_MM, larguraMm: 63.5, alturaMm: 38.1, colunas: 3, linhas: 7, ajusteVerticalMm: 0 },
 ];
 
 /** Id do padrão "Personalizado" preenchido na hora, sem salvar. */
@@ -102,63 +80,8 @@ export const PADRAO_AVULSO_INICIAL: PadraoEtiqueta = {
   alturaMm: 25.4,
   colunas: 3,
   linhas: null,
+  ajusteVerticalMm: 0,
 };
-
-export const LIMITES_PADRAO = {
-  larguraFolhaMm: { min: 20, max: 300 },
-  // Até 1,5m: cobre rolos longos, não só folhas A4.
-  alturaFolhaMm: { min: 20, max: 1500 },
-  larguraMm: { min: 10, max: 300 },
-  alturaMm: { min: 10, max: 1500 },
-  colunas: { min: 1, max: 20 },
-  linhas: { min: 1, max: 50 },
-  espacoFileiraMm: { min: 0, max: 100 },
-} as const;
-
-function numeroNoIntervalo(v: unknown, min: number, max: number): v is number {
-  return typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
-}
-
-/** Valida um padrão vindo do banco/localStorage; null se estiver incompleto. */
-export function normalizarPadrao(bruto: unknown): PadraoEtiqueta | null {
-  if (!bruto || typeof bruto !== "object") return null;
-  const p = bruto as Record<string, unknown>;
-  const L = LIMITES_PADRAO;
-  if (typeof p.id !== "string" || !p.id || typeof p.nome !== "string") return null;
-  if (!numeroNoIntervalo(p.larguraFolhaMm, L.larguraFolhaMm.min, L.larguraFolhaMm.max)) return null;
-  // Padrões salvos antes da altura configurável não têm o campo: eram sempre A4.
-  const alturaFolhaMm = numeroNoIntervalo(p.alturaFolhaMm, L.alturaFolhaMm.min, L.alturaFolhaMm.max)
-    ? p.alturaFolhaMm
-    : ALTURA_FOLHA_MM;
-  // Idem para o espaço entre fileiras: antes não existia (0).
-  const espacoFileiraMm = numeroNoIntervalo(p.espacoFileiraMm, L.espacoFileiraMm.min, L.espacoFileiraMm.max)
-    ? p.espacoFileiraMm
-    : 0;
-  if (!numeroNoIntervalo(p.larguraMm, L.larguraMm.min, L.larguraMm.max)) return null;
-  if (!numeroNoIntervalo(p.alturaMm, L.alturaMm.min, L.alturaMm.max)) return null;
-  if (!numeroNoIntervalo(p.colunas, L.colunas.min, L.colunas.max)) return null;
-  let linhas: number | null = null;
-  if (p.linhas != null) {
-    if (!numeroNoIntervalo(p.linhas, L.linhas.min, L.linhas.max)) return null;
-    linhas = p.linhas;
-  }
-  return {
-    id: p.id,
-    nome: p.nome,
-    larguraFolhaMm: p.larguraFolhaMm,
-    alturaFolhaMm,
-    larguraMm: p.larguraMm,
-    alturaMm: p.alturaMm,
-    colunas: Math.round(p.colunas),
-    linhas: linhas === null ? null : Math.round(linhas),
-    espacoFileiraMm,
-  };
-}
-
-export function normalizarPadroes(bruto: unknown): PadraoEtiqueta[] {
-  if (!Array.isArray(bruto)) return [];
-  return bruto.map(normalizarPadrao).filter((p): p is PadraoEtiqueta => p !== null);
-}
 
 export interface LayoutFolha {
   /** Margem esquerda/direita e espaço entre colunas (iguais). */
@@ -220,6 +143,11 @@ export interface ConfigEtiquetas {
   a4: PadraoEtiqueta;
   /** Posição (1-based) da primeira etiqueta na primeira folha — reaproveita folha usada pela metade. */
   posicaoInicial: number;
+  /**
+   * Ajuste vertical aplicado nesta impressão (mm, -5..+5; positivo desce o conteúdo).
+   * Ao escolher um padrão salvo vem o dele (PadraoEtiqueta.ajusteVerticalMm).
+   */
+  ajusteVerticalMm: number;
 }
 
 export const CONFIG_ETIQUETAS_PADRAO: ConfigEtiquetas = {
@@ -239,6 +167,7 @@ export const CONFIG_ETIQUETAS_PADRAO: ConfigEtiquetas = {
   termica: { larguraMm: 40, alturaMm: 25 },
   a4: PADRAO_AVULSO_INICIAL,
   posicaoInicial: 1,
+  ajusteVerticalMm: 0,
 };
 
 const CHAVE_STORAGE = "etiquetas_produto_config";
@@ -257,6 +186,8 @@ export function carregarConfigEtiquetas(): ConfigEtiquetas {
       // Configs antigas (modelo com margens fixas) não passam na validação e voltam ao padrão.
       a4: normalizarPadrao(parcial.a4) ?? CONFIG_ETIQUETAS_PADRAO.a4,
       posicaoInicial: 1,
+      // Configs antigas sem o campo valem 0; texto/NaN também.
+      ajusteVerticalMm: clampAjusteVertical(parcial.ajusteVerticalMm),
     };
   } catch {
     return CONFIG_ETIQUETAS_PADRAO;
@@ -386,7 +317,8 @@ const alturaLinhaMm = (pt: number) => pt * 1.15 * MM_POR_PT + GAP_MM;
  * Conteúdo de uma etiqueta (sem o documento em volta). A altura é orçada em mm:
  * os campos de texto entram primeiro, o nome cai para 1 linha se faltar espaço
  * e o código de barras fica com a altura que sobrar (entre 4 e 12mm) — assim
- * nada se sobrepõe em etiquetas baixas como a A4351 (21,2mm).
+ * nada se sobrepõe em etiquetas baixas como a A4351 (21,2mm). O ajuste vertical
+ * entra no padding (mesma conta de montarCssEtiquetas).
  */
 export function montarEtiquetaHtml(item: ItemEstoque, config: ConfigEtiquetas, nomeLoja: string): string {
   const { larguraMm, alturaMm } = dimensoesEtiqueta(config);
@@ -416,7 +348,9 @@ export function montarEtiquetaHtml(item: ItemEstoque, config: ConfigEtiquetas, n
   const codigo = c.codigo_barras ? escolherCodigoBarras(item) : null;
   const alturaNumeroBarras = alturaLinhaMm(Math.max(fonte - 1.5, 5));
 
-  const disponivel = alturaMm - 2 * PADDING_V_MM;
+  // Com ajuste vertical o padding de cima/baixo muda (ver paddingVerticalComAjuste).
+  const { topoMm, baseMm } = paddingVerticalComAjuste(PADDING_V_MM, config.ajusteVerticalMm);
+  const disponivel = alturaMm - topoMm - baseMm;
   const ocupadoSemNome = blocos.reduce((acc, b) => acc + b.alturaMm, 0) + alturaPrecos
     + (codigo ? ALTURA_MIN_BARRAS_MM + alturaNumeroBarras : 0);
   const linhaNome = alturaLinhaMm(fonte);
@@ -449,9 +383,12 @@ export function montarEtiquetaHtml(item: ItemEstoque, config: ConfigEtiquetas, n
 export function montarCssEtiquetas(config: ConfigEtiquetas): string {
   const { larguraMm, alturaMm } = dimensoesEtiqueta(config);
   const fonte = FONTE_PT[config.tamanhoFonte];
+  const { topoMm, baseMm } = paddingVerticalComAjuste(PADDING_V_MM, config.ajusteVerticalMm);
+  // Sem ajuste sai "1mm 1.5mm", igual ao de antes do campo.
+  const padding = topoMm === baseMm ? `${topoMm}mm ${PADDING_H_MM}mm` : `${topoMm}mm ${PADDING_H_MM}mm ${baseMm}mm`;
   return `
     .etq-etiqueta {
-      width: ${larguraMm}mm; height: ${alturaMm}mm; padding: 1mm 1.5mm;
+      width: ${larguraMm}mm; height: ${alturaMm}mm; padding: ${padding};
       box-sizing: border-box; overflow: hidden; background: #fff; color: #000;
       font-family: Arial, Helvetica, sans-serif; font-size: ${fonte}pt; line-height: 1.15;
       display: flex; flex-direction: column; justify-content: center; gap: 0.3mm; text-align: center;
@@ -574,6 +511,86 @@ export function montarDocumentoEtiquetas(itens: ItemEtiqueta[], config: ConfigEt
 </head>
 <body>
   ${montarBodyEtiquetas(itens, config, nomeLoja)}
+  ${getPrintScript()}
+</body>
+</html>`;
+}
+
+// ── Etiqueta de teste (calibração do ajuste vertical) ──────────────────────
+
+const n2 = (v: number) => Number(v.toFixed(2)).toString();
+
+/**
+ * Contorno da etiqueta (0,2mm), faixa preta de 1mm colada no topo, réguas no
+ * topo e na esquerda (marca a cada 1mm, número a cada 5mm) e o ajuste em uso.
+ * Impressa, mostra quantos mm a impressora come: o que sumiu da régua da
+ * esquerda é o quanto aumentar o ajuste.
+ */
+function svgEtiquetaTeste(larguraMm: number, alturaMm: number, ajusteMm: number): string {
+  const W = larguraMm;
+  const H = alturaMm;
+  const traco = 0.15;
+  const partes: string[] = [
+    `<rect x="0.1" y="0.1" width="${n2(W - 0.2)}" height="${n2(H - 0.2)}" fill="none" stroke="#000" stroke-width="0.2"/>`,
+    `<rect x="0" y="0" width="${n2(W)}" height="1" fill="#000"/>`,
+  ];
+  // Régua da esquerda (de cima para baixo).
+  for (let y = 1; y < H; y++) {
+    const comprimento = y % 5 === 0 ? 2.5 : 1.2;
+    partes.push(`<line x1="0" y1="${y}" x2="${comprimento}" y2="${y}" stroke="#000" stroke-width="${traco}"/>`);
+    if (y % 5 === 0) partes.push(`<text x="2.9" y="${n2(y + 0.55)}" font-size="1.6">${y}</text>`);
+  }
+  // Régua do topo (da esquerda para a direita), pendurada na faixa preta.
+  for (let x = 1; x < W; x++) {
+    const comprimento = x % 5 === 0 ? 2 : 1;
+    partes.push(`<line x1="${x}" y1="1" x2="${x}" y2="${1 + comprimento}" stroke="#000" stroke-width="${traco}"/>`);
+    if (x % 5 === 0 && x >= 10) partes.push(`<text x="${x}" y="4.6" font-size="1.6" text-anchor="middle">${x}</text>`);
+  }
+  partes.push(
+    `<text x="${n2(W / 2)}" y="${n2(H / 2 + 1.2)}" font-size="2.6" font-weight="700" text-anchor="middle">Ajuste: ${formatarAjusteVertical(ajusteMm)}</text>`,
+    `<text x="${n2(W / 2)}" y="${n2(H / 2 + 4)}" font-size="1.8" text-anchor="middle">${n2(W)}×${n2(H)} mm</text>`,
+  );
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${n2(W)}mm" height="${n2(H)}mm" viewBox="0 0 ${n2(W)} ${n2(H)}" font-family="Arial, Helvetica, sans-serif">${partes.join("")}</svg>`;
+}
+
+/** Uma fileira de etiquetas de teste (colunas e tamanho da config atual, com o ajuste vertical). */
+export function montarBodyEtiquetaTeste(config: ConfigEtiquetas): string {
+  const { larguraMm, alturaMm } = dimensoesEtiqueta(config);
+  const celula = `<div class="etq-teste">${svgEtiquetaTeste(larguraMm, alturaMm, config.ajusteVerticalMm)}</div>`;
+  if (config.formato === "termica") return `<div class="etq-pagina-termica">${celula}</div>`;
+  const colunas = Math.max(1, config.a4.colunas);
+  return `<div class="etq-folha">${Array.from({ length: colunas }, () => `<div class="etq-celula">${celula}</div>`).join("")}</div>`;
+}
+
+/**
+ * Aqui o ajuste é um deslocamento puro (translateY) do desenho dentro da
+ * etiqueta: a régua mostra a borda real da etiqueta, então o que passar da base
+ * é cortado de propósito — é a parte que a impressora não alcança.
+ */
+export function montarCssEtiquetaTeste(config: ConfigEtiquetas): string {
+  const { larguraMm, alturaMm } = dimensoesEtiqueta(config);
+  return `
+    .etq-teste { width: ${larguraMm}mm; height: ${alturaMm}mm; overflow: hidden; background: #fff; }
+    .etq-teste svg { display: block; transform: translateY(${clampAjusteVertical(config.ajusteVerticalMm)}mm); }
+    #print-root .etq-teste { overflow: hidden !important; }
+  `;
+}
+
+export function montarDocumentoEtiquetaTeste(config: ConfigEtiquetas): string {
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Etiqueta de teste</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    ${montarCssPagina(config)}
+    ${montarCssEtiquetaTeste(config)}
+  </style>
+</head>
+<body>
+  ${montarBodyEtiquetaTeste(config)}
   ${getPrintScript()}
 </body>
 </html>`;

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertTriangle, Package, Printer, Ruler, Tags, Wrench } from 'lucide-react';
+import { AlertTriangle, Minus, Package, Plus, Printer, Ruler, Tags, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { ItemEstoque } from '@/types/produto';
 import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot } from '@/lib/printMobile';
@@ -37,14 +37,23 @@ import {
   contarFolhasA4,
   dimensoesEtiqueta,
   escolherCodigoBarras,
+  montarBodyEtiquetaTeste,
   montarBodyEtiquetas,
+  montarCssEtiquetaTeste,
   montarCssEtiquetas,
   montarCssPagina,
+  montarDocumentoEtiquetaTeste,
   montarDocumentoEtiquetas,
   montarEtiquetaHtml,
   renderizarCodigoBarras,
   salvarConfigEtiquetas,
 } from '@/lib/etiquetas/etiquetasProduto';
+import {
+  LIMITES_AJUSTE_VERTICAL_MM,
+  aplicarAjusteNoPadrao,
+  clampAjusteVertical,
+  formatarAjusteVertical,
+} from '@/lib/etiquetas/ajusteVertical';
 import { usePadroesEtiqueta } from '@/hooks/usePadroesEtiqueta';
 import { CampoNumero, CamposPadraoEtiqueta, MiniaturaFolha, ResumoLayoutFolha } from './CamposPadraoEtiqueta';
 
@@ -67,7 +76,7 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [previaId, setPreviaId] = useState<string>('');
   // Mesma query da aba Etiquetas das Configurações: salvar lá atualiza esta lista.
-  const { padroes, carregando: carregandoPadroes } = usePadroesEtiqueta(open);
+  const { padroes, carregando: carregandoPadroes, salvando: salvandoPadrao, salvarPadrao } = usePadroesEtiqueta(open);
 
   // itensSelecionados é recriado a cada render do pai (filter) — reinicia só quando
   // o diálogo abre ou a seleção muda de fato, senão as quantidades digitadas se perdem.
@@ -88,7 +97,12 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
     setConfig((c) => {
       if (c.a4.id === PADRAO_AVULSO_ID || SUGESTOES_PIMACO.some((s) => s.id === c.a4.id)) return c;
       const salvo = padroes.find((p) => p.id === c.a4.id);
-      if (salvo) return salvo === c.a4 ? c : { ...c, a4: salvo };
+      if (salvo) {
+        if (salvo === c.a4) return c;
+        // Ajuste do padrão mudou desde a última impressão (aqui ou em outro aparelho): vale o do padrão.
+        const ajusteVerticalMm = salvo.ajusteVerticalMm !== c.a4.ajusteVerticalMm ? salvo.ajusteVerticalMm : c.ajusteVerticalMm;
+        return { ...c, a4: salvo, ajusteVerticalMm };
+      }
       return { ...c, a4: { ...c.a4, id: PADRAO_AVULSO_ID, nome: 'Personalizado' } };
     });
   }, [open, padroes, carregandoPadroes]);
@@ -98,6 +112,8 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
     setConfig((c) => ({ ...c, campos: { ...c.campos, [campo]: marcado } }));
   const atualizarA4 = (parcial: Partial<ConfigEtiquetas['a4']>) =>
     setConfig((c) => ({ ...c, a4: { ...c.a4, ...parcial, id: PADRAO_AVULSO_ID, nome: 'Personalizado' } }));
+  // Passo de 0,1mm na tela.
+  const mudarAjuste = (mm: number) => atualizar({ ajusteVerticalMm: clampAjusteVertical(Math.round(mm * 10) / 10) });
 
   const itensImpressao: ItemEtiqueta[] = useMemo(
     () => itensSelecionados.map((item) => ({ item, quantidade: quantidades[item.id] ?? 1 })),
@@ -140,6 +156,29 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
     </style></head><body><div class="previa">${montarEtiquetaHtml(itemPrevia, config, nomeLoja)}</div></body></html>`;
   }, [itemPrevia, config, nomeLoja, escalaPrevia]);
 
+  // Mesmos caminhos dos recibos: iOS → #print-root; Android/PWA → iframe;
+  // desktop → window.open síncrono no tick do clique.
+  const enviarParaImpressao = (body: string, css: string, documento: string) => {
+    const { isMobile, isStandalone, isIOS } = detectarContextoImpressaoMobile();
+    const usarMecanismoMobile = isMobile || isStandalone;
+
+    if (usarMecanismoMobile && isIOS) {
+      printViaPrintRoot(body, css);
+      return;
+    }
+    if (usarMecanismoMobile) {
+      printViaIframe(documento, isIOS);
+      return;
+    }
+    const janela = window.open('', '_blank');
+    if (!janela) {
+      toast.error('Permita pop-ups para imprimir as etiquetas.');
+      return;
+    }
+    janela.document.write(documento);
+    janela.document.close();
+  };
+
   const handleImprimir = () => {
     const itens = itensImpressao.filter((i) => i.quantidade > 0);
     if (totalEtiquetas === 0) {
@@ -155,27 +194,34 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
       return;
     }
     salvarConfigEtiquetas(config);
+    enviarParaImpressao(
+      montarBodyEtiquetas(itens, config, nomeLoja),
+      `${montarCssPagina(config)}${montarCssEtiquetas(config)}`,
+      montarDocumentoEtiquetas(itens, config, nomeLoja),
+    );
+  };
 
-    // Mesmos caminhos dos recibos: iOS → #print-root; Android/PWA → iframe;
-    // desktop → window.open síncrono no tick do clique.
-    const { isMobile, isStandalone, isIOS } = detectarContextoImpressaoMobile();
-    const usarMecanismoMobile = isMobile || isStandalone;
+  /** Uma fileira com régua e contorno, para medir quanto a impressora corta e acertar o ajuste. */
+  const handleImprimirTeste = () => {
+    if (erroLayout) {
+      toast.error(erroLayout);
+      return;
+    }
+    salvarConfigEtiquetas(config);
+    enviarParaImpressao(
+      montarBodyEtiquetaTeste(config),
+      `${montarCssPagina(config)}${montarCssEtiquetaTeste(config)}`,
+      montarDocumentoEtiquetaTeste(config),
+    );
+  };
 
-    if (usarMecanismoMobile && isIOS) {
-      printViaPrintRoot(montarBodyEtiquetas(itens, config, nomeLoja), `${montarCssPagina(config)}${montarCssEtiquetas(config)}`);
-      return;
+  // Padrão salvo da loja em uso: o ajuste pode ser gravado nele (vale para todos os aparelhos).
+  const padraoSalvoAtual = config.formato === 'a4' ? padroes.find((p) => p.id === config.a4.id) : undefined;
+  const salvarAjusteNoPadrao = async () => {
+    if (!padraoSalvoAtual) return;
+    if (await salvarPadrao(aplicarAjusteNoPadrao(padraoSalvoAtual, config.ajusteVerticalMm))) {
+      toast.success(`Ajuste salvo no padrão "${padraoSalvoAtual.nome}".`);
     }
-    if (usarMecanismoMobile) {
-      printViaIframe(montarDocumentoEtiquetas(itens, config, nomeLoja), isIOS);
-      return;
-    }
-    const janela = window.open('', '_blank');
-    if (!janela) {
-      toast.error('Permita pop-ups para imprimir as etiquetas.');
-      return;
-    }
-    janela.document.write(montarDocumentoEtiquetas(itens, config, nomeLoja));
-    janela.document.close();
   };
 
   const definirTodas = (fn: (item: ItemEstoque) => number) =>
@@ -319,7 +365,9 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
                       onValueChange={(id) => {
                         const padrao = opcoesA4.find((p) => p.id === id);
                         // "Personalizado" parte das medidas atuais, para ajustar um padrão sem mexer nele.
-                        if (padrao) atualizar({ a4: padrao, posicaoInicial: 1 });
+                        // Padrão salvo traz a calibração dele; sugestões mantêm o ajuste atual.
+                        const salvo = padroes.some((p) => p.id === id);
+                        if (padrao) atualizar({ a4: padrao, posicaoInicial: 1, ...(salvo ? { ajusteVerticalMm: padrao.ajusteVerticalMm } : {}) });
                         else atualizarA4({});
                       }}
                     >
@@ -370,6 +418,55 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
                   </p>
                 </div>
               )}
+
+              <div className="space-y-1.5 border-t pt-3">
+                <Label htmlFor="etq-ajuste" className="text-xs">Ajuste vertical (mm)</Label>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    title="Subir 0,1mm"
+                    onClick={() => mudarAjuste(config.ajusteVerticalMm - 0.1)}
+                    disabled={config.ajusteVerticalMm <= LIMITES_AJUSTE_VERTICAL_MM.min}
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </Button>
+                  <CampoNumero
+                    id="etq-ajuste"
+                    valor={config.ajusteVerticalMm}
+                    min={LIMITES_AJUSTE_VERTICAL_MM.min}
+                    max={LIMITES_AJUSTE_VERTICAL_MM.max}
+                    onChange={mudarAjuste}
+                    className="h-8 w-20 text-center"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    title="Descer 0,1mm"
+                    onClick={() => mudarAjuste(config.ajusteVerticalMm + 0.1)}
+                    disabled={config.ajusteVerticalMm >= LIMITES_AJUSTE_VERTICAL_MM.max}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Se o topo da etiqueta sai cortado, aumente este valor. Positivo desce o conteúdo; negativo sobe (de -5 a +5).
+                </p>
+                {padraoSalvoAtual && padraoSalvoAtual.ajusteVerticalMm !== config.ajusteVerticalMm && (
+                  <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={salvarAjusteNoPadrao} disabled={salvandoPadrao}>
+                    Salvar {formatarAjusteVertical(config.ajusteVerticalMm)} no padrão "{padraoSalvoAtual.nome}"
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" className="w-full" onClick={handleImprimirTeste} disabled={!!erroLayout}>
+                  <Ruler className="w-4 h-4 mr-2" />
+                  Imprimir etiqueta de teste
+                </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  Sai uma fileira com régua: os milímetros que sumirem no topo são o quanto aumentar o ajuste.
+                </p>
+              </div>
             </section>
 
             <section className="space-y-2">
