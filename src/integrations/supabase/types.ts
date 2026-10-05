@@ -2201,18 +2201,21 @@ export type Database = {
           criado_por: string | null
           id: string
           nome: string
+          tipo: string
         }
         Insert: {
           criado_em?: string
           criado_por?: string | null
           id?: string
           nome: string
+          tipo?: string
         }
         Update: {
           criado_em?: string
           criado_por?: string | null
           id?: string
           nome?: string
+          tipo?: string
         }
         Relationships: []
       }

@@ -1,10 +1,13 @@
 import { Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CompatibilidadePeliculaAdmin } from "@/components/admin/CompatibilidadePeliculaAdmin";
+import { AbasTipoCompatibilidade } from "@/components/compatibilidade/AbasTipoCompatibilidade";
+import { useTipoCompatibilidadeDaUrl } from "@/hooks/useTipoCompatibilidadeDaUrl";
 import { useIsAdminMecApp } from "@/hooks/useCompatibilidadePelicula";
 
 export default function AdminCompatibilidadePelicula() {
   const { data: isAdmin, isLoading } = useIsAdminMecApp();
+  const [tipo, setTipo] = useTipoCompatibilidadeDaUrl();
 
   if (!isLoading && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
@@ -13,7 +16,8 @@ export default function AdminCompatibilidadePelicula() {
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 overflow-auto space-y-6">
-        <CompatibilidadePeliculaAdmin />
+        <AbasTipoCompatibilidade tipo={tipo} onChange={setTipo} />
+        <CompatibilidadePeliculaAdmin key={tipo} tipo={tipo} />
       </main>
     </AppLayout>
   );

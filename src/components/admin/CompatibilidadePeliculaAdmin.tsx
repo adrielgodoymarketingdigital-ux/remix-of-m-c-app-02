@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -28,9 +28,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Layers, Plus, Trash2, Pencil, Loader2, X, ShieldAlert } from "lucide-react";
 import { useCompatibilidadePeliculaAdmin } from "@/hooks/useCompatibilidadePelicula";
-import { SeletorMarcaModeloCelular } from "@/components/admin/SeletorMarcaModeloCelular";
+import { SeletorMarcaModeloDados } from "@/components/compatibilidade/SeletorMarcaModeloDados";
+import { TipoCompatibilidade, montarOpcoesMarcaModelo } from "@/lib/compatibilidade/compatibilidade";
 
-export function CompatibilidadePeliculaAdmin() {
+const TEXTOS: Record<TipoCompatibilidade, { titulo: string; exemploGrupo: string }> = {
+  pelicula: { titulo: "Compatibilidade de Película", exemploGrupo: "Ex: Película Universal 6.1\"" },
+  vidro: { titulo: "Compatibilidade de Vidro (troca de vidro da tela)", exemploGrupo: "Ex: G10/G20/G30" },
+};
+
+export function CompatibilidadePeliculaAdmin({ tipo = "pelicula" }: { tipo?: TipoCompatibilidade }) {
   const {
     grupos,
     isLoading,
@@ -39,7 +45,10 @@ export function CompatibilidadePeliculaAdmin() {
     excluirGrupo,
     adicionarModelo,
     removerModelo,
-  } = useCompatibilidadePeliculaAdmin();
+  } = useCompatibilidadePeliculaAdmin(tipo);
+  const textos = TEXTOS[tipo];
+  // Sugestões do seletor: marcas/modelos já cadastrados neste tipo (aceita digitar novos).
+  const opcoes = useMemo(() => montarOpcoesMarcaModelo(grupos), [grupos]);
 
   const [dialogNovoGrupo, setDialogNovoGrupo] = useState(false);
   const [nomeNovoGrupo, setNomeNovoGrupo] = useState("");
@@ -95,7 +104,7 @@ export function CompatibilidadePeliculaAdmin() {
             <Layers className="h-5 sm:h-6 w-5 sm:w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Compatibilidade de Película</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{textos.titulo}</h1>
             <p className="text-sm text-muted-foreground">
               Grupos de modelos compatíveis, visíveis a todos os clientes do MecApp
             </p>
@@ -196,7 +205,9 @@ export function CompatibilidadePeliculaAdmin() {
                 {/* Adicionar modelo */}
                 <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end pt-2 border-t">
                   <div className="flex-1">
-                    <SeletorMarcaModeloCelular
+                    <SeletorMarcaModeloDados
+                      opcoes={opcoes}
+                      permitirNovo
                       marca={marcaSelecao[grupo.id] ?? ""}
                       modelo={modeloSelecao[grupo.id] ?? ""}
                       onChangeMarca={(marca) => setMarcaSelecao((prev) => ({ ...prev, [grupo.id]: marca }))}
@@ -233,7 +244,7 @@ export function CompatibilidadePeliculaAdmin() {
             </Label>
             <Input
               id="novo-grupo-nome"
-              placeholder="Ex: Película Universal 6.1&quot;"
+              placeholder={textos.exemploGrupo}
               value={nomeNovoGrupo}
               onChange={(e) => setNomeNovoGrupo(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCriarGrupo()}

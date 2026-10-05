@@ -6,24 +6,44 @@ import {
   GrupoCompatibilidadeComModelos,
   GrupoCompatibilidadePelicula,
 } from "@/types/compatibilidade-pelicula";
+import {
+  TipoCompatibilidade,
+  ehErroColunaTipoAusente,
+  tipoDoGrupo,
+} from "@/lib/compatibilidade/compatibilidade";
 
-async function carregarGruposComModelos(): Promise<GrupoCompatibilidadeComModelos[]> {
-  const [{ data: grupos, error: errGrupos }, { data: modelos, error: errModelos }] = await Promise.all([
-    supabase
-      .from("grupos_compatibilidade_pelicula")
-      .select("*")
-      .order("criado_em", { ascending: false }),
-    supabase
-      .from("grupo_compatibilidade_modelos")
-      .select("*"),
-  ]);
+const TABELA_GRUPOS = "grupos_compatibilidade_pelicula";
+// Modelos embutidos no grupo: uma requisição só e sem o teto de 1000 linhas do
+// PostgREST na lista plana de modelos (películas + vidros passam de 1000).
+const SELECT_GRUPOS = "*, modelos:grupo_compatibilidade_modelos(*)";
 
-  if (errGrupos) throw errGrupos;
-  if (errModelos) throw errModelos;
+/** Mensagem para o admin quando a aba Vidros é usada antes da migration da coluna tipo. */
+const MSG_SEM_COLUNA_TIPO = "A compatibilidade de vidros ainda não foi ativada no banco (falta a migration da coluna tipo).";
 
-  return (grupos || []).map((grupo) => ({
+async function carregarGruposComModelos(tipo: TipoCompatibilidade): Promise<GrupoCompatibilidadeComModelos[]> {
+  const comTipo = await supabase
+    .from(TABELA_GRUPOS)
+    .select(SELECT_GRUPOS)
+    .eq("tipo", tipo)
+    .order("criado_em", { ascending: false });
+
+  let dados = comTipo.data;
+  if (comTipo.error) {
+    if (!ehErroColunaTipoAusente(comTipo.error)) throw comTipo.error;
+    // Front publicado antes da migration: tudo o que existe é película; vidros ainda não tem dados.
+    if (tipo === "vidro") return [];
+    const semTipo = await supabase
+      .from(TABELA_GRUPOS)
+      .select(SELECT_GRUPOS)
+      .order("criado_em", { ascending: false });
+    if (semTipo.error) throw semTipo.error;
+    dados = semTipo.data;
+  }
+
+  return (dados || []).map(({ modelos, ...grupo }) => ({
     ...grupo,
-    modelos: (modelos || []).filter((m) => m.grupo_id === grupo.id),
+    tipo: tipoDoGrupo(grupo),
+    modelos: modelos || [],
   }));
 }
 
@@ -52,31 +72,25 @@ export function useIsAdminMecApp() {
   });
 }
 
-/** Busca pública: acessível a qualquer usuário autenticado do MecApp (leitura via RLS). */
-export function useCompatibilidadePelicula() {
+/**
+ * Busca pública (películas ou vidros): acessível a qualquer usuário autenticado
+ * do MecApp (leitura via RLS). Compatíveis de um modelo: encontrarCompativeis.
+ */
+export function useCompatibilidadePelicula(tipo: TipoCompatibilidade = "pelicula") {
   return useQuery({
-    queryKey: ["compatibilidade-pelicula"],
-    queryFn: () => withRetry(carregarGruposComModelos, "useCompatibilidadePelicula"),
+    queryKey: ["compatibilidade-pelicula", tipo],
+    queryFn: () => withRetry(() => carregarGruposComModelos(tipo), "useCompatibilidadePelicula"),
   });
 }
 
-/** Retorna o grupo (com todos os modelos) ao qual marca+modelo pertence, ou undefined se não cadastrado. */
-export function encontrarGrupoDoModelo(
-  grupos: GrupoCompatibilidadeComModelos[],
-  marca: string,
-  modelo: string,
-): GrupoCompatibilidadeComModelos | undefined {
-  return grupos.find((g) => g.modelos.some((m) => m.marca === marca && m.modelo === modelo));
-}
-
-/** CRUD administrativo: escrita bloqueada pela RLS para quem não for admin do MecApp. */
-export function useCompatibilidadePeliculaAdmin() {
+/** CRUD administrativo do tipo escolhido: escrita bloqueada pela RLS para quem não for admin do MecApp. */
+export function useCompatibilidadePeliculaAdmin(tipo: TipoCompatibilidade = "pelicula") {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const query = useQuery({
-    queryKey: ["compatibilidade-pelicula-admin"],
-    queryFn: () => withRetry(carregarGruposComModelos, "useCompatibilidadePeliculaAdmin"),
+    queryKey: ["compatibilidade-pelicula-admin", tipo],
+    queryFn: () => withRetry(() => carregarGruposComModelos(tipo), "useCompatibilidadePeliculaAdmin"),
   });
 
   const invalidar = () => {
@@ -88,14 +102,17 @@ export function useCompatibilidadePeliculaAdmin() {
     mutationFn: async (nome: string): Promise<GrupoCompatibilidadePelicula> => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { data, error } = await supabase
-        .from("grupos_compatibilidade_pelicula")
-        .insert({ nome: nome.trim(), criado_por: user?.id ?? null })
-        .select()
-        .single();
+      const novo = { nome: nome.trim(), criado_por: user?.id ?? null };
 
-      if (error) throw error;
-      return data;
+      const comTipo = await supabase.from(TABELA_GRUPOS).insert({ ...novo, tipo }).select().single();
+      if (!comTipo.error) return { ...comTipo.data, tipo: tipoDoGrupo(comTipo.data) };
+      if (!ehErroColunaTipoAusente(comTipo.error)) throw comTipo.error;
+      if (tipo === "vidro") throw new Error(MSG_SEM_COLUNA_TIPO);
+
+      // Antes da migration: grupo de película sem a coluna (o DEFAULT marca 'pelicula' depois).
+      const semTipo = await supabase.from(TABELA_GRUPOS).insert(novo).select().single();
+      if (semTipo.error) throw semTipo.error;
+      return { ...semTipo.data, tipo: "pelicula" };
     },
     onSuccess: () => {
       invalidar();
