@@ -23,6 +23,7 @@ import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustom
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { DialogReciboRecebimento } from "./DialogReciboRecebimento";
 import { Undo2, Receipt } from "lucide-react";
+import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 
 const FORMAS_PADRAO = [
   { value: "dinheiro", label: "Dinheiro" },
@@ -169,7 +170,7 @@ function BaixaComHistorico({
   const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas();
   const [pagamentos, setPagamentos] = useState<PagamentoConta[]>([]);
   const [valor, setValor] = useState("");
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+  const [data, setData] = useState(() => dataBrasiliaISO());
   const [forma, setForma] = useState("dinheiro");
   const [loading, setLoading] = useState(false);
   const [reciboDe, setReciboDe] = useState<PagamentoConta | null>(null);
@@ -190,7 +191,7 @@ function BaixaComHistorico({
     if (open) {
       recarregar();
       setValor("");
-      setData(new Date().toISOString().slice(0, 10));
+      setData(dataBrasiliaISO());
       setForma("dinheiro");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

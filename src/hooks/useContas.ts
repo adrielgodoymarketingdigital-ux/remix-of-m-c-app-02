@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Conta, FormularioConta, PagamentoConta } from "@/types/conta";
 import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
+import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { cancelarParcelaDaContaExcluida } from "@/lib/vendas/estornoParcelaSecundaria";
@@ -503,14 +504,14 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       const res = await registrarPagamentoParcial(id, {
         valor: saldo,
         forma: formaPagamento,
-        data: new Date().toISOString().slice(0, 10),
+        data: dataBrasiliaISO(),
         observacao: "Quitação",
       });
       return res.ok;
     }
 
     const status = tipo === 'pagar' ? 'pago' : 'recebido';
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = dataBrasiliaISO();
     const sucesso = await atualizarConta(id, {
       status,
       data_pagamento: hoje,
@@ -578,7 +579,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
 
       const contasParaBaixa = contas.filter(c => ids.includes(c.id) && c.status === 'pendente');
 
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = dataBrasiliaISO();
       let parcelasSemCusto = 0;
 
       // Contas do modelo novo: quitar = 1 linha de "Quitação" (= saldo) por conta.

@@ -54,6 +54,7 @@ import { resolverIdentidadeOS } from "@/lib/ordemServico/resolverIdentidadeOS";
 import { criarOuAtualizarCliente } from "@/lib/ordemServico/criarOuAtualizarCliente";
 import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
 import { criarContaAReceberOS } from "@/lib/ordemServico/criarContaAReceberOS";
+import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 
 interface DialogOrdemServicoSimplificadaProps {
   open: boolean;
@@ -424,7 +425,7 @@ export const DialogOrdemServicoSimplificada = ({
               nome: `Taxa Cartão ${taxaSel.bandeira} - OS ${numeroOS}`,
               tipo: "pagar" as const,
               valor: valorTaxa,
-              data: new Date().toISOString().split("T")[0],
+              data: dataBrasiliaISO(),
               status: "pago" as const,
               recorrente: false,
               categoria: "Taxa de Cartão",

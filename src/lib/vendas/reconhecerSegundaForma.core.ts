@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO } from "../vendasFinanceiras.ts";
 import { calcularCustoUnitarioParcelaSecundaria } from "./rateioSegundaForma.ts";
+import { dataBrasiliaISO } from "../dataBrasilia.ts";
 
 /**
  * Núcleo (sem import de rede/alias) do reconhecimento diferido de receita/custo
@@ -66,6 +67,16 @@ export const extrairVendaIdDaDescricao = (descricao?: string | null): string | n
  */
 export const normalizarDataRecebimento = (data: string): string =>
   /^\d{4}-\d{2}-\d{2}$/.test(data) ? `${data}T12:00:00-03:00` : data;
+
+/**
+ * Data de recebimento gravada na venda quando a conta vinculada é baixada: a
+ * data de pagamento da conta ou, se ela não tiver, hoje em Brasília (nunca o
+ * dia UTC, que entre 21h e meia-noite já é o dia seguinte).
+ */
+export const dataRecebimentoDaConta = (
+  dataPagamento: string | null | undefined,
+  agora: Date = new Date(),
+): string => normalizarDataRecebimento(dataPagamento || dataBrasiliaISO(agora));
 
 export interface RefItem {
   dispositivo_id?: string | null;
@@ -265,9 +276,7 @@ export const propagarStatusContaParaVendaCore = async (
   if (!vendaId) return null;
 
   if (novoStatus === "recebido") {
-    const dataRecebimento = normalizarDataRecebimento(
-      conta.data_pagamento || new Date().toISOString().slice(0, 10),
-    );
+    const dataRecebimento = dataRecebimentoDaConta(conta.data_pagamento);
     return reconhecerRecebimentoVendaVinculadaCore(client, vendaId, dataRecebimento, userId);
   }
   if (novoStatus === "pendente") {

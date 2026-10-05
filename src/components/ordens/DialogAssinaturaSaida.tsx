@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { checklistIcons } from "@/lib/checklist-icons";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
 
@@ -42,6 +43,9 @@ interface DialogAssinaturaSaidaProps {
   onSuccess: () => void;
 }
 
+/** Vencimento padrão do saldo a prazo: 30 dias depois de hoje (Brasília). */
+const vencimentoSaldoPadrao = () => dataBrasiliaISO(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+
 export const DialogAssinaturaSaida = ({
   open,
   onOpenChange,
@@ -53,17 +57,21 @@ export const DialogAssinaturaSaida = ({
   const [assinaturaSaida, setAssinaturaSaida] = useState<string | null>(null);
   const [tipoAssinaturaSaida, setTipoAssinaturaSaida] = useState<TipoAssinatura>("digital");
   const [formaPagamento, setFormaPagamento] = useState<string>("");
-  const [dataRecebimento, setDataRecebimento] = useState<string>(
-    new Date().toISOString().split("T")[0]
-  );
+  const [dataRecebimento, setDataRecebimento] = useState<string>(() => dataBrasiliaISO());
   const [saldoAPrazo, setSaldoAPrazo] = useState(false);
   const [formaPagamentoSaldo, setFormaPagamentoSaldo] = useState<string>("dinheiro");
-  const [dataVencimentoSaldo, setDataVencimentoSaldo] = useState<string>(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-  );
+  const [dataVencimentoSaldo, setDataVencimentoSaldo] = useState<string>(() => vencimentoSaldoPadrao());
   const [mostrarChecklistSaida, setMostrarChecklistSaida] = useState(false);
   const [editandoChecklistSaida, setEditandoChecklistSaida] = useState(false);
   const [checklistPreenchido, setChecklistPreenchido] = useState<Checklist | null>(null);
+
+  // O componente pode ficar montado de um dia para o outro (lista de OS aberta):
+  // recalcula as datas padrão a cada abertura, no dia de Brasília.
+  useEffect(() => {
+    if (!open) return;
+    setDataRecebimento(dataBrasiliaISO());
+    setDataVencimentoSaldo(vencimentoSaldoPadrao());
+  }, [open]);
 
   // Tempo gasto é sempre persistido em horas decimais (tempo_gasto_horas), mas o
   // usuário pode digitar em minutos ou horas — a unidade é só facilidade de entrada.
