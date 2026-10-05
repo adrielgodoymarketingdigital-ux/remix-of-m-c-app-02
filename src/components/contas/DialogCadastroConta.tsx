@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { useClientes } from "@/hooks/useClientes";
 import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustomizadas";
@@ -78,6 +78,8 @@ export function DialogCadastroConta({
   const [registrarEntrada, setRegistrarEntrada] = useState(false);
   const [valorEntrada, setValorEntrada] = useState("");
   const [formaPagamentoEntrada, setFormaPagamentoEntrada] = useState("dinheiro");
+  // Trava de envio: um segundo clique antes do primeiro terminar não cria outra conta.
+  const enviandoRef = useRef(false);
 
   const form = useForm<FormularioConta>({
     resolver: zodResolver(formSchema),
@@ -139,6 +141,16 @@ export function DialogCadastroConta({
   const saldoRestante = Math.max(Number(valorTotalForm || 0) - valorEntradaNumero, 0);
 
   const handleSubmit = async (dados: FormularioConta) => {
+    if (enviandoRef.current) return;
+    enviandoRef.current = true;
+    try {
+      await enviar(dados);
+    } finally {
+      enviandoRef.current = false;
+    }
+  };
+
+  const enviar = async (dados: FormularioConta) => {
     // Converter fornecedor_id/cliente_id vazios para undefined e manter só o
     // vínculo relevante ao tipo escolhido (pagar -> fornecedor, receber -> cliente)
     const dadosLimpos: FormularioConta = {
@@ -487,8 +499,8 @@ export function DialogCadastroConta({
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="w-full sm:w-auto">
-                {conta ? "Atualizar" : "Cadastrar"}
+              <Button type="submit" className="w-full sm:w-auto" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Salvando..." : conta ? "Atualizar" : "Cadastrar"}
               </Button>
             </div>
           </form>

@@ -4,6 +4,7 @@ import { Conta, FormularioConta, PagamentoConta } from "@/types/conta";
 import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
+import { pagamentoDoCadastro } from "@/lib/financeiro/pagamentoDoCadastro";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { cancelarParcelaDaContaExcluida } from "@/lib/vendas/estornoParcelaSecundaria";
@@ -179,21 +180,60 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       }
 
       const targetUserId = resolvedUserIdFromContext ?? user.id;
+      // Conta cadastrada já paga (ou com entrada): entra como pendente e o
+      // pagamento vai para pagamentos_contas — o trigger sync_conta_from_pagamentos
+      // preenche status, valor_pago e data_pagamento (sem isso ela não tinha
+      // data_pagamento e ficava fora do Extrato). Pendente de verdade: inalterado.
+      const { ajustesConta, pagamento } = pagamentoDoCadastro(dados);
       // Toda conta criada a partir de agora usa o histórico de pagamentos
       // (recebimento parcial + recibo). Contas antigas seguem com a flag false.
       const insertData: Record<string, unknown> = {
         ...dados,
+        ...ajustesConta,
         user_id: targetUserId,
         usa_historico_pagamentos: true,
       };
       if (empresaFiltro) insertData.empresa_id = empresaFiltro;
-      const { error } = await supabase.from("contas").insert(insertData);
+      const { data: contaCriada, error } = await supabase
+        .from("contas")
+        .insert(insertData)
+        .select("id")
+        .single();
 
       if (error) throw error;
 
+      if (pagamento) {
+        // Mesmo payload de registrarPagamentoParcial.
+        const { error: erroPagamento } = await supabase.from("pagamentos_contas").insert({
+          conta_id: contaCriada.id,
+          user_id: targetUserId,
+          empresa_id: (insertData.empresa_id as string | undefined) ?? null,
+          valor: pagamento.valor,
+          data_pagamento: pagamento.data,
+          forma_pagamento: pagamento.forma,
+          observacao: pagamento.observacao,
+        });
+        if (erroPagamento) {
+          // A conta fica pendente (visível e corrigível); não apagamos nada.
+          console.error("Conta criada, mas o pagamento não foi registrado:", erroPagamento);
+          toast({
+            title: "Conta criada, mas o pagamento não foi registrado",
+            description: "Conta criada, mas não foi possível registrar o pagamento. Dê baixa pela lista de contas.",
+            variant: "destructive",
+          });
+          await carregarContas();
+          return true;
+        }
+        window.dispatchEvent(new CustomEvent("conta-atualizada"));
+      }
+
       toast({
         title: "Conta cadastrada",
-        description: "A conta foi cadastrada com sucesso.",
+        description: !pagamento
+          ? "A conta foi cadastrada com sucesso."
+          : pagamento.observacao === "Quitação"
+            ? "A conta foi cadastrada e o pagamento registrado."
+            : "A conta foi cadastrada e a entrada registrada.",
       });
 
       await carregarContas();
