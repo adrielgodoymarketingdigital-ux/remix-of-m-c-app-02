@@ -5,13 +5,15 @@
 // gerados aqui com o dígito Luhn — nunca IMEIs reais de clientes.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
+  avisoImeiDigitado,
   confirmarEntreQuadros,
+  decidirLeituraOcr,
   extrairImeis,
   extrairSeries,
   serieValida,
   validarImei,
 } from "../../src/lib/codigos/imei.ts";
-import { escalaParaOcr, preprocessarPixels } from "../../src/lib/ocr/preprocessamento.ts";
+import { escalaParaOcr, limiarOtsu, preprocessarPixels } from "../../src/lib/ocr/preprocessamento.ts";
 
 Deno.test(`fuso da máquina: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`, () => {});
 
@@ -110,17 +112,33 @@ Deno.test("confirmarEntreQuadros: só vale o que se repetiu em 2 quadros seguido
   assertEquals(confirmarEntreQuadros([A], [A, A]), [A]);
 });
 
-Deno.test("pré-processamento: fundo escuro é invertido e o contraste esticado", () => {
-  // 90% de fundo escuro (20) e 10% de texto claro (200)
-  const px = new Uint8ClampedArray(100 * 4);
-  for (let i = 0; i < 100; i++) { const v = i < 90 ? 20 : 200; px.set([v, v, v, 255], i * 4); }
-  assertEquals(preprocessarPixels(px), { invertido: true });
-  assertEquals([px[0], px[95 * 4]], [255, 0], "fundo vira branco, texto vira preto");
-  // Fundo claro (230) com texto cinza (120): não inverte, estica para 255/0
-  const claro = new Uint8ClampedArray(100 * 4);
-  for (let i = 0; i < 100; i++) { const v = i < 90 ? 230 : 120; claro.set([v, v, v, 255], i * 4); }
-  assertEquals(preprocessarPixels(claro), { invertido: false });
-  assertEquals([claro[0], claro[95 * 4]], [255, 0]);
+Deno.test("pré-processamento: binariza por Otsu; fundo escuro é invertido (texto preto, fundo branco)", () => {
+  // 10x10: 90% fundo escuro (20) e 10% texto claro (200), com ruído leve
+  const montar = (fundo: number, texto: number) => {
+    const px = new Uint8ClampedArray(100 * 4);
+    for (let i = 0; i < 100; i++) {
+      const ruido = ((i * 37) % 9) - 4;
+      const v = (i % 10 === 5 ? texto : fundo) + ruido;
+      px.set([v, v, v, 255], i * 4);
+    }
+    return px;
+  };
+  const escuro = montar(20, 200);
+  const r1 = preprocessarPixels(escuro, 10, 10);
+  assertEquals(r1.invertido, true);
+  assertEquals([escuro[0], escuro[5 * 4]], [255, 0], "fundo branco, texto preto");
+  const claro = montar(235, 40);
+  const r2 = preprocessarPixels(claro, 10, 10);
+  assertEquals(r2.invertido, false);
+  assertEquals([claro[0], claro[5 * 4]], [255, 0]);
+  // Só 2 valores na saída (binário)
+  assertEquals(new Set(Array.from(claro).filter((_, i) => i % 4 === 0)).size, 2);
+});
+
+Deno.test("Otsu: limiar entre as duas populações", () => {
+  const h = new Array(256).fill(0); h[30] = 50; h[220] = 450;
+  const l = limiarOtsu(h, 500);
+  assert(l >= 30 && l < 220, `limiar ${l}`);
 });
 
 Deno.test("escala do recorte: amplia até 3×, nunca reduz", () => {
@@ -128,4 +146,27 @@ Deno.test("escala do recorte: amplia até 3×, nunca reduz", () => {
   assertEquals(escalaParaOcr(600), 2);
   assertEquals(escalaParaOcr(1600), 1);
   assertEquals(escalaParaOcr(0), 1);
+});
+
+Deno.test("aviso do IMEI digitado: só 15 dígitos com Luhn errado; não bloqueia nada", () => {
+  assertEquals(avisoImeiDigitado(A), null);
+  assertEquals(avisoImeiDigitado(errarUltimo(A)), "IMEI inválido, confira");
+  assertEquals(avisoImeiDigitado(`${A.slice(0, 7)} ${errarUltimo(A).slice(7)}`), "IMEI inválido, confira");
+  assertEquals(avisoImeiDigitado(A.slice(0, 10)), null, "ainda digitando");
+  assertEquals(avisoImeiDigitado(""), null);
+  assertEquals(avisoImeiDigitado(null), null);
+});
+
+Deno.test("decisão do OCR: 1 IMEI confirmado grava; 2 na tela nunca escolhe sozinho", () => {
+  assertEquals(decidirLeituraOcr([], [A]), { acao: "continuar" }, "primeiro quadro");
+  assertEquals(decidirLeituraOcr([A], [A]), { acao: "aceitar", valor: A });
+  // Tela *#06# com os dois: só um confirmado ainda → continua (não grava o IMEI 2 no campo IMEI)
+  assertEquals(decidirLeituraOcr([B], [A, B]), { acao: "continuar" });
+  assertEquals(decidirLeituraOcr([A, B], [A, B]), { acao: "escolher", opcoes: [A, B] });
+  assertEquals(decidirLeituraOcr([A], [B]), { acao: "continuar" });
+});
+
+Deno.test("decisão do OCR: série (sem dígito verificador) sempre pede confirmação", () => {
+  assertEquals(decidirLeituraOcr(["F2LX9KQ1"], ["F2LX9KQ1"], true), { acao: "escolher", opcoes: ["F2LX9KQ1"] });
+  assertEquals(decidirLeituraOcr([], ["F2LX9KQ1"], true), { acao: "continuar" });
 });

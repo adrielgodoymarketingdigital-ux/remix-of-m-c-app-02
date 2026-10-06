@@ -111,3 +111,41 @@ export function extrairSeries(texto: string | null | undefined): string[] {
 export function confirmarEntreQuadros(anteriores: readonly string[], atuais: readonly string[]): string[] {
   return atuais.filter((c, i) => anteriores.includes(c) && atuais.indexOf(c) === i);
 }
+
+/**
+ * Aviso discreto para o IMEI digitado à mão (não bloqueia o salvamento):
+ * só quando há exatamente 15 dígitos e o dígito verificador não confere.
+ */
+export function avisoImeiDigitado(valor: string | null | undefined): string | null {
+  const d = (valor ?? "").replace(/\D/g, "");
+  if (d.length !== 15) return null;
+  return validarImei(d) ? null : "IMEI inválido, confira";
+}
+
+export type DecisaoLeituraOcr =
+  | { acao: "aceitar"; valor: string }
+  | { acao: "escolher"; opcoes: string[] }
+  | { acao: "continuar" };
+
+/**
+ * O que fazer depois de um quadro do OCR (candidatos já filtrados pelo campo).
+ * - Só confirma o que apareceu no quadro anterior E no atual.
+ * - Quadro com 2+ valores (tela *#06#): nunca escolhe sozinho; espera os dois
+ *   confirmarem e devolve as opções para o usuário tocar.
+ * - Com `pedirConfirmacao` (ex.: número de série, sem dígito verificador),
+ *   mesmo um valor único vira opção para o usuário conferir.
+ */
+export function decidirLeituraOcr(
+  anteriores: readonly string[],
+  atuais: readonly string[],
+  pedirConfirmacao = false,
+): DecisaoLeituraOcr {
+  const confirmados = confirmarEntreQuadros(anteriores, atuais);
+  if (atuais.length >= 2) {
+    return confirmados.length >= 2 ? { acao: "escolher", opcoes: confirmados } : { acao: "continuar" };
+  }
+  if (confirmados.length === 1) {
+    return pedirConfirmacao ? { acao: "escolher", opcoes: confirmados } : { acao: "aceitar", valor: confirmados[0] };
+  }
+  return { acao: "continuar" };
+}

@@ -1,11 +1,52 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+// Leitor de números (OCR, modo "Números" do LeitorCodigoBarras): arquivos do
+// tesseract.js servidos pelo próprio app em /ocr/<versão>/ — copiados de
+// node_modules no build e servidos direto no dev. Ficam FORA do precache do PWA
+// (os globPatterns abaixo não incluem ocr/**); o sw.ts guarda em cache só depois
+// do primeiro uso. O navegador baixa só um dos três cores (o que ele suportar).
+const TESSERACT_VERSAO: string = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "node_modules/tesseract.js/package.json"), "utf8"),
+).version;
+const ARQUIVOS_OCR: Record<string, string> = {
+  "worker.min.js": "node_modules/tesseract.js/dist/worker.min.js",
+  "core/tesseract-core-lstm.wasm.js": "node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js",
+  "core/tesseract-core-simd-lstm.wasm.js": "node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js",
+  "core/tesseract-core-relaxedsimd-lstm.wasm.js": "node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js",
+  "lang/eng.traineddata.gz": "node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz",
+};
+
+function arquivosOcr(): Plugin {
+  const prefixo = `/ocr/${TESSERACT_VERSAO}/`;
+  return {
+    name: "arquivos-ocr",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? "").split("?")[0];
+        const origem = url.startsWith(prefixo) ? ARQUIVOS_OCR[url.slice(prefixo.length)] : undefined;
+        if (!origem) return next();
+        res.setHeader("Content-Type", url.endsWith(".js") ? "text/javascript" : "application/octet-stream");
+        fs.createReadStream(path.resolve(__dirname, origem)).pipe(res);
+      });
+    },
+    generateBundle() {
+      for (const [destino, origem] of Object.entries(ARQUIVOS_OCR)) {
+        this.emitFile({ type: "asset", fileName: `ocr/${TESSERACT_VERSAO}/${destino}`, source: fs.readFileSync(path.resolve(__dirname, origem)) });
+      }
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    __TESSERACT_VERSAO__: JSON.stringify(TESSERACT_VERSAO),
+  },
   assetsInclude: ["**/*.JPG"],
   server: {
     host: "::",
@@ -14,6 +55,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger(),
+    arquivosOcr(),
     VitePWA({
       registerType: "prompt",
       strategies: "injectManifest",
@@ -93,6 +135,8 @@ export default defineConfig(({ mode }) => ({
           "assets/html2canvas*",
           "assets/templatePlanilha*",
           "assets/LeitorCodigoBarras*",
+          // OCR (tesseract.js): só baixa ao abrir o modo Números do leitor
+          "assets/vendor-ocr*",
         ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB por arquivo
       },
@@ -116,6 +160,8 @@ export default defineConfig(({ mode }) => ({
           "vendor-supabase": ["@supabase/supabase-js"],
           // Recharts fica num chunk próprio — lazy-loaded pelo GraficosDashboard
           "vendor-recharts": ["recharts"],
+          // OCR do leitor (import dinâmico em src/lib/ocr/motorOcr.ts)
+          "vendor-ocr": ["tesseract.js"],
           // UI libs grandes
           "vendor-radix": [
             "@radix-ui/react-dialog",

@@ -44,6 +44,21 @@ registerRoute(
   new NetworkOnly()
 );
 
+// Leitor de números (OCR): arquivos grandes (~7 MB) em /ocr/<versão>/, fora do
+// precache. Só entram no cache depois do primeiro uso; a versão no caminho
+// troca a URL quando o tesseract.js é atualizado. Antes da rota de scripts,
+// porque o core é carregado por importScripts (destination "script").
+registerRoute(
+  ({ url }) => url.origin === self.location.origin && url.pathname.startsWith("/ocr/"),
+  new CacheFirst({
+    cacheName: "ocr-cache",
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [200] }),
+      new ExpirationPlugin({ maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 90 }),
+    ],
+  })
+);
+
 // Assets JS/CSS: NetworkFirst garante que após deploy o browser sempre receba o bundle mais recente.
 // Cache serve de fallback se offline. Hash no nome garante que nova versão = nova URL = sem conflito.
 registerRoute(
