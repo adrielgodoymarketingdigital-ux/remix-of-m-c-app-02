@@ -29,8 +29,10 @@ import {
   HelpCircle,
   Video,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
+import { lerItensMenuInferior } from "@/lib/menuInferior";
 
 const STORAGE_KEY = "mobile-nav-items";
 
@@ -59,23 +61,33 @@ export const allNavOptions = [
 
 const DEFAULT_NAV_IDS = ["dashboard", "pdv", "os", "dispositivos"];
 
+const IDS_VALIDOS = allNavOptions.map((o) => o.id);
+
+// Última escolha desta sessão: a barra é remontada a cada página (AppLayout por
+// página) e, se o localStorage falhar, ainda mostra o que a pessoa escolheu.
+let escolhaDaSessao: string[] | null = null;
+
+/** De 1 a 4 ids válidos (ver lerItensMenuInferior); sem escolha salva = padrão. */
 export function getSelectedNavItems(): string[] {
+  if (escolhaDaSessao) return escolhaDaSessao;
+  let salvo: string | null = null;
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length === 4) {
-        return parsed;
-      }
-    }
+    salvo = localStorage.getItem(STORAGE_KEY);
   } catch {
-    // ignore
+    // storage bloqueado: fica o padrão
   }
-  return DEFAULT_NAV_IDS;
+  return lerItensMenuInferior(salvo, IDS_VALIDOS, DEFAULT_NAV_IDS);
 }
 
-export function saveSelectedNavItems(ids: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+/** Grava a escolha; false se o armazenamento do aparelho falhar (cheio/bloqueado). */
+export function saveSelectedNavItems(ids: string[]): boolean {
+  escolhaDaSessao = lerItensMenuInferior(JSON.stringify(ids), IDS_VALIDOS, DEFAULT_NAV_IDS);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(escolhaDaSessao));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 interface MobileNavCustomizerProps {
@@ -124,7 +136,11 @@ export function MobileNavCustomizer({
   };
 
   const handleSave = () => {
-    saveSelectedNavItems(selectedIds);
+    if (!saveSelectedNavItems(selectedIds)) {
+      toast.warning("Não foi possível salvar a personalização neste aparelho", {
+        description: "O armazenamento do navegador está cheio ou bloqueado. A escolha vale até você fechar o app.",
+      });
+    }
     onSave(selectedIds);
     onOpenChange(false);
   };
