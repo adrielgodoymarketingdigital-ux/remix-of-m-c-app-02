@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -42,8 +42,33 @@ import { DialogCadastroFornecedor } from "@/components/fornecedores/DialogCadast
 import { UploadFotosCompra } from "./UploadFotosCompra";
 import { UploadDocumentosVendedor } from "./UploadDocumentosVendedor";
 import { AssinaturaCompra } from "./AssinaturaCompra";
-import { Plus, Save, Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Plus, Save, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import {
+  CriadosNaSessao,
+  ResultadoCompra,
+  TravaEnvio,
+  compraFalhou,
+  criadosSemCompra,
+  deveFecharDialogo,
+  finalizarEnvio,
+  idsParaTentativa,
+  iniciarEnvio,
+  montarMensagemErroCompra,
+} from "@/lib/origem/fluxoCompra";
+
+// Campos obrigatórios na ordem da tela: rótulo do aviso e aba onde ficam.
+const CAMPOS_OBRIGATORIOS: { campo: string; rotulo: string; aba?: string }[] = [
+  { campo: "tipo_origem", rotulo: "Origem" },
+  { campo: "pessoa_id", rotulo: "Pessoa" },
+  { campo: "fornecedor_id", rotulo: "Fornecedor" },
+  { campo: "dispositivo_id", rotulo: "Dispositivo" },
+  { campo: "data_compra", rotulo: "Data da compra", aba: "compra" },
+  { campo: "valor_pago", rotulo: "Valor pago", aba: "compra" },
+  { campo: "forma_pagamento", rotulo: "Forma de pagamento", aba: "compra" },
+  { campo: "condicao_aparelho", rotulo: "Condição do aparelho", aba: "compra" },
+];
 
 const createFormSchema = (modoInline: boolean) => z.object({
   tipo_origem: z.enum(['terceiro', 'fornecedor']),
@@ -77,7 +102,8 @@ const createFormSchema = (modoInline: boolean) => z.object({
 interface DialogCadastroCompraProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (dados: FormularioCompraDispositivo, gerarPDF: boolean) => Promise<void>;
+  /** Só fecha o diálogo quando devolve { ok: true }; se falhar, os dados ficam no formulário. */
+  onSubmit: (dados: FormularioCompraDispositivo, gerarPDF: boolean) => Promise<ResultadoCompra<unknown>>;
   dispositivoId?: string;
   modoInline?: boolean;
 }
@@ -94,6 +120,17 @@ export function DialogCadastroCompra({
   const [dialogFornecedorAberto, setDialogFornecedorAberto] = useState(false);
   const [gerarPDF, setGerarPDF] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState<{ mensagem: string; detalhe: string | null } | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState("compra");
+  const [enviandoFotos, setEnviandoFotos] = useState(false);
+  const [enviandoDocumentos, setEnviandoDocumentos] = useState(false);
+  const [processandoAssinaturaVendedor, setProcessandoAssinaturaVendedor] = useState(false);
+  const [processandoAssinaturaCliente, setProcessandoAssinaturaCliente] = useState(false);
+  const enviandoArquivos = enviandoFotos || enviandoDocumentos || processandoAssinaturaVendedor || processandoAssinaturaCliente;
+  // Ignora cliques repetidos enquanto uma tentativa roda (o estado do React só atualiza no próximo render).
+  const travaEnvio = useRef<TravaEnvio>({ emAndamento: false });
+  // Pessoa/dispositivo criados pelos "+ Novo" nesta sessão do diálogo: reaproveitados na nova tentativa.
+  const criadosNaSessao = useRef<CriadosNaSessao>({});
   
   // Estados para fotos, documentos e assinaturas
   const [fotos, setFotos] = useState<string[]>([]);
@@ -147,6 +184,9 @@ export function DialogCadastroCompra({
       setAssinaturaVendedorIP('');
       setAssinaturaCliente('');
       setAssinaturaClienteIP('');
+      setErroEnvio(null);
+      setAbaAtiva("compra");
+      criadosNaSessao.current = {};
     }
   }, [open]);
 
@@ -163,14 +203,22 @@ export function DialogCadastroCompra({
       toast.error('Selecione um fornecedor');
       return;
     }
-    
+
+    if (enviandoArquivos) {
+      toast.info('Aguarde terminar o envio das fotos, documentos ou assinaturas.');
+      return;
+    }
+
+    if (!iniciarEnvio(travaEnvio.current)) return;
+    setErroEnvio(null);
     setIsSubmitting(true);
-    
+
     try {
+      const { pessoaId, dispositivoId } = idsParaTentativa(dados, criadosNaSessao.current);
       const dadosCompra: FormularioCompraDispositivo = {
-        pessoa_id: dados.tipo_origem === 'terceiro' ? dados.pessoa_id : undefined,
+        pessoa_id: pessoaId ?? undefined,
         fornecedor_id: dados.tipo_origem === 'fornecedor' ? dados.fornecedor_id : undefined,
-        dispositivo_id: dados.dispositivo_id || '',
+        dispositivo_id: dispositivoId ?? '',
         data_compra: dados.data_compra,
         valor_pago: parseValorMonetarioBR(dados.valor_pago),
         forma_pagamento: dados.forma_pagamento,
@@ -188,7 +236,15 @@ export function DialogCadastroCompra({
         assinatura_cliente_ip: assinaturaClienteIP || undefined,
       };
 
-      await onSubmit(dadosCompra, gerarPDF);
+      const resultado = await onSubmit(dadosCompra, gerarPDF);
+      if (!deveFecharDialogo(resultado)) {
+        // Falhou: nada é limpo; o alerta fica perto do botão e a próxima tentativa
+        // reaproveita a pessoa/dispositivo já criados.
+        if (compraFalhou(resultado)) setErroEnvio({ mensagem: resultado.mensagem, detalhe: resultado.detalhe });
+        const pendentes = criadosSemCompra(criadosNaSessao.current, false);
+        if (pendentes.length) console.error("[compra] criados nesta sessão aguardando a compra (serão reaproveitados)", pendentes);
+        return;
+      }
       form.reset();
       setFotos([]);
       setDocumentoFrente(null);
@@ -197,18 +253,39 @@ export function DialogCadastroCompra({
       setAssinaturaVendedorIP('');
       setAssinaturaCliente('');
       setAssinaturaClienteIP('');
+      criadosNaSessao.current = {};
       onOpenChange(false);
     } catch (error) {
-      console.error('Erro ao submeter compra:', error);
-      toast.error('Erro ao registrar compra');
+      console.error('[compra] etapa=enviar formulário', error);
+      setErroEnvio(montarMensagemErroCompra(error));
     } finally {
       setIsSubmitting(false);
+      finalizarEnvio(travaEnvio.current);
     }
   };
 
+  // Validação barrou o envio: avisa quais campos faltam e rola até o primeiro (o
+  // ref do Select do Radix não está ligado ao campo, então o foco automático não rola).
+  const handleInvalido = useCallback((erros: FieldErrors<FormValues>) => {
+    const tipo = form.getValues("tipo_origem");
+    const comErro = new Set(Object.keys(erros));
+    // O refine de origem marca pessoa_id mesmo quando a origem é fornecedor.
+    if (tipo === "fornecedor" && comErro.delete("pessoa_id")) comErro.add("fornecedor_id");
+    const faltando = CAMPOS_OBRIGATORIOS.filter((c) => comErro.has(c.campo));
+    if (faltando.length === 0) return;
+    toast.error(`Preencha os campos obrigatórios: ${faltando.map((c) => c.rotulo).join(", ")}`, { id: "compra-campos-obrigatorios" });
+    const primeiro = faltando[0];
+    if (primeiro.aba) setAbaAtiva(primeiro.aba);
+    requestAnimationFrame(() => {
+      document.querySelector(`[data-campo-compra="${primeiro.campo}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [form]);
+
   const handleNovaPessoa = async (dadosPessoa: any) => {
     const pessoa = await criarPessoa(dadosPessoa);
+    if (!pessoa) console.error("[compra] etapa=criar pessoa: não criada (ver erro acima)");
     if (pessoa) {
+      criadosNaSessao.current.pessoaId = pessoa.id;
       await carregarPessoas();
       form.setValue("pessoa_id", pessoa.id);
       setDialogPessoaAberto(false);
@@ -240,7 +317,9 @@ export function DialogCadastroCompra({
 
   const handleNovoDispositivo = async (dadosDispositivo: any) => {
     const dispositivo = await criarDispositivo(dadosDispositivo);
+    if (!dispositivo) console.error("[compra] etapa=criar dispositivo: não criado (ver erro acima)");
     if (dispositivo) {
+      criadosNaSessao.current.dispositivoId = dispositivo.id;
       await carregarDispositivos();
       form.setValue("dispositivo_id", dispositivo.id);
       setDialogDispositivoAberto(false);
@@ -266,13 +345,13 @@ export function DialogCadastroCompra({
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleSubmit, handleInvalido)} className="space-y-6">
               {/* Tipo de Origem */}
               <FormField
                 control={form.control}
                 name="tipo_origem"
                 render={({ field }) => (
-                  <FormItem className="space-y-3">
+                  <FormItem className="space-y-3" data-campo-compra="tipo_origem">
                     <FormLabel>Origem do Dispositivo *</FormLabel>
                     <FormControl>
                       <RadioGroup
@@ -318,7 +397,7 @@ export function DialogCadastroCompra({
                     control={form.control}
                     name="pessoa_id"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem data-campo-compra="pessoa_id">
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -356,7 +435,7 @@ export function DialogCadastroCompra({
                     control={form.control}
                     name="fornecedor_id"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem data-campo-compra="fornecedor_id">
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -398,7 +477,7 @@ export function DialogCadastroCompra({
                     control={form.control}
                     name="dispositivo_id"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem data-campo-compra="dispositivo_id">
                         <Select 
                           onValueChange={field.onChange} 
                           value={field.value}
@@ -431,7 +510,7 @@ export function DialogCadastroCompra({
                 </div>
               )}
 
-              <Tabs defaultValue="compra" className="w-full">
+              <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
                 <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="compra">Dados</TabsTrigger>
                   <TabsTrigger value="documentos">Doc.</TabsTrigger>
@@ -446,7 +525,7 @@ export function DialogCadastroCompra({
                       control={form.control}
                       name="data_compra"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem data-campo-compra="data_compra">
                           <FormLabel>Data da Compra *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
@@ -460,7 +539,7 @@ export function DialogCadastroCompra({
                       control={form.control}
                       name="valor_pago"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem data-campo-compra="valor_pago">
                           <FormLabel>Valor Pago (R$) *</FormLabel>
                           <FormControl>
                             <Input
@@ -494,7 +573,7 @@ export function DialogCadastroCompra({
                       control={form.control}
                       name="forma_pagamento"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem data-campo-compra="forma_pagamento">
                           <FormLabel>Forma de Pagamento *</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
@@ -520,7 +599,7 @@ export function DialogCadastroCompra({
                       control={form.control}
                       name="condicao_aparelho"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem data-campo-compra="condicao_aparelho">
                           <FormLabel>Condição do Aparelho *</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="Ex: Perfeito estado, Pequenos riscos..." />
@@ -582,6 +661,7 @@ export function DialogCadastroCompra({
                     documentoVerso={documentoVerso}
                     onDocumentoFrenteChange={setDocumentoFrente}
                     onDocumentoVersoChange={setDocumentoVerso}
+                    onEnviandoChange={setEnviandoDocumentos}
                   />
                 </TabsContent>
 
@@ -590,6 +670,7 @@ export function DialogCadastroCompra({
                     fotos={fotos}
                     onFotosChange={setFotos}
                     maxFotos={5}
+                    onEnviandoChange={setEnviandoFotos}
                   />
                 </TabsContent>
 
@@ -602,6 +683,7 @@ export function DialogCadastroCompra({
                       onClear={() => { setAssinaturaVendedor(''); setAssinaturaVendedorIP(''); }}
                       assinaturaExistente={assinaturaVendedor}
                       ipExistente={assinaturaVendedorIP}
+                      onProcessandoChange={setProcessandoAssinaturaVendedor}
                     />
                     
                     <AssinaturaCompra
@@ -611,6 +693,7 @@ export function DialogCadastroCompra({
                       onClear={() => { setAssinaturaCliente(''); setAssinaturaClienteIP(''); }}
                       assinaturaExistente={assinaturaCliente}
                       ipExistente={assinaturaClienteIP}
+                      onProcessandoChange={setProcessandoAssinaturaCliente}
                     />
                   </div>
                 </TabsContent>
@@ -647,6 +730,14 @@ export function DialogCadastroCompra({
                 </div>
               )}
 
+              {erroEnvio && (
+                <Alert variant="destructive" data-testid="erro-envio-compra">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>{erroEnvio.mensagem}</AlertTitle>
+                  {erroEnvio.detalhe && <AlertDescription>Motivo: {erroEnvio.detalhe}</AlertDescription>}
+                </Alert>
+              )}
+
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
                 <Button
                   type="button"
@@ -657,11 +748,16 @@ export function DialogCadastroCompra({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+                <Button type="submit" disabled={isSubmitting || enviandoArquivos} className="w-full sm:w-auto">
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Processando...
+                    </>
+                  ) : enviandoArquivos ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Aguarde o envio da foto...
                     </>
                   ) : (
                     <>

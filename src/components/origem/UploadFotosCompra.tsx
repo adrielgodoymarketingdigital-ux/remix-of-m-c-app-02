@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,8 @@ interface UploadFotosCompraProps {
   onFotosChange: (fotos: string[]) => void;
   maxFotos?: number;
   disabled?: boolean;
+  /** Avisa o formulário enquanto há envio em andamento (o Registrar espera). */
+  onEnviandoChange?: (enviando: boolean) => void;
 }
 
 export function UploadFotosCompra({
@@ -18,8 +20,13 @@ export function UploadFotosCompra({
   onFotosChange,
   maxFotos = 5,
   disabled = false,
+  onEnviandoChange,
 }: UploadFotosCompraProps) {
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    onEnviandoChange?.(uploading);
+  }, [uploading, onEnviandoChange]);
 
   const handleUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;

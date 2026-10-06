@@ -6,6 +6,31 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Eraser, Check, PenTool, Globe, Loader2 } from "lucide-react";
 import { capturarIP } from "@/lib/capturarIP";
+import { dimensaoAssinaturaExportada } from "@/lib/origem/fluxoCompra";
+
+/**
+ * PNG da assinatura recortada, limitado a 600×200 px: no celular o canvas é
+ * multiplicado pelo devicePixelRatio (DPR 3 ≈ 1000×257 px, ~58 KB em base64,
+ * contra ~15 KB em DPR 1). Reduzir cria pixels de suavização que às vezes deixam
+ * o PNG maior (DPR 2: 35 → 41 KB), então fica a versão menor das duas. Mantém o
+ * fundo transparente e o formato PNG (o termo em PDF embute como PNG);
+ * assinaturas já gravadas não mudam.
+ */
+function exportarAssinatura(aparado: HTMLCanvasElement): string {
+  const original = aparado.toDataURL("image/png");
+  const { largura, altura, reduzida } = dimensaoAssinaturaExportada(aparado.width, aparado.height);
+  if (!reduzida) return original;
+  const destino = document.createElement("canvas");
+  destino.width = largura;
+  destino.height = altura;
+  const ctx = destino.getContext("2d");
+  if (!ctx) return original;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(aparado, 0, 0, largura, altura);
+  const reduzidaUrl = destino.toDataURL("image/png");
+  return reduzidaUrl.length < original.length ? reduzidaUrl : original;
+}
 
 interface AssinaturaCompraProps {
   label: string;
@@ -15,6 +40,8 @@ interface AssinaturaCompraProps {
   assinaturaExistente?: string;
   ipExistente?: string;
   disabled?: boolean;
+  /** Avisa o formulário enquanto a confirmação da assinatura (IP) está em andamento. */
+  onProcessandoChange?: (processando: boolean) => void;
 }
 
 export function AssinaturaCompra({
@@ -25,6 +52,7 @@ export function AssinaturaCompra({
   assinaturaExistente,
   ipExistente,
   disabled = false,
+  onProcessandoChange,
 }: AssinaturaCompraProps) {
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [aceite, setAceite] = useState(!!assinaturaExistente);
@@ -66,23 +94,28 @@ export function AssinaturaCompra({
 
   const handleSave = useCallback(async () => {
     if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-      const dataUrl = sigCanvas.current.getTrimmedCanvas().toDataURL("image/png");
-      
-      // Captura IP mais recente se não tiver
-      let ipAtual = ip;
-      if (!ipAtual || ipAtual === 'IP não disponível') {
-        setCarregandoIP(true);
-        ipAtual = await capturarIP();
-        setIp(ipAtual);
-        setCarregandoIP(false);
+      const dataUrl = exportarAssinatura(sigCanvas.current.getTrimmedCanvas());
+
+      onProcessandoChange?.(true);
+      try {
+        // Captura IP mais recente se não tiver
+        let ipAtual = ip;
+        if (!ipAtual || ipAtual === 'IP não disponível') {
+          setCarregandoIP(true);
+          ipAtual = await capturarIP();
+          setIp(ipAtual);
+          setCarregandoIP(false);
+        }
+
+        setUltimaAssinaturaSalva(dataUrl);
+        onSave(dataUrl, ipAtual);
+        setAssinado(true);
+        setIsEmpty(false);
+      } finally {
+        onProcessandoChange?.(false);
       }
-      
-      setUltimaAssinaturaSalva(dataUrl);
-      onSave(dataUrl, ipAtual);
-      setAssinado(true);
-      setIsEmpty(false);
     }
-  }, [ip, onSave]);
+  }, [ip, onSave, onProcessandoChange]);
 
   const handleEnd = useCallback(() => {
     if (sigCanvas.current) {

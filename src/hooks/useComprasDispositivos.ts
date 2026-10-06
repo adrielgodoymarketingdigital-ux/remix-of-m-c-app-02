@@ -4,6 +4,15 @@ import { toast } from "sonner";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
 import { useEmpresaInfo } from "./useResolvedUserId";
 import { filtroEmpresaCompras, montarDadosInsercaoCompra } from "@/lib/origem/comprasDispositivos";
+import {
+  ResultadoCompra,
+  comLimiteDeTempo,
+  montarMensagemErroCompra,
+  tamanhoPayloadKB,
+} from "@/lib/origem/fluxoCompra";
+
+// Obter a sessão pode travar no Android/PWA (trava de sessão do supabase-js ao voltar do segundo plano).
+const LIMITE_SESSAO_MS = 15_000;
 
 export function useComprasDispositivos() {
   const [compras, setCompras] = useState<CompraDispositivo[]>([]);
@@ -60,13 +69,22 @@ export function useComprasDispositivos() {
     }
   }, [empresaId, isFilial]);
 
-  const criarCompra = async (dados: FormularioCompraDispositivo) => {
+  /**
+   * Grava a compra e devolve o resultado explícito: só { ok: true } fecha o
+   * diálogo (ver deveFecharDialogo). Limite de tempo só na etapa sem escrita
+   * (obter usuário) — depois do insert não há timeout, para não duplicar.
+   */
+  const criarCompra = async (dados: FormularioCompraDispositivo): Promise<ResultadoCompra<CompraDispositivo>> => {
+    let etapa = "obter usuário";
+    let payloadKB: number | null = null;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await comLimiteDeTempo(supabase.auth.getUser(), LIMITE_SESSAO_MS, "Obter sessão");
       if (!user) throw new Error("Usuário não autenticado");
 
       const dadosInsercao = montarDadosInsercaoCompra(dados, { userId: user.id, empresaId, agora: new Date() });
+      payloadKB = tamanhoPayloadKB([dadosInsercao]);
 
+      etapa = "criar compra";
       const { data, error } = await supabase
         .from("compras_dispositivos")
         .insert([dadosInsercao])
@@ -75,27 +93,32 @@ export function useComprasDispositivos() {
 
       if (error) throw error;
 
-      // Atualizar o dispositivo com o compra_id
+      // A compra já está gravada: falha aqui só fica registrada (não desfaz nem repete o insert).
       if (data && dados.dispositivo_id) {
-        await supabase
+        etapa = "vincular dispositivo";
+        const { error: erroVinculo } = await supabase
           .from("dispositivos")
           .update({ compra_id: data.id })
           .eq("id", dados.dispositivo_id);
+        if (erroVinculo) {
+          console.error("[compra] etapa=vincular dispositivo", { codigo: erroVinculo.code, mensagem: erroVinculo.message, compraId: data.id });
+        }
       }
 
       toast.success("Compra registrada com sucesso!");
       await carregarCompras();
-      return data as CompraDispositivo;
-    } catch (error: any) {
-      console.error("Erro ao criar compra:", error);
-      
-      let mensagem = "Erro ao registrar compra";
-      if (error?.message?.includes('check_origem')) {
-        mensagem = "Selecione apenas uma origem (pessoa OU fornecedor)";
-      }
-      
-      toast.error(mensagem);
-      return null;
+      return { ok: true, compra: data as CompraDispositivo };
+    } catch (error: unknown) {
+      const { mensagem, detalhe } = montarMensagemErroCompra(error);
+      const e = (error ?? {}) as { code?: string; message?: string; status?: number };
+      console.error(`[compra] etapa=${etapa}`, {
+        codigo: e.code ?? null,
+        status: e.status ?? null,
+        mensagem: e.message ?? String(error),
+        payloadKB,
+      });
+      toast.error("Erro ao registrar compra", { description: detalhe ?? undefined });
+      return { ok: false, mensagem, detalhe };
     }
   };
 

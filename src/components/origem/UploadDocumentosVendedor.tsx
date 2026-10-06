@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Upload, X, FileText, Image } from "lucide-react";
@@ -10,6 +10,8 @@ interface UploadDocumentosVendedorProps {
   documentoVerso: string | null;
   onDocumentoFrenteChange: (url: string | null) => void;
   onDocumentoVersoChange: (url: string | null) => void;
+  /** Avisa o formulário enquanto há envio em andamento (o Registrar espera). */
+  onEnviandoChange?: (enviando: boolean) => void;
 }
 
 export function UploadDocumentosVendedor({
@@ -17,8 +19,13 @@ export function UploadDocumentosVendedor({
   documentoVerso,
   onDocumentoFrenteChange,
   onDocumentoVersoChange,
+  onEnviandoChange,
 }: UploadDocumentosVendedorProps) {
   const [uploading, setUploading] = useState<'frente' | 'verso' | null>(null);
+
+  useEffect(() => {
+    onEnviandoChange?.(uploading !== null);
+  }, [uploading, onEnviandoChange]);
   const inputFrenteRef = useRef<HTMLInputElement>(null);
   const inputVersoRef = useRef<HTMLInputElement>(null);
 

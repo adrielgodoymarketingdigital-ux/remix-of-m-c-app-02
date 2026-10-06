@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/formatters";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { compraNoPeriodo, contarHojeEMes } from "@/lib/origem/comprasDispositivos";
+import type { ResultadoCompra } from "@/lib/origem/fluxoCompra";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 // Precisa bater com FormaPagamentoCompra (src/types/origem.ts) — o filtro
@@ -126,10 +127,16 @@ export default function OrigemDispositivos() {
     return { hoje, esteMes, totalOrigens: pessoas.length };
   }, [compras, pessoas]);
 
-  const handleSubmitCompra = async (dados: FormularioCompraDispositivo, gerarPDF: boolean) => {
+  // Só fecha o diálogo quando a compra foi gravada; se falhar, devolve o erro e o
+  // diálogo fica aberto com os dados (antes fechava e limpava como num sucesso).
+  const handleSubmitCompra = async (dados: FormularioCompraDispositivo, gerarPDF: boolean): Promise<ResultadoCompra<CompraDispositivo>> => {
+    const resultado = await criarCompra(dados);
+    if (!resultado.ok) return resultado;
+    const compra = resultado.compra;
+
+    // Daqui em diante a compra já existe: falha no termo PDF não desfaz nem reabre.
     try {
-      const compra = await criarCompra(dados);
-      if (compra && gerarPDF && dados.pessoa_id) {
+      if (gerarPDF && dados.pessoa_id) {
         const pessoa = pessoas.find(p => p.id === dados.pessoa_id);
         const dispositivo = dispositivos.find(d => d.id === dados.dispositivo_id);
         if (pessoa && dispositivo && config) {
@@ -183,16 +190,15 @@ export default function OrigemDispositivos() {
           toast.dismiss();
           toast.success("Compra registrada e recibo gerado com sucesso!");
         }
-      } else if (compra) {
-        toast.success("Compra registrada com sucesso!");
       }
-      await carregarCompras();
-      setDialogAberto(false);
     } catch (error) {
-      console.error("Erro:", error);
+      console.error("[compra] etapa=gerar termo PDF", { compraId: compra.id, erro: error });
       toast.dismiss();
-      toast.error("Erro ao processar compra");
+      toast.error("Compra registrada, mas não foi possível gerar o termo em PDF");
     }
+    await carregarCompras();
+    setDialogAberto(false);
+    return resultado;
   };
 
   const handleEditarDispositivo = async (dispositivoId: string) => {
