@@ -100,6 +100,8 @@ export interface DadosReciboPDV {
   descontoManual: number;
   descontoCupom: number;
   cupom?: Cupom;
+  /** Aparelho recebido na troca (abate o total a pagar). Ausente = venda sem troca. */
+  valorTroca?: number;
   total: number;
   formaPagamento: string;
   nomeFormaPagamento?: string;
@@ -553,6 +555,16 @@ export function DialogReciboPDV({
                 >
                   <span>Cupom ({dados.cupom.codigo}):</span>
                   <span>- {formatCurrency(dados.descontoCupom)}</span>
+                </div>
+              )}
+
+              {(dados.valorTroca ?? 0) > 0 && (
+                <div
+                  className="resumo-linha desconto"
+                  style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0', color: '#e11d48' }}
+                >
+                  <span>Aparelho recebido na troca:</span>
+                  <span>- {formatCurrency(dados.valorTroca ?? 0)}</span>
                 </div>
               )}
 
