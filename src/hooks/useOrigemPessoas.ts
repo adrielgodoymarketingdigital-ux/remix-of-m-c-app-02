@@ -2,12 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OrigemPessoa, FormularioOrigemPessoa } from "@/types/origem";
-import { useEmpresaFiltro } from "./useResolvedUserId";
+import { useEmpresaInfo } from "./useResolvedUserId";
+import { filtroEmpresaCompras } from "@/lib/origem/comprasDispositivos";
 
 export function useOrigemPessoas() {
   const [pessoas, setPessoas] = useState<OrigemPessoa[]>([]);
   const [loading, setLoading] = useState(true);
-  const empresaFiltro = useEmpresaFiltro();
+  // Mesma regra de empresa das compras (filtroEmpresaCompras): matriz inclui as
+  // pessoas sem empresa_id (antes sumiam do seletor), filial só a filial.
+  const { empresaId, isFilial } = useEmpresaInfo();
 
   const carregarPessoas = useCallback(async () => {
     try {
@@ -24,7 +27,9 @@ export function useOrigemPessoas() {
         .eq("user_id", user.id)
         .eq("ativo", true)
         .order("nome");
-      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      const filtro = filtroEmpresaCompras(empresaId, isFilial);
+      if (filtro.tipo === "eq") query = query.eq("empresa_id", filtro.empresaId);
+      else if (filtro.tipo === "eq_ou_nulo") query = query.or(filtro.expressaoOr);
       const { data, error } = await query;
 
       if (error) throw error;
@@ -37,7 +42,7 @@ export function useOrigemPessoas() {
     } finally {
       setLoading(false);
     }
-  }, [empresaFiltro]);
+  }, [empresaId, isFilial]);
 
   const criarPessoa = async (dados: FormularioOrigemPessoa) => {
     try {
@@ -45,7 +50,8 @@ export function useOrigemPessoas() {
       if (!user) throw new Error("Usuário não autenticado");
 
       // Remover campos undefined/vazios antes de inserir
-      const dadosParaInserir = { ...dados, user_id: user.id, ativo: true };
+      // Grava a empresa ativa (a mesma do filtro); null para quem não tem empresa.
+      const dadosParaInserir = { ...dados, user_id: user.id, ativo: true, empresa_id: empresaId ?? null };
       const dadosLimpos = Object.fromEntries(
         Object.entries(dadosParaInserir)
           .filter(([_, value]) => value !== undefined && value !== "")
