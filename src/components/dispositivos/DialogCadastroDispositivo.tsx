@@ -39,6 +39,23 @@ import { SeletorTempoGarantia } from "./SeletorTempoGarantia";
 import { ChecklistDispositivo } from "../ordens/ChecklistDispositivo";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
+import { avisoImeiDigitado, extrairImeis, serieValida } from "@/lib/codigos/imei";
+import { useImeisJaCadastrados } from "@/hooks/useImeisJaCadastrados";
+
+// Leitor dos campos de identificação: só aceita o que serve para cada campo.
+const RECUSA_IMEI = "Esse código não é um IMEI. Aponte para o IMEI (15 dígitos).";
+const RECUSA_IMEI2 = "Esse código não é um IMEI ou é igual ao IMEI 1.";
+const RECUSA_SERIE = "Esse código não parece um número de série (IMEI e código da caixa são recusados).";
+// Número de série só por código de barras: no OCR (sem dígito verificador) os testes
+// sintéticos trocaram 5↔S e 6↔G em 4 de 20 leituras — risco de gravar série errada.
+
+/** Aviso discreto abaixo do campo IMEI (nunca bloqueia o salvamento). */
+function AvisoImei({ valor, repetidos }: { valor: string | null | undefined; repetidos: Set<string> }) {
+  const digitos = (valor ?? "").replace(/\D/g, "");
+  const aviso = avisoImeiDigitado(valor) ?? (repetidos.has(digitos) ? "Já existe um aparelho com esse IMEI" : null);
+  if (!aviso) return null;
+  return <p className="text-xs text-amber-600 dark:text-amber-400">{aviso}</p>;
+}
 import { ExternalLink, Shield, Lock, ChevronDown, ChevronRight } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 
@@ -320,6 +337,15 @@ export function DialogCadastroDispositivo({
     }
   }, [tipoSelecionado, form]);
 
+  const imeiSimples = form.watch("imei");
+  const imei2Simples = form.watch("imei2");
+  // IMEI repetido em outro aparelho da loja: aviso, não bloqueia.
+  const imeisRepetidos = useImeisJaCadastrados(
+    [imeiSimples, imei2Simples, ...unidades.flatMap((u) => [u.imei, u.imei2])],
+    dispositivoParaEditar?.id,
+  );
+  const aceitarImei2 = (imei1: string | undefined) => (v: string) => (v === (imei1 ?? "").replace(/\D/g, "") ? null : v);
+
   const atualizarUnidade = (idx: number, campo: keyof CamposUnidade, valor: string) => {
     setUnidades((prev) => prev.map((u, i) => i === idx ? { ...u, [campo]: valor } : u));
   };
@@ -556,9 +582,12 @@ export function DialogCadastroDispositivo({
                                   mostrarInput={false}
                                   scannerId={`scanner-imei-unidade-${idx}`}
                                   titulo="Escanear IMEI"
+                                  extrairCandidatos={extrairImeis}
+                                  mensagemRecusa={RECUSA_IMEI}
                                   onCodigoLido={(v) => atualizarUnidade(idx, "imei", v)}
                                 />
                               </div>
+                              <AvisoImei valor={unidade.imei} repetidos={imeisRepetidos} />
                             </div>
                             <Button
                               type="button"
@@ -586,9 +615,13 @@ export function DialogCadastroDispositivo({
                                   mostrarInput={false}
                                   scannerId={`scanner-imei2-unidade-${idx}`}
                                   titulo="Escanear IMEI 2"
+                                  extrairCandidatos={extrairImeis}
+                                  aceitarCodigo={aceitarImei2(unidade.imei)}
+                                  mensagemRecusa={RECUSA_IMEI2}
                                   onCodigoLido={(v) => atualizarUnidade(idx, "imei2", v)}
                                 />
                               </div>
+                              <AvisoImei valor={unidade.imei2} repetidos={imeisRepetidos} />
                             </div>
                           </div>
 
@@ -606,6 +639,8 @@ export function DialogCadastroDispositivo({
                                   mostrarInput={false}
                                   scannerId={`scanner-serie-unidade-${idx}`}
                                   titulo="Escanear Número de Série"
+                                  aceitarCodigo={serieValida}
+                                  mensagemRecusa={RECUSA_SERIE}
                                   onCodigoLido={(v) => atualizarUnidade(idx, "numero_serie", v)}
                                 />
                               </div>
@@ -625,6 +660,7 @@ export function DialogCadastroDispositivo({
                           <div className="space-y-1">
                             <label className="text-sm font-medium">Código de Barras</label>
                             <LeitorCodigoBarras
+                              scannerId={`scanner-codigo-barras-unidade-${idx}`}
                               valor={unidade.codigo_barras}
                               onChange={(v) => atualizarUnidade(idx, "codigo_barras", v)}
                               onCodigoLido={(v) => atualizarUnidade(idx, "codigo_barras", v)}
@@ -919,10 +955,13 @@ export function DialogCadastroDispositivo({
                                   mostrarInput={false}
                                   scannerId="scanner-imei-simples"
                                   titulo="Escanear IMEI"
+                                  extrairCandidatos={extrairImeis}
+                                  mensagemRecusa={RECUSA_IMEI}
                                   onCodigoLido={(v) => form.setValue("imei", v, { shouldDirty: true, shouldTouch: true })}
                                 />
                               </div>
                             </FormControl>
+                            <AvisoImei valor={field.value} repetidos={imeisRepetidos} />
                             <FormMessage />
                           </FormItem>
                         )}
@@ -953,10 +992,14 @@ export function DialogCadastroDispositivo({
                                   mostrarInput={false}
                                   scannerId="scanner-imei2-simples"
                                   titulo="Escanear IMEI 2"
+                                  extrairCandidatos={extrairImeis}
+                                  aceitarCodigo={aceitarImei2(imeiSimples)}
+                                  mensagemRecusa={RECUSA_IMEI2}
                                   onCodigoLido={(v) => form.setValue("imei2", v, { shouldDirty: true, shouldTouch: true })}
                                 />
                               </div>
                             </FormControl>
+                            <AvisoImei valor={field.value} repetidos={imeisRepetidos} />
                             <FormMessage />
                           </FormItem>
                         )}
@@ -977,6 +1020,8 @@ export function DialogCadastroDispositivo({
                                   mostrarInput={false}
                                   scannerId="scanner-serie-simples"
                                   titulo="Escanear Número de Série"
+                                  aceitarCodigo={serieValida}
+                                  mensagemRecusa={RECUSA_SERIE}
                                   onCodigoLido={(v) => form.setValue("numero_serie", v, { shouldDirty: true, shouldTouch: true })}
                                 />
                               </div>
@@ -1026,6 +1071,7 @@ export function DialogCadastroDispositivo({
                           <FormLabel>Código de Barras</FormLabel>
                           <FormControl>
                             <LeitorCodigoBarras
+                              scannerId="scanner-codigo-barras-simples"
                               valor={field.value || ""}
                               onChange={(v) => form.setValue("codigo_barras", v, { shouldDirty: true, shouldTouch: true, shouldValidate: true })}
                               onCodigoLido={(v) => form.setValue("codigo_barras", v, { shouldDirty: true, shouldTouch: true, shouldValidate: true })}
