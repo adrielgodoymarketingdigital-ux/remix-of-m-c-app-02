@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -21,13 +20,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ChecklistDispositivo } from "@/components/ordens/ChecklistDispositivo";
 import { Checklist } from "@/types/ordem-servico";
-import { useResolvedUserId } from "@/hooks/useResolvedUserId";
+import type { DadosEntradaTroca } from "@/lib/vendas/trocaPDV";
 
 interface DialogDispositivoEntradaProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  empresaId?: string | null;
-  onConfirmar: (valorEntrada: number) => void;
+  /** Recebe os dados da entrada; nada é gravado aqui — o PDV grava ao finalizar a venda. */
+  onConfirmar: (dados: DadosEntradaTroca) => void;
 }
 
 const estadoInicialChecklist: Checklist = { entrada: {}, saida: {} };
@@ -35,10 +34,8 @@ const estadoInicialChecklist: Checklist = { entrada: {}, saida: {} };
 export function DialogDispositivoEntrada({
   open,
   onOpenChange,
-  empresaId,
   onConfirmar,
 }: DialogDispositivoEntradaProps) {
-  const resolvedUserId = useResolvedUserId();
   const [vendedorNome, setVendedorNome] = useState("");
   const [vendedorCpf, setVendedorCpf] = useState("");
   const [vendedorTelefone, setVendedorTelefone] = useState("");
@@ -56,8 +53,6 @@ export function DialogDispositivoEntrada({
   const [valorCusto, setValorCusto] = useState("");
   const [valorVenda, setValorVenda] = useState("");
   const [observacoes, setObservacoes] = useState("");
-
-  const [loading, setLoading] = useState(false);
 
   const resetForm = () => {
     setVendedorNome("");
@@ -81,7 +76,7 @@ export function DialogDispositivoEntrada({
     onOpenChange(open);
   };
 
-  const handleConfirmar = async () => {
+  const handleConfirmar = () => {
     if (!vendedorNome.trim()) {
       toast.error("Informe o nome do vendedor.");
       return;
@@ -101,92 +96,35 @@ export function DialogDispositivoEntrada({
       return;
     }
 
-    setLoading(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado.");
+    const capacidade = capacidadeGb ? parseInt(capacidadeGb) : NaN;
+    const checklistEntrada =
+      checklist.entrada && Object.keys(checklist.entrada).length > 0
+        ? checklist.entrada
+        : null;
 
-      const userId = resolvedUserId || user.id;
-
-      const { data: pessoa, error: pessoaError } = await supabase
-        .from("origem_pessoas")
-        .insert({
-          user_id: userId,
-          tipo: "fisica",
-          nome: vendedorNome.trim(),
-          cpf_cnpj: vendedorCpf.trim() || null,
-          telefone: vendedorTelefone.trim() || null,
-          ativo: true,
-        })
-        .select()
-        .single();
-      if (pessoaError) throw pessoaError;
-
-      const { data: dispositivo, error: dispositivoError } = await supabase
-        .from("dispositivos")
-        .insert({
-          user_id: userId,
-          empresa_id: empresaId || null,
-          tipo: "celular",
-          marca: marca.trim(),
-          modelo: modelo.trim(),
-          imei: imei.trim() || null,
-          numero_serie: numeroSerie.trim() || null,
-          cor: cor.trim() || null,
-          capacidade_gb: capacidadeGb ? parseInt(capacidadeGb) : null,
-          condicao,
-          custo,
-          preco: venda,
-          quantidade: 1,
-          vendido: false,
-          garantia: false,
-          origem_tipo: "troca_pdv",
-        })
-        .select()
-        .single();
-      if (dispositivoError) throw dispositivoError;
-
-      const checklistEntrada =
-        checklist.entrada && Object.keys(checklist.entrada).length > 0
-          ? checklist.entrada
-          : null;
-
-      const { data: compraData, error: compraError } = await supabase
-        .from("compras_dispositivos")
-        .insert({
-          user_id: userId,
-          empresa_id: empresaId || null,
-          pessoa_id: pessoa.id,
-          dispositivo_id: dispositivo.id,
-          data_compra: new Date().toISOString(),
-          valor_pago: custo,
-          forma_pagamento: "dinheiro",
-          condicao_aparelho: condicao,
-          checklist: checklistEntrada,
-          observacoes: observacoes.trim() || null,
-        })
-        .select()
-        .single();
-      if (compraError) throw compraError;
-
-      const { error: updateError } = await supabase
-        .from("dispositivos")
-        .update({ compra_id: compraData.id })
-        .eq("id", dispositivo.id);
-      if (updateError) throw updateError;
-
-      toast.success("Dispositivo de entrada registrado com sucesso.");
-      resetForm();
-      onOpenChange(false);
-      onConfirmar(custo);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro ao registrar dispositivo de entrada.";
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+    onConfirmar({
+      vendedor: {
+        nome: vendedorNome.trim(),
+        cpf: vendedorCpf.trim() || null,
+        telefone: vendedorTelefone.trim() || null,
+      },
+      aparelho: {
+        marca: marca.trim(),
+        modelo: modelo.trim(),
+        imei: imei.trim() || null,
+        numeroSerie: numeroSerie.trim() || null,
+        cor: cor.trim() || null,
+        capacidadeGb: Number.isFinite(capacidade) ? capacidade : null,
+        condicao,
+        checklistEntrada,
+      },
+      // Centavos: o mesmo valor vai para vendas.valor_troca, compra e vendas_trocas (numeric(12,2)).
+      valorEntrada: Math.round(custo * 100) / 100,
+      valorVenda: Math.round(venda * 100) / 100,
+      observacoes: observacoes.trim() || null,
+    });
+    resetForm();
+    onOpenChange(false);
   };
 
   return (
@@ -199,7 +137,7 @@ export function DialogDispositivoEntrada({
         <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-3 space-y-1.5">
           <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">Como funciona o Dispositivo de Entrada?</p>
           <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed">
-            Quando o cliente entrega um dispositivo como parte do pagamento (troca), preencha os dados abaixo. O aparelho entrará automaticamente no seu estoque e será registrado em Origem de Dispositivos.
+            Quando o cliente entrega um dispositivo como parte do pagamento (troca), preencha os dados abaixo. Ao finalizar a venda, o aparelho entra no seu estoque e é registrado em Origem de Dispositivos (se a venda não for finalizada, nada é gravado).
           </p>
           <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed">
             <strong>Financeiro:</strong> O <strong>valor de custo</strong> informado será descontado do total da venda — é o valor que você está "pagando" pelo aparelho ao aceitar na troca. O <strong>valor de venda</strong> é o preço que você pretende cobrar quando revender esse dispositivo.
@@ -382,13 +320,10 @@ export function DialogDispositivoEntrada({
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
-            disabled={loading}
           >
             Cancelar
           </Button>
-          <Button onClick={handleConfirmar} disabled={loading}>
-            {loading ? "Salvando..." : "Confirmar"}
-          </Button>
+          <Button onClick={handleConfirmar}>Usar na venda</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

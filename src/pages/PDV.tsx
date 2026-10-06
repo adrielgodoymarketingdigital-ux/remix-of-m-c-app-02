@@ -52,6 +52,16 @@ import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntr
 import { useFormasPagamentoCustomizadas } from "@/hooks/useFormasPagamentoCustomizadas";
 import { DialogFormasPagamentoConfig } from "@/components/pdv/DialogFormasPagamentoConfig";
 import { DialogSangria } from "@/components/pdv/DialogSangria";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  DadosEntradaTroca,
+  MENSAGEM_TROCA_MAIOR_QUE_VENDA,
+  NOME_FORMA_TROCA_TOTAL,
+  calcularTotaisComTroca,
+  planejarTrocaPorLinha,
+  valorSegundaFormaItem,
+} from "@/lib/vendas/trocaPDV";
+import { ContextoEntradaTroca, ProgressoEntradaTroca, registrarEntradaTroca } from "@/lib/vendas/registrarEntradaTroca";
 
 /**
  * Timestamp UTC completo do instante atual (ex.: "2026-09-27T00:13:55.178Z"),
@@ -67,6 +77,33 @@ import { DialogSangria } from "@/components/pdv/DialogSangria";
  * ver DIVIDA-TECNICA.md.
  */
 const agoraISO = (): string => new Date().toISOString();
+
+// Entrada da troca que não foi cadastrada depois da venda gravada: guardada no
+// navegador para o "Tentar novamente" sobreviver a recarregar a página.
+interface EntradaTrocaPendente {
+  dados: DadosEntradaTroca;
+  ctx: ContextoEntradaTroca;
+  progresso: ProgressoEntradaTroca;
+  erro: string;
+}
+const CHAVE_ENTRADA_PENDENTE = "pdv_entrada_troca_pendente";
+const MENSAGEM_ENTRADA_FALHOU = "A venda foi registrada, mas o aparelho recebido na troca não foi cadastrado. Tente novamente.";
+const lerEntradaPendente = (): EntradaTrocaPendente | null => {
+  try {
+    const salvo = localStorage.getItem(CHAVE_ENTRADA_PENDENTE);
+    return salvo ? (JSON.parse(salvo) as EntradaTrocaPendente) : null;
+  } catch {
+    return null;
+  }
+};
+const salvarEntradaPendente = (pendente: EntradaTrocaPendente | null) => {
+  try {
+    if (pendente) localStorage.setItem(CHAVE_ENTRADA_PENDENTE, JSON.stringify(pendente));
+    else localStorage.removeItem(CHAVE_ENTRADA_PENDENTE);
+  } catch {
+    // sem storage (aba anônima etc.): o alerta só não sobrevive a recarregar
+  }
+};
 
 const clienteSchema = z.object({
   nome: z.string().trim().min(1, "Nome é obrigatório").max(100),
@@ -111,7 +148,15 @@ const PDV = () => {
   const [dialogStatusCaixaAberto, setDialogStatusCaixaAberto] = useState(false);
   const [dialogVendaAvulsaAberto, setDialogVendaAvulsaAberto] = useState(false);
   const [dialogDispositivoEntradaAberto, setDialogDispositivoEntradaAberto] = useState(false);
-  const [valorDispositivoEntrada, setValorDispositivoEntrada] = useState(0);
+  // Entrada da troca: só dados na tela até a venda ser finalizada (ver registrarEntradaTroca).
+  const [entradaTroca, setEntradaTroca] = useState<DadosEntradaTroca | null>(null);
+  const valorDispositivoEntrada = entradaTroca?.valorEntrada ?? 0;
+  const [entradaPendente, setEntradaPendenteEstado] = useState<EntradaTrocaPendente | null>(lerEntradaPendente);
+  const [registrandoEntrada, setRegistrandoEntrada] = useState(false);
+  const setEntradaPendente = (pendente: EntradaTrocaPendente | null) => {
+    salvarEntradaPendente(pendente);
+    setEntradaPendenteEstado(pendente);
+  };
   const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaAtivaCtx);
   const [dialogFormasPagamentoAberto, setDialogFormasPagamentoAberto] = useState(false);
   const [dialogSangriaAberto, setDialogSangriaAberto] = useState(false);
@@ -157,7 +202,7 @@ const PDV = () => {
     carregarClientes();
 
     // Verificar se há dispositivo selecionado
-    const state = location.state as { dispositivoSelecionado?: Dispositivo; valorEntradaInicial?: number };
+    const state = location.state as { dispositivoSelecionado?: Dispositivo; entradaTrocaInicial?: DadosEntradaTroca | null };
     if (state?.dispositivoSelecionado) {
       const dispositivo = state.dispositivoSelecionado;
       
@@ -182,8 +227,8 @@ const PDV = () => {
       };
       
       setItensCarrinho([itemVenda]);
-      if (state.valorEntradaInicial && state.valorEntradaInicial > 0) {
-        setValorDispositivoEntrada(state.valorEntradaInicial);
+      if (state.entradaTrocaInicial && state.entradaTrocaInicial.valorEntrada > 0) {
+        setEntradaTroca(state.entradaTrocaInicial);
       }
       sonnerToast.success("Dispositivo adicionado ao carrinho!");
       
@@ -232,7 +277,7 @@ const PDV = () => {
       const novosItens = prev.filter((item) => item.id !== id);
       const itemRemovido = prev.find(item => item.id === id);
       if (itemRemovido?.tipo === "dispositivo" && !novosItens.some(i => i.tipo === "dispositivo")) {
-        setValorDispositivoEntrada(0);
+        setEntradaTroca(null);
       }
       return novosItens;
     });
@@ -274,10 +319,12 @@ const PDV = () => {
     return Math.min(sub, descontoValor);
   };
 
-  const calcularTotal = () => {
-    const descontoManual = calcularDescontoReal();
-    return Math.max(0, calcularSubtotal() - descontoManual - valorDispositivoEntrada);
-  };
+  // Diferença calculada sem esconder a entrada maior que a venda (situação "maior" bloqueia).
+  const calcularTotaisVenda = () =>
+    calcularTotaisComTroca({ subtotal: calcularSubtotal(), desconto: calcularDescontoReal(), valorEntrada: valorDispositivoEntrada });
+
+  /** Quanto o cliente paga (dinheiro/pix/cartão/a receber), já sem a troca. */
+  const calcularTotal = () => calcularTotaisVenda().aPagar;
 
   const labelFormaPagamento: Record<string, string> = {
     dinheiro: "Dinheiro",
@@ -302,10 +349,26 @@ const PDV = () => {
     return forma;
   };
 
-  const handleConfirmarDispositivoEntrada = (valor: number) => {
-    setValorDispositivoEntrada(valor);
+  const handleConfirmarDispositivoEntrada = (dados: DadosEntradaTroca) => {
+    setEntradaTroca(dados);
     setDialogDispositivoEntradaAberto(false);
-    sonnerToast.success(`Dispositivo de entrada registrado: ${formatCurrency(valor)}`);
+    sonnerToast.success(`Aparelho de entrada incluído: ${formatCurrency(dados.valorEntrada)}. Ele é cadastrado no estoque ao finalizar a venda.`);
+  };
+
+  /** Repete só o cadastro do aparelho da troca (a venda já foi gravada), reaproveitando o que já foi gravado. */
+  const tentarNovamenteEntrada = async () => {
+    if (!entradaPendente || registrandoEntrada) return;
+    setRegistrandoEntrada(true);
+    const progresso = { ...entradaPendente.progresso };
+    const resultado = await registrarEntradaTroca(entradaPendente.dados, entradaPendente.ctx, progresso);
+    setRegistrandoEntrada(false);
+    if (resultado.ok) {
+      setEntradaPendente(null);
+      sonnerToast.success("Aparelho da troca cadastrado no estoque.");
+      return;
+    }
+    console.error(`[PDV] etapa=entrada da troca (${resultado.etapa}) — nova tentativa`, { grupoVenda: entradaPendente.ctx.grupoVenda, erro: resultado.mensagem, progresso });
+    setEntradaPendente({ ...entradaPendente, progresso, erro: resultado.mensagem });
   };
 
   const validarVenda = () => {
@@ -317,6 +380,23 @@ const PDV = () => {
       });
       return false;
     }
+
+    const totais = calcularTotaisVenda();
+    if (!totais.podeFinalizar) {
+      toast({ title: "Troca maior que a venda", description: MENSAGEM_TROCA_MAIOR_QUE_VENDA, variant: "destructive" });
+      return false;
+    }
+    // Só uma entrada pendente por vez (o "Tentar novamente" guarda uma); vendas sem troca seguem livres.
+    if (entradaPendente && totais.valorEntrada > 0) {
+      toast({
+        title: "Aparelho de troca pendente",
+        description: "Antes de outra venda com troca, cadastre o aparelho da venda anterior em \"Tentar novamente\" no topo da tela.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    // Troca igual ao total: não há pagamento, então não há forma nem datas a validar.
+    if (!totais.exigeFormaPagamento) return true;
 
     if (!formaPagamento) {
       toast({
@@ -416,12 +496,34 @@ const PDV = () => {
       // Gerar ID de grupo para vincular todas as vendas desta transação
       const grupoVendaId = crypto.randomUUID();
 
+      // Troca igual ao total: grava a forma "Troca" (outro + [forma:Troca], enum
+      // existente), sem pagamento duplo nem taxa de cartão.
+      const totais = calcularTotaisVenda();
+      const temTroca = totais.valorEntrada > 0;
+      const trocaPagaTudo = totais.situacao === "igual";
+      const forma = trocaPagaTudo ? "outro" : formaPagamento;
+      const formaBanco = trocaPagaTudo ? "outro" : resolverFormaPagamentoBanco(formaPagamento);
+      const nomeForma = trocaPagaTudo ? NOME_FORMA_TROCA_TOTAL : getLabelFormaPagamento(formaPagamento);
+      const sufixoForma = trocaPagaTudo || formaPagamento.startsWith("custom_");
+      const duplo = pagamentoDuploAtivo && !trocaPagaTudo;
+
       // Calcular desconto proporcional por item
       const valorDescontoManualPorItem = calcularDescontoReal() / itensCarrinho.length;
 
+      // valor_troca por linha (como o desconto); a soma fecha exatamente no valor da
+      // entrada. Sem troca a coluna nem vai no insert (venda idêntica à de antes).
+      const parcelasReceber = forma === "a_receber" && tipoRecebimento === "parcelado" ? numParcelasReceber : 1;
+      const trocaPorLinha = temTroca
+        ? planejarTrocaPorLinha(
+            itensCarrinho.map((i) => ({ bruto: i.preco * i.quantidade, desconto: valorDescontoManualPorItem })),
+            itensCarrinho.map(() => parcelasReceber),
+            totais.valorEntrada,
+          )
+        : null;
+
       const vendasRegistradas = [];
 
-      for (const item of itensCarrinho) {
+      for (const [idxItem, item] of itensCarrinho.entries()) {
         // Peças são tratadas como produtos no banco (tipo_produto só aceita 'produto' ou 'dispositivo')
         const tipoParaBanco = item.tipo === "dispositivo" ? "dispositivo" : "produto";
         
@@ -447,7 +549,7 @@ const PDV = () => {
         );
         
         // Determinar parcelas para "a_receber"
-        const isParceladoReceber = formaPagamento === "a_receber" && tipoRecebimento === "parcelado";
+        const isParceladoReceber = forma === "a_receber" && tipoRecebimento === "parcelado";
         const totalParcelas = isParceladoReceber ? numParcelasReceber : 1;
         // Total bruto do item (SEM desconto — o desconto é salvo separadamente em valor_desconto_manual)
         // A tela de vendas subtrai o desconto na exibição para mostrar o valor cobrado ao cliente
@@ -457,7 +559,7 @@ const PDV = () => {
 
         for (let parcIdx = 0; parcIdx < totalParcelas; parcIdx++) {
           let dataPrevisao: string | null = null;
-          if (formaPagamento === "a_receber") {
+          if (forma === "a_receber") {
             if (isParceladoReceber) {
               dataPrevisao = datasParcelasReceber[parcIdx] || null;
             } else {
@@ -477,15 +579,15 @@ const PDV = () => {
             // Em pagamento duplo: total bruto do item (a tela de Vendas usa este valor para exibir
             // o total da venda; o fechamento de caixa é quem precisa ratear entre as 2 formas)
             // Em parcelado a_receber: valor por parcela (bruto / número de parcelas)
-            total: pagamentoDuploAtivo ? totalBrutoItem : valorPorParcela,
+            total: duplo ? totalBrutoItem : valorPorParcela,
             custo_unitario: isParceladoReceber ? (item.custo || 0) / totalParcelas : item.custo,
-            forma_pagamento: resolverFormaPagamentoBanco(formaPagamento) as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber" | "outro",
+            forma_pagamento: formaBanco as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber" | "outro",
             user_id: userIdParaVenda,
             empresa_id: empresaIdPDV,
             // Campo data é obrigatório para filtros de comissão/relatórios por período
             data: agoraISO(),
             data_prevista_recebimento: dataPrevisao,
-            recebido: formaPagamento !== "a_receber",
+            recebido: forma !== "a_receber",
             grupo_venda: grupoVendaId,
             valor_desconto_manual: descontoPorParcela,
             funcionario_id: funcionarioSelecionadoId || null,
@@ -493,14 +595,15 @@ const PDV = () => {
             total_parcelas: isParceladoReceber ? totalParcelas : null,
             // Salva o nome do item como fallback (usado quando o join com dispositivos/produtos falha por RLS)
             // Quando forma customizada, sufixo "[forma:NomeDaForma]" preserva o nome real para exibição
-            observacoes: formaPagamento.startsWith("custom_")
-              ? `${item.nome || ""} [forma:${getLabelFormaPagamento(formaPagamento)}]`.trim()
+            observacoes: sufixoForma
+              ? `${item.nome || ""} [forma:${nomeForma}]`.trim()
               : item.nome || null,
             // Se houver pagamento duplo, guarda a 2ª forma no registro principal para exibição
-            segunda_forma_pagamento: (pagamentoDuploAtivo && segundaFormaPagamento) ? resolverFormaPagamentoBanco(segundaFormaPagamento) : null,
-            valor_segunda_forma: (pagamentoDuploAtivo && valorSegundaPagamento > 0) ? valorSegundaPagamento : null,
+            segunda_forma_pagamento: (duplo && segundaFormaPagamento) ? resolverFormaPagamentoBanco(segundaFormaPagamento) : null,
+            valor_segunda_forma: (duplo && valorSegundaPagamento > 0) ? valorSegundaPagamento : null,
             imei_dispositivo: item.tipo === "dispositivo" ? (item.imei_dispositivo || null) : null,
             tempo_garantia: item.tipo === "dispositivo" ? (item.tempo_garantia ?? null) : null,
+            ...(trocaPorLinha ? { valor_troca: trocaPorLinha[idxItem][parcIdx] } : {}),
           };
 
           const { data: venda, error: vendaError } = await supabase
@@ -524,13 +627,17 @@ const PDV = () => {
             }
 
             // Criar lançamento em Contas a Receber para vendas a prazo
-            if (formaPagamento === "a_receber") {
+            if (forma === "a_receber") {
               const nomeItem = item.nome || "Item";
               const nomeCliente = clienteSelecionado?.nome || "Cliente avulso";
               const sufixoParcela = isParceladoReceber ? ` (${parcIdx + 1}/${totalParcelas})` : "";
-              const valorPrimeiraForma = pagamentoDuploAtivo
+              const valorBaseConta = duplo
                 ? totalBrutoItem - valorSegundaPagamento
                 : vendaData.total;
+              // Com troca, a conta é só o que o cliente ainda deve.
+              const valorPrimeiraForma = trocaPorLinha
+                ? Math.max(0, valorBaseConta - trocaPorLinha[idxItem][parcIdx])
+                : valorBaseConta;
 
               await supabase.from("contas").insert({
                 nome: `Venda - ${nomeItem} - ${nomeCliente}${sufixoParcela}`,
@@ -595,8 +702,7 @@ const PDV = () => {
       }
 
       // === REGISTRAR SEGUNDA FORMA DE PAGAMENTO ===
-      if (pagamentoDuploAtivo && segundaFormaPagamento && valorSegundaPagamento > 0) {
-        const proporcaoSegunda = valorSegundaPagamento / calcularTotal();
+      if (duplo && segundaFormaPagamento && valorSegundaPagamento > 0) {
         const isParceladoSegunda = segundaFormaPagamento === "a_receber" && tipoRecebimentoSegunda === "parcelado";
         const totalParcelasSegunda = isParceladoSegunda ? numParcelasSegunda : 1;
 
@@ -609,7 +715,13 @@ const PDV = () => {
           if (item.tipo === "peca") pecaId = item.peca_id || item.id;
 
           for (let parcIdx = 0; parcIdx < totalParcelasSegunda; parcIdx++) {
-            const valorItemSegundaParcela = (item.preco * item.quantidade * proporcaoSegunda) / totalParcelasSegunda;
+            const valorItemSegundaParcela = valorSegundaFormaItem({
+              itemBruto: item.preco * item.quantidade,
+              subtotal: calcularSubtotal(),
+              totalAPagar: totais.aPagar,
+              valorSegunda: valorSegundaPagamento,
+              temTroca,
+            }) / totalParcelasSegunda;
 
             let dataPrevisaoSegunda: string | null = null;
             if (segundaFormaPagamento === "a_receber") {
@@ -676,7 +788,7 @@ const PDV = () => {
       }
 
       // === REGISTRAR TAXA DE CARTÃO NO FINANCEIRO ===
-      if (bandeiraSelecionada && bandeiraSelecionada !== "nenhuma") {
+      if (!trocaPagaTudo && bandeiraSelecionada && bandeiraSelecionada !== "nenhuma") {
         const taxaSel = taxasAtivas.find(t => t.id === bandeiraSelecionada);
         console.log("[PDV] Taxa cartão - bandeira:", bandeiraSelecionada, "taxaSel:", taxaSel, "formaPagamento:", formaPagamento);
         if (taxaSel) {
@@ -704,11 +816,31 @@ const PDV = () => {
         }
       }
 
+      // === ENTRADA DA TROCA: só depois que as linhas da venda foram gravadas ===
+      let entradaFalhou = false;
+      if (entradaTroca && temTroca) {
+        const pendente: EntradaTrocaPendente = {
+          dados: entradaTroca,
+          ctx: { userId: userIdParaVenda, empresaId: empresaIdPDV, grupoVenda: grupoVendaId },
+          progresso: {},
+          erro: "",
+        };
+        const resultado = await registrarEntradaTroca(pendente.dados, pendente.ctx, pendente.progresso);
+        if (!resultado.ok) {
+          entradaFalhou = true;
+          console.error(`[PDV] etapa=entrada da troca (${resultado.etapa})`, { grupoVenda: grupoVendaId, erro: resultado.mensagem, progresso: pendente.progresso });
+          setEntradaPendente({ ...pendente, erro: resultado.mensagem });
+        }
+      }
+
       toast({
         title: "Venda finalizada com sucesso!",
         description: `Total: ${formatCurrency(calcularTotal())}`,
         duration: 3000,
       });
+      if (entradaFalhou) {
+        toast({ title: "Aparelho da troca não cadastrado", description: MENSAGEM_ENTRADA_FALHOU, variant: "destructive", duration: 10000 });
+      }
 
       // Disparar evento de notificação automática
       dispatchEvent("SALE_CREATED", {
@@ -726,14 +858,15 @@ const PDV = () => {
           descontoManual: calcularDescontoReal(),
           descontoCupom: 0,
           total: calcularTotal(),
-          formaPagamento: formaPagamento,
-          nomeFormaPagamento: getLabelFormaPagamento(formaPagamento),
-          numeroParcelas: formaPagamento === "credito_parcelado" ? numeroParcelas : undefined,
+          formaPagamento: forma,
+          nomeFormaPagamento: nomeForma,
+          numeroParcelas: forma === "credito_parcelado" ? numeroParcelas : undefined,
+          valorTroca: temTroca ? totais.valorEntrada : undefined,
           data: agoraISO(),
           grupoVendaId: grupoVendaId,
           numeroVenda: vendasRegistradas[0]?.numero_venda ?? null,
           empresaId: empresaIdPDV,
-          pagamentoDuplo: pagamentoDuploAtivo && segundaFormaPagamento ? {
+          pagamentoDuplo: duplo && segundaFormaPagamento ? {
             valorPrimeira: valorPrimeiraPagamento,
             segundaForma: segundaFormaPagamento,
             nomeSegundaForma: getLabelFormaPagamento(segundaFormaPagamento),
@@ -767,7 +900,7 @@ const PDV = () => {
       setTipoRecebimentoSegunda("a_vista");
       setNumParcelasSegunda(2);
       setDatasParcelasSegunda([]);
-      setValorDispositivoEntrada(0);
+      setEntradaTroca(null);
     } catch (error: any) {
       console.error("Erro ao finalizar venda:", error);
       toast({
@@ -789,11 +922,27 @@ const PDV = () => {
   }
 
   const subtotal = calcularSubtotal();
-  const total = calcularTotal();
+  const totaisVenda = calcularTotaisVenda();
+  const total = totaisVenda.aPagar;
 
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+        {entradaPendente && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTitle>Aparelho da troca não cadastrado</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>{MENSAGEM_ENTRADA_FALHOU}</p>
+              <p className="text-xs">
+                {entradaPendente.dados.aparelho.marca} {entradaPendente.dados.aparelho.modelo} · {formatCurrency(entradaPendente.dados.valorEntrada)} · Motivo: {entradaPendente.erro}
+              </p>
+              <Button size="sm" variant="outline" onClick={tentarNovamenteEntrada} disabled={registrandoEntrada}>
+                {registrandoEntrada ? "Cadastrando..." : "Tentar novamente"}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-3xl font-semibold mb-1 leading-tight break-normal">
             PDV - Frente de Caixa
@@ -1045,6 +1194,11 @@ const PDV = () => {
                     {formatCurrency(total)}
                   </span>
                 </div>
+                {totaisVenda.situacao === "maior" && (
+                  <p className="text-xs text-destructive">
+                    {MENSAGEM_TROCA_MAIOR_QUE_VENDA} Diferença: {formatCurrency(totaisVenda.diferencaADevolver)}.
+                  </p>
+                )}
               </div>
 
               {/* Seletor de vendedor */}
@@ -1084,13 +1238,19 @@ const PDV = () => {
                       : "+ Dispositivo de Entrada (Troca)"}
                   </Button>
                   {valorDispositivoEntrada > 0 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Restante a receber em dinheiro/pix/cartão: <strong>{formatCurrency(Math.max(0, total))}</strong>
-                    </p>
+                    <>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Restante a receber em dinheiro/pix/cartão: <strong>{formatCurrency(Math.max(0, total))}</strong>
+                      </p>
+                      <Button variant="link" size="sm" className="h-auto w-full p-0 text-xs" onClick={() => setEntradaTroca(null)}>
+                        Remover aparelho de entrada
+                      </Button>
+                    </>
                   )}
                 </div>
               )}
 
+              {totaisVenda.exigeFormaPagamento ? (
               <div className="space-y-4 mb-6">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1294,6 +1454,11 @@ const PDV = () => {
                   </div>
                 )}
               </div>
+              ) : (
+                <p className="mb-6 rounded-lg border p-3 text-xs text-muted-foreground">
+                  O aparelho recebido cobre o valor total da venda: não há pagamento a receber.
+                </p>
+              )}
 
               {!caixaEstaAberto && (
                 <p className="text-xs text-center text-muted-foreground mb-2">
@@ -1304,7 +1469,7 @@ const PDV = () => {
                 className="w-full"
                 size="lg"
                 onClick={finalizarVenda}
-                disabled={finalizando || itensCarrinho.length === 0 || !caixaEstaAberto}
+                disabled={finalizando || itensCarrinho.length === 0 || !caixaEstaAberto || !totaisVenda.podeFinalizar}
                 data-walkthrough="pdv-finalizar"
               >
                 {finalizando ? "Finalizando..." : "Finalizar Venda"}
@@ -1340,7 +1505,6 @@ const PDV = () => {
       <DialogDispositivoEntrada
         open={dialogDispositivoEntradaAberto}
         onOpenChange={setDialogDispositivoEntradaAberto}
-        empresaId={empresaAtivaCtx || null}
         onConfirmar={handleConfirmarDispositivoEntrada}
       />
 

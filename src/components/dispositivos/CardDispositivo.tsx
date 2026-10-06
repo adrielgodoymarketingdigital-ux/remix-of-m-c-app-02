@@ -30,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
+import type { DadosEntradaTroca } from "@/lib/vendas/trocaPDV";
 import { BadgeSaudeBateria } from "@/components/dispositivos/BadgeSaudeBateria";
 
 // Gradientes da referência visual (mobile) — mantidos como constantes para não
@@ -219,7 +220,9 @@ export function CardDispositivo({
     dispositivo.garantia ? dispositivo.tempo_garantia : undefined
   );
   const [dialogEntradaAberto, setDialogEntradaAberto] = useState(false);
-  const [valorEntrada, setValorEntrada] = useState(0);
+  // Dados da entrada (troca) levados ao PDV; só são gravados quando a venda é finalizada lá.
+  const [entradaTroca, setEntradaTroca] = useState<DadosEntradaTroca | null>(null);
+  const valorEntrada = entradaTroca?.valorEntrada ?? 0;
 
   const handleVender = () => {
     setGarantiaMeses(dispositivo.garantia ? dispositivo.tempo_garantia : undefined);
@@ -234,7 +237,7 @@ export function CardDispositivo({
           ...dispositivo,
           tempo_garantia: garantiaMeses,
         },
-        valorEntradaInicial: valorEntrada,
+        entradaTrocaInicial: entradaTroca,
       }
     });
   };
@@ -333,9 +336,8 @@ export function CardDispositivo({
       <DialogDispositivoEntrada
         open={dialogEntradaAberto}
         onOpenChange={setDialogEntradaAberto}
-        empresaId={dispositivo.empresa_id || null}
-        onConfirmar={(valor) => {
-          setValorEntrada(valor);
+        onConfirmar={(dados) => {
+          setEntradaTroca(dados);
           setDialogEntradaAberto(false);
         }}
       />
