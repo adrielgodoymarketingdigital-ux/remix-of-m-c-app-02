@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
-import { agruparVendasPorFormaPagamento, BreakdownFormaPagamento } from "@/lib/formaPagamento";
+import { agruparVendasPorFormaPagamento, BreakdownFormaPagamento, calcularDinheiroEsperado } from "@/lib/formaPagamento";
 import {
   agregarServicosNoCaixa,
   derivarEventosRecebimentoOS,
@@ -135,7 +135,7 @@ export function useCaixa() {
     const userIdVendas = caixa.proprietario_id ?? lojaUserIdRef.current ?? caixa.user_id;
     let vendasQuery = supabase
       .from("vendas")
-      .select("forma_pagamento, total, observacoes, segunda_forma_pagamento, valor_segunda_forma")
+      .select("forma_pagamento, total, observacoes, segunda_forma_pagamento, valor_segunda_forma, valor_troca")
       .eq("user_id", userIdVendas)
       .gte("data", caixa.data_abertura)
       .lte("data", new Date().toISOString())
@@ -271,7 +271,7 @@ export function useCaixa() {
     const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
     const saldo_final = saldoFinalContado !== undefined
       ? saldoFinalContado
-      : caixa.saldo_inicial + total_dinheiro + totalSuprimentos - totalSangrias;
+      : calcularDinheiroEsperado({ saldoInicial: caixa.saldo_inicial, totalDinheiro: total_dinheiro, suprimentos: totalSuprimentos, sangrias: totalSangrias });
 
     const { error: updateError } = await supabase
       .from("caixas")

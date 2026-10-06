@@ -10,7 +10,7 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
 import { Users, ArrowDownCircle, ArrowUpCircle, Wallet, Wrench } from "lucide-react";
-import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento } from "@/lib/formaPagamento";
+import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento, calcularDinheiroEsperado } from "@/lib/formaPagamento";
 import {
   agregarServicosNoCaixa,
   derivarEventosRecebimentoOS,
@@ -77,7 +77,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
       let query = supabase
         .from("vendas")
-        .select("forma_pagamento, total, funcionario_id, observacoes, segunda_forma_pagamento, valor_segunda_forma")
+        .select("forma_pagamento, total, funcionario_id, observacoes, segunda_forma_pagamento, valor_segunda_forma, valor_troca")
         .eq("user_id", userIdVendas)
         .gte("data", caixa.data_abertura)
         .lte("data", new Date().toISOString())
@@ -266,7 +266,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       setTotalSuprimentos(suprimentos);
 
       const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
-      const saldo_final = caixa.saldo_inicial + total_dinheiro + suprimentos - sangrias;
+      const saldo_final = calcularDinheiroEsperado({ saldoInicial: caixa.saldo_inicial, totalDinheiro: total_dinheiro, suprimentos, sangrias });
 
       setResumo({ total_dinheiro, total_pix, total_cartao, total_a_receber, total_vendas, total_vendido, saldo_final });
       setSaldoFinalContado(saldo_final);

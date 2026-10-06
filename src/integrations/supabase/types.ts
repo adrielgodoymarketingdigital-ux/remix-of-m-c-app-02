@@ -4774,6 +4774,7 @@ export type Database = {
           valor_desconto_cupom: number | null
           valor_desconto_manual: number | null
           valor_segunda_forma: number | null
+          valor_troca: number | null
         }
         Insert: {
           cancelada?: boolean | null
@@ -4810,6 +4811,7 @@ export type Database = {
           valor_desconto_cupom?: number | null
           valor_desconto_manual?: number | null
           valor_segunda_forma?: number | null
+          valor_troca?: number | null
         }
         Update: {
           cancelada?: boolean | null
@@ -4846,6 +4848,7 @@ export type Database = {
           valor_desconto_cupom?: number | null
           valor_desconto_manual?: number | null
           valor_segunda_forma?: number | null
+          valor_troca?: number | null
         }
         Relationships: [
           {
@@ -5045,6 +5048,73 @@ export type Database = {
             columns: ["venda_id"]
             isOneToOne: false
             referencedRelation: "vendas_ativas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendas_trocas: {
+        Row: {
+          cancelada: boolean
+          compra_id: string | null
+          criado_em: string
+          criado_por: string | null
+          dispositivo_entrada_id: string | null
+          empresa_id: string | null
+          forma_devolucao: string | null
+          grupo_venda: string
+          id: string
+          user_id: string
+          valor_devolvido: number
+          valor_entrada: number
+        }
+        Insert: {
+          cancelada?: boolean
+          compra_id?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          dispositivo_entrada_id?: string | null
+          empresa_id?: string | null
+          forma_devolucao?: string | null
+          grupo_venda: string
+          id?: string
+          user_id: string
+          valor_devolvido?: number
+          valor_entrada: number
+        }
+        Update: {
+          cancelada?: boolean
+          compra_id?: string | null
+          criado_em?: string
+          criado_por?: string | null
+          dispositivo_entrada_id?: string | null
+          empresa_id?: string | null
+          forma_devolucao?: string | null
+          grupo_venda?: string
+          id?: string
+          user_id?: string
+          valor_devolvido?: number
+          valor_entrada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendas_trocas_compra_id_fkey"
+            columns: ["compra_id"]
+            isOneToOne: false
+            referencedRelation: "compras_dispositivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_trocas_dispositivo_entrada_id_fkey"
+            columns: ["dispositivo_entrada_id"]
+            isOneToOne: false
+            referencedRelation: "dispositivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_trocas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]

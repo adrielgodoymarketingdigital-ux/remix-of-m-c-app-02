@@ -222,13 +222,14 @@ interface LinhaVenda {
   observacoes: string | null;
   segunda_forma_pagamento: string | null;
   valor_segunda_forma: number | null;
+  valor_troca: number | null;
   cancelada: boolean | null;
   empresa_id: string | null;
   grupo_venda: string | null;
 }
 
 const COLUNAS_LINHA =
-  "id, data, forma_pagamento, total, observacoes, segunda_forma_pagamento, valor_segunda_forma, cancelada, empresa_id, grupo_venda";
+  "id, data, forma_pagamento, total, observacoes, segunda_forma_pagamento, valor_segunda_forma, valor_troca, cancelada, empresa_id, grupo_venda";
 
 const falha = (erro: string): AlterarDataVendaResultado => ({
   ok: false, erro, novasDatas: {}, avisoCaixa: false, caixasAjustados: 0, historicoGravado: true,

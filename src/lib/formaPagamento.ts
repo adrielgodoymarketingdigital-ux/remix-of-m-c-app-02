@@ -14,6 +14,8 @@ export interface VendaFormaPagamento {
   total: number;
   segunda_forma_pagamento?: string | null;
   valor_segunda_forma?: number | null;
+  /** Aparelho recebido na troca (pagamento em espécie): não entra em nenhuma forma. NULL = sem troca. */
+  valor_troca?: number | null;
 }
 
 export interface BreakdownFormaPagamento {
@@ -80,7 +82,8 @@ export function agruparVendasPorFormaPagamento(vendas: VendaFormaPagamento[]): B
     // 2ª forma do registro principal correspondente (via valor_segunda_forma). Ignorar aqui.
     if (venda.observacoes === MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO) continue;
 
-    const totalVenda = Number(venda.total) || 0;
+    // A troca abate só a 1ª forma: a 2ª forma é um valor informado à parte.
+    const totalVenda = (Number(venda.total) || 0) - (Number(venda.valor_troca) || 0);
     const valorSegunda = Number(venda.valor_segunda_forma) || 0;
 
     if (venda.segunda_forma_pagamento && valorSegunda > 0) {
@@ -106,3 +109,13 @@ export const CORES_BADGE_FORMA_PAGAMENTO: Record<BreakdownFormaPagamento["cor"],
   a_receber: "text-amber-600",
   customizada: "text-purple-600",
 };
+
+/** Dinheiro que deve estar na gaveta no fechamento (mesma conta do fechamento real e do preview). */
+export function calcularDinheiroEsperado(p: {
+  saldoInicial: number;
+  totalDinheiro: number;
+  suprimentos: number;
+  sangrias: number;
+}): number {
+  return (Number(p.saldoInicial) || 0) + p.totalDinheiro + p.suprimentos - p.sangrias;
+}
