@@ -354,7 +354,8 @@ export function DialogCadastroCompra({
   };
 
   const handleNovoDispositivo = async (dadosDispositivo: any) => {
-    const dispositivo = await criarDispositivo(dadosDispositivo);
+    // Sem o redirecionamento do onboarding para /os: desmontaria este formulário.
+    const dispositivo = await criarDispositivo(dadosDispositivo, { redirecionarOnboarding: false });
     if (!dispositivo) console.error("[compra] etapa=criar dispositivo: não criado (ver erro acima)");
     if (dispositivo) {
       criadosNaSessao.current.dispositivoId = dispositivo.id;
