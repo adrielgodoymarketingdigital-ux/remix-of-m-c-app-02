@@ -307,7 +307,7 @@ export default function Dispositivos() {
                     className="pl-9 h-[52px] sm:h-11 rounded-full sm:rounded-xl bg-muted/30 sm:bg-background"
                   />
                 </div>
-                <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
+                <BotaoScanner scannerId="scanner-busca-dispositivos" onCodigoLido={(codigo) => setBusca(codigo)} />
               </div>
 
               <div className="flex gap-2 sm:ml-auto">

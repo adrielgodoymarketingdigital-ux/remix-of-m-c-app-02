@@ -347,6 +347,7 @@ export const DialogCadastroProduto = ({
                         <FormLabel>Código de Barras (EAN/UPC)</FormLabel>
                         <FormControl>
                           <LeitorCodigoBarras
+                            scannerId="scanner-produto-codigo-barras"
                             valor={field.value || ''}
                             onChange={field.onChange}
                             onCodigoLido={field.onChange}
@@ -369,6 +370,7 @@ export const DialogCadastroProduto = ({
                       <FormLabel>Código de Barras</FormLabel>
                       <FormControl>
                         <LeitorCodigoBarras
+                          scannerId="scanner-peca-codigo-barras"
                           valor={field.value || ''}
                           onChange={field.onChange}
                           onCodigoLido={field.onChange}

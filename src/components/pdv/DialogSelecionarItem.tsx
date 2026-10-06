@@ -194,7 +194,7 @@ export const DialogSelecionarItem = ({
                 className="pl-10"
               />
             </div>
-            <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
+            <BotaoScanner scannerId="scanner-busca-pdv" onCodigoLido={(codigo) => setBusca(codigo)} />
           </div>
 
           <Tabs defaultValue="produtos">

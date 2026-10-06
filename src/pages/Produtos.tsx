@@ -322,7 +322,7 @@ const Produtos = () => {
                     className="pl-10 sm:rounded-lg"
                   />
                 </div>
-                <BotaoScanner onCodigoLido={(codigo) => setBusca(codigo)} />
+                <BotaoScanner scannerId="scanner-busca-produtos" onCodigoLido={(codigo) => setBusca(codigo)} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
