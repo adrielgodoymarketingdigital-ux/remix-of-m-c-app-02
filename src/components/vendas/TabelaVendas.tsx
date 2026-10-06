@@ -29,6 +29,7 @@ import { DialogAlterarDataVenda } from "./DialogAlterarDataVenda";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { DialogReimpressaoRecibo } from "./DialogReimpressaoRecibo";
 import { DialogCancelarVenda } from "./DialogCancelarVenda";
+import type { AcaoAparelhoTroca } from "@/lib/vendas/trocaPDV";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   AlertDialog,
@@ -44,7 +45,7 @@ import {
 interface TabelaVendasProps {
   vendas: Venda[];
   loading: boolean;
-  onCancelarVenda?: (vendaId: string, estornarEstoque: boolean, motivo: string) => Promise<boolean>;
+  onCancelarVenda?: (vendaId: string, estornarEstoque: boolean, motivo: string, acaoAparelhoTroca?: AcaoAparelhoTroca | null) => Promise<boolean>;
   onMarcarRecebido?: (vendaId: string) => Promise<boolean>;
   onExcluirVenda?: (vendaId: string) => Promise<boolean>;
   onMarcarPendente?: (vendaId: string) => Promise<boolean>;
@@ -280,12 +281,12 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     }
   };
 
-  const handleConfirmarCancelamento = async (estornarEstoque: boolean, motivo: string) => {
+  const handleConfirmarCancelamento = async (estornarEstoque: boolean, motivo: string, acaoAparelhoTroca: AcaoAparelhoTroca | null) => {
     if (!vendaSelecionada || !onCancelarVenda) return;
     
     setCancelando(true);
     try {
-      const sucesso = await onCancelarVenda(vendaSelecionada.id, estornarEstoque, motivo);
+      const sucesso = await onCancelarVenda(vendaSelecionada.id, estornarEstoque, motivo, acaoAparelhoTroca);
       if (sucesso) {
         setDialogCancelarAberto(false);
         setVendaSelecionada(null);

@@ -15,13 +15,16 @@ import { AlertTriangle, Package, RotateCcw } from "lucide-react";
 import { Venda } from "@/types/venda";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
-import { useState } from "react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useEffect, useState } from "react";
+import { AcaoAparelhoTroca, MENSAGEM_APARELHO_TROCA_VENDIDO, decidirCancelamentoTroca } from "@/lib/vendas/trocaPDV";
+import { TrocaDaVenda, carregarTrocaDaVenda } from "@/lib/vendas/cancelamentoTroca";
 
 interface DialogCancelarVendaProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   venda: Venda | null;
-  onConfirmar: (estornarEstoque: boolean, motivo: string) => Promise<void>;
+  onConfirmar: (estornarEstoque: boolean, motivo: string, acaoAparelhoTroca: AcaoAparelhoTroca | null) => Promise<void>;
   cancelando: boolean;
 }
 
@@ -40,9 +43,28 @@ export const DialogCancelarVenda = ({
 }: DialogCancelarVendaProps) => {
   const [estornarEstoque, setEstornarEstoque] = useState(true);
   const [motivo, setMotivo] = useState("");
+  // Troca da venda (aparelho recebido do cliente): carregada ao abrir.
+  const [troca, setTroca] = useState<TrocaDaVenda | null>(null);
+  const [carregandoTroca, setCarregandoTroca] = useState(false);
+  const [acaoAparelho, setAcaoAparelho] = useState<AcaoAparelhoTroca>("manter");
+
+  useEffect(() => {
+    if (!open || !venda) return;
+    let ativo = true;
+    setTroca(null);
+    setAcaoAparelho("manter");
+    setCarregandoTroca(true);
+    carregarTrocaDaVenda(venda)
+      .then((t) => { if (ativo) setTroca(t); })
+      .catch((erro) => console.error("[cancelamento] etapa=carregar troca", erro))
+      .finally(() => { if (ativo) setCarregandoTroca(false); });
+    return () => { ativo = false; };
+  }, [open, venda]);
+
+  const decisaoTroca = troca ? decidirCancelamentoTroca(troca, acaoAparelho) : null;
 
   const handleConfirmar = async () => {
-    await onConfirmar(estornarEstoque, motivo);
+    await onConfirmar(estornarEstoque, motivo, decisaoTroca?.perguntar ? acaoAparelho : null);
     setEstornarEstoque(true);
     setMotivo("");
   };
@@ -131,6 +153,41 @@ export const DialogCancelarVenda = ({
             </div>
           )}
 
+          {/* Aparelho recebido na troca */}
+          {troca?.trocaAtiva && (
+            <div className="space-y-2 p-3 border rounded-lg bg-background">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Aparelho recebido na troca{troca.nomeAparelho ? `: ${troca.nomeAparelho}` : ""} ({formatCurrency(troca.valorEntrada)})
+              </p>
+              {troca.outrasLinhasAtivas > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  A venda tem outros itens ativos: a troca continua valendo para eles e o aparelho fica no estoque.
+                </p>
+              ) : decisaoTroca?.perguntar ? (
+                <RadioGroup value={acaoAparelho} onValueChange={(v) => setAcaoAparelho(v as AcaoAparelhoTroca)} className="gap-2">
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="manter" id="troca-manter" className="mt-0.5" />
+                    <Label htmlFor="troca-manter" className="font-normal cursor-pointer leading-snug">
+                      Manter no estoque (o cliente não levou o aparelho de volta)
+                    </Label>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RadioGroupItem value="remover" id="troca-remover" className="mt-0.5" disabled={!decisaoTroca.podeRemover} />
+                    <Label htmlFor="troca-remover" className={`font-normal leading-snug ${decisaoTroca.podeRemover ? "cursor-pointer" : "text-muted-foreground"}`}>
+                      Tirar do estoque (o cliente levou o aparelho de volta) — vai para a lixeira de dispositivos
+                    </Label>
+                  </div>
+                  {!decisaoTroca.podeRemover && (
+                    <p className="text-xs text-amber-600">{MENSAGEM_APARELHO_TROCA_VENDIDO}</p>
+                  )}
+                </RadioGroup>
+              ) : (
+                <p className="text-xs text-muted-foreground">O aparelho já não está no estoque; a troca será marcada como cancelada.</p>
+              )}
+            </div>
+          )}
+
           {/* Motivo do cancelamento */}
           <div className="space-y-2">
             <Label htmlFor="motivo">Motivo do cancelamento (opcional)</Label>
@@ -152,7 +209,7 @@ export const DialogCancelarVenda = ({
           <Button
             variant="destructive"
             onClick={handleConfirmar}
-            disabled={cancelando}
+            disabled={cancelando || carregandoTroca || !!decisaoTroca?.bloqueio}
           >
             {cancelando ? (
               "Cancelando..."

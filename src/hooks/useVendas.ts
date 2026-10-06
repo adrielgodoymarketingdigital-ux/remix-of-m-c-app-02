@@ -12,6 +12,8 @@ import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { cancelarSecundariasEmCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
+import { AcaoAparelhoTroca, decidirCancelamentoTroca } from "@/lib/vendas/trocaPDV";
+import { carregarTrocaDaVenda, marcarTrocaCancelada, tirarAparelhoDaTrocaDoEstoque } from "@/lib/vendas/cancelamentoTroca";
 import { reconhecerRecebimentoVendaVinculada, MENSAGEM_CUSTO_NAO_CONFIRMADO } from "@/lib/vendas/reconhecerSegundaForma";
 import { alterarDataVenda as alterarDataVendaNoBanco } from "@/lib/vendas/alterarDataVenda";
 import { SELECT_VENDA_COM_ITENS } from "@/lib/vendas/itensVenda";
@@ -498,7 +500,9 @@ export const useVendas = () => {
   const cancelarVenda = async (
     vendaId: string,
     estornarEstoque: boolean,
-    motivo?: string
+    motivo?: string,
+    /** O que fazer com o aparelho recebido na troca quando esta é a última linha ativa da venda. */
+    acaoAparelhoTroca: AcaoAparelhoTroca | null = null,
   ): Promise<boolean> => {
     try {
       // Buscar dados da venda
@@ -527,6 +531,14 @@ export const useVendas = () => {
         toast({ title: "Venda avulsa cancelada com sucesso." });
         await carregarVendas();
         return true;
+      }
+
+      // Troca: decide ANTES de mexer em qualquer coisa (aparelho já vendido bloqueia "tirar do estoque").
+      const troca = await carregarTrocaDaVenda(vendaOriginal);
+      const decisaoTroca = decidirCancelamentoTroca(troca, acaoAparelhoTroca);
+      if (decisaoTroca.bloqueio) {
+        toast({ title: "Não foi possível cancelar", description: decisaoTroca.bloqueio, variant: "destructive" });
+        return false;
       }
 
       // Estornar estoque se solicitado
@@ -599,6 +611,24 @@ export const useVendas = () => {
       const cascata = await cancelarSecundariasEmCascata(vendaOriginal, {
         motivo: motivo ? `${motivo} (cancelamento da venda principal)` : null,
       });
+
+      // Troca da venda: só desfeita na última linha ativa (ver decidirCancelamentoTroca).
+      if (decisaoTroca.marcarTrocaCancelada && troca.trocaId) {
+        try {
+          await marcarTrocaCancelada(troca.trocaId);
+          if (decisaoTroca.removerAparelho && troca.dispositivoId) {
+            await tirarAparelhoDaTrocaDoEstoque(troca.dispositivoId);
+          }
+        } catch (erroTroca) {
+          console.error("[cancelamento] etapa=desfazer troca", { trocaId: troca.trocaId, erro: erroTroca });
+          toast({
+            title: "Venda cancelada, mas a troca não foi atualizada",
+            description: "Confira o aparelho recebido na troca em Dispositivos.",
+            variant: "destructive",
+            duration: 15000,
+          });
+        }
+      }
 
       toast({
         title: "Venda cancelada",
