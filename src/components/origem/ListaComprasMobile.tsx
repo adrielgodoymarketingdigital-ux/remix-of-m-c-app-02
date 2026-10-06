@@ -31,8 +31,7 @@ import {
 } from "lucide-react";
 import { CompraDispositivo } from "@/types/origem";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDate } from "@/lib/formatters";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
 
 interface ListaComprasMobileProps {
@@ -114,7 +113,7 @@ export function ListaComprasMobile({
 
                   <div className="min-w-0 flex-1">
                     <div className="text-xs text-muted-foreground mb-0.5">
-                      {format(new Date(compra.data_compra), "dd/MM/yyyy", { locale: ptBR })}
+                      {formatDate(compra.data_compra)}
                     </div>
                     <h3 className="font-semibold text-sm truncate mb-0.5">{nome}</h3>
                     {compra.origem_pessoas?.cpf_cnpj && (

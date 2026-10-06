@@ -21,7 +21,9 @@ import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format, isToday, isSameMonth } from "date-fns";
+import { formatDate } from "@/lib/formatters";
+import { dataBrasiliaISO } from "@/lib/dataBrasilia";
+import { compraNoPeriodo, contarHojeEMes } from "@/lib/origem/comprasDispositivos";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 // Precisa bater com FormaPagamentoCompra (src/types/origem.ts) — o filtro
@@ -77,7 +79,7 @@ export default function OrigemDispositivos() {
     if (busca.trim()) {
       const termo = busca.toLowerCase();
       resultado = resultado.filter(compra => {
-        const dataFormatada = format(new Date(compra.data_compra), "dd/MM/yyyy");
+        const dataFormatada = formatDate(compra.data_compra);
         const dispositivoModelo = compra.dispositivos?.modelo || '';
         const dispositivoImei = compra.dispositivos?.imei || '';
         const dispositivoSerie = (compra.dispositivos as any)?.numero_serie || '';
@@ -97,15 +99,10 @@ export default function OrigemDispositivos() {
       resultado = resultado.filter(compra => compra.forma_pagamento === filtroFormaPagamento);
     }
 
-    if (filtroDataInicial) {
-      const dataInicial = new Date(filtroDataInicial);
-      resultado = resultado.filter(compra => new Date(compra.data_compra) >= dataInicial);
-    }
-
-    if (filtroDataFinal) {
-      const dataFinal = new Date(filtroDataFinal);
-      dataFinal.setHours(23, 59, 59, 999);
-      resultado = resultado.filter(compra => new Date(compra.data_compra) <= dataFinal);
+    // Datas de calendário comparadas como texto: new Date("AAAA-MM-DD") é meia-noite UTC
+    // e no Brasil cai no dia anterior.
+    if (filtroDataInicial || filtroDataFinal) {
+      resultado = resultado.filter(compra => compraNoPeriodo(compra.data_compra, filtroDataInicial, filtroDataFinal));
     }
 
     return resultado;
@@ -125,8 +122,7 @@ export default function OrigemDispositivos() {
   // nenhuma. "Total de origens" = pessoas cadastradas em Origem (useOrigemPessoas),
   // não contagem de compras.
   const metricas = useMemo(() => {
-    const hoje = compras.filter((c) => isToday(new Date(c.data_compra))).length;
-    const esteMes = compras.filter((c) => isSameMonth(new Date(c.data_compra), new Date())).length;
+    const { hoje, esteMes } = contarHojeEMes(compras.map((c) => c.data_compra), dataBrasiliaISO());
     return { hoje, esteMes, totalOrigens: pessoas.length };
   }, [compras, pessoas]);
 
@@ -324,13 +320,13 @@ export default function OrigemDispositivos() {
                   )}
                   {filtroDataInicial && (
                     <Badge variant="secondary" className="gap-1">
-                      De: {format(new Date(filtroDataInicial), "dd/MM/yyyy")}
+                      De: {formatDate(filtroDataInicial)}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => setFiltroDataInicial("")} />
                     </Badge>
                   )}
                   {filtroDataFinal && (
                     <Badge variant="secondary" className="gap-1">
-                      Até: {format(new Date(filtroDataFinal), "dd/MM/yyyy")}
+                      Até: {formatDate(filtroDataFinal)}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => setFiltroDataFinal("")} />
                     </Badge>
                   )}
@@ -459,13 +455,13 @@ export default function OrigemDispositivos() {
                     )}
                     {filtroDataInicial && (
                       <Badge variant="secondary" className="gap-1">
-                        De: {format(new Date(filtroDataInicial), "dd/MM/yyyy")}
+                        De: {formatDate(filtroDataInicial)}
                         <X className="h-3 w-3 cursor-pointer" onClick={() => setFiltroDataInicial("")} />
                       </Badge>
                     )}
                     {filtroDataFinal && (
                       <Badge variant="secondary" className="gap-1">
-                        Até: {format(new Date(filtroDataFinal), "dd/MM/yyyy")}
+                        Até: {formatDate(filtroDataFinal)}
                         <X className="h-3 w-3 cursor-pointer" onClick={() => setFiltroDataFinal("")} />
                       </Badge>
                     )}

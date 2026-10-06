@@ -22,10 +22,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Eye, FileText, Edit, Trash2, Loader2 } from "lucide-react";
 import { CompraDispositivo } from "@/types/origem";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
 import { supabase } from "@/integrations/supabase/client";
@@ -224,7 +222,7 @@ export function TabelaCompras({
           {compras.map((compra) => (
             <TableRow key={compra.id}>
               <TableCell>
-                {format(new Date(compra.data_compra), "dd/MM/yyyy", { locale: ptBR })}
+                {formatDate(compra.data_compra)}
               </TableCell>
               <TableCell>
                 <div>

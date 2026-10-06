@@ -55,7 +55,8 @@ export function formatarNumeroParaInputBR(valor: number): string {
   return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function parseDate(date: string | Date): Date {
+/** "AAAA-MM-DD" vira meia-noite LOCAL (new Date("AAAA-MM-DD") seria meia-noite UTC = dia anterior no Brasil). */
+export function parseDate(date: string | Date): Date {
   if (typeof date === "string") {
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       // Pure date — parse as local midnight to avoid timezone shift

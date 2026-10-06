@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CompraDispositivo, OrigemPessoa } from "@/types/origem";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, parseDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -384,7 +384,7 @@ export function DialogVisualizacaoCompra({
               <div>
                 <span className="text-muted-foreground">Data da Compra:</span>
                 <p className="font-medium">
-                  {format(new Date(compra.data_compra), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  {format(parseDate(compra.data_compra), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
               </div>
               <div>

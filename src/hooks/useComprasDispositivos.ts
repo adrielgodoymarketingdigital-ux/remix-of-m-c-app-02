@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
-import { useEmpresaFiltro } from "./useResolvedUserId";
+import { useEmpresaInfo } from "./useResolvedUserId";
+import { filtroEmpresaCompras, montarDadosInsercaoCompra } from "@/lib/origem/comprasDispositivos";
 
 export function useComprasDispositivos() {
   const [compras, setCompras] = useState<CompraDispositivo[]>([]);
   const [loading, setLoading] = useState(true);
-  const empresaFiltro = useEmpresaFiltro();
+  // Empresa ativa: a mesma usada no filtro da lista e gravada no insert.
+  const { empresaId, isFilial } = useEmpresaInfo();
 
   const carregarCompras = useCallback(async () => {
     try {
@@ -40,7 +42,10 @@ export function useComprasDispositivos() {
         `)
         .eq("user_id", user.id)
         .order("data_compra", { ascending: false });
-      if (empresaFiltro) query = query.eq("empresa_id", empresaFiltro);
+      // Matriz inclui as compras sem empresa_id (antes o insert não gravava e elas sumiam da lista).
+      const filtro = filtroEmpresaCompras(empresaId, isFilial);
+      if (filtro.tipo === "eq") query = query.eq("empresa_id", filtro.empresaId);
+      else if (filtro.tipo === "eq_ou_nulo") query = query.or(filtro.expressaoOr);
       const { data, error } = await query;
 
       if (error) throw error;
@@ -53,20 +58,14 @@ export function useComprasDispositivos() {
     } finally {
       setLoading(false);
     }
-  }, [empresaFiltro]);
+  }, [empresaId, isFilial]);
 
   const criarCompra = async (dados: FormularioCompraDispositivo) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      const dadosInsercao = {
-        ...dados,
-        user_id: user.id,
-        // Adiciona timestamps de assinatura se houver assinatura
-        assinatura_vendedor_data: dados.assinatura_vendedor ? new Date().toISOString() : undefined,
-        assinatura_cliente_data: dados.assinatura_cliente ? new Date().toISOString() : undefined,
-      };
+      const dadosInsercao = montarDadosInsercaoCompra(dados, { userId: user.id, empresaId, agora: new Date() });
 
       const { data, error } = await supabase
         .from("compras_dispositivos")
