@@ -9,6 +9,12 @@ import { useConfetti } from "./useConfetti";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
+import { deveIrParaOSAposCadastrarDispositivo } from "@/lib/onboarding/redirecionamentoOnboarding";
+
+export interface OpcoesCriarDispositivo {
+  /** false quando o cadastro está aninhado em outro formulário (ver deveIrParaOSAposCadastrarDispositivo). */
+  redirecionarOnboarding?: boolean;
+}
 
 export function useDispositivos() {
   const [dispositivos, setDispositivos] = useState<Dispositivo[]>([]);
@@ -76,7 +82,10 @@ export function useDispositivos() {
     }
   }, [lojaUserId, podeSincronizarDispositivos, isFuncionario, resolvedUserIdFromContext, empresaFiltro]);
 
-  const criarDispositivo = async (dados: any): Promise<Dispositivo | null> => {
+  const criarDispositivo = async (
+    dados: any,
+    { redirecionarOnboarding = true }: OpcoesCriarDispositivo = {},
+  ): Promise<Dispositivo | null> => {
     try {
       // Obter user_id do usuário autenticado
       const { data: { user } } = await supabase.auth.getUser();
@@ -164,7 +173,7 @@ export function useDispositivos() {
         dispararConfetti('celebracao');
 
         // Navegar para próximo passo se ainda não criou OS
-        if (!onboardingData?.step_os_criada) {
+        if (deveIrParaOSAposCadastrarDispositivo(onboardingData?.step_os_criada, redirecionarOnboarding)) {
           setTimeout(() => navigate('/os'), 800);
         }
       }
