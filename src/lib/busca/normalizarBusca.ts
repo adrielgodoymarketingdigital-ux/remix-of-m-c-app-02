@@ -119,3 +119,13 @@ export function dispositivosDisponiveisParaCompra<T extends DispositivoDisponibi
 ): T[] {
   return lista.filter((d) => (idPreSelecionado && d.id === idPreSelecionado) || (!d.vendido && !d.deleted_at && !d.compra_id));
 }
+
+/**
+ * Lista com `item` garantido (no topo) quando ele ainda não está nela — ex.: a
+ * pessoa/dispositivo recém-criado pelo "+ Novo", antes de a lista recarregar,
+ * para o seletor mostrá-lo selecionado em vez de "nada selecionado".
+ */
+export function garantirNaLista<T extends { id: string }>(lista: T[], item: T | null | undefined): T[] {
+  if (!item || lista.some((x) => x.id === item.id)) return lista;
+  return [item, ...lista];
+}

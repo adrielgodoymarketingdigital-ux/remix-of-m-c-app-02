@@ -8,6 +8,7 @@ import {
   apenasDigitos,
   dispositivosDisponiveisParaCompra,
   filtrarDispositivos,
+  garantirNaLista,
   filtrarPessoas,
   normalizarCodigo,
   normalizarTexto,
@@ -122,4 +123,14 @@ Deno.test("pessoas por empresa: nulo aparece na matriz, não na filial; sem empr
   assertEquals(visiveis(MATRIZ, false), ["nula", "matriz"]);
   assertEquals(visiveis(FILIAL, true), ["filial"]);
   assertEquals(visiveis(null, false), ["nula", "matriz", "filial", "outra"]);
+});
+
+Deno.test("recém-criado entra na lista (no topo) antes do refetch, sem duplicar", () => {
+  const lista = [{ id: "a" }, { id: "b" }];
+  assertEquals(ids(garantirNaLista(lista, { id: "novo" })), ["novo", "a", "b"]);
+  assertEquals(garantirNaLista(lista, { id: "a" }), lista, "já está: lista igual");
+  assertEquals(garantirNaLista(lista, null), lista);
+  // Recém-criado com compra_id nulo continua disponível; e se for o pré-selecionado, entra de qualquer jeito.
+  const disp = garantirNaLista(DISPOSITIVOS, { ...DISPOSITIVOS[0], id: "novo" });
+  assertEquals(ids(dispositivosDisponiveisParaCompra(disp, "novo")), ["novo", "d1", "d2"]);
 });

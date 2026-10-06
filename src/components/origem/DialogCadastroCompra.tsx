@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,7 +29,15 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FormularioCompraDispositivo } from "@/types/origem";
+import { FormularioCompraDispositivo, OrigemPessoa } from "@/types/origem";
+import type { Dispositivo } from "@/types/dispositivo";
+import { ComboboxBusca, type ItemComboboxBusca } from "@/components/busca/ComboboxBusca";
+import {
+  dispositivosDisponiveisParaCompra,
+  filtrarDispositivos,
+  filtrarPessoas,
+  garantirNaLista,
+} from "@/lib/busca/normalizarBusca";
 import { parseValorMonetarioBR, formatarNumeroParaInputBR } from "@/lib/formatters";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,6 +65,18 @@ import {
   iniciarEnvio,
   montarMensagemErroCompra,
 } from "@/lib/origem/fluxoCompra";
+
+const pessoaParaItem = (p: OrigemPessoa): ItemComboboxBusca => ({
+  id: p.id,
+  rotulo: p.nome,
+  sublinha: [p.cpf_cnpj, p.telefone].filter(Boolean).join(" · ") || null,
+});
+
+const dispositivoParaItem = (d: Dispositivo): ItemComboboxBusca => ({
+  id: d.id,
+  rotulo: `${d.marca ?? ""} ${d.modelo ?? ""}`.trim() || "Dispositivo",
+  sublinha: [d.imei && `IMEI ${d.imei}`, d.numero_serie && `Série ${d.numero_serie}`].filter(Boolean).join(" · ") || null,
+});
 
 // Campos obrigatórios na ordem da tela: rótulo do aviso e aba onde ficam.
 const CAMPOS_OBRIGATORIOS: { campo: string; rotulo: string; aba?: string }[] = [
@@ -131,6 +151,9 @@ export function DialogCadastroCompra({
   const travaEnvio = useRef<TravaEnvio>({ emAndamento: false });
   // Pessoa/dispositivo criados pelos "+ Novo" nesta sessão do diálogo: reaproveitados na nova tentativa.
   const criadosNaSessao = useRef<CriadosNaSessao>({});
+  // Recém-criados pelos "+ Novo": entram na lista do seletor na hora (antes do refetch).
+  const [pessoaRecemCriada, setPessoaRecemCriada] = useState<OrigemPessoa | null>(null);
+  const [dispositivoRecemCriado, setDispositivoRecemCriado] = useState<Dispositivo | null>(null);
   
   // Estados para fotos, documentos e assinaturas
   const [fotos, setFotos] = useState<string[]>([]);
@@ -167,6 +190,18 @@ export function DialogCadastroCompra({
   });
 
   const tipoOrigemWatch = form.watch("tipo_origem");
+  const dispositivoSelecionado = form.watch("dispositivo_id");
+
+  const opcoesPessoas = useMemo(() => garantirNaLista(pessoas, pessoaRecemCriada), [pessoas, pessoaRecemCriada]);
+  // Só aparelhos sem compra, não vendidos e não excluídos; o pré-selecionado
+  // (?dispositivo=, recém-criado ou já escolhido) entra sempre.
+  const opcoesDispositivos = useMemo(
+    () => dispositivosDisponiveisParaCompra(
+      garantirNaLista(dispositivos, dispositivoRecemCriado),
+      dispositivoId || dispositivoSelecionado || dispositivoRecemCriado?.id,
+    ),
+    [dispositivos, dispositivoRecemCriado, dispositivoId, dispositivoSelecionado],
+  );
 
   useEffect(() => {
     if (dispositivoId) {
@@ -187,6 +222,8 @@ export function DialogCadastroCompra({
       setErroEnvio(null);
       setAbaAtiva("compra");
       criadosNaSessao.current = {};
+      setPessoaRecemCriada(null);
+      setDispositivoRecemCriado(null);
     }
   }, [open]);
 
@@ -286,8 +323,9 @@ export function DialogCadastroCompra({
     if (!pessoa) console.error("[compra] etapa=criar pessoa: não criada (ver erro acima)");
     if (pessoa) {
       criadosNaSessao.current.pessoaId = pessoa.id;
+      setPessoaRecemCriada(pessoa);
+      form.setValue("pessoa_id", pessoa.id, { shouldValidate: true });
       await carregarPessoas();
-      form.setValue("pessoa_id", pessoa.id);
       setDialogPessoaAberto(false);
     }
   };
@@ -320,8 +358,9 @@ export function DialogCadastroCompra({
     if (!dispositivo) console.error("[compra] etapa=criar dispositivo: não criado (ver erro acima)");
     if (dispositivo) {
       criadosNaSessao.current.dispositivoId = dispositivo.id;
+      setDispositivoRecemCriado(dispositivo);
+      form.setValue("dispositivo_id", dispositivo.id, { shouldValidate: true });
       await carregarDispositivos();
-      form.setValue("dispositivo_id", dispositivo.id);
       setDialogDispositivoAberto(false);
     }
   };
@@ -398,20 +437,17 @@ export function DialogCadastroCompra({
                     name="pessoa_id"
                     render={({ field }) => (
                       <FormItem data-campo-compra="pessoa_id">
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma pessoa" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {pessoas.map(pessoa => (
-                              <SelectItem key={pessoa.id} value={pessoa.id}>
-                                {pessoa.nome} {pessoa.cpf_cnpj && `- ${pessoa.cpf_cnpj}`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <ComboboxBusca
+                          id="compra-pessoa"
+                          opcoes={opcoesPessoas}
+                          filtrar={filtrarPessoas}
+                          paraItem={pessoaParaItem}
+                          valor={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder="Selecione uma pessoa"
+                          placeholderBusca="Buscar por nome, CPF ou telefone..."
+                          permitirLimpar
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -478,24 +514,18 @@ export function DialogCadastroCompra({
                     name="dispositivo_id"
                     render={({ field }) => (
                       <FormItem data-campo-compra="dispositivo_id">
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value}
+                        <ComboboxBusca
+                          id="compra-dispositivo"
+                          opcoes={opcoesDispositivos}
+                          filtrar={filtrarDispositivos}
+                          paraItem={dispositivoParaItem}
+                          valor={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder="Selecione um dispositivo"
+                          placeholderBusca="Buscar por modelo, IMEI ou série..."
                           disabled={!!dispositivoId}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um dispositivo" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {dispositivos.filter(d => !d.vendido).map(dispositivo => (
-                              <SelectItem key={dispositivo.id} value={dispositivo.id}>
-                                {dispositivo.marca} {dispositivo.modelo} {dispositivo.imei && `- IMEI: ${dispositivo.imei}`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          permitirLimpar
+                        />
                         <FormMessage />
                       </FormItem>
                     )}

@@ -35,6 +35,9 @@ export interface Dispositivo {
   imeis?: string[];
   empresa_id?: string | null;
   exibir_no_catalogo?: boolean;
+  /** Compra (Origem de Dispositivos) já registrada para este aparelho. */
+  compra_id?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface FormularioDispositivo {
