@@ -5,7 +5,7 @@
  * Regra do caixa: a devolução pertence ao caixa em que foi feita
  * (vendas_trocas.caixa_id). Em DINHEIRO ela saiu da gaveta e abate o dinheiro
  * esperado; em PIX é só informação (não mexe na gaveta). Devolução de troca
- * cancelada não entra (ver contaNoCaixa).
+ * cancelada CONTINUA contando (ver contaNoCaixa).
  */
 
 export interface DevolucaoTrocaLida {
@@ -23,8 +23,13 @@ export interface TotaisDevolucoesTroca {
 
 export const TOTAIS_DEVOLUCOES_ZERO: TotaisDevolucoesTroca = { dinheiro: 0, pix: 0, quantidadeDinheiro: 0, quantidadePix: 0 };
 
-/** Devolução que entra nas contas: troca ativa e valor > 0. */
-export const contaNoCaixa = (d: DevolucaoTrocaLida) => d.cancelada !== true && (Number(d.valor_devolvido) || 0) > 0;
+/**
+ * Devolução que entra nas contas: valor > 0, MESMO com a troca cancelada — o
+ * dinheiro saiu da gaveta e cancelar a venda não o traz de volta (se o cliente
+ * devolver, registra-se um suprimento). O Extrato (seção 9) segue escondendo a
+ * devolução de troca cancelada.
+ */
+export const contaNoCaixa = (d: DevolucaoTrocaLida) => (Number(d.valor_devolvido) || 0) > 0;
 
 /** Soma as devoluções por forma, em centavos exatos. */
 export function somarDevolucoesTroca(devolucoes: DevolucaoTrocaLida[]): TotaisDevolucoesTroca {

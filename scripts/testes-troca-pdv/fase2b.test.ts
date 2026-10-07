@@ -45,14 +45,20 @@ Deno.test("dinheiro esperado: sem devolução é idêntico à conta de antes (me
   }
 });
 
-Deno.test("dinheiro esperado: devolução de troca CANCELADA não entra", () => {
-  assertEquals(esperado([dev(800, "dinheiro", true)]), 370);
-  assertEquals(somarDevolucoesTroca([dev(800, "dinheiro", true), dev(300, "pix", true)]), { dinheiro: 0, pix: 0, quantidadeDinheiro: 0, quantidadePix: 0 });
+// Item 8 aprovado: o dinheiro saiu da gaveta; cancelar a venda não o traz de volta.
+Deno.test("dinheiro esperado: troca CANCELADA com devolução em dinheiro no caixa aberto mantém o abatimento", () => {
+  assertEquals(esperado([dev(800, "dinheiro", true)]), 370 - 800);
+  assertEquals(esperado([dev(800, "dinheiro", true)]), esperado([dev(800, "dinheiro", false)]));
 });
 
-Deno.test("total_devolucoes_troca do fechamento = soma em centavos das devoluções em dinheiro ativas", () => {
+Deno.test("dinheiro esperado: devolução em Pix de troca cancelada não altera a gaveta", () => {
+  assertEquals(esperado([dev(300, "pix", true)]), 370);
+  assertEquals(somarDevolucoesTroca([dev(300, "pix", true)]), { dinheiro: 0, pix: 300, quantidadeDinheiro: 0, quantidadePix: 1 });
+});
+
+Deno.test("total_devolucoes_troca do fechamento inclui a devolução em dinheiro de troca cancelada do mesmo caixa", () => {
   const t = somarDevolucoesTroca([dev(0.1, "dinheiro"), dev(0.2, "dinheiro"), dev("99.99" as unknown as number, "dinheiro"), dev(500, "pix"), dev(700, "dinheiro", true), dev(0, null)]);
-  assertEquals([t.dinheiro, t.quantidadeDinheiro, t.pix, t.quantidadePix], [100.29, 3, 500, 1]);
+  assertEquals([t.dinheiro, t.quantidadeDinheiro, t.pix, t.quantidadePix], [800.29, 4, 500, 1]);
 });
 
 // ── 3. Extrato ──────────────────────────────────────────────────────────────
@@ -67,9 +73,9 @@ Deno.test("Extrato: rótulo 'Devolução de troca' e a linha abre o detalhe", ()
 
 Deno.test("cancelamento: aviso da devolução em Dinheiro e em Pix", () => {
   assertEquals(nbsp(avisoDevolucaoNoCancelamento({ valorDevolvido: 800, formaDevolucao: "dinheiro" })),
-    "O cliente recebeu R$ 800,00 (Dinheiro) de devolução nesta troca. Cancelar a venda não traz esse dinheiro de volta; combine a recuperação com o cliente.");
+    "O cliente recebeu R$ 800,00 (Dinheiro) de devolução nesta troca. Cancelar a venda não traz esse dinheiro de volta; combine a recuperação com o cliente. Se o cliente devolver o dinheiro, registre um suprimento no caixa.");
   assertEquals(nbsp(avisoDevolucaoNoCancelamento({ valorDevolvido: 1234.5, formaDevolucao: "pix" })),
-    "O cliente recebeu R$ 1.234,50 (Pix) de devolução nesta troca. Cancelar a venda não traz esse dinheiro de volta; combine a recuperação com o cliente.");
+    "O cliente recebeu R$ 1.234,50 (Pix) de devolução nesta troca. Cancelar a venda não traz esse dinheiro de volta; combine a recuperação com o cliente. Se o cliente devolver o dinheiro, registre um suprimento no caixa.");
 });
 
 Deno.test("cancelamento: sem devolução não há aviso nem 'Estou ciente'", () => {
@@ -134,11 +140,9 @@ Deno.test("alterar data: troca parcial paga em dinheiro, sem devolução: igual 
   assertEquals([r.total_dinheiro, r.total_vendas, r.saldo_final, "total_devolucoes_troca" in r], [1600, 2100, 1500, false]);
 });
 
-Deno.test("alterar data: devolução em Pix ou cancelada não mexe no saldo nem na foto", () => {
-  for (const d of [dev(800, "pix"), dev(800, "dinheiro", true)]) {
-    const parte = calcularParteDaVenda([{ forma_pagamento: "outro", total: 3700, valor_troca: 3700 }], [d]);
-    assertEquals(parteMexeNoCaixa(parte), false);
-  }
+Deno.test("alterar data: devolução em Pix não mexe no saldo nem na foto", () => {
+  const parte = calcularParteDaVenda([{ forma_pagamento: "outro", total: 3700, valor_troca: 3700 }], [dev(800, "pix")]);
+  assertEquals(parteMexeNoCaixa(parte), false);
 });
 
 Deno.test("alterar data: venda sem troca gera o mesmo update de antes (mesmos bits, sem coluna nova)", () => {

@@ -32,7 +32,7 @@ export const parteMexeNoCaixa = (p: ParteCaixa) => totalDaParte(p) !== 0 || p.de
 /**
  * Parte da venda no caixa = o que o fecharCaixa contaria destas linhas
  * (já sem canceladas e sem itens de OS) + a devolução da troca em dinheiro
- * (mesma regra do fechamento: troca ativa, forma dinheiro).
+ * (mesma regra do fechamento: forma dinheiro, ver contaNoCaixa).
  */
 export function calcularParteDaVenda(contaveis: VendaFormaPagamento[], trocas: DevolucaoTrocaLida[]): ParteCaixa {
   const parte = { ...PARTE_ZERO };

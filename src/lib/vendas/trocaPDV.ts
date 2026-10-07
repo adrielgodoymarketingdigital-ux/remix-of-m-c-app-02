@@ -321,7 +321,8 @@ export function avisoDevolucaoNoCancelamento(t: { valorDevolvido: number; formaD
   if (!t || centavos(t.valorDevolvido) <= 0) return null;
   const forma = t.formaDevolucao === "pix" ? NOMES_FORMA_DEVOLUCAO.pix : NOMES_FORMA_DEVOLUCAO.dinheiro;
   return `O cliente recebeu ${brl.format(centavos(t.valorDevolvido) / 100)} (${forma}) de devolução nesta troca. ` +
-    "Cancelar a venda não traz esse dinheiro de volta; combine a recuperação com o cliente.";
+    "Cancelar a venda não traz esse dinheiro de volta; combine a recuperação com o cliente. " +
+    "Se o cliente devolver o dinheiro, registre um suprimento no caixa.";
 }
 
 /** Botão "Confirmar Cancelamento": troca lida, sem bloqueio e, com devolução, "Estou ciente" marcado. */
