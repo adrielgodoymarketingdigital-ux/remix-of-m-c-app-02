@@ -11,13 +11,17 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
-import type { DadosEntradaTroca } from "./trocaPDV";
+import { camposDevolucao, type DadosEntradaTroca, type FormaDevolucao } from "./trocaPDV";
 
 export interface ContextoEntradaTroca {
   /** Dono da loja (= vendas.user_id). */
   userId: string;
   empresaId: string | null;
   grupoVenda: string;
+  /** Caixa aberto no momento da venda (vendas_trocas.caixa_id). */
+  caixaId?: string | null;
+  /** Diferença devolvida ao cliente quando a entrada passa do total (Fase 2). */
+  devolucao?: { valor: number; forma: FormaDevolucao } | null;
 }
 
 export interface ProgressoEntradaTroca {
@@ -136,6 +140,8 @@ export async function registrarEntradaTroca(
             dispositivo_entrada_id: progresso.dispositivoId,
             compra_id: progresso.compraId,
             valor_entrada: dados.valorEntrada,
+            caixa_id: ctx.caixaId ?? null,
+            ...camposDevolucao(ctx.devolucao),
           },
           { onConflict: "grupo_venda", ignoreDuplicates: true },
         );

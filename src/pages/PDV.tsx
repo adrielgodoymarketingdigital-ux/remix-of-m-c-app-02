@@ -54,10 +54,23 @@ import { DialogFormasPagamentoConfig } from "@/components/pdv/DialogFormasPagame
 import { DialogSangria } from "@/components/pdv/DialogSangria";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DadosEntradaTroca,
-  MENSAGEM_TROCA_MAIOR_QUE_VENDA,
+  FormaDevolucao,
   NOME_FORMA_TROCA_TOTAL,
+  NOMES_FORMA_DEVOLUCAO,
+  calcularDevolucao,
   calcularTotaisComTroca,
+  devolucaoPassaDaGaveta,
   planejarTroca,
   ratearPorPeso,
   valorSegundaFormaItem,
@@ -152,6 +165,9 @@ const PDV = () => {
   // Entrada da troca: só dados na tela até a venda ser finalizada (ver registrarEntradaTroca).
   const [entradaTroca, setEntradaTroca] = useState<DadosEntradaTroca | null>(null);
   const valorDispositivoEntrada = entradaTroca?.valorEntrada ?? 0;
+  // Fase 2: aparelho recebido vale mais que a venda → a diferença volta ao cliente.
+  const [formaDevolucao, setFormaDevolucao] = useState<FormaDevolucao | null>(null);
+  const [confirmacaoGaveta, setConfirmacaoGaveta] = useState<{ devolucao: number; gaveta: number } | null>(null);
   const [entradaPendente, setEntradaPendenteEstado] = useState<EntradaTrocaPendente | null>(lerEntradaPendente);
   const [registrandoEntrada, setRegistrandoEntrada] = useState(false);
   const setEntradaPendente = (pendente: EntradaTrocaPendente | null) => {
@@ -161,7 +177,7 @@ const PDV = () => {
   const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaAtivaCtx);
   const [dialogFormasPagamentoAberto, setDialogFormasPagamentoAberto] = useState(false);
   const [dialogSangriaAberto, setDialogSangriaAberto] = useState(false);
-  const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa, fecharCaixa } = useCaixa();
+  const { caixaAtual, caixaEstaAberto, carregarCaixaAtual, abrirCaixa, fecharCaixa, estimarDinheiroNaGaveta } = useCaixa();
   const [pagamentoDuploAtivo, setPagamentoDuploAtivo] = useState(false);
   const [valorPrimeiraPagamento, setValorPrimeiraPagamento] = useState(0);
   const [segundaFormaPagamento, setSegundaFormaPagamento] = useState("");
@@ -341,7 +357,7 @@ const PDV = () => {
    */
   const calcularPlanoTroca = (totais = calcularTotaisVenda()) => {
     if (totais.valorEntrada <= 0) return null;
-    const trocaPagaTudo = totais.situacao === "igual";
+    const trocaPagaTudo = totais.cobreTudo;
     const forma = trocaPagaTudo ? "outro" : formaPagamento;
     const duplo = pagamentoDuploAtivo && !trocaPagaTudo;
     const parcelasReceber = forma === "a_receber" && tipoRecebimento === "parcelado" ? numParcelasReceber : 1;
@@ -351,6 +367,9 @@ const PDV = () => {
       parcelasPorItem: itensCarrinho.map(() => parcelasReceber),
       valorTroca: totais.valorEntrada,
       valorSegunda: duplo && valorSegundaPagamento > 0 ? valorSegundaPagamento : 0,
+      // Troca igual ou maior que o total: cada linha fica líquida em zero (inclusive peça),
+      // com o desconto rateado proporcionalmente ao valor do item.
+      ...(trocaPagaTudo ? { cobreTudo: { descontoTotal: calcularDescontoReal() } } : {}),
     });
   };
 
@@ -410,8 +429,8 @@ const PDV = () => {
     }
 
     const totais = calcularTotaisVenda();
-    if (!totais.podeFinalizar) {
-      toast({ title: "Troca maior que a venda", description: MENSAGEM_TROCA_MAIOR_QUE_VENDA, variant: "destructive" });
+    if (totais.exigeFormaDevolucao && !formaDevolucao) {
+      toast({ title: "Devolução ao cliente", description: "Escolha como devolver a diferença ao cliente: Dinheiro ou Pix.", variant: "destructive" });
       return false;
     }
     const bloqueioTroca = calcularPlanoTroca(totais)?.bloqueio;
@@ -486,8 +505,20 @@ const PDV = () => {
     return true;
   };
 
-  const finalizarVenda = async () => {
+  const finalizarVenda = async (gavetaConfirmada = false) => {
     if (!validarVenda()) return;
+
+    // Devolução em dinheiro maior que o dinheiro estimado na gaveta: avisa e pede
+    // confirmação (não bloqueia). Sem estimativa (erro de leitura), segue sem avisar.
+    const totaisAntes = calcularTotaisVenda();
+    if (totaisAntes.exigeFormaDevolucao && formaDevolucao === "dinheiro" && !gavetaConfirmada && caixaAtual?.id) {
+      const devolucao = calcularDevolucao(totaisAntes.valorEntrada, calcularPlanoTroca(totaisAntes)?.trocaAplicada ?? totaisAntes.trocaAplicada);
+      const gaveta = await estimarDinheiroNaGaveta(caixaAtual.id);
+      if (gaveta !== null && devolucaoPassaDaGaveta({ valorDevolucao: devolucao, forma: "dinheiro", dinheiroNaGaveta: gaveta })) {
+        setConfirmacaoGaveta({ devolucao, gaveta });
+        return;
+      }
+    }
 
     setFinalizando(true);
     try {
@@ -529,11 +560,12 @@ const PDV = () => {
       // Gerar ID de grupo para vincular todas as vendas desta transação
       const grupoVendaId = crypto.randomUUID();
 
-      // Troca igual ao total: grava a forma "Troca" (outro + [forma:Troca], enum
-      // existente), sem pagamento duplo nem taxa de cartão.
+      // Troca igual ou maior que o total: grava a forma "Troca" (outro + [forma:Troca],
+      // enum existente), sem pagamento duplo nem taxa de cartão. Maior: a diferença
+      // vira devolução ao cliente (vendas_trocas.valor_devolvido).
       const totais = calcularTotaisVenda();
       const temTroca = totais.valorEntrada > 0;
-      const trocaPagaTudo = totais.situacao === "igual";
+      const trocaPagaTudo = totais.cobreTudo;
       const forma = trocaPagaTudo ? "outro" : formaPagamento;
       const formaBanco = trocaPagaTudo ? "outro" : resolverFormaPagamentoBanco(formaPagamento);
       const nomeForma = trocaPagaTudo ? NOME_FORMA_TROCA_TOTAL : getLabelFormaPagamento(formaPagamento);
@@ -550,6 +582,7 @@ const PDV = () => {
       if (plano?.bloqueio) throw new Error(plano.bloqueio); // validarVenda já barra; defesa extra
       const trocaPorLinha = plano ? plano.trocaPorLinha : null;
       const segundaPorItem = plano?.segundaPorItem ?? null;
+      const valorDevolucao = plano && totais.exigeFormaDevolucao ? calcularDevolucao(totais.valorEntrada, plano.trocaAplicada) : 0;
 
       const vendasRegistradas = [];
 
@@ -585,7 +618,8 @@ const PDV = () => {
         // A tela de vendas subtrai o desconto na exibição para mostrar o valor cobrado ao cliente
         const totalBrutoItem = item.preco * item.quantidade;
         const valorPorParcela = totalBrutoItem / totalParcelas;
-        const descontoPorParcela = valorDescontoManualPorItem / totalParcelas;
+        // Troca que cobre tudo: desconto proporcional ao valor do item (plano). Senão, o de sempre.
+        const descontoPorParcela = (plano?.descontoPorItem ? plano.descontoPorItem[idxItem] : valorDescontoManualPorItem) / totalParcelas;
 
         for (let parcIdx = 0; parcIdx < totalParcelas; parcIdx++) {
           let dataPrevisao: string | null = null;
@@ -857,7 +891,13 @@ const PDV = () => {
       if (entradaTroca && temTroca) {
         const pendente: EntradaTrocaPendente = {
           dados: entradaTroca,
-          ctx: { userId: userIdParaVenda, empresaId: empresaIdPDV, grupoVenda: grupoVendaId },
+          ctx: {
+            userId: userIdParaVenda,
+            empresaId: empresaIdPDV,
+            grupoVenda: grupoVendaId,
+            caixaId: caixaAtual?.id ?? null,
+            devolucao: valorDevolucao > 0 && formaDevolucao ? { valor: valorDevolucao, forma: formaDevolucao } : null,
+          },
           progresso: {},
           erro: "",
         };
@@ -908,6 +948,8 @@ const PDV = () => {
                 },
                 valorEntrada: totais.valorEntrada,
                 cancelada: false,
+                valorDevolvido: valorDevolucao,
+                formaDevolucao: valorDevolucao > 0 ? formaDevolucao : null,
               }
             : undefined,
           data: agoraISO(),
@@ -949,6 +991,7 @@ const PDV = () => {
       setNumParcelasSegunda(2);
       setDatasParcelasSegunda([]);
       setEntradaTroca(null);
+      setFormaDevolucao(null);
     } catch (error: any) {
       console.error("Erro ao finalizar venda:", error);
       toast({
@@ -972,7 +1015,11 @@ const PDV = () => {
   const subtotal = calcularSubtotal();
   const totaisVenda = calcularTotaisVenda();
   const total = calcularTotal();
-  const bloqueioTroca = totaisVenda.podeFinalizar ? calcularPlanoTroca(totaisVenda)?.bloqueio ?? null : null;
+  const planoTrocaTela = calcularPlanoTroca(totaisVenda);
+  const bloqueioTroca = planoTrocaTela?.bloqueio ?? null;
+  const devolucaoTela = totaisVenda.exigeFormaDevolucao
+    ? calcularDevolucao(totaisVenda.valorEntrada, planoTrocaTela?.trocaAplicada ?? totaisVenda.trocaAplicada)
+    : 0;
 
   return (
     <AppLayout>
@@ -1243,11 +1290,6 @@ const PDV = () => {
                     {formatCurrency(total)}
                   </span>
                 </div>
-                {totaisVenda.situacao === "maior" && (
-                  <p className="text-xs text-destructive">
-                    {MENSAGEM_TROCA_MAIOR_QUE_VENDA} Diferença: {formatCurrency(totaisVenda.diferencaADevolver)}.
-                  </p>
-                )}
                 {bloqueioTroca && <p className="text-xs text-destructive">{bloqueioTroca}</p>}
               </div>
 
@@ -1504,6 +1546,27 @@ const PDV = () => {
                   </div>
                 )}
               </div>
+              ) : totaisVenda.exigeFormaDevolucao ? (
+                <div className="mb-6 space-y-2 rounded-lg border border-amber-500/40 p-3">
+                  <p className="text-sm font-medium">
+                    Cliente paga: {formatCurrency(0)} · Devolver ao cliente: {formatCurrency(devolucaoTela)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">O aparelho recebido vale mais que a venda. Como a diferença será devolvida? *</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(Object.keys(NOMES_FORMA_DEVOLUCAO) as FormaDevolucao[]).map((f) => (
+                      <Button
+                        key={f}
+                        type="button"
+                        size="sm"
+                        variant={formaDevolucao === f ? "default" : "outline"}
+                        onClick={() => setFormaDevolucao(f)}
+                        aria-pressed={formaDevolucao === f}
+                      >
+                        {NOMES_FORMA_DEVOLUCAO[f]}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <p className="mb-6 rounded-lg border p-3 text-xs text-muted-foreground">
                   O aparelho recebido cobre o valor total da venda: não há pagamento a receber.
@@ -1518,7 +1581,7 @@ const PDV = () => {
               <Button
                 className="w-full"
                 size="lg"
-                onClick={finalizarVenda}
+                onClick={() => finalizarVenda()}
                 disabled={finalizando || itensCarrinho.length === 0 || !caixaEstaAberto || !totaisVenda.podeFinalizar || !!bloqueioTroca}
                 data-walkthrough="pdv-finalizar"
               >
@@ -1551,6 +1614,24 @@ const PDV = () => {
         open={dialogVendaAvulsaAberto}
         onOpenChange={setDialogVendaAvulsaAberto}
       />
+
+      <AlertDialog open={!!confirmacaoGaveta} onOpenChange={(aberto) => !aberto && setConfirmacaoGaveta(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Devolução maior que o dinheiro do caixa</AlertDialogTitle>
+            <AlertDialogDescription>
+              A devolução em dinheiro ({formatCurrency(confirmacaoGaveta?.devolucao ?? 0)}) é maior que o dinheiro estimado na gaveta
+              ({formatCurrency(confirmacaoGaveta?.gaveta ?? 0)}). Confira o caixa antes de devolver. Deseja finalizar a venda mesmo assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmacaoGaveta(null); void finalizarVenda(true); }}>
+              Finalizar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <DialogDispositivoEntrada
         open={dialogDispositivoEntradaAberto}

@@ -5054,6 +5054,7 @@ export type Database = {
       }
       vendas_trocas: {
         Row: {
+          caixa_id: string | null
           cancelada: boolean
           compra_id: string | null
           criado_em: string
@@ -5068,6 +5069,7 @@ export type Database = {
           valor_entrada: number
         }
         Insert: {
+          caixa_id?: string | null
           cancelada?: boolean
           compra_id?: string | null
           criado_em?: string
@@ -5082,6 +5084,7 @@ export type Database = {
           valor_entrada: number
         }
         Update: {
+          caixa_id?: string | null
           cancelada?: boolean
           compra_id?: string | null
           criado_em?: string
@@ -5096,6 +5099,13 @@ export type Database = {
           valor_entrada?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "vendas_trocas_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendas_trocas_compra_id_fkey"
             columns: ["compra_id"]
