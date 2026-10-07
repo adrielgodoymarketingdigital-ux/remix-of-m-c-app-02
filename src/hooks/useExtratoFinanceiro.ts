@@ -4,18 +4,9 @@ import { toast } from "sonner";
 import { useIdentidade } from "./useResolvedUserId";
 import type { FiltrosPeriodo } from "@/components/financeiro/FiltroPeriodoAvancado";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
+import type { OrigemEventoExtrato } from "@/lib/financeiro/origensExtrato";
 
-export type OrigemEventoExtrato =
-  | "venda_pdv"
-  | "venda_avulsa"
-  | "servico_avulso"
-  | "ordem_servico"
-  | "conta_receber"
-  | "conta_pagar"
-  | "pdv_sangria"
-  | "pdv_suprimento"
-  | "lancamento_manual"
-  | "balanco_caixa";
+export type { OrigemEventoExtrato };
 
 /** Movimentações de caixa feitas no PDV (sangria/suprimento) — tag "PDV" e filtro "Só PDV". */
 export const ORIGENS_PDV: OrigemEventoExtrato[] = ["pdv_sangria", "pdv_suprimento"];

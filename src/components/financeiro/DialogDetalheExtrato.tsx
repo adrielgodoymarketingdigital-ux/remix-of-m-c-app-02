@@ -8,7 +8,7 @@ import { getNomeItem } from "@/lib/vendas/itensVenda";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import type { Venda } from "@/types/venda";
 import type { EventoExtrato } from "@/hooks/useExtratoFinanceiro";
-import { OrdemDetalheExtrato, useDetalheExtrato } from "@/hooks/useDetalheExtrato";
+import { OrdemDetalheExtrato, TrocaDetalheExtrato, useDetalheExtrato } from "@/hooks/useDetalheExtrato";
 
 interface DialogDetalheExtratoProps {
   /** Linha do Extrato cujo detalhe é mostrado; null = fechado. */
@@ -48,7 +48,7 @@ const Cliente = ({ cliente }: { cliente?: { nome: string; telefone: string | nul
 
 const num = (v: unknown) => Number(v) || 0;
 
-function DetalheVenda({ linhas }: { linhas: Venda[] }) {
+function DetalheVenda({ linhas, troca }: { linhas: Venda[]; troca: TrocaDetalheExtrato | null }) {
   const primeira = linhas[0];
   // Parcelado "a receber" grava uma linha por parcela de cada item: junta as parcelas do mesmo item.
   const itens = new Map<string, { nome: string; quantidade: number; total: number }>();
@@ -115,6 +115,19 @@ function DetalheVenda({ linhas }: { linhas: Venda[] }) {
           </p>
         )}
       </Secao>
+
+      {troca && (
+        <Secao titulo="Troca de aparelho">
+          <LinhaValor rotulo="Aparelho recebido" valor={troca.valorEntrada} />
+          {troca.valorDevolvido > 0 && (
+            <LinhaValor
+              rotulo={`Devolvido ao cliente (${troca.formaDevolucao === "pix" ? "Pix" : "Dinheiro"})`}
+              valor={troca.valorDevolvido}
+            />
+          )}
+          {troca.cancelada && <p className="text-xs text-muted-foreground">Troca cancelada junto com a venda.</p>}
+        </Secao>
+      )}
     </div>
   );
 }
@@ -215,7 +228,7 @@ export function DialogDetalheExtrato({ evento, onOpenChange }: DialogDetalheExtr
         ) : data.tipo === "os" ? (
           <DetalheOrdem ordem={data.ordem} />
         ) : (
-          <DetalheVenda linhas={data.linhas} />
+          <DetalheVenda linhas={data.linhas} troca={data.troca} />
         )}
       </DialogContent>
     </Dialog>

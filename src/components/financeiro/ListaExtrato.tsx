@@ -3,15 +3,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { ArrowUpCircle, ArrowDownCircle, Eye, Loader2, Pencil, Trash2 } from "lucide-react";
-import { ORIGENS_PDV, ORIGENS_EDITAVEIS, type EventoExtrato, type OrigemEventoExtrato } from "@/hooks/useExtratoFinanceiro";
+import { ORIGENS_PDV, ORIGENS_EDITAVEIS, type EventoExtrato } from "@/hooks/useExtratoFinanceiro";
 import { temDetalheExtrato } from "@/hooks/useDetalheExtrato";
+import { LABEL_ORIGEM_EXTRATO as LABEL_ORIGEM } from "@/lib/financeiro/origensExtrato";
 
 interface ListaExtratoProps {
   eventos: EventoExtrato[];
   carregando: boolean;
   temMais: boolean;
   onCarregarMais: () => void;
-  /** Abre o popup de detalhes (linhas de venda e de OS). */
+  /** Abre o popup de detalhes (linhas de venda, de OS e de devolução de troca). */
   onVerDetalhes: (evento: EventoExtrato) => void;
   /** Abre o diálogo de editar (só lançamento manual/balanço). */
   onEditar: (evento: EventoExtrato) => void;
@@ -20,19 +21,6 @@ interface ListaExtratoProps {
   /** Texto quando não há linhas (ex.: filtro "Só PDV" sem movimentações). */
   mensagemVazio?: string;
 }
-
-const LABEL_ORIGEM: Record<OrigemEventoExtrato, string> = {
-  venda_pdv: "Venda",
-  venda_avulsa: "Venda Avulsa",
-  servico_avulso: "Serviço Avulso",
-  ordem_servico: "Ordem de Serviço",
-  conta_receber: "Conta a Receber",
-  conta_pagar: "Conta a Pagar",
-  pdv_sangria: "Sangria",
-  pdv_suprimento: "Suprimento",
-  lancamento_manual: "Lançamento Manual",
-  balanco_caixa: "Balanço do Caixa",
-};
 
 /** "2026-06-10" → "10/06/2026", sem passar por Date (evita reinterpretação de fuso horário). */
 const formatarDataBR = (isoDate: string) => {
