@@ -32,9 +32,12 @@ Deno.test("troca igual à venda (com desconto): nada a pagar e sem forma de paga
   assertEquals([t.totalVenda, t.aPagar, t.situacao, t.podeFinalizar, t.exigeFormaPagamento], [3000, 0, "igual", true, false]);
 });
 
-Deno.test("troca maior que a venda: diferença aparece e a venda é bloqueada", () => {
+Deno.test("troca maior que a venda (Fase 2): nada a pagar, diferença vira devolução e pede Dinheiro/Pix", () => {
   const t = calcularTotaisComTroca({ subtotal: 4000, desconto: 0, valorEntrada: 4500.5 });
-  assertEquals([t.aPagar, t.diferencaADevolver, t.situacao, t.podeFinalizar], [0, 500.5, "maior", false]);
+  assertEquals(
+    [t.aPagar, t.diferencaADevolver, t.situacao, t.podeFinalizar, t.cobreTudo, t.trocaAplicada, t.exigeFormaPagamento, t.exigeFormaDevolucao],
+    [0, 500.5, "maior", true, true, 4000, false, true],
+  );
 });
 
 Deno.test("sem troca: igual ao cálculo de antes (subtotal − desconto)", () => {

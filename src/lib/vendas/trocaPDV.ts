@@ -39,16 +39,23 @@ export interface TotaisComTroca {
   valorEntrada: number;
   /** Quanto o cliente ainda paga (nunca negativo). */
   aPagar: number;
-  /** Quanto a loja deveria devolver (entrada maior que a venda). Fase 1 não permite. */
+  /** Quanto a loja devolve ao cliente (entrada maior que a venda), em dinheiro ou Pix. */
   diferencaADevolver: number;
   situacao: SituacaoTroca;
+  /** Sempre true desde a Fase 2 (entrada maior que a venda vira devolução). */
   podeFinalizar: boolean;
-  /** Troca igual ao total: não há nada a pagar, nem forma de pagamento. */
+  /** Troca igual ou maior que o total: a troca paga a venda inteira. */
+  cobreTudo: boolean;
+  /** Parte da entrada usada para pagar a venda (= total da venda quando cobre tudo). */
+  trocaAplicada: number;
+  /** Troca cobre tudo: não há nada a pagar, nem forma de pagamento. */
   exigeFormaPagamento: boolean;
+  /** Entrada maior que a venda: escolher Dinheiro ou Pix para devolver a diferença. */
+  exigeFormaDevolucao: boolean;
 }
 
-export const MENSAGEM_TROCA_MAIOR_QUE_VENDA =
-  "O aparelho recebido vale mais que a venda. A devolução da diferença ao cliente ainda não está disponível no PDV; registre a venda e a compra do aparelho separadamente ou ajuste os valores.";
+export type FormaDevolucao = "dinheiro" | "pix";
+export const NOMES_FORMA_DEVOLUCAO: Record<FormaDevolucao, string> = { dinheiro: "Dinheiro", pix: "Pix" };
 
 /** Nome da forma gravada (forma_pagamento = "outro" + "[forma:Troca]") quando a troca paga a venda inteira. */
 export const NOME_FORMA_TROCA_TOTAL = "Troca";
@@ -66,8 +73,11 @@ export function calcularTotaisComTroca(entrada: { subtotal: number; desconto: nu
     aPagar: Math.max(0, saldoC) / 100,
     diferencaADevolver: Math.max(0, -saldoC) / 100,
     situacao,
-    podeFinalizar: situacao !== "maior",
-    exigeFormaPagamento: situacao !== "igual",
+    podeFinalizar: true,
+    cobreTudo: situacao === "igual" || situacao === "maior",
+    trocaAplicada: Math.min(entradaC, totalVendaC) / 100,
+    exigeFormaPagamento: situacao !== "igual" && situacao !== "maior",
+    exigeFormaDevolucao: situacao === "maior",
   };
 }
 
@@ -136,6 +146,14 @@ export interface PlanoTroca {
   /** O que sobra dos itens sem peça depois do desconto e da fatia da 2ª forma. */
   capacidade: number;
   bloqueio: string | null;
+  /**
+   * Troca que cobre tudo: desconto de cada item, proporcional ao valor dele
+   * (centavos exatos, soma = desconto da venda) — vai em valor_desconto_manual.
+   * null = desconto dividido igualmente entre os itens, como sempre.
+   */
+  descontoPorItem: number[] | null;
+  /** Soma exata de valor_troca nas linhas (a devolução é entrada − isto). */
+  trocaAplicada: number;
 }
 
 /**
@@ -154,7 +172,15 @@ export function planejarTroca(p: {
   valorTroca: number;
   /** Valor da 2ª forma (0 = sem pagamento duplo). */
   valorSegunda: number;
+  /**
+   * Troca igual ou maior que o total (Fase 2): a troca paga a venda inteira.
+   * Cada linha principal fica líquida em zero — INCLUSIVE peça (o Extrato
+   * ignora a linha de peça, então não muda nada lá) — com o desconto rateado
+   * proporcionalmente ao valor do item. valorTroca é ignorado.
+   */
+  cobreTudo?: { descontoTotal: number };
 }): PlanoTroca {
+  if (p.cobreTudo) return planejarTrocaQueCobreTudo(p.itens, p.parcelasPorItem, p.cobreTudo.descontoTotal);
   const segundaPorItem = centavos(p.valorSegunda) > 0 ? ratearPorPeso(p.valorSegunda, p.itens.map((i) => i.bruto)) : null;
   const sobras = p.itens.map((i, idx) =>
     i.peca ? 0 : Math.max(0, centavos(i.bruto) - centavos(i.desconto) - centavos(segundaPorItem?.[idx] ?? 0)) / 100,
@@ -163,12 +189,50 @@ export function planejarTroca(p: {
   const trocaC = Math.max(0, centavos(p.valorTroca));
   const zeros = () => p.itens.map((_, idx) => Array.from({ length: Math.max(1, Math.floor(p.parcelasPorItem[idx] ?? 1)) }, () => 0));
   if (trocaC > capacidadeC) {
-    return { trocaPorLinha: zeros(), segundaPorItem, capacidade: capacidadeC / 100, bloqueio: MENSAGEM_TROCA_MAIOR_QUE_ITENS_SEM_PECA };
+    return { trocaPorLinha: zeros(), segundaPorItem, capacidade: capacidadeC / 100, bloqueio: MENSAGEM_TROCA_MAIOR_QUE_ITENS_SEM_PECA, descontoPorItem: null, trocaAplicada: 0 };
   }
   const trocaPorLinha = trocaC === 0
     ? zeros()
     : planejarTrocaPorLinha(sobras.map((s) => ({ bruto: s, desconto: 0 })), p.parcelasPorItem, trocaC / 100);
-  return { trocaPorLinha, segundaPorItem, capacidade: capacidadeC / 100, bloqueio: null };
+  return { trocaPorLinha, segundaPorItem, capacidade: capacidadeC / 100, bloqueio: null, descontoPorItem: null, trocaAplicada: trocaC / 100 };
+}
+
+function planejarTrocaQueCobreTudo(itens: ItemParaTroca[], parcelasPorItem: number[], descontoTotal: number): PlanoTroca {
+  const descontoPorItem = ratearPorPeso(descontoTotal, itens.map((i) => i.bruto));
+  const liquidosC = itens.map((i, idx) => Math.max(0, centavos(i.bruto) - centavos(descontoPorItem[idx])));
+  const trocaPorLinha = liquidosC.map((c, idx) => {
+    const parcelas = Math.max(1, Math.floor(parcelasPorItem[idx] ?? 1));
+    return ratearPorPeso(c / 100, Array.from({ length: parcelas }, () => 1));
+  });
+  const totalC = liquidosC.reduce((a, b) => a + b, 0);
+  return { trocaPorLinha, segundaPorItem: null, capacidade: totalC / 100, bloqueio: null, descontoPorItem, trocaAplicada: totalC / 100 };
+}
+
+/** Devolução ao cliente = entrada − o que a troca pagou da venda (centavos exatos, nunca negativa). */
+export function calcularDevolucao(valorEntrada: number, trocaAplicada: number): number {
+  return Math.max(0, centavos(valorEntrada) - centavos(trocaAplicada)) / 100;
+}
+
+/**
+ * Colunas da devolução em vendas_trocas, sempre coerentes com o CHECK do banco
+ * (vendas_trocas_devolucao_coerente): valor > 0 exige forma; sem devolução,
+ * valor 0 e forma vazia.
+ */
+export function camposDevolucao(devolucao: { valor: number; forma: FormaDevolucao | null } | null | undefined): {
+  valor_devolvido: number;
+  forma_devolucao: FormaDevolucao | null;
+} {
+  const valorC = Math.max(0, centavos(devolucao?.valor ?? 0));
+  if (valorC === 0 || !devolucao?.forma) return { valor_devolvido: 0, forma_devolucao: null };
+  return { valor_devolvido: valorC / 100, forma_devolucao: devolucao.forma };
+}
+
+/**
+ * Devolução em dinheiro maior que o dinheiro estimado na gaveta: o PDV avisa e
+ * pede confirmação (não bloqueia — a sangria também não confere saldo).
+ */
+export function devolucaoPassaDaGaveta(p: { valorDevolucao: number; forma: FormaDevolucao | null; dinheiroNaGaveta: number }): boolean {
+  return p.forma === "dinheiro" && centavos(p.valorDevolucao) > centavos(p.dinheiroNaGaveta);
 }
 
 /**
