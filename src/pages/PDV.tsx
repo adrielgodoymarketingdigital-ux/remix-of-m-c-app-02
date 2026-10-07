@@ -324,8 +324,15 @@ const PDV = () => {
   const calcularTotaisVenda = () =>
     calcularTotaisComTroca({ subtotal: calcularSubtotal(), desconto: calcularDescontoReal(), valorEntrada: valorDispositivoEntrada });
 
-  /** Quanto o cliente paga (dinheiro/pix/cartão/a receber), já sem a troca. */
-  const calcularTotal = () => calcularTotaisVenda().aPagar;
+  /**
+   * Quanto o cliente paga (dinheiro/pix/cartão/a receber), já sem a troca.
+   * Sem troca: exatamente a conta de antes (sem arredondar em centavos), para
+   * pagamento duplo, taxa de cartão e 2ª forma gravarem os mesmos valores.
+   */
+  const calcularTotal = () => {
+    const totais = calcularTotaisVenda();
+    return totais.valorEntrada > 0 ? totais.aPagar : Math.max(0, calcularSubtotal() - calcularDescontoReal());
+  };
 
   /**
    * Plano da troca (valor_troca por linha, fatia da 2ª forma por item, bloqueio
@@ -747,7 +754,7 @@ const PDV = () => {
               : valorSegundaFormaItem({
                   itemBruto: item.preco * item.quantidade,
                   subtotal: calcularSubtotal(),
-                  totalAPagar: totais.aPagar,
+                  totalAPagar: calcularTotal(),
                   valorSegunda: valorSegundaPagamento,
                   temTroca: false,
                 }) / totalParcelasSegunda;
@@ -952,7 +959,7 @@ const PDV = () => {
 
   const subtotal = calcularSubtotal();
   const totaisVenda = calcularTotaisVenda();
-  const total = totaisVenda.aPagar;
+  const total = calcularTotal();
   const bloqueioTroca = totaisVenda.podeFinalizar ? calcularPlanoTroca(totaisVenda)?.bloqueio ?? null : null;
 
   return (

@@ -114,8 +114,10 @@ Deno.test("C: a fatia da 2ª forma do item sem peça reduz a capacidade", () => 
 Deno.test("A (regressão sem troca): 2ª forma das linhas auxiliares pela fórmula de sempre", () => {
   // Sem troca o PDV não chama planejarTroca: valor_segunda_forma = valor inteiro e
   // linhas auxiliares = bruto × 2ª ÷ total a pagar (valores da main 604e732).
-  assertEquals(valorSegundaFormaItem({ itemBruto: 4000, subtotal: 4100, totalAPagar: 3900, valorSegunda: 500, temTroca: false }), (4000 * 500) / 3900);
-  assertEquals(valorSegundaFormaItem({ itemBruto: 100, subtotal: 4100, totalAPagar: 3900, valorSegunda: 500, temTroca: false }), (100 * 500) / 3900);
+  // Mesma expressão (e ordem de operações) da main: item × (2ª ÷ total), bit a bit.
+  const proporcaoMain = 1050 / 4050;
+  assertEquals(valorSegundaFormaItem({ itemBruto: 100, subtotal: 4100, totalAPagar: 4050, valorSegunda: 1050, temTroca: false }), 100 * proporcaoMain);
+  assertEquals(valorSegundaFormaItem({ itemBruto: 4000, subtotal: 4100, totalAPagar: 4050, valorSegunda: 1050, temTroca: false }), 4000 * proporcaoMain);
   // E sem 2ª forma o plano nem calcula fatia.
   assertEquals(planejarTroca({ itens: [{ bruto: 1, desconto: 0, peca: false }], parcelasPorItem: [1], valorTroca: 0.5, valorSegunda: 0 }).segundaPorItem, null);
 });

@@ -187,7 +187,8 @@ export function valorSegundaFormaItem(p: {
   temTroca: boolean;
 }): number {
   if (p.temTroca) return p.subtotal > 0 ? (p.itemBruto * p.valorSegunda) / p.subtotal : 0;
-  return p.totalAPagar > 0 ? (p.itemBruto * p.valorSegunda) / p.totalAPagar : 0;
+  // Mesma ordem de operações da main (item × proporção), para gravar os mesmos bits.
+  return p.totalAPagar > 0 ? p.itemBruto * (p.valorSegunda / p.totalAPagar) : 0;
 }
 
 // ── Cancelamento ────────────────────────────────────────────────────────────
