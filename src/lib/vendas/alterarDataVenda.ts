@@ -15,14 +15,28 @@
 // pela parte em dinheiro (mesma regra de ajustarCaixasFechadosOS). Caixa
 // aberto se resolve sozinho no próximo fechamento.
 //
+// Troca com devolução da diferença (Fase 2B): a devolução em dinheiro anda
+// junto (sai do saldo_final e de total_devolucoes_troca de um caixa fechado e
+// entra no outro) e vendas_trocas.caixa_id passa a ser o caixa (aberto ou
+// fechado) da data nova — é por ele que o fechamento acha a devolução. A data
+// da devolução no Extrato já vem das linhas da venda.
+//
 // Fora de escopo (bloqueado): serviços (OS — a data é a de entrega, editada
 // na própria OS), linhas "Peça/Produto utilizado na OS" (seguem a OS) e
 // vendas canceladas.
 // ============================================================================
 
 import { supabase } from "@/integrations/supabase/client";
-import { agruparVendasPorFormaPagamento } from "@/lib/formaPagamento";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
+import { contaNoCaixa } from "@/lib/caixa/devolucoesTroca";
+import {
+  PARTE_ZERO,
+  calcularParteDaVenda,
+  novosTotaisCaixa,
+  parteMexeNoCaixa,
+  somarNaParte,
+  type ParteCaixa,
+} from "./alterarDataVenda.core";
 
 type TipoVendaLista = "dispositivo" | "produto" | "servico" | "avulsa";
 
@@ -123,27 +137,6 @@ export async function buscarHistoricoDataVenda(params: {
   return (data ?? []) as AlteracaoDataVenda[];
 }
 
-interface ParteCaixa {
-  total_dinheiro: number;
-  total_pix: number;
-  total_cartao: number;
-  total_a_receber: number;
-}
-
-const PARTE_ZERO: ParteCaixa = { total_dinheiro: 0, total_pix: 0, total_cartao: 0, total_a_receber: 0 };
-const FORMAS_CARTAO = ["debito", "credito", "credito_parcelado"];
-
-// Mesmo mapeamento forma → coluna do fecharCaixa (useCaixa.ts). Formas
-// customizadas ("outro") não entram em coluna nenhuma — igual ao fechamento.
-const somarNaParte = (parte: ParteCaixa, forma: string, valor: number) => {
-  if (forma === "dinheiro") parte.total_dinheiro += valor;
-  else if (forma === "pix") parte.total_pix += valor;
-  else if (FORMAS_CARTAO.includes(forma)) parte.total_cartao += valor;
-  else if (forma === "a_receber" || forma === "a_prazo") parte.total_a_receber += valor;
-};
-
-const totalDaParte = (p: ParteCaixa) => p.total_dinheiro + p.total_pix + p.total_cartao + p.total_a_receber;
-
 interface CaixaFechado {
   id: string;
   empresa_id: string | null;
@@ -153,40 +146,58 @@ interface CaixaFechado {
   total_a_receber: number | null;
   total_vendas: number | null;
   saldo_final: number | null;
+  /** Só lido quando a venda tem devolução em dinheiro (coluna da migration 2B). */
+  total_devolucoes_troca?: number | null;
 }
+
+const COLUNAS_CAIXA = "id, empresa_id, total_dinheiro, total_pix, total_cartao, total_a_receber, total_vendas, saldo_final";
 
 /** Caixa fechado cuja janela contém o instante (mesmo critério de editarVenda). */
 async function caixaFechadoNoInstante(
   userId: string,
   instanteISO: string,
   filtroEmpresa: ((c: CaixaFechado) => boolean) | null,
+  comDevolucao = false,
 ): Promise<CaixaFechado | null> {
   const { data, error } = await supabase
     .from("caixas")
-    .select("id, empresa_id, total_dinheiro, total_pix, total_cartao, total_a_receber, total_vendas, saldo_final")
+    .select(comDevolucao ? `${COLUNAS_CAIXA}, total_devolucoes_troca` : COLUNAS_CAIXA)
     .eq("status", "fechado")
     .or(`proprietario_id.eq.${userId},user_id.eq.${userId}`)
     .lte("data_abertura", instanteISO)
     .gte("data_fechamento", instanteISO);
   if (error) throw error;
-  const caixas = (data ?? []) as CaixaFechado[];
+  const caixas = (data ?? []) as unknown as CaixaFechado[];
   return (filtroEmpresa ? caixas.filter(filtroEmpresa) : caixas)[0] ?? null;
 }
 
 async function aplicarNoCaixa(caixa: CaixaFechado, parte: ParteCaixa, sinal: 1 | -1): Promise<void> {
-  const n = (v: number | null) => Number(v || 0);
   const { error } = await supabase
     .from("caixas")
-    .update({
-      total_dinheiro: n(caixa.total_dinheiro) + sinal * parte.total_dinheiro,
-      total_pix: n(caixa.total_pix) + sinal * parte.total_pix,
-      total_cartao: n(caixa.total_cartao) + sinal * parte.total_cartao,
-      total_a_receber: n(caixa.total_a_receber) + sinal * parte.total_a_receber,
-      total_vendas: n(caixa.total_vendas) + sinal * totalDaParte(parte),
-      saldo_final: n(caixa.saldo_final) + sinal * parte.total_dinheiro,
-    })
+    .update(novosTotaisCaixa(caixa, parte, sinal))
     .eq("id", caixa.id);
   if (error) throw error;
+}
+
+/** Caixa (aberto ou fechado) em que o instante cai, para vendas_trocas.caixa_id. null = nenhum. */
+async function caixaDoInstante(
+  userId: string,
+  instanteISO: string,
+  filtroEmpresa: (c: { empresa_id: string | null }) => boolean,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("caixas")
+    .select("id, empresa_id, status, data_fechamento")
+    .or(`proprietario_id.eq.${userId},user_id.eq.${userId}`)
+    .lte("data_abertura", instanteISO)
+    .order("data_abertura", { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  const instanteMs = new Date(instanteISO).getTime();
+  const caixa = (data ?? []).filter(filtroEmpresa).find((c) =>
+    c.status === "aberto" || (!!c.data_fechamento && new Date(c.data_fechamento).getTime() >= instanteMs),
+  );
+  return caixa?.id ?? null;
 }
 
 /** Retira a parte do caixa da data antiga e soma no da data nova (só caixas fechados). */
@@ -197,11 +208,12 @@ async function moverEntreCaixas(
   parte: ParteCaixa,
   filtroEmpresa: ((c: CaixaFechado) => boolean) | null,
 ): Promise<{ aviso: boolean; ajustados: number }> {
-  if (totalDaParte(parte) === 0) return { aviso: false, ajustados: 0 };
+  if (!parteMexeNoCaixa(parte)) return { aviso: false, ajustados: 0 };
+  const comDevolucao = parte.devolucoes_dinheiro !== 0;
   try {
     const [antigo, novo] = await Promise.all([
-      caixaFechadoNoInstante(userId, dataAntigaISO, filtroEmpresa),
-      caixaFechadoNoInstante(userId, dataNovaISO, filtroEmpresa),
+      caixaFechadoNoInstante(userId, dataAntigaISO, filtroEmpresa, comDevolucao),
+      caixaFechadoNoInstante(userId, dataNovaISO, filtroEmpresa, comDevolucao),
     ]);
     if (antigo && novo && antigo.id === novo.id) return { aviso: false, ajustados: 0 };
     let ajustados = 0;
@@ -226,6 +238,14 @@ interface LinhaVenda {
   cancelada: boolean | null;
   empresa_id: string | null;
   grupo_venda: string | null;
+}
+
+interface TrocaDaVendaMovida {
+  id: string;
+  caixa_id: string | null;
+  valor_devolvido: number;
+  forma_devolucao: string | null;
+  cancelada: boolean;
 }
 
 const COLUNAS_LINHA =
@@ -323,29 +343,49 @@ export async function alterarDataVenda(params: AlterarDataVendaParams): Promise<
     novasDatas[linha.id] = novaData;
   }
 
-  // Parte da venda no caixa = o que o fecharCaixa contaria destas linhas.
-  const contaveis = linhas.filter((l) => !l.cancelada && !isVendaDeItemOS(l.observacoes));
-  const parte = { ...PARTE_ZERO };
-  for (const item of agruparVendasPorFormaPagamento(
-    contaveis.map((l) => ({ ...l, total: Number(l.total) || 0 })),
-  )) {
-    somarNaParte(parte, item.chave, item.total);
+  // Troca com devolução (Fase 2B): a devolução acompanha a venda.
+  let troca: TrocaDaVendaMovida | null = null;
+  let avisoTroca = false;
+  if (clicada.grupo_venda && linhas.some((l) => l.valor_troca != null)) {
+    const { data, error } = await supabase
+      .from("vendas_trocas")
+      .select("id, caixa_id, valor_devolvido, forma_devolucao, cancelada")
+      .eq("grupo_venda", clicada.grupo_venda)
+      .maybeSingle();
+    if (error) {
+      console.error("❌ Erro ao ler a troca ao alterar data da venda:", error);
+      avisoTroca = true;
+    }
+    troca = data;
   }
+
+  // Parte da venda no caixa = o que o fecharCaixa contaria destas linhas (+ devolução em dinheiro).
+  const contaveis = linhas.filter((l) => !l.cancelada && !isVendaDeItemOS(l.observacoes));
+  const parte = calcularParteDaVenda(contaveis, troca ? [troca] : []);
 
   // Mesmo critério de empresa do fecharCaixa/editarVenda.
   const empresaVenda = clicada.empresa_id;
-  const caixa = await moverEntreCaixas(
-    userId,
-    clicada.data,
-    novaDataISO,
-    parte,
-    (c) => !c.empresa_id || c.empresa_id === empresaVenda,
-  );
+  const filtroEmpresa = (c: { empresa_id: string | null }) => !c.empresa_id || c.empresa_id === empresaVenda;
+  const caixa = await moverEntreCaixas(userId, clicada.data, novaDataISO, parte, filtroEmpresa);
+
+  // O fechamento acha a devolução por vendas_trocas.caixa_id: passa a ser o caixa da data nova.
+  if (troca && contaNoCaixa(troca)) {
+    try {
+      const novoCaixaId = await caixaDoInstante(userId, novaDataISO, filtroEmpresa);
+      if (novoCaixaId !== troca.caixa_id) {
+        const { error } = await supabase.from("vendas_trocas").update({ caixa_id: novoCaixaId }).eq("id", troca.id);
+        if (error) throw error;
+      }
+    } catch (e) {
+      console.error("❌ Erro ao mover a devolução da troca para o caixa da nova data:", e);
+      avisoTroca = true;
+    }
+  }
 
   const historicoGravado = await registrarHistorico({
     userId, empresaId: empresaVenda, origem: "vendas", vendaId, grupoVenda: clicada.grupo_venda,
     dataAntes: clicada.data, dataDepois: novaDataISO, linhasAfetadas: linhas.length, caixasAjustados: caixa.ajustados,
   });
 
-  return { ok: true, novasDatas, avisoCaixa: caixa.aviso, caixasAjustados: caixa.ajustados, historicoGravado };
+  return { ok: true, novasDatas, avisoCaixa: caixa.aviso || avisoTroca, caixasAjustados: caixa.ajustados, historicoGravado };
 }
