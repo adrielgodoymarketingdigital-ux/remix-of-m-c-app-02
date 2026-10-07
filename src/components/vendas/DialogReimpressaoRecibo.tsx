@@ -26,6 +26,7 @@ import {
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
+import { cssLinhaCampoRecibo } from "@/lib/recibo/linhaCampoRecibo";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -321,12 +322,7 @@ export function DialogReimpressaoRecibo({
       white-space: pre-line;
       color: #333;
     }
-    .recibo-info {
-      display: flex;
-      justify-content: space-between;
-      font-size: ${isThermalImpressao ? '9pt' : '12px'};
-      margin: 1mm 0;
-    }
+    /* Linhas "Rótulo: valor" (src/lib/recibo/linhaCampoRecibo.ts): no A4 o valor vem logo depois do rótulo. */${cssLinhaCampoRecibo(isThermalImpressao)}
     .recibo-total {
       font-size: ${isThermalImpressao ? '13pt' : '20px'};
       font-weight: bold;
