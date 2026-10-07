@@ -14,7 +14,7 @@ export async function carregarTrocaRecibo(grupoVenda: string | null | undefined)
   try {
     const { data: troca, error } = await supabase
       .from("vendas_trocas")
-      .select("valor_entrada, cancelada, dispositivo_entrada_id")
+      .select("valor_entrada, cancelada, dispositivo_entrada_id, valor_devolvido, forma_devolucao")
       .eq("grupo_venda", grupoVenda)
       .maybeSingle();
     if (error || !troca) {
@@ -31,7 +31,13 @@ export async function carregarTrocaRecibo(grupoVenda: string | null | undefined)
       if (erroDisp) console.error("[recibo] etapa=ler aparelho da troca", erroDisp);
       if (disp) aparelho = { marca: disp.marca, modelo: disp.modelo, capacidadeGb: disp.capacidade_gb, cor: disp.cor, imei: disp.imei };
     }
-    return { aparelho, valorEntrada: Number(troca.valor_entrada) || 0, cancelada: troca.cancelada === true };
+    return {
+      aparelho,
+      valorEntrada: Number(troca.valor_entrada) || 0,
+      cancelada: troca.cancelada === true,
+      valorDevolvido: Number(troca.valor_devolvido) || 0,
+      formaDevolucao: troca.forma_devolucao === "pix" || troca.forma_devolucao === "dinheiro" ? troca.forma_devolucao : null,
+    };
   } catch (e) {
     console.error("[recibo] etapa=ler troca da venda (falha inesperada)", e);
     return null;

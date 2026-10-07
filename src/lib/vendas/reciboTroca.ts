@@ -22,6 +22,9 @@ export interface DadosTrocaRecibo {
   valorEntrada: number;
   /** Troca cancelada junto com a venda. */
   cancelada: boolean;
+  /** Diferença devolvida ao cliente (entrada maior que a venda, Fase 2). */
+  valorDevolvido?: number | null;
+  formaDevolucao?: "dinheiro" | "pix" | null;
 }
 
 export interface LinhaReciboTroca {
@@ -74,13 +77,19 @@ export function montarBlocoTrocaRecibo(p: {
   const troca = p.troca;
   if (!troca || !(Number(troca.valorEntrada) > 0)) return null;
   const totalC = Math.round((Number(p.totalVenda) || 0) * 100);
-  const trocaC = Math.round(Number(troca.valorEntrada) * 100);
+  const entradaC = Math.round(Number(troca.valorEntrada) * 100);
+  // A troca paga no máximo a venda; o que passa disso foi devolvido ao cliente.
+  const trocaC = Math.min(entradaC, totalC);
   const pagoC = Math.max(0, totalC - trocaC);
+  const devolvidoC = Number(troca.valorDevolvido) > 0
+    ? Math.round(Number(troca.valorDevolvido) * 100)
+    : Math.max(0, entradaC - totalC);
+  const formaDevolucao = troca.formaDevolucao === "pix" ? "Pix" : troca.formaDevolucao === "dinheiro" ? "Dinheiro" : "";
   const pagoIntegralmente = pagoC === 0;
   const forma = limpo(p.formaPagamentoLabel);
 
   const linhas: LinhaReciboTroca[] = [
-    { rotulo: "Valor do aparelho recebido", valor: formatarMoedaRecibo(trocaC / 100), negativo: true },
+    { rotulo: "Valor do aparelho recebido", valor: formatarMoedaRecibo(entradaC / 100), negativo: true },
     { rotulo: "Total da venda", valor: formatarMoedaRecibo(totalC / 100) },
     { rotulo: "Valor da troca", valor: formatarMoedaRecibo(trocaC / 100), negativo: true },
     {
@@ -88,6 +97,13 @@ export function montarBlocoTrocaRecibo(p: {
       valor: formatarMoedaRecibo(pagoC / 100),
       destaque: true,
     },
+    ...(devolvidoC > 0
+      ? [{
+          rotulo: formaDevolucao ? `Diferença devolvida ao cliente (${formaDevolucao})` : "Diferença devolvida ao cliente",
+          valor: formatarMoedaRecibo(devolvidoC / 100),
+          destaque: true,
+        }]
+      : []),
   ];
   return {
     titulo: troca.cancelada ? "TROCA DE APARELHO (CANCELADA)" : "TROCA DE APARELHO",
