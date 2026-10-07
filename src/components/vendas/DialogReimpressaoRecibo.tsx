@@ -27,6 +27,7 @@ import {
 } from "@/components/recibo/SeletorFormatoPapelDialog";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
 import { cssLinhaCampoRecibo } from "@/lib/recibo/linhaCampoRecibo";
+import { cssCompactacaoReciboA4 } from "@/lib/recibo/compactacaoReciboA4";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -349,7 +350,7 @@ export function DialogReimpressaoRecibo({
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body { margin: 0 !important; }
       .recibo-checklist { page-break-inside: avoid; }
-    }
+    }${cssCompactacaoReciboA4(isThermalImpressao)}
     /* Sobrescreve @page e body para térmica (deve vir por último) */
     ${cssTermico}
   </style>

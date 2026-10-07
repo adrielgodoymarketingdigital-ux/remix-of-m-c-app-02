@@ -26,6 +26,7 @@ import {
   MODELOS_PADRAO_GARANTIA,
 } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
+import { cssLinhaCampoRecibo } from "@/lib/recibo/linhaCampoRecibo";
 
 // Normaliza tempo_garantia (sempre em meses) para exibição legível.
 function formatarGarantia(meses: number): string {
@@ -278,7 +279,7 @@ export function DialogReciboPDV({
       justify-content: space-between;
       font-size: ${isThermal ? '9px' : '12px'};
       margin: 4px 0;
-    }
+    }${cssLinhaCampoRecibo(isThermal, { sobreporEstiloEmbutido: true })}
     /* --- Itens --- */
     .item-venda {
       padding: ${isThermal ? '4px 0' : '7px 0'};

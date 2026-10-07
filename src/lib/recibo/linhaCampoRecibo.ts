@@ -14,7 +14,24 @@
 /** Espaço entre o rótulo e o valor no A4. */
 export const ESPACO_ROTULO_VALOR_A4_PX = 4;
 
-export function cssLinhaCampoRecibo(termico: boolean): string {
+export interface OpcoesLinhaCampo {
+  /**
+   * As linhas já trazem display/justify-content no style embutido (recibo do
+   * PDV): no A4 só as regras de layout, com !important para valerem por cima
+   * dele, sem mexer em letra e margem. No térmico não gera nada.
+   */
+  sobreporEstiloEmbutido?: boolean;
+}
+
+export function cssLinhaCampoRecibo(termico: boolean, opcoes: OpcoesLinhaCampo = {}): string {
+  if (opcoes.sobreporEstiloEmbutido) {
+    if (termico) return "";
+    return `
+    /* Linhas "Rótulo: valor" (src/lib/recibo/linhaCampoRecibo.ts): no A4 o valor vem logo depois do rótulo. */
+    .recibo-info { justify-content: flex-start !important; align-items: baseline; gap: ${ESPACO_ROTULO_VALOR_A4_PX}px; }
+    .recibo-info > span:first-child { flex: 0 0 auto; white-space: nowrap; }
+    .recibo-info > span:last-child { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; text-align: left; }`;
+  }
   if (termico) {
     return `
     .recibo-info {
