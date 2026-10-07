@@ -393,6 +393,7 @@ export type Database = {
           status: string
           total_a_receber: number | null
           total_cartao: number | null
+          total_devolucoes_troca: number
           total_dinheiro: number | null
           total_pix: number | null
           total_servicos: number | null
@@ -412,6 +413,7 @@ export type Database = {
           status?: string
           total_a_receber?: number | null
           total_cartao?: number | null
+          total_devolucoes_troca?: number
           total_dinheiro?: number | null
           total_pix?: number | null
           total_servicos?: number | null
@@ -431,6 +433,7 @@ export type Database = {
           status?: string
           total_a_receber?: number | null
           total_cartao?: number | null
+          total_devolucoes_troca?: number
           total_dinheiro?: number | null
           total_pix?: number | null
           total_servicos?: number | null

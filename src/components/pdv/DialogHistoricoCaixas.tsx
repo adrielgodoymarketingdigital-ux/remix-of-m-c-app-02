@@ -104,6 +104,12 @@ export function DialogHistoricoCaixas({ open, onOpenChange }: DialogHistoricoCai
                   </div>
                 </div>
 
+                {Number(c.total_devolucoes_troca) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Devoluções de troca em dinheiro (abatidas do saldo):{" "}
+                    <span className="font-medium text-red-600">- {formatCurrency(Number(c.total_devolucoes_troca))}</span>
+                  </p>
+                )}
                 {c.data_fechamento && (
                   <p className="text-xs text-muted-foreground">
                     Fechado em: {fmt(c.data_fechamento)}

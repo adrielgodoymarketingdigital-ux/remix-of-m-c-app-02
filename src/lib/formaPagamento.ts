@@ -110,12 +110,18 @@ export const CORES_BADGE_FORMA_PAGAMENTO: Record<BreakdownFormaPagamento["cor"],
   customizada: "text-purple-600",
 };
 
-/** Dinheiro que deve estar na gaveta no fechamento (mesma conta do fechamento real e do preview). */
+/**
+ * Dinheiro que deve estar na gaveta no fechamento (mesma conta do fechamento real e do preview).
+ * devolucoesDinheiro: devoluções de troca em dinheiro feitas no caixa (saíram da gaveta).
+ */
 export function calcularDinheiroEsperado(p: {
   saldoInicial: number;
   totalDinheiro: number;
   suprimentos: number;
   sangrias: number;
+  devolucoesDinheiro?: number;
 }): number {
-  return (Number(p.saldoInicial) || 0) + p.totalDinheiro + p.suprimentos - p.sangrias;
+  const esperado = (Number(p.saldoInicial) || 0) + p.totalDinheiro + p.suprimentos - p.sangrias;
+  // Sem devolução, a mesma conta de sempre (mesmos bits).
+  return p.devolucoesDinheiro ? esperado - p.devolucoesDinheiro : esperado;
 }

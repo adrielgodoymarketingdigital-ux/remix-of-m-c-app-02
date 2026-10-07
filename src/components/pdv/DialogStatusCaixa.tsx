@@ -20,6 +20,7 @@ import {
   CreditCard,
   Calendar,
   Wrench,
+  Repeat,
 } from "lucide-react";
 
 interface DialogStatusCaixaProps {
@@ -182,6 +183,15 @@ export function DialogStatusCaixa({
                   </span>
                   <span className="font-medium">{formatCurrency(caixaAtual.total_servicos ?? 0)}</span>
                 </div>
+                {Number(caixaAtual.total_devolucoes_troca) > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Repeat className="h-4 w-4" />
+                      Devoluções de troca (dinheiro):
+                    </span>
+                    <span className="font-medium text-red-600">- {formatCurrency(Number(caixaAtual.total_devolucoes_troca))}</span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div className="rounded-md border p-2 text-xs space-y-0.5">

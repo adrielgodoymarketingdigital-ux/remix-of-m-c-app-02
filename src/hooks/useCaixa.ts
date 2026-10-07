@@ -9,6 +9,7 @@ import {
   isVendaDeItemOS,
   type OrdemParaCaixa,
 } from "@/lib/caixa/servicosCaixa";
+import { carregarDevolucoesDoCaixa } from "@/lib/caixa/carregarDevolucoesTroca";
 
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
@@ -117,7 +118,8 @@ export function useCaixa() {
 
   /**
    * Totais do caixa desde a abertura (vendas, vendas avulsas, OS entregues,
-   * sangrias e suprimentos) — a mesma conta do fechamento. null = caixa não encontrado.
+   * sangrias, suprimentos e devoluções de troca) — a mesma conta do fechamento.
+   * null = caixa não encontrado.
    */
   const calcularTotaisDoCaixa = async (caixaId: string) => {
     // Buscar o caixa para obter data_abertura e saldo_inicial
@@ -267,12 +269,16 @@ export function useCaixa() {
     total_a_receber += servicosAgg.total_a_receber;
     const total_servicos = servicosAgg.total_servicos;
 
-    return { caixa, breakdown, total_dinheiro, total_pix, total_cartao, total_a_receber, total_servicos, totalSangrias, totalSuprimentos };
+    // Devoluções da diferença da troca feitas neste caixa (vendas_trocas.caixa_id):
+    // em dinheiro saem da gaveta; em Pix são só informação.
+    const devolucoes = await carregarDevolucoesDoCaixa(caixaId);
+
+    return { caixa, breakdown, total_dinheiro, total_pix, total_cartao, total_a_receber, total_servicos, totalSangrias, totalSuprimentos, devolucoes };
   };
 
   /**
-   * Dinheiro estimado na gaveta agora: dinheiro esperado do fechamento menos as
-   * devoluções de troca em dinheiro já feitas neste caixa. Usado só para avisar
+   * Dinheiro estimado na gaveta agora: o dinheiro esperado do fechamento (já
+   * com as devoluções de troca em dinheiro deste caixa). Usado só para avisar
    * quando uma devolução em dinheiro passa disso (não bloqueia). null = não deu
    * para calcular (aí o PDV não avisa).
    */
@@ -280,21 +286,13 @@ export function useCaixa() {
     try {
       const totais = await calcularTotaisDoCaixa(caixaId);
       if (!totais) return null;
-      const esperado = calcularDinheiroEsperado({
+      return calcularDinheiroEsperado({
         saldoInicial: totais.caixa.saldo_inicial,
         totalDinheiro: totais.total_dinheiro,
         suprimentos: totais.totalSuprimentos,
         sangrias: totais.totalSangrias,
+        devolucoesDinheiro: totais.devolucoes.dinheiro,
       });
-      const { data: devolucoes, error } = await supabase
-        .from("vendas_trocas")
-        .select("valor_devolvido")
-        .eq("caixa_id", caixaId)
-        .eq("forma_devolucao", "dinheiro")
-        .eq("cancelada", false);
-      if (error) console.error("[caixa] etapa=devoluções de troca do caixa", error);
-      const devolvido = (devolucoes ?? []).reduce((acc, d) => acc + Number(d.valor_devolvido || 0), 0);
-      return esperado - devolvido;
     } catch (erro) {
       console.error("[caixa] etapa=estimar dinheiro na gaveta", erro);
       return null;
@@ -307,13 +305,13 @@ export function useCaixa() {
 
     const totais = await calcularTotaisDoCaixa(caixaId);
     if (!totais) return false;
-    const { caixa, breakdown, total_dinheiro, total_pix, total_cartao, total_a_receber, total_servicos, totalSangrias, totalSuprimentos } = totais;
+    const { caixa, breakdown, total_dinheiro, total_pix, total_cartao, total_a_receber, total_servicos, totalSangrias, totalSuprimentos, devolucoes } = totais;
     setUltimoBreakdownFormaPagamento(breakdown);
 
     const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
     const saldo_final = saldoFinalContado !== undefined
       ? saldoFinalContado
-      : calcularDinheiroEsperado({ saldoInicial: caixa.saldo_inicial, totalDinheiro: total_dinheiro, suprimentos: totalSuprimentos, sangrias: totalSangrias });
+      : calcularDinheiroEsperado({ saldoInicial: caixa.saldo_inicial, totalDinheiro: total_dinheiro, suprimentos: totalSuprimentos, sangrias: totalSangrias, devolucoesDinheiro: devolucoes.dinheiro });
 
     const { error: updateError } = await supabase
       .from("caixas")
@@ -327,6 +325,8 @@ export function useCaixa() {
         total_servicos,
         total_vendas,
         saldo_final,
+        // Foto das devoluções em dinheiro abatidas do esperado (migration 2B).
+        total_devolucoes_troca: devolucoes.dinheiro,
         observacoes: observacoes || caixa.observacoes,
       })
       .eq("id", caixaId);

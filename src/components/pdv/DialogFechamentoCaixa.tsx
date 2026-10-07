@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
 import { formatCurrency } from "@/lib/formatters";
-import { Users, ArrowDownCircle, ArrowUpCircle, Wallet, Wrench } from "lucide-react";
+import { Users, ArrowDownCircle, ArrowUpCircle, Wallet, Wrench, Repeat } from "lucide-react";
 import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento, calcularDinheiroEsperado } from "@/lib/formaPagamento";
 import {
   agregarServicosNoCaixa,
@@ -17,6 +17,8 @@ import {
   isVendaDeItemOS,
   type OrdemParaCaixa,
 } from "@/lib/caixa/servicosCaixa";
+import { TOTAIS_DEVOLUCOES_ZERO, type TotaisDevolucoesTroca } from "@/lib/caixa/devolucoesTroca";
+import { carregarDevolucoesDoCaixa } from "@/lib/caixa/carregarDevolucoesTroca";
 
 interface ResumoFechamento {
   total_dinheiro: number;
@@ -62,6 +64,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
     cliente_nome: string;
   }[]>([]);
   const [totalServicos, setTotalServicos] = useState(0);
+  const [devolucoes, setDevolucoes] = useState<TotaisDevolucoesTroca>(TOTAIS_DEVOLUCOES_ZERO);
 
   useEffect(() => {
     if (open && caixa) {
@@ -265,8 +268,22 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       setTotalSangrias(sangrias);
       setTotalSuprimentos(suprimentos);
 
+      // Devoluções da diferença da troca feitas neste caixa (mesma leitura do fechamento real).
+      let devolucoesCaixa = TOTAIS_DEVOLUCOES_ZERO;
+      try {
+        devolucoesCaixa = await carregarDevolucoesDoCaixa(caixa.id);
+      } catch (erro) {
+        console.error("[caixa] etapa=devoluções de troca do caixa", erro);
+        toast({
+          title: "Não foi possível ler as devoluções de troca deste caixa",
+          description: "O dinheiro esperado abaixo não as inclui. Tente abrir o fechamento de novo.",
+          variant: "destructive",
+        });
+      }
+      setDevolucoes(devolucoesCaixa);
+
       const total_vendas = total_dinheiro + total_pix + total_cartao + total_a_receber;
-      const saldo_final = calcularDinheiroEsperado({ saldoInicial: caixa.saldo_inicial, totalDinheiro: total_dinheiro, suprimentos, sangrias });
+      const saldo_final = calcularDinheiroEsperado({ saldoInicial: caixa.saldo_inicial, totalDinheiro: total_dinheiro, suprimentos, sangrias, devolucoesDinheiro: devolucoesCaixa.dinheiro });
 
       setResumo({ total_dinheiro, total_pix, total_cartao, total_a_receber, total_vendas, total_vendido, saldo_final });
       setSaldoFinalContado(saldo_final);
@@ -306,7 +323,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       ]
     : [];
 
-  const temMovimentacoes = totalSangrias > 0 || totalSuprimentos > 0;
+  const temMovimentacoes = totalSangrias > 0 || totalSuprimentos > 0 || devolucoes.dinheiro > 0 || devolucoes.pix > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -405,6 +422,31 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                         <ArrowUpCircle className="h-3.5 w-3.5" /> Suprimentos
                       </span>
                       <span className="text-green-600 font-medium">+ {formatCurrency(totalSuprimentos)}</span>
+                    </div>
+                  )}
+                  {devolucoes.dinheiro > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-red-600 flex items-center gap-1">
+                        <Repeat className="h-3.5 w-3.5" /> Devoluções de troca em Dinheiro ({devolucoes.quantidadeDinheiro})
+                      </span>
+                      <span className="text-red-600 font-medium">- {formatCurrency(devolucoes.dinheiro)}</span>
+                    </div>
+                  )}
+                  {devolucoes.pix > 0 && (
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Repeat className="h-3.5 w-3.5" /> Devoluções em Pix ({devolucoes.quantidadePix})
+                        </span>
+                        <span className="text-muted-foreground font-medium">{formatCurrency(devolucoes.pix)}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Não saem da gaveta: não mudam o dinheiro esperado.</p>
+                    </div>
+                  )}
+                  {devolucoes.dinheiro > 0 && resumo && (
+                    <div className="flex justify-between text-sm pt-2 border-t font-semibold">
+                      <span>Dinheiro esperado na gaveta</span>
+                      <span>{formatCurrency(resumo.saldo_final)}</span>
                     </div>
                   )}
                 </Card>

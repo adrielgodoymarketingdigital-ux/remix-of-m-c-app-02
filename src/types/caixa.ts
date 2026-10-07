@@ -12,6 +12,8 @@ export interface Caixa {
   total_a_receber: number;
   /** Soma faturável das OS entregues no período (também rateada nos totais por forma acima). */
   total_servicos: number | null;
+  /** Devoluções de troca em dinheiro abatidas do dinheiro esperado (foto do fechamento). Ausente antes da migration 2B. */
+  total_devolucoes_troca?: number | null;
   observacoes: string | null;
   status: 'aberto' | 'fechado';
   created_at: string;
