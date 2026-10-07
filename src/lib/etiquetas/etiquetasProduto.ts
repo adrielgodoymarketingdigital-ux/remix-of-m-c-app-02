@@ -12,6 +12,7 @@ import JsBarcode from "jsbarcode";
 import { ItemEstoque } from "@/types/produto";
 import { formatCurrency } from "@/lib/formatters";
 import { getPrintScript } from "@/lib/print-utils";
+import { ErroLayoutFolha, calcularGradeFolha, montarCssGradeFolha, type MedidasFolha } from "./layoutFolha.ts";
 import { clampAjusteVertical, formatarAjusteVertical, paddingVerticalComAjuste } from "./ajusteVertical.ts";
 import {
   ALTURA_FOLHA_MM,
@@ -468,31 +469,25 @@ export function montarCssPagina(config: ConfigEtiquetas): string {
       .etq-pagina-termica:last-child { page-break-after: auto; break-after: auto; }
     `;
   }
-  const p = config.a4;
+  return montarCssGradeFolha(calcularGradeFolha(medidasDaFolha(config.a4)));
+}
+
+/** Medidas da grade de um padrão (margens e espaços de calcularLayoutFolha). Padrão que não cabe → ErroLayoutFolha. */
+export function medidasDaFolha(p: PadraoEtiqueta): MedidasFolha {
   const l = calcularLayoutFolha(p);
-  const mm = (v: number) => `${v.toFixed(2)}mm`;
-  // Colunas com largura FIXA em mm (nunca fr/100%) e grade alinhada ao início:
-  // a etiqueta não estica e a posição de cada coluna é exatamente a calculada.
-  return `
-    @page { size: ${mm(p.larguraFolhaMm)} ${mm(calcularAlturaFolha(p))}; margin: 0; }
-    .etq-folha {
-      width: ${mm(p.larguraFolhaMm)}; height: ${mm(calcularAlturaFolha(p))}; box-sizing: border-box; overflow: hidden;
-      padding: ${mm(l.margemSuperiorMm)} 0 0 ${mm(l.margemLateralMm)}; margin: 0;
-      display: grid; grid-template-columns: repeat(${p.colunas}, ${mm(p.larguraMm)}); grid-auto-rows: ${mm(p.alturaMm)};
-      column-gap: ${mm(l.margemLateralMm)}; row-gap: ${mm(l.espacoLinhasMm)};
-      justify-content: start; align-content: start;
-      page-break-after: always; break-after: page;
-    }
-    .etq-folha:last-child { page-break-after: auto; break-after: auto; }
-    .etq-celula {
-      width: ${mm(p.larguraMm)}; height: ${mm(p.alturaMm)}; overflow: hidden;
-      page-break-inside: avoid; break-inside: avoid;
-    }
-    /* iOS imprime via #print-root, cujo CSS global de impressão força width:100% e overflow:visible. */
-    #print-root .etq-folha { width: ${mm(p.larguraFolhaMm)} !important; }
-    #print-root .etq-folha, #print-root .etq-celula, #print-root .etq-etiqueta,
-    #print-root .etq-nome, #print-root .etq-linha, #print-root .etq-loja { overflow: hidden !important; }
-  `;
+  if (l.erro) throw new ErroLayoutFolha(l.erro);
+  return {
+    larguraFolhaMm: p.larguraFolhaMm,
+    alturaFolhaMm: calcularAlturaFolha(p),
+    larguraMm: p.larguraMm,
+    alturaMm: p.alturaMm,
+    colunas: p.colunas,
+    linhas: l.linhasPorFolha,
+    margemEsquerdaMm: l.margemLateralMm,
+    margemSuperiorMm: l.margemSuperiorMm,
+    gapColunasMm: l.margemLateralMm,
+    gapLinhasMm: l.espacoLinhasMm,
+  };
 }
 
 /** Documento HTML completo para popup/iframe, com o script que dispara a impressão. */

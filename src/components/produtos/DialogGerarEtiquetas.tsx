@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,13 @@ import {
   clampAjusteVertical,
   formatarAjusteVertical,
 } from '@/lib/etiquetas/ajusteVertical';
+import {
+  avisoModoEtiqueta,
+  escolherModoInicial,
+  houveEscolhaManualNaSessao,
+  marcarEscolhaManualNaSessao,
+  type FormatoImpressaoEtiqueta,
+} from '@/lib/etiquetas/modoPadrao';
 import { usePadroesEtiqueta } from '@/hooks/usePadroesEtiqueta';
 import { CampoNumero, CamposPadraoEtiqueta, MiniaturaFolha, ResumoLayoutFolha } from './CamposPadraoEtiqueta';
 
@@ -71,12 +78,22 @@ const MAX_ETIQUETAS_POR_IMPRESSAO = 1000;
 const PX_POR_MM = 96 / 25.4;
 const LARGURA_PREVIA_PX = 300;
 
+const sessaoDoNavegador = (): Storage | null => {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
 export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, nomeLoja = '', onGerenciarPadroes }: DialogGerarEtiquetasProps) => {
   const [config, setConfig] = useState<ConfigEtiquetas>(carregarConfigEtiquetas);
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
   const [previaId, setPreviaId] = useState<string>('');
   // Mesma query da aba Etiquetas das Configurações: salvar lá atualiza esta lista.
   const { padroes, carregando: carregandoPadroes, salvando: salvandoPadrao, salvarPadrao } = usePadroesEtiqueta(open);
+  // Modo inicial pelo padrão da loja: decidido uma vez por abertura, depois que os padrões chegam.
+  const modoInicialAplicado = useRef(false);
 
   // itensSelecionados é recriado a cada render do pai (filter) — reinicia só quando
   // o diálogo abre ou a seleção muda de fato, senão as quantidades digitadas se perdem.
@@ -85,6 +102,7 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
     if (!open) return;
     const ids = chaveItens ? chaveItens.split(',') : [];
     setConfig(carregarConfigEtiquetas());
+    modoInicialAplicado.current = false;
     setQuantidades(Object.fromEntries(ids.map((id) => [id, 1])));
     setPreviaId(ids[0] ?? '');
   }, [open, chaveItens]);
@@ -107,7 +125,36 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
     });
   }, [open, padroes, carregandoPadroes]);
 
+  // Loja com padrão de folha salvo abre em Folha/Grade, a menos que o modo já
+  // tenha sido escolhido à mão nesta sessão do navegador (ver modoPadrao.ts).
+  useEffect(() => {
+    if (!open || carregandoPadroes || modoInicialAplicado.current) return;
+    modoInicialAplicado.current = true;
+    setConfig((c) => {
+      const decisao = escolherModoInicial({
+        formatoLembrado: c.formato,
+        padraoLembradoId: c.a4.id,
+        padroesLoja: padroes.map((p) => p.id),
+        escolhaManualNaSessao: houveEscolhaManualNaSessao(sessaoDoNavegador()),
+      });
+      const padrao = decisao.padraoId && decisao.padraoId !== c.a4.id ? padroes.find((p) => p.id === decisao.padraoId) : undefined;
+      if (decisao.formato === c.formato && !padrao) return c;
+      return {
+        ...c,
+        formato: decisao.formato,
+        // Padrão salvo traz a calibração dele (mesma regra da troca de padrão na lista).
+        ...(padrao ? { a4: padrao, posicaoInicial: 1, ajusteVerticalMm: padrao.ajusteVerticalMm } : {}),
+      };
+    });
+  }, [open, padroes, carregandoPadroes]);
+
   const atualizar = (parcial: Partial<ConfigEtiquetas>) => setConfig((c) => ({ ...c, ...parcial }));
+  const escolherFormato = (formato: FormatoImpressaoEtiqueta) => {
+    marcarEscolhaManualNaSessao(sessaoDoNavegador());
+    modoInicialAplicado.current = true;
+    atualizar({ formato });
+  };
+  const avisoModo = avisoModoEtiqueta(config.formato, padroes.length);
   const alternarCampo = (campo: CampoEtiqueta, marcado: boolean) =>
     setConfig((c) => ({ ...c, campos: { ...c.campos, [campo]: marcado } }));
   const atualizarA4 = (parcial: Partial<ConfigEtiquetas['a4']>) =>
@@ -337,13 +384,19 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">Formato de impressão</h3>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant={config.formato === 'termica' ? 'default' : 'outline'} size="sm" onClick={() => atualizar({ formato: 'termica' })}>
+                <Button variant={config.formato === 'termica' ? 'default' : 'outline'} size="sm" onClick={() => escolherFormato('termica')}>
                   Térmica avulsa
                 </Button>
-                <Button variant={config.formato === 'a4' ? 'default' : 'outline'} size="sm" onClick={() => atualizar({ formato: 'a4' })}>
+                <Button variant={config.formato === 'a4' ? 'default' : 'outline'} size="sm" onClick={() => escolherFormato('a4')}>
                   Folha/Grade
                 </Button>
               </div>
+              {avisoModo && (
+                <p className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  {avisoModo}
+                </p>
+              )}
 
               {config.formato === 'termica' ? (
                 <div className="grid grid-cols-2 gap-2">
