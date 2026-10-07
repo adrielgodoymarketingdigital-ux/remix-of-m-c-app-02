@@ -27,6 +27,7 @@ import {
 } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
 import { cssLinhaCampoRecibo } from "@/lib/recibo/linhaCampoRecibo";
+import { cssCompactacaoReciboA4 } from "@/lib/recibo/compactacaoReciboA4";
 
 // Normaliza tempo_garantia (sempre em meses) para exibição legível.
 function formatarGarantia(meses: number): string {
@@ -342,7 +343,7 @@ export function DialogReciboPDV({
       line-height: 1.55;
       white-space: pre-line;
       color: #222;
-    }
+    }${cssCompactacaoReciboA4(isThermal, "pdv")}
     /* Sobrescreve @page e body para térmica (deve vir por último) */
     ${cssTermico}
   </style>
