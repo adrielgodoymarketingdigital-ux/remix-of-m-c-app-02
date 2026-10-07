@@ -354,3 +354,16 @@ export function linhasParaCancelarVendaInteira<T extends LinhaVendaCancelavel>(l
     .filter((l) => !l.cancelada && l.observacoes !== "pagamento_duplo_secundario")
     .map((linha) => ({ linha, estornar: linha.parcela_numero == null || linha.parcela_numero <= 1 }));
 }
+
+// ── Excluir em Dispositivos vendidos ────────────────────────────────────────
+
+export const MENSAGEM_EXCLUIR_VENDA_COM_TROCA = "Esta venda tem troca de aparelho. Cancele pela tela de Vendas.";
+
+/**
+ * "Excluir" de Dispositivos vendidos não sabe desfazer a troca: venda com troca
+ * ativa é bloqueada (cancela-se pela tela de Vendas). Sem conseguir ler a troca,
+ * bloqueia também. null = pode excluir como sempre.
+ */
+export function bloqueioExcluirDispositivoVendido(leitura: { erro: boolean; trocaAtiva: boolean }): string | null {
+  return leitura.erro || leitura.trocaAtiva ? MENSAGEM_EXCLUIR_VENDA_COM_TROCA : null;
+}

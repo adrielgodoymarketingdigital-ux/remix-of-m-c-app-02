@@ -19,6 +19,7 @@ import { useEmpresaFiltro } from "@/hooks/useResolvedUserId";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { bloqueioExcluirDispositivoVendido } from "@/lib/vendas/trocaPDV";
 
 interface ItemGrupoDetalhe {
   id: string;
@@ -380,6 +381,23 @@ export function SecaoDispositivosVendidos() {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) throw new Error("Usuário não autenticado");
+
+      // Venda com troca (ou troca ilegível): este fluxo não desfaz a troca — bloqueia antes de gravar.
+      if (vendaParaExcluir.grupo_venda) {
+        const { data: troca, error: erroTroca } = await supabase
+          .from("vendas_trocas")
+          .select("id")
+          .eq("grupo_venda", vendaParaExcluir.grupo_venda)
+          .eq("cancelada", false)
+          .maybeSingle();
+        if (erroTroca) console.error("[excluir venda] etapa=ler troca da venda", erroTroca);
+        const bloqueio = bloqueioExcluirDispositivoVendido({ erro: !!erroTroca, trocaAtiva: !!troca });
+        if (bloqueio) {
+          toast({ title: "Não foi possível excluir", description: bloqueio, variant: "destructive" });
+          setVendaParaExcluir(null);
+          return;
+        }
+      }
 
       // Cancelar a venda e estornar o dispositivo para o estoque
       const { error: cancelError } = await supabase

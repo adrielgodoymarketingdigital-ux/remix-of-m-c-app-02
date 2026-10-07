@@ -10,6 +10,7 @@ import { LABEL_ORIGEM_EXTRATO, ORIGENS_COM_DETALHE } from "../../src/lib/finance
 import {
   MENSAGEM_VENDA_COM_TROCA_INTEIRA,
   avisoDevolucaoNoCancelamento,
+  bloqueioExcluirDispositivoVendido,
   decidirCancelamentoTroca,
   linhasParaCancelarVendaInteira,
   podeConfirmarCancelamento,
@@ -173,4 +174,13 @@ Deno.test("alterar data: a foto nunca fica negativa (caixa fechado antes da 2B, 
   const parte = { ...PARTE_ZERO, devolucoes_dinheiro: 800 };
   const r = novosTotaisCaixa({ ...caixaFechado, total_devolucoes_troca: 0 }, parte, -1);
   assertEquals([r.total_devolucoes_troca, r.saldo_final], [0, 1700]);
+});
+
+// ── Excluir em Dispositivos vendidos ────────────────────────────────────────
+
+Deno.test("excluir em Dispositivos vendidos: bloqueia com troca e com erro de leitura; sem troca segue", () => {
+  const msg = "Esta venda tem troca de aparelho. Cancele pela tela de Vendas.";
+  assertEquals(bloqueioExcluirDispositivoVendido({ erro: false, trocaAtiva: true }), msg);
+  assertEquals(bloqueioExcluirDispositivoVendido({ erro: true, trocaAtiva: false }), msg);
+  assertEquals(bloqueioExcluirDispositivoVendido({ erro: false, trocaAtiva: false }), null);
 });
