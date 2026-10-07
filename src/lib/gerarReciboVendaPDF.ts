@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
 import { adicionarRodapePDF, formatCurrencyPDF } from "@/lib/pdfHelpers";
+import { CAMPOS_LOJA_PDF_TERMICO, CAMPOS_LOJA_RECIBO_DISPOSITIVO, ESPACO_LOGO_DADOS_MM, encaixarLogo, linhasDadosLoja } from "@/lib/recibo/cabecalhoRecibo";
 
 export interface DispositivoPDFReciboVenda {
   marca?: string;
@@ -79,144 +80,107 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
     }
   };
 
-  const cnpjLinha = dados.configLoja?.cnpj ? `CNPJ: ${dados.configLoja.cnpj}` : "";
-  const telLinha = dados.configLoja?.telefone ? `Tel: ${dados.configLoja.telefone}` : "";
-  const infoLoja = [cnpjLinha, telLinha].filter(Boolean).join("   ");
   const titulo = dados.modo === "garantia" ? "TERMO DE GARANTIA" : "RECIBO DE VENDA";
+  // Logo à esquerda e dados da loja ao lado (mesmo módulo dos recibos em HTML).
+  const linhasLoja = linhasDadosLoja(dados.configLoja, isThermal ? CAMPOS_LOJA_PDF_TERMICO : CAMPOS_LOJA_RECIBO_DISPOSITIVO);
+  let logo: { larguraMm: number; alturaMm: number } | null = null;
+  if (dados.logoBase64) {
+    try {
+      const props = doc.getImageProperties(dados.logoBase64);
+      logo = encaixarLogo(props.width, props.height, dados.formato);
+    } catch {
+      logo = null; // segue sem logo
+    }
+  }
+  const desenharLogo = (x: number, yTopo: number, chipPad: number) => {
+    if (!logo || !dados.logoBase64) return;
+    try {
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(x, yTopo, logo.larguraMm + chipPad * 2, logo.alturaMm + chipPad * 2, 1, 1, "F");
+      doc.addImage(dados.logoBase64, x + chipPad, yTopo + chipPad, logo.larguraMm, logo.alturaMm);
+    } catch {
+      // segue sem logo
+    }
+  };
 
   // ===== CABEÇALHO =====
   if (isThermal) {
-    // Mesma caixa escura de marca do A4 — só que empilhada (logo, nome,
-    // CNPJ/tel cada um numa linha, título) em vez de lado a lado, porque a
-    // largura útil (52-76mm) não cabe duas colunas. Cabeçalho "achatado" pra
-    // texto simples sem essa caixa lia como versão simplificada demais.
+    // Caixa escura de marca: logo à esquerda e nome + dados ao lado (quebrando
+    // linha dentro da coluna), título embaixo. Sem logo, o texto usa a largura
+    // toda, centralizado.
     const padding = 3;
-
-    let logoLargura = 0;
-    let logoAltura = 0;
-    if (dados.logoBase64) {
-      try {
-        const props = doc.getImageProperties(dados.logoBase64);
-        const proporcao = props.width / props.height;
-        logoLargura = Math.min(larguraUtil * 0.45, 22);
-        logoAltura = logoLargura / proporcao;
-        const logoAlturaMax = 11;
-        if (logoAltura > logoAlturaMax) {
-          logoAltura = logoAlturaMax;
-          logoLargura = logoAltura * proporcao;
-        }
-      } catch {
-        logoLargura = 0;
-        logoAltura = 0;
-      }
-    }
-
-    // CNPJ e telefone em linhas separadas no térmico — juntos numa linha só
-    // estourariam a largura em papel de 58mm.
-    const linhasInfoLoja = [cnpjLinha, telLinha].filter(Boolean);
-
-    const headerAltura =
-      padding * 2 +
-      (logoAltura > 0 ? logoAltura + 3 : 0) +
-      5 + // nome da loja
-      linhasInfoLoja.length * 3.2 +
-      5.5; // título
-
-    doc.setFillColor(...COR_HEADER);
-    doc.roundedRect(margin, y, larguraUtil, headerAltura, 2, 2, "F");
-
-    let contentY = y + padding;
-    if (logoAltura > 0 && dados.logoBase64) {
-      try {
-        const chipPad = 1.2;
-        const chipX = margin + (larguraUtil - logoLargura) / 2 - chipPad;
-        doc.setFillColor(255, 255, 255);
-        doc.roundedRect(chipX, contentY - chipPad, logoLargura + chipPad * 2, logoAltura + chipPad * 2, 1, 1, "F");
-        doc.addImage(dados.logoBase64, margin + (larguraUtil - logoLargura) / 2, contentY, logoLargura, logoAltura);
-      } catch {
-        // segue sem logo
-      }
-      contentY += logoAltura + 3;
-    }
+    const chipPad = 1;
+    const espaco = ESPACO_LOGO_DADOS_MM[dados.formato];
+    const larguraLogo = logo ? logo.larguraMm + chipPad * 2 + espaco : 0;
+    const larguraTexto = larguraUtil - padding * 2 - larguraLogo;
+    const centralizado = !logo;
+    const xTexto = centralizado ? pageWidth / 2 : margin + padding + larguraLogo;
+    const opcoesTexto = centralizado ? { align: "center" as const } : undefined;
 
     doc.setFontSize(9.5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(255, 255, 255);
-    doc.text(dados.configLoja?.nome_loja || "", pageWidth / 2, contentY, { align: "center" });
-    contentY += 5;
+    const linhasNome: string[] = doc.splitTextToSize(dados.configLoja?.nome_loja || "", larguraTexto);
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    const linhasInfo: string[] = linhasLoja.flatMap((l) => doc.splitTextToSize(l, larguraTexto) as string[]);
+    const alturaTexto = linhasNome.length * 4 + linhasInfo.length * 3.2;
+    const alturaBloco = Math.max(alturaTexto, logo ? logo.alturaMm + chipPad * 2 : 0);
+    const headerAltura = padding * 2 + alturaBloco + 2 + 5.5; // + título
 
-    if (linhasInfoLoja.length > 0) {
-      doc.setFontSize(6.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...COR_HEADER_TEXTO_SEC);
-      linhasInfoLoja.forEach((linha) => {
-        doc.text(linha, pageWidth / 2, contentY, { align: "center" });
-        contentY += 3.2;
-      });
-    }
+    doc.setFillColor(...COR_HEADER);
+    doc.roundedRect(margin, y, larguraUtil, headerAltura, 2, 2, "F");
+    desenharLogo(margin + padding, y + padding, chipPad);
+
+    let contentY = y + padding + 3;
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    linhasNome.forEach((l) => { doc.text(l, xTexto, contentY, opcoesTexto); contentY += 4; });
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COR_HEADER_TEXTO_SEC);
+    linhasInfo.forEach((l) => { doc.text(l, xTexto, contentY, opcoesTexto); contentY += 3.2; });
 
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COR_TITULO);
-    doc.text(titulo, pageWidth / 2, contentY, { align: "center" });
+    doc.text(titulo, pageWidth / 2, y + padding + alturaBloco + 2 + 3.5, { align: "center" });
 
     y += headerAltura + 5;
   } else {
-    const headerAltura = 24;
-    doc.setFillColor(...COR_HEADER);
-    doc.roundedRect(margin, y, larguraUtil, headerAltura, 2, 2, "F");
-
-    let textoX = margin + 5;
-    if (dados.logoBase64) {
-      try {
-        const chipLargura = 26;
-        const chipAltura = headerAltura - 6;
-        const chipX = margin + 4;
-        const chipY = y + 3;
-        doc.setFillColor(255, 255, 255);
-        doc.roundedRect(chipX, chipY, chipLargura, chipAltura, 1.5, 1.5, "F");
-
-        const props = doc.getImageProperties(dados.logoBase64);
-        const proporcao = props.width / props.height;
-        const padding = 2;
-        let larguraImg = chipLargura - padding * 2;
-        let alturaImg = larguraImg / proporcao;
-        if (alturaImg > chipAltura - padding * 2) {
-          alturaImg = chipAltura - padding * 2;
-          larguraImg = alturaImg * proporcao;
-        }
-        const imgX = chipX + (chipLargura - larguraImg) / 2;
-        const imgY = chipY + (chipAltura - alturaImg) / 2;
-        doc.addImage(dados.logoBase64, imgX, imgY, larguraImg, alturaImg);
-        textoX = chipX + chipLargura + 5;
-      } catch {
-        // segue sem logo
-      }
-    }
+    const padding = 4;
+    const chipPad = 1.5;
+    const larguraTitulo = 55;
+    const xTexto = margin + padding + (logo ? logo.larguraMm + chipPad * 2 + ESPACO_LOGO_DADOS_MM.a4 : 1);
+    const larguraTexto = pageWidth - margin - padding - larguraTitulo - xTexto;
 
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(255, 255, 255);
-    doc.text(dados.configLoja?.nome_loja || "", textoX, y + 10);
+    const linhasNome: string[] = doc.splitTextToSize(dados.configLoja?.nome_loja || "", larguraTexto);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    const linhasInfo: string[] = linhasLoja.flatMap((l) => doc.splitTextToSize(l, larguraTexto) as string[]);
+    const alturaTexto = linhasNome.length * 5.5 + linhasInfo.length * 3.6;
+    const headerAltura = Math.max(18, padding * 2 + Math.max(alturaTexto, logo ? logo.alturaMm + chipPad * 2 : 0));
 
-    if (infoLoja) {
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...COR_HEADER_TEXTO_SEC);
-      doc.text(infoLoja, textoX, y + 16);
-    }
+    doc.setFillColor(...COR_HEADER);
+    doc.roundedRect(margin, y, larguraUtil, headerAltura, 2, 2, "F");
+    desenharLogo(margin + padding, y + padding, chipPad);
+
+    let contentY = y + padding + 4.5;
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    linhasNome.forEach((l) => { doc.text(l, xTexto, contentY); contentY += 5.5; });
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COR_HEADER_TEXTO_SEC);
+    linhasInfo.forEach((l) => { doc.text(l, xTexto, contentY); contentY += 3.6; });
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COR_TITULO);
-    doc.text(titulo, pageWidth - margin - 4, y + 10, { align: "right" });
-
-    if (dados.configLoja?.endereco) {
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...COR_HEADER_TEXTO_SEC);
-      doc.text(dados.configLoja.endereco, pageWidth - margin - 4, y + 16, { align: "right" });
-    }
+    doc.text(titulo, pageWidth - margin - 4, y + padding + 6, { align: "right" });
 
     y += headerAltura;
   }

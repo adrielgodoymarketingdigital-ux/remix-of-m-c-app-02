@@ -25,6 +25,7 @@ import { carregarTrocaRecibo } from "@/lib/vendas/carregarTrocaRecibo";
 import { DadosTrocaRecibo, htmlBlocoTrocaRecibo, montarBlocoTrocaRecibo, textoBlocoTrocaRecibo } from "@/lib/vendas/reciboTroca";
 import { BlocoTrocaRecibo } from "@/components/vendas/BlocoTrocaRecibo";
 import { toast } from "sonner";
+import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -597,7 +598,10 @@ export function DialogReimprimirReciboVenda({
     .recibo-print-header-loja h1 { font-size: 14px; font-weight: 900; letter-spacing: 0.03em; }
     .recibo-print-header-loja p { font-size: 8px; color: #adb5bd; margin-top: 1px; }
     .recibo-print-dados-loja { font-size: 9px; color: #111; margin-top: 2px; line-height: 1.6; font-weight: 600; font-style: normal; }
-    .recibo-print-header-titulo { text-align: right; }
+    /* Logo + dados da loja (src/lib/recibo/cabecalhoRecibo.ts), na faixa escura. */
+    .recibo-print-header-logo { flex: 1 1 auto; min-width: 0; }
+    ${cssCabecalhoRecibo(formato, { escopo: '.recibo-print-header', tema: 'escuro', compacto: true })}
+    .recibo-print-header-titulo { text-align: right; flex-shrink: 0; }
     .recibo-print-header-titulo h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; color: #4cc9f0; }
     .recibo-print-header-titulo p { font-size: 8px; color: #adb5bd; margin-top: 2px; }
 
@@ -704,15 +708,15 @@ export function DialogReimprimirReciboVenda({
   <!-- HEADER -->
   <div class="recibo-print-header">
     <div class="recibo-print-header-logo">
-      ${logoSrc ? `<div class="recibo-print-logo-chip"><img src="${logoSrc}" alt="Logo" /></div>` : ''}
-      <div class="recibo-print-header-loja">
-        <h1>${configLoja?.nome_loja || ''}</h1>
-        <p>${configLoja?.cnpj ? `CNPJ: ${configLoja.cnpj}` : ''} ${configLoja?.telefone ? `• Tel: ${configLoja.telefone}` : ''}</p>
-      </div>
+      ${montarCabecalhoReciboHtml({
+        logoSrc,
+        nomeLoja: configLoja?.nome_loja,
+        // CNPJ e telefone na mesma linha, como antes; endereço na linha de baixo.
+        linhas: [linhasDadosLoja(configLoja, ['cnpj', 'telefone']).join(' • '), ...linhasDadosLoja(configLoja, ['endereco'])].filter(Boolean),
+      })}
     </div>
     <div class="recibo-print-header-titulo">
       <h2>${modo === 'garantia' ? 'TERMO DE GARANTIA' : 'RECIBO DE VENDA'}</h2>
-      <p>${configLoja?.endereco || ''}</p>
     </div>
   </div>
 

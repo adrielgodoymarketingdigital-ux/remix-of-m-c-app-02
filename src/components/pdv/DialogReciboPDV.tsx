@@ -25,6 +25,7 @@ import {
   ModeloGarantia,
   MODELOS_PADRAO_GARANTIA,
 } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
+import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
 
 // Normaliza tempo_garantia (sempre em meses) para exibição legível.
 function formatarGarantia(meses: number): string {
@@ -245,6 +246,8 @@ export function DialogReciboPDV({
       margin-top: 3px;
       line-height: 1.8;
     }
+    /* Logo + dados da loja (src/lib/recibo/cabecalhoRecibo.ts) */
+    ${cssCabecalhoRecibo(formato)}
     .recibo-titulo-bloco {
       margin-top: ${isThermal ? '6px' : '12px'};
       padding-top: ${isThermal ? '6px' : '12px'};
@@ -444,30 +447,20 @@ export function DialogReciboPDV({
         </DialogHeader>
 
         {/* Preview do Recibo */}
-        <div className="border rounded-lg p-6 bg-background">
+        <style>{cssCabecalhoRecibo("80mm", { escopo: ".recibo-previa-cab" })}</style>
+        <div className="border rounded-lg p-6 bg-background recibo-previa-cab">
           <div ref={reciboRef}>
             <div className="recibo-header">
-              {showLogo && configLoja?.logo_url && (
-                <img
-                  src={configLoja.logo_url}
-                  alt="Logo da Loja"
-                  className="logo-loja"
-                  crossOrigin="anonymous"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              )}
-
-              <h1>{configLoja?.nome_loja || ''}</h1>
-
-              {showDadosLoja && (
-                <div className="dados-loja">
-                  {configLoja?.cnpj && <p>CNPJ: {configLoja.cnpj}</p>}
-                  {configLoja?.endereco && <p>{configLoja.endereco}</p>}
-                  {configLoja?.telefone && <p>Tel: {configLoja.telefone}</p>}
-                  {configLoja?.whatsapp && <p>WhatsApp: {configLoja.whatsapp}</p>}
-                  {configLoja?.email && <p>{configLoja.email}</p>}
-                </div>
-              )}
+              {/* Logo à esquerda e dados da loja ao lado (módulo único dos recibos de venda). */}
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: montarCabecalhoReciboHtml({
+                    logoSrc: showLogo ? configLoja?.logo_url : null,
+                    nomeLoja: configLoja?.nome_loja,
+                    linhas: showDadosLoja ? linhasDadosLoja(configLoja) : [],
+                  }),
+                }}
+              />
 
               <div className="recibo-titulo-bloco">
                 <h2>RECIBO DE VENDA</h2>
