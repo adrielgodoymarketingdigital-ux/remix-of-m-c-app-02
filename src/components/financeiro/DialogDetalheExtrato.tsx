@@ -64,8 +64,13 @@ function DetalheVenda({ linhas }: { linhas: Venda[] }) {
   const total = Math.max(0, subtotal - desconto);
 
   // A 2ª forma (pagamento duplo) é repetida em todas as linhas da venda — vale a de uma só.
+  // Venda com troca grava a fatia de cada item (ver planejarTroca): aí a 2ª forma é a soma.
   const segundaForma = primeira.segunda_forma_pagamento;
-  const valorSegunda = segundaForma ? Math.min(num(primeira.valor_segunda_forma), total) : 0;
+  const comTroca = linhas.some((v) => v.valor_troca != null);
+  const valorSegundaGravado = comTroca
+    ? linhas.reduce((acc, v) => acc + num(v.valor_segunda_forma), 0)
+    : num(primeira.valor_segunda_forma);
+  const valorSegunda = segundaForma ? Math.min(valorSegundaGravado, total) : 0;
   const parcelas = primeira.total_parcelas && primeira.total_parcelas > 1 ? primeira.total_parcelas : null;
   const porCompetencia = primeira.forma_pagamento === "a_receber" || primeira.forma_pagamento === "a_prazo";
   const parcelasRecebidas = new Set(linhas.filter((v) => v.recebido).map((v) => v.parcela_numero ?? 1)).size;

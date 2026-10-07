@@ -95,10 +95,10 @@ export function ratearPorPeso(valor: number, pesos: number[]): number[] {
 }
 
 /**
- * valor_troca de cada linha que o PDV grava: por item, proporcional ao valor
- * do item já com desconto (bruto − desconto do item); dentro do item, igual
- * entre as parcelas "a receber". Soma de todas as linhas = valorTroca exato.
- * Retorno: [item][parcela].
+ * valor_troca por linha: por item, proporcional ao peso (bruto − desconto);
+ * dentro do item, igual entre as parcelas "a receber". Soma = valorTroca exato.
+ * Retorno: [item][parcela]. O PDV usa via planejarTroca (pesos já descontados
+ * da 2ª forma e zerados em peça).
  */
 export function planejarTrocaPorLinha(
   itens: { bruto: number; desconto: number }[],
@@ -112,15 +112,72 @@ export function planejarTrocaPorLinha(
   });
 }
 
+export const MENSAGEM_TROCA_MAIOR_QUE_ITENS_SEM_PECA =
+  "A troca não pode ser maior que o valor dos aparelhos/produtos da venda. Peças não entram na troca. Reduza o valor da troca ou ajuste os itens.";
+
+export interface ItemParaTroca {
+  /** preço × quantidade */
+  bruto: number;
+  /** Desconto manual do item (o PDV divide o desconto igualmente entre os itens). */
+  desconto: number;
+  /** Peça (vendas.peca_id): o Extrato ignora essas linhas, então nunca recebem troca. */
+  peca: boolean;
+}
+
+export interface PlanoTroca {
+  /** valor_troca de cada linha principal: [item][parcela "a receber"]. Tudo 0 se bloqueado. */
+  trocaPorLinha: number[][];
+  /**
+   * Fatia da 2ª forma de cada item (venda com troca + pagamento duplo), em
+   * centavos exatos com soma = 2ª forma: vai em valor_segunda_forma da linha
+   * principal e nas linhas auxiliares do item. null = sem 2ª forma.
+   */
+  segundaPorItem: number[] | null;
+  /** O que sobra dos itens sem peça depois do desconto e da fatia da 2ª forma. */
+  capacidade: number;
+  bloqueio: string | null;
+}
+
+/**
+ * Plano da troca para uma venda COM troca. O caixa e o Extrato tiram a troca e
+ * a 2ª forma linha a linha e limitam cada linha a zero; para a soma subtraída
+ * ser exatamente a troca:
+ *  - a 2ª forma de cada linha é a fatia do item (e não o valor inteiro repetido
+ *    em todas as linhas, como nas vendas sem troca);
+ *  - a troca de cada item é proporcional ao que sobra dele depois do desconto e
+ *    dessa fatia (nunca negativo), só em itens sem peça;
+ *  - se a troca não cabe nesses itens, a venda é bloqueada.
+ */
+export function planejarTroca(p: {
+  itens: ItemParaTroca[];
+  parcelasPorItem: number[];
+  valorTroca: number;
+  /** Valor da 2ª forma (0 = sem pagamento duplo). */
+  valorSegunda: number;
+}): PlanoTroca {
+  const segundaPorItem = centavos(p.valorSegunda) > 0 ? ratearPorPeso(p.valorSegunda, p.itens.map((i) => i.bruto)) : null;
+  const sobras = p.itens.map((i, idx) =>
+    i.peca ? 0 : Math.max(0, centavos(i.bruto) - centavos(i.desconto) - centavos(segundaPorItem?.[idx] ?? 0)) / 100,
+  );
+  const capacidadeC = sobras.reduce((a, s) => a + centavos(s), 0);
+  const trocaC = Math.max(0, centavos(p.valorTroca));
+  const zeros = () => p.itens.map((_, idx) => Array.from({ length: Math.max(1, Math.floor(p.parcelasPorItem[idx] ?? 1)) }, () => 0));
+  if (trocaC > capacidadeC) {
+    return { trocaPorLinha: zeros(), segundaPorItem, capacidade: capacidadeC / 100, bloqueio: MENSAGEM_TROCA_MAIOR_QUE_ITENS_SEM_PECA };
+  }
+  const trocaPorLinha = trocaC === 0
+    ? zeros()
+    : planejarTrocaPorLinha(sobras.map((s) => ({ bruto: s, desconto: 0 })), p.parcelasPorItem, trocaC / 100);
+  return { trocaPorLinha, segundaPorItem, capacidade: capacidadeC / 100, bloqueio: null };
+}
+
 /**
  * Valor da 2ª forma (pagamento duplo) atribuído a um item, para as linhas
- * auxiliares "pagamento_duplo_secundario".
- *  - Sem troca: fórmula de sempre do PDV, item × (2ª forma ÷ total a pagar),
- *    mantida igual para não mudar vendas sem troca (com 0 a pagar devolve 0
- *    em vez de dividir por zero).
- *  - Com troca: proporcional ao bruto do item sobre o subtotal, para a soma
- *    das linhas ser exatamente a 2ª forma (com a fórmula antiga o valor
- *    inflaria pela troca — e vira a conta a receber da 2ª forma).
+ * auxiliares "pagamento_duplo_secundario" de vendas SEM troca: fórmula de
+ * sempre do PDV, item × (2ª forma ÷ total a pagar), mantida igual para não
+ * mudar essas vendas (com 0 a pagar devolve 0 em vez de dividir por zero).
+ * Venda com troca usa PlanoTroca.segundaPorItem (temTroca aqui só existe por
+ * compatibilidade: proporcional ao bruto, sem arredondar).
  */
 export function valorSegundaFormaItem(p: {
   itemBruto: number;

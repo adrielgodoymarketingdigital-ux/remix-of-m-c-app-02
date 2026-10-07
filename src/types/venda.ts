@@ -52,6 +52,8 @@ export interface Venda {
   funcionario_id?: string | null;
   segunda_forma_pagamento?: string | null;
   valor_segunda_forma?: number | null;
+  /** Aparelho recebido na troca que abate esta linha (NULL = sem troca). */
+  valor_troca?: number | null;
   observacoes?: string | null;
   empresa_id?: string | null;
   contaAPrazoPendente?: {

@@ -58,7 +58,8 @@ import {
   MENSAGEM_TROCA_MAIOR_QUE_VENDA,
   NOME_FORMA_TROCA_TOTAL,
   calcularTotaisComTroca,
-  planejarTrocaPorLinha,
+  planejarTroca,
+  ratearPorPeso,
   valorSegundaFormaItem,
 } from "@/lib/vendas/trocaPDV";
 import { ContextoEntradaTroca, ProgressoEntradaTroca, registrarEntradaTroca } from "@/lib/vendas/registrarEntradaTroca";
@@ -326,6 +327,26 @@ const PDV = () => {
   /** Quanto o cliente paga (dinheiro/pix/cartão/a receber), já sem a troca. */
   const calcularTotal = () => calcularTotaisVenda().aPagar;
 
+  /**
+   * Plano da troca (valor_troca por linha, fatia da 2ª forma por item, bloqueio
+   * de peça) com o estado atual da tela. null = venda sem troca. Usado na tela,
+   * na validação e na gravação, para os três verem exatamente o mesmo plano.
+   */
+  const calcularPlanoTroca = (totais = calcularTotaisVenda()) => {
+    if (totais.valorEntrada <= 0) return null;
+    const trocaPagaTudo = totais.situacao === "igual";
+    const forma = trocaPagaTudo ? "outro" : formaPagamento;
+    const duplo = pagamentoDuploAtivo && !trocaPagaTudo;
+    const parcelasReceber = forma === "a_receber" && tipoRecebimento === "parcelado" ? numParcelasReceber : 1;
+    const descontoPorItem = calcularDescontoReal() / Math.max(1, itensCarrinho.length);
+    return planejarTroca({
+      itens: itensCarrinho.map((i) => ({ bruto: i.preco * i.quantidade, desconto: descontoPorItem, peca: i.tipo === "peca" })),
+      parcelasPorItem: itensCarrinho.map(() => parcelasReceber),
+      valorTroca: totais.valorEntrada,
+      valorSegunda: duplo && valorSegundaPagamento > 0 ? valorSegundaPagamento : 0,
+    });
+  };
+
   const labelFormaPagamento: Record<string, string> = {
     dinheiro: "Dinheiro",
     pix: "PIX",
@@ -384,6 +405,11 @@ const PDV = () => {
     const totais = calcularTotaisVenda();
     if (!totais.podeFinalizar) {
       toast({ title: "Troca maior que a venda", description: MENSAGEM_TROCA_MAIOR_QUE_VENDA, variant: "destructive" });
+      return false;
+    }
+    const bloqueioTroca = calcularPlanoTroca(totais)?.bloqueio;
+    if (bloqueioTroca) {
+      toast({ title: "Troca maior que os itens", description: bloqueioTroca, variant: "destructive" });
       return false;
     }
     // Só uma entrada pendente por vez (o "Tentar novamente" guarda uma); vendas sem troca seguem livres.
@@ -510,16 +536,13 @@ const PDV = () => {
       // Calcular desconto proporcional por item
       const valorDescontoManualPorItem = calcularDescontoReal() / itensCarrinho.length;
 
-      // valor_troca por linha (como o desconto); a soma fecha exatamente no valor da
-      // entrada. Sem troca a coluna nem vai no insert (venda idêntica à de antes).
-      const parcelasReceber = forma === "a_receber" && tipoRecebimento === "parcelado" ? numParcelasReceber : 1;
-      const trocaPorLinha = temTroca
-        ? planejarTrocaPorLinha(
-            itensCarrinho.map((i) => ({ bruto: i.preco * i.quantidade, desconto: valorDescontoManualPorItem })),
-            itensCarrinho.map(() => parcelasReceber),
-            totais.valorEntrada,
-          )
-        : null;
+      // Troca: valor_troca por linha (soma exata = entrada, nunca em peça) e, com
+      // pagamento duplo, a fatia da 2ª forma de cada item. Sem troca o plano é null:
+      // valor_troca nem vai no insert e a 2ª forma é gravada como sempre.
+      const plano = calcularPlanoTroca(totais);
+      if (plano?.bloqueio) throw new Error(plano.bloqueio); // validarVenda já barra; defesa extra
+      const trocaPorLinha = plano ? plano.trocaPorLinha : null;
+      const segundaPorItem = plano?.segundaPorItem ?? null;
 
       const vendasRegistradas = [];
 
@@ -600,7 +623,7 @@ const PDV = () => {
               : item.nome || null,
             // Se houver pagamento duplo, guarda a 2ª forma no registro principal para exibição
             segunda_forma_pagamento: (duplo && segundaFormaPagamento) ? resolverFormaPagamentoBanco(segundaFormaPagamento) : null,
-            valor_segunda_forma: (duplo && valorSegundaPagamento > 0) ? valorSegundaPagamento : null,
+            valor_segunda_forma: (duplo && valorSegundaPagamento > 0) ? (segundaPorItem?.[idxItem] ?? valorSegundaPagamento) : null,
             imei_dispositivo: item.tipo === "dispositivo" ? (item.imei_dispositivo || null) : null,
             tempo_garantia: item.tipo === "dispositivo" ? (item.tempo_garantia ?? null) : null,
             ...(trocaPorLinha ? { valor_troca: trocaPorLinha[idxItem][parcIdx] } : {}),
@@ -632,7 +655,7 @@ const PDV = () => {
               const nomeCliente = clienteSelecionado?.nome || "Cliente avulso";
               const sufixoParcela = isParceladoReceber ? ` (${parcIdx + 1}/${totalParcelas})` : "";
               const valorBaseConta = duplo
-                ? totalBrutoItem - valorSegundaPagamento
+                ? totalBrutoItem - (segundaPorItem?.[idxItem] ?? valorSegundaPagamento)
                 : vendaData.total;
               // Com troca, a conta é só o que o cliente ainda deve.
               const valorPrimeiraForma = trocaPorLinha
@@ -706,22 +729,28 @@ const PDV = () => {
         const isParceladoSegunda = segundaFormaPagamento === "a_receber" && tipoRecebimentoSegunda === "parcelado";
         const totalParcelasSegunda = isParceladoSegunda ? numParcelasSegunda : 1;
 
-        for (const item of itensCarrinho) {
+        for (const [idxItem, item] of itensCarrinho.entries()) {
           const tipoParaBanco = item.tipo === "dispositivo" ? "dispositivo" : "produto";
           const dispositivoId = item.tipo === "dispositivo" ? (item.dispositivo_id || item.id) : null;
           let produtoId: string | null = null;
           let pecaId: string | null = null;
           if (item.tipo === "produto") produtoId = item.produto_id || item.id;
           if (item.tipo === "peca") pecaId = item.peca_id || item.id;
+          // Com troca: a mesma fatia gravada na linha principal, dividida em centavos exatos entre as parcelas.
+          const parcelasDaFatia = segundaPorItem
+            ? ratearPorPeso(segundaPorItem[idxItem], Array.from({ length: totalParcelasSegunda }, () => 1))
+            : null;
 
           for (let parcIdx = 0; parcIdx < totalParcelasSegunda; parcIdx++) {
-            const valorItemSegundaParcela = valorSegundaFormaItem({
-              itemBruto: item.preco * item.quantidade,
-              subtotal: calcularSubtotal(),
-              totalAPagar: totais.aPagar,
-              valorSegunda: valorSegundaPagamento,
-              temTroca,
-            }) / totalParcelasSegunda;
+            const valorItemSegundaParcela = parcelasDaFatia
+              ? parcelasDaFatia[parcIdx]
+              : valorSegundaFormaItem({
+                  itemBruto: item.preco * item.quantidade,
+                  subtotal: calcularSubtotal(),
+                  totalAPagar: totais.aPagar,
+                  valorSegunda: valorSegundaPagamento,
+                  temTroca: false,
+                }) / totalParcelasSegunda;
 
             let dataPrevisaoSegunda: string | null = null;
             if (segundaFormaPagamento === "a_receber") {
@@ -924,6 +953,7 @@ const PDV = () => {
   const subtotal = calcularSubtotal();
   const totaisVenda = calcularTotaisVenda();
   const total = totaisVenda.aPagar;
+  const bloqueioTroca = totaisVenda.podeFinalizar ? calcularPlanoTroca(totaisVenda)?.bloqueio ?? null : null;
 
   return (
     <AppLayout>
@@ -1199,6 +1229,7 @@ const PDV = () => {
                     {MENSAGEM_TROCA_MAIOR_QUE_VENDA} Diferença: {formatCurrency(totaisVenda.diferencaADevolver)}.
                   </p>
                 )}
+                {bloqueioTroca && <p className="text-xs text-destructive">{bloqueioTroca}</p>}
               </div>
 
               {/* Seletor de vendedor */}
@@ -1469,7 +1500,7 @@ const PDV = () => {
                 className="w-full"
                 size="lg"
                 onClick={finalizarVenda}
-                disabled={finalizando || itensCarrinho.length === 0 || !caixaEstaAberto || !totaisVenda.podeFinalizar}
+                disabled={finalizando || itensCarrinho.length === 0 || !caixaEstaAberto || !totaisVenda.podeFinalizar || !!bloqueioTroca}
                 data-walkthrough="pdv-finalizar"
               >
                 {finalizando ? "Finalizando..." : "Finalizar Venda"}
