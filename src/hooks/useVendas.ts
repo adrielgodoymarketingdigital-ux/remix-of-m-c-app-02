@@ -11,9 +11,22 @@ import { useIdentidade } from "./useResolvedUserId";
 import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
-import { cancelarSecundariasEmCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
+import { cancelarSecundariasEmCascata, type ResultadoCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
 import { AcaoAparelhoTroca, decidirCancelamentoTroca } from "@/lib/vendas/trocaPDV";
 import { carregarTrocaDaVenda, marcarTrocaCancelada, tirarAparelhoDaTrocaDoEstoque } from "@/lib/vendas/cancelamentoTroca";
+
+/** Campos de uma linha de venda que o cancelamento usa (estorno de estoque e cascata). */
+interface LinhaCancelamento {
+  id: string;
+  tipo: string;
+  user_id: string | null;
+  grupo_venda?: string | null;
+  observacoes?: string | null;
+  dispositivo_id: string | null;
+  produto_id: string | null;
+  peca_id: string | null;
+  quantidade: number;
+}
 import { reconhecerRecebimentoVendaVinculada, MENSAGEM_CUSTO_NAO_CONFIRMADO } from "@/lib/vendas/reconhecerSegundaForma";
 import { alterarDataVenda as alterarDataVendaNoBanco } from "@/lib/vendas/alterarDataVenda";
 import { SELECT_VENDA_COM_ITENS } from "@/lib/vendas/itensVenda";
@@ -501,7 +514,7 @@ export const useVendas = () => {
     vendaId: string,
     estornarEstoque: boolean,
     motivo?: string,
-    /** O que fazer com o aparelho recebido na troca quando esta é a última linha ativa da venda. */
+    /** O que fazer com o aparelho recebido na troca (venda com troca é cancelada inteira). */
     acaoAparelhoTroca: AcaoAparelhoTroca | null = null,
   ): Promise<boolean> => {
     try {
@@ -541,78 +554,87 @@ export const useVendas = () => {
         return false;
       }
 
-      // Estornar estoque se solicitado
-      if (estornarEstoque) {
-        if (vendaOriginal.tipo === "dispositivo" && vendaOriginal.dispositivo_id) {
-          // Buscar quantidade atual do dispositivo
-          const { data: dispositivo, error: fetchError } = await supabase
-            .from("dispositivos")
-            .select("quantidade")
-            .eq("id", vendaOriginal.dispositivo_id)
-            .eq("user_id", vendaOriginal.user_id)
-            .single();
+      // Venda com troca: cancelada INTEIRA (todas as linhas principais ativas,
+      // estoque estornado 1× por item); sem troca, só a linha escolhida.
+      const linhasACancelar: { linha: LinhaCancelamento; estornar: boolean }[] = decisaoTroca.cancelarVendaInteira
+        ? troca.linhasParaCancelar
+        : [{ linha: vendaOriginal, estornar: true }];
+      const cascatas: ResultadoCascata[] = [];
 
-          if (fetchError) throw fetchError;
+      for (const { linha, estornar } of linhasACancelar) {
+        // Estornar estoque se solicitado
+        if (estornarEstoque && estornar) {
+          if (linha.tipo === "dispositivo" && linha.dispositivo_id) {
+            // Buscar quantidade atual do dispositivo
+            const { data: dispositivo, error: fetchError } = await supabase
+              .from("dispositivos")
+              .select("quantidade")
+              .eq("id", linha.dispositivo_id)
+              .eq("user_id", linha.user_id)
+              .single();
 
-          const novaQuantidade = (dispositivo?.quantidade || 0) + vendaOriginal.quantidade;
+            if (fetchError) throw fetchError;
 
-          const { error: estoqueError } = await supabase
-            .from("dispositivos")
-            .update({
-              quantidade: novaQuantidade,
-              vendido: false,
-            })
-            .eq("id", vendaOriginal.dispositivo_id)
-            .eq("user_id", vendaOriginal.user_id);
+            const novaQuantidade = (dispositivo?.quantidade || 0) + linha.quantidade;
 
-          if (estoqueError) throw estoqueError;
-        } else if (vendaOriginal.tipo === "produto" && vendaOriginal.produto_id) {
-          // Buscar quantidade atual do produto
-          const { data: produto, error: fetchError } = await supabase
-            .from("produtos")
-            .select("quantidade")
-            .eq("id", vendaOriginal.produto_id)
-            .eq("user_id", vendaOriginal.user_id)
-            .single();
+            const { error: estoqueError } = await supabase
+              .from("dispositivos")
+              .update({
+                quantidade: novaQuantidade,
+                vendido: false,
+              })
+              .eq("id", linha.dispositivo_id)
+              .eq("user_id", linha.user_id);
 
-          if (fetchError) throw fetchError;
+            if (estoqueError) throw estoqueError;
+          } else if (linha.tipo === "produto" && linha.produto_id) {
+            // Buscar quantidade atual do produto
+            const { data: produto, error: fetchError } = await supabase
+              .from("produtos")
+              .select("quantidade")
+              .eq("id", linha.produto_id)
+              .eq("user_id", linha.user_id)
+              .single();
 
-          const novaQuantidade = (produto?.quantidade || 0) + vendaOriginal.quantidade;
+            if (fetchError) throw fetchError;
 
-          const { error: estoqueError } = await supabase
-            .from("produtos")
-            .update({
-              quantidade: novaQuantidade,
-            })
-            .eq("id", vendaOriginal.produto_id)
-            .eq("user_id", vendaOriginal.user_id);
+            const novaQuantidade = (produto?.quantidade || 0) + linha.quantidade;
 
-          if (estoqueError) throw estoqueError;
+            const { error: estoqueError } = await supabase
+              .from("produtos")
+              .update({
+                quantidade: novaQuantidade,
+              })
+              .eq("id", linha.produto_id)
+              .eq("user_id", linha.user_id);
+
+            if (estoqueError) throw estoqueError;
+          }
         }
+
+        // Atualizar a venda como cancelada (somente do usuário dono)
+        const { error: updateError } = await supabase
+          .from("vendas")
+          .update({
+            cancelada: true,
+            data_cancelamento: new Date().toISOString(),
+            motivo_cancelamento: motivo || null,
+            estorno_estoque: estornarEstoque,
+          })
+          .eq("id", linha.id)
+          .eq("user_id", linha.user_id);
+
+        if (updateError) throw updateError;
+
+        // Pagamento duplo: cancela junto as parcelas da 2ª forma (linhas secundárias)
+        // e suas contas a receber pendentes. Se alguma parcela já foi recebida, não
+        // mexe em nada — exige estorno manual (só avisa).
+        cascatas.push(await cancelarSecundariasEmCascata(linha, {
+          motivo: motivo ? `${motivo} (cancelamento da venda principal)` : null,
+        }));
       }
 
-      // Atualizar a venda como cancelada (somente do usuário dono)
-      const { error: updateError } = await supabase
-        .from("vendas")
-        .update({
-          cancelada: true,
-          data_cancelamento: new Date().toISOString(),
-          motivo_cancelamento: motivo || null,
-          estorno_estoque: estornarEstoque,
-        })
-        .eq("id", vendaId)
-        .eq("user_id", vendaOriginal.user_id);
-
-      if (updateError) throw updateError;
-
-      // Pagamento duplo: cancela junto as parcelas da 2ª forma (linhas secundárias)
-      // e suas contas a receber pendentes. Se alguma parcela já foi recebida, não
-      // mexe em nada — exige estorno manual (só avisa).
-      const cascata = await cancelarSecundariasEmCascata(vendaOriginal, {
-        motivo: motivo ? `${motivo} (cancelamento da venda principal)` : null,
-      });
-
-      // Troca da venda: só desfeita na última linha ativa (ver decidirCancelamentoTroca).
+      // Troca da venda: desfeita junto com a venda inteira (ver decidirCancelamentoTroca).
       if (decisaoTroca.marcarTrocaCancelada && troca.trocaId) {
         try {
           await marcarTrocaCancelada(troca.trocaId);
@@ -630,46 +652,51 @@ export const useVendas = () => {
         }
       }
 
+      const itensCancelados = linhasACancelar.filter((l) => l.estornar).length;
       toast({
         title: "Venda cancelada",
-        description: estornarEstoque
-          ? "Venda cancelada e estoque estornado com sucesso."
-          : "Venda cancelada com sucesso.",
+        description: decisaoTroca.cancelarVendaInteira
+          ? `Venda com troca cancelada por inteiro (${itensCancelados} ${itensCancelados === 1 ? "item" : "itens"})${estornarEstoque ? " e estoque estornado." : "."}`
+          : estornarEstoque
+            ? "Venda cancelada e estoque estornado com sucesso."
+            : "Venda cancelada com sucesso.",
       });
 
-      if (cascata.status === "cancelado" && cascata.parcelasRecebidasParaRevisao === 0) {
-        toast({
-          title: "Parcelas da 2ª forma canceladas",
-          description: `${cascata.secundariasCanceladas} linha(s) do pagamento duplo cancelada(s)${
-            cascata.contasExcluidas > 0
-              ? ` e ${cascata.contasExcluidas} conta(s) a receber pendente(s) removida(s)`
-              : ""
-          }.`,
-        });
-      } else if (cascata.status === "cancelado") {
-        toast({
-          title: "Atenção: parcela(s) já recebida(s) ficaram de fora",
-          description: `${cascata.secundariasCanceladas} parcela(s) pendente(s) foram canceladas${
-            cascata.contasExcluidas > 0 ? ` (${cascata.contasExcluidas} conta(s) a receber removida(s))` : ""
-          }, mas ${cascata.parcelasRecebidasParaRevisao} parcela(s) da 2ª forma já recebida(s) NÃO foram canceladas — faça o estorno manualmente.`,
-          variant: "destructive",
-          duration: 15000,
-        });
-      } else if (cascata.status === "bloqueado_parcela_recebida") {
-        toast({
-          title: "Atenção: parcelas já recebidas",
-          description: `Esta venda tinha ${cascata.parcelasRecebidas} parcela(s) da 2ª forma já recebida(s), e nenhuma foi cancelada automaticamente — faça o estorno manualmente.`,
-          variant: "destructive",
-          duration: 15000,
-        });
-      } else if (cascata.status === "erro") {
-        console.error("❌ Erro na cascata do cancelamento:", cascata.mensagem);
-        toast({
-          title: "Venda cancelada, mas as parcelas da 2ª forma não foram canceladas",
-          description: `Revise as parcelas/contas a receber dessa venda manualmente. (${cascata.mensagem})`,
-          variant: "destructive",
-          duration: 15000,
-        });
+      for (const cascata of cascatas) {
+        if (cascata.status === "cancelado" && cascata.parcelasRecebidasParaRevisao === 0) {
+          toast({
+            title: "Parcelas da 2ª forma canceladas",
+            description: `${cascata.secundariasCanceladas} linha(s) do pagamento duplo cancelada(s)${
+              cascata.contasExcluidas > 0
+                ? ` e ${cascata.contasExcluidas} conta(s) a receber pendente(s) removida(s)`
+                : ""
+            }.`,
+          });
+        } else if (cascata.status === "cancelado") {
+          toast({
+            title: "Atenção: parcela(s) já recebida(s) ficaram de fora",
+            description: `${cascata.secundariasCanceladas} parcela(s) pendente(s) foram canceladas${
+              cascata.contasExcluidas > 0 ? ` (${cascata.contasExcluidas} conta(s) a receber removida(s))` : ""
+            }, mas ${cascata.parcelasRecebidasParaRevisao} parcela(s) da 2ª forma já recebida(s) NÃO foram canceladas — faça o estorno manualmente.`,
+            variant: "destructive",
+            duration: 15000,
+          });
+        } else if (cascata.status === "bloqueado_parcela_recebida") {
+          toast({
+            title: "Atenção: parcelas já recebidas",
+            description: `Esta venda tinha ${cascata.parcelasRecebidas} parcela(s) da 2ª forma já recebida(s), e nenhuma foi cancelada automaticamente — faça o estorno manualmente.`,
+            variant: "destructive",
+            duration: 15000,
+          });
+        } else if (cascata.status === "erro") {
+          console.error("❌ Erro na cascata do cancelamento:", cascata.mensagem);
+          toast({
+            title: "Venda cancelada, mas as parcelas da 2ª forma não foram canceladas",
+            description: `Revise as parcelas/contas a receber dessa venda manualmente. (${cascata.mensagem})`,
+            variant: "destructive",
+            duration: 15000,
+          });
+        }
       }
 
       // Recarregar vendas

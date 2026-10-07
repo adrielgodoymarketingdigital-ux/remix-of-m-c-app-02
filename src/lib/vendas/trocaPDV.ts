@@ -262,13 +262,13 @@ export type AcaoAparelhoTroca = "manter" | "remover";
 export interface SituacaoTrocaNoCancelamento {
   /** vendas_trocas ativa (cancelada = false) para o grupo_venda da linha. */
   trocaAtiva: boolean;
-  /** Outras linhas principais da mesma venda ainda não canceladas. */
-  outrasLinhasAtivas: number;
   /** Aparelho recebido; null se não existe mais (excluído de vez). */
   aparelho: { vendido: boolean; excluido: boolean } | null;
 }
 
 export interface DecisaoCancelamentoTroca {
+  /** Venda com troca: todas as linhas da venda são canceladas juntas. */
+  cancelarVendaInteira: boolean;
   /** Mostrar a pergunta manter/tirar do estoque. */
   perguntar: boolean;
   marcarTrocaCancelada: boolean;
@@ -282,25 +282,74 @@ export interface DecisaoCancelamentoTroca {
 export const MENSAGEM_APARELHO_TROCA_VENDIDO =
   "O aparelho recebido na troca já foi vendido e não pode ser tirado do estoque. Escolha mantê-lo para cancelar esta venda.";
 
+export const MENSAGEM_VENDA_COM_TROCA_INTEIRA = "Vendas com troca são canceladas por inteiro";
+
 /**
- * A troca é da venda inteira: só é desfeita quando a última linha principal
- * ativa da venda é cancelada. Cancelar um item de uma venda com vários itens
- * não mexe na troca (ela continua valendo para os outros).
+ * A troca é da venda inteira, e a venda com troca só é cancelada INTEIRA
+ * (Fase 2B): cancelar um item cancela todos os itens da venda e desfaz a
+ * troca. Assim a troca (e a devolução) nunca fica valendo para uma venda
+ * pela metade.
  */
 export function decidirCancelamentoTroca(
   s: SituacaoTrocaNoCancelamento,
   acao: AcaoAparelhoTroca | null,
 ): DecisaoCancelamentoTroca {
-  const nada: DecisaoCancelamentoTroca = { perguntar: false, marcarTrocaCancelada: false, removerAparelho: false, bloqueio: null, podeRemover: false };
-  if (!s.trocaAtiva || s.outrasLinhasAtivas > 0) return nada;
+  const nada: DecisaoCancelamentoTroca = {
+    cancelarVendaInteira: false, perguntar: false, marcarTrocaCancelada: false, removerAparelho: false, bloqueio: null, podeRemover: false,
+  };
+  if (!s.trocaAtiva) return nada;
 
   const aparelhoNoEstoque = !!s.aparelho && !s.aparelho.excluido;
   const vendido = !!s.aparelho?.vendido;
   const podeRemover = aparelhoNoEstoque && !vendido;
-  const base = { perguntar: aparelhoNoEstoque, marcarTrocaCancelada: true, podeRemover };
+  const base = { cancelarVendaInteira: true, perguntar: aparelhoNoEstoque, marcarTrocaCancelada: true, podeRemover };
 
   if (acao === "remover" && aparelhoNoEstoque && vendido) {
     return { ...base, removerAparelho: false, bloqueio: MENSAGEM_APARELHO_TROCA_VENDIDO };
   }
   return { ...base, removerAparelho: acao === "remover" && podeRemover, bloqueio: null };
+}
+
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+/**
+ * Aviso do cancelamento quando a troca devolveu dinheiro ao cliente. O
+ * cancelamento não lança saída nem entrada: a recuperação é combinada com o
+ * cliente. null = sem devolução (sem aviso e sem "Estou ciente").
+ */
+export function avisoDevolucaoNoCancelamento(t: { valorDevolvido: number; formaDevolucao: string | null } | null): string | null {
+  if (!t || centavos(t.valorDevolvido) <= 0) return null;
+  const forma = t.formaDevolucao === "pix" ? NOMES_FORMA_DEVOLUCAO.pix : NOMES_FORMA_DEVOLUCAO.dinheiro;
+  return `O cliente recebeu ${brl.format(centavos(t.valorDevolvido) / 100)} (${forma}) de devolução nesta troca. ` +
+    "Cancelar a venda não traz esse dinheiro de volta; combine a recuperação com o cliente.";
+}
+
+/** Botão "Confirmar Cancelamento": troca lida, sem bloqueio e, com devolução, "Estou ciente" marcado. */
+export function podeConfirmarCancelamento(p: {
+  carregando: boolean;
+  erroLeitura: boolean;
+  bloqueio: string | null;
+  exigeCiente: boolean;
+  ciente: boolean;
+}): boolean {
+  return !p.carregando && !p.erroLeitura && !p.bloqueio && (!p.exigeCiente || p.ciente);
+}
+
+export interface LinhaVendaCancelavel {
+  id: string;
+  observacoes: string | null;
+  cancelada: boolean | null;
+  parcela_numero: number | null;
+}
+
+/**
+ * Linhas que o cancelamento da venda inteira cancela: as principais ainda
+ * ativas (o auxiliar do pagamento duplo vai pela cascata). estornar = só a
+ * 1ª linha de cada item: o parcelado "a receber" grava a quantidade cheia em
+ * todas as parcelas, mas o estoque baixou uma vez só.
+ */
+export function linhasParaCancelarVendaInteira<T extends LinhaVendaCancelavel>(linhas: T[]): { linha: T; estornar: boolean }[] {
+  return linhas
+    .filter((l) => !l.cancelada && l.observacoes !== "pagamento_duplo_secundario")
+    .map((linha) => ({ linha, estornar: linha.parcela_numero == null || linha.parcela_numero <= 1 }));
 }

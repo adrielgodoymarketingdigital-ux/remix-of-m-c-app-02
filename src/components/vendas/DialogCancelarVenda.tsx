@@ -17,7 +17,14 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useEffect, useState } from "react";
-import { AcaoAparelhoTroca, MENSAGEM_APARELHO_TROCA_VENDIDO, decidirCancelamentoTroca } from "@/lib/vendas/trocaPDV";
+import {
+  AcaoAparelhoTroca,
+  MENSAGEM_APARELHO_TROCA_VENDIDO,
+  MENSAGEM_VENDA_COM_TROCA_INTEIRA,
+  avisoDevolucaoNoCancelamento,
+  decidirCancelamentoTroca,
+  podeConfirmarCancelamento,
+} from "@/lib/vendas/trocaPDV";
 import { TrocaDaVenda, carregarTrocaDaVenda } from "@/lib/vendas/cancelamentoTroca";
 
 interface DialogCancelarVendaProps {
@@ -47,21 +54,39 @@ export const DialogCancelarVenda = ({
   const [troca, setTroca] = useState<TrocaDaVenda | null>(null);
   const [carregandoTroca, setCarregandoTroca] = useState(false);
   const [acaoAparelho, setAcaoAparelho] = useState<AcaoAparelhoTroca>("manter");
+  const [erroTroca, setErroTroca] = useState(false);
+  // "Estou ciente" da devolução já entregue ao cliente (obrigatório quando houve devolução).
+  const [cienteDevolucao, setCienteDevolucao] = useState(false);
 
   useEffect(() => {
     if (!open || !venda) return;
     let ativo = true;
     setTroca(null);
     setAcaoAparelho("manter");
+    setErroTroca(false);
+    setCienteDevolucao(false);
     setCarregandoTroca(true);
     carregarTrocaDaVenda(venda)
       .then((t) => { if (ativo) setTroca(t); })
-      .catch((erro) => console.error("[cancelamento] etapa=carregar troca", erro))
+      .catch((erro) => {
+        console.error("[cancelamento] etapa=carregar troca", erro);
+        if (ativo) setErroTroca(true);
+      })
       .finally(() => { if (ativo) setCarregandoTroca(false); });
     return () => { ativo = false; };
   }, [open, venda]);
 
   const decisaoTroca = troca ? decidirCancelamentoTroca(troca, acaoAparelho) : null;
+  const avisoDevolucao = troca?.trocaAtiva ? avisoDevolucaoNoCancelamento(troca) : null;
+  const vendaInteira = !!decisaoTroca?.cancelarVendaInteira;
+  const itensDaVenda = troca?.linhasParaCancelar.filter((l) => l.estornar).length ?? 0;
+  const podeConfirmar = podeConfirmarCancelamento({
+    carregando: carregandoTroca,
+    erroLeitura: erroTroca,
+    bloqueio: decisaoTroca?.bloqueio ?? null,
+    exigeCiente: !!avisoDevolucao,
+    ciente: cienteDevolucao,
+  });
 
   const handleConfirmar = async () => {
     await onConfirmar(estornarEstoque, motivo, decisaoTroca?.perguntar ? acaoAparelho : null);
@@ -146,11 +171,19 @@ export const DialogCancelarVenda = ({
                   Estornar para estoque
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Devolver a quantidade vendida ({venda.quantidade}{" "}
-                  {venda.quantidade === 1 ? "unidade" : "unidades"}) ao estoque
+                  {vendaInteira
+                    ? "Devolver ao estoque os itens desta venda"
+                    : <>Devolver a quantidade vendida ({venda.quantidade}{" "}
+                      {venda.quantidade === 1 ? "unidade" : "unidades"}) ao estoque</>}
                 </p>
               </div>
             </div>
+          )}
+
+          {erroTroca && (
+            <p className="text-sm text-destructive">
+              Não foi possível verificar se esta venda tem troca de aparelho. Feche e tente de novo.
+            </p>
           )}
 
           {/* Aparelho recebido na troca */}
@@ -160,11 +193,12 @@ export const DialogCancelarVenda = ({
                 <Package className="h-4 w-4" />
                 Aparelho recebido na troca{troca.nomeAparelho ? `: ${troca.nomeAparelho}` : ""} ({formatCurrency(troca.valorEntrada)})
               </p>
-              {troca.outrasLinhasAtivas > 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  A venda tem outros itens ativos: a troca continua valendo para eles e o aparelho fica no estoque.
+              {vendaInteira && (
+                <p className="text-xs font-medium text-amber-700">
+                  {MENSAGEM_VENDA_COM_TROCA_INTEIRA}: {itensDaVenda > 1 ? `os ${itensDaVenda} itens desta venda serão cancelados juntos` : "a venda toda será cancelada"} e a troca será desfeita.
                 </p>
-              ) : decisaoTroca?.perguntar ? (
+              )}
+              {decisaoTroca?.perguntar ? (
                 <RadioGroup value={acaoAparelho} onValueChange={(v) => setAcaoAparelho(v as AcaoAparelhoTroca)} className="gap-2">
                   <div className="flex items-start gap-2">
                     <RadioGroupItem value="manter" id="troca-manter" className="mt-0.5" />
@@ -185,6 +219,26 @@ export const DialogCancelarVenda = ({
               ) : (
                 <p className="text-xs text-muted-foreground">O aparelho já não está no estoque; a troca será marcada como cancelada.</p>
               )}
+            </div>
+          )}
+
+          {/* Devolução da diferença já entregue ao cliente */}
+          {avisoDevolucao && (
+            <div className="space-y-2 p-3 border border-amber-500 rounded-lg bg-amber-50 dark:bg-amber-950/30">
+              <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                {avisoDevolucao}
+              </p>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="ciente-devolucao"
+                  checked={cienteDevolucao}
+                  onCheckedChange={(checked) => setCienteDevolucao(checked === true)}
+                />
+                <Label htmlFor="ciente-devolucao" className="font-medium cursor-pointer">
+                  Estou ciente
+                </Label>
+              </div>
             </div>
           )}
 
@@ -209,7 +263,7 @@ export const DialogCancelarVenda = ({
           <Button
             variant="destructive"
             onClick={handleConfirmar}
-            disabled={cancelando || carregandoTroca || !!decisaoTroca?.bloqueio}
+            disabled={cancelando || !podeConfirmar}
           >
             {cancelando ? (
               "Cancelando..."

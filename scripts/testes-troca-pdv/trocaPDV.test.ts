@@ -131,31 +131,28 @@ Deno.test("lucro e faturamento ignoram a troca", () => {
 const aparelhoNoEstoque = { vendido: false, excluido: false };
 
 Deno.test("cancelamento: venda sem troca não pergunta nada", () => {
-  const d = decidirCancelamentoTroca({ trocaAtiva: false, outrasLinhasAtivas: 0, aparelho: null }, null);
-  assertEquals([d.perguntar, d.marcarTrocaCancelada, d.removerAparelho, d.bloqueio], [false, false, false, null]);
+  const d = decidirCancelamentoTroca({ trocaAtiva: false, aparelho: null }, null);
+  assertEquals([d.cancelarVendaInteira, d.perguntar, d.marcarTrocaCancelada, d.removerAparelho, d.bloqueio], [false, false, false, false, null]);
 });
 
-Deno.test("cancelamento: um item de venda com outros itens ativos mantém a troca", () => {
-  const d = decidirCancelamentoTroca({ trocaAtiva: true, outrasLinhasAtivas: 1, aparelho: aparelhoNoEstoque }, "remover");
-  assertEquals([d.perguntar, d.marcarTrocaCancelada, d.removerAparelho], [false, false, false]);
-});
-
-Deno.test("cancelamento: última linha cancela a troca; manter ou tirar do estoque", () => {
-  const manter = decidirCancelamentoTroca({ trocaAtiva: true, outrasLinhasAtivas: 0, aparelho: aparelhoNoEstoque }, "manter");
-  assertEquals([manter.perguntar, manter.marcarTrocaCancelada, manter.removerAparelho, manter.podeRemover], [true, true, false, true]);
-  const remover = decidirCancelamentoTroca({ trocaAtiva: true, outrasLinhasAtivas: 0, aparelho: aparelhoNoEstoque }, "remover");
+// Fase 2B: venda com troca é cancelada inteira, então a troca é sempre desfeita
+// (antes: só na última linha ativa; cancelar um item mantinha a troca).
+Deno.test("cancelamento: venda com troca cancela inteira e desfaz a troca; manter ou tirar do estoque", () => {
+  const manter = decidirCancelamentoTroca({ trocaAtiva: true, aparelho: aparelhoNoEstoque }, "manter");
+  assertEquals([manter.cancelarVendaInteira, manter.perguntar, manter.marcarTrocaCancelada, manter.removerAparelho, manter.podeRemover], [true, true, true, false, true]);
+  const remover = decidirCancelamentoTroca({ trocaAtiva: true, aparelho: aparelhoNoEstoque }, "remover");
   assertEquals([remover.marcarTrocaCancelada, remover.removerAparelho, remover.bloqueio], [true, true, null]);
 });
 
 Deno.test("cancelamento: aparelho já vendido bloqueia 'tirar do estoque'", () => {
   const vendido = { vendido: true, excluido: false };
-  const d = decidirCancelamentoTroca({ trocaAtiva: true, outrasLinhasAtivas: 0, aparelho: vendido }, "remover");
+  const d = decidirCancelamentoTroca({ trocaAtiva: true, aparelho: vendido }, "remover");
   assertEquals([d.bloqueio, d.removerAparelho, d.podeRemover], [MENSAGEM_APARELHO_TROCA_VENDIDO, false, false]);
-  const manter = decidirCancelamentoTroca({ trocaAtiva: true, outrasLinhasAtivas: 0, aparelho: vendido }, "manter");
+  const manter = decidirCancelamentoTroca({ trocaAtiva: true, aparelho: vendido }, "manter");
   assertEquals([manter.bloqueio, manter.marcarTrocaCancelada], [null, true]);
 });
 
 Deno.test("cancelamento: aparelho já excluído só cancela a troca, sem pergunta", () => {
-  const d = decidirCancelamentoTroca({ trocaAtiva: true, outrasLinhasAtivas: 0, aparelho: { vendido: false, excluido: true } }, "remover");
+  const d = decidirCancelamentoTroca({ trocaAtiva: true, aparelho: { vendido: false, excluido: true } }, "remover");
   assertEquals([d.perguntar, d.marcarTrocaCancelada, d.removerAparelho, d.bloqueio], [false, true, false, null]);
 });
