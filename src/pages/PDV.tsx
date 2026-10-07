@@ -897,7 +897,19 @@ const PDV = () => {
           formaPagamento: forma,
           nomeFormaPagamento: nomeForma,
           numeroParcelas: forma === "credito_parcelado" ? numeroParcelas : undefined,
-          valorTroca: temTroca ? totais.valorEntrada : undefined,
+          troca: temTroca && entradaTroca
+            ? {
+                aparelho: {
+                  marca: entradaTroca.aparelho.marca,
+                  modelo: entradaTroca.aparelho.modelo,
+                  capacidadeGb: entradaTroca.aparelho.capacidadeGb,
+                  cor: entradaTroca.aparelho.cor,
+                  imei: entradaTroca.aparelho.imei,
+                },
+                valorEntrada: totais.valorEntrada,
+                cancelada: false,
+              }
+            : undefined,
           data: agoraISO(),
           grupoVendaId: grupoVendaId,
           numeroVenda: vendasRegistradas[0]?.numero_venda ?? null,

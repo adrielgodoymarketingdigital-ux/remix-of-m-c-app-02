@@ -15,6 +15,10 @@ import { checklistLabels } from "@/lib/checklist-templates";
 import { Venda } from "@/types/venda";
 import { Dispositivo } from "@/types/dispositivo";
 import { useToast } from "@/hooks/use-toast";
+import { carregarTrocaRecibo } from "@/lib/vendas/carregarTrocaRecibo";
+import { DadosTrocaRecibo, montarBlocoTrocaRecibo } from "@/lib/vendas/reciboTroca";
+import { nomeFormaPagamento } from "@/lib/formaPagamento";
+import { BlocoTrocaRecibo } from "./BlocoTrocaRecibo";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -91,6 +95,8 @@ export function DialogReimpressaoRecibo({
   const [clienteCompleto, setClienteCompleto] = useState<any>(null);
   const [itensCompletos, setItensCompletos] = useState<ItemReciboCompleto[]>([]);
   const [loading, setLoading] = useState(false);
+  // Troca de aparelho da venda (null = sem troca ou não foi possível ler → recibo de sempre).
+  const [troca, setTroca] = useState<DadosTrocaRecibo | null>(null);
 
   // Itens da venda (grupo completo, ou só a venda avulsa quando não há grupo)
   const itensVenda = vendasGrupo && vendasGrupo.length > 1 ? vendasGrupo : (venda ? [venda] : []);
@@ -106,6 +112,9 @@ export function DialogReimpressaoRecibo({
 
     try {
       setLoading(true);
+      setTroca(null);
+      // Não bloqueia o resto do recibo: carregarTrocaRecibo nunca lança.
+      const trocaPromessa = carregarTrocaRecibo(venda.grupo_venda);
 
       // Buscar dados completos do cliente (mesmo cliente para todo o grupo)
       if (venda.cliente_id) {
@@ -164,6 +173,9 @@ export function DialogReimpressaoRecibo({
       }));
 
       setItensCompletos(itens);
+      const trocaLida = await trocaPromessa;
+      // Venda cancelada: a troca aparece como cancelada mesmo se o registro ainda não foi marcado.
+      setTroca(trocaLida ? { ...trocaLida, cancelada: trocaLida.cancelada || itensVenda.every((v) => v.cancelada) } : null);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
       toast({
@@ -373,6 +385,14 @@ export function DialogReimpressaoRecibo({
   const totalDescontos = descontoManual + descontoCupom;
   const totalBruto = itensVenda.reduce((acc, v) => acc + Number(v.total || 0), 0);
   const totalLiquido = totalBruto - totalDescontos;
+  const blocoTroca = montarBlocoTrocaRecibo({
+    troca,
+    totalVenda: totalLiquido,
+    formaPagamentoLabel: [
+      nomeFormaPagamento(venda.forma_pagamento, venda.observacoes),
+      venda.segunda_forma_pagamento ? nomeFormaPagamento(venda.segunda_forma_pagamento) : "",
+    ].filter(Boolean).join(" + "),
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -557,6 +577,8 @@ export function DialogReimpressaoRecibo({
                 <div>VALOR TOTAL: {formatCurrency(totalLiquido)}</div>
               </div>
             )}
+
+            {showValor && blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
 
             {showAssinaturas && (
               <>

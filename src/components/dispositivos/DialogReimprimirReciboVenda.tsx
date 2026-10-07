@@ -21,6 +21,9 @@ import {
 } from "@/components/recibo/SeletorFormatoPapelDialog";
 import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot, urlParaBase64 } from "@/lib/printMobile";
 import { gerarReciboVendaPDF } from "@/lib/gerarReciboVendaPDF";
+import { carregarTrocaRecibo } from "@/lib/vendas/carregarTrocaRecibo";
+import { DadosTrocaRecibo, htmlBlocoTrocaRecibo, montarBlocoTrocaRecibo, textoBlocoTrocaRecibo } from "@/lib/vendas/reciboTroca";
+import { BlocoTrocaRecibo } from "@/components/vendas/BlocoTrocaRecibo";
 import { toast } from "sonner";
 
 function formatarGarantia(meses: number): string {
@@ -224,6 +227,23 @@ export function DialogReimprimirReciboVenda({
     return () => { cancelado = true; };
   }, [open, grupoVendaId, venda?.id]);
 
+  // Troca de aparelho da venda: pré-buscada ao abrir, pelo mesmo motivo do grupo.
+  // null = sem troca ou não foi possível ler → recibo de sempre.
+  const [troca, setTroca] = useState<DadosTrocaRecibo | null>(null);
+  const [carregandoTroca, setCarregandoTroca] = useState(false);
+  useEffect(() => {
+    setTroca(null);
+    if (!open || !grupoVendaId) return;
+    let cancelado = false;
+    setCarregandoTroca(true);
+    carregarTrocaRecibo(grupoVendaId).then((t) => {
+      if (cancelado) return;
+      setTroca(t);
+      setCarregandoTroca(false);
+    });
+    return () => { cancelado = true; setCarregandoTroca(false); };
+  }, [open, grupoVendaId]);
+
   // Pré-codifica o logo em base64 também, pelo mesmo motivo — era o último
   // await que sobrava no caminho iOS antes da chamada de print().
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
@@ -256,6 +276,14 @@ export function DialogReimprimirReciboVenda({
   const showFormaPagamento = dispConfig?.mostrar_forma_pagamento !== false;
 
   const dataVenda = format(new Date(venda.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  // Só no recibo (o termo de garantia não leva a conta da troca).
+  const blocoTroca = modo === "recibo"
+    ? montarBlocoTrocaRecibo({
+        troca,
+        totalVenda: venda.total,
+        formaPagamentoLabel: FORMAS_PAGAMENTO_LABEL[venda.forma_pagamento] || venda.forma_pagamento,
+      })
+    : null;
   const dataVendaCurta = format(new Date(venda.data), "dd/MM/yyyy", { locale: ptBR });
   const valorUnitario = venda.quantidade > 0 ? venda.total / venda.quantidade : venda.total;
 
@@ -335,6 +363,7 @@ export function DialogReimprimirReciboVenda({
         clienteCpf: venda.cliente_cpf,
         clienteTelefone: venda.cliente_telefone,
         dispositivos: dispositivosPDF,
+        trocaLinhas: blocoTroca ? textoBlocoTrocaRecibo(blocoTroca) : undefined,
       });
 
       const nomeArquivo = `${modo === 'garantia' ? 'Termo-Garantia' : 'Recibo-Venda'}-${
@@ -737,7 +766,7 @@ export function DialogReimprimirReciboVenda({
       </div>
     </div>
   </div>
-  ${secaoDispositivosGrupo}
+  ${secaoDispositivosGrupo}${blocoTroca ? htmlBlocoTrocaRecibo(blocoTroca) : ''}
 
   <!-- TERMO -->
   ${secaoTermoBox}
@@ -864,21 +893,22 @@ ${bodyRecibo}
               </p>
             </div>
           </div>
+          {blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
         </div>
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button variant="outline" disabled={carregandoGrupo} onClick={() => imprimirRecibo('a4')} className="gap-1.5">
+          <Button variant="outline" disabled={carregandoGrupo || carregandoTroca} onClick={() => imprimirRecibo('a4')} className="gap-1.5">
             <Printer className="h-4 w-4" />
             A4
           </Button>
-          <Button variant="outline" disabled={carregandoGrupo} onClick={() => imprimirRecibo('80mm')} className="gap-1.5">
+          <Button variant="outline" disabled={carregandoGrupo || carregandoTroca} onClick={() => imprimirRecibo('80mm')} className="gap-1.5">
             <Printer className="h-4 w-4" />
             80mm
           </Button>
-          <Button disabled={carregandoGrupo} onClick={() => imprimirRecibo('58mm')} className="gap-1.5">
+          <Button disabled={carregandoGrupo || carregandoTroca} onClick={() => imprimirRecibo('58mm')} className="gap-1.5">
             <Printer className="h-4 w-4" />
             58mm
           </Button>

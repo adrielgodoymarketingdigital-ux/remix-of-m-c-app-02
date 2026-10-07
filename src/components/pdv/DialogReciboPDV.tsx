@@ -17,6 +17,8 @@ import { ptBR } from "date-fns/locale";
 import { ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { Cliente } from "@/types/cliente";
 import { Cupom } from "@/types/cupom";
+import { DadosTrocaRecibo, montarBlocoTrocaRecibo } from "@/lib/vendas/reciboTroca";
+import { BlocoTrocaRecibo } from "@/components/vendas/BlocoTrocaRecibo";
 import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "@/lib/termo-garantia-utils";
 import {
   TermoGarantiaDispositivoConfig,
@@ -101,7 +103,7 @@ export interface DadosReciboPDV {
   descontoCupom: number;
   cupom?: Cupom;
   /** Aparelho recebido na troca (abate o total a pagar). Ausente = venda sem troca. */
-  valorTroca?: number;
+  troca?: DadosTrocaRecibo;
   total: number;
   formaPagamento: string;
   nomeFormaPagamento?: string;
@@ -378,6 +380,15 @@ export function DialogReciboPDV({
 
   const dataFormatada = format(new Date(dados.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   const temDesconto = dados.descontoManual > 0 || dados.descontoCupom > 0;
+  // Bloco da troca (null sem troca → recibo igual ao de antes).
+  const nomePrimeiraForma = dados.nomeFormaPagamento || labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento;
+  const blocoTroca = montarBlocoTrocaRecibo({
+    troca: dados.troca,
+    totalVenda: dados.subtotal - dados.descontoManual - dados.descontoCupom,
+    formaPagamentoLabel: dados.pagamentoDuplo
+      ? `${nomePrimeiraForma} + ${dados.pagamentoDuplo.nomeSegundaForma || labelFormaPagamento[dados.pagamentoDuplo.segundaForma] || dados.pagamentoDuplo.segundaForma}`
+      : nomePrimeiraForma,
+  });
 
   const termoConfig = configLoja?.termo_garantia_dispositivo_config as TermoGarantiaDispositivoConfig | undefined;
   const modelosSalvos: ModeloGarantia[] = termoConfig?.modelos?.length ? termoConfig.modelos : MODELOS_PADRAO_GARANTIA;
@@ -558,15 +569,7 @@ export function DialogReciboPDV({
                 </div>
               )}
 
-              {(dados.valorTroca ?? 0) > 0 && (
-                <div
-                  className="resumo-linha desconto"
-                  style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0', color: '#e11d48' }}
-                >
-                  <span>Aparelho recebido na troca:</span>
-                  <span>- {formatCurrency(dados.valorTroca ?? 0)}</span>
-                </div>
-              )}
+              {blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
 
               {showTotal && (
                 <div 

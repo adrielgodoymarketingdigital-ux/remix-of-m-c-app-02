@@ -29,6 +29,8 @@ export interface DadosReciboVendaPDF {
   clienteCpf?: string;
   clienteTelefone?: string;
   dispositivos: DispositivoPDFReciboVenda[];
+  /** Bloco "TROCA DE APARELHO" já em texto (textoBlocoTrocaRecibo); ausente = venda sem troca. */
+  trocaLinhas?: string[];
 }
 
 // Mesma paleta do template HTML (DialogReimprimirReciboVenda.tsx) — o PDF
@@ -328,6 +330,15 @@ function desenharDocumento(doc: jsPDF, dados: DadosReciboVendaPDF, opts: OpcoesD
     doc.setTextColor(...COR_HEADER);
     doc.text(`VALOR TOTAL: ${formatCurrencyPDF(dados.valorTotal)}`, margin, y);
     y += isThermal ? 7 : 10;
+
+    if (dados.trocaLinhas?.length) {
+      const [titulo, ...resto] = dados.trocaLinhas;
+      verificarNovaPagina(12 + resto.length * 5);
+      tituloSecao(titulo);
+      // As fontes padrão do jsPDF não têm "−" (U+2212): hífen comum no PDF.
+      resto.forEach((l) => linhaTexto(l.replace(/\u2212/g, "-")));
+      y += 3;
+    }
   }
 
   // ===== ASSINATURAS =====
