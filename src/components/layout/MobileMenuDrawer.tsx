@@ -12,48 +12,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  FileText,
   LogOut,
-  WrenchIcon,
-  Tablet,
-  ClipboardCheck,
-  Truck,
-  Receipt,
-  Users,
-  CreditCard,
-  BarChart3,
-  Settings,
-  ShoppingBag,
-  HelpCircle,
   Shield,
-  Webhook,
-  Bell,
-  FileSpreadsheet,
-  BookOpen,
-  Megaphone,
-  MessageCircle,
-  Sparkles,
-  Target,
   ChevronRight,
   X,
-  Video,
-  Gift,
-  Building2,
-  Smartphone,
-  ClipboardList,
   Settings2,
-  PackageCheck,
-  ShieldCheck,
-  Layers,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import type { PermissoesModulos } from "@/types/funcionario";
+import { ADMIN_MENU_COM_ICONE, ICONES_MENU, MENU_PRINCIPAL_COM_ICONE } from "@/components/layout/iconesMenu";
+import { GRUPOS_MENU, filtrarMenuVisivel } from "@/lib/menu/menuPrincipal";
 import { cn } from "@/lib/utils";
 
 interface MobileMenuDrawerProps {
@@ -62,60 +33,22 @@ interface MobileMenuDrawerProps {
   onPersonalizarMenu?: () => void;
 }
 
-const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, modulo: "dashboard" as keyof PermissoesModulos },
-  { title: "PDV", url: "/pdv", icon: ShoppingCart, modulo: "pdv" as keyof PermissoesModulos },
-  { title: "Ordem de Serviço", url: "/os", icon: ClipboardCheck, modulo: "ordem_servico" as keyof PermissoesModulos },
-  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos },
-  { title: "Comp. Película/Vidro", url: "/compatibilidade-pelicula", icon: ShieldCheck, modulo: "produtos_pecas" as keyof PermissoesModulos },
-  { title: "Serviços", url: "/servicos", icon: WrenchIcon, modulo: "servicos" as keyof PermissoesModulos },
-  { title: "Dispositivos", url: "/dispositivos", icon: Tablet, modulo: "dispositivos" as keyof PermissoesModulos },
-  { title: "Remessas Corporativas", url: "/remessas", icon: PackageCheck, modulo: "remessas_corporativas" as keyof PermissoesModulos },
-  { title: "Catálogo", url: "/catalogo", icon: BookOpen, modulo: "catalogo" as keyof PermissoesModulos },
-  { title: "Origem de Dispositivos", url: "/origem-dispositivos", icon: ShoppingBag, modulo: "origem_dispositivos" as keyof PermissoesModulos },
-  { title: "Fornecedores", url: "/fornecedores", icon: Truck, modulo: "fornecedores" as keyof PermissoesModulos },
-  { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos, items: [
-    { title: "👥 Clientes", url: "/clientes", icon: Users },
-    { title: "🏆 Fidelidade", url: "/fidelidade", icon: Gift },
-  ]},
-  { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
-  { title: "Pedidos/Encomendas", url: "/pedidos", icon: ClipboardList, modulo: "pedidos" as keyof PermissoesModulos },
-  { title: "Contas", url: "/contas", icon: Receipt, modulo: "contas" as keyof PermissoesModulos },
-  { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
-  { title: "Relatórios", url: "/relatorios", icon: FileText, modulo: "relatorios" as keyof PermissoesModulos },
-  { title: "Financeiro", url: "/financeiro", icon: FileText, modulo: "financeiro" as keyof PermissoesModulos },
-  { title: "Equipe", url: "/equipe", icon: Users, modulo: "equipe" as keyof PermissoesModulos },
-  { title: "Configurações", url: "/configuracoes", icon: Settings, modulo: "configuracoes" as keyof PermissoesModulos },
-  { title: "Suporte", url: "/suporte", icon: HelpCircle, modulo: "suporte" as keyof PermissoesModulos },
-  { title: "Plano", url: "/plano", icon: CreditCard, modulo: "plano" as keyof PermissoesModulos },
-  { title: "Tutoriais", url: "/tutoriais", icon: Video, modulo: "tutoriais" as keyof PermissoesModulos },
-  { title: "Baixar App", url: "/baixar-app", icon: Smartphone, modulo: "suporte" as keyof PermissoesModulos },
-  { title: "Multi Empresas", url: "/multi-empresas", icon: Building2, modulo: "configuracoes" as keyof PermissoesModulos },
-];
+// Itens, seções e regra de visibilidade: src/lib/menu/menuPrincipal.ts — os MESMOS
+// da barra lateral do desktop (AppSidebar). Antes este menu tinha lista própria e
+// ficou sem Extrato, Precificador e as travas de Multi Empresas/submenus.
+const menuItems = MENU_PRINCIPAL_COM_ICONE;
 
-// Agrupamento visual do menu — só organiza a exibição (ordem/rótulos de seção),
-// não altera rotas nem os filtros de permissão/plano aplicados a `menuItems` acima.
-// Itens fora de qualquer grupo (hoje só Configurações) ficam soltos, sem rótulo de
-// seção acima — Novidades foi removida do menu (rota /novidades continua ativa).
-const GRUPOS_MENU: { key: string; label: string; urls: string[] }[] = [
-  { key: "atendimento", label: "🛠️ Atendimento", urls: ["/dashboard", "/pdv", "/os", "/orcamentos", "/pedidos"] },
-  { key: "estoque", label: "📦 Estoque", urls: ["/produtos", "/compatibilidade-pelicula", "/servicos", "/dispositivos", "/catalogo", "/origem-dispositivos", "/remessas"] },
-  { key: "pessoas", label: "👥 Pessoas", urls: ["/clientes", "/fornecedores", "/equipe"] },
-  { key: "administrativo", label: "💰 Administrativo", urls: ["/contas", "/vendas", "/relatorios", "/financeiro", "/multi-empresas"] },
-  { key: "conta-suporte", label: "🧭 Conta & Suporte", urls: ["/plano", "/suporte", "/tutoriais", "/baixar-app"] },
-];
-const adminMenuItems = [
-  { title: "Usuários", url: "/admin/usuarios", icon: Users, badgeKey: null },
-  { title: "Financeiro", url: "/admin/financeiro", icon: CreditCard, badgeKey: null },
-  { title: "Novidades", url: "/admin/novidades", icon: Sparkles, badgeKey: null },
-  { title: "Onboarding", url: "/admin/onboarding", icon: ClipboardCheck, badgeKey: null },
-  { title: "Push Notifications", url: "/admin/push", icon: Bell, badgeKey: null },
-  { title: "Feedbacks", url: "/admin/feedbacks", icon: Megaphone, badgeKey: 'feedbacksPendentes' as const },
-  { title: "Chat Suporte", url: "/admin/chat", icon: MessageCircle, badgeKey: 'chatsAbertos' as const },
-  { title: "Avisos", url: "/admin/avisos", icon: Megaphone, badgeKey: null },
-  { title: "Notificações", url: "/admin/notificacoes", icon: Bell, badgeKey: null },
-  { title: "Compatibilidade de Película e Vidro", url: "/admin/compatibilidade-pelicula", icon: Layers, badgeKey: null },
-];
+// Rótulos das seções no celular (só exibição; itens e ordem vêm de GRUPOS_MENU).
+// Itens fora de qualquer seção (hoje só Configurações) ficam soltos.
+const ROTULOS_GRUPOS: Record<string, string> = {
+  atendimento: "🛠️ Atendimento",
+  estoque: "📦 Estoque",
+  pessoas: "👥 Pessoas",
+  administrativo: "💰 Administrativo",
+  "conta-suporte": "🧭 Conta & Suporte",
+};
+const GRUPOS_MENU_CELULAR = GRUPOS_MENU.map((g) => ({ ...g, label: ROTULOS_GRUPOS[g.key] ?? g.key }));
+const adminMenuItems = ADMIN_MENU_COM_ICONE;
 
 // Map routes to tutorial data-tutorial attribute values
 const tutorialTargetMap: Record<string, string> = {
@@ -169,32 +102,18 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
     checkAdmin();
   }, [open]);
 
-  const menusVisiveis = useMemo(() => {
-    if (carregandoPermissoes) return [];
-
-    // Dono da loja: filtrar pelo plano contratado
-    // Se assinatura ainda carregando, mostrar todos os menus (evitar piscar/sumir itens)
-    if (!isFuncionario) {
-      if (carregandoAssinatura && !assinatura) return menuItems;
-      return menuItems.filter(item => {
-        const modulosSemRestricao: string[] = ['/plano', '/suporte', '/tutoriais', '/baixar-app'];
-        if (modulosSemRestricao.includes(item.url)) return true;
-        // Módulos que existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano)
-        const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe', 'remessas_corporativas'];
-        if (modulosSoPorFuncionario.includes(item.modulo)) return true;
-        // Módulos sempre visíveis no menu (bloqueio acontece dentro da página via ComVerificacaoPlano)
-        const modulosSempreVisiveis: string[] = ['pedidos', 'fornecedores'];
-        if (modulosSempreVisiveis.includes(item.modulo)) return true;
-        return temAcessoModuloPlano(item.modulo as Parameters<typeof temAcessoModuloPlano>[0]);
-      });
-    }
-
-    // Funcionário: filtrar por permissões configuradas pelo dono
-    return menuItems.filter(item => {
-      if (['/plano', '/equipe'].includes(item.url)) return false;
-      return temAcessoModuloFuncionario(item.modulo);
-    });
-  }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura]);
+  const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
+  // Mesma regra da barra lateral do desktop (menuPrincipal.ts).
+  const menusVisiveis = useMemo(() => filtrarMenuVisivel(menuItems, {
+    carregandoPermissoes,
+    isFuncionario,
+    carregandoAssinatura,
+    temAssinatura: !!assinatura,
+    isUltra,
+    isAdmin,
+    temAcessoPlano: (modulo) => temAcessoModuloPlano(modulo as Parameters<typeof temAcessoModuloPlano>[0]),
+    temAcessoFuncionario: (modulo) => temAcessoModuloFuncionario(modulo as keyof PermissoesModulos),
+  }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin]);
 
   const handleLogout = async () => {
     clearSessionMeta();
@@ -254,7 +173,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                   : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
               )}
             >
-              <sub.icon className="h-4 w-4 flex-shrink-0" />
+              {(() => { const IconeSub = ICONES_MENU[sub.url] ?? item.icon; return <IconeSub className="h-4 w-4 flex-shrink-0" />; })()}
               <span className="flex-1 text-sm">{sub.title}</span>
             </button>
           ))}
@@ -284,7 +203,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
 
   // Itens que não pertencem a nenhum dos grupos temáticos (Novidades e Configurações)
   // ficam soltos na lista, sem rótulo de seção acima.
-  const urlsAgrupadas = new Set(GRUPOS_MENU.flatMap(g => g.urls));
+  const urlsAgrupadas = new Set(GRUPOS_MENU_CELULAR.flatMap(g => g.urls));
   const itensSoltos = menusVisiveis.filter(item => !urlsAgrupadas.has(item.url));
 
   return (
@@ -317,7 +236,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
               ))
             ) : (
               <>
-                {GRUPOS_MENU.map((grupo) => {
+                {GRUPOS_MENU_CELULAR.map((grupo) => {
                   const itensDoGrupo = grupo.urls
                     .map(url => menusVisiveis.find(item => item.url === url))
                     .filter((item): item is typeof menusVisiveis[number] => !!item);

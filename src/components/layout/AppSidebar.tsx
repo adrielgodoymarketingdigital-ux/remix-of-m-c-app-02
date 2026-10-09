@@ -17,46 +17,16 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
-  LayoutDashboard,
-  ShoppingCart,
   Wrench,
   Package,
-  DollarSign,
-  FileText,
   LogOut,
-  WrenchIcon,
-  Tablet,
-  ClipboardCheck,
-  Truck,
   Receipt,
   Users,
-  CreditCard,
-  BarChart3,
-  Settings,
-  ShoppingBag,
   HelpCircle,
   Shield,
-  Webhook,
-  Bell,
-  FileSpreadsheet,
-  BookOpen,
-  Megaphone,
-  MessageCircle,
-  Sparkles,
-  Target,
   PanelLeftClose,
   PanelLeft,
-  Video,
-  Gift,
   ChevronRight,
-  Building2,
-  Smartphone,
-  Calculator,
-  Ticket,
-  ClipboardList,
-  PackageCheck,
-  Layers,
-  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,79 +37,34 @@ import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
+import { ADMIN_MENU_COM_ICONE, MENU_PRINCIPAL_COM_ICONE } from "@/components/layout/iconesMenu";
+import { GRUPOS_MENU, filtrarMenuVisivel } from "@/lib/menu/menuPrincipal";
 import { useAssinatura } from "@/hooks/useAssinatura";
 
 // Menu de Ajuda: sempre visível para todos os usuários logados, sem restrição de permissão/plano
 const ajudaItem = { title: "Ajuda", url: "/ajuda", icon: HelpCircle };
 
-const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, modulo: "dashboard" as keyof PermissoesModulos },
-  { title: "PDV", url: "/pdv", icon: ShoppingCart, modulo: "pdv" as keyof PermissoesModulos },
-  { title: "Ordem de Serviço", url: "/os", icon: ClipboardCheck, modulo: "ordem_servico" as keyof PermissoesModulos },
-  { title: "Produtos e Peças", url: "/produtos", icon: Package, modulo: "produtos_pecas" as keyof PermissoesModulos },
-  { title: "Comp. Película/Vidro", url: "/compatibilidade-pelicula", icon: ShieldCheck, modulo: "produtos_pecas" as keyof PermissoesModulos },
-  { title: "Serviços", url: "/servicos", icon: WrenchIcon, modulo: "servicos" as keyof PermissoesModulos },
-  { title: "Dispositivos", url: "/dispositivos", icon: Tablet, modulo: "dispositivos" as keyof PermissoesModulos },
-  { title: "Remessas Corporativas", url: "/remessas", icon: PackageCheck, modulo: "remessas_corporativas" as keyof PermissoesModulos },
-  { title: "Catálogo", url: "/catalogo", icon: BookOpen, modulo: "catalogo" as keyof PermissoesModulos },
-  { title: "Origem de Dispositivos", url: "/origem-dispositivos", icon: ShoppingBag, modulo: "origem_dispositivos" as keyof PermissoesModulos },
-  { title: "Fornecedores", url: "/fornecedores", icon: Truck, modulo: "fornecedores" as keyof PermissoesModulos },
-  { title: "Clientes", url: "/clientes", icon: Users, modulo: "clientes" as keyof PermissoesModulos, items: [
-    { title: "👥 Clientes", url: "/clientes", modulo: "clientes" as keyof PermissoesModulos },
-    { title: "🏆 Fidelidade", url: "/fidelidade", modulo: "fidelidade" as keyof PermissoesModulos },
-  ]},
-  { title: "Orçamentos", url: "/orcamentos", icon: FileSpreadsheet, modulo: "orcamentos" as keyof PermissoesModulos },
-  { title: "Pedidos/Encomendas", url: "/pedidos", icon: ClipboardList, modulo: "pedidos" as keyof PermissoesModulos },
-  { title: "Contas", url: "/contas", icon: Receipt, modulo: "contas" as keyof PermissoesModulos },
+// Itens, seções e regra de visibilidade: src/lib/menu/menuPrincipal.ts (os mesmos
+// do menu do celular/PWA, MobileMenuDrawer). Ícones: ./iconesMenu.
+const menuItems = MENU_PRINCIPAL_COM_ICONE;
 
-  { title: "Vendas", url: "/vendas", icon: BarChart3, modulo: "vendas" as keyof PermissoesModulos },
-  { title: "Financeiro", url: "/financeiro", icon: FileText, modulo: "financeiro" as keyof PermissoesModulos, items: [
-    { title: "💰 Contas a Pagar/Receber", url: "/financeiro", modulo: "financeiro" as keyof PermissoesModulos },
-    { title: "📒 Extrato", url: "/extrato", modulo: "financeiro" as keyof PermissoesModulos },
-    { title: "📊 Relatórios", url: "/relatorios", modulo: "relatorios" as keyof PermissoesModulos },
-  ]},
-  { title: "Equipe", url: "/equipe", icon: Users, modulo: "equipe" as keyof PermissoesModulos },
-  { title: "Configurações", url: "/configuracoes", icon: Settings, modulo: "configuracoes" as keyof PermissoesModulos },
-  { title: "Suporte", url: "/suporte", icon: HelpCircle, modulo: "suporte" as keyof PermissoesModulos },
-  { title: "Plano", url: "/plano", icon: CreditCard, modulo: "plano" as keyof PermissoesModulos },
-  { title: "Tutoriais", url: "/tutoriais", icon: Video, modulo: "tutoriais" as keyof PermissoesModulos },
-  { title: "Baixar App", url: "/baixar-app", icon: Smartphone, modulo: "suporte" as keyof PermissoesModulos },
-  { title: "Multi Empresas", url: "/multi-empresas", icon: Building2, modulo: "configuracoes" as keyof PermissoesModulos },
-  { title: "Precificador", url: "/precificador", icon: Calculator, modulo: "precificador" as keyof PermissoesModulos },
-];
-
-// Agrupamento visual do Menu Principal — só organiza a exibição (ordem/rótulos de
-// seção), não altera rotas, filtros de permissão/plano nem o array menuItems acima.
-// A ordem dentro de cada grupo é a lista `urls` (não a ordem original de menuItems).
-// `icon` de cada grupo reaproveita, quando possível, o ícone de um item já existente
-// dentro do próprio grupo (Package = mesmo ícone de "Produtos e Peças", Users = mesmo
-// de "Clientes"/"Equipe", Receipt = mesmo de "Contas", HelpCircle = mesmo de
-// "Suporte"). Wrench (Atendimento) não repete ícone de item, mas já era o sentido do
-// emoji 🛠️ original e já estava importado no arquivo.
-const GRUPOS_MENU: { key: string; label: string; icon: LucideIcon; urls: string[] }[] = [
-  { key: "atendimento", label: "Atendimento", icon: Wrench, urls: ["/dashboard", "/pdv", "/os", "/orcamentos", "/pedidos", "/precificador"] },
-  { key: "estoque", label: "Estoque", icon: Package, urls: ["/produtos", "/compatibilidade-pelicula", "/servicos", "/dispositivos", "/catalogo", "/origem-dispositivos", "/remessas"] },
-  { key: "pessoas", label: "Pessoas", icon: Users, urls: ["/clientes", "/fornecedores", "/equipe"] },
-  { key: "administrativo", label: "Administrativo", icon: Receipt, urls: ["/contas", "/vendas", "/financeiro", "/multi-empresas"] },
-  { key: "conta-suporte", label: "Conta & Suporte", icon: HelpCircle, urls: ["/plano", "/suporte", "/tutoriais", "/baixar-app"] },
-];
+// Rótulo e ícone de cada seção do Menu Principal (só exibição; a ordem dos itens
+// dentro de cada seção vem de GRUPOS_MENU). `icon` reaproveita, quando possível, o
+// ícone de um item da própria seção (Package = "Produtos e Peças", Users =
+// "Clientes"/"Equipe", Receipt = "Contas", HelpCircle = "Suporte"). Wrench
+// (Atendimento) segue o sentido do emoji 🛠️ original.
+const ROTULOS_GRUPOS: Record<string, { label: string; icon: LucideIcon }> = {
+  atendimento: { label: "Atendimento", icon: Wrench },
+  estoque: { label: "Estoque", icon: Package },
+  pessoas: { label: "Pessoas", icon: Users },
+  administrativo: { label: "Administrativo", icon: Receipt },
+  "conta-suporte": { label: "Conta & Suporte", icon: HelpCircle },
+};
+const GRUPOS_MENU_SIDEBAR = GRUPOS_MENU.map((g) => ({ ...g, ...ROTULOS_GRUPOS[g.key] }));
 // Sem label visível — Configurações é renderizada solta, sem cabeçalho de seção.
 const GRUPO_CONFIGURACOES = { key: "configuracoes", urls: ["/configuracoes"] };
 
-const adminMenuItems = [
-  { title: "Usuários", url: "/admin/usuarios", icon: Users, badgeKey: null },
-  { title: "Financeiro", url: "/admin/financeiro", icon: DollarSign, badgeKey: null },
-  { title: "Cupons", url: "/admin/cupons", icon: Ticket, badgeKey: null },
-  { title: "Novidades", url: "/admin/novidades", icon: Sparkles, badgeKey: null },
-  { title: "Onboarding", url: "/admin/onboarding", icon: ClipboardCheck, badgeKey: null },
-  { title: "Push Notifications", url: "/admin/push", icon: Bell, badgeKey: null },
-  { title: "Feedbacks", url: "/admin/feedbacks", icon: Megaphone, badgeKey: 'feedbacksPendentes' as const },
-  { title: "Chat Suporte", url: "/admin/chat", icon: MessageCircle, badgeKey: 'chatsAbertos' as const },
-  { title: "Avisos", url: "/admin/avisos", icon: Megaphone, badgeKey: null },
-  { title: "Notificações", url: "/admin/notificacoes", icon: Bell, badgeKey: null },
-  { title: "Alterações/Correções", url: "/admin/alteracoes-correcoes", icon: ClipboardList, badgeKey: null },
-  { title: "Compatibilidade de Película e Vidro", url: "/admin/compatibilidade-pelicula", icon: Layers, badgeKey: null },
-];
+const adminMenuItems = ADMIN_MENU_COM_ICONE;
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -181,59 +106,17 @@ export function AppSidebar() {
     checkAdmin();
   }, []);
 
-  // Filtrar menus baseado nas permissões do funcionário E no plano contratado
-  const menusVisiveis = useMemo(() => {
-    // Se ainda está carregando, não mostrar nenhum menu (loading state)
-    if (carregandoPermissoes) {
-      return [];
-    }
-
-    // Dono da loja: filtrar pelo plano contratado
-    // Se assinatura ainda carregando, mostrar todos os menus (evitar piscar/sumir itens)
-    if (!isFuncionario) {
-      if (carregandoAssinatura && !assinatura) return menuItems;
-      return menuItems.filter(item => {
-        if (item.url === '/multi-empresas' && !isUltra && !isAdmin) return false;
-        // Menus sem módulo controlado por plano (plano, suporte, tutoriais, baixar-app) sempre visíveis
-        const modulosSemRestricao: string[] = ['/plano', '/suporte', '/tutoriais', '/baixar-app'];
-        if (modulosSemRestricao.includes(item.url)) return true;
-        // Módulos que existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano)
-        const modulosSoPorFuncionario: string[] = ['novidades', 'origem_dispositivos', 'relatorios', 'equipe', 'remessas_corporativas'];
-        if (modulosSoPorFuncionario.includes(item.modulo)) return true;
-        // Módulos sempre visíveis no menu (bloqueio acontece dentro da página via ComVerificacaoPlano)
-        const modulosSempreVisiveis: string[] = ['pedidos', 'fornecedores'];
-        if (modulosSempreVisiveis.includes(item.modulo)) return true;
-        // Verificar se o plano libera este módulo
-        return temAcessoModuloPlano(item.modulo as Parameters<typeof temAcessoModuloPlano>[0]);
-      });
-    }
-
-    // Para funcionários, filtrar por permissões configuradas pelo dono
-    return menuItems
-      .filter(item => {
-        // Funcionários NUNCA veem Plano, Equipe ou Multi Empresas
-        if (['/plano', '/equipe', '/multi-empresas'].includes(item.url)) {
-          return false;
-        }
-        // Verificar permissão do módulo conforme configurado pelo dono
-        return temAcessoModuloFuncionario(item.modulo);
-      })
-      .map(item => {
-        // Filtrar submenus individualmente por permissão de módulo
-        if (item.items && item.items.length > 0) {
-          const subsFiltrados = item.items.filter(sub =>
-            sub.modulo ? temAcessoModuloFuncionario(sub.modulo) : true
-          );
-          return { ...item, items: subsFiltrados };
-        }
-        return item;
-      })
-      .filter(item => {
-        // Se todos os submenus foram removidos, ocultar o item pai inteiro
-        if (item.items !== undefined) return item.items.length > 0;
-        return true;
-      });
-  }, [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin]);
+  // Filtrar menus pelas permissões do funcionário E pelo plano (regra em menuPrincipal.ts).
+  const menusVisiveis = useMemo(() => filtrarMenuVisivel(menuItems, {
+    carregandoPermissoes,
+    isFuncionario,
+    carregandoAssinatura,
+    temAssinatura: !!assinatura,
+    isUltra,
+    isAdmin,
+    temAcessoPlano: (modulo) => temAcessoModuloPlano(modulo as Parameters<typeof temAcessoModuloPlano>[0]),
+    temAcessoFuncionario: (modulo) => temAcessoModuloFuncionario(modulo as keyof PermissoesModulos),
+  }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin]);
 
   const handleLogout = async () => {
     clearSessionMeta();
@@ -361,7 +244,7 @@ export function AppSidebar() {
           </SidebarGroup>
         ) : (
           <>
-            {GRUPOS_MENU.map((grupo, idx) => {
+            {GRUPOS_MENU_SIDEBAR.map((grupo, idx) => {
               const itensDoGrupo = grupo.urls
                 .map(url => menusVisiveis.find(item => item.url === url))
                 .filter((item): item is typeof menusVisiveis[number] => !!item);
