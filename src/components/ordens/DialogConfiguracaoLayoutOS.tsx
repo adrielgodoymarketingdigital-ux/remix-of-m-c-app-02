@@ -55,6 +55,7 @@ const LAYOUT_PADRAO: LayoutOSConfig = {
   mostrar_senha: true,
   mostrar_assinaturas: true,
   mostrar_termos_condicoes: true,
+  mostrar_fotos_impressao: false,
   cor_primaria: "#000000",
   tamanho_fonte: "normal",
   formato_papel: "a4",
@@ -87,6 +88,7 @@ export function DialogConfiguracaoLayoutOS({
         mostrar_senha: config.layout_os_config.mostrar_senha ?? true,
         mostrar_assinaturas: config.layout_os_config.mostrar_assinaturas ?? true,
         mostrar_termos_condicoes: config.layout_os_config.mostrar_termos_condicoes ?? true,
+        mostrar_fotos_impressao: config.layout_os_config.mostrar_fotos_impressao ?? false,
         cor_primaria: config.layout_os_config.cor_primaria || "#000000",
         tamanho_fonte: config.layout_os_config.tamanho_fonte || "normal",
         formato_papel: config.layout_os_config.formato_papel || "a4",
@@ -449,6 +451,14 @@ export function DialogConfiguracaoLayoutOS({
                         <p className="text-xs text-muted-foreground">Exibe o termo de garantia do serviço</p>
                       </div>
                       <Switch id="termos" checked={layout.mostrar_termos_condicoes} onCheckedChange={() => handleToggle("mostrar_termos_condicoes")} />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="fotos-impressao" className="text-sm">Fotos do aparelho</Label>
+                        <p className="text-xs text-muted-foreground">Já deixa marcada a opção "Incluir fotos na impressão" (A4 e PDF; até 6 fotos)</p>
+                      </div>
+                      <Switch id="fotos-impressao" checked={!!layout.mostrar_fotos_impressao} onCheckedChange={() => handleToggle("mostrar_fotos_impressao")} />
                     </div>
                   </div>
                 </>

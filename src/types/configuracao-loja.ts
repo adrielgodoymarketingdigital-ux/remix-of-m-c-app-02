@@ -81,6 +81,8 @@ export interface LayoutOSConfig {
   mostrar_senha?: boolean;
   mostrar_assinaturas?: boolean;
   mostrar_termos_condicoes?: boolean;
+  /** Padrão da caixa "Incluir fotos na impressão" (A4 e PDF). Ausente = desligado. */
+  mostrar_fotos_impressao?: boolean;
   cor_primaria?: string;
   tamanho_fonte?: 'pequeno' | 'normal' | 'grande';
   formato_papel?: 'a4' | '80mm';

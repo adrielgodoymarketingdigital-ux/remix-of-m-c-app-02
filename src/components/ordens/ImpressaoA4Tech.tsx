@@ -10,15 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { htmlGradeFotos, type FotoImpressao } from "@/lib/os/fotosImpressaoOS";
 
 interface Props {
   ordem: OrdemServico;
   configuracaoLoja?: ConfiguracaoLoja;
   layoutConfig: LayoutOSConfig;
   termoGarantia: string;
+  /** Fotos já carregadas (miniaturas) — só quando "Incluir fotos na impressão" vale; ausente = sem seção. */
+  fotosImpressao?: FotoImpressao[];
+  /** Fotos além do limite (aparece "+N fotos não impressas"). */
+  fotosExcedentes?: number;
 }
 
-export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGarantia }: Props) {
+export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGarantia, fotosImpressao, fotosExcedentes }: Props) {
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistEntrada = avariasData?.checklist?.entrada || {};
   const checklistSaida = avariasData?.checklist?.saida || {};
@@ -401,6 +406,11 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
           </div>
         )}
       </div>
+
+      {/* Fotos do aparelho (src/lib/os/fotosImpressaoOS.ts): depois das avarias, antes dos termos */}
+      {fotosImpressao && fotosImpressao.length > 0 && (
+        <div dangerouslySetInnerHTML={{ __html: htmlGradeFotos(fotosImpressao, fotosExcedentes ?? 0) }} />
+      )}
 
       {/* Termo de Garantia */}
       {layoutConfig.mostrar_termos_condicoes && (

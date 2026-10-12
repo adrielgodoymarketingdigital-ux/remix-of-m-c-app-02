@@ -17,6 +17,17 @@ import {
 } from "@/lib/paper-size-utils";
 import { gerarOrdemServicoPDF, gerarOrdemServicoCupom80mmPDF } from "@/lib/gerarOrdemServicoPDF";
 import { toast } from "sonner";
+import {
+  AVISO_DOCUMENTO,
+  decidirFotos,
+  montarFotosParaImpressao,
+  selecionarFotos,
+  textoBotaoSemFotos,
+  textoFalhas,
+  type FotoCarregada,
+  type ModoImpressaoFotos,
+} from "@/lib/os/fotosImpressaoOS";
+import { carregarFotosImpressao, lerEscolhaFotos, salvarEscolhaFotos } from "@/lib/os/carregarFotosImpressaoOS";
 
 // Converte <img> externas (logo) para data URI base64 dentro do HTML serializado,
 // evitando bloqueio de CORS no documento isolado. Timeout de 4s por imagem.
@@ -355,6 +366,46 @@ export const ImpressaoOrdemServico = ({
   const isAndroid = /android/i.test(navigator.userAgent);
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isMobile = isAndroid || isIOS;
+
+  // ── Fotos do aparelho (só A4 e PDF; regras em lib/os/fotosImpressaoOS.ts) ──
+  const selecaoFotos = useMemo(() => selecionarFotos(avariasData?.fotos_dispositivo), [avariasData]);
+  // Escolha lembrada no aparelho (null = ainda não escolheu: vale o padrão da loja, desligado se ausente).
+  const [escolhaFotos, setEscolhaFotos] = useState<boolean | null>(() => lerEscolhaFotos());
+  const decisaoFotos = decidirFotos({
+    padraoLoja: layoutConfig.mostrar_fotos_impressao,
+    escolhaLembrada: escolhaFotos,
+    totalFotos: selecaoFotos.urls.length + selecaoFotos.excedentes,
+    formato: formatoEscolhido,
+    duasOsPorFolha: !!layoutConfig.duas_os_por_folha,
+  });
+  // iPhone com app instalado → PDF; Android → documento com imagens em base64;
+  // demais (desktop, iPhone no navegador) → HTML direto no #print-root.
+  const modoFotos: ModoImpressaoFotos = isIOS && isStandalone ? "pdf" : isAndroid ? "base64" : "html-direto";
+  const [fotosCarregadas, setFotosCarregadas] = useState<FotoCarregada[] | null>(null);
+  const [carregandoFotos, setCarregandoFotos] = useState(false);
+  const [confirmandoFalhas, setConfirmandoFalhas] = useState(false);
+  // Pré-carrega as miniaturas antes de liberar "Imprimir Agora" (timeout de 8 s por foto).
+  useEffect(() => {
+    if (!decisaoFotos.incluir || fotosCarregadas) return;
+    let ativo = true;
+    setCarregandoFotos(true);
+    carregarFotosImpressao(selecaoFotos.urls, { verificarOriginal: modoFotos === "html-direto" })
+      .then((r) => { if (ativo) setFotosCarregadas(r); })
+      .finally(() => { if (ativo) setCarregandoFotos(false); });
+    return () => {
+      ativo = false;
+      setCarregandoFotos(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decisaoFotos.incluir]);
+  const fotosMontadas = decisaoFotos.incluir && fotosCarregadas ? montarFotosParaImpressao(fotosCarregadas, modoFotos) : null;
+  const falhasFotos = fotosMontadas?.falhas ?? 0;
+  const fotosAguardando = decisaoFotos.incluir && (carregandoFotos || !fotosMontadas);
+  const escolherIncluirFotos = (incluir: boolean) => {
+    setEscolhaFotos(incluir);
+    salvarEscolhaFotos(incluir);
+    setConfirmandoFalhas(false);
+  };
 
   // Ref para o container das duas OS — usado na geração de PDF
   const duasOsContainerRef = useRef<HTMLDivElement>(null);
@@ -715,7 +766,12 @@ export const ImpressaoOrdemServico = ({
     try {
       const pdfBlob = formato80mm
         ? await gerarOrdemServicoCupom80mmPDF(ordem, configuracaoLoja)
-        : await gerarOrdemServicoPDF(ordem, configuracaoLoja, 'completo');
+        : await gerarOrdemServicoPDF(
+            ordem,
+            configuracaoLoja,
+            'completo',
+            fotosMontadas ? { fotos: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {},
+          );
       const nomeArquivo = formato80mm ? `OS-${ordem.numero_os}-80mm.pdf` : `OS-${ordem.numero_os}.pdf`;
       const pdfFile = new File([pdfBlob], nomeArquivo, { type: 'application/pdf' });
 
@@ -814,6 +870,7 @@ export const ImpressaoOrdemServico = ({
           configuracaoLoja={configuracaoLoja}
           layoutConfig={layoutConfig}
           termoGarantia={termoGarantia}
+          {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
         />
       );
     }
@@ -823,6 +880,7 @@ export const ImpressaoOrdemServico = ({
         configuracaoLoja={configuracaoLoja}
         layoutConfig={layoutConfig}
         termoGarantia={termoGarantia}
+        {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
       />
     );
   };
@@ -854,9 +912,41 @@ export const ImpressaoOrdemServico = ({
               ))}
             </div>
           </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <label
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", fontWeight: 600, opacity: decisaoFotos.habilitada ? 1 : 0.6, cursor: decisaoFotos.habilitada ? "pointer" : "not-allowed" }}
+            >
+              <input
+                type="checkbox"
+                checked={decisaoFotos.habilitada && decisaoFotos.marcada}
+                disabled={!decisaoFotos.habilitada}
+                onChange={(e) => escolherIncluirFotos(e.target.checked)}
+              />
+              Incluir fotos na impressão
+            </label>
+            <span style={{ fontSize: "0.7rem", opacity: 0.75 }}>
+              {decisaoFotos.habilitada ? AVISO_DOCUMENTO : decisaoFotos.motivo}
+            </span>
+            {fotosAguardando && <span style={{ fontSize: "0.7rem", opacity: 0.75 }}>Carregando fotos…</span>}
+            {confirmandoFalhas && falhasFotos > 0 && (
+              <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#b45309" }}>{textoFalhas(falhasFotos)}</span>
+            )}
+          </div>
           <div style={{ display: "flex", gap: "1rem" }}>
-            <button onClick={handlePrint} className="print-trigger-button" style={{ flex: 1 }}>
-              Imprimir Agora
+            <button
+              onClick={() => {
+                // Fotos que não carregaram: confirmar antes (o clique de confirmação imprime na hora — iPhone exige o gesto).
+                if (falhasFotos > 0 && !confirmandoFalhas) {
+                  setConfirmandoFalhas(true);
+                  return;
+                }
+                handlePrint();
+              }}
+              disabled={fotosAguardando}
+              className="print-trigger-button"
+              style={{ flex: 1, opacity: fotosAguardando ? 0.6 : 1 }}
+            >
+              {fotosAguardando ? "Carregando fotos…" : confirmandoFalhas && falhasFotos > 0 ? textoBotaoSemFotos(falhasFotos) : "Imprimir Agora"}
             </button>
             <button onClick={onFecharImpressao} className="print-close-button">
               {isStandalone ? "Voltar" : "Cancelar"}

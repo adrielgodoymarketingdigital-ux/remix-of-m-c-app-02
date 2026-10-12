@@ -7,7 +7,9 @@ import { Loader2, Download, CheckCircle2, FileText, Shield, Files, Contact, Pape
 import { FaWhatsapp } from "react-icons/fa";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { ConfiguracaoLoja, MensagensWhatsAppOS } from "@/types/configuracao-loja";
-import { gerarOrdemServicoPDF, TipoPDFOS } from "@/lib/gerarOrdemServicoPDF";
+import { gerarOrdemServicoPDF, TipoPDFOS, type OpcoesPDFOS } from "@/lib/gerarOrdemServicoPDF";
+import { decidirFotos, montarFotosParaImpressao, selecionarFotos, textoFalhas } from "@/lib/os/fotosImpressaoOS";
+import { carregarFotosImpressao, lerEscolhaFotos } from "@/lib/os/carregarFotosImpressaoOS";
 import { toast } from "sonner";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
@@ -132,13 +134,34 @@ export const DialogEnviarWhatsApp = ({
     return `OS-${ordem?.numero_os}.pdf`;
   };
 
+  // Fotos no PDF: mesma escolha da impressão A4 (lembrada no aparelho → padrão da loja,
+  // desligado se ausente). Só miniaturas; null = o usuário desistiu por fotos que não carregaram.
+  const prepararFotosPDF = async (): Promise<OpcoesPDFOS | null> => {
+    if (!ordem || tipoPDF === 'termo_garantia') return {};
+    const selecao = selecionarFotos((ordem.avarias as { fotos_dispositivo?: unknown } | null)?.fotos_dispositivo);
+    const decisao = decidirFotos({
+      padraoLoja: loja?.layout_os_config?.mostrar_fotos_impressao,
+      escolhaLembrada: lerEscolhaFotos(),
+      totalFotos: selecao.urls.length + selecao.excedentes,
+      formato: 'a4',
+      duasOsPorFolha: false,
+    });
+    if (!decisao.incluir) return {};
+    const carregadas = await carregarFotosImpressao(selecao.urls, { verificarOriginal: false });
+    const { fotos, falhas } = montarFotosParaImpressao(carregadas, 'pdf');
+    if (falhas > 0 && !window.confirm(textoFalhas(falhas))) return null;
+    return { fotos, fotosExcedentes: selecao.excedentes };
+  };
+
   const handleBaixarPDF = async () => {
     if (!ordem) return;
 
     setGerando(true);
 
     try {
-      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja, tipoPDF);
+      const opcoesFotos = await prepararFotosPDF();
+      if (!opcoesFotos) return;
+      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja, tipoPDF, opcoesFotos);
       const urlPDF = URL.createObjectURL(pdfBlob);
 
       // Tentar download
@@ -171,7 +194,9 @@ export const DialogEnviarWhatsApp = ({
     let precisaFallback = false;
 
     try {
-      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja, tipoPDF);
+      const opcoesFotos = await prepararFotosPDF();
+      if (!opcoesFotos) return;
+      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja, tipoPDF, opcoesFotos);
       const pdfFile = new File([pdfBlob], nomePDF(), { type: "application/pdf" });
 
       if (!podeCompartilharArquivo(pdfFile)) {
@@ -307,7 +332,9 @@ export const DialogEnviarWhatsApp = ({
     setGerando(true);
 
     try {
-      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja, tipoPDF);
+      const opcoesFotos = await prepararFotosPDF();
+      if (!opcoesFotos) return;
+      const pdfBlob = await gerarOrdemServicoPDF(ordem, loja, tipoPDF, opcoesFotos);
       const urlPDF = URL.createObjectURL(pdfBlob);
 
       const linkPDF = document.createElement("a");

@@ -7,6 +7,7 @@ import { decryptSenhaDesbloqueio } from './password-encryption';
 import { obterTermoGarantia, LAYOUT_PADRAO } from './termo-garantia-utils';
 import { adicionarImagemContida, assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { TITULO_FOTOS, encaixarNaCaixa, formatoImagemDataUrl, geometriaGradeFotosPDF, textoExcedentes, type FotoImpressao } from './os/fotosImpressaoOS';
 
 // Formatar data/hora Brasil
 const formatarDataHoraBrasil = (dataISO: string): string => {
@@ -70,10 +71,18 @@ const TIPO_AVARIA_CORES: Record<string, [number, number, number]> = {
 
 export type TipoPDFOS = 'completo' | 'primeira_parte' | 'termo_garantia';
 
+export interface OpcoesPDFOS {
+  /** Fotos já baixadas como MINIATURA (data URL) — ver lib/os/fotosImpressaoOS.ts. Ausente = sem seção. */
+  fotos?: FotoImpressao[];
+  /** Fotos além do limite ("+N fotos não impressas"). */
+  fotosExcedentes?: number;
+}
+
 export async function gerarOrdemServicoPDF(
   ordem: OrdemServico,
   loja?: ConfiguracaoLoja,
-  tipo: TipoPDFOS = 'completo'
+  tipo: TipoPDFOS = 'completo',
+  opcoes: OpcoesPDFOS = {}
 ): Promise<Blob> {
   const assinaturaLoja = assinaturaLojaAtiva(loja);
   const doc = new jsPDF();
@@ -716,6 +725,62 @@ export async function gerarOrdemServicoPDF(
     yPos += 4;
     doc.line(margemEsquerda, yPos, margemDireita, yPos);
     yPos += 8;
+  }
+
+  // ===== FOTOS DO APARELHO (antes dos termos; mesmas medidas do A4) =====
+  const fotosPDF = tipo === 'termo_garantia' ? [] : (opcoes.fotos ?? []);
+  if (fotosPDF.length > 0) {
+    const geo = geometriaGradeFotosPDF({
+      quantidade: fotosPDF.length,
+      excedentes: opcoes.fotosExcedentes ?? 0,
+      yInicial: yPos,
+      margemEsquerda,
+      larguraUtil,
+      yTopo: 20,
+      yLimite: 280,
+    });
+    const corLinha = doc.getDrawColor();
+    const larguraLinha = doc.getLineWidth();
+    let paginaRelativa = 0;
+    // A geometria já decidiu as quebras: uma linha de fotos nunca é partida.
+    const irParaPagina = (pagina: number) => {
+      while (paginaRelativa < pagina) {
+        doc.addPage();
+        paginaRelativa++;
+      }
+    };
+    irParaPagina(geo.titulo.pagina);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(TITULO_FOTOS, margemEsquerda, geo.titulo.y + 5);
+    geo.fotos.forEach((g, i) => {
+      irParaPagina(g.pagina);
+      doc.setDrawColor(200);
+      doc.setLineWidth(0.3);
+      doc.rect(g.x, g.y, g.w, g.h);
+      try {
+        const props = doc.getImageProperties(fotosPDF[i].src);
+        const e = encaixarNaCaixa(props.width, props.height, g.w);
+        doc.addImage(fotosPDF[i].src, formatoImagemDataUrl(fotosPDF[i].src), g.x + e.dx, g.y + e.dy, e.w, e.h);
+      } catch (erro) {
+        console.error('Erro ao adicionar foto da OS no PDF:', erro); // fica só a moldura
+      }
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(fotosPDF[i].legenda, g.x + g.w / 2, g.legendaY, { align: 'center' });
+    });
+    if (geo.aviso) {
+      irParaPagina(geo.aviso.pagina);
+      doc.setFontSize(8);
+      doc.setTextColor(90);
+      doc.text(textoExcedentes(opcoes.fotosExcedentes ?? 0), margemEsquerda, geo.aviso.y);
+      doc.setTextColor(0, 0, 0);
+    }
+    irParaPagina(geo.paginaFinal);
+    doc.setDrawColor(corLinha);
+    doc.setLineWidth(larguraLinha);
+    yPos = geo.yFinal;
   }
 
   // Se só a primeira parte, finalizar aqui
