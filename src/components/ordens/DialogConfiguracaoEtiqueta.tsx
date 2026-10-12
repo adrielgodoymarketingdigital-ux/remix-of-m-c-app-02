@@ -79,12 +79,10 @@ export function DialogConfiguracaoEtiqueta({
   const handleSalvar = async () => {
     setSalvando(true);
     try {
-      const layoutAtual = config?.layout_os_config || {};
+      // Só a chave desta tela: atualizarConfiguracao mescla sobre o valor relido
+      // do banco (o layout carregado aqui pode estar desatualizado).
       const sucesso = await atualizarConfiguracao({
-        layout_os_config: {
-          ...layoutAtual,
-          etiqueta_config: etiqueta,
-        },
+        layout_os_config: { etiqueta_config: etiqueta },
       });
       if (sucesso) {
         toast.success("Configurações de etiqueta salvas!");

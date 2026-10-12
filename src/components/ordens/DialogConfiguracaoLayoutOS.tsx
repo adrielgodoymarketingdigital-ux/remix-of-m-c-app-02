@@ -104,6 +104,8 @@ export function DialogConfiguracaoLayoutOS({
   const handleSalvar = async () => {
     setSalvando(true);
     try {
+      // Só os campos desta tela: atualizarConfiguracao mescla sobre o valor relido
+      // do banco, preservando etiqueta_config, tecnico_obrigatorio_os e o resto.
       const sucesso = await atualizarConfiguracao({
         layout_os_config: layout,
       });

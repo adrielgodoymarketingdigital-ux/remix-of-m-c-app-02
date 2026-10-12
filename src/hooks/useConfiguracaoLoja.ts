@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
+import { mesclarLayoutOS } from "@/lib/ordemServico/mesclarLayoutOS";
+
+// layout_os_config é compartilhado por várias telas (layout, etiqueta, técnico
+// obrigatório): grava sempre mesclado sobre o valor recém-lido da linha, para uma
+// tela não apagar as chaves da outra. Os demais campos seguem como vieram.
+function dadosParaGravar(dados: Partial<ConfiguracaoLoja>, layoutNoBanco: unknown): Record<string, unknown> {
+  if (!dados.layout_os_config) return dados as Record<string, unknown>;
+  return { ...dados, layout_os_config: mesclarLayoutOS(layoutNoBanco, dados.layout_os_config) };
+}
 
 export function validarConfiguracaoParaRecibos(config: ConfiguracaoLoja | null) {
   if (!config) return { valido: false, camposFaltando: ["Configuração não encontrada"], percentual: 0 };
@@ -311,7 +320,7 @@ export function useConfiguracaoLoja(empresaId?: string | null) {
 
         const { error: errorUpdate } = await supabase
           .from("configuracoes_loja")
-          .update(dados as Record<string, unknown>)
+          .update(dadosParaGravar(dados, novaConfig.layout_os_config))
           .eq("id", novaConfig.id);
 
         if (errorUpdate) {
@@ -322,7 +331,7 @@ export function useConfiguracaoLoja(empresaId?: string | null) {
         // Atualizar configuração existente
         const { error } = await supabase
           .from("configuracoes_loja")
-          .update(dados as Record<string, unknown>)
+          .update(dadosParaGravar(dados, configAtual.layout_os_config))
           .eq("id", configAtual.id);
 
         if (error) {
