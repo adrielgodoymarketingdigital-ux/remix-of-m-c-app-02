@@ -25,10 +25,10 @@ export interface LinhaLayoutOS {
  * erro quando não dá para saber com certeza qual é a linha, para quem grava
  * nunca partir de um JSON vazio nem atingir mais de uma linha.
  */
-export function linhaMatrizUnica(
-  linhas: LinhaLayoutOS[] | null | undefined,
+export function linhaMatrizUnica<T extends { id: string }>(
+  linhas: T[] | null | undefined,
   erro?: unknown,
-): LinhaLayoutOS {
+): T {
   if (erro || !Array.isArray(linhas)) {
     throw new Error("Não foi possível ler a configuração da loja. Nada foi alterado — tente novamente.");
   }

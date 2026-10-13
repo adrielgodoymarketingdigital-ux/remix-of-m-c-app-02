@@ -8,6 +8,8 @@ import {
 } from "@/components/tracking/CardStatusOS";
 import { HeaderLojaTracking } from "@/components/tracking/HeaderLojaTracking";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { fotosDoAcompanhamento } from "@/lib/acompanhamento/fotosAcompanhamento";
+import { useNoIndex } from "@/hooks/useNoIndex";
 
 interface ClienteTrackingDados {
   clienteNome: string | null;
@@ -42,6 +44,8 @@ type LinhaClienteTracking = {
   dispositivo_imei: string | null;
   /** Nome configurado pela loja (os_status_config) — nulo antes da migration 20260929120000. */
   status_nome?: string | null;
+  /** Fotos liberadas para o link — só get_cliente_tracking traz; ausente antes da migration das fotos. */
+  fotos?: unknown;
 };
 
 // Uma linha por OS (LEFT JOIN no RPC) — cliente sem nenhuma OS ainda vem como
@@ -68,6 +72,7 @@ const mapearLinhas = (linhas: LinhaClienteTracking[]): ClienteTrackingDados => {
         dispositivo_modelo: l.dispositivo_modelo,
         dispositivo_imei: l.dispositivo_imei,
         status_nome: l.status_nome ?? null,
+        fotos: fotosDoAcompanhamento(l.fotos),
       })),
     loja: primeira ? {
       nome_loja: primeira.nome_loja,
@@ -167,6 +172,7 @@ export default function AcompanharCliente() {
   const [osSelecionada, setOsSelecionada] = useState<OSResumo | null>(null);
   const [filtro, setFiltro] = useState<FiltrosOSState>(FILTRO_PADRAO);
   const isMobile = useIsMobile();
+  useNoIndex();
 
   const atualizarFiltro = (novo: Partial<FiltrosOSState>) => setFiltro((f) => ({ ...f, ...novo }));
   const limparFiltro = () => setFiltro({ busca: "", status: "todos", campoData: "entrada", dataDe: null, dataAte: null });
@@ -191,7 +197,12 @@ export default function AcompanharCliente() {
     const atualizarStatus = async () => {
       const { data, error } = await supabase.rpc("get_cliente_tracking_status", { p_token: token });
       if (error || !data || data.length === 0) return;
-      setDados(mapearLinhas(data as LinhaClienteTracking[]));
+      // O polling não traz fotos: mantém as da carga inicial, por OS.
+      setDados((anterior) => {
+        const novo = mapearLinhas(data as LinhaClienteTracking[]);
+        const fotosPorOS = new Map((anterior?.osList ?? []).map((os) => [os.os_id, os.fotos ?? []]));
+        return { ...novo, osList: novo.osList.map((os) => ({ ...os, fotos: fotosPorOS.get(os.os_id) ?? [] })) };
+      });
     };
 
     carregarInicial();

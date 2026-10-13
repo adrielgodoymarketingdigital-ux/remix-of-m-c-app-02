@@ -10,6 +10,9 @@ import { toast } from "sonner";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { TrackingPageConfig, TRACKING_CONFIG_PADRAO } from "@/types/configuracao-loja";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+import { linhaMatrizUnica } from "@/lib/ordemServico/mesclarLayoutOS";
+import { ROTULO_CAIXA_OS, ROTULO_OPCAO_LOJA, mesclarTrackingConfig } from "@/lib/acompanhamento/fotosAcompanhamento";
 
 interface DialogConfiguracaoTrackingProps {
   open: boolean;
@@ -52,26 +55,37 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
     setSalvando(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("não autenticado");
+      if (!user) throw new Error("Sessão expirada. Faça login novamente.");
 
-      // Lê o valor atual do banco para não apagar outros campos do objeto
-      const { data: atual } = await supabase
+      // A página pública lê da loja inteira: grava só na linha da matriz (nunca nas
+      // filiais), pelo id, mesclando sobre o valor relido para não apagar o tema da
+      // loja nem outras chaves de cores_personalizadas.
+      const donoId = (config as { user_id?: string } | null)?.user_id ?? user.id;
+      const { data: linhas, error: erroLeitura } = await supabase
         .from("configuracoes_loja")
-        .select("cores_personalizadas")
-        .eq("user_id", user.id)
-        .single();
+        .select("id, cores_personalizadas")
+        .eq("user_id", donoId)
+        .is("empresa_id", null)
+        .limit(2);
+      if (erroLeitura) console.error("Erro ao ler a configuração da loja:", erroLeitura);
+      const linha = linhaMatrizUnica(linhas, erroLeitura);
 
-      const coresAtuais = (atual?.cores_personalizadas as Record<string, unknown>) || {};
-
-      const { error } = await supabase
+      const { data: gravadas, error } = await supabase
         .from("configuracoes_loja")
-        .update({ cores_personalizadas: { ...coresAtuais, tracking_config: cfg } })
-        .eq("user_id", user.id);
+        .update({ cores_personalizadas: mesclarTrackingConfig(linha.cores_personalizadas, cfg) as Json })
+        .eq("id", linha.id)
+        .select("id");
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao gravar a configuração da loja:", error);
+        throw new Error("O banco recusou a gravação. Tente novamente.");
+      }
+      if (!gravadas?.length) throw new Error("Você não tem permissão para alterar esta configuração.");
       toast.success("Configurações da página de acompanhamento salvas!");
-    } catch {
-      toast.error("Erro ao salvar. Tente novamente.");
+    } catch (error) {
+      toast.error("Erro ao salvar a página de acompanhamento", {
+        description: error instanceof Error ? error.message : undefined,
+      });
     } finally {
       setSalvando(false);
     }
@@ -148,6 +162,10 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
                 <ToggleField label="Logo da loja" value={cfg.mostrar_logo} onChange={(v) => set("mostrar_logo", v)} />
                 <ToggleField label="Valor do serviço" value={cfg.mostrar_valor} onChange={(v) => set("mostrar_valor", v)} />
                 <ToggleField label="Defeito relatado" value={cfg.mostrar_defeito} onChange={(v) => set("mostrar_defeito", v)} />
+                <ToggleField label={ROTULO_OPCAO_LOJA} value={cfg.mostrar_fotos === true} onChange={(v) => set("mostrar_fotos", v)} />
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  As fotos só aparecem nas OS marcadas com “{ROTULO_CAIXA_OS}” (aba Tempo, ao visualizar a OS). Até 6 fotos por OS.
+                </p>
               </div>
 
               <Separator />

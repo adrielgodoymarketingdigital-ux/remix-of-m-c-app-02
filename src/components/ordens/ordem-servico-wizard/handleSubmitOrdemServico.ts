@@ -847,6 +847,11 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .eq("user_id", effectiveUserId)
         .maybeSingle();
       const itensAntes = ((osAntes?.avarias as { produtos_utilizados?: ItemOSEstoque[] } | null)?.produtos_utilizados ?? []);
+      // "Incluir fotos neste link" é marcada fora deste formulário: mantém o valor do
+      // banco (só true; se a leitura falhar, fica desmarcada).
+      if ((osAntes?.avarias as AvariasOS | null)?.fotos_acompanhamento === true) {
+        avariasData.fotos_acompanhamento = true;
+      }
 
       // Atualizar ordem existente
       const { error } = await supabase

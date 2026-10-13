@@ -24,6 +24,8 @@ import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSTracking } from "@/hooks/useOSTracking";
+import { CaixaFotosAcompanhamento } from "@/components/ordens/CaixaFotosAcompanhamento";
+import { mesclarFotosAcompanhamento } from "@/lib/acompanhamento/fotosAcompanhamento";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -45,6 +47,9 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
   const [dialogWhatsAppAberto, setDialogWhatsAppAberto] = useState(false);
   const [dialogReciboAberto, setDialogReciboAberto] = useState(false);
   const [linkAcompanhamento, setLinkAcompanhamento] = useState<string | null>(null);
+  // "Incluir fotos neste link" gravada nesta tela: o objeto `ordem` da lista não é
+  // recarregado, então os diálogos abaixo recebem avarias já com a escolha.
+  const [fotosLinkGravado, setFotosLinkGravado] = useState<{ ordemId: string; incluir: boolean } | null>(null);
   const [historico, setHistorico] = useState<any[]>([]);
   const { config: configuracaoLoja } = useConfiguracaoLoja(ordem?.empresa_id);
   const { statusList } = useOSStatusConfig();
@@ -52,6 +57,10 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
   const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
 
   if (!ordem) return null;
+
+  const ordemAtual: OrdemServico = fotosLinkGravado?.ordemId === ordem.id
+    ? { ...ordem, avarias: mesclarFotosAcompanhamento(ordem.avarias, fotosLinkGravado.incluir) as OrdemServico["avarias"] }
+    : ordem;
 
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistEntrada = avariasData?.checklist?.entrada || {};
@@ -529,6 +538,14 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                   Gere um link público para o cliente acompanhar o status da OS em tempo real, sem precisar fazer login.
                 </p>
 
+                {podeCompartilharLink && (
+                  <CaixaFotosAcompanhamento
+                    ordemId={ordem.id}
+                    avarias={ordemAtual.avarias}
+                    onGravado={(incluir) => setFotosLinkGravado({ ordemId: ordem.id, incluir })}
+                  />
+                )}
+
                 {!podeCompartilharLink ? (
                   <p className="text-xs text-muted-foreground italic">
                     Você não tem permissão para compartilhar o link de acompanhamento. Fale com o responsável da loja.
@@ -662,7 +679,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
       <DialogAssinaturaSaida
         open={dialogAssinaturaSaidaAberto}
         onOpenChange={setDialogAssinaturaSaidaAberto}
-        ordem={ordem}
+        ordem={ordemAtual}
         onSuccess={handleAssinaturaSaidaSuccess}
       />
 

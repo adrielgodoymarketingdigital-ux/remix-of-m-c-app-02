@@ -99,6 +99,8 @@ export interface AvariasOS {
   custos_adicionais?: CustoAdicional[];
   assinaturas?: AssinaturaDigital;
   fotos_dispositivo?: string[];
+  /** "Incluir fotos neste link": as fotos podem aparecer no acompanhamento do cliente. Ausente = não. */
+  fotos_acompanhamento?: boolean;
   dados_pagamento?: DadosPagamento;
   observacoes_internas?: string;
   mostrar_obs_internas_impressao?: boolean;

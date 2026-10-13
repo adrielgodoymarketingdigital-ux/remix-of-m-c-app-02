@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Smartphone, Wrench, CalendarDays, DollarSign, AlertCircle,
-  CheckCircle2, Clock, PackageSearch, XCircle, ClipboardList, Download, Loader2,
+  CheckCircle2, Clock, PackageSearch, XCircle, ClipboardList, Download, Loader2, Images,
 } from "lucide-react";
 import { TrackingPageConfig } from "@/types/configuracao-loja";
 import { downloadPDFAcompanhamentoPublico } from "@/lib/gerarOrdemServicoPDF";
 import { toast } from "sonner";
+import { urlMiniatura } from "@/lib/os/fotosImpressaoOS";
+import { TITULO_FOTOS_ACOMPANHAMENTO, textoVerFotos } from "@/lib/acompanhamento/fotosAcompanhamento";
+import { VisualizadorFotos } from "@/components/galeria/VisualizadorFotos";
 
 // Mapeamento de status do sistema → label/ícone de exibição. Compartilhado entre
 // a página de acompanhamento de uma OS (AcompanharOS) e a de um cliente
@@ -59,6 +62,11 @@ export interface OSTrackingCardData {
   dispositivo_imei?: string | null;
   /** Nome do status configurado pela loja (os_status_config), vindo do RPC. */
   status_nome?: string | null;
+  /**
+   * URLs das fotos do aparelho liberadas para este link (RPC, só na carga inicial;
+   * vazio quando a loja ou a OS não liberou). Ausente = sem fotos.
+   */
+  fotos?: string[];
 }
 
 /**
@@ -84,6 +92,13 @@ interface CardStatusOSProps {
 
 export function CardStatusOS({ os, tc, nomeLoja, clienteNome, mostrarNomeCliente = true }: CardStatusOSProps) {
   const [baixandoPDF, setBaixandoPDF] = useState(false);
+  // Fotos do aparelho: as miniaturas (as mesmas da impressão) só são pedidas
+  // depois que o cliente toca em "Ver fotos"; a ampliação usa a mesma miniatura.
+  const [fotosAbertas, setFotosAbertas] = useState(false);
+  const [fotoAmpliada, setFotoAmpliada] = useState<number | null>(null);
+  const chaveFotos = (os.fotos ?? []).join("\n");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const miniaturas = useMemo(() => (os.fotos ?? []).map(urlMiniatura), [chaveFotos]);
 
   const statusKey = os.status ?? "";
   const statusCfg = {
@@ -281,6 +296,41 @@ export function CardStatusOS({ os, tc, nomeLoja, clienteNome, mostrarNomeCliente
             </div>
           </div>
 
+          {/* ── Fotos do aparelho (só quando o link traz fotos) ── */}
+          {miniaturas.length > 0 && (
+            <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${prim}15` }}>
+              <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: tc.cor_texto_secundario + "80" }}>
+                {TITULO_FOTOS_ACOMPANHAMENTO}
+              </p>
+              {!fotosAbertas ? (
+                <button
+                  type="button"
+                  onClick={() => setFotosAbertas(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold"
+                  style={{ color: prim, borderColor: `${prim}40`, background: `${prim}10` }}
+                >
+                  <Images className="h-4 w-4" />
+                  {textoVerFotos(miniaturas.length)}
+                </button>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {miniaturas.map((src, i) => (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setFotoAmpliada(i)}
+                      className="aspect-square rounded-lg overflow-hidden border cursor-zoom-in"
+                      style={{ borderColor: `${prim}25`, background: tc.cor_texto_secundario + "12" }}
+                      aria-label={`Ampliar foto ${i + 1}`}
+                    >
+                      <img src={src} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Separador rodapé */}
           <div className="mt-5 pt-4 flex items-center justify-between"
             style={{ borderTop: `1px solid ${prim}15` }}>
@@ -298,6 +348,16 @@ export function CardStatusOS({ os, tc, nomeLoja, clienteNome, mostrarNomeCliente
           </div>
         </div>
       </div>
+
+      {fotosAbertas && (
+        <VisualizadorFotos
+          fotos={miniaturas}
+          nome={TITULO_FOTOS_ACOMPANHAMENTO}
+          initialIndex={fotoAmpliada ?? 0}
+          open={fotoAmpliada !== null}
+          onClose={() => setFotoAmpliada(null)}
+        />
+      )}
 
       {/* Baixar PDF */}
       <button
