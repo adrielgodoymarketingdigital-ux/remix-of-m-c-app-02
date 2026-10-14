@@ -79,16 +79,33 @@ export interface CompraDispositivo {
     nome: string;
   };
   dispositivos?: {
+    id?: string;
     marca: string;
     modelo: string;
     imei?: string;
+    numero_serie?: string | null;
   };
+  /** Todos os aparelhos com dispositivos.compra_id = esta compra (vêm no mesmo select da lista, para a busca). */
+  aparelhos?: {
+    id: string;
+    marca: string | null;
+    modelo: string | null;
+    imei?: string | null;
+    imei2?: string | null;
+    numero_serie?: string | null;
+  }[];
 }
 
 export interface FormularioCompraDispositivo {
   pessoa_id?: string;
   fornecedor_id?: string;
+  /** Aparelho principal (compras_dispositivos.dispositivo_id). */
   dispositivo_id: string;
+  /**
+   * Demais aparelhos da mesma compra (o "+" do registro). Não é coluna: o hook
+   * tira do insert e grava dispositivos.compra_id em todos, junto com o principal.
+   */
+  dispositivos_adicionais?: string[];
   data_compra: string;
   valor_pago: number;
   forma_pagamento: FormaPagamentoCompra;

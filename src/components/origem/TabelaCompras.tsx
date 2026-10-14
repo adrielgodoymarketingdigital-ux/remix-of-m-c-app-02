@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Eye, FileText, Edit, Trash2, Loader2 } from "lucide-react";
 import { CompraDispositivo } from "@/types/origem";
+import { descreverAparelhoEncontrado, type AparelhoEncontrado } from "@/lib/origem/buscaCompras";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { toast } from "sonner";
@@ -38,6 +39,8 @@ interface TabelaComprasProps {
   onExcluir: (id: string) => Promise<void>;
   onEditarDispositivo?: (dispositivoId: string) => void;
   onExcluirDispositivo?: (dispositivoId: string) => void;
+  /** Busca ativa: aparelho secundário que bateu, por id da compra (o principal não aparece aqui). */
+  aparelhosEncontrados?: Record<string, AparelhoEncontrado>;
 }
 
 export function TabelaCompras({
@@ -48,6 +51,7 @@ export function TabelaCompras({
   onExcluir,
   onEditarDispositivo,
   onExcluirDispositivo,
+  aparelhosEncontrados,
 }: TabelaComprasProps) {
   const [compraParaExcluir, setCompraParaExcluir] = useState<string | null>(null);
   const [gerandoRecibo, setGerandoRecibo] = useState<Record<string, boolean>>({});
@@ -241,6 +245,11 @@ export function TabelaCompras({
                   <div className="font-medium">
                     {compra.dispositivos?.marca} {compra.dispositivos?.modelo}
                   </div>
+                  {aparelhosEncontrados?.[compra.id] && (
+                    <div className="text-xs text-primary" data-testid="compra-busca-encontrado">
+                      {descreverAparelhoEncontrado(aparelhosEncontrados[compra.id])}
+                    </div>
+                  )}
                 </div>
               </TableCell>
               <TableCell>

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
 import { useEmpresaInfo } from "./useResolvedUserId";
 import { filtroEmpresaCompras, montarDadosInsercaoCompra } from "@/lib/origem/comprasDispositivos";
+import { idsDispositivosDaCompra } from "@/lib/origem/itensCompra";
 import {
   ResultadoCompra,
   comLimiteDeTempo,
@@ -44,9 +45,19 @@ export function useComprasDispositivos() {
             nome
           ),
           dispositivos!compras_dispositivos_dispositivo_id_fkey (
+            id,
             marca,
             modelo,
-            imei
+            imei,
+            numero_serie
+          ),
+          aparelhos:dispositivos!dispositivos_compra_id_fkey (
+            id,
+            marca,
+            modelo,
+            imei,
+            imei2,
+            numero_serie
           )
         `)
         .eq("user_id", user.id)
@@ -81,7 +92,10 @@ export function useComprasDispositivos() {
       const { data: { user } } = await comLimiteDeTempo(supabase.auth.getUser(), LIMITE_SESSAO_MS, "Obter sessão");
       if (!user) throw new Error("Usuário não autenticado");
 
-      const dadosInsercao = montarDadosInsercaoCompra(dados, { userId: user.id, empresaId, agora: new Date() });
+      // Uma linha de compra (valor_pago = total) para todos os aparelhos; os adicionais só ganham o compra_id.
+      const { dispositivos_adicionais: adicionais, ...dadosCompra } = dados;
+      const idsVinculo = idsDispositivosDaCompra(dados.dispositivo_id, adicionais);
+      const dadosInsercao = montarDadosInsercaoCompra(dadosCompra, { userId: user.id, empresaId, agora: new Date() });
       payloadKB = tamanhoPayloadKB([dadosInsercao]);
 
       etapa = "criar compra";
@@ -94,14 +108,14 @@ export function useComprasDispositivos() {
       if (error) throw error;
 
       // A compra já está gravada: falha aqui só fica registrada (não desfaz nem repete o insert).
-      if (data && dados.dispositivo_id) {
+      if (data && idsVinculo.length > 0) {
         etapa = "vincular dispositivo";
         const { error: erroVinculo } = await supabase
           .from("dispositivos")
           .update({ compra_id: data.id })
-          .eq("id", dados.dispositivo_id);
+          .in("id", idsVinculo);
         if (erroVinculo) {
-          console.error("[compra] etapa=vincular dispositivo", { codigo: erroVinculo.code, mensagem: erroVinculo.message, compraId: data.id });
+          console.error("[compra] etapa=vincular dispositivo", { codigo: erroVinculo.code, mensagem: erroVinculo.message, compraId: data.id, dispositivos: idsVinculo });
         }
       }
 

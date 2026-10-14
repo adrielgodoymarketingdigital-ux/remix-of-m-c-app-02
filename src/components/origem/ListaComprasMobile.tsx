@@ -30,6 +30,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { CompraDispositivo } from "@/types/origem";
+import { descreverAparelhoEncontrado, type AparelhoEncontrado } from "@/lib/origem/buscaCompras";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
@@ -42,6 +43,8 @@ interface ListaComprasMobileProps {
   onExcluir: (id: string) => Promise<void>;
   onEditarDispositivo?: (dispositivoId: string) => void;
   onExcluirDispositivo?: (dispositivoId: string) => void;
+  /** Busca ativa: aparelho secundário que bateu, por id da compra (o principal não aparece aqui). */
+  aparelhosEncontrados?: Record<string, AparelhoEncontrado>;
 }
 
 const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
@@ -67,6 +70,7 @@ export function ListaComprasMobile({
   onExcluir,
   onEditarDispositivo,
   onExcluirDispositivo,
+  aparelhosEncontrados,
 }: ListaComprasMobileProps) {
   const [compraParaExcluir, setCompraParaExcluir] = useState<CompraDispositivo | null>(null);
   const [dispositivoParaExcluir, setDispositivoParaExcluir] = useState<string | null>(null);
@@ -136,6 +140,11 @@ export function ListaComprasMobile({
                     <div className="text-sm font-semibold mb-1">
                       {compra.dispositivos?.marca} {compra.dispositivos?.modelo}
                     </div>
+                    {aparelhosEncontrados?.[compra.id] && (
+                      <div className="text-xs text-primary mb-1" data-testid="compra-busca-encontrado">
+                        {descreverAparelhoEncontrado(aparelhosEncontrados[compra.id])}
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span

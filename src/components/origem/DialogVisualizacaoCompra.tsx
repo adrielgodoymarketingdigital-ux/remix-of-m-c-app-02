@@ -26,6 +26,52 @@ import { supabase } from "@/integrations/supabase/client";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
 import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
+import { useQuery } from "@tanstack/react-query";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import {
+  ordenarDispositivosDaCompra,
+  statusDispositivoCompra,
+  totalDaCompra,
+  type StatusDispositivoCompra,
+} from "@/lib/origem/itensCompra";
+
+const CONDICOES: Record<string, string> = { novo: "Novo", semi_novo: "Semi Novo", usado: "Usado" };
+
+const STATUS: Record<StatusDispositivoCompra, { rotulo: string; variante: "default" | "secondary" | "destructive" }> = {
+  em_estoque: { rotulo: "Em estoque", variante: "default" },
+  vendido: { rotulo: "Vendido", variante: "secondary" },
+  excluido: { rotulo: "Excluído", variante: "destructive" },
+};
+
+interface DispositivoDaCompra {
+  id: string;
+  marca: string | null;
+  modelo: string | null;
+  cor: string | null;
+  capacidade_gb: number | null;
+  imei: string | null;
+  imei2: string | null;
+  numero_serie: string | null;
+  condicao: string | null;
+  custo: number | null;
+  preco: number | null;
+  vendido: boolean | null;
+  deleted_at: string | null;
+  created_at: string | null;
+}
+
+/** Todos os aparelhos da compra: o principal (dispositivo_id) e os que têm compra_id = compra. */
+async function buscarDispositivosDaCompra(compraId: string, principalId: string | null): Promise<DispositivoDaCompra[]> {
+  let query = supabase
+    .from("dispositivos")
+    .select("id, marca, modelo, cor, capacidade_gb, imei, imei2, numero_serie, condicao, custo, preco, vendido, deleted_at, created_at");
+  query = principalId
+    ? query.or(`compra_id.eq.${compraId},id.eq.${principalId}`)
+    : query.eq("compra_id", compraId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return ordenarDispositivosDaCompra((data ?? []) as DispositivoDaCompra[], principalId);
+}
 
 interface DialogVisualizacaoCompraProps {
   open: boolean;
@@ -39,7 +85,16 @@ export function DialogVisualizacaoCompra({
   compra,
 }: DialogVisualizacaoCompraProps) {
   const { toast } = useToast();
+  const { podeVerCustos } = useFuncionarioPermissoes();
   const [gerandoPDF, setGerandoPDF] = useState(false);
+
+  const { data: dispositivosDaCompra, isLoading: carregandoDispositivos } = useQuery({
+    queryKey: ["compra-dispositivos", compra?.id, compra?.dispositivo_id],
+    queryFn: () => buscarDispositivosDaCompra(compra!.id, compra!.dispositivo_id ?? null),
+    enabled: open && !!compra?.id,
+    // Status (vendido/excluído) e dados mudam por outras telas: busca de novo a cada abertura.
+    staleTime: 0,
+  });
 
   // Galeria de fotos da compra — grade de thumbnails + lightbox (Carousel)
   // que abre por cima ao clicar. fotosComErro rastreia fotos cuja URL
@@ -77,6 +132,9 @@ export function DialogVisualizacaoCompra({
   };
 
   if (!compra) return null;
+
+  const listaDispositivos = dispositivosDaCompra ?? [];
+  const resumo = totalDaCompra(listaDispositivos);
 
   const handleGerarRecibo = async () => {
     if (!compra) return;
@@ -308,6 +366,24 @@ export function DialogVisualizacaoCompra({
       </DialogHeader>
 
         <div className="space-y-6">
+          {/* Total da compra */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-lg border bg-muted/40 p-3 text-sm" data-testid="compra-visualizar-total">
+            <div>
+              <span className="text-muted-foreground text-xs">Dispositivos</span>
+              <p className="font-bold text-lg">{carregandoDispositivos && listaDispositivos.length === 0 ? "…" : Math.max(resumo.quantidade, 1)}</p>
+            </div>
+            {podeVerCustos && (
+              <div>
+                <span className="text-muted-foreground text-xs">Soma dos custos</span>
+                <p className="font-bold text-lg">{listaDispositivos.length > 0 ? formatCurrency(resumo.somaCustos) : "-"}</p>
+              </div>
+            )}
+            <div>
+              <span className="text-muted-foreground text-xs">Valor pago</span>
+              <p className="font-bold text-lg"><ValorMonetario valor={compra.valor_pago} /></p>
+            </div>
+          </div>
+
           {/* Dados da Pessoa/Fornecedor */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
@@ -342,25 +418,13 @@ export function DialogVisualizacaoCompra({
             </div>
           </div>
 
-          {/* Dados do Dispositivo */}
+          {/* Dispositivos da compra (todos; compra antiga mostra o único) */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Smartphone className="h-4 w-4" />
-              <h3>Dispositivo</h3>
+              <h3>{listaDispositivos.length > 1 ? `Dispositivos (${listaDispositivos.length})` : "Dispositivo"}</h3>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-muted-foreground">Marca/Modelo:</span>
-                <p className="font-medium">
-                  {compra.dispositivos?.marca} {compra.dispositivos?.modelo}
-                </p>
-              </div>
-              {compra.dispositivos?.imei && (
-                <div>
-                  <span className="text-muted-foreground">IMEI:</span>
-                  <p className="font-medium font-mono text-xs">{compra.dispositivos.imei}</p>
-                </div>
-              )}
               <div>
                 <span className="text-muted-foreground">Condição:</span>
                 <p className="font-medium">{compra.condicao_aparelho}</p>
@@ -372,6 +436,62 @@ export function DialogVisualizacaoCompra({
                 </div>
               )}
             </div>
+            {carregandoDispositivos && listaDispositivos.length === 0 ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando dispositivos...
+              </div>
+            ) : listaDispositivos.length === 0 ? (
+              // Sem acesso aos aparelhos (ex.: excluídos de vez): mostra o que veio com a compra.
+              <div className="rounded-md border p-3 text-sm">
+                <p className="font-medium">{compra.dispositivos?.marca} {compra.dispositivos?.modelo}</p>
+                {compra.dispositivos?.imei && <p className="font-mono text-xs text-muted-foreground">IMEI {compra.dispositivos.imei}</p>}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {listaDispositivos.map((d, idx) => {
+                  const status = STATUS[statusDispositivoCompra(d)];
+                  return (
+                    <div key={d.id} className="rounded-md border p-3 text-sm" data-testid="compra-visualizar-dispositivo">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium">
+                          {listaDispositivos.length > 1 && <span className="text-muted-foreground mr-1">{idx + 1}.</span>}
+                          {[d.marca, d.modelo].filter(Boolean).join(" ") || "Dispositivo"}
+                        </p>
+                        <Badge variant={status.variante} className="shrink-0">{status.rotulo}</Badge>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1">
+                        <div>
+                          <span className="text-muted-foreground text-xs">IMEI:</span>
+                          <p className="font-mono text-xs break-all">{d.imei || "-"}{d.imei2 ? ` / ${d.imei2}` : ""}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs">Nº de série:</span>
+                          <p className="font-mono text-xs break-all">{d.numero_serie || "-"}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs">Cor:</span>
+                          <p>{d.cor || "-"}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs">Capacidade:</span>
+                          <p>{d.capacidade_gb ? `${d.capacidade_gb} GB` : "-"}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs">Condição:</span>
+                          <p>{(d.condicao && CONDICOES[d.condicao]) || d.condicao || "-"}</p>
+                        </div>
+                        {podeVerCustos && (
+                          <div>
+                            <span className="text-muted-foreground text-xs">Custo:</span>
+                            <p className="font-medium">{d.custo != null ? formatCurrency(d.custo) : "-"}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Dados da Transação */}

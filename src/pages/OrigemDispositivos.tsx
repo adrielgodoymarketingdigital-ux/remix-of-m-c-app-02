@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/formatters";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { compraNoPeriodo, contarHojeEMes } from "@/lib/origem/comprasDispositivos";
+import { buscarNaCompra, type AparelhoEncontrado } from "@/lib/origem/buscaCompras";
 import type { ResultadoCompra } from "@/lib/origem/fluxoCompra";
 import { AppLayout } from "@/components/layout/AppLayout";
 
@@ -74,25 +75,17 @@ export default function OrigemDispositivos() {
     }
   }, [searchParams, navigate]);
 
-  const comprasFiltradas = useMemo(() => {
+  // Busca em memória (o hook carrega todas as compras, sem página) nos dados da compra
+  // e em todos os aparelhos dela; guarda qual aparelho secundário bateu para mostrar na linha.
+  const { comprasFiltradas, aparelhosEncontrados } = useMemo(() => {
     let resultado = compras;
+    const encontrados: Record<string, AparelhoEncontrado> = {};
 
     if (busca.trim()) {
-      const termo = busca.toLowerCase();
       resultado = resultado.filter(compra => {
-        const dataFormatada = formatDate(compra.data_compra);
-        const dispositivoModelo = compra.dispositivos?.modelo || '';
-        const dispositivoImei = compra.dispositivos?.imei || '';
-        const dispositivoSerie = (compra.dispositivos as any)?.numero_serie || '';
-
-        return (
-          compra.origem_pessoas?.nome.toLowerCase().includes(termo) ||
-          compra.origem_pessoas?.cpf_cnpj?.toLowerCase().includes(termo) ||
-          dispositivoModelo.toLowerCase().includes(termo) ||
-          dispositivoImei.toLowerCase().includes(termo) ||
-          dispositivoSerie.toLowerCase().includes(termo) ||
-          dataFormatada.includes(termo)
-        );
+        const r = buscarNaCompra(compra, busca, formatDate(compra.data_compra));
+        if (r.encontrou && r.aparelhoSecundario) encontrados[compra.id] = r.aparelhoSecundario;
+        return r.encontrou;
       });
     }
 
@@ -106,7 +99,7 @@ export default function OrigemDispositivos() {
       resultado = resultado.filter(compra => compraNoPeriodo(compra.data_compra, filtroDataInicial, filtroDataFinal));
     }
 
-    return resultado;
+    return { comprasFiltradas: resultado, aparelhosEncontrados: encontrados };
   }, [compras, busca, filtroFormaPagamento, filtroDataInicial, filtroDataFinal]);
 
   const temFiltrosAtivos = busca.trim() || filtroFormaPagamento !== "todos" || filtroDataInicial || filtroDataFinal;
@@ -373,6 +366,7 @@ export default function OrigemDispositivos() {
 
               <ListaComprasMobile
                 compras={comprasFiltradas}
+                aparelhosEncontrados={aparelhosEncontrados}
                 loading={loading}
                 onVerDetalhes={(c) => { setCompraSelecionada(c); setDialogDetalhesAberto(true); }}
                 onEditar={(c) => { setCompraSelecionada(c); setDialogEditarAberto(true); }}
@@ -482,6 +476,7 @@ export default function OrigemDispositivos() {
 
               <TabelaCompras
                 compras={comprasFiltradas}
+                aparelhosEncontrados={aparelhosEncontrados}
                 loading={loading}
                 onVerDetalhes={(c) => { setCompraSelecionada(c); setDialogDetalhesAberto(true); }}
                 onEditar={(c) => { setCompraSelecionada(c); setDialogEditarAberto(true); }}

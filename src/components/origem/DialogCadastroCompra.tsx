@@ -38,7 +38,7 @@ import {
   filtrarPessoas,
   garantirNaLista,
 } from "@/lib/busca/normalizarBusca";
-import { parseValorMonetarioBR, formatarNumeroParaInputBR } from "@/lib/formatters";
+import { parseValorMonetarioBR, formatarNumeroParaInputBR, formatCurrency } from "@/lib/formatters";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrigemPessoas } from "@/hooks/useOrigemPessoas";
@@ -51,7 +51,7 @@ import { UploadFotosCompra } from "./UploadFotosCompra";
 import { UploadDocumentosVendedor } from "./UploadDocumentosVendedor";
 import { AssinaturaCompra } from "./AssinaturaCompra";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Plus, Save, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Save, Loader2, AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   CriadosNaSessao,
@@ -65,6 +65,15 @@ import {
   iniciarEnvio,
   montarMensagemErroCompra,
 } from "@/lib/origem/fluxoCompra";
+import {
+  copiarParaNovaUnidade,
+  duplicadoNaCompra,
+  primeiroDuplicadoNaLista,
+  totalDaCompra,
+  type UnidadeCopiada,
+  type UnidadeIdentificada,
+} from "@/lib/origem/itensCompra";
+import type { FormularioDispositivo } from "@/types/dispositivo";
 
 const pessoaParaItem = (p: OrigemPessoa): ItemComboboxBusca => ({
   id: p.id,
@@ -77,6 +86,37 @@ const dispositivoParaItem = (d: Dispositivo): ItemComboboxBusca => ({
   rotulo: `${d.marca ?? ""} ${d.modelo ?? ""}`.trim() || "Dispositivo",
   sublinha: [d.imei && `IMEI ${d.imei}`, d.numero_serie && `Série ${d.numero_serie}`].filter(Boolean).join(" · ") || null,
 });
+
+/** "+" (mais uma unidade igual) e remover, ao lado de cada dispositivo da compra. */
+function BotoesUnidade({ onAdicionar, onRemover }: { onAdicionar?: () => void; onRemover?: () => void }) {
+  return (
+    <div className="flex gap-1 shrink-0">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        onClick={onAdicionar}
+        disabled={!onAdicionar}
+        title="Adicionar mais uma unidade igual a esta"
+        aria-label="Adicionar mais uma unidade igual a esta"
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+      {onRemover && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={onRemover}
+          title="Remover da compra"
+          aria-label="Remover da compra"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 // Campos obrigatórios na ordem da tela: rótulo do aviso e aba onde ficam.
 const CAMPOS_OBRIGATORIOS: { campo: string; rotulo: string; aba?: string }[] = [
@@ -154,6 +194,18 @@ export function DialogCadastroCompra({
   // Recém-criados pelos "+ Novo": entram na lista do seletor na hora (antes do refetch).
   const [pessoaRecemCriada, setPessoaRecemCriada] = useState<OrigemPessoa | null>(null);
   const [dispositivoRecemCriado, setDispositivoRecemCriado] = useState<Dispositivo | null>(null);
+  // Demais aparelhos da mesma compra (o 1º é o campo dispositivo_id). O ref acompanha o
+  // estado para as unidades criadas em sequência (quantidade > 1) se enxergarem.
+  const [adicionais, setAdicionais] = useState<string[]>([]);
+  const adicionaisRef = useRef<string[]>([]);
+  // Aparelhos criados nesta sessão (pelo "+ Novo" ou pelo "+"), antes de a lista recarregar.
+  const [criadosPorId, setCriadosPorId] = useState<Record<string, Dispositivo>>({});
+  const criadosPorIdRef = useRef<Record<string, Dispositivo>>({});
+  // "+" abre o cadastro com a unidade do lado copiada; "Novo Dispositivo" abre em branco.
+  const [unidadeCopiada, setUnidadeCopiada] = useState<UnidadeCopiada | null>(null);
+  // "Novo Dispositivo" troca o 1º aparelho (como sempre foi); o "+" acrescenta. Depois da
+  // 1ª unidade gravada, as seguintes do mesmo envio (quantidade > 1) sempre acrescentam.
+  const modoNovoDispositivo = useRef<"substituir" | "adicionar">("substituir");
   
   // Estados para fotos, documentos e assinaturas
   const [fotos, setFotos] = useState<string[]>([]);
@@ -195,13 +247,96 @@ export function DialogCadastroCompra({
   const opcoesPessoas = useMemo(() => garantirNaLista(pessoas, pessoaRecemCriada), [pessoas, pessoaRecemCriada]);
   // Só aparelhos sem compra, não vendidos e não excluídos; o pré-selecionado
   // (?dispositivo=, recém-criado ou já escolhido) entra sempre.
+  // Os que já estão na lista como adicionais não aparecem para o 1º.
   const opcoesDispositivos = useMemo(
     () => dispositivosDisponiveisParaCompra(
       garantirNaLista(dispositivos, dispositivoRecemCriado),
       dispositivoId || dispositivoSelecionado || dispositivoRecemCriado?.id,
-    ),
-    [dispositivos, dispositivoRecemCriado, dispositivoId, dispositivoSelecionado],
+    ).filter((d) => !adicionais.includes(d.id)),
+    [dispositivos, dispositivoRecemCriado, dispositivoId, dispositivoSelecionado, adicionais],
   );
+
+  const buscarDispositivo = useCallback(
+    (id: string | null | undefined): Dispositivo | undefined =>
+      id ? (criadosPorIdRef.current[id] ?? criadosPorId[id] ?? dispositivos.find((d) => d.id === id)) : undefined,
+    [criadosPorId, dispositivos],
+  );
+
+  const paraIdentificada = useCallback((id: string): UnidadeIdentificada => {
+    const d = buscarDispositivo(id);
+    return { id, rotulo: d ? dispositivoParaItem(d).rotulo : null, imei: d?.imei, imei2: d?.imei2, numero_serie: d?.numero_serie };
+  }, [buscarDispositivo]);
+
+  // Aparelhos da compra na ordem da tela (o 1º só se escolhido).
+  const idsDaCompra = useMemo(
+    () => [dispositivoSelecionado, ...adicionais].filter((id): id is string => !!id),
+    [dispositivoSelecionado, adicionais],
+  );
+  const resumoCompra = useMemo(
+    () => totalDaCompra(idsDaCompra.map((id) => ({ custo: buscarDispositivo(id)?.custo }))),
+    [idsDaCompra, buscarDispositivo],
+  );
+
+  const definirAdicionais = (lista: string[]) => {
+    adicionaisRef.current = lista;
+    setAdicionais(lista);
+  };
+
+  /** Valor pago = soma dos custos sempre que o "+" ou o remover mudam a lista (o usuário ainda pode editar). */
+  const recalcularValorPago = (ids: string[]) => {
+    const { somaCustos } = totalDaCompra(ids.map((id) => ({ custo: buscarDispositivo(id)?.custo })));
+    if (somaCustos > 0) form.setValue("valor_pago", formatarNumeroParaInputBR(somaCustos), { shouldValidate: true });
+  };
+
+  const abrirNovaUnidade = (idOrigem: string) => {
+    const origem = buscarDispositivo(idOrigem);
+    if (!origem) return;
+    modoNovoDispositivo.current = "adicionar";
+    setUnidadeCopiada(copiarParaNovaUnidade(origem));
+    setDialogDispositivoAberto(true);
+  };
+
+  const abrirNovoDispositivo = () => {
+    modoNovoDispositivo.current = "substituir";
+    setUnidadeCopiada(null);
+    setDialogDispositivoAberto(true);
+  };
+
+  const removerDaCompra = (id: string) => {
+    const primeiro = form.getValues("dispositivo_id");
+    let restantes: string[];
+    if (id === primeiro) {
+      // Sai o 1º: o próximo da lista assume o lugar dele.
+      const [proximo, ...resto] = adicionaisRef.current;
+      form.setValue("dispositivo_id", proximo ?? "", { shouldValidate: true });
+      definirAdicionais(resto);
+      restantes = proximo ? [proximo, ...resto] : [];
+    } else {
+      definirAdicionais(adicionaisRef.current.filter((a) => a !== id));
+      restantes = [primeiro, ...adicionaisRef.current].filter(Boolean);
+    }
+    recalcularValorPago(restantes);
+  };
+
+  /** Bloqueia IMEI/série repetido dentro da compra antes de gravar qualquer unidade nova. */
+  const validarNovasUnidades = (unidades: FormularioDispositivo[]): string | null => {
+    const primeiro = form.getValues("dispositivo_id");
+    const atuais = [
+      ...(modoNovoDispositivo.current === "substituir" || !primeiro ? [] : [primeiro]),
+      ...adicionaisRef.current,
+    ].map(paraIdentificada);
+    const novas: UnidadeIdentificada[] = unidades.map((u, i) => ({
+      rotulo: unidades.length > 1 ? `unidade ${i + 1} deste cadastro` : null,
+      imei: u.imei,
+      imei2: u.imei2,
+      numero_serie: u.numero_serie,
+    }));
+    for (let i = 0; i < novas.length; i++) {
+      const erro = duplicadoNaCompra(novas[i], [...atuais, ...novas.slice(0, i)]);
+      if (erro) return erro;
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (dispositivoId) {
@@ -224,6 +359,11 @@ export function DialogCadastroCompra({
       criadosNaSessao.current = {};
       setPessoaRecemCriada(null);
       setDispositivoRecemCriado(null);
+      adicionaisRef.current = [];
+      setAdicionais([]);
+      criadosPorIdRef.current = {};
+      setCriadosPorId({});
+      setUnidadeCopiada(null);
     }
   }, [open]);
 
@@ -246,6 +386,15 @@ export function DialogCadastroCompra({
       return;
     }
 
+    const duplicado = primeiroDuplicadoNaLista(
+      [dados.dispositivo_id, ...adicionaisRef.current].filter((id): id is string => !!id).map(paraIdentificada),
+    );
+    if (duplicado) {
+      toast.error(duplicado);
+      setErroEnvio({ mensagem: "Há dispositivos repetidos nesta compra.", detalhe: duplicado });
+      return;
+    }
+
     if (!iniciarEnvio(travaEnvio.current)) return;
     setErroEnvio(null);
     setIsSubmitting(true);
@@ -256,6 +405,7 @@ export function DialogCadastroCompra({
         pessoa_id: pessoaId ?? undefined,
         fornecedor_id: dados.tipo_origem === 'fornecedor' ? dados.fornecedor_id : undefined,
         dispositivo_id: dispositivoId ?? '',
+        dispositivos_adicionais: adicionaisRef.current.length > 0 ? [...adicionaisRef.current] : undefined,
         data_compra: dados.data_compra,
         valor_pago: parseValorMonetarioBR(dados.valor_pago),
         forma_pagamento: dados.forma_pagamento,
@@ -291,6 +441,7 @@ export function DialogCadastroCompra({
       setAssinaturaCliente('');
       setAssinaturaClienteIP('');
       criadosNaSessao.current = {};
+      definirAdicionais([]);
       onOpenChange(false);
     } catch (error) {
       console.error('[compra] etapa=enviar formulário', error);
@@ -353,14 +504,26 @@ export function DialogCadastroCompra({
     return false;
   };
 
-  const handleNovoDispositivo = async (dadosDispositivo: any) => {
+  const handleNovoDispositivo = async (dadosDispositivo: FormularioDispositivo) => {
     // Sem o redirecionamento do onboarding para /os: desmontaria este formulário.
     const dispositivo = await criarDispositivo(dadosDispositivo, { redirecionarOnboarding: false });
     if (!dispositivo) console.error("[compra] etapa=criar dispositivo: não criado (ver erro acima)");
     if (dispositivo) {
-      criadosNaSessao.current.dispositivoId = dispositivo.id;
-      setDispositivoRecemCriado(dispositivo);
-      form.setValue("dispositivo_id", dispositivo.id, { shouldValidate: true });
+      criadosPorIdRef.current = { ...criadosPorIdRef.current, [dispositivo.id]: dispositivo };
+      setCriadosPorId(criadosPorIdRef.current);
+      const primeiro = form.getValues("dispositivo_id");
+      if (modoNovoDispositivo.current === "substituir" || !primeiro) {
+        // Comportamento de sempre: o novo aparelho vira o 1º da compra.
+        criadosNaSessao.current.dispositivoId = dispositivo.id;
+        setDispositivoRecemCriado(dispositivo);
+        form.setValue("dispositivo_id", dispositivo.id, { shouldValidate: true });
+        if (adicionaisRef.current.length > 0) recalcularValorPago([dispositivo.id, ...adicionaisRef.current]);
+      } else {
+        definirAdicionais([...adicionaisRef.current, dispositivo.id]);
+        recalcularValorPago([primeiro, ...adicionaisRef.current]);
+      }
+      // Demais unidades do mesmo envio (quantidade > 1) entram na lista.
+      modoNovoDispositivo.current = "adicionar";
       await carregarDispositivos();
       setDialogDispositivoAberto(false);
     }
@@ -503,7 +666,7 @@ export function DialogCadastroCompra({
                       type="button" 
                       variant="outline" 
                       size="sm"
-                      onClick={() => setDialogDispositivoAberto(true)}
+                      onClick={abrirNovoDispositivo}
                       disabled={!!dispositivoId}
                     >
                       <Plus className="h-4 w-4 mr-2" />
@@ -515,22 +678,61 @@ export function DialogCadastroCompra({
                     name="dispositivo_id"
                     render={({ field }) => (
                       <FormItem data-campo-compra="dispositivo_id">
-                        <ComboboxBusca
-                          id="compra-dispositivo"
-                          opcoes={opcoesDispositivos}
-                          filtrar={filtrarDispositivos}
-                          paraItem={dispositivoParaItem}
-                          valor={field.value ?? ""}
-                          onChange={field.onChange}
-                          placeholder="Selecione um dispositivo"
-                          placeholderBusca="Buscar por modelo, IMEI ou série..."
-                          disabled={!!dispositivoId}
-                          permitirLimpar
-                        />
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <ComboboxBusca
+                              id="compra-dispositivo"
+                              opcoes={opcoesDispositivos}
+                              filtrar={filtrarDispositivos}
+                              paraItem={dispositivoParaItem}
+                              valor={field.value ?? ""}
+                              onChange={field.onChange}
+                              placeholder="Selecione um dispositivo"
+                              placeholderBusca="Buscar por modelo, IMEI ou série..."
+                              disabled={!!dispositivoId}
+                              permitirLimpar
+                            />
+                          </div>
+                          <BotoesUnidade
+                            onAdicionar={field.value ? () => abrirNovaUnidade(field.value!) : undefined}
+                            onRemover={adicionais.length > 0 && !dispositivoId ? () => removerDaCompra(field.value!) : undefined}
+                          />
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  {adicionais.map((id, idx) => {
+                    const d = buscarDispositivo(id);
+                    const item = d ? dispositivoParaItem(d) : { rotulo: "Dispositivo", sublinha: null };
+                    return (
+                      <div key={id} className="flex items-start gap-2" data-testid="compra-dispositivo-adicional">
+                        <div className="flex-1 min-w-0 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                          <p className="font-medium truncate">
+                            <span className="text-muted-foreground mr-1">{idx + 2}.</span>
+                            {item.rotulo}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{item.sublinha || "Sem IMEI/série"}</p>
+                        </div>
+                        <BotoesUnidade onAdicionar={() => abrirNovaUnidade(id)} onRemover={() => removerDaCompra(id)} />
+                      </div>
+                    );
+                  })}
+                  {idsDaCompra.length > 1 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-primary/5 border border-primary/20 px-3 py-2 text-sm" data-testid="compra-total-itens">
+                      <span>
+                        <strong>{resumoCompra.quantidade}</strong> dispositivos nesta compra
+                      </span>
+                      <span>
+                        Soma dos custos: <strong>{formatCurrency(resumoCompra.somaCustos)}</strong>
+                      </span>
+                    </div>
+                  )}
+                  {idsDaCompra.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Use o <strong>+</strong> para adicionar mais uma unidade igual (o IMEI/série fica em branco).
+                    </p>
+                  )}
                 </div>
               )}
               {modoInline && (
@@ -820,6 +1022,8 @@ export function DialogCadastroCompra({
         onOpenChange={setDialogDispositivoAberto}
         onSubmit={handleNovoDispositivo}
         dispositivoParaEditar={undefined}
+        valoresIniciais={unidadeCopiada}
+        validarUnidades={validarNovasUnidades}
       />
     </>
   );

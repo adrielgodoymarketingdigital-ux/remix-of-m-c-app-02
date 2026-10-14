@@ -41,6 +41,7 @@ import { useFornecedores } from "@/hooks/useFornecedores";
 import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
 import { ExternalLink, Shield, Lock, ChevronDown, ChevronRight } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import type { UnidadeCopiada } from "@/lib/origem/itensCompra";
 
 const optionalNumber = z.preprocess(
   (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
@@ -143,7 +144,11 @@ interface DialogCadastroDispositivoProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (dados: FormularioDispositivo) => void | Promise<void>;
+  /** Conferência antes de gravar qualquer unidade: mensagem = bloqueia (nada é enviado, o formulário fica como está). */
+  validarUnidades?: (unidades: FormularioDispositivo[]) => string | null;
   dispositivoParaEditar: Dispositivo | null;
+  /** Só no cadastro novo: começa com estes dados (ex.: "+" da compra, copiando a unidade do lado). */
+  valoresIniciais?: UnidadeCopiada | null;
 }
 
 const TIPOS_DISPOSITIVO = [
@@ -170,6 +175,8 @@ export function DialogCadastroDispositivo({
   onOpenChange,
   onSubmit,
   dispositivoParaEditar,
+  valoresIniciais,
+  validarUnidades,
 }: DialogCadastroDispositivoProps) {
   const { fornecedores } = useFornecedores();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
@@ -280,23 +287,24 @@ export function DialogCadastroDispositivo({
         throw err;
       }
     } else {
+      // IMEI, série, código de barras, bateria, fotos e checklist ficam sempre em branco.
       form.reset({
-        tipo: "",
-        marca: "",
-        modelo: "",
-        garantia: false,
-        tempo_garantia: undefined,
-        subtipo_computador: "",
-        condicao: "novo",
+        tipo: valoresIniciais?.tipo ?? "",
+        marca: valoresIniciais?.marca ?? "",
+        modelo: valoresIniciais?.modelo ?? "",
+        garantia: valoresIniciais?.garantia ?? false,
+        tempo_garantia: valoresIniciais?.tempo_garantia,
+        subtipo_computador: valoresIniciais?.subtipo_computador ?? "",
+        condicao: valoresIniciais?.condicao ?? "novo",
         quantidade: 1,
-        fornecedor_id: "none",
-        custo: undefined,
-        preco: undefined,
+        fornecedor_id: valoresIniciais?.fornecedor_id || "none",
+        custo: valoresIniciais?.custo,
+        preco: valoresIniciais?.preco,
         foto_url: "",
         fotos: [],
         checklist: { entrada: {}, saida: {} },
-        cor: "",
-        capacidade_gb: undefined,
+        cor: valoresIniciais?.cor ?? "",
+        capacidade_gb: valoresIniciais?.capacidade_gb,
         imei: "",
         imei2: "",
         numero_serie: "",
@@ -306,7 +314,7 @@ export function DialogCadastroDispositivo({
       setUnidades([unidadeVazia()]);
       setUnidadeAberta(0);
     }
-  }, [dispositivoParaEditar, form]);
+  }, [dispositivoParaEditar, valoresIniciais, form]);
 
   useEffect(() => {
     if (!garantiaAtiva) {
@@ -342,10 +350,12 @@ export function DialogCadastroDispositivo({
         checklist: dados.checklist,
         codigo_barras: null as string | null,
       };
+      // Monta todas as unidades antes de enviar, para validarUnidades ver o conjunto.
+      const envios: FormularioDispositivo[] = [];
 
       if (!modoMultiplo) {
         // Modo simples — 1 unidade, todos os campos do form principal
-        await onSubmit({
+        envios.push({
           ...base,
           cor: dados.cor,
           capacidade_gb: dados.capacidade_gb,
@@ -364,7 +374,7 @@ export function DialogCadastroDispositivo({
       } else {
         // Modo múltiplo — uma chamada por unidade com todos os campos individuais
         for (const unidade of unidades) {
-          await onSubmit({
+          envios.push({
             tipo: dados.tipo,
             marca: dados.marca,
             modelo: dados.modelo,
@@ -389,6 +399,15 @@ export function DialogCadastroDispositivo({
             imeis: unidade.imei ? [unidade.imei] : [],
           } as FormularioDispositivo);
         }
+      }
+
+      const erroValidacao = validarUnidades?.(envios);
+      if (erroValidacao) {
+        toast.error(erroValidacao);
+        return;
+      }
+      for (const envio of envios) {
+        await onSubmit(envio);
       }
 
       form.reset();
