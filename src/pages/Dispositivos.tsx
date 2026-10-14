@@ -22,6 +22,7 @@ import { DialogConfiguracaoTermoGarantiaDispositivo } from "@/components/disposi
 import { DialogGerenciarTiposGarantia } from "@/components/dispositivos/DialogGerenciarTiposGarantia";
 import { useDispositivos } from "@/hooks/useDispositivos";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { textoUsoDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { CardResumoEstoqueDispositivosMobile } from "@/components/dispositivos/CardResumoEstoqueDispositivosMobile";
 import { CardResumoEstoqueDispositivosDesktop } from "@/components/dispositivos/CardResumoEstoqueDispositivosDesktop";
@@ -61,7 +62,7 @@ export default function Dispositivos() {
     excluirDispositivo,
   } = useDispositivos();
 
-  const { obterContagemDispositivos, assinatura, limites } = useAssinatura();
+  const { obterContagemDispositivos, assinatura, limites, periodoDispositivos } = useAssinatura();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
 
   const resumoInventario = useMemo(() => {
@@ -79,10 +80,11 @@ export default function Dispositivos() {
     setContadorDispositivos({ usados: dados.usados, limite: dados.limite === Infinity ? -1 : dados.limite });
   };
 
-  // Recarregar quando limites mudam (assinatura carregou)
+  // Recarregar quando limites mudam (assinatura carregou) ou o período do limite muda
+  const renovacaoLimiteMs = periodoDispositivos?.fim.getTime();
   useEffect(() => {
     carregarContador();
-  }, [limites.dispositivos]);
+  }, [limites.dispositivos, renovacaoLimiteMs]);
 
   // Tipos fixos disponíveis no sistema
   const TIPOS_FIXOS = [
@@ -436,6 +438,7 @@ export default function Dispositivos() {
         tipo="dispositivos"
         usados={contadorDispositivos.usados}
         limite={contadorDispositivos.limite}
+        textoUso={textoUsoDispositivos(periodoDispositivos)}
       />
 
       <DialogConfiguracaoLayoutDispositivos

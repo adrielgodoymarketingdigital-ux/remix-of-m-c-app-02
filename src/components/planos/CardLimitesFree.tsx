@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Crown, Smartphone, Wrench, Package } from "lucide-react";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { formatarRenovacao } from "@/lib/assinatura/limiteDispositivosPeriodo";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ContagemItem {
@@ -14,7 +15,13 @@ interface ContagemItem {
 }
 
 export function CardLimitesFree() {
-  const { assinatura, limites, carregando } = useAssinatura();
+  const { assinatura, limites, carregando, periodoDispositivos, obterContagemDispositivos } = useAssinatura();
+  // Com limite por período (marca na assinatura): dispositivos contados só no período atual.
+  const [usadosNoPeriodo, setUsadosNoPeriodo] = useState<number | null>(null);
+  useEffect(() => {
+    if (!periodoDispositivos) { setUsadosNoPeriodo(null); return; }
+    obterContagemDispositivos().then((c) => setUsadosNoPeriodo(c.usados));
+  }, [periodoDispositivos, obterContagemDispositivos]);
   const navigate = useNavigate();
   const [contagens, setContagens] = useState<ContagemItem[] | null>(null);
   const contagensCarregadas = useRef(false);
@@ -56,7 +63,12 @@ export function CardLimitesFree() {
   // Atualizar limites quando assinatura carregar
   const contagensComLimites = contagens && !carregando && isFree
     ? [
-        { ...contagens[0], limite: limites.dispositivos },
+        {
+          ...contagens[0],
+          usados: usadosNoPeriodo ?? contagens[0].usados,
+          label: periodoDispositivos ? `Dispositivos (renova em ${formatarRenovacao(periodoDispositivos)})` : contagens[0].label,
+          limite: limites.dispositivos,
+        },
         { ...contagens[1], limite: limites.ordens_servico_mes },
         { ...contagens[2], limite: limites.produtos_mes },
       ]

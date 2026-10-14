@@ -17,6 +17,8 @@ interface DialogLimiteAtingidoProps {
   tipo: "ordens" | "produtos" | "dispositivos";
   usados: number;
   limite: number;
+  /** Só dispositivos: texto do contador ("utilizados no total" ou "… neste período (renova em DD/MM)"). */
+  textoUso?: string;
 }
 
 const MENSAGENS = {
@@ -43,6 +45,7 @@ export function DialogLimiteAtingido({
   tipo,
   usados,
   limite,
+  textoUso,
 }: DialogLimiteAtingidoProps) {
   const navigate = useNavigate();
   const { titulo, descricao, icone } = MENSAGENS[tipo] ?? MENSAGENS.ordens;
@@ -71,7 +74,7 @@ export function DialogLimiteAtingido({
                 {usados} / {limite}
               </p>
               <p className="text-sm text-muted-foreground">
-                {tipo === "dispositivos" ? "utilizados no total" : "utilizados este mês"}
+                {tipo === "dispositivos" ? (textoUso ?? "utilizados no total") : "utilizados este mês"}
               </p>
             </div>
             <p className="text-sm">

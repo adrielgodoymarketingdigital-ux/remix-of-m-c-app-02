@@ -27,6 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { textoUsoDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
 import { useTrialStatus } from "@/hooks/useTrialStatus";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { BotoesPagamentoPagarme } from "@/components/planos/BotoesPagamentoPagarme";
@@ -43,7 +44,7 @@ export default function Plano() {
   // Todos os hooks DEVEM vir ANTES de qualquer return condicional
   const { isFuncionario, carregando: carregandoFuncionario } = useFuncionarioPermissoes();
   const [periodoPlano, setPeriodoPlano] = useState<"mensal" | "anual">("mensal");
-  const { assinatura, carregando, abrirPaginaPagamento, cancelarPlano, limites, recarregar, obterContagemDispositivos, diasRestantesTrial, horasRestantesTrial, trialExpirado, migracaoNecessaria } = useAssinatura();
+  const { assinatura, carregando, abrirPaginaPagamento, cancelarPlano, limites, recarregar, obterContagemDispositivos, periodoDispositivos, diasRestantesTrial, horasRestantesTrial, trialExpirado, migracaoNecessaria } = useAssinatura();
   const trialStatus = useTrialStatus();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -415,6 +416,9 @@ export default function Plano() {
                               </span>
                             )}
                           </p>
+                          {periodoDispositivos && limites.dispositivos !== -1 && (
+                            <p className="text-xs text-muted-foreground">{textoUsoDispositivos(periodoDispositivos)}</p>
+                          )}
                           {limites.dispositivos !== -1 && (
                             <div className="w-full bg-muted rounded-full h-1.5 mt-1">
                               <div 

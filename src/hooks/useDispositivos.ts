@@ -10,6 +10,7 @@ import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useResolvedUserId, useEmpresaFiltro } from "./useResolvedUserId";
 import { deveIrParaOSAposCadastrarDispositivo } from "@/lib/onboarding/redirecionamentoOnboarding";
+import { formatarRenovacao } from "@/lib/assinatura/limiteDispositivosPeriodo";
 
 export interface OpcoesCriarDispositivo {
   /** false quando o cadastro está aninhado em outro formulário (ver deveIrParaOSAposCadastrarDispositivo). */
@@ -19,7 +20,7 @@ export interface OpcoesCriarDispositivo {
 export function useDispositivos() {
   const [dispositivos, setDispositivos] = useState<Dispositivo[]>([]);
   const [loading, setLoading] = useState(true);
-  const { podeCadastrarDispositivo, limites } = useAssinatura();
+  const { podeCadastrarDispositivo, limites, periodoDispositivos } = useAssinatura();
   const { trackDispositivoCadastrado } = useEventTracking();
   const { disparar: dispararConfetti } = useConfetti();
   const { lojaUserId, podeSincronizarDispositivos, isFuncionario } = useFuncionarioPermissoes();
@@ -106,7 +107,10 @@ export function useDispositivos() {
           : limites.dispositivos.toString();
         toast({
           title: "Limite de dispositivos atingido",
-          description: `Seu plano atual permite até ${limiteTexto} dispositivos. Faça upgrade para adicionar mais!`,
+          // Com limite por período (marca na assinatura), o texto diz quando renova.
+          description: periodoDispositivos
+            ? `Seu plano permite até ${limiteTexto} dispositivos por período. O limite renova em ${formatarRenovacao(periodoDispositivos)}.`
+            : `Seu plano atual permite até ${limiteTexto} dispositivos. Faça upgrade para adicionar mais!`,
           variant: "destructive",
         });
         return null;

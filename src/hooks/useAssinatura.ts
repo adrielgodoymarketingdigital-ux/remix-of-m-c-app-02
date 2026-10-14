@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Assinatura, LIMITES_POR_PLANO, PlanoTipo, LimitesPlano, getLimitesFree } from "@/types/assinatura";
+import { periodoLimiteDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
 import { PLANOS } from "@/types/plano";
 import { trackInitiateCheckout } from "@/lib/tracking";
 
@@ -538,6 +539,25 @@ export function useAssinatura() {
     return limites.recursos_premium[recurso];
   }, [limites]);
 
+  // Período do limite de dispositivos: null = regra de sempre (total acumulado);
+  // com a marca modulos_extras.limite_dispositivos_por_periodo, só conta o período atual.
+  const periodoDispositivos = useMemo(() => periodoLimiteDispositivos(assinatura), [assinatura]);
+
+  /** Quantos aparelhos contam no limite agora (o período é recalculado a cada chamada). */
+  const contarDispositivosNoLimite = useCallback(async (userId: string): Promise<number> => {
+    const periodo = periodoLimiteDispositivos(assinatura, new Date());
+    let query = supabase
+      .from("dispositivos")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if (periodo) {
+      query = query.gte("created_at", periodo.inicio.toISOString()).lt("created_at", periodo.fim.toISOString());
+    }
+    const { count, error } = await query;
+    if (error) throw error;
+    return count || 0;
+  }, [assinatura]);
+
   const podeCadastrarDispositivo = useCallback(async (): Promise<boolean> => {
     if (limites.dispositivos === -1) return true; // ilimitado
 
@@ -546,19 +566,13 @@ export function useAssinatura() {
       if (!session) return false;
       const user = session.user;
 
-      const { count, error } = await supabase
-        .from("dispositivos")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      return (count || 0) < limites.dispositivos;
+      const count = await contarDispositivosNoLimite(user.id);
+      return count < limites.dispositivos;
     } catch (error) {
       console.error("Erro ao verificar limite:", error);
       return false;
     }
-  }, [limites.dispositivos]);
+  }, [limites.dispositivos, contarDispositivosNoLimite]);
 
   const obterContagemDispositivos = useCallback(async (): Promise<{
     usados: number;
@@ -571,14 +585,7 @@ export function useAssinatura() {
       if (!session) return { usados: 0, limite: 0, restantes: 0, percentual: 0 };
       const user = session.user;
 
-      const { count, error } = await supabase
-        .from("dispositivos")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      const usados = count || 0;
+      const usados = await contarDispositivosNoLimite(user.id);
       const limite = limites.dispositivos === -1 ? Infinity : limites.dispositivos;
       const restantes = limite === Infinity ? Infinity : Math.max(0, limite - usados);
       const percentual = limite === Infinity ? 0 : (usados / limite) * 100;
@@ -588,7 +595,7 @@ export function useAssinatura() {
       console.error("Erro ao obter contagem:", error);
       return { usados: 0, limite: 0, restantes: 0, percentual: 0 };
     }
-  }, [limites.dispositivos]);
+  }, [limites.dispositivos, contarDispositivosNoLimite]);
 
   // Verificar se pode criar nova ordem de serviço (baseado no limite mensal)
   const podeCriarOrdemServico = useCallback(async (): Promise<{
@@ -884,6 +891,7 @@ export function useAssinatura() {
     temRecursoPremium,
     podeCadastrarDispositivo,
     obterContagemDispositivos,
+    periodoDispositivos,
     podeCriarOrdemServico,
     obterContagemOSMes,
     obterContagemCatalogo,
