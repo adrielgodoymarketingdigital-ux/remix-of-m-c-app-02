@@ -1,39 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
+import { ClienteRowOS, DadosClienteOS, clienteAlterado, payloadClienteOS } from "@/lib/clientes/dadosCliente";
 
-export interface DadosClienteOS {
-  nome: string;
-  telefone: string;
-  cpf: string;
-  endereco: string;
-  dataNascimento: string;
-}
-
-type ClienteRow = {
-  nome: string | null;
-  telefone: string | null;
-  cpf: string | null;
-  endereco: string | null;
-  data_nascimento: string | null;
-};
-
-function clienteAlterado(atual: ClienteRow, payload: ClienteRow): boolean {
-  return (
-    (atual.nome ?? "") !== (payload.nome ?? "") ||
-    (atual.telefone ?? "") !== (payload.telefone ?? "") ||
-    (atual.cpf ?? "") !== (payload.cpf ?? "") ||
-    (atual.endereco ?? "") !== (payload.endereco ?? "") ||
-    (atual.data_nascimento ?? null) !== (payload.data_nascimento ?? null)
-  );
-}
+export type { DadosClienteOS } from "@/lib/clientes/dadosCliente";
 
 async function atualizarSeAlterado(
   clienteId: string,
   effectiveUserId: string,
-  payload: ClienteRow
+  payload: ClienteRowOS
 ): Promise<void> {
   const { data: atual } = await supabase
     .from("clientes")
-    .select("nome, telefone, cpf, endereco, data_nascimento")
+    .select("*")
     .eq("id", clienteId)
     .eq("user_id", effectiveUserId)
     .single();
@@ -55,13 +32,9 @@ export async function criarOuAtualizarCliente(
   clienteSelecionadoId: string | null,
   clienteIdExistente: string | null | undefined
 ): Promise<string> {
-  const payload: ClienteRow = {
-    nome: dados.nome,
-    telefone: dados.telefone,
-    cpf: dados.cpf,
-    endereco: dados.endereco,
-    data_nascimento: dados.dataNascimento || null,
-  };
+  // Partes do endereço (número, bairro…) só entram se a tela as enviou: quem não
+  // tem esses campos (OS simplificada) não apaga o que já está no cadastro.
+  const payload = payloadClienteOS(dados);
 
   // Se o usuário selecionou um cliente diferente do cliente atual da OS,
   // apenas trocar o vínculo — não atualizar dados de nenhum cliente

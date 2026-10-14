@@ -128,6 +128,11 @@ export function useClientes(options: UseClientesOptions = {}) {
         cnpj: dados.cnpj?.trim() || null,
         telefone: dados.telefone?.trim() || null,
         endereco: dados.endereco?.trim() || null,
+        numero: dados.numero?.trim() || null,
+        bairro: dados.bairro?.trim() || null,
+        cidade: dados.cidade?.trim() || null,
+        estado: dados.estado?.trim() || null,
+        cep: dados.cep?.trim() || null,
         data_nascimento: dados.data_nascimento?.trim() || null,
       };
 
@@ -203,6 +208,11 @@ export function useClientes(options: UseClientesOptions = {}) {
         cnpj: dados.cnpj?.trim() || null,
         telefone: dados.telefone?.trim() || null,
         endereco: dados.endereco?.trim() || null,
+        numero: dados.numero?.trim() || null,
+        bairro: dados.bairro?.trim() || null,
+        cidade: dados.cidade?.trim() || null,
+        estado: dados.estado?.trim() || null,
+        cep: dados.cep?.trim() || null,
         data_nascimento: dados.data_nascimento?.trim() || null,
       };
 

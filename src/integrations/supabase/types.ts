@@ -628,6 +628,9 @@ export type Database = {
       }
       clientes: {
         Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
           cnpj: string | null
           cpf: string | null
           created_at: string | null
@@ -635,12 +638,17 @@ export type Database = {
           deleted_at: string | null
           empresa_id: string | null
           endereco: string | null
+          estado: string | null
           id: string
           nome: string
+          numero: string | null
           telefone: string | null
           user_id: string
         }
         Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
           cnpj?: string | null
           cpf?: string | null
           created_at?: string | null
@@ -648,12 +656,17 @@ export type Database = {
           deleted_at?: string | null
           empresa_id?: string | null
           endereco?: string | null
+          estado?: string | null
           id?: string
           nome: string
+          numero?: string | null
           telefone?: string | null
           user_id: string
         }
         Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
           cnpj?: string | null
           cpf?: string | null
           created_at?: string | null
@@ -661,8 +674,10 @@ export type Database = {
           deleted_at?: string | null
           empresa_id?: string | null
           endereco?: string | null
+          estado?: string | null
           id?: string
           nome?: string
+          numero?: string | null
           telefone?: string | null
           user_id?: string
         }

@@ -10,9 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Cliente, FormularioCliente } from "@/types/cliente";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import { buscarCEP } from "@/lib/buscarCEP";
-import {
-  ENDERECO_VAZIO, documentoDoCliente, documentoParaColunas, montarEnderecoCliente, separarEnderecoCliente,
-} from "@/lib/clientes/dadosCliente";
+import { documentoDoCliente, documentoParaColunas } from "@/lib/clientes/dadosCliente";
 import { CamposDadosCliente, ValoresCamposCliente } from "./CamposDadosCliente";
 
 // Mesmas regras de antes deste cadastro ganhar os campos da OS.
@@ -21,13 +19,23 @@ const formSchema = z.object({
   documento: z.string().max(18, "CPF/CNPJ inválido"),
   telefone: z.string().max(15, "Telefone inválido"),
   endereco: z.string().max(200, "Endereço deve ter no máximo 200 caracteres"),
+  numero: z.string().max(20, "Número deve ter no máximo 20 caracteres"),
+  bairro: z.string().max(100, "Bairro deve ter no máximo 100 caracteres"),
+  cidade: z.string().max(100, "Cidade deve ter no máximo 100 caracteres"),
+  estado: z.string().max(2, "Estado deve ter 2 letras"),
+  cep: z.string().max(9, "CEP inválido"),
 });
 
 const VALORES_VAZIOS: ValoresCamposCliente = {
   nome: "",
   telefone: "",
   documento: "",
-  ...ENDERECO_VAZIO,
+  cep: "",
+  endereco: "",
+  numero: "",
+  bairro: "",
+  cidade: "",
+  estado: "",
   dataNascimento: "",
 };
 
@@ -35,7 +43,13 @@ const valoresDoCliente = (cliente: Cliente): ValoresCamposCliente => ({
   nome: cliente.nome,
   telefone: cliente.telefone || "",
   documento: documentoDoCliente(cliente),
-  ...separarEnderecoCliente(cliente.endereco),
+  // Cliente antigo: só `endereco` (o texto inteiro) vem preenchido e fica em "Rua".
+  cep: cliente.cep || "",
+  endereco: cliente.endereco || "",
+  numero: cliente.numero || "",
+  bairro: cliente.bairro || "",
+  cidade: cliente.cidade || "",
+  estado: cliente.estado || "",
   dataNascimento: cliente.data_nascimento || "",
 });
 
@@ -80,10 +94,7 @@ export function DialogCadastroCliente({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // A tabela clientes tem uma coluna só de endereço: rua, número, bairro,
-    // cidade/UF e CEP vão juntos nela (separados de novo ao editar).
-    const endereco = montarEnderecoCliente(valores);
-    const validacao = formSchema.safeParse({ ...valores, endereco });
+    const validacao = formSchema.safeParse(valores);
     if (!validacao.success) {
       setErros(validacao.error.issues.map((i) => i.message));
       setCampoComErro(validacao.error.issues.some((i) => i.path[0] === "nome") ? "clienteNome" : null);
@@ -98,7 +109,13 @@ export function DialogCadastroCliente({
       cpf,
       cnpj,
       telefone: valores.telefone,
-      endereco,
+      // Cada parte do endereço na sua coluna; endereco = rua/logradouro.
+      endereco: valores.endereco,
+      numero: valores.numero,
+      bairro: valores.bairro,
+      cidade: valores.cidade,
+      estado: valores.estado,
+      cep: valores.cep,
       data_nascimento: valores.dataNascimento,
     };
 

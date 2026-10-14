@@ -46,6 +46,11 @@ export interface OrdemServico {
     telefone: string | null;
     cpf: string | null;
     endereco?: string | null;
+    numero?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    estado?: string | null;
+    cep?: string | null;
     data_nascimento?: string | null;
   };
 }
@@ -336,7 +341,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         .from("ordens_servico")
         .select(`
           *,
-          cliente:clientes!ordens_servico_cliente_fkey(id, nome, telefone, cpf, endereco, data_nascimento)
+          cliente:clientes!ordens_servico_cliente_fkey(*)
         `)
         .eq("id", id)
         .eq("user_id", userId)

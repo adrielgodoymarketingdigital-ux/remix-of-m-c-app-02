@@ -3,91 +3,16 @@
  * da OS (os mesmos campos, em CamposDadosCliente). Módulo puro, testado com Deno
  * em scripts/testes-cadastro-cliente/.
  *
- * A tabela clientes só tem UMA coluna de endereço (texto). CEP, número, bairro,
- * cidade e estado não têm coluna própria: no cadastro de Clientes eles são
- * gravados juntos em `endereco`, num texto legível ("Rua X, 123 - Bairro -
- * Cidade/UF - CEP 00000-000"), e separados de novo ao editar.
+ * Endereço: clientes.endereco guarda a rua/logradouro e cada parte tem a sua
+ * coluna (numero, bairro, cidade, estado, cep — migration
+ * 20261014120000_clientes_campos_endereco.sql). Cliente antigo tem só
+ * `endereco` (o texto inteiro, digitado livre) e as colunas novas vazias.
  */
 import { aplicarMascaraCNPJ, aplicarMascaraCPF } from "../mascaras.ts";
 
-export interface PartesEndereco {
-  /** Rua / logradouro. */
-  endereco: string;
-  numero: string;
-  bairro: string;
-  cidade: string;
-  estado: string;
-  cep: string;
-}
-
-export const ENDERECO_VAZIO: PartesEndereco = { endereco: "", numero: "", bairro: "", cidade: "", estado: "", cep: "" };
-
-const SEPARADOR = " - ";
-const CEP_FINAL = /^CEP (\d{5}-?\d{3})$/;
-const CIDADE_UF = /^(.*)\/([A-Z]{2})?$/;
-const NUMERO = /^(\d+[A-Za-z]?|s\/n|S\/N|s\/nº|S\/Nº)$/;
-
-/** Junta as partes num texto só, para a coluna clientes.endereco. Partes vazias ficam de fora. */
-export function montarEnderecoCliente(p: PartesEndereco): string {
-  const t = (s: string) => (s ?? "").trim();
-  const rua = t(p.endereco);
-  const numero = t(p.numero);
-  const bairro = t(p.bairro);
-  const cidade = t(p.cidade);
-  const estado = t(p.estado).toUpperCase();
-  const cep = t(p.cep);
-  const partes: string[] = [];
-  const ruaNumero = [rua, numero].filter(Boolean).join(", ");
-  if (ruaNumero) partes.push(ruaNumero);
-  if (bairro) partes.push(bairro);
-  // Cidade sempre com a barra ("Cidade/UF", ou "Cidade/" sem UF): é o que a
-  // distingue do bairro na hora de separar.
-  if (cidade || estado) partes.push(`${cidade}/${estado}`);
-  if (cep) partes.push(`CEP ${cep}`);
-  return partes.join(SEPARADOR);
-}
-
-function separarSemConferir(texto: string): PartesEndereco {
-  const segmentos = texto.split(SEPARADOR);
-  const r: PartesEndereco = { ...ENDERECO_VAZIO };
-
-  const ultimoCep = segmentos.length > 0 ? CEP_FINAL.exec(segmentos[segmentos.length - 1]) : null;
-  if (ultimoCep) {
-    r.cep = ultimoCep[1];
-    segmentos.pop();
-  }
-  const cidadeUf = segmentos.length > 1 ? CIDADE_UF.exec(segmentos[segmentos.length - 1]) : null;
-  if (cidadeUf) {
-    r.cidade = cidadeUf[1];
-    r.estado = cidadeUf[2] ?? "";
-    segmentos.pop();
-  }
-  if (segmentos.length > 1) r.bairro = segmentos.pop() as string;
-
-  const ruaNumero = segmentos.join(SEPARADOR);
-  const i = ruaNumero.lastIndexOf(", ");
-  const possivelNumero = i >= 0 ? ruaNumero.slice(i + 2) : "";
-  if (i > 0 && NUMERO.test(possivelNumero)) {
-    r.endereco = ruaNumero.slice(0, i);
-    r.numero = possivelNumero;
-  } else {
-    r.endereco = ruaNumero;
-  }
-  return r;
-}
-
-/**
- * Separa o texto de clientes.endereco nas partes do formulário. Só separa quando
- * dá para remontar exatamente o mesmo texto; senão (endereço digitado livre, de
- * antes desta tela), tudo fica em "Endereço (Rua)" — salvar sem mexer nunca
- * altera o que já está gravado.
- */
-export function separarEnderecoCliente(texto: string | null | undefined): PartesEndereco {
-  const original = (texto ?? "").trim();
-  if (!original) return { ...ENDERECO_VAZIO };
-  const partes = separarSemConferir(original);
-  return montarEnderecoCliente(partes) === original ? partes : { ...ENDERECO_VAZIO, endereco: original };
-}
+/** Colunas de endereço de clientes além de `endereco` (a rua). */
+export const CAMPOS_ENDERECO_CLIENTE = ["numero", "bairro", "cidade", "estado", "cep"] as const;
+export type CampoEnderecoCliente = (typeof CAMPOS_ENDERECO_CLIENTE)[number];
 
 /** Mesma máscara do campo "CPF / CNPJ" da OS: até 11 dígitos é CPF, acima disso CNPJ. */
 export function mascararDocumento(valor: string): string {
@@ -118,4 +43,57 @@ export function documentoParaColunas(
 /** O que mostrar no campo "CPF / CNPJ" ao editar: o CPF, ou o CNPJ se não houver CPF. */
 export function documentoDoCliente(cliente: { cpf?: string | null; cnpj?: string | null } | null | undefined): string {
   return cliente?.cpf || cliente?.cnpj || "";
+}
+
+// ── Gravação do cliente pela OS (criarOuAtualizarCliente) ──────────────────
+
+export interface DadosClienteOS {
+  nome: string;
+  telefone: string;
+  cpf: string;
+  /** Rua / logradouro. */
+  endereco: string;
+  dataNascimento: string;
+  /**
+   * Partes do endereço. Ausente (undefined) = a tela não tem o campo e a coluna
+   * não é tocada (OS simplificada); string vazia = o campo existe e foi apagado.
+   */
+  numero?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+}
+
+export type ClienteRowOS = {
+  nome: string | null;
+  telefone: string | null;
+  cpf: string | null;
+  endereco: string | null;
+  data_nascimento: string | null;
+} & Partial<Record<CampoEnderecoCliente, string | null>>;
+
+/** Linha a gravar em clientes a partir da tela da OS (só com as partes que a tela enviou). */
+export function payloadClienteOS(dados: DadosClienteOS): ClienteRowOS {
+  const payload: ClienteRowOS = {
+    nome: dados.nome,
+    telefone: dados.telefone,
+    cpf: dados.cpf,
+    endereco: dados.endereco,
+    data_nascimento: dados.dataNascimento || null,
+  };
+  for (const campo of CAMPOS_ENDERECO_CLIENTE) {
+    const valor = dados[campo];
+    if (valor !== undefined) payload[campo] = valor.trim() || null;
+  }
+  return payload;
+}
+
+/** O cliente gravado difere do que a OS vai gravar? Só compara as colunas que vão no payload. */
+export function clienteAlterado(atual: Partial<ClienteRowOS>, payload: ClienteRowOS): boolean {
+  return (Object.keys(payload) as (keyof ClienteRowOS)[]).some((campo) =>
+    campo === "data_nascimento"
+      ? (atual.data_nascimento ?? null) !== (payload.data_nascimento ?? null)
+      : (atual[campo] ?? "") !== (payload[campo] ?? ""),
+  );
 }
