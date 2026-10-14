@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { FormEvent, useEffect, useState } from "react";
 import * as z from "zod";
 import {
   Dialog,
@@ -8,28 +6,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { Cliente, FormularioCliente } from "@/types/cliente";
-import { aplicarMascaraCPF, aplicarMascaraCNPJ, aplicarMascaraTelefone } from "@/lib/mascaras";
+import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
+import { buscarCEP } from "@/lib/buscarCEP";
+import {
+  ENDERECO_VAZIO, documentoDoCliente, documentoParaColunas, montarEnderecoCliente, separarEnderecoCliente,
+} from "@/lib/clientes/dadosCliente";
+import { CamposDadosCliente, ValoresCamposCliente } from "./CamposDadosCliente";
 
+// Mesmas regras de antes deste cadastro ganhar os campos da OS.
 const formSchema = z.object({
-  nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres").max(100, "Nome deve ter no máximo 100 caracteres"),
-  cpf: z.string().max(14, "CPF inválido").optional(),
-  cnpj: z.string().max(18, "CNPJ inválido").optional(),
-  telefone: z.string().max(15, "Telefone inválido").optional(),
-  endereco: z.string().max(200, "Endereço deve ter no máximo 200 caracteres").optional(),
-  data_nascimento: z.string().optional(),
+  nome: z.string().trim().min(3, "Nome deve ter no mínimo 3 caracteres").max(100, "Nome deve ter no máximo 100 caracteres"),
+  documento: z.string().max(18, "CPF/CNPJ inválido"),
+  telefone: z.string().max(15, "Telefone inválido"),
+  endereco: z.string().max(200, "Endereço deve ter no máximo 200 caracteres"),
+});
+
+const VALORES_VAZIOS: ValoresCamposCliente = {
+  nome: "",
+  telefone: "",
+  documento: "",
+  ...ENDERECO_VAZIO,
+  dataNascimento: "",
+};
+
+const valoresDoCliente = (cliente: Cliente): ValoresCamposCliente => ({
+  nome: cliente.nome,
+  telefone: cliente.telefone || "",
+  documento: documentoDoCliente(cliente),
+  ...separarEnderecoCliente(cliente.endereco),
+  dataNascimento: cliente.data_nascimento || "",
 });
 
 interface DialogCadastroClienteProps {
@@ -45,215 +52,110 @@ export function DialogCadastroCliente({
   onSubmit,
   cliente,
 }: DialogCadastroClienteProps) {
-  const [tipoDocumento, setTipoDocumento] = useState<"cpf" | "cnpj">("cpf");
-  
-  const form = useForm<FormularioCliente>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      nome: "",
-      cpf: "",
-      cnpj: "",
-      telefone: "",
-      endereco: "",
-      data_nascimento: "",
-    },
-  });
+  const [valores, setValores] = useState<ValoresCamposCliente>(VALORES_VAZIOS);
+  const [erros, setErros] = useState<string[]>([]);
+  const [campoComErro, setCampoComErro] = useState<string | null>(null);
+  const [buscandoCEP, setBuscandoCEP] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    if (cliente) {
-      // Detecta se é CNPJ baseado no valor existente
-      const temCnpj = cliente.cnpj && cliente.cnpj.length > 0;
-      setTipoDocumento(temCnpj ? "cnpj" : "cpf");
-      
-      form.reset({
-        nome: cliente.nome,
-        cpf: cliente.cpf || "",
-        cnpj: cliente.cnpj || "",
-        telefone: cliente.telefone || "",
-        endereco: cliente.endereco || "",
-        data_nascimento: cliente.data_nascimento || "",
-      });
-    } else {
-      setTipoDocumento("cpf");
-      form.reset({
-        nome: "",
-        cpf: "",
-        cnpj: "",
-        telefone: "",
-        endereco: "",
-        data_nascimento: "",
-      });
-    }
-  }, [cliente, form]);
+    setValores(cliente ? valoresDoCliente(cliente) : VALORES_VAZIOS);
+    setErros([]);
+    setCampoComErro(null);
+  }, [cliente, open]);
 
-  const handleSubmit = async (dados: FormularioCliente) => {
-    const sucesso = await onSubmit(dados);
-    if (sucesso) {
-      onOpenChange(false);
-      form.reset();
+  const alterar = (parcial: Partial<ValoresCamposCliente>) => setValores((v) => ({ ...v, ...parcial }));
+
+  // Mesma busca de CEP da OS: com 8 dígitos, preenche rua, bairro, cidade e estado.
+  const handleBuscarCEP = async () => {
+    const cepLimpo = removerMascara(valores.cep || "");
+    if (cepLimpo.length !== 8) return;
+    setBuscandoCEP(true);
+    const dados = await buscarCEP(cepLimpo);
+    setBuscandoCEP(false);
+    if (dados) {
+      alterar({ endereco: dados.logradouro, bairro: dados.bairro, cidade: dados.cidade, estado: dados.estado });
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    // A tabela clientes tem uma coluna só de endereço: rua, número, bairro,
+    // cidade/UF e CEP vão juntos nela (separados de novo ao editar).
+    const endereco = montarEnderecoCliente(valores);
+    const validacao = formSchema.safeParse({ ...valores, endereco });
+    if (!validacao.success) {
+      setErros(validacao.error.issues.map((i) => i.message));
+      setCampoComErro(validacao.error.issues.some((i) => i.path[0] === "nome") ? "clienteNome" : null);
+      return;
+    }
+    setErros([]);
+    setCampoComErro(null);
+
+    const { cpf, cnpj } = documentoParaColunas(valores.documento, cliente);
+    const dados: FormularioCliente = {
+      nome: valores.nome.trim(),
+      cpf,
+      cnpj,
+      telefone: valores.telefone,
+      endereco,
+      data_nascimento: valores.dataNascimento,
+    };
+
+    setSalvando(true);
+    try {
+      const sucesso = await onSubmit(dados);
+      if (sucesso) {
+        onOpenChange(false);
+        setValores(VALORES_VAZIOS);
+      }
+    } finally {
+      setSalvando(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {cliente ? "Editar Cliente" : "Novo Cliente"}
           </DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="nome"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome Completo *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nome do cliente" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <CamposDadosCliente
+            valores={valores}
+            onChange={alterar}
+            campoComErro={campoComErro}
+            buscandoCEP={buscandoCEP}
+            onBuscarCEP={handleBuscarCEP}
+            formatarTelefone={aplicarMascaraTelefone}
+            placeholderTelefone="(00) 00000-0000"
+          />
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Label className="text-sm font-medium">Tipo de Documento:</Label>
-                <RadioGroup
-                  value={tipoDocumento}
-                  onValueChange={(value: "cpf" | "cnpj") => {
-                    setTipoDocumento(value);
-                    // Limpa o campo do outro tipo ao trocar
-                    if (value === "cpf") {
-                      form.setValue("cnpj", "");
-                    } else {
-                      form.setValue("cpf", "");
-                    }
-                  }}
-                  className="flex gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cpf" id="cpf" />
-                    <Label htmlFor="cpf" className="cursor-pointer">CPF</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cnpj" id="cnpj" />
-                    <Label htmlFor="cnpj" className="cursor-pointer">CNPJ</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {tipoDocumento === "cpf" ? (
-                  <FormField
-                    control={form.control}
-                    name="cpf"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CPF</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="000.000.000-00" 
-                            {...field}
-                            onChange={(e) => field.onChange(aplicarMascaraCPF(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="cnpj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CNPJ</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="00.000.000/0000-00" 
-                            {...field}
-                            onChange={(e) => field.onChange(aplicarMascaraCNPJ(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="telefone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="(00) 00000-0000" 
-                          {...field}
-                          onChange={(e) => field.onChange(aplicarMascaraTelefone(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+          {erros.length > 0 && (
+            <div className="space-y-1">
+              {erros.map((erro) => (
+                <p key={erro} className="text-sm font-medium text-destructive">{erro}</p>
+              ))}
             </div>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="data_nascimento"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Data de Nascimento</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="date"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="endereco"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Endereço</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Endereço completo" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="w-full sm:w-auto"
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" className="w-full sm:w-auto">
-                {cliente ? "Atualizar" : "Cadastrar"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={salvando} className="w-full sm:w-auto">
+              {cliente ? "Atualizar" : "Cadastrar"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
