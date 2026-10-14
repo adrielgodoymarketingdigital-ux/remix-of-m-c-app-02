@@ -42,6 +42,7 @@ import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
 import { ExternalLink, Shield, Lock, ChevronDown, ChevronRight } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { UnidadeCopiada } from "@/lib/origem/itensCompra";
+import { normalizarQuantidade, quantidadeAoDigitar, somenteDigitos } from "@/lib/dispositivos/campoQuantidade";
 
 const optionalNumber = z.preprocess(
   (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
@@ -217,6 +218,21 @@ export function DialogCadastroDispositivo({
   const tipoSelecionado = form.watch("tipo");
   const quantidadeAtual = form.watch("quantidade") || 1;
   const modoMultiplo = quantidadeAtual > 1;
+
+  // Texto do campo Quantidade, separado do valor do formulário: pode ficar vazio enquanto
+  // a pessoa edita (ver campoQuantidade.ts). Acompanha o formulário quando ele muda por
+  // fora (reset ao abrir/editar, quantidade confirmada).
+  const [quantidadeTexto, setQuantidadeTexto] = useState(String(quantidadeAtual));
+  useEffect(() => {
+    setQuantidadeTexto(String(quantidadeAtual));
+  }, [quantidadeAtual]);
+
+  /** Sair do campo / Enter: vazio, 0 ou inválido vira 1; a lista de unidades se ajusta. */
+  const confirmarQuantidade = () => {
+    const n = normalizarQuantidade(quantidadeTexto);
+    setQuantidadeTexto(String(n));
+    if (n !== form.getValues("quantidade")) form.setValue("quantidade", n, { shouldValidate: true, shouldDirty: true });
+  };
 
   // Lucro só no modo simples (quantidade=1)
   const custoSimples = Number(form.watch("custo")) || 0;
@@ -449,14 +465,31 @@ export function DialogCadastroDispositivo({
                       <FormLabel>Quantidade *</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          min="1"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          autoComplete="off"
                           placeholder="Ex: 5"
-                          {...field}
-                          value={field.value !== undefined && field.value !== null ? field.value : ""}
+                          name={field.name}
+                          ref={field.ref}
+                          value={quantidadeTexto}
                           onChange={(e) => {
-                            const val = e.target.value;
-                            field.onChange(val === "" ? undefined : Number(val));
+                            const texto = somenteDigitos(e.target.value);
+                            setQuantidadeTexto(texto);
+                            // Aumentar vale na hora; diminuir/vazio esperam a confirmação.
+                            const aumentar = quantidadeAoDigitar(texto, quantidadeAtual);
+                            if (aumentar !== null) field.onChange(aumentar);
+                          }}
+                          onBlur={() => {
+                            confirmarQuantidade();
+                            field.onBlur();
+                          }}
+                          onKeyDown={(e) => {
+                            // Enter confirma a quantidade em vez de enviar o formulário com a anterior.
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              confirmarQuantidade();
+                            }
                           }}
                         />
                       </FormControl>
