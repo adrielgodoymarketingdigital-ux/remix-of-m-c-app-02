@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
+import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
 
 const FORMAS_PAGAMENTO = [
   { value: 'dinheiro', label: 'Dinheiro', icon: Banknote },
@@ -175,6 +176,15 @@ export const DialogAssinaturaSaida = ({
           forma: formaSelecionada || avariasData?.dados_pagamento?.forma,
         },
       };
+
+      // "Incluir fotos neste link" pode ter mudado depois que esta OS foi carregada:
+      // vale a escolha que está no banco (se a leitura falhar, fica a do objeto da tela).
+      const { data: osNoBanco } = await supabase
+        .from("ordens_servico")
+        .select("avarias")
+        .eq("id", ordem.id)
+        .maybeSingle();
+      if (osNoBanco) aplicarEscolhaFotosDoBanco(novasAvarias, osNoBanco.avarias);
 
       const tempoGastoDigitado = tempoGasto ? Number(tempoGasto.replace(",", ".")) : null;
       const tempoGastoValido = tempoGastoDigitado != null && !Number.isNaN(tempoGastoDigitado);

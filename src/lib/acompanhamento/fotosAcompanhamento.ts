@@ -3,11 +3,13 @@
  * /acompanhar-cliente/:token). Módulo puro (sem React, navegador nem banco),
  * testado com Deno em scripts/testes-acompanhamento-fotos/.
  *
- * As fotos só saem quando as DUAS regras valem, e quem decide é o banco (RPCs
- * get_os_tracking e get_cliente_tracking), nunca só a tela:
+ * Quem decide se as fotos saem é o banco (RPCs get_os_tracking e
+ * get_cliente_tracking), nunca só a tela:
  *  1. loja: configuracoes_loja (linha da matriz) → cores_personalizadas
- *     .tracking_config.mostrar_fotos === true;
- *  2. OS: ordens_servico.avarias.fotos_acompanhamento === true.
+ *     .tracking_config.mostrar_fotos === true. Desligada ou ausente: nada sai;
+ *  2. OS: com a loja ligada, as fotos saem POR PADRÃO. Só não saem quando
+ *     ordens_servico.avarias.fotos_acompanhamento === false (caixa desmarcada).
+ *     Chave ausente, null ou true = inclui.
  * Aqui ficam só a leitura da resposta, o estado da caixa por OS e as mesclas de
  * gravação (cada tela grava só a sua chave, sobre o valor relido do banco).
  */
@@ -18,6 +20,11 @@ export const MAX_FOTOS_ACOMPANHAMENTO = 6;
 export const ROTULO_OPCAO_LOJA = "Mostrar fotos no acompanhamento";
 export const ROTULO_CAIXA_OS = "Incluir fotos neste link";
 export const TITULO_FOTOS_ACOMPANHAMENTO = "Fotos do aparelho";
+/** Texto de apoio da caixa por OS (ela já vem marcada quando a loja ligou a opção). */
+export const AVISO_CAIXA_OS = "Desmarque se houver foto de documento do cliente.";
+/** Confirmação ao LIGAR a opção da loja: vale para todas as OS com fotos, inclusive links já enviados. */
+export const AVISO_LIGAR_FOTOS_LOJA =
+  "Todas as OS com fotos passarão a exibir as fotos no link do cliente, inclusive links já enviados. Desmarque nas OS com foto de documento.";
 export const MOTIVO_OS_SEM_FOTOS = "Esta OS não tem fotos";
 export const MOTIVO_LOJA_DESLIGADA = `A loja não ligou "${ROTULO_OPCAO_LOJA}" (Página de Acompanhamento)`;
 
@@ -48,9 +55,17 @@ export function lojaMostraFotos(coresPersonalizadas: unknown): boolean {
   return comoObjeto(comoObjeto(coresPersonalizadas).tracking_config).mostrar_fotos === true;
 }
 
-/** A OS está marcada com "Incluir fotos neste link". */
+/**
+ * A OS inclui as fotos no link: sempre, a não ser que "Incluir fotos neste link"
+ * tenha sido desmarcada (false explícito). Ausente, null ou true = inclui.
+ */
 export function osIncluiFotos(avarias: unknown): boolean {
-  return comoObjeto(avarias).fotos_acompanhamento === true;
+  return comoObjeto(avarias).fotos_acompanhamento !== false;
+}
+
+/** Salvar a tela da loja vai LIGAR as fotos (estava desligada no banco): pede confirmação antes. */
+export function precisaConfirmarFotosLoja(p: { ligadaNoBanco: boolean; ligadaNaTela: boolean }): boolean {
+  return p.ligadaNaTela && !p.ligadaNoBanco;
 }
 
 /** Quantas fotos da OS iriam para o link (no máximo 6). */
@@ -82,7 +97,22 @@ export function mesclarTrackingConfig(coresAtuais: unknown, editado: object): Ch
   return { ...cores, tracking_config: { ...comoObjeto(cores.tracking_config), ...editado } };
 }
 
-/** Gravação da caixa por OS: só a chave fotos_acompanhamento; o resto de avarias fica como está. */
+/**
+ * Gravação da caixa por OS: só a chave fotos_acompanhamento; o resto de avarias fica
+ * como está. Desmarcar grava false; marcar de novo grava true (registro explícito
+ * da escolha, que vale também se a regra do banco voltar a exigir a marca).
+ */
 export function mesclarFotosAcompanhamento(avariasAtuais: unknown, incluir: boolean): Chaves {
   return { ...comoObjeto(avariasAtuais), fotos_acompanhamento: incluir };
+}
+
+/**
+ * Para telas que remontam avarias a partir de um objeto que pode estar velho
+ * (edição da OS, assinatura de saída): a escolha da caixa é a que está no banco.
+ * Sem isso, um "desmarcado" (false) sumiria e as fotos voltariam a aparecer.
+ */
+export function aplicarEscolhaFotosDoBanco(avarias: { fotos_acompanhamento?: boolean }, avariasNoBanco: unknown): void {
+  const escolha = comoObjeto(avariasNoBanco).fotos_acompanhamento;
+  if (typeof escolha === "boolean") avarias.fotos_acompanhamento = escolha;
+  else delete avarias.fotos_acompanhamento;
 }

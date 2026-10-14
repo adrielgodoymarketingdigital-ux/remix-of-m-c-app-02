@@ -2,11 +2,14 @@
 // Fotos do aparelho nos links de acompanhamento (src/lib/acompanhamento/fotosAcompanhamento.ts):
 // leitura da coluna "fotos" das RPCs, caixa "Incluir fotos neste link" e as mesclas
 // de gravação da loja (cores_personalizadas.tracking_config) e da OS (avarias).
-// As duas regras e o corte em 6 valem no SQL; aqui é o que a tela faz com a resposta.
+// As regras e o corte em 6 valem no SQL; aqui é o que a tela faz com a resposta.
+// Regra por OS (opt-out): com a loja ligada, as fotos saem por padrão; só o false
+// explícito em avarias.fotos_acompanhamento tira.
 import { assertEquals } from "jsr:@std/assert@1";
 import {
-  MAX_FOTOS_ACOMPANHAMENTO, MOTIVO_LOJA_DESLIGADA, MOTIVO_OS_SEM_FOTOS, decidirCaixaFotosLink, fotosDoAcompanhamento,
-  lojaMostraFotos, mesclarFotosAcompanhamento, mesclarTrackingConfig, osIncluiFotos, textoVerFotos, totalFotosParaLink,
+  AVISO_CAIXA_OS, AVISO_LIGAR_FOTOS_LOJA, MAX_FOTOS_ACOMPANHAMENTO, MOTIVO_LOJA_DESLIGADA, MOTIVO_OS_SEM_FOTOS,
+  aplicarEscolhaFotosDoBanco, decidirCaixaFotosLink, fotosDoAcompanhamento, lojaMostraFotos, mesclarFotosAcompanhamento,
+  mesclarTrackingConfig, osIncluiFotos, precisaConfirmarFotosLoja, textoVerFotos, totalFotosParaLink,
 } from "../../src/lib/acompanhamento/fotosAcompanhamento.ts";
 import { PARAMETROS_MINIATURA, urlMiniatura } from "../../src/lib/os/fotosImpressaoOS.ts";
 import { linhaMatrizUnica } from "../../src/lib/ordemServico/mesclarLayoutOS.ts";
@@ -49,11 +52,12 @@ Deno.test("opção da loja: só true de verdade liga", () => {
   }
 });
 
-Deno.test("marca da OS: só true de verdade conta", () => {
-  assertEquals(osIncluiFotos({ fotos_acompanhamento: true }), true);
-  for (const v of [null, undefined, {}, { fotos_acompanhamento: false }, { fotos_acompanhamento: "true" }, { fotos_acompanhamento: 1 }, []]) {
-    assertEquals(osIncluiFotos(v), false);
+Deno.test("escolha da OS: inclui por padrão; só o false explícito tira", () => {
+  for (const v of [null, undefined, {}, [], { fotos_acompanhamento: true }, { fotos_acompanhamento: null }, { fotos_acompanhamento: undefined },
+    { fotos_acompanhamento: "false" }, { fotos_acompanhamento: 0 }]) {
+    assertEquals(osIncluiFotos(v), true);
   }
+  assertEquals(osIncluiFotos({ fotos_acompanhamento: false }), false);
 });
 
 Deno.test("quantas fotos iriam para o link: só URLs válidas, no máximo 6", () => {
@@ -63,13 +67,35 @@ Deno.test("quantas fotos iriam para o link: só URLs válidas, no máximo 6", ()
   for (const v of [null, {}, { fotos_dispositivo: [] }, { fotos_dispositivo: "x" }]) assertEquals(totalFotosParaLink(v), 0);
 });
 
-Deno.test("caixa por OS: só habilita com fotos E com a loja ligada; senão mostra o motivo", () => {
-  assertEquals(decidirCaixaFotosLink({ lojaLigada: true, totalFotos: 3, marcada: false }), { habilitada: true, motivo: null, incluir: false });
-  assertEquals(decidirCaixaFotosLink({ lojaLigada: true, totalFotos: 3, marcada: true }), { habilitada: true, motivo: null, incluir: true });
+Deno.test("caixa por OS: loja ligada e OS com fotos → já vem MARCADA quando a chave está ausente ou null", () => {
+  for (const avarias of [{ fotos_dispositivo: fotos(3) }, { fotos_dispositivo: fotos(3), fotos_acompanhamento: null }, { fotos_dispositivo: fotos(3), fotos_acompanhamento: true }]) {
+    const d = decidirCaixaFotosLink({ lojaLigada: true, totalFotos: totalFotosParaLink(avarias), marcada: osIncluiFotos(avarias) });
+    assertEquals(d, { habilitada: true, motivo: null, incluir: true });
+  }
+});
+
+Deno.test("caixa por OS: desmarcada (false) → habilitada e desmarcada", () => {
+  const avarias = { fotos_dispositivo: fotos(3), fotos_acompanhamento: false };
+  assertEquals(decidirCaixaFotosLink({ lojaLigada: true, totalFotos: totalFotosParaLink(avarias), marcada: osIncluiFotos(avarias) }), { habilitada: true, motivo: null, incluir: false });
+});
+
+Deno.test("caixa por OS: loja desligada ou OS sem fotos → desabilitada, desmarcada, com o motivo", () => {
   assertEquals(decidirCaixaFotosLink({ lojaLigada: false, totalFotos: 3, marcada: true }), { habilitada: false, motivo: MOTIVO_LOJA_DESLIGADA, incluir: false });
   assertEquals(decidirCaixaFotosLink({ lojaLigada: true, totalFotos: 0, marcada: true }), { habilitada: false, motivo: MOTIVO_OS_SEM_FOTOS, incluir: false });
   // Sem fotos e com a loja desligada: o motivo mostrado é o da OS.
-  assertEquals(decidirCaixaFotosLink({ lojaLigada: false, totalFotos: 0, marcada: false }).motivo, MOTIVO_OS_SEM_FOTOS);
+  assertEquals(decidirCaixaFotosLink({ lojaLigada: false, totalFotos: 0, marcada: true }).motivo, MOTIVO_OS_SEM_FOTOS);
+});
+
+Deno.test("textos de apoio", () => {
+  assertEquals(AVISO_CAIXA_OS, "Desmarque se houver foto de documento do cliente.");
+  assertEquals(AVISO_LIGAR_FOTOS_LOJA, "Todas as OS com fotos passarão a exibir as fotos no link do cliente, inclusive links já enviados. Desmarque nas OS com foto de documento.");
+});
+
+Deno.test("confirmação da loja: só ao LIGAR (estava desligada no banco e a tela vai gravar ligada)", () => {
+  assertEquals(precisaConfirmarFotosLoja({ ligadaNoBanco: false, ligadaNaTela: true }), true);
+  assertEquals(precisaConfirmarFotosLoja({ ligadaNoBanco: true, ligadaNaTela: true }), false);  // já estava ligada
+  assertEquals(precisaConfirmarFotosLoja({ ligadaNoBanco: true, ligadaNaTela: false }), false); // desligar não pede
+  assertEquals(precisaConfirmarFotosLoja({ ligadaNoBanco: false, ligadaNaTela: false }), false);
 });
 
 const TELA = {
@@ -116,10 +142,34 @@ const AVARIAS = {
   chave_do_futuro: { x: 1 },
 };
 
-Deno.test("gravação da OS: marcar não apaga fotos, checklist, assinaturas nem o resto de avarias", () => {
-  assertEquals(mesclarFotosAcompanhamento(AVARIAS, true), { ...AVARIAS, fotos_acompanhamento: true });
-  assertEquals(mesclarFotosAcompanhamento({ ...AVARIAS, fotos_acompanhamento: true }, false), { ...AVARIAS, fotos_acompanhamento: false });
+Deno.test("gravação da OS: desmarcar grava false sem apagar fotos, checklist, assinaturas nem o resto de avarias", () => {
+  assertEquals(mesclarFotosAcompanhamento(AVARIAS, false), { ...AVARIAS, fotos_acompanhamento: false });
   assertEquals("fotos_acompanhamento" in AVARIAS, false); // não altera a entrada
+});
+
+Deno.test("gravação da OS: marcar de novo grava true (escolha explícita) e mantém o resto", () => {
+  assertEquals(mesclarFotosAcompanhamento({ ...AVARIAS, fotos_acompanhamento: false }, true), { ...AVARIAS, fotos_acompanhamento: true });
+});
+
+Deno.test("edição da OS e assinatura de saída: a escolha da caixa é a do banco, não a do objeto velho da tela", () => {
+  // Tela carregada antes de desmarcar (sem a chave); no banco está false → mantém false.
+  const montadaPelaTela: { fotos_acompanhamento?: boolean; checklist: unknown } = { checklist: { entrada: {} } };
+  aplicarEscolhaFotosDoBanco(montadaPelaTela, { fotos_acompanhamento: false, outra: 1 });
+  assertEquals(montadaPelaTela, { checklist: { entrada: {} }, fotos_acompanhamento: false });
+  // Tela com true velho; no banco foi desmarcada → false.
+  const comTrueVelho = { fotos_acompanhamento: true };
+  aplicarEscolhaFotosDoBanco(comTrueVelho, { fotos_acompanhamento: false });
+  assertEquals(comTrueVelho, { fotos_acompanhamento: false });
+  // Tela com false velho; no banco foi marcada de novo → true.
+  const comFalseVelho = { fotos_acompanhamento: false };
+  aplicarEscolhaFotosDoBanco(comFalseVelho, { fotos_acompanhamento: true });
+  assertEquals(comFalseVelho, { fotos_acompanhamento: true });
+  // Banco sem a chave (ou com valor que não é booleano) → a chave sai: segue o padrão da loja.
+  for (const banco of [{}, null, { fotos_acompanhamento: null }, { fotos_acompanhamento: "false" }]) {
+    const a: { fotos_acompanhamento?: boolean } = { fotos_acompanhamento: false };
+    aplicarEscolhaFotosDoBanco(a, banco);
+    assertEquals("fotos_acompanhamento" in a, false);
+  }
 });
 
 Deno.test("gravação da OS: avarias nula ou que não é objeto → só a chave nova", () => {

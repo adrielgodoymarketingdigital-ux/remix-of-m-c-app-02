@@ -22,6 +22,7 @@ import {
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
 import { FormData, TecnicoOS } from "./tipos";
+import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
 
 /**
  * Entrada da comissão de um serviço. Com peça repassada ao cliente pelo custo,
@@ -847,11 +848,10 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .eq("user_id", effectiveUserId)
         .maybeSingle();
       const itensAntes = ((osAntes?.avarias as { produtos_utilizados?: ItemOSEstoque[] } | null)?.produtos_utilizados ?? []);
-      // "Incluir fotos neste link" é marcada fora deste formulário: mantém o valor do
-      // banco (só true; se a leitura falhar, fica desmarcada).
-      if ((osAntes?.avarias as AvariasOS | null)?.fotos_acompanhamento === true) {
-        avariasData.fotos_acompanhamento = true;
-      }
+      // "Incluir fotos neste link" é escolhida fora deste formulário: mantém o valor do
+      // banco (se a leitura falhar, o do objeto da tela) — perder um "desmarcado"
+      // faria as fotos voltarem ao link do cliente.
+      aplicarEscolhaFotosDoBanco(avariasData, osAntes ? osAntes.avarias : ordemAvarias);
 
       // Atualizar ordem existente
       const { error } = await supabase

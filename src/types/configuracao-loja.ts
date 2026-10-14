@@ -163,8 +163,9 @@ export interface TrackingPageConfig {
   mostrar_valor: boolean;
   mostrar_defeito: boolean;
   /**
-   * "Mostrar fotos no acompanhamento". Ausente = desligado. As fotos só saem nas
-   * OS marcadas (avarias.fotos_acompanhamento) — regra aplicada no banco (RPC).
+   * "Mostrar fotos no acompanhamento". Ausente = desligado. Ligado, toda OS com
+   * fotos mostra, menos as desmarcadas (avarias.fotos_acompanhamento === false) —
+   * regra aplicada no banco (RPC).
    */
   mostrar_fotos?: boolean;
   mensagem_rodape?: string; // texto personalizado no footer

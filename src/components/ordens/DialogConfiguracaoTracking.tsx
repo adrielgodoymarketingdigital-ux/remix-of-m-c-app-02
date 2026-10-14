@@ -12,7 +12,13 @@ import { TrackingPageConfig, TRACKING_CONFIG_PADRAO } from "@/types/configuracao
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { linhaMatrizUnica } from "@/lib/ordemServico/mesclarLayoutOS";
-import { ROTULO_CAIXA_OS, ROTULO_OPCAO_LOJA, mesclarTrackingConfig } from "@/lib/acompanhamento/fotosAcompanhamento";
+import {
+  AVISO_LIGAR_FOTOS_LOJA, ROTULO_CAIXA_OS, ROTULO_OPCAO_LOJA, lojaMostraFotos, mesclarTrackingConfig, precisaConfirmarFotosLoja,
+} from "@/lib/acompanhamento/fotosAcompanhamento";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface DialogConfiguracaoTrackingProps {
   open: boolean;
@@ -32,10 +38,14 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
   const { config, atualizarConfiguracao } = useConfiguracaoLoja();
   const [cfg, setCfg] = useState<TrackingPageConfig>(TRACKING_CONFIG_PADRAO);
   const [salvando, setSalvando] = useState(false);
+  // Fotos no acompanhamento: ligar vale para todas as OS com fotos, então pede confirmação.
+  const [fotosLigadasNoBanco, setFotosLigadasNoBanco] = useState(false);
+  const [confirmandoFotos, setConfirmandoFotos] = useState(false);
 
   useEffect(() => {
     const coresPersonalizadas = (config as any)?.cores_personalizadas as Record<string, unknown> | null;
     const saved = coresPersonalizadas?.tracking_config as TrackingPageConfig | undefined;
+    setFotosLigadasNoBanco(lojaMostraFotos(coresPersonalizadas));
     if (saved) {
       setCfg({ ...TRACKING_CONFIG_PADRAO, ...saved });
     } else {
@@ -81,6 +91,7 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
         throw new Error("O banco recusou a gravação. Tente novamente.");
       }
       if (!gravadas?.length) throw new Error("Você não tem permissão para alterar esta configuração.");
+      setFotosLigadasNoBanco(cfg.mostrar_fotos === true);
       toast.success("Configurações da página de acompanhamento salvas!");
     } catch (error) {
       toast.error("Erro ao salvar a página de acompanhamento", {
@@ -89,6 +100,14 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
     } finally {
       setSalvando(false);
     }
+  };
+
+  const pedirSalvar = () => {
+    if (precisaConfirmarFotosLoja({ ligadaNoBanco: fotosLigadasNoBanco, ligadaNaTela: cfg.mostrar_fotos === true })) {
+      setConfirmandoFotos(true);
+      return;
+    }
+    salvar();
   };
 
   const primRgb = hexToRgb(cfg.cor_primaria);
@@ -164,7 +183,8 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
                 <ToggleField label="Defeito relatado" value={cfg.mostrar_defeito} onChange={(v) => set("mostrar_defeito", v)} />
                 <ToggleField label={ROTULO_OPCAO_LOJA} value={cfg.mostrar_fotos === true} onChange={(v) => set("mostrar_fotos", v)} />
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  As fotos só aparecem nas OS marcadas com “{ROTULO_CAIXA_OS}” (aba Tempo, ao visualizar a OS). Até 6 fotos por OS.
+                  Com a opção ligada, toda OS com fotos mostra até 6 delas no link do cliente. Para tirar de uma OS,
+                  desmarque “{ROTULO_CAIXA_OS}” (aba Tempo, ao visualizar a OS).
                 </p>
               </div>
 
@@ -191,7 +211,7 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
                   <RotateCcw className="h-3.5 w-3.5" />
                   Resetar
                 </Button>
-                <Button size="sm" onClick={salvar} disabled={salvando} className="gap-1.5 text-xs flex-1">
+                <Button size="sm" onClick={pedirSalvar} disabled={salvando} className="gap-1.5 text-xs flex-1">
                   <Save className="h-3.5 w-3.5" />
                   {salvando ? "Salvando..." : "Salvar"}
                 </Button>
@@ -211,6 +231,18 @@ export function DialogConfiguracaoTracking({ open, onOpenChange }: DialogConfigu
           </div>
         </div>
       </DialogContent>
+      <AlertDialog open={confirmandoFotos} onOpenChange={setConfirmandoFotos}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ligar “{ROTULO_OPCAO_LOJA}”?</AlertDialogTitle>
+            <AlertDialogDescription>{AVISO_LIGAR_FOTOS_LOJA}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => salvar()}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

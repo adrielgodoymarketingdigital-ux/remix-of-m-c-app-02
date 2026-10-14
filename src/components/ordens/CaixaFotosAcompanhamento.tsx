@@ -5,9 +5,8 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { AVISO_DOCUMENTO } from "@/lib/os/fotosImpressaoOS";
 import {
-  ROTULO_CAIXA_OS, decidirCaixaFotosLink, lojaMostraFotos, mesclarFotosAcompanhamento, osIncluiFotos, totalFotosParaLink,
+  AVISO_CAIXA_OS, ROTULO_CAIXA_OS, decidirCaixaFotosLink, lojaMostraFotos, mesclarFotosAcompanhamento, osIncluiFotos, totalFotosParaLink,
 } from "@/lib/acompanhamento/fotosAcompanhamento";
 
 interface CaixaFotosAcompanhamentoProps {
@@ -20,8 +19,9 @@ interface CaixaFotosAcompanhamentoProps {
 
 /**
  * Caixa "Incluir fotos neste link" da OS (ordens_servico.avarias.fotos_acompanhamento).
- * As fotos só aparecem no acompanhamento se a loja também ligou "Mostrar fotos no
- * acompanhamento" — e quem aplica as duas regras é o banco (RPC), não esta tela.
+ * Com a loja ligada em "Mostrar fotos no acompanhamento", a OS inclui as fotos por
+ * padrão e a caixa já vem marcada; desmarcar grava false e tira as fotos do link.
+ * Quem aplica as regras é o banco (RPC), não esta tela.
  */
 export function CaixaFotosAcompanhamento({ ordemId, avarias, onGravado }: CaixaFotosAcompanhamentoProps) {
   // Opção da loja: sempre a linha da matriz (é dela que o banco lê).
@@ -103,7 +103,7 @@ export function CaixaFotosAcompanhamento({ ordemId, avarias, onGravado }: CaixaF
         </Label>
       </div>
       <p className="mt-1 text-[11px] text-muted-foreground">
-        {carregandoLoja ? "Carregando…" : decisao.habilitada ? AVISO_DOCUMENTO : decisao.motivo}
+        {carregandoLoja ? "Carregando…" : decisao.habilitada ? AVISO_CAIXA_OS : decisao.motivo}
       </p>
     </div>
   );
