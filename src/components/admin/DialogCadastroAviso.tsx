@@ -20,7 +20,6 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Collapsible,
   CollapsibleContent,
@@ -476,12 +475,20 @@ export function DialogCadastroAviso({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden">
-        <div className="flex flex-col h-full max-h-[90vh]">
-          {/* Header */}
-          <DialogHeader className="px-4 sm:px-6 py-4 border-b flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-lg">{isEditing ? 'Editar Aviso' : 'Novo Aviso'}</DialogTitle>
+      {/*
+        Layout: o DialogContent base aplica sm:max-w-lg (512px) e sm:p-6 a partir de 640px,
+        e sem o prefixo sm: aqui eles venciam — o dialog de 2 colunas ficava espremido em
+        512px, cortado à direita e com o rodapé (Salvar) fora da tela. No celular o base é
+        tela cheia (inset-0); w-[95vw] deixava o conteúdo encostado à esquerda. Agora:
+        coluna flex de altura definida, miolo com min-h-0 rolando por dentro e cabeçalho e
+        rodapé fixos.
+      */}
+      <DialogContent className="flex flex-col gap-0 overflow-hidden p-0 sm:p-0 w-full h-[100dvh] max-h-[100dvh] sm:w-[95vw] sm:max-w-5xl sm:h-[min(90vh,860px)] sm:max-h-[90vh]">
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* Header (pr-14: espaço para o X de fechar do DialogContent) */}
+          <DialogHeader className="pl-4 pr-14 sm:pl-6 py-4 border-b flex-shrink-0 text-left">
+            <div className="flex items-center justify-between gap-3">
+              <DialogTitle className="text-lg truncate">{isEditing ? 'Editar Aviso' : 'Novo Aviso'}</DialogTitle>
               <div className="flex items-center gap-2">
                 <div className="hidden sm:flex items-center gap-1 bg-muted rounded-lg p-1">
                   <Button
@@ -509,10 +516,10 @@ export function DialogCadastroAviso({
             </div>
           </DialogHeader>
 
-          {/* Content */}
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          {/* Content: min-h-0 deixa o miolo encolher e rolar por dentro em telas baixas */}
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             {/* Form */}
-            <ScrollArea className="flex-1 lg:max-w-[55%]">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain lg:max-w-[55%]">
               <form id="aviso-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5">
                 {/* Conteúdo Principal */}
                 <div className="space-y-4">
@@ -900,11 +907,11 @@ export function DialogCadastroAviso({
                   />
                 </div>
               </form>
-            </ScrollArea>
+            </div>
 
             {/* Preview Desktop */}
-            <div className="hidden lg:flex flex-col w-[45%] border-l bg-gradient-to-b from-muted/30 to-muted/10">
-              <div className="flex-1 p-6 flex items-start justify-center overflow-auto">
+            <div className="hidden lg:flex min-h-0 flex-col w-[45%] border-l bg-gradient-to-b from-muted/30 to-muted/10">
+              <div className="min-h-0 flex-1 p-6 flex items-start justify-center overflow-auto">
                 <div className={cn(
                   "transition-all duration-300 w-full",
                   previewMode === 'mobile' ? "max-w-[280px]" : "max-w-md"
@@ -933,7 +940,7 @@ export function DialogCadastroAviso({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t bg-background flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
             <div className="flex items-center gap-2">
               {ativo ? (
                 <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Ativo</Badge>
