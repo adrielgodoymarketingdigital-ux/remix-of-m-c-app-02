@@ -4,6 +4,7 @@ import { Conta, FormularioConta, PagamentoConta } from "@/types/conta";
 import { useToast } from "@/hooks/use-toast";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
+import { diaBrasiliaDaData } from "@/lib/vendasFinanceiras";
 import { pagamentoDoCadastro } from "@/lib/financeiro/pagamentoDoCadastro";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
@@ -126,9 +127,10 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           ? ` (${v.parcela_numero}/${v.total_parcelas})`
           : "";
 
+        // Dia de Brasília (não o dia UTC): venda/recebimento das 21h às 23:59 fica no próprio dia.
         const dataVenda = v.recebido && v.data_recebimento
-          ? v.data_recebimento.split("T")[0]
-          : v.data_prevista_recebimento || (v.data ? v.data.split("T")[0] : new Date().toISOString().split("T")[0]);
+          ? diaBrasiliaDaData(v.data_recebimento) ?? dataBrasiliaISO()
+          : v.data_prevista_recebimento || diaBrasiliaDaData(v.data) || dataBrasiliaISO();
 
         return {
           id: `venda_${v.id}`,
