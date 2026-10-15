@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import {
   LucroPorItem,
   CustoOperacional,
@@ -114,17 +115,21 @@ export const useRelatorios = () => {
         .in("status", ["finalizado", "entregue", "garantia"])
         .order("data_saida", { ascending: false, nullsFirst: false });
 
-      if (filtros.dataInicio && filtros.dataFim) {
+      // OS pelo dia de Brasília (00:00 a 23:59:59.999 locais, em UTC): data crua e
+      // "…T23:59:59" eram lidas em UTC pelo banco e cortavam a OS entregue após as 21h.
+      const osInicioISO = filtros.dataInicio ? limitesDiaBrasilia(filtros.dataInicio).inicioISO : null;
+      const osFimISO = filtros.dataFim ? limitesDiaBrasilia(filtros.dataFim).fimISO : null;
+      if (osInicioISO && osFimISO) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio},data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.gte.${filtros.dataInicio},created_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_saida.not.is.null,data_saida.gte.${osInicioISO},data_saida.lte.${osFimISO}),and(data_saida.is.null,created_at.gte.${osInicioISO},created_at.lte.${osFimISO})`
         );
-      } else if (filtros.dataInicio) {
+      } else if (osInicioISO) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio}),and(data_saida.is.null,created_at.gte.${filtros.dataInicio})`
+          `and(data_saida.not.is.null,data_saida.gte.${osInicioISO}),and(data_saida.is.null,created_at.gte.${osInicioISO})`
         );
-      } else if (filtros.dataFim) {
+      } else if (osFimISO) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_saida.not.is.null,data_saida.lte.${osFimISO}),and(data_saida.is.null,created_at.lte.${osFimISO})`
         );
       }
       if (empresaFiltroRef.current) { queryOrdens = isFilialRef.current ? queryOrdens.eq("empresa_id", empresaFiltroRef.current) : queryOrdens.or(`empresa_id.eq.${empresaFiltroRef.current},empresa_id.is.null`); }
@@ -710,17 +715,21 @@ export const useRelatorios = () => {
         .is("deleted_at", null)
         .in("status", ["finalizado", "entregue", "garantia"]);
 
-      if (filtros.dataInicio && filtros.dataFim) {
+      // OS pelo dia de Brasília (00:00 a 23:59:59.999 locais, em UTC): data crua e
+      // "…T23:59:59" eram lidas em UTC pelo banco e cortavam a OS entregue após as 21h.
+      const osInicioISO = filtros.dataInicio ? limitesDiaBrasilia(filtros.dataInicio).inicioISO : null;
+      const osFimISO = filtros.dataFim ? limitesDiaBrasilia(filtros.dataFim).fimISO : null;
+      if (osInicioISO && osFimISO) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio},data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.gte.${filtros.dataInicio},created_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_saida.not.is.null,data_saida.gte.${osInicioISO},data_saida.lte.${osFimISO}),and(data_saida.is.null,created_at.gte.${osInicioISO},created_at.lte.${osFimISO})`
         );
-      } else if (filtros.dataInicio) {
+      } else if (osInicioISO) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.gte.${filtros.dataInicio}),and(data_saida.is.null,created_at.gte.${filtros.dataInicio})`
+          `and(data_saida.not.is.null,data_saida.gte.${osInicioISO}),and(data_saida.is.null,created_at.gte.${osInicioISO})`
         );
-      } else if (filtros.dataFim) {
+      } else if (osFimISO) {
         queryOrdens = queryOrdens.or(
-          `and(data_saida.not.is.null,data_saida.lte.${filtros.dataFim}T23:59:59),and(data_saida.is.null,created_at.lte.${filtros.dataFim}T23:59:59)`
+          `and(data_saida.not.is.null,data_saida.lte.${osFimISO}),and(data_saida.is.null,created_at.lte.${osFimISO})`
         );
       }
       if (ef) { queryOrdens = isFilialRef.current ? queryOrdens.eq("empresa_id", ef) : queryOrdens.or(`empresa_id.eq.${ef},empresa_id.is.null`); }

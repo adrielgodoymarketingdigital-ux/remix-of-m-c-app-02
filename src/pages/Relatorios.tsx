@@ -32,6 +32,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useIdentidade } from "@/hooks/useResolvedUserId";
 import { supabase } from "@/integrations/supabase/client";
+import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import {
   gerarRelatorioDispositivosPDF,
   gerarRelatorioProdutosPDF,
@@ -218,8 +219,9 @@ export default function Relatorios() {
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
-      if (dataInicioFiltro) query = query.gte("created_at", dataInicioFiltro);
-      if (dataFimFiltro) query = query.lte("created_at", `${dataFimFiltro}T23:59:59`);
+      // Limites do dia em Brasília (em UTC): "AAAA-MM-DD"/"…T23:59:59" crus eram lidos em UTC pelo banco.
+      if (dataInicioFiltro) query = query.gte("created_at", limitesDiaBrasilia(dataInicioFiltro).inicioISO);
+      if (dataFimFiltro) query = query.lte("created_at", limitesDiaBrasilia(dataFimFiltro).fimISO);
       if (empresaFiltro) query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
 
       const { data, error } = await query;
@@ -258,18 +260,19 @@ export default function Relatorios() {
         .eq("user_id", userId)
         .neq("cancelada", true)
         .is("deleted_at", null)
-        .neq("observacoes", "pagamento_duplo_secundario")
-        .gte("data", dataInicioFiltro || "2020-01-01")
-        .lte("data", dataFimFiltro ? `${dataFimFiltro}T23:59:59` : "2099-12-31");
+        .neq("observacoes", "pagamento_duplo_secundario");
+      // Período em Brasília: venda das 21h às 23:59 entra no dia em que foi feita.
+      if (dataInicioFiltro) vendasPromise = vendasPromise.gte("data", limitesDiaBrasilia(dataInicioFiltro).inicioISO);
+      if (dataFimFiltro) vendasPromise = vendasPromise.lte("data", limitesDiaBrasilia(dataFimFiltro).fimISO);
       if (empresaFiltro) vendasPromise = vendasPromise.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
 
-      const avulsasPromise = supabase
+      let avulsasPromise = supabase
         .from("vendas_avulsas" as any)
         .select("descricao, valor, forma_pagamento, created_at")
         .eq("user_id", userId)
-        .is("deleted_at", null)
-        .gte("created_at", dataInicioFiltro ? `${dataInicioFiltro}T00:00:00` : "2020-01-01T00:00:00")
-        .lte("created_at", dataFimFiltro ? `${dataFimFiltro}T23:59:59` : "2099-12-31T23:59:59");
+        .is("deleted_at", null);
+      if (dataInicioFiltro) avulsasPromise = avulsasPromise.gte("created_at", limitesDiaBrasilia(dataInicioFiltro).inicioISO);
+      if (dataFimFiltro) avulsasPromise = avulsasPromise.lte("created_at", limitesDiaBrasilia(dataFimFiltro).fimISO);
 
       const [{ data: vendas }, { data: avulsas }] = await Promise.all([vendasPromise, avulsasPromise]);
 
@@ -339,8 +342,8 @@ export default function Relatorios() {
         .eq("user_id", userId)
         .is("deleted_at", null)
         .in("status", ["finalizado", "entregue"]);
-      if (dataInicioFiltro) queryOS = queryOS.gte("created_at", dataInicioFiltro);
-      if (dataFimFiltro) queryOS = queryOS.lte("created_at", `${dataFimFiltro}T23:59:59`);
+      if (dataInicioFiltro) queryOS = queryOS.gte("created_at", limitesDiaBrasilia(dataInicioFiltro).inicioISO);
+      if (dataFimFiltro) queryOS = queryOS.lte("created_at", limitesDiaBrasilia(dataFimFiltro).fimISO);
 
       const [{ data: clientesData }, { data: ordensData }] = await Promise.all([query, queryOS]);
 

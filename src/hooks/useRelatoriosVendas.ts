@@ -334,10 +334,10 @@ export const useRelatoriosVendas = () => {
         .order("created_at", { ascending: false });
 
       if (filtros.dataInicio) {
-        query = query.gte("created_at", `${filtros.dataInicio}T00:00:00`);
+        query = query.gte("created_at", limitesDiaBrasilia(filtros.dataInicio).inicioISO);
       }
       if (filtros.dataFim) {
-        query = query.lte("created_at", `${filtros.dataFim}T23:59:59`);
+        query = query.lte("created_at", limitesDiaBrasilia(filtros.dataFim).fimISO);
       }
 
       const { data, error } = await query;
