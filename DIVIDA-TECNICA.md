@@ -3,6 +3,59 @@
 Itens conhecidos, não corrigidos de propósito (risco baixo o suficiente pra
 adiar, ou correção arriscada demais pra fazer junto de outra coisa).
 
+## Fuso horário — situação em 2026-10-15 (branch `fix/fuso-brasilia`)
+
+**Caso que motivou:** VD-000171 do Livio, 14/10 21:00:30 de Brasília
+(= `2026-10-15T00:00:30Z`), sumiu do card "Hoje" do Dashboard e do export de
+14/10. Regra: o dia de negócio é o de Brasília. Usar só `src/lib/dataBrasilia.ts`
+— `dataBrasiliaISO(new Date(iso))` para o dia de um instante e
+`limitesDiaBrasilia("AAAA-MM-DD")` para filtros `.gte()/.lte()` em `timestamptz`.
+
+**Migrado nesta entrega** (testes em `scripts/testes-fuso-brasilia/`, UTC e SP):
+- `src/pages/Dashboard.tsx` — card "Hoje" (`loadHojeData`: limites e filtro em
+  memória por `isVendaNoDiaBrasilia`) e produtos mais/menos vendidos do mês.
+- `src/pages/Relatorios.tsx` — Exportar OS, Exportar Vendas Completo (vendas e
+  avulsas) e Exportar Clientes.
+- `src/hooks/useRelatorios.ts` — filtro das OS (lucro por item e evolução
+  mensal). As **vendas** desse hook continuam no caminho descrito abaixo.
+- `src/hooks/useRelatoriosVendas.ts` — vendas avulsas.
+- `src/hooks/useContas.ts` — contas a receber "virtuais" de venda a prazo.
+
+**Trava:** `eslint.config.js` tem `no-restricted-syntax` (warn) para
+`.slice(0, 10)` em datas, `.split("T")[0]`, `toISOString().substring(0, 10)` e
+`"…T23:59:59"`. Na entrega: 47 avisos em 24 arquivos (nenhum erro novo).
+
+**NÃO migrado — Caixa (de propósito):** `src/hooks/useCaixa.ts` (janela
+`janelaIniData`/`janelaFimData`), `src/components/pdv/DialogFechamentoCaixa.tsx`
+(prévia), `src/lib/caixa/servicosCaixa.ts` (`soData`, datas dos eventos de OS) e
+`src/lib/caixa/ajustarCaixasFechadosOS.ts`. O total de serviços é congelado no
+fechamento com datas cortadas em UTC, e `ajustarCaixasFechadosOS` aplica
+diferenças em caixas JÁ FECHADOS recalculando com a mesma regra. Trocar só as
+pontas para Brasília faria os ajustes futuros usarem um critério diferente do que
+fechou o caixa — uma OS das 21h–24h poderia ser somada/subtraída de um caixa
+fechado que nunca a contou. Precisa de entrega dedicada: migrar janela, datas dos
+eventos e ajuste retroativo juntos, com regra explícita para caixas fechados antes
+da troca (ex.: guardar no caixa a versão da regra usada no fechamento).
+
+**NÃO migrado — ainda depende do fuso do navegador** (certo com o navegador em
+Brasília, errado se não estiver):
+- Vendas do mês no Dashboard (`loadMetrics`, filtros com `queryFim}T23:59:59`) e
+  em `useRelatorios.ts` (consultas "alargadas" ±1 dia + `isVendaInFinancialPeriod`
+  / `getDateKeyFromValue` com getters locais) — ver seção seguinte.
+- `src/lib/serieHistorica.ts` (7 dias / "Ontem") e `src/hooks/useDashboardResumo.ts`.
+
+**Outros avisos da regra (não financeiros ou de baixo risco), para a próxima
+limpeza:** cupons (`CuponsAdmin`, `DialogCadastroCupom`), `DialogCadastroConta`,
+`DialogInadimplentes`, `PagamentoDuplo`, `handleSubmitOrdemServico.ts:688`,
+`SecaoContasPagarReceber.tsx:456`, `PDV.tsx` (1493, 1537), `AcompanharCliente.tsx`,
+`AdminUsuarios.tsx`, `ExportacaoDados.tsx`, nomes de arquivo de PDF
+(`exportarProdutosPDF`, `gerarCatalogoPDF`, `gerarRelatorios*PDF`) e
+`useContas.ts` 49/52 (filtros que nenhum chamador usa hoje).
+**Falsos positivos conhecidos** (corretos: cortam um Date "de parede" de Brasília
+vindo de `nowBrasilia()`): `FiltroPeriodoAvancado.tsx:69`, `Extrato.tsx:31`.
+`SecaoAnaliseLucrosCustos.tsx:117` corta meia-noite local (certo com o navegador
+no Brasil).
+
 ## Fuso horário — `useRelatorios.ts` depende do fuso do navegador
 
 **Contexto:** investigação de 2026-09-28 sobre vendas/OS lançadas entre 21h e
