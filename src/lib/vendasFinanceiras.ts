@@ -1,3 +1,5 @@
+import { dataBrasiliaISO } from "./dataBrasilia.ts";
+
 export interface VendaFinanceiraLike {
   data?: string | null;
   data_recebimento?: string | null;
@@ -127,6 +129,27 @@ export const getVendaDataCompetencia = (venda: VendaFinanceiraLike) => {
   }
 
   return venda.data || null;
+};
+
+/** Dia "AAAA-MM-DD" de Brasília de uma data da venda (timestamptz em ISO, ou data pura). */
+export const diaBrasiliaDaData = (valor?: string | null): string | null => {
+  if (!valor) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor;
+  const instante = new Date(valor.includes("T") ? valor : valor.replace(" ", "T"));
+  return Number.isNaN(instante.getTime()) ? null : dataBrasiliaISO(instante);
+};
+
+/**
+ * A venda conta no dia `diaBrasilia` ("AAAA-MM-DD", calendário de Brasília)? Usa a
+ * data do recebimento na venda a prazo/a receber já recebida e a data da venda nas
+ * demais. Não depende do fuso do navegador: uma venda às 21:00:30 de Brasília
+ * (00:00:30 UTC do dia seguinte) conta no dia em que foi feita.
+ */
+export const isVendaNoDiaBrasilia = (venda: VendaFinanceiraLike, diaBrasilia: string): boolean => {
+  const dataRef = isVendaPorCompetenciaRecebimento(venda) && venda.recebido
+    ? venda.data_recebimento || venda.data
+    : venda.data;
+  return diaBrasiliaDaData(dataRef) === diaBrasilia;
 };
 
 export const isVendaInOptionalFinancialPeriod = (

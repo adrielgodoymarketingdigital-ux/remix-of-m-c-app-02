@@ -26,7 +26,8 @@ import { CardCotacaoDolar } from "@/components/dashboard/CardCotacaoDolar";
 import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { CardPrimeirosPassos } from "@/components/onboarding/CardPrimeirosPassos";
 import { useRelatorios } from "@/hooks/useRelatorios";
-import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro } from "@/lib/vendasFinanceiras";
+import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, isVendaNoDiaBrasilia, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro } from "@/lib/vendasFinanceiras";
+import { dataBrasiliaISO, limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 import { useIdentidade } from "@/hooks/useResolvedUserId";
 import { useDashboardResumo } from "@/hooks/useDashboardResumo";
@@ -567,14 +568,11 @@ const Dashboard = () => {
     if (!user) return;
     const userId = resolvedUserIdRef.current ?? user.id;
 
-    const hoje = format(new Date(), "yyyy-MM-dd");
-    // data_saida é salvo em UTC via toISOString(). Para cobrir o dia local corretamente,
-    // usamos meia-noite e 23:59:59 no fuso local, convertidos para ISO UTC.
-    const agora = new Date();
-    const inicioDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 0, 0, 0, 0);
-    const fimDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 23, 59, 59, 999);
-    const inicioDiaISO = inicioDia.toISOString();
-    const fimDiaISO = fimDia.toISOString();
+    // "Hoje" é o dia de Brasília, não o do navegador nem o dia UTC: a consulta vai de
+    // 00:00 a 23:59:59.999 de Brasília (em UTC) e cada venda é conferida pelo dia de
+    // Brasília dela (isVendaNoDiaBrasilia) — venda das 21h às 23:59 conta hoje.
+    const hoje = dataBrasiliaISO();
+    const { inicioISO: inicioDiaISO, fimISO: fimDiaISO } = limitesDiaBrasilia(hoje);
 
     console.log('[HojeDebug] hoje =', hoje, '| inicioDiaISO =', inicioDiaISO, '| fimDiaISO =', fimDiaISO);
 
@@ -666,12 +664,7 @@ const Dashboard = () => {
       // já recebida (custo proporcional já gravado em custo_unitario).
       if (isPagamentoDuploSecundario(v as any) && !deveContarSecundarioNoLucro(v as any)) return false;
       if (v.peca_id) return false;
-      const dataRef = (v.forma_pagamento === "a_receber" || v.forma_pagamento === "a_prazo") && v.recebido
-        ? v.data_recebimento || v.data
-        : v.data;
-      if (!dataRef) return false;
-      const dataKey = dataRef.slice(0, 10);
-      return dataKey === hoje;
+      return isVendaNoDiaBrasilia(v as any, hoje);
     });
 
     const vendasProdutosHoje = vendasFiltradas.filter(v => (v as any).tipo === "produto");
@@ -716,8 +709,10 @@ const Dashboard = () => {
     if (!user) return;
     const userId = resolvedUserIdRef.current ?? user.id;
 
-    const inicioStr = format(inicio, "yyyy-MM-dd");
-    const fimStr = format(fim, "yyyy-MM-dd");
+    // Mês em Brasília: 00:00 do 1º dia até 23:59:59.999 do último (em UTC). Antes ia
+    // "AAAA-MM-DD" e "…T23:59:59" crus, lidos em UTC pelo banco (3h adiantados).
+    const inicioMesISO = limitesDiaBrasilia(format(inicio, "yyyy-MM-dd")).inicioISO;
+    const fimMesISO = limitesDiaBrasilia(format(fim, "yyyy-MM-dd")).fimISO;
 
     // Buscar vendas de produtos do mês do usuário logado
     const { data: vendasProdutos } = await supabase
@@ -726,8 +721,8 @@ const Dashboard = () => {
       .eq("user_id", userId)
       .eq("tipo", "produto")
       .eq("cancelada", false)
-      .gte("data", inicioStr)
-      .lte("data", `${fimStr}T23:59:59`);
+      .gte("data", inicioMesISO)
+      .lte("data", fimMesISO);
 
     if (!vendasProdutos || vendasProdutos.length === 0) {
       setProdutosMaisVendidos([]);
