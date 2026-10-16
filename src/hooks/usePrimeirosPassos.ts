@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import {
   ContadoresReais,
   DefinicaoItemChecklist,
@@ -187,12 +188,21 @@ export function usePrimeirosPassos(): PrimeirosPassosState {
   const patchOnboarding = useCallback(
     async (patch: Record<string, unknown>) => {
       if (!userId) return;
-      await supabase
+      const { error } = await supabase
         .from("user_onboarding")
         .upsert(
           { user_id: userId, updated_at: new Date().toISOString(), ...patch } as never,
           { onConflict: "user_id" },
         );
+      if (error) {
+        console.error("Erro ao salvar primeiros passos:", error);
+        toast({
+          variant: "destructive",
+          title: "Não foi possível salvar",
+          description: "Recarregue a página e tente de novo.",
+        });
+        return;
+      }
       await queryClient.invalidateQueries({
         queryKey: ["primeiros-passos", "onboarding", userId],
       });

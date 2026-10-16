@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
 import { useThemeColorSync } from "@/hooks/useThemeColorSync";
@@ -102,6 +103,18 @@ const queryClient = new QueryClient({
       retry: 1,
     },
   },
+});
+
+// Troca de usuário na mesma aba (Sair → entrar/cadastrar outra conta, sem
+// recarregar): limpa o cache, senão hooks com chave sem user_id seguem usando
+// o usuário anterior — ex.: o card "Primeiros passos" gravava com o id antigo,
+// a RLS recusava e o card não respondia. SIGNED_IN ao focar a aba é o mesmo
+// usuário, então não limpa.
+let usuarioDoCache: string | null | undefined;
+supabase.auth.onAuthStateChange((_event, session) => {
+  const id = session?.user?.id ?? null;
+  if (usuarioDoCache !== undefined && id !== usuarioDoCache) queryClient.clear();
+  usuarioDoCache = id;
 });
 
 // Rotas que não precisam aguardar restauração de sessão
