@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { DialogCadastroConta } from "@/components/contas/DialogCadastroConta";
 import { TabelaContas } from "@/components/contas/TabelaContas";
-import { DashboardContas } from "@/components/contas/DashboardContas";
+import { DashboardContas, type CardContas } from "@/components/contas/DashboardContas";
+import { inicioDoDiaHoje, isContaVencida } from "@/lib/contas/contaVencida";
 import { useContas } from "@/hooks/useContas";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { Conta, CATEGORIAS_CONTA } from "@/types/conta";
@@ -69,6 +70,10 @@ export default function Contas() {
   const [dataFim, setDataFim] = useState<Date | undefined>();
   const [mesSelecionado, setMesSelecionado] = useState<string>("");
   const [anoSelecionado, setAnoSelecionado] = useState<string>("");
+  // Filtro "Vencidas" (só ativado pelo card) e qual card está com o filtro aplicado
+  const [filtroVencidas, setFiltroVencidas] = useState(false);
+  const [cardAtivo, setCardAtivo] = useState<CardContas | null>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
   const [dialogAberto, setDialogAberto] = useState(false);
   const [contaEditando, setContaEditando] = useState<Conta | null>(null);
   const [contasSelecionadas, setContasSelecionadas] = useState<string[]>([]);
@@ -96,6 +101,7 @@ export default function Contas() {
   }, [contas]);
 
   const contasFiltradas = useMemo(() => {
+    const hoje = inicioDoDiaHoje();
     return contas.filter((conta) => {
       const matchTipo = filtroTipo === "todos" || conta.tipo === filtroTipo;
       const matchStatus =
@@ -131,13 +137,17 @@ export default function Contas() {
         }
       }
 
-      return matchTipo && matchStatus && matchCategoria && matchFornecedor && matchData;
-    });
-  }, [contas, filtroTipo, filtroStatus, filtroCategoria, filtroFornecedor, dataInicio, dataFim, mesSelecionado, anoSelecionado]);
+      const matchVencidas = !filtroVencidas || isContaVencida(conta, hoje);
 
-  const temFiltrosAtivos = filtroCategoria !== "todos" || filtroFornecedor !== "todos" || dataInicio || dataFim || mesSelecionado !== "" || anoSelecionado !== "";
+      return matchTipo && matchStatus && matchCategoria && matchFornecedor && matchData && matchVencidas;
+    });
+  }, [contas, filtroTipo, filtroStatus, filtroCategoria, filtroFornecedor, dataInicio, dataFim, mesSelecionado, anoSelecionado, filtroVencidas]);
+
+  const temFiltrosAtivos = filtroCategoria !== "todos" || filtroFornecedor !== "todos" || dataInicio || dataFim || mesSelecionado !== "" || anoSelecionado !== "" || filtroVencidas;
 
   const limparFiltros = () => {
+    setFiltroVencidas(false);
+    setCardAtivo(null);
     setFiltroCategoria("todos");
     setFiltroFornecedor("todos");
     setDataInicio(undefined);
@@ -145,6 +155,28 @@ export default function Contas() {
     setMesSelecionado("");
     setAnoSelecionado("");
   };
+
+  // Toque no card: aplica o filtro equivalente ao número do card (os filtros
+  // extras ficam como estão, porque os cards já são calculados sobre eles).
+  // Tocar de novo no card ativo desfaz (volta para Todas + Todos).
+  const handleSelecionarCard = (card: CardContas) => {
+    if (cardAtivo === card) {
+      setFiltroTipo("todos");
+      setFiltroStatus("todos");
+      setFiltroVencidas(false);
+      setCardAtivo(null);
+      return;
+    }
+    const tipoPorCard = { pagar: "pagar", receber: "receber", saldo: "todos", vencidas: "todos" } as const;
+    setFiltroTipo(tipoPorCard[card]);
+    setFiltroStatus("pendente");
+    setFiltroVencidas(card === "vencidas");
+    setCardAtivo(card);
+    requestAnimationFrame(() => listaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  // Mudança manual de filtro: tira o destaque do card (o filtro "Vencidas" só sai pelo chip ou Limpar)
+  const manual = () => setCardAtivo(null);
 
   const handleSubmit = async (dados: any) => {
     if (contaEditando) {
@@ -233,7 +265,7 @@ export default function Contas() {
             <Skeleton className="h-[105px] w-full rounded-[17px]" />
           </div>
         ) : (
-          <DashboardContas contas={contasFiltradas} />
+          <DashboardContas contas={contasFiltradas} cardAtivo={cardAtivo} onSelecionarCard={handleSelecionarCard} />
         )}
 
         {/* Filtros */}
@@ -241,7 +273,7 @@ export default function Contas() {
           <div className="flex flex-col gap-3 md:flex-row md:gap-4">
             <Tabs
               value={filtroTipo}
-              onValueChange={(v: any) => setFiltroTipo(v)}
+              onValueChange={(v: any) => { manual(); setFiltroTipo(v); }}
               className="w-full md:w-[380px]"
             >
               <TabsList aria-label="Tipo de conta" className={SEGMENTO}>
@@ -253,7 +285,7 @@ export default function Contas() {
 
             <Tabs
               value={filtroStatus}
-              onValueChange={(v: any) => setFiltroStatus(v)}
+              onValueChange={(v: any) => { manual(); setFiltroStatus(v); }}
               className="w-full md:w-[380px]"
             >
               <TabsList aria-label="Situação da conta" className={SEGMENTO}>
@@ -267,6 +299,7 @@ export default function Contas() {
           {/* Filtros avançados */}
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-center flex-wrap">
             <Select value={mesSelecionado || "todos"} onValueChange={(v) => {
+              manual();
               setMesSelecionado(v === "todos" ? "" : v);
               if (v !== "todos") { setDataInicio(undefined); setDataFim(undefined); }
             }}>
@@ -282,6 +315,7 @@ export default function Contas() {
             </Select>
 
             <Select value={anoSelecionado || "todos"} onValueChange={(v) => {
+              manual();
               setAnoSelecionado(v === "todos" ? "" : v);
               if (v !== "todos") { setDataInicio(undefined); setDataFim(undefined); }
             }}>
@@ -296,7 +330,7 @@ export default function Contas() {
               </SelectContent>
             </Select>
 
-            <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
+            <Select value={filtroCategoria} onValueChange={(v) => { manual(); setFiltroCategoria(v); }}>
               <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[200px]")}>
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
@@ -308,7 +342,7 @@ export default function Contas() {
               </SelectContent>
             </Select>
 
-            <Select value={filtroFornecedor} onValueChange={setFiltroFornecedor}>
+            <Select value={filtroFornecedor} onValueChange={(v) => { manual(); setFiltroFornecedor(v); }}>
               <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[200px]")}>
                 <SelectValue placeholder="Fornecedor" />
               </SelectTrigger>
@@ -328,7 +362,7 @@ export default function Contas() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataInicio} onSelect={setDataInicio} initialFocus className="p-3 pointer-events-auto" />
+                <Calendar mode="single" selected={dataInicio} onSelect={(d) => { manual(); setDataInicio(d); }} initialFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
 
@@ -340,9 +374,21 @@ export default function Contas() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dataFim} onSelect={setDataFim} initialFocus className="p-3 pointer-events-auto" />
+                <Calendar mode="single" selected={dataFim} onSelect={(d) => { manual(); setDataFim(d); }} initialFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
+
+            {filtroVencidas && (
+              <button
+                type="button"
+                onClick={() => { setFiltroVencidas(false); setCardAtivo(null); }}
+                aria-label="Remover filtro Vencidas"
+                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-[#FFD9BF] bg-[#FFF0E1] px-3.5 text-sm font-semibold text-[#C2410C] transition hover:bg-[#FFE4CC] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-orange-400/40 dark:border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-300"
+              >
+                Vencidas
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
 
             {temFiltrosAtivos && (
               <Button variant="ghost" size="sm" onClick={limparFiltros} className="h-11 rounded-xl">
@@ -352,6 +398,9 @@ export default function Contas() {
             )}
           </div>
         </div>
+
+        {/* Início da lista: destino da rolagem ao tocar num card */}
+        <div ref={listaRef} className="scroll-mt-28 md:scroll-mt-6" aria-hidden="true" />
 
         {/* Barra de ações em massa */}
         {contasSelecionadas.length > 0 && (

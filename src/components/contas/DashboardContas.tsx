@@ -4,14 +4,21 @@ import { useId, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { TextoAjustado } from "@/components/vendas/TextoAjustado";
+import { inicioDoDiaHoje, isContaVencida } from "@/lib/contas/contaVencida";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 
+export type CardContas = "pagar" | "receber" | "saldo" | "vencidas";
+
 interface DashboardContasProps {
   contas: Conta[];
+  /** Card cujo filtro está aplicado na lista (destaque + aria-pressed). */
+  cardAtivo?: CardContas | null;
+  /** Toque no card: a página aplica (ou desfaz) o filtro correspondente. */
+  onSelecionarCard?: (card: CardContas) => void;
 }
 
-export function DashboardContas({ contas }: DashboardContasProps) {
+export function DashboardContas({ contas, cardAtivo = null, onSelecionarCard }: DashboardContasProps) {
   const { isFuncionario } = useFuncionarioPermissoes();
 
   if (isFuncionario) return null;
@@ -31,13 +38,9 @@ export function DashboardContas({ contas }: DashboardContasProps) {
     .filter((c) => c.tipo === "receber" && c.status === "recebido")
     .reduce((acc, c) => acc + Number(c.valor), 0);
 
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0); // Zerar horas para comparar apenas data
-  
-  const contasVencidasList = contas.filter((c) => {
-    const dataVencimento = new Date(c.data + "T00:00:00");
-    return dataVencimento < hoje && c.status === "pendente";
-  });
+  // Mesma regra do filtro "Vencidas" da lista (lib/contas/contaVencida)
+  const hoje = inicioDoDiaHoje();
+  const contasVencidasList = contas.filter((c) => isContaVencida(c, hoje));
   
   const contasVencidas = contasVencidasList.length;
   const valorVencidas = contasVencidasList.reduce((acc, c) => acc + Number(c.valor), 0);
@@ -47,6 +50,10 @@ export function DashboardContas({ contas }: DashboardContasProps) {
   return (
     <div className="grid grid-cols-1 gap-[13px] md:grid-cols-2">
       <CardIndicador
+        id="pagar"
+        ativo={cardAtivo === "pagar"}
+        onSelecionar={onSelecionarCard}
+        acao="Filtrar contas a pagar pendentes"
         cor="vermelho"
         rotulo="Total a Pagar"
         Icone={TrendingDown}
@@ -54,6 +61,10 @@ export function DashboardContas({ contas }: DashboardContasProps) {
         valor={<ValorMonetario valor={totalAPagar} />}
       />
       <CardIndicador
+        id="receber"
+        ativo={cardAtivo === "receber"}
+        onSelecionar={onSelecionarCard}
+        acao="Filtrar contas a receber pendentes"
         cor="verde"
         rotulo="Total a Receber"
         Icone={TrendingUp}
@@ -61,6 +72,10 @@ export function DashboardContas({ contas }: DashboardContasProps) {
         valor={<ValorMonetario valor={totalAReceber} />}
       />
       <CardIndicador
+        id="saldo"
+        ativo={cardAtivo === "saldo"}
+        onSelecionar={onSelecionarCard}
+        acao="Filtrar todas as contas pendentes"
         // Saldo: azul quando positivo (referência) e vermelho quando negativo (como antes)
         cor={saldo >= 0 ? "azul" : "vermelho"}
         icone="azul"
@@ -70,6 +85,10 @@ export function DashboardContas({ contas }: DashboardContasProps) {
         valor={<ValorMonetario valor={saldo} />}
       />
       <CardIndicador
+        id="vencidas"
+        ativo={cardAtivo === "vencidas"}
+        onSelecionar={onSelecionarCard}
+        acao="Filtrar contas vencidas"
         cor="laranja"
         decoracao="barras"
         rotulo="Contas Vencidas"
@@ -95,6 +114,11 @@ const CORES: Record<CorIndicador, { icone: string; valor: string; grafico: strin
 };
 
 interface CardIndicadorProps {
+  id: CardContas;
+  ativo: boolean;
+  onSelecionar?: (card: CardContas) => void;
+  /** Texto do aria-label (o que o toque faz). */
+  acao: string;
   cor: CorIndicador;
   /** Cor do ícone, quando diferente da cor do valor (Saldo negativo). */
   icone?: CorIndicador;
@@ -107,15 +131,27 @@ interface CardIndicadorProps {
   complemento?: ReactNode;
 }
 
-// Card não clicável (como antes): a seta e o gráfico são só decoração.
-function CardIndicador({ cor, icone, decoracao = "curva", rotulo, Icone, valor, caracteres, complemento }: CardIndicadorProps) {
+// Card = botão que filtra a lista; o gráfico é só decoração (não representa dados).
+function CardIndicador({ id, ativo, onSelecionar, acao, cor, icone, decoracao = "curva", rotulo, Icone, valor, caracteres, complemento }: CardIndicadorProps) {
   const c = CORES[cor];
   const corIcone = CORES[icone ?? cor].icone;
   const idGradiente = useId().replace(/:/g, "");
   return (
-    <article
-      aria-label={rotulo}
-      className="relative flex min-h-[105px] items-center gap-2.5 overflow-hidden rounded-[17px] border border-[#EDF0F5] bg-card px-[15px] py-[17px] shadow-[0_5px_18px_rgba(16,24,40,0.055)] min-[381px]:gap-3.5 dark:border-border dark:shadow-none"
+    <button
+      type="button"
+      onClick={() => onSelecionar?.(id)}
+      disabled={!onSelecionar}
+      aria-pressed={ativo}
+      aria-label={ativo ? `${acao} (ativo — toque para desfazer)` : acao}
+      className={cn(
+        "relative flex min-h-[105px] w-full items-center gap-2.5 overflow-hidden rounded-[17px] border bg-card px-[15px] py-[17px] text-left min-[381px]:gap-3.5",
+        "shadow-[0_5px_18px_rgba(16,24,40,0.055)] transition-[transform,box-shadow,border-color] duration-150 dark:shadow-none",
+        "hover:shadow-[0_8px_22px_rgba(16,24,40,0.09)] active:scale-[0.985] disabled:pointer-events-none",
+        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#246BFF]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        ativo
+          ? "border-[#246BFF] bg-[linear-gradient(135deg,hsl(var(--card)),rgba(36,107,255,0.06))] ring-2 ring-[#246BFF]/15 dark:border-blue-400"
+          : "border-[#EDF0F5] dark:border-border",
+      )}
     >
       {/* Gráfico decorativo: atrás do texto, opacidade baixa, não representa dados */}
       {decoracao === "curva" ? (
@@ -130,26 +166,32 @@ function CardIndicador({ cor, icone, decoracao = "curva", rotulo, Icone, valor, 
           <path d="M0 36 C10 32 18 22 30 25 S46 37 56 29 S70 8 79 8 S87 13 90 16" fill="none" stroke={c.grafico} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
         </svg>
       ) : (
-        <div aria-hidden="true" className="pointer-events-none absolute bottom-[19px] right-9 z-0 flex h-[45px] items-end gap-[5px] opacity-25 min-[381px]:opacity-40">
+        <span aria-hidden="true" className="pointer-events-none absolute bottom-[19px] right-9 z-0 flex h-[45px] items-end gap-[5px] opacity-25 min-[381px]:opacity-40">
           {[17, 12, 25, 33, 23, 37, 45].map((altura, i) => (
             <span key={i} className="w-2.5 rounded-[3px_3px_0_0] bg-[linear-gradient(#FF8A39,#FFE0C6)] dark:bg-[linear-gradient(#FB923C,rgba(251,146,60,0.15))]" style={{ height: altura }} />
           ))}
-        </div>
+        </span>
       )}
 
-      <div className={cn("relative z-10 flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-2xl min-[381px]:h-[59px] min-[381px]:w-[59px]", corIcone)}>
+      <span className={cn("relative z-10 flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-2xl min-[381px]:h-[59px] min-[381px]:w-[59px]", corIcone)}>
         <Icone className="h-[29px] w-[29px]" aria-hidden="true" />
-      </div>
-      <div className="relative z-10 min-w-0 flex-1">
-        <p className="mb-[7px] text-[13px] text-muted-foreground">{rotulo}</p>
-        <div className={cn("font-extrabold leading-tight tracking-[-0.7px]", c.valor)}>
+      </span>
+      <span className="relative z-10 block min-w-0 flex-1">
+        <span className="mb-[7px] block text-[13px] text-muted-foreground">{rotulo}</span>
+        <span className={cn("block font-extrabold leading-tight tracking-[-0.7px]", c.valor)}>
           <TextoAjustado caracteres={caracteres} min={15} max={28} classeReserva="text-[21px] min-[381px]:text-2xl" classeContainer="pr-[44px] min-[381px]:pr-[58px]">
             {valor}
           </TextoAjustado>
-        </div>
-        {complemento && <p className="mt-[7px] text-xs text-[#FF6B00] dark:text-orange-400">{complemento}</p>}
-      </div>
-      <ChevronRight className="relative z-10 h-[18px] w-[18px] shrink-0 text-[#0B1429] dark:text-foreground" aria-hidden="true" />
-    </article>
+        </span>
+        {complemento && <span className="mt-[7px] block text-xs text-[#FF6B00] dark:text-orange-400">{complemento}</span>}
+      </span>
+      <ChevronRight
+        className={cn(
+          "relative z-10 h-[18px] w-[18px] shrink-0 transition-transform duration-200",
+          ativo ? "rotate-90 text-[#246BFF] dark:text-blue-400" : "text-[#0B1429] dark:text-foreground",
+        )}
+        aria-hidden="true"
+      />
+    </button>
   );
 }
