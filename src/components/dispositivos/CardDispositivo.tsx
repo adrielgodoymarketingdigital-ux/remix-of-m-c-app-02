@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
 import type { DadosEntradaTroca } from "@/lib/vendas/trocaPDV";
 import { BadgeSaudeBateria } from "@/components/dispositivos/BadgeSaudeBateria";
+import { FotoMiniaturaDispositivo } from "@/components/dispositivos/FotoMiniaturaDispositivo";
 
 // Gradientes da referência visual (mobile) — mantidos como constantes para não
 // hardcodar cor de fundo de página nenhuma, apenas elementos pontuais (badges/botão).
@@ -381,7 +382,7 @@ export function CardDispositivo({
         <div className="relative h-32 bg-gradient-to-br from-muted/60 to-muted flex items-center justify-center p-3">
           {(dispositivo.fotos && dispositivo.fotos.length > 0) || dispositivo.foto_url ? (
             <>
-              <img
+              <FotoMiniaturaDispositivo
                 src={dispositivo.fotos?.[0] || dispositivo.foto_url || ''}
                 alt={`${dispositivo.marca} ${dispositivo.modelo}`}
                 className="max-w-full max-h-full object-contain"
@@ -677,7 +678,7 @@ export function CardDispositivo({
 
           {(dispositivo.fotos && dispositivo.fotos.length > 0) || dispositivo.foto_url ? (
             <>
-              <img
+              <FotoMiniaturaDispositivo
                 src={dispositivo.fotos?.[0] || dispositivo.foto_url || ''}
                 alt={`${dispositivo.marca} ${dispositivo.modelo}`}
                 className="max-w-full h-[155px] object-contain"

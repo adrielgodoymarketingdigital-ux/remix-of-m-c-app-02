@@ -39,6 +39,7 @@ import { buscarConfiguracaoLojaPorEmpresa } from "@/hooks/useConfiguracaoLoja";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { BadgeSaudeBateria } from "@/components/dispositivos/BadgeSaudeBateria";
+import { FotoMiniaturaDispositivo } from "@/components/dispositivos/FotoMiniaturaDispositivo";
 
 interface TabelaDispositivosProps {
   dispositivos: Dispositivo[];
@@ -254,7 +255,7 @@ export function TabelaDispositivos({
             <div className="flex gap-3 mb-3">
               <div className="w-16 h-16 rounded-md overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
                 {(dispositivo.fotos && dispositivo.fotos.length > 0) || dispositivo.foto_url ? (
-                  <img
+                  <FotoMiniaturaDispositivo
                     src={dispositivo.fotos?.[0] || dispositivo.foto_url || ''}
                     alt={`${dispositivo.marca} ${dispositivo.modelo}`}
                     className="w-full h-full object-cover"
@@ -407,7 +408,7 @@ export function TabelaDispositivos({
               <TableCell>
                 <div className="w-16 h-16 rounded-md overflow-hidden bg-muted flex items-center justify-center">
                   {(dispositivo.fotos && dispositivo.fotos.length > 0) || dispositivo.foto_url ? (
-                    <img
+                    <FotoMiniaturaDispositivo
                       src={dispositivo.fotos?.[0] || dispositivo.foto_url || ''}
                       alt={`${dispositivo.marca} ${dispositivo.modelo}`}
                       className="w-full h-full object-cover"

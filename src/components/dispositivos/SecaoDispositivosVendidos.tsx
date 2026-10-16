@@ -20,6 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { bloqueioExcluirDispositivoVendido } from "@/lib/vendas/trocaPDV";
+import { FotoMiniaturaDispositivo } from "@/components/dispositivos/FotoMiniaturaDispositivo";
 
 interface ItemGrupoDetalhe {
   id: string;
@@ -570,7 +571,7 @@ export function SecaoDispositivosVendidos() {
             <Card key={venda.id} className="overflow-hidden hover:shadow-lg transition-shadow">
               <div className="relative h-36 bg-muted flex items-center justify-center p-2">
                 {(venda.dispositivo_fotos && venda.dispositivo_fotos.length > 0) || venda.dispositivo_foto_url ? (
-                  <img
+                  <FotoMiniaturaDispositivo
                     src={venda.dispositivo_fotos?.[0] || venda.dispositivo_foto_url || ""}
                     alt={`${venda.dispositivo_marca} ${venda.dispositivo_modelo}`}
                     className="max-w-full max-h-full object-contain"

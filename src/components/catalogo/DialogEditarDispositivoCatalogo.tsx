@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, X, ImageIcon, Loader2, Tag } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { enviarFotoDispositivo, removerFotoDispositivo } from "@/lib/dispositivos/enviarFotoDispositivo";
+import { FotoMiniaturaDispositivo } from "@/components/dispositivos/FotoMiniaturaDispositivo";
 import { useToast } from "@/hooks/use-toast";
 import { Dispositivo } from "@/types/dispositivo";
 import { formatCurrency } from "@/lib/formatters";
@@ -117,23 +118,8 @@ export function DialogEditarDispositivoCatalogo({
       const novasUrls: string[] = [];
 
       for (const file of files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('dispositivos-fotos')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data } = supabase.storage
-          .from('dispositivos-fotos')
-          .getPublicUrl(filePath);
-
-        novasUrls.push(data.publicUrl);
+        // Comprime no navegador e envia foto principal + miniatura (ver enviarFotoDispositivo)
+        novasUrls.push(await enviarFotoDispositivo(file));
       }
 
       setFotos([...fotos, ...novasUrls]);
@@ -159,12 +145,8 @@ export function DialogEditarDispositivoCatalogo({
 
   const handleRemove = async (urlParaRemover: string, index: number) => {
     try {
-      const fileName = urlParaRemover.split('/').pop();
-      if (fileName) {
-        await supabase.storage
-          .from('dispositivos-fotos')
-          .remove([fileName]);
-      }
+      // Apaga a foto e, se houver, a miniatura dela
+      await removerFotoDispositivo(urlParaRemover);
 
       const novasFotos = fotos.filter((_, i) => i !== index);
       setFotos(novasFotos);
@@ -249,10 +231,10 @@ export function DialogEditarDispositivoCatalogo({
               <div className="grid grid-cols-3 gap-2">
                 {fotos.map((url, index) => (
                   <div key={index} className="relative group aspect-square">
-                    <img 
-                      src={url} 
-                      alt={`Foto ${index + 1}`} 
-                      className="w-full h-full object-cover rounded-lg border"
+                    <FotoMiniaturaDispositivo
+                      src={url}
+                      alt={`Foto ${index + 1}`}
+                      className="w-full h-full object-cover rounded-lg border bg-muted"
                     />
                     <Button
                       type="button"
