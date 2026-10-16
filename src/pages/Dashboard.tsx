@@ -20,6 +20,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 const GraficosDashboard = lazy(() => import("@/components/dashboard/GraficosDashboard").then(m => ({ default: m.GraficosDashboard })));
 import { CardAvisosSistema } from "@/components/dashboard/CardAvisosSistema";
+import { BannerNfeEmBreve } from "@/components/dashboard/BannerNfeEmBreve";
 import { CardFeedback } from "@/components/dashboard/CardFeedback";
 import { CardCotacaoDolar } from "@/components/dashboard/CardCotacaoDolar";
 
@@ -53,11 +54,11 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [nomeUsuario, setNomeUsuario] = useState<string>("");
   const { assinatura, carregando: carregandoAssinatura, trialExpirado, migracaoNecessaria } = useAssinatura();
-  const { isFuncionario, temAcessoModulo, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { isFuncionario, isDonoLoja, temAcessoModulo, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const dashboardBloqueado = isFuncionario && !temAcessoModulo('dashboard');
   const { calcularResumo } = useRelatorios();
   const { cores } = useCoresPersonalizadas();
-  const { userId: resolvedUserId, empresaId: empresaFiltro } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: carregandoIdentidade, isGerenteFilial } = useIdentidade();
   const empresaFiltroRef = useRef(empresaFiltro);
   const resolvedUserIdRef = useRef(resolvedUserId);
   useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
@@ -1053,6 +1054,9 @@ const Dashboard = () => {
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Divulgação NF-e em breve — só o dono da loja; some sozinho após a data limite */}
+          <BannerNfeEmBreve visivel={isDonoLoja && !carregandoPermissoes && !carregandoIdentidade && !isGerenteFilial} />
 
           {/* ============ CARD ÚNICO "RESUMO FINANCEIRO" (layout do PWA, usado também no desktop) ============ */}
           <div className="mb-6">

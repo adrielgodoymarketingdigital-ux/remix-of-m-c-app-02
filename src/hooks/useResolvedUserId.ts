@@ -166,7 +166,7 @@ export function useEmpresaInfo(): { empresaId: string | null; isFilial: boolean 
  * carregando = true enquanto o perfil de gerente de filial ainda não foi resolvido.
  * Use para evitar disparar queries com userId/empresaId provisórios.
  */
-export function useIdentidade(): { userId: string | null; empresaId: string | null; carregando: boolean; isFilial: boolean } {
+export function useIdentidade(): { userId: string | null; empresaId: string | null; carregando: boolean; isFilial: boolean; isGerenteFilial: boolean } {
   const { isProprietario, empresaAtiva, matrizId } = useEmpresa();
   const { lojaUserId, isFuncionario, funcionarioEmpresaId } = useFuncionarioPermissoes();
   const gerenteData = useGerenteFilialData();
@@ -207,5 +207,5 @@ export function useIdentidade(): { userId: string | null; empresaId: string | nu
     isFilial = empresaAtiva !== null;
   }
 
-  return { userId, empresaId, carregando, isFilial };
+  return { userId, empresaId, carregando, isFilial, isGerenteFilial: !!gerenteData?.proprietario_id };
 }
