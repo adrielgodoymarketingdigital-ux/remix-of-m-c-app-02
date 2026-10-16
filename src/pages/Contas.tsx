@@ -2,7 +2,10 @@ import { useState, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { Plus, CalendarIcon, X, CheckCircle } from "lucide-react";
+import {
+  Plus, X, CheckCircle, LayoutGrid, TrendingDown, TrendingUp, Layers, Clock3, CircleCheck,
+  CalendarDays, CalendarRange, Truck, ChevronDown, RefreshCw,
+} from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -33,13 +36,22 @@ const MESES = [
   { value: "12", label: "Dezembro" },
 ];
 
-// Visual dos filtros (referência layout-contas). Só classes; os Tabs/Selects são os mesmos.
-const SEGMENTO = "grid h-auto w-full grid-cols-3 gap-[3px] rounded-[13px] bg-[#EEF1F5] p-1 dark:bg-muted";
-const OPCAO = "h-11 rounded-[10px] text-xs font-medium text-muted-foreground data-[state=active]:font-bold";
-// 1º grupo: ativo azul sólido; 2º grupo: ativo azul-claro (como na imagem de referência)
-const OPCAO_ATIVA_FORTE = "data-[state=active]:bg-[#246BFF] data-[state=active]:text-white data-[state=active]:shadow-[0_3px_10px_rgba(36,107,255,0.25)]";
-const OPCAO_ATIVA_SUAVE = "data-[state=active]:bg-[#E8F0FF] data-[state=active]:text-[#246BFF] data-[state=active]:shadow-[0_3px_10px_rgba(16,24,40,0.055)] dark:data-[state=active]:bg-primary/15 dark:data-[state=active]:text-primary";
-const CAMPO_FILTRO = "h-11 w-full rounded-xl border-border bg-card";
+// Visual dos filtros (referência layout-contas/referencia-lista). Só classes; os Tabs/Selects são os mesmos.
+const SEGMENTO = "grid h-auto w-full grid-cols-3 gap-1 rounded-none bg-transparent p-0";
+// Os dois grupos: inativo branco com borda, ativo azul com gradiente (como na imagem de referência)
+const OPCAO = cn(
+  "flex h-[49px] min-w-0 items-center justify-center gap-[7px] rounded-xl border border-border bg-card px-[5px] text-[13px] font-medium text-[#66758F] shadow-[0_2px_8px_rgba(16,24,40,0.03)] max-[370px]:gap-1 max-[370px]:text-xs dark:text-muted-foreground",
+  "[&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0 max-[370px]:[&>svg]:h-3.5 max-[370px]:[&>svg]:w-3.5",
+  "data-[state=active]:border-transparent data-[state=active]:bg-[linear-gradient(105deg,#246BFF,#079FD0)] data-[state=active]:text-white data-[state=active]:shadow-[0_5px_12px_rgba(36,107,255,0.18)] dark:data-[state=active]:text-white",
+  "focus-visible:ring-[3px] focus-visible:ring-[#A7C8FF] focus-visible:ring-offset-2",
+);
+const CAMPO_FILTRO = cn(
+  "h-[53px] w-full justify-start gap-[13px] rounded-[13px] border border-border bg-card px-[15px] text-left text-sm font-medium text-foreground shadow-none hover:bg-card",
+  "[&>span]:flex-1 [&>span]:text-left [&>svg]:shrink-0 [&>svg:first-child]:h-5 [&>svg:first-child]:w-5 [&>svg:first-child]:text-[#526580] [&>svg:last-child]:h-[17px] [&>svg:last-child]:w-[17px] [&>svg:last-child]:text-[#526580] [&>svg:last-child]:opacity-100",
+  "dark:[&>svg]:text-muted-foreground",
+  "focus:ring-[3px] focus:ring-[#A7C8FF] focus:ring-offset-0 focus-visible:ring-[3px] focus-visible:ring-[#A7C8FF] focus-visible:ring-offset-0",
+);
+const BOTAO_ACAO_FILTRO = "flex h-[51px] w-full items-center justify-center gap-[9px] rounded-xl border text-sm font-bold transition focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-offset-2 focus-visible:ring-offset-background [&>svg]:h-[19px] [&>svg]:w-[19px]";
 
 /** Ilustração decorativa do cabeçalho: documento com cifrão (SVG próprio). */
 function IlustracaoContas() {
@@ -269,41 +281,42 @@ export default function Contas() {
         )}
 
         {/* Filtros */}
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 md:flex-row md:gap-4">
+        <div className="flex flex-col">
+          <div className="flex flex-col gap-[13px] md:flex-row md:gap-4 md:pr-12">
             <Tabs
               value={filtroTipo}
               onValueChange={(v: any) => { manual(); setFiltroTipo(v); }}
-              className="w-full md:w-[380px]"
+              className="w-full md:flex-1"
             >
               <TabsList aria-label="Tipo de conta" className={SEGMENTO}>
-                <TabsTrigger value="todos" className={cn(OPCAO, OPCAO_ATIVA_FORTE)}>Todas</TabsTrigger>
-                <TabsTrigger value="pagar" className={cn(OPCAO, OPCAO_ATIVA_FORTE)}>A Pagar</TabsTrigger>
-                <TabsTrigger value="receber" className={cn(OPCAO, OPCAO_ATIVA_FORTE)}>A Receber</TabsTrigger>
+                <TabsTrigger value="todos" className={OPCAO}><LayoutGrid aria-hidden="true" />Todas</TabsTrigger>
+                <TabsTrigger value="pagar" className={cn(OPCAO, "[&:not([data-state=active])>svg]:text-[#F04438]")}><TrendingDown aria-hidden="true" />A Pagar</TabsTrigger>
+                <TabsTrigger value="receber" className={cn(OPCAO, "[&:not([data-state=active])>svg]:text-[#18B76A]")}><TrendingUp aria-hidden="true" />A Receber</TabsTrigger>
               </TabsList>
             </Tabs>
 
             <Tabs
               value={filtroStatus}
               onValueChange={(v: any) => { manual(); setFiltroStatus(v); }}
-              className="w-full md:w-[380px]"
+              className="w-full md:flex-1"
             >
               <TabsList aria-label="Situação da conta" className={SEGMENTO}>
-                <TabsTrigger value="todos" className={cn(OPCAO, OPCAO_ATIVA_SUAVE)}>Todos</TabsTrigger>
-                <TabsTrigger value="pendente" className={cn(OPCAO, OPCAO_ATIVA_SUAVE)}>Pendentes</TabsTrigger>
-                <TabsTrigger value="pago" className={cn(OPCAO, OPCAO_ATIVA_SUAVE)}>Pagas</TabsTrigger>
+                <TabsTrigger value="todos" className={OPCAO}><Layers aria-hidden="true" />Todos</TabsTrigger>
+                <TabsTrigger value="pendente" className={OPCAO}><Clock3 aria-hidden="true" />Pendentes</TabsTrigger>
+                <TabsTrigger value="pago" className={OPCAO}><CircleCheck aria-hidden="true" />Pagas</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
 
-          {/* Filtros avançados */}
-          <div className="flex flex-col md:flex-row gap-3 items-start md:items-center flex-wrap">
+          {/* Filtros avançados (aplicam na hora; não há botão "Filtrar") */}
+          <div className="mt-5 grid grid-cols-1 gap-[11px] md:grid-cols-2">
             <Select value={mesSelecionado || "todos"} onValueChange={(v) => {
               manual();
               setMesSelecionado(v === "todos" ? "" : v);
               if (v !== "todos") { setDataInicio(undefined); setDataFim(undefined); }
             }}>
-              <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[160px]")}>
+              <SelectTrigger aria-label="Mês" className={CAMPO_FILTRO}>
+                <CalendarDays aria-hidden="true" />
                 <SelectValue placeholder="Mês" />
               </SelectTrigger>
               <SelectContent>
@@ -319,7 +332,8 @@ export default function Contas() {
               setAnoSelecionado(v === "todos" ? "" : v);
               if (v !== "todos") { setDataInicio(undefined); setDataFim(undefined); }
             }}>
-              <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[120px]")}>
+              <SelectTrigger aria-label="Ano" className={CAMPO_FILTRO}>
+                <CalendarRange aria-hidden="true" />
                 <SelectValue placeholder="Ano" />
               </SelectTrigger>
               <SelectContent>
@@ -331,7 +345,8 @@ export default function Contas() {
             </Select>
 
             <Select value={filtroCategoria} onValueChange={(v) => { manual(); setFiltroCategoria(v); }}>
-              <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[200px]")}>
+              <SelectTrigger aria-label="Categoria" className={CAMPO_FILTRO}>
+                <LayoutGrid aria-hidden="true" />
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
@@ -343,7 +358,8 @@ export default function Contas() {
             </Select>
 
             <Select value={filtroFornecedor} onValueChange={(v) => { manual(); setFiltroFornecedor(v); }}>
-              <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[200px]")}>
+              <SelectTrigger aria-label="Fornecedor" className={CAMPO_FILTRO}>
+                <Truck aria-hidden="true" />
                 <SelectValue placeholder="Fornecedor" />
               </SelectTrigger>
               <SelectContent>
@@ -356,9 +372,10 @@ export default function Contas() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn(CAMPO_FILTRO, "md:w-[180px] justify-start text-left font-normal", !dataInicio && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
+                <Button variant="outline" className={cn(CAMPO_FILTRO, !dataInicio && "text-muted-foreground hover:text-muted-foreground")}>
+                  <CalendarDays aria-hidden="true" />
+                  <span>{dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}</span>
+                  <ChevronDown aria-hidden="true" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -368,35 +385,42 @@ export default function Contas() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn(CAMPO_FILTRO, "md:w-[180px] justify-start text-left font-normal", !dataFim && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
+                <Button variant="outline" className={cn(CAMPO_FILTRO, !dataFim && "text-muted-foreground hover:text-muted-foreground")}>
+                  <CalendarDays aria-hidden="true" />
+                  <span>{dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}</span>
+                  <ChevronDown aria-hidden="true" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar mode="single" selected={dataFim} onSelect={(d) => { manual(); setDataFim(d); }} initialFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
+          </div>
 
-            {filtroVencidas && (
+          {/* Ações dos filtros: chip "Vencidas" (quando ativo) e Limpar (só com filtro ativo, como antes) */}
+          {temFiltrosAtivos && (
+            <div className={cn("mt-[19px] grid gap-2.5", filtroVencidas ? "grid-cols-2" : "grid-cols-1")}>
+              {filtroVencidas && (
+                <button
+                  type="button"
+                  onClick={() => { setFiltroVencidas(false); setCardAtivo(null); }}
+                  aria-label="Remover filtro Vencidas"
+                  className={cn(BOTAO_ACAO_FILTRO, "border-[#FFD9BF] bg-[#FFF0E1] text-[#C2410C] hover:bg-[#FFE4CC] focus-visible:ring-orange-400/40 dark:border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-300")}
+                >
+                  Vencidas
+                  <X aria-hidden="true" />
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => { setFiltroVencidas(false); setCardAtivo(null); }}
-                aria-label="Remover filtro Vencidas"
-                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-[#FFD9BF] bg-[#FFF0E1] px-3.5 text-sm font-semibold text-[#C2410C] transition hover:bg-[#FFE4CC] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-orange-400/40 dark:border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-300"
+                onClick={limparFiltros}
+                className={cn(BOTAO_ACAO_FILTRO, "border-border bg-card text-[#0B1429] hover:bg-muted/60 focus-visible:ring-[#A7C8FF] dark:text-foreground")}
               >
-                Vencidas
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            )}
-
-            {temFiltrosAtivos && (
-              <Button variant="ghost" size="sm" onClick={limparFiltros} className="h-11 rounded-xl">
-                <X className="h-4 w-4 mr-1" />
+                <RefreshCw aria-hidden="true" />
                 Limpar filtros
-              </Button>
-            )}
-          </div>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Início da lista: destino da rolagem ao tocar num card */}
