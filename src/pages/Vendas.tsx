@@ -22,7 +22,9 @@ import { DashboardAReceber } from "@/components/vendas/DashboardAReceber";
 import { DashboardResumoTipos } from "@/components/vendas/DashboardResumoTipos";
 import { useVendas } from "@/hooks/useVendas";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
-import { Filter, Calendar, Layout, Settings, Search, TrendingUp } from "lucide-react";
+import { Filter, Calendar, CalendarRange, ChevronUp, CreditCard, Layout, RefreshCw, Settings, Search, Tag, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { IlustracaoVendas } from "@/components/vendas/IlustracaoVendas";
 import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DialogConfiguracaoLayoutVendas } from "@/components/vendas/DialogConfiguracaoLayoutVendas";
@@ -43,6 +45,17 @@ const MESES = [
   { value: "12", label: "Dezembro" },
 ];
 
+// Estilos da área de filtros (referência visual layout-vendas)
+const GRADIENTE_ATIVO = "bg-[linear-gradient(110deg,#1554F5,#079FD0)] text-white shadow-[0_5px_12px_rgba(36,107,255,0.17)]";
+const FOCO = "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+const ROTULO = "mb-2.5 block text-[13px] font-semibold";
+const CAMPO = "h-[52px] rounded-xl border-border bg-background pl-[42px] text-[13px] focus:ring-[3px] focus:ring-primary/10 focus:border-primary dark:bg-muted/40";
+const ICONE_CAMPO = "pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-muted-foreground";
+const BOTAO_ACAO = cn(
+  "flex h-[49px] items-center justify-center gap-2.5 rounded-xl text-[13px] font-semibold transition lg:w-48 disabled:pointer-events-none disabled:opacity-50",
+  FOCO,
+);
+
 export default function Vendas() {
   const { vendas, todasVendas, loading, carregarVendas, cancelarVenda, editarVenda, alterarDataVenda, marcarComoRecebido, marcarComoPendente, excluirVenda, cancelarContaAPrazoOS } = useVendas();
   const { podeVerTotalVendas } = useFuncionarioPermissoes();
@@ -55,6 +68,18 @@ export default function Vendas() {
   const [mesSelecionado, setMesSelecionado] = useState<string>("");
   const [anoSelecionado, setAnoSelecionado] = useState<string>(new Date().getFullYear().toString());
   const [busca, setBusca] = useState<string>("");
+  const [filtrosAbertos, setFiltrosAbertos] = useState(true);
+
+  // Destaque visual do atalho de data: derivado do período já selecionado (não muda o filtro)
+  const atalhoAtivo = (() => {
+    if (tipoFiltroData !== "periodo" || !dataInicio || !dataFim) return null;
+    const hoje = dataBrasiliaISO();
+    const ontem = dataBrasiliaISO(subDays(new Date(), 1));
+    if (dataInicio === hoje && dataFim === hoje) return "hoje";
+    if (dataInicio === ontem && dataFim === ontem) return "ontem";
+    if (dataInicio === dataBrasiliaISO(subDays(new Date(), 7)) && dataFim === hoje) return "7dias";
+    return null;
+  })();
 
   const anos = Array.from({ length: 2035 - 2020 + 1 }, (_, i) => (2035 - i).toString());
 
@@ -125,213 +150,289 @@ export default function Vendas() {
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Vendas</h1>
-              <p className="text-muted-foreground text-sm sm:text-base">
+          {/* Cabeçalho da página */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 pt-1">
+              <h1 className="text-[27px] min-[391px]:text-[30px] md:text-[35px] font-extrabold leading-[1.2] tracking-[-1px]">Vendas</h1>
+              <p className="mt-2 max-w-[205px] min-[391px]:max-w-[245px] md:max-w-[500px] text-xs min-[391px]:text-[13px] leading-[1.6] text-muted-foreground">
                 Lista completa de todas as vendas realizadas
               </p>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Settings className="h-4 w-4" />
-                  <span className="hidden sm:inline">Configurações</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setDialogLayoutAberto(true)}>
-                  <Layout className="h-4 w-4 mr-2" />
-                  Layout de Impressão
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* md:mr-11: deixa livre o botão flutuante de privacidade (olho) do layout */}
+            <div className="flex shrink-0 items-start gap-2 md:mr-11">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-9 gap-2 rounded-xl px-0 sm:w-auto sm:px-3" aria-label="Configurações">
+                    <Settings className="h-4 w-4" />
+                    <span className="hidden sm:inline">Configurações</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setDialogLayoutAberto(true)}>
+                    <Layout className="h-4 w-4 mr-2" />
+                    Layout de Impressão
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <IlustracaoVendas />
+            </div>
           </div>
 
           {/* Filtros */}
-          <Card>
-            <CardHeader className="pb-3 sm:pb-6">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
-                Filtros
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Botões rápidos */}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const hoje = dataBrasiliaISO();
-                    setTipoFiltroData("periodo");
-                    setDataInicio(hoje);
-                    setDataFim(hoje);
-                    carregarVendas(hoje, hoje);
-                  }}
-                >
-                  Hoje
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const ontem = dataBrasiliaISO(subDays(new Date(), 1));
-                    setTipoFiltroData("periodo");
-                    setDataInicio(ontem);
-                    setDataFim(ontem);
-                    carregarVendas(ontem, ontem);
-                  }}
-                >
-                  Ontem
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const hoje = dataBrasiliaISO();
-                    const seteDiasAtras = dataBrasiliaISO(subDays(new Date(), 7));
-                    setTipoFiltroData("periodo");
-                    setDataInicio(seteDiasAtras);
-                    setDataFim(hoje);
-                    carregarVendas(seteDiasAtras, hoje);
-                  }}
-                >
-                  Últimos 7 dias
-                </Button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                <Label className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4" />
-                  Filtrar por:
-                </Label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={tipoFiltroData === "mes" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setTipoFiltroData("mes")}
-                    className="flex-1 sm:flex-none"
-                  >
-                    Mês
-                  </Button>
-                  <Button
-                    variant={tipoFiltroData === "periodo" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setTipoFiltroData("periodo")}
-                    className="flex-1 sm:flex-none"
-                  >
-                    Período
-                  </Button>
+          <section
+            aria-labelledby="filtros-vendas-titulo"
+            className="rounded-[20px] border border-border bg-card p-[15px] min-[391px]:p-5 shadow-[0_8px_25px_rgba(16,24,40,0.045),0_2px_6px_rgba(16,24,40,0.025)] dark:shadow-none"
+          >
+            <div className={cn("flex items-center justify-between gap-3", filtrosAbertos && "mb-[22px]")}>
+              <div className="flex min-w-0 items-center gap-[13px]">
+                <div className="flex h-[45px] w-[45px] shrink-0 items-center justify-center rounded-[13px] bg-primary/10 text-primary dark:bg-primary/15">
+                  <Filter className="h-[23px] w-[23px]" />
+                </div>
+                <div className="min-w-0">
+                  <h2 id="filtros-vendas-titulo" className="text-[17px] font-extrabold leading-tight">Filtros</h2>
+                  <p className="mt-[5px] text-xs text-muted-foreground">Personalize a exibição das vendas</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setFiltrosAbertos((v) => !v)}
+                aria-expanded={filtrosAbertos}
+                aria-controls="filtros-vendas-conteudo"
+                aria-label={filtrosAbertos ? "Recolher filtros" : "Expandir filtros"}
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-primary transition-colors hover:bg-muted",
+                  FOCO,
+                )}
+              >
+                <ChevronUp className={cn("h-5 w-5 transition-transform duration-200", !filtrosAbertos && "rotate-180")} />
+              </button>
+            </div>
 
-              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
+            <div id="filtros-vendas-conteudo" hidden={!filtrosAbertos}>
+              {/* Atalhos de data */}
+              <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-[5px] md:flex-wrap">
+                {([
+                  {
+                    id: "hoje",
+                    label: "Hoje",
+                    onClick: () => {
+                      const hoje = dataBrasiliaISO();
+                      setTipoFiltroData("periodo");
+                      setDataInicio(hoje);
+                      setDataFim(hoje);
+                      carregarVendas(hoje, hoje);
+                    },
+                  },
+                  {
+                    id: "ontem",
+                    label: "Ontem",
+                    onClick: () => {
+                      const ontem = dataBrasiliaISO(subDays(new Date(), 1));
+                      setTipoFiltroData("periodo");
+                      setDataInicio(ontem);
+                      setDataFim(ontem);
+                      carregarVendas(ontem, ontem);
+                    },
+                  },
+                  {
+                    id: "7dias",
+                    label: "Últimos 7 dias",
+                    onClick: () => {
+                      const hoje = dataBrasiliaISO();
+                      const seteDiasAtras = dataBrasiliaISO(subDays(new Date(), 7));
+                      setTipoFiltroData("periodo");
+                      setDataInicio(seteDiasAtras);
+                      setDataFim(hoje);
+                      carregarVendas(seteDiasAtras, hoje);
+                    },
+                  },
+                ] as const).map((atalho) => {
+                  const ativo = atalhoAtivo === atalho.id;
+                  return (
+                    <button
+                      key={atalho.id}
+                      type="button"
+                      onClick={atalho.onClick}
+                      aria-pressed={ativo}
+                      className={cn(
+                        "flex h-[43px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[11px] border px-[11px] min-[391px]:px-[13px] text-xs font-medium transition-colors",
+                        ativo
+                          ? cn("border-transparent", GRADIENTE_ATIVO)
+                          : "border-border bg-background text-foreground hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted",
+                        FOCO,
+                      )}
+                    >
+                      <Calendar className="h-[17px] w-[17px]" />
+                      {atalho.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Mês / Período */}
+              <p className="mb-[13px] mt-[23px] flex items-center gap-2.5 text-[13px] font-semibold">
+                <Calendar className="h-[19px] w-[19px]" />
+                Filtrar por:
+              </p>
+              <div className="grid grid-cols-2 gap-[5px] rounded-[13px] border border-border bg-background p-1 dark:bg-muted/40 md:max-w-md">
+                {([
+                  { valor: "mes", label: "Mês", Icone: Calendar },
+                  { valor: "periodo", label: "Período", Icone: CalendarRange },
+                ] as const).map(({ valor, label, Icone }) => {
+                  const ativo = tipoFiltroData === valor;
+                  return (
+                    <button
+                      key={valor}
+                      type="button"
+                      onClick={() => setTipoFiltroData(valor)}
+                      aria-pressed={ativo}
+                      className={cn(
+                        "flex h-[45px] items-center justify-center gap-2.5 rounded-[10px] text-[13px] transition-colors",
+                        ativo ? cn("font-semibold", GRADIENTE_ATIVO) : "font-medium text-foreground hover:bg-muted",
+                        FOCO,
+                      )}
+                    >
+                      <Icone className="h-[18px] w-[18px]" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Campos */}
+              <div className="mt-[22px] grid grid-cols-1 gap-[19px] sm:grid-cols-2 lg:grid-cols-4">
                 {tipoFiltroData === "mes" ? (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="mes" className="text-sm">Mês</Label>
-                      <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-                        <SelectTrigger id="mes" className="h-11">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MESES.map((mes) => (
-                            <SelectItem key={mes.value} value={mes.value}>
-                              {mes.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div>
+                      <Label htmlFor="mes" className={ROTULO}>Mês</Label>
+                      <div className="relative">
+                        <Calendar className={ICONE_CAMPO} aria-hidden="true" />
+                        <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+                          <SelectTrigger id="mes" className={CAMPO}>
+                            <SelectValue placeholder="Selecione o mês" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MESES.map((mes) => (
+                              <SelectItem key={mes.value} value={mes.value}>
+                                {mes.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ano" className="text-sm">Ano</Label>
-                      <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
-                        <SelectTrigger id="ano" className="h-11">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {anos.map((ano) => (
-                            <SelectItem key={ano} value={ano}>
-                              {ano}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div>
+                      <Label htmlFor="ano" className={ROTULO}>Ano</Label>
+                      <div className="relative">
+                        <Calendar className={ICONE_CAMPO} aria-hidden="true" />
+                        <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
+                          <SelectTrigger id="ano" className={CAMPO}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {anos.map((ano) => (
+                              <SelectItem key={ano} value={ano}>
+                                {ano}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="dataInicio" className="text-sm">Data Início</Label>
-                      <Input
-                        id="dataInicio"
-                        type="date"
-                        value={dataInicio}
-                        onChange={(e) => setDataInicio(e.target.value)}
-                        className="h-11"
-                      />
+                    <div>
+                      <Label htmlFor="dataInicio" className={ROTULO}>Data Início</Label>
+                      <div className="relative">
+                        <Calendar className={ICONE_CAMPO} aria-hidden="true" />
+                        <Input
+                          id="dataInicio"
+                          type="date"
+                          value={dataInicio}
+                          onChange={(e) => setDataInicio(e.target.value)}
+                          className={CAMPO}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dataFim" className="text-sm">Data Fim</Label>
-                      <Input
-                        id="dataFim"
-                        type="date"
-                        value={dataFim}
-                        onChange={(e) => setDataFim(e.target.value)}
-                        className="h-11"
-                      />
+                    <div>
+                      <Label htmlFor="dataFim" className={ROTULO}>Data Fim</Label>
+                      <div className="relative">
+                        <Calendar className={ICONE_CAMPO} aria-hidden="true" />
+                        <Input
+                          id="dataFim"
+                          type="date"
+                          value={dataFim}
+                          onChange={(e) => setDataFim(e.target.value)}
+                          className={CAMPO}
+                        />
+                      </div>
                     </div>
                   </>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="tipo" className="text-sm">Tipo</Label>
-                  <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
-                    <SelectTrigger id="tipo" className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      <SelectItem value="dispositivo">Dispositivos</SelectItem>
-                      <SelectItem value="produto">Produtos</SelectItem>
-                      <SelectItem value="servico">Serviços</SelectItem>
-                      <SelectItem value="avulsa">Venda Avulsa</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div>
+                  <Label htmlFor="tipo" className={ROTULO}>Tipo</Label>
+                  <div className="relative">
+                    <Tag className={ICONE_CAMPO} aria-hidden="true" />
+                    <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
+                      <SelectTrigger id="tipo" className={CAMPO}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="dispositivo">Dispositivos</SelectItem>
+                        <SelectItem value="produto">Produtos</SelectItem>
+                        <SelectItem value="servico">Serviços</SelectItem>
+                        <SelectItem value="avulsa">Venda Avulsa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pagamento" className="text-sm">Pagamento</Label>
-                  <Select value={pagamentoFiltro} onValueChange={setPagamentoFiltro}>
-                    <SelectTrigger id="pagamento" className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="debito">Débito</SelectItem>
-                      <SelectItem value="credito">Crédito</SelectItem>
-                      <SelectItem value="credito_parcelado">Crédito Parcelado</SelectItem>
-                      <SelectItem value="a_receber">A Receber</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end gap-2 sm:col-span-2">
-                  <Button onClick={handleFiltrar} disabled={loading} className="flex-1 h-11">
-                    Filtrar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleLimparFiltros}
-                    disabled={loading}
-                    className="flex-1 h-11"
-                  >
-                    Limpar
-                  </Button>
+                <div>
+                  <Label htmlFor="pagamento" className={ROTULO}>Pagamento</Label>
+                  <div className="relative">
+                    <CreditCard className={ICONE_CAMPO} aria-hidden="true" />
+                    <Select value={pagamentoFiltro} onValueChange={setPagamentoFiltro}>
+                      <SelectTrigger id="pagamento" className={CAMPO}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="debito">Débito</SelectItem>
+                        <SelectItem value="credito">Crédito</SelectItem>
+                        <SelectItem value="credito_parcelado">Crédito Parcelado</SelectItem>
+                        <SelectItem value="a_receber">A Receber</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Ações */}
+              <div className="mt-6 grid grid-cols-2 gap-[11px] lg:flex lg:justify-end">
+                <button
+                  type="button"
+                  onClick={handleFiltrar}
+                  disabled={loading}
+                  className={cn(BOTAO_ACAO, GRADIENTE_ATIVO, "shadow-[0_6px_15px_rgba(36,107,255,0.17)] hover:brightness-105")}
+                >
+                  <Filter className="h-[19px] w-[19px]" />
+                  Filtrar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLimparFiltros}
+                  disabled={loading}
+                  className={cn(BOTAO_ACAO, "border border-border bg-background text-foreground hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted")}
+                >
+                  <RefreshCw className="h-[19px] w-[19px]" />
+                  Limpar
+                </button>
+              </div>
+            </div>
+          </section>
 
           {/* Card Total Vendido no Período */}
           {podeVerTotalVendas && <Card className="border-primary/20 bg-primary/5">
