@@ -25,6 +25,7 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Filter, Calendar, CalendarRange, ChevronUp, CreditCard, Layout, RefreshCw, Settings, Search, Tag, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IlustracaoVendas } from "@/components/vendas/IlustracaoVendas";
+import { TextoAjustado } from "@/components/vendas/TextoAjustado";
 import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DialogConfiguracaoLayoutVendas } from "@/components/vendas/DialogConfiguracaoLayoutVendas";
@@ -145,6 +146,20 @@ export default function Vendas() {
 
     return tipoMatch && pagamentoMatch && buscaMatch;
   });
+
+  // Mesmo cálculo de antes, guardado para medir o tamanho do texto no card
+  const totalVendidoTexto = formatCurrency(
+    vendasFiltradas
+      .filter(v => !v.cancelada)
+      .reduce((acc, v) => {
+        if (v.parcela_numero && Number(v.parcela_numero) > 1) return acc;
+        const total = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
+        if (v.total_parcelas && Number(v.total_parcelas) > 1 && Number(v.parcela_numero) === 1) {
+          return acc + total * Number(v.total_parcelas);
+        }
+        return acc + total;
+      }, 0)
+  );
 
   return (
     <AppLayout>
@@ -435,45 +450,53 @@ export default function Vendas() {
           </section>
 
           {/* Card Total Vendido no Período */}
-          {podeVerTotalVendas && <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total vendido</p>
-                    <p className="text-xs text-muted-foreground/70">{getPeriodoLabel()}</p>
-                  </div>
-                </div>
-                {loading ? (
-                  <div className="h-8 w-28 bg-muted animate-pulse rounded" />
-                ) : (
-                  <p className="text-2xl sm:text-3xl font-bold text-primary">
-                    {formatCurrency(
-                      vendasFiltradas
-                        .filter(v => !v.cancelada)
-                        .reduce((acc, v) => {
-                          if (v.parcela_numero && Number(v.parcela_numero) > 1) return acc;
-                          const total = Number(v.total || 0) - Number(v.valor_desconto_manual || 0) - Number(v.valor_desconto_cupom || 0);
-                          if (v.total_parcelas && Number(v.total_parcelas) > 1 && Number(v.parcela_numero) === 1) {
-                            return acc + total * Number(v.total_parcelas);
-                          }
-                          return acc + total;
-                        }, 0)
-                    )}
-                  </p>
-                )}
+          {podeVerTotalVendas && (
+            <section
+              aria-label="Total vendido"
+              className={cn(
+                "relative min-h-[150px] overflow-hidden rounded-[20px] border p-4 min-[376px]:p-[22px] md:min-h-[175px]",
+                "border-[#D0E0FF] bg-[linear-gradient(120deg,#EDF4FF,#E4EDFF)]",
+                "dark:border-primary/25 dark:bg-[linear-gradient(120deg,hsl(var(--primary)/0.16),hsl(var(--primary)/0.06))]",
+              )}
+            >
+              {/* Barrinhas decorativas */}
+              <div aria-hidden="true" className="pointer-events-none absolute bottom-3.5 right-[18px] flex h-[75px] items-end gap-[7px] opacity-[0.38]">
+                {[22, 43, 35, 57, 75].map((altura) => (
+                  <span key={altura} className="w-3.5 rounded-[5px_5px_3px_3px] bg-[#9DBFFF] dark:bg-primary/35" style={{ height: altura }} />
+                ))}
               </div>
-            </CardContent>
-          </Card>}
+
+              <div className="relative z-10 flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[15px] bg-[linear-gradient(135deg,#448BFF,#1554F5)] text-white shadow-[0_7px_18px_rgba(36,107,255,0.2)] min-[376px]:h-[55px] min-[376px]:w-[55px]">
+                  <TrendingUp className="h-[29px] w-[29px]" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold min-[376px]:text-base">Total vendido</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">{getPeriodoLabel()}</p>
+                  {loading ? (
+                    <div className="mt-[17px] h-9 w-40 animate-pulse rounded-lg bg-primary/10" />
+                  ) : (
+                    <TextoAjustado
+                      caracteres={totalVendidoTexto.length}
+                      min={18}
+                      max={40}
+                      classeReserva="text-[24px] md:text-[40px]"
+                      className="mt-[17px] font-extrabold leading-none tracking-[-1.2px] text-primary"
+                      classeContainer="pr-[68px] md:pr-0"
+                    >
+                      {totalVendidoTexto}
+                    </TextoAjustado>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Resumo por Tipo */}
-          <div className="space-y-4">
+          <div className="space-y-[19px]">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold">Resumo por Tipo</h2>
-              <p className="text-muted-foreground text-sm">
+              <h2 className="text-[23px] font-extrabold leading-tight tracking-[-0.7px]">Resumo por Tipo</h2>
+              <p className="mt-2 text-[13px] text-muted-foreground">
                 Vendas separadas por categoria
               </p>
             </div>
