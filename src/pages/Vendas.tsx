@@ -504,10 +504,10 @@ export default function Vendas() {
           </div>
 
           {/* Dashboard A Receber */}
-          <div className="space-y-4">
+          <div className="space-y-[18px]">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold">Vendas a Receber</h2>
-              <p className="text-muted-foreground text-sm">
+              <h2 className="text-[23px] font-extrabold leading-tight tracking-[-0.7px]">Vendas a Receber</h2>
+              <p className="mt-[7px] text-[13px] text-muted-foreground">
                 Valores pendentes de recebimento
               </p>
             </div>
@@ -519,22 +519,24 @@ export default function Vendas() {
           </div>
 
           {/* Tabela de Vendas */}
-          <Card>
-            <CardHeader className="pb-3 sm:pb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <CardTitle className="text-base sm:text-lg">Lista de Vendas</CardTitle>
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome, modelo, código..."
-                    value={busca}
-                    onChange={(e) => setBusca(e.target.value)}
-                    className="pl-9 h-9"
-                  />
-                </div>
+          <section
+            aria-labelledby="lista-vendas-titulo"
+            className="rounded-[19px] border border-border bg-card px-3.5 py-[17px] shadow-[0_5px_18px_rgba(16,24,40,0.035)] dark:shadow-none md:p-[22px]"
+          >
+            <div className="mb-[18px] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 id="lista-vendas-titulo" className="text-xl font-extrabold tracking-[-0.5px]">Lista de Vendas</h2>
+              <div className="relative w-full sm:w-80">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input
+                  placeholder="Buscar por nome, modelo, código..."
+                  aria-label="Buscar vendas"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="h-[49px] rounded-xl border-border bg-background pl-[43px] text-[13px] placeholder:text-[#7A879A] focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/15 focus-visible:ring-offset-0 dark:bg-muted/40 dark:placeholder:text-muted-foreground sm:h-11"
+                />
               </div>
-            </CardHeader>
-            <CardContent className="p-0 sm:p-6 sm:pt-0">
+            </div>
+            <div>
               <TabelaVendas
                 vendas={vendasFiltradas}
                 loading={loading}
@@ -546,8 +548,8 @@ export default function Vendas() {
                 onAlterarDataVenda={alterarDataVenda}
                 onCancelarContaAPrazoOS={cancelarContaAPrazoOS}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </div>
       </main>
 

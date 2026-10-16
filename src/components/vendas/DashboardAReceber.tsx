@@ -2,8 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Venda } from "@/types/venda";
-import { formatDate } from "@/lib/formatters";
-import { Clock, AlertTriangle, CheckCircle, DollarSign } from "lucide-react";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
+import { TextoAjustado } from "@/components/vendas/TextoAjustado";
+import type { ReactNode } from "react";
+import { Clock, AlertTriangle, CheckCircle, DollarSign, type LucideIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { getVendaReceitaLiquida } from "@/lib/vendasFinanceiras";
@@ -54,16 +57,13 @@ export const DashboardAReceber = ({
 
   if (loading) {
     return (
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 min-[381px]:gap-[11px] md:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="pb-2">
-              <Skeleton className="h-4 w-24" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-32" />
-            </CardContent>
-          </Card>
+          <div key={i} className="min-h-[154px] rounded-[17px] border border-border bg-card p-[15px]">
+            <Skeleton className="h-[43px] w-[43px] rounded-[13px]" />
+            <Skeleton className="mt-4 h-4 w-20" />
+            <Skeleton className="mt-2 h-7 w-24" />
+          </div>
         ))}
       </div>
     );
@@ -72,62 +72,43 @@ export const DashboardAReceber = ({
   return (
     <div className="space-y-4">
       {/* Cards de resumo */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total A Receber</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">
-              <ValorMonetario valor={totalAReceber} />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {vendasAReceber.length} venda{vendasAReceber.length !== 1 ? "s" : ""} pendente{vendasAReceber.length !== 1 ? "s" : ""}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vencidas</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {vendasVencidas.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              <ValorMonetario valor={vendasVencidas.reduce((acc, v) => acc + getVendaReceitaLiquida(v), 0)} />
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vencendo em 3 dias</CardTitle>
-            <Clock className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-500">
-              {vendasVencendo.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              <ValorMonetario valor={vendasVencendo.reduce((acc, v) => acc + getVendaReceitaLiquida(v), 0)} />
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quantidade</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{vendasAReceber.length}</div>
-            <p className="text-xs text-muted-foreground">vendas a receber</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-2 min-[381px]:gap-[11px] md:grid-cols-4">
+        <CardReceber
+          cor="azul"
+          decoracao="curva"
+          rotulo="Total A Receber"
+          Icone={DollarSign}
+          caracteres={formatCurrency(totalAReceber).length}
+          valor={<ValorMonetario valor={totalAReceber} />}
+          descricao={<>{vendasAReceber.length} venda{vendasAReceber.length !== 1 ? "s" : ""} pendente{vendasAReceber.length !== 1 ? "s" : ""}</>}
+        />
+        <CardReceber
+          cor="vermelho"
+          decoracao="barras"
+          rotulo="Vencidas"
+          Icone={AlertTriangle}
+          caracteres={String(vendasVencidas.length).length}
+          valor={vendasVencidas.length}
+          descricao={<ValorMonetario valor={vendasVencidas.reduce((acc, v) => acc + getVendaReceitaLiquida(v), 0)} />}
+        />
+        <CardReceber
+          cor="laranja"
+          decoracao="curva"
+          rotulo="Vencendo em 3 dias"
+          Icone={Clock}
+          caracteres={String(vendasVencendo.length).length}
+          valor={vendasVencendo.length}
+          descricao={<ValorMonetario valor={vendasVencendo.reduce((acc, v) => acc + getVendaReceitaLiquida(v), 0)} />}
+        />
+        <CardReceber
+          cor="roxo"
+          decoracao="barras"
+          rotulo="Quantidade"
+          Icone={CheckCircle}
+          caracteres={String(vendasAReceber.length).length}
+          valor={vendasAReceber.length}
+          descricao="vendas a receber"
+        />
       </div>
 
       {/* Lista de vendas a receber */}
@@ -153,11 +134,11 @@ export const DashboardAReceber = ({
                 return (
                   <div
                     key={venda.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                    className="flex flex-col gap-2 p-3 rounded-lg border bg-card sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-sm break-words">
                           {venda.tipo === "dispositivo" && venda.dispositivos
                             ? `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`
                             : venda.produtos?.nome || "Venda"}
@@ -180,8 +161,8 @@ export const DashboardAReceber = ({
                           : "Sem data definida"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold">
+                    <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+                      <span className="font-semibold whitespace-nowrap">
                         <ValorMonetario valor={getVendaReceitaLiquida(venda)} tipo="preco" />
                       </span>
                       {onMarcarRecebido && (
@@ -206,3 +187,94 @@ export const DashboardAReceber = ({
     </div>
   );
 };
+
+type CorReceber = "azul" | "vermelho" | "laranja" | "roxo";
+
+// Cores da referência no claro; no escuro, tons do próprio Tailwind sobre o card do tema.
+const ESTILO_RECEBER: Record<CorReceber, { card: string; icone: string; valor: string; traco: string; preenchimento: string; barra: string }> = {
+  azul: {
+    card: "border-[#C7DBFF] bg-[linear-gradient(135deg,#FFFFFF,#F0F6FF)] dark:border-blue-500/25 dark:bg-[linear-gradient(135deg,hsl(var(--card)),rgba(59,130,246,0.10))]",
+    icone: "bg-[#E3EDFF] text-[#246BFF] dark:bg-blue-500/15 dark:text-blue-400",
+    valor: "text-[#246BFF] dark:text-blue-400",
+    traco: "#7DAFFF", preenchimento: "#7DAFFF", barra: "",
+  },
+  vermelho: {
+    card: "border-[#F8DEDE] bg-[linear-gradient(135deg,#FFFFFF,#FFF6F6)] dark:border-red-500/25 dark:bg-[linear-gradient(135deg,hsl(var(--card)),rgba(239,68,68,0.10))]",
+    icone: "bg-[#FFE6E6] text-[#E02424] dark:bg-red-500/15 dark:text-red-400",
+    valor: "text-[#E02424] dark:text-red-400",
+    traco: "", preenchimento: "", barra: "bg-[linear-gradient(#FF3B45,#FFD0D3)] dark:bg-[linear-gradient(#F87171,rgba(248,113,113,0.15))]",
+  },
+  laranja: {
+    card: "border-[#F5E7D7] bg-[linear-gradient(135deg,#FFFFFF,#FFF9F1)] dark:border-orange-500/25 dark:bg-[linear-gradient(135deg,hsl(var(--card)),rgba(249,115,22,0.10))]",
+    icone: "bg-[#FFF0DF] text-[#FF8500] dark:bg-orange-500/15 dark:text-orange-400",
+    valor: "text-[#FF8500] dark:text-orange-400",
+    traco: "#FFB25C", preenchimento: "#FFB25C", barra: "",
+  },
+  roxo: {
+    card: "border-[#E9DDF9] bg-[linear-gradient(135deg,#FFFFFF,#FAF5FF)] dark:border-purple-500/25 dark:bg-[linear-gradient(135deg,hsl(var(--card)),rgba(168,85,247,0.10))]",
+    icone: "bg-[#F3E5FF] text-[#A02CFA] dark:bg-purple-500/15 dark:text-purple-400",
+    valor: "text-foreground",
+    traco: "", preenchimento: "", barra: "bg-[linear-gradient(#B842F4,#E9C5FA)] dark:bg-[linear-gradient(#C084FC,rgba(192,132,252,0.15))]",
+  },
+};
+
+interface CardReceberProps {
+  cor: CorReceber;
+  decoracao: "curva" | "barras";
+  rotulo: string;
+  Icone: LucideIcon;
+  valor: ReactNode;
+  /** Caracteres do valor exibido, para ajustar a fonte sem cortar dígitos. */
+  caracteres: number;
+  descricao: ReactNode;
+}
+
+function CardReceber({ cor, decoracao, rotulo, Icone, valor, caracteres, descricao }: CardReceberProps) {
+  const e = ESTILO_RECEBER[cor];
+  const idGradiente = `receber-${cor}`;
+  return (
+    <article
+      aria-label={rotulo}
+      className={cn(
+        "relative min-h-[154px] overflow-hidden rounded-[17px] border p-[11px] min-[381px]:p-[15px]",
+        "shadow-[0_4px_15px_rgba(16,24,40,0.035)] dark:shadow-none",
+        e.card,
+      )}
+    >
+      {/* Decoração de fundo: fica atrás do texto (z-0) e na faixa de baixo do card */}
+      {decoracao === "curva" ? (
+        <svg aria-hidden="true" viewBox="0 0 200 43" preserveAspectRatio="none" className="pointer-events-none absolute bottom-0 left-0 z-0 h-[43px] w-full">
+          <defs>
+            <linearGradient id={idGradiente} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={e.preenchimento} stopOpacity="0.28" />
+              <stop offset="1" stopColor={e.preenchimento} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d="M0 37 C20 38 25 29 40 34 S65 22 82 31 S110 38 130 27 S165 8 180 19 S195 40 200 34 V43 H0 Z" fill={`url(#${idGradiente})`} />
+          <path d="M0 37 C20 38 25 29 40 34 S65 22 82 31 S110 38 130 27 S165 8 180 19 S195 40 200 34" fill="none" stroke={e.traco} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        </svg>
+      ) : (
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-3 right-[13px] z-0 flex h-[50px] items-end gap-[5px] opacity-70">
+          {[12, 21, 32, 44].map((altura) => (
+            <span key={altura} className={cn("w-[9px] rounded-[4px_4px_0_0]", e.barra)} style={{ height: altura }} />
+          ))}
+        </div>
+      )}
+
+      <div className="relative z-10 flex items-start gap-[7px] min-[381px]:gap-[9px]">
+        <div className={cn("flex h-[35px] w-[35px] shrink-0 items-center justify-center rounded-[13px] min-[381px]:h-[43px] min-[381px]:w-[43px]", e.icone)}>
+          <Icone className="h-5 w-5 min-[381px]:h-6 min-[381px]:w-6" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="mb-[7px] text-[10px] leading-[1.4] text-muted-foreground min-[381px]:text-[11px]">{rotulo}</p>
+          <div className={cn("font-extrabold leading-tight tracking-[-0.7px]", e.valor)}>
+            <TextoAjustado caracteres={caracteres} min={13} max={27} classeReserva="text-lg min-[381px]:text-[22px]">
+              {valor}
+            </TextoAjustado>
+          </div>
+          <p className="mt-1.5 text-[10px] leading-normal text-muted-foreground">{descricao}</p>
+        </div>
+      </div>
+    </article>
+  );
+}

@@ -16,7 +16,10 @@ import { DialogEditarVenda } from "./DialogEditarVenda";
 import { formatDateTime, formatDate, formatDataVenda, extrairDataLocal } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart, CalendarClock, CalendarDays, MoreHorizontal } from "lucide-react";
+import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart, CalendarClock, CalendarDays, MoreHorizontal, Smartphone, Package, Wrench, ShoppingBag, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/formatters";
+import { TextoAjustado } from "@/components/vendas/TextoAjustado";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -78,11 +81,38 @@ const formaPagamentoLabels: Record<string, string> = {
 };
 
 const tipoColors: Record<string, string> = {
-  dispositivo: "bg-blue-500",
-  produto: "bg-green-500",
-  servico: "bg-purple-500",
-  avulsa: "bg-violet-500",
+  dispositivo: "bg-[#246BFF] hover:bg-[#246BFF] text-white",
+  produto: "bg-orange-500 hover:bg-orange-500 text-white",
+  servico: "bg-purple-500 hover:bg-purple-500 text-white",
+  avulsa: "bg-violet-500 hover:bg-violet-500 text-white",
 };
+
+// Selo (tipo e status) no formato da referência: canto 7px, texto 10px seminegrito.
+const SELO = "rounded-[7px] px-2 py-[3px] text-[10px] font-semibold";
+const CARD_VENDA = "rounded-[17px] border border-border bg-card px-[13px] pt-4 shadow-[0_3px_12px_rgba(16,24,40,0.035)] dark:shadow-none";
+
+const iconeTipo: Record<string, LucideIcon> = {
+  dispositivo: Smartphone,
+  produto: Package,
+  servico: Wrench,
+  avulsa: ShoppingBag,
+};
+
+// Preço do card (celular): fonte ajustada para nunca estourar; riscado se cancelada.
+function PrecoVenda({ valor, cancelada }: { valor: number; cancelada?: boolean }) {
+  const caracteres = formatCurrency(valor).length;
+  return (
+    // Largura = o que o valor precisa a 15px (≈9px por caractere), limitada a 44% do card
+    <div
+      className={cn("shrink-0 text-right font-extrabold tracking-[-0.4px]", cancelada && "line-through text-muted-foreground")}
+      style={{ width: `min(44%, ${caracteres * 9}px)` }}
+    >
+      <TextoAjustado caracteres={caracteres} min={11} max={15} classeReserva="text-[13px] min-[381px]:text-[15px]">
+        <ValorMonetario valor={valor} tipo="preco" />
+      </TextoAjustado>
+    </div>
+  );
+}
 
 // Padding enxuto das células da tabela desktop (o padrão do shadcn é p-4).
 const TH = "h-11 px-2.5";
@@ -349,6 +379,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(venda); }}
         className="h-8 w-8 p-0"
         title="Alterar data da venda"
+        aria-label="Alterar data da venda"
       >
         <CalendarDays className="h-4 w-4" />
       </Button>
@@ -395,7 +426,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     const isVencida = dataVencimento && dataVencimento < hoje;
     const isVencendo = dataVencimento && dataVencimento >= hoje && dataVencimento <= em3Dias;
 
-    if (venda.cancelada) return <Badge variant="destructive" className="text-xs">Cancelada</Badge>;
+    if (venda.cancelada) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FEECEC] text-[#D92D20] dark:bg-red-500/15 dark:text-red-400")}>Cancelada</Badge>;
     if (compacto && venda.tipo === "servico" && (venda.contaAPrazoPendente || venda.saldoCancelado)) {
       const pendente = !!venda.contaAPrazoPendente;
       const valor = venda.contaAPrazoPendente?.valor ?? venda.saldoCancelado?.valor ?? 0;
@@ -404,7 +435,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
           <TooltipTrigger asChild>
             <Badge
               variant="outline"
-              className={`max-w-full text-xs px-2 ${pendente
+              className={`${SELO} max-w-full ${pendente
                 ? "bg-orange-500/10 text-orange-600 border-orange-500/30"
                 : "bg-muted text-muted-foreground border-muted-foreground/30"}`}
             >
@@ -420,7 +451,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     }
     if (venda.tipo === "servico" && venda.contaAPrazoPendente) {
       return (
-        <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30 text-xs whitespace-nowrap">
+        <Badge variant="outline" className={cn(SELO, "bg-orange-500/10 text-orange-600 border-orange-500/30 whitespace-nowrap")}>
           <CalendarClock className="h-3 w-3 mr-1" />
           Saldo a prazo: <ValorMonetario valor={venda.contaAPrazoPendente.valor} tipo="preco" />
         </Badge>
@@ -428,59 +459,51 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     }
     if (venda.tipo === "servico" && venda.saldoCancelado) {
       return (
-        <Badge variant="outline" className="bg-muted text-muted-foreground border-muted-foreground/30 text-xs whitespace-nowrap">
+        <Badge variant="outline" className={cn(SELO, "bg-muted text-muted-foreground border-muted-foreground/30 whitespace-nowrap")}>
           <Ban className="h-3 w-3 mr-1" />
           Saldo não recebido: <ValorMonetario valor={venda.saldoCancelado.valor} tipo="preco" />
         </Badge>
       );
     }
     if (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") {
-      if (venda.recebido) return <Badge className="bg-green-500 text-xs text-white">Recebido</Badge>;
-      if (isVencida) return <Badge variant="destructive" className="text-xs">{compacto ? "Vencida" : "A Receber - Vencida"}</Badge>;
-      if (isVencendo) return <Badge className="bg-orange-500 text-xs text-white">A Receber</Badge>;
-      return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 text-xs">A Receber</Badge>;
+      if (venda.recebido) return <Badge className={cn(SELO, "bg-[#12B76A] text-white hover:bg-[#12B76A]")}>Recebido</Badge>;
+      if (isVencida) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FEECEC] text-[#D92D20] dark:bg-red-500/15 dark:text-red-400")}>{compacto ? "Vencida" : "A Receber - Vencida"}</Badge>;
+      if (isVencendo) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400")}>A Receber</Badge>;
+      return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FFF1DA] text-[#A66A00] dark:bg-amber-500/15 dark:text-amber-400")}>A Receber</Badge>;
     }
-    return <Badge className="bg-green-500 text-xs text-white">Pago</Badge>;
+    return <Badge className={cn(SELO, "bg-[#12B76A] text-white hover:bg-[#12B76A]")}>Pago</Badge>;
   };
 
+  // Ações do card (celular): mesmas condições, ordem e handlers de antes;
+  // só o desenho mudou — faixa embaixo do card, dividida por linhas finas.
   const renderAcoesVenda = (venda: Venda) => {
     const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
+    const acoes: { chave: string; titulo: string; Icone: LucideIcon; onClick: () => void; cor?: string }[] = [];
+    if (isAReceber && onMarcarRecebido) acoes.push({ chave: "recebido", titulo: "Marcar como Recebido", Icone: CheckCircle, onClick: () => onMarcarRecebido(venda.id), cor: "text-green-600 hover:text-green-700 dark:text-green-400" });
+    if (!venda.cancelada && (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && venda.recebido && onMarcarPendente) acoes.push({ chave: "pendente", titulo: "Voltar para Pendente", Icone: Undo2, onClick: () => onMarcarPendente(venda.id), cor: "text-orange-600 hover:text-orange-700 dark:text-orange-400" });
+    if (!venda.cancelada && venda.tipo !== "servico" && onEditarVenda) acoes.push({ chave: "editar", titulo: "Editar Venda", Icone: Pencil, onClick: () => handleAbrirEditar(venda) });
+    if (podeAlterarData(venda)) acoes.push({ chave: "data", titulo: "Alterar data da venda", Icone: CalendarDays, onClick: () => handleAbrirAlterarData(venda) });
+    acoes.push({ chave: "imprimir", titulo: "Imprimir Recibo", Icone: Printer, onClick: () => handleImprimirRecibo(venda) });
+    if (venda.tipo === "servico" && venda.contaAPrazoPendente && onCancelarContaAPrazoOS) acoes.push({ chave: "saldo", titulo: "Cancelar Saldo a Prazo", Icone: CalendarClock, onClick: () => handleAbrirCancelarSaldo(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
+    if (!venda.cancelada && venda.tipo !== "servico" && onCancelarVenda) acoes.push({ chave: "cancelar", titulo: "Cancelar Venda", Icone: Ban, onClick: () => handleAbrirCancelar(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
+    if (venda.cancelada && onExcluirVenda && venda.tipo !== "servico") acoes.push({ chave: "excluir", titulo: "Excluir Venda", Icone: Trash2, onClick: () => handleAbrirExcluir(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
+
     return (
-      <div className="flex items-center gap-1">
-        {isAReceber && onMarcarRecebido && (
-          <Button variant="ghost" size="sm" onClick={() => onMarcarRecebido(venda.id)} className="h-8 w-8 p-0 text-green-600 hover:text-green-700" title="Marcar como Recebido">
-            <CheckCircle className="h-4 w-4" />
-          </Button>
-        )}
-        {!venda.cancelada && (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && venda.recebido && onMarcarPendente && (
-          <Button variant="ghost" size="sm" onClick={() => onMarcarPendente(venda.id)} className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700" title="Voltar para Pendente">
-            <Undo2 className="h-4 w-4" />
-          </Button>
-        )}
-        {!venda.cancelada && venda.tipo !== "servico" && onEditarVenda && (
-          <Button variant="ghost" size="sm" onClick={() => handleAbrirEditar(venda)} className="h-8 w-8 p-0" title="Editar Venda">
-            <Pencil className="h-4 w-4" />
-          </Button>
-        )}
-        {botaoAlterarData(venda)}
-        <Button variant="ghost" size="sm" onClick={() => handleImprimirRecibo(venda)} className="h-8 w-8 p-0" title="Imprimir Recibo">
-          <Printer className="h-4 w-4" />
-        </Button>
-        {venda.tipo === "servico" && venda.contaAPrazoPendente && onCancelarContaAPrazoOS && (
-          <Button variant="ghost" size="sm" onClick={() => handleAbrirCancelarSaldo(venda)} className="h-8 w-8 p-0 text-destructive hover:text-destructive" title="Cancelar Saldo a Prazo">
-            <CalendarClock className="h-4 w-4" />
-          </Button>
-        )}
-        {!venda.cancelada && venda.tipo !== "servico" && onCancelarVenda && (
-          <Button variant="ghost" size="sm" onClick={() => handleAbrirCancelar(venda)} className="h-8 w-8 p-0 text-destructive hover:text-destructive" title="Cancelar Venda">
-            <Ban className="h-4 w-4" />
-          </Button>
-        )}
-        {venda.cancelada && onExcluirVenda && venda.tipo !== "servico" && (
-          <Button variant="ghost" size="sm" onClick={() => handleAbrirExcluir(venda)} className="h-8 w-8 p-0 text-destructive hover:text-destructive" title="Excluir Venda">
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
+      <div className="mt-[18px] flex border-t border-border py-3">
+        {acoes.map(({ chave, titulo, Icone, onClick, cor }) => (
+          <div key={chave} className="flex flex-1 justify-center border-r border-border last:border-r-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              className={cn("h-[34px] w-full max-w-[64px] p-0", cor ?? "text-[#0B1429] dark:text-foreground")}
+              title={titulo}
+              aria-label={titulo}
+            >
+              <Icone className="h-[19px] w-[19px]" />
+            </Button>
+          </div>
+        ))}
       </div>
     );
   };
@@ -637,45 +660,53 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
           {vendasAgrupadas.map((item) => {
             if (item.tipo === "individual" && item.venda) {
               const venda = item.venda;
+              const IconeTipo = iconeTipo[venda.tipo] ?? Package;
               return (
-                <Card key={venda.id} className={`p-4 ${venda.cancelada ? 'opacity-60 bg-muted/30' : ''}`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-sm">{getNomeItem(venda)}</p>
-                        {venda.numero_venda && <span className="text-xs text-muted-foreground">#{venda.numero_venda}</span>}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{venda.clientes?.nome || "Cliente não informado"}</p>
+                <article key={venda.id} className={cn(CARD_VENDA, venda.cancelada && "opacity-60 bg-muted/30")}>
+                  <div className="flex gap-[9px] min-[381px]:gap-3">
+                    {/* A lista não carrega foto da venda: ícone do tipo, como no resto do app */}
+                    <div className="grid h-[75px] w-[55px] shrink-0 place-items-center rounded-xl border border-border bg-background min-[381px]:w-[66px] dark:bg-muted/40">
+                      <IconeTipo className="h-9 w-9 text-muted-foreground" aria-hidden="true" />
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge className={`${tipoColors[venda.tipo]} text-xs`}>{tipoLabels[venda.tipo]}</Badge>
-                      {renderStatusBadge(venda)}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="break-words text-[13px] font-bold leading-[1.4]">
+                            {getNomeItem(venda)}
+                            {venda.numero_venda && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">#{venda.numero_venda}</span>}
+                          </p>
+                          <p className="mt-[5px] break-words text-[11px] leading-normal text-muted-foreground">{venda.clientes?.nome || "Cliente não informado"}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-[5px]">
+                          <Badge className={cn(SELO, tipoColors[venda.tipo])}>{tipoLabels[venda.tipo]}</Badge>
+                          {renderStatusBadge(venda)}
+                        </div>
+                      </div>
+                      <div className="mt-[17px] flex items-end justify-between gap-2.5">
+                        <div className="min-w-0 space-y-1.5">
+                          <p className="flex items-center gap-[5px] text-[11px] text-muted-foreground">
+                            <CalendarDays className="h-[13px] w-[13px] shrink-0" aria-hidden="true" />
+                            {formatDataVenda(venda.data)}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span className="text-xs text-[#344054] dark:text-foreground/80">{formaPagamentoLabels[venda.forma_pagamento] || "-"}</span>
+                            {venda.parcela_numero && venda.total_parcelas && (
+                              <span className="text-xs text-muted-foreground">({venda.parcela_numero}/{venda.total_parcelas})</span>
+                            )}
+                            {venda.segunda_forma_pagamento && (
+                              <span className="text-xs text-muted-foreground">
+                                + {formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}
+                                {venda.valor_segunda_forma ? ` (R$${Number(venda.valor_segunda_forma).toFixed(2).replace('.', ',')})` : ""}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <PrecoVenda valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} cancelada={venda.cancelada} />
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{formatDataVenda(venda.data)}</p>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <span className="text-xs">{formaPagamentoLabels[venda.forma_pagamento] || "-"}</span>
-                        {venda.parcela_numero && venda.total_parcelas && (
-                          <span className="text-xs text-muted-foreground">({venda.parcela_numero}/{venda.total_parcelas})</span>
-                        )}
-                        {venda.segunda_forma_pagamento && (
-                          <span className="text-xs text-muted-foreground">
-                            + {formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}
-                            {venda.valor_segunda_forma ? ` (R$${Number(venda.valor_segunda_forma).toFixed(2).replace('.', ',')})` : ""}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`font-semibold ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                        <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
-                      </span>
-                      {renderAcoesVenda(venda)}
-                    </div>
-                  </div>
-                </Card>
+                  {renderAcoesVenda(venda)}
+                </article>
               );
             }
 
@@ -689,7 +720,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
               return (
                 <div key={grupoId}>
                   <Card
-                    className={`p-4 cursor-pointer border-l-4 border-l-primary ${todasCanceladas ? 'opacity-60 bg-muted/30' : ''}`}
+                    className={cn(CARD_VENDA, "cursor-pointer border-l-4 border-l-primary pb-4", todasCanceladas && "opacity-60 bg-muted/30")}
                     onClick={() => toggleGrupo(grupoId)}
                   >
                     <div className="flex justify-between items-start mb-2">
@@ -707,7 +738,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <Badge variant="outline" className="text-xs border-primary text-primary">
+                        <Badge variant="outline" className={cn(SELO, "border-primary text-primary")}>
                           {vendasDoGrupo.length} itens
                         </Badge>
                         {renderStatusBadge(primeiraVenda)}
@@ -723,7 +754,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                           <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
                         </span>
                         {botaoAlterarData(primeiraVenda)}
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo" aria-label="Imprimir Recibo">
                           <Printer className="h-4 w-4" />
                         </Button>
                       </div>
@@ -733,22 +764,20 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                   {expandido && (
                     <div className="ml-4 mt-1 space-y-2 border-l-2 border-muted pl-3">
                       {vendasDoGrupo.map(venda => (
-                        <Card key={venda.id} className={`p-3 ${venda.cancelada ? 'opacity-60 bg-muted/30' : ''}`}>
+                        <Card key={venda.id} className={cn(CARD_VENDA, "px-3 pt-3", venda.cancelada && "opacity-60 bg-muted/30")}>
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex-1">
                               <p className="font-medium text-xs">{getNomeItem(venda)}</p>
                             </div>
-                            <Badge className={`${tipoColors[venda.tipo]} text-xs`}>{tipoLabels[venda.tipo]}</Badge>
+                            <Badge className={cn(SELO, tipoColors[venda.tipo])}>{tipoLabels[venda.tipo]}</Badge>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-xs text-muted-foreground">Qtd: {venda.quantidade}</span>
-                            <div className="flex items-center gap-2">
-                              <span className={`font-medium text-sm ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                                <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
-                              </span>
-                              {renderAcoesVenda(venda)}
-                            </div>
+                            <span className={`font-medium text-sm ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
+                              <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
+                            </span>
                           </div>
+                          {renderAcoesVenda(venda)}
                         </Card>
                       ))}
                     </div>
@@ -814,7 +843,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                   </TableCell>
                   <TableCell className={TD}><DataVendaCompacta data={venda.data} /></TableCell>
                   <TableCell className={TD}>
-                    <Badge className={`${tipoColors[venda.tipo]} max-w-full px-2`}>
+                    <Badge className={cn(SELO, tipoColors[venda.tipo], "max-w-full")}>
                       <span className="truncate">{tipoLabels[venda.tipo]}</span>
                     </Badge>
                   </TableCell>
@@ -886,7 +915,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                       <TableCell className={TD}></TableCell>
                       <TableCell className={TD}><DataVendaCompacta data={venda.data} className="text-muted-foreground" /></TableCell>
                       <TableCell className={TD}>
-                        <Badge className={`${tipoColors[venda.tipo]} max-w-full px-2`}>
+                        <Badge className={cn(SELO, tipoColors[venda.tipo], "max-w-full")}>
                           <span className="truncate">{tipoLabels[venda.tipo]}</span>
                         </Badge>
                       </TableCell>
