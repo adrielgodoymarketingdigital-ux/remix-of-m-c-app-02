@@ -28,7 +28,9 @@ const STATUS_PADRAO: Omit<OSStatusConfig, 'id' | 'user_id'>[] = [
 ];
 
 const resolverUserId = async (): Promise<string | null> => {
-  const { data: { user } } = await supabase.auth.getUser();
+  // getSession lê a sessão local (sem ir à rede como getUser); o RLS valida o token em cada consulta.
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return null;
 
   const { data: funcData } = await supabase
@@ -63,15 +65,19 @@ export const useOSStatusConfig = () => {
   const [statusList, setStatusList] = useState<OSStatusConfig[]>(_statusCache?.list ?? STATUS_INICIAL);
   const [loading, setLoading] = useState(true);
   const carregouRef = useRef(false);
+  // Usuário (auth) cujos status já foram carregados — evita recarregar no SIGNED_IN que o
+  // auth-js dispara toda vez que a aba volta a ficar visível (mesmo usuário).
+  const usuarioCarregadoRef = useRef<string | null>(null);
   const { toast } = useToast();
 
-  const carregarStatus = useCallback(async () => {
+  /** Carrega os status do dono; true = carregou (uso interno para saber se precisa tentar de novo). */
+  const carregarStatusInterno = useCallback(async (): Promise<boolean> => {
     try {
       setLoading(true);
       const userId = await resolverUserId();
       if (!userId) {
         setLoading(false);
-        return;
+        return false;
       }
 
       const { data, error } = await supabase
@@ -99,40 +105,62 @@ export const useOSStatusConfig = () => {
         setStatusList(list);
       }
       carregouRef.current = true;
+      return true;
     } catch (error) {
       console.error("Erro ao carregar status config:", error);
+      return false;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    // Tenta carregar imediatamente
-    carregarStatus();
+  // Assinatura pública inalterada (Promise<void>), usada pelo contexto e pelas edições do admin.
+  const carregarStatus = useCallback(async (): Promise<void> => {
+    await carregarStatusInterno();
+  }, [carregarStatusInterno]);
 
-    // Garante carregamento quando a sessão estiver pronta
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+  useEffect(() => {
+    // Carrega uma vez por usuário. O INITIAL_SESSION (entregue a todo ouvinte novo) faz a
+    // primeira carga; o SIGNED_IN que o auth-js repete a cada volta à aba é ignorado se o
+    // usuário é o mesmo. Só recarrega quando o usuário realmente muda. Edições do admin
+    // (criar/atualizar/excluir) recarregam por conta própria.
+    const carregarSeOutroUsuario = (authUserId: string | null | undefined) => {
+      if (!authUserId || authUserId === usuarioCarregadoRef.current) return;
+      usuarioCarregadoRef.current = authUserId;
+      carregarStatusInterno().then((ok) => {
+        // Falhou: deixa a próxima volta à aba / retentativa tentar de novo.
+        if (!ok && usuarioCarregadoRef.current === authUserId) usuarioCarregadoRef.current = null;
+      });
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         _statusCache = null;
+        usuarioCarregadoRef.current = null;
+        carregouRef.current = false;
         setStatusList(STATUS_INICIAL);
-      } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-        carregarStatus();
+      } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'USER_UPDATED') {
+        carregarSeOutroUsuario(session?.user?.id);
       }
       // TOKEN_REFRESHED ignorado — não recarrega dados
     });
 
     return () => subscription.unsubscribe();
-  }, [carregarStatus]);
+  }, [carregarStatusInterno]);
 
-  // Retry: se após 3s ainda está com placeholders, tenta de novo
+  // Retry: se após 3s ainda está com placeholders (ex.: INITIAL_SESSION veio sem sessão), tenta de novo
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!carregouRef.current) {
-        carregarStatus();
-      }
+    const timer = setTimeout(async () => {
+      if (carregouRef.current) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      const authUserId = session?.user?.id;
+      if (!authUserId) return;
+      usuarioCarregadoRef.current = authUserId;
+      const ok = await carregarStatusInterno();
+      if (!ok && usuarioCarregadoRef.current === authUserId) usuarioCarregadoRef.current = null;
     }, 3000);
     return () => clearTimeout(timer);
-  }, [carregarStatus]);
+  }, [carregarStatusInterno]);
 
   const criarStatus = async (dados: { nome: string; cor: string; gera_conta: boolean; tipo_conta: string; pedir_data_vencimento: boolean }) => {
     try {
