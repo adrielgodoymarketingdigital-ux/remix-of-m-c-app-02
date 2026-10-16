@@ -32,6 +32,32 @@ const MESES = [
   { value: "12", label: "Dezembro" },
 ];
 
+// Visual dos filtros (referência layout-contas). Só classes; os Tabs/Selects são os mesmos.
+const SEGMENTO = "grid h-auto w-full grid-cols-3 gap-[3px] rounded-[13px] bg-[#EEF1F5] p-1 dark:bg-muted";
+const OPCAO = "h-11 rounded-[10px] text-xs font-medium text-muted-foreground data-[state=active]:font-bold";
+// 1º grupo: ativo azul sólido; 2º grupo: ativo azul-claro (como na imagem de referência)
+const OPCAO_ATIVA_FORTE = "data-[state=active]:bg-[#246BFF] data-[state=active]:text-white data-[state=active]:shadow-[0_3px_10px_rgba(36,107,255,0.25)]";
+const OPCAO_ATIVA_SUAVE = "data-[state=active]:bg-[#E8F0FF] data-[state=active]:text-[#246BFF] data-[state=active]:shadow-[0_3px_10px_rgba(16,24,40,0.055)] dark:data-[state=active]:bg-primary/15 dark:data-[state=active]:text-primary";
+const CAMPO_FILTRO = "h-11 w-full rounded-xl border-border bg-card";
+
+/** Ilustração decorativa do cabeçalho: documento com cifrão (SVG próprio). */
+function IlustracaoContas() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 120 90" className="h-[78px] w-[104px] opacity-90 min-[391px]:h-[90px] min-[391px]:w-[120px] dark:opacity-60">
+      <circle cx="16" cy="40" r="7" fill="#C9DCFF" />
+      <path d="M16 47 C17 60 20 70 24 80" stroke="#C9DCFF" strokeWidth="3" strokeLinecap="round" fill="none" />
+      <rect x="30" y="6" width="58" height="76" rx="9" fill="#E3EDFF" />
+      <rect x="36" y="2" width="58" height="76" rx="9" fill="#D3E3FF" opacity="0.7" />
+      <rect x="44" y="20" width="26" height="5" rx="2.5" fill="#9DBFFF" />
+      <rect x="44" y="32" width="40" height="5" rx="2.5" fill="#B5CEFF" />
+      <rect x="44" y="44" width="34" height="5" rx="2.5" fill="#9DBFFF" />
+      <rect x="44" y="56" width="40" height="5" rx="2.5" fill="#B5CEFF" />
+      <circle cx="96" cy="32" r="17" fill="#3D7EFF" />
+      <text x="96" y="39" textAnchor="middle" fontSize="20" fontWeight="700" fill="#fff" fontFamily="Inter, system-ui, sans-serif">$</text>
+    </svg>
+  );
+}
+
 const ANOS = Array.from({ length: 2035 - 2020 + 1 }, (_, i) => (2035 - i).toString());
 
 export default function Contas() {
@@ -172,26 +198,39 @@ export default function Contas() {
   return (
     <AppLayout>
       <main className="flex-1 p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Contas a Pagar/Receber</h1>
-            <p className="text-muted-foreground">
+        <div className="flex items-end justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="max-w-[290px] text-[26px] font-extrabold leading-[1.18] tracking-[-1px] text-[#0B1429] min-[391px]:text-[30px] md:max-w-[600px] md:text-4xl dark:text-foreground">
+              Contas a Pagar/Receber
+            </h1>
+            <p className="mt-3 max-w-[240px] text-[13px] leading-[1.6] text-muted-foreground md:max-w-none">
               Controle suas contas a pagar e receber
             </p>
           </div>
-          <Button onClick={handleNovaConta}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Conta
-          </Button>
+          <div className="flex w-[42%] max-w-[230px] shrink-0 flex-col items-end">
+            <IlustracaoContas />
+            <button
+              type="button"
+              onClick={handleNovaConta}
+              className={cn(
+                "-mt-3 flex h-[51px] w-full items-center justify-center gap-2.5 rounded-xl text-[15px] font-semibold text-white",
+                "bg-[linear-gradient(100deg,#1748E9,#079FD0)] shadow-[0_8px_18px_rgba(36,107,255,0.15)] transition hover:brightness-105",
+                "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              )}
+            >
+              <Plus className="h-5 w-5" aria-hidden="true" />
+              Nova Conta
+            </button>
+          </div>
         </div>
 
         {/* Dashboard - receives filtered data */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
+          <div className="grid grid-cols-1 gap-[13px] md:grid-cols-2">
+            <Skeleton className="h-[105px] w-full rounded-[17px]" />
+            <Skeleton className="h-[105px] w-full rounded-[17px]" />
+            <Skeleton className="h-[105px] w-full rounded-[17px]" />
+            <Skeleton className="h-[105px] w-full rounded-[17px]" />
           </div>
         ) : (
           <DashboardContas contas={contasFiltradas} />
@@ -199,28 +238,28 @@ export default function Contas() {
 
         {/* Filtros */}
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col gap-3 md:flex-row md:gap-4">
             <Tabs
               value={filtroTipo}
               onValueChange={(v: any) => setFiltroTipo(v)}
-              className="w-full md:w-auto"
+              className="w-full md:w-[380px]"
             >
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="todos">Todas</TabsTrigger>
-                <TabsTrigger value="pagar" style={{ backgroundColor: filtroTipo === 'pagar' ? '#2563eb' : undefined, color: filtroTipo === 'pagar' ? '#fff' : undefined }}>A Pagar</TabsTrigger>
-                <TabsTrigger value="receber" style={{ backgroundColor: filtroTipo === 'receber' ? '#2563eb' : undefined, color: filtroTipo === 'receber' ? '#fff' : undefined }}>A Receber</TabsTrigger>
+              <TabsList aria-label="Tipo de conta" className={SEGMENTO}>
+                <TabsTrigger value="todos" className={cn(OPCAO, OPCAO_ATIVA_FORTE)}>Todas</TabsTrigger>
+                <TabsTrigger value="pagar" className={cn(OPCAO, OPCAO_ATIVA_FORTE)}>A Pagar</TabsTrigger>
+                <TabsTrigger value="receber" className={cn(OPCAO, OPCAO_ATIVA_FORTE)}>A Receber</TabsTrigger>
               </TabsList>
             </Tabs>
 
             <Tabs
               value={filtroStatus}
               onValueChange={(v: any) => setFiltroStatus(v)}
-              className="w-full md:w-auto"
+              className="w-full md:w-[380px]"
             >
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="todos">Todos</TabsTrigger>
-                <TabsTrigger value="pendente" style={{ backgroundColor: filtroStatus === 'pendente' ? '#16a34a' : undefined, color: filtroStatus === 'pendente' ? '#fff' : undefined }}>Pendentes</TabsTrigger>
-                <TabsTrigger value="pago" style={{ backgroundColor: filtroStatus === 'pago' ? '#16a34a' : undefined, color: filtroStatus === 'pago' ? '#fff' : undefined }}>Pagas</TabsTrigger>
+              <TabsList aria-label="Situação da conta" className={SEGMENTO}>
+                <TabsTrigger value="todos" className={cn(OPCAO, OPCAO_ATIVA_SUAVE)}>Todos</TabsTrigger>
+                <TabsTrigger value="pendente" className={cn(OPCAO, OPCAO_ATIVA_SUAVE)}>Pendentes</TabsTrigger>
+                <TabsTrigger value="pago" className={cn(OPCAO, OPCAO_ATIVA_SUAVE)}>Pagas</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -231,7 +270,7 @@ export default function Contas() {
               setMesSelecionado(v === "todos" ? "" : v);
               if (v !== "todos") { setDataInicio(undefined); setDataFim(undefined); }
             }}>
-              <SelectTrigger className="w-full md:w-[160px]">
+              <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[160px]")}>
                 <SelectValue placeholder="Mês" />
               </SelectTrigger>
               <SelectContent>
@@ -246,7 +285,7 @@ export default function Contas() {
               setAnoSelecionado(v === "todos" ? "" : v);
               if (v !== "todos") { setDataInicio(undefined); setDataFim(undefined); }
             }}>
-              <SelectTrigger className="w-full md:w-[120px]">
+              <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[120px]")}>
                 <SelectValue placeholder="Ano" />
               </SelectTrigger>
               <SelectContent>
@@ -258,7 +297,7 @@ export default function Contas() {
             </Select>
 
             <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-              <SelectTrigger className="w-full md:w-[200px]">
+              <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[200px]")}>
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
@@ -270,7 +309,7 @@ export default function Contas() {
             </Select>
 
             <Select value={filtroFornecedor} onValueChange={setFiltroFornecedor}>
-              <SelectTrigger className="w-full md:w-[200px]">
+              <SelectTrigger className={cn(CAMPO_FILTRO, "md:w-[200px]")}>
                 <SelectValue placeholder="Fornecedor" />
               </SelectTrigger>
               <SelectContent>
@@ -283,7 +322,7 @@ export default function Contas() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full md:w-[180px] justify-start text-left font-normal", !dataInicio && "text-muted-foreground")}>
+                <Button variant="outline" className={cn(CAMPO_FILTRO, "md:w-[180px] justify-start text-left font-normal", !dataInicio && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dataInicio ? format(dataInicio, "dd/MM/yyyy") : "Data início"}
                 </Button>
@@ -295,7 +334,7 @@ export default function Contas() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full md:w-[180px] justify-start text-left font-normal", !dataFim && "text-muted-foreground")}>
+                <Button variant="outline" className={cn(CAMPO_FILTRO, "md:w-[180px] justify-start text-left font-normal", !dataFim && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dataFim ? format(dataFim, "dd/MM/yyyy") : "Data fim"}
                 </Button>
@@ -306,7 +345,7 @@ export default function Contas() {
             </Popover>
 
             {temFiltrosAtivos && (
-              <Button variant="ghost" size="sm" onClick={limparFiltros}>
+              <Button variant="ghost" size="sm" onClick={limparFiltros} className="h-11 rounded-xl">
                 <X className="h-4 w-4 mr-1" />
                 Limpar filtros
               </Button>
