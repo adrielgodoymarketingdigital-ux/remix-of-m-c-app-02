@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // =====================================================================
@@ -12,19 +12,26 @@ import { cn } from "@/lib/utils";
 // =====================================================================
 export const BANNER_NFE_DATA_LIMITE = new Date("2026-12-14T23:59:59-03:00");
 
-// Data limite do banner "Disponível nas lojas oficiais" (só no celular).
+// Data limite do banner "Disponível nas lojas oficiais".
 // null = sem limite. Para definir: new Date("2027-01-31T23:59:59-03:00") (horário de Brasília).
 export const BANNER_LOJAS_DATA_LIMITE: Date | null = null;
 
 const STORAGE_KEY = "banner_nfe_fechado_ate";
 const DIAS_OCULTO_AO_FECHAR = 7;
 const INTERVALO_TROCA_MS = 5000;
-// Mesmo ponto em que a <picture> abaixo troca para a imagem de desktop: o carrossel só existe abaixo dele.
-const MIDIA_DESKTOP = "(min-width: 640px)";
+// A partir daqui usa a imagem de desktop (3:1); abaixo, a de celular (2:1).
+const MIDIA_DESKTOP = "(min-width: 768px)";
 
-const SLIDES_CELULAR = [
-  { src: "/banners/nfe-celular.webp", alt: "Em breve: emissão de notas fiscais no sistema", limite: BANNER_NFE_DATA_LIMITE },
-  { src: "/banners/lojas-celular.webp", alt: "Em breve: aplicativo disponível nas lojas oficiais", limite: BANNER_LOJAS_DATA_LIMITE },
+interface Slide {
+  celular: string;
+  desktop: string;
+  alt: string;
+  limite: Date | null;
+}
+
+const SLIDES: Slide[] = [
+  { celular: "/banners/nfe-celular.webp", desktop: "/banners/nfe-desktop-3x1.webp", alt: "Em breve: emissão de notas fiscais no sistema", limite: BANNER_NFE_DATA_LIMITE },
+  { celular: "/banners/lojas-celular.webp", desktop: "/banners/lojas-desktop-3x1.webp", alt: "Em breve: aplicativo disponível nas lojas oficiais", limite: BANNER_LOJAS_DATA_LIMITE },
 ];
 
 function fechadoNesteAparelho(): boolean {
@@ -51,6 +58,31 @@ function useMidia(consulta: string): boolean {
   return bate;
 }
 
+/** Imagem de um banner: a <picture> escolhe celular (2:1) ou desktop (3:1) pela largura da tela. */
+function ImagemBanner({ slide, onLoad }: { slide: Slide; onLoad?: () => void }) {
+  return (
+    <picture>
+      <source media={MIDIA_DESKTOP} srcSet={slide.desktop} width={2000} height={667} />
+      <img
+        src={slide.celular}
+        width={1774}
+        height={887}
+        loading="lazy"
+        decoding="async"
+        alt={slide.alt}
+        draggable={false}
+        onLoad={onLoad}
+        className="block h-full w-full select-none object-cover"
+      />
+    </picture>
+  );
+}
+
+// Proporção fixa (sem pulo de layout): 2:1 no celular, 3:1 no desktop.
+// No desktop a largura é limitada a 1020px para a altura não passar de 340px.
+const CAIXA = "relative mx-auto mb-6 w-full overflow-hidden rounded-2xl md:max-w-[1020px]";
+const PROPORCAO = "aspect-[2/1] md:aspect-[3/1]";
+
 interface BannerNfeEmBreveProps {
   /** Só o dono da loja vê (funcionário e gerente de filial não). */
   visivel: boolean;
@@ -58,9 +90,11 @@ interface BannerNfeEmBreveProps {
 
 export function BannerNfeEmBreve({ visivel }: BannerNfeEmBreveProps) {
   const [fechado, setFechado] = useState(fechadoNesteAparelho);
-  const desktop = useMidia(MIDIA_DESKTOP);
 
   if (!visivel || fechado) return null;
+
+  const slides = SLIDES.filter((s) => dentroDoPrazo(s.limite));
+  if (slides.length === 0) return null;
 
   const fechar = () => {
     setFechado(true);
@@ -71,69 +105,39 @@ export function BannerNfeEmBreve({ visivel }: BannerNfeEmBreveProps) {
     }
   };
 
-  const botaoFechar = (
-    <button
-      type="button"
-      onClick={fechar}
-      aria-label="Fechar aviso"
-      title="Fechar"
-      className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-    >
-      <X className="h-4 w-4" />
-    </button>
-  );
-
-  // Desktop: exatamente o banner de NF-e de antes.
-  if (desktop) {
-    if (!dentroDoPrazo(BANNER_NFE_DATA_LIMITE)) return null;
-    return (
-      <div className="relative mb-6 overflow-hidden rounded-2xl">
-        <picture>
-          <source media="(min-width: 640px)" srcSet="/banners/nfe-desktop.webp" width={2048} height={768} />
-          <img
-            src="/banners/nfe-celular.webp"
-            width={1774}
-            height={887}
-            loading="lazy"
-            decoding="async"
-            alt="Em breve: emissão de notas fiscais no sistema"
-            className="block h-auto w-full"
-          />
-        </picture>
-        {botaoFechar}
-      </div>
-    );
-  }
-
-  // Celular: carrossel com os banners ainda no prazo.
-  const slides = SLIDES_CELULAR.filter((s) => dentroDoPrazo(s.limite));
-  if (slides.length === 0) return null;
-
   return (
-    <div className="relative mb-6 overflow-hidden rounded-2xl">
+    <div className={CAIXA}>
       {slides.length === 1 ? (
-        <img
-          src={slides[0].src}
-          width={1774}
-          height={887}
-          loading="lazy"
-          decoding="async"
-          alt={slides[0].alt}
-          className="block aspect-[2/1] h-auto w-full"
-        />
+        <div className={PROPORCAO}>
+          <ImagemBanner slide={slides[0]} />
+        </div>
       ) : (
         <CarrosselBanners slides={slides} />
       )}
-      {botaoFechar}
+      <button
+        type="button"
+        onClick={fechar}
+        aria-label="Fechar aviso"
+        title="Fechar"
+        className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 }
 
+const BOTAO_SETA = cn(
+  "absolute top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white ring-1 ring-white/25 backdrop-blur-[2px] transition md:grid",
+  "opacity-0 hover:bg-black/65 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+);
+
 /** Estado do carrossel isolado aqui: a troca automática não re-renderiza o Dashboard. */
-function CarrosselBanners({ slides }: { slides: { src: string; alt: string }[] }) {
+function CarrosselBanners({ slides }: { slides: Slide[] }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   const [atual, setAtual] = useState(0);
   const [segurando, setSegurando] = useState(false);
+  const [mouseEmCima, setMouseEmCima] = useState(false);
   const [comFoco, setComFoco] = useState(false);
   const [abaVisivel, setAbaVisivel] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
   const reduzirMovimento = useMidia("(prefers-reduced-motion: reduce)");
@@ -158,7 +162,7 @@ function CarrosselBanners({ slides }: { slides: { src: string; alt: string }[] }
     return () => document.removeEventListener("visibilitychange", aoMudarVisibilidade);
   }, []);
 
-  const pausado = segurando || comFoco || !abaVisivel || reduzirMovimento;
+  const pausado = segurando || mouseEmCima || comFoco || !abaVisivel || reduzirMovimento;
 
   useEffect(() => {
     if (!emblaApi || pausado) return;
@@ -173,33 +177,26 @@ function CarrosselBanners({ slides }: { slides: { src: string; alt: string }[] }
       role="region"
       aria-roledescription="carousel"
       aria-label="Novidades"
+      className="group"
       onFocus={() => setComFoco(true)}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setComFoco(false); }}
-      onPointerLeave={() => setSegurando(false)}
+      // "Mouse em cima" só conta para mouse de verdade: no toque o navegador não avisa a saída.
+      onPointerEnter={(e) => { if (e.pointerType === "mouse") setMouseEmCima(true); }}
+      onPointerLeave={(e) => { setSegurando(false); if (e.pointerType === "mouse") setMouseEmCima(false); }}
       onPointerCancel={() => setSegurando(false)}
     >
-      <div ref={emblaRef} className="aspect-[2/1] w-full touch-pan-y overflow-hidden">
+      <div ref={emblaRef} className={cn(PROPORCAO, "w-full touch-pan-y overflow-hidden")}>
         <div className="flex h-full">
           {slides.map((s, i) => (
             <div
-              key={s.src}
+              key={s.celular}
               role="group"
               aria-roledescription="slide"
               aria-label={`${i + 1} de ${slides.length}`}
               className="h-full min-w-0 shrink-0 grow-0 basis-full"
             >
               {i === 0 || primeiraCarregou ? (
-                <img
-                  src={s.src}
-                  width={1774}
-                  height={887}
-                  loading="lazy"
-                  decoding="async"
-                  alt={s.alt}
-                  draggable={false}
-                  onLoad={i === 0 ? () => setPrimeiraCarregou(true) : undefined}
-                  className="block h-full w-full select-none object-cover"
-                />
+                <ImagemBanner slide={s} onLoad={i === 0 ? () => setPrimeiraCarregou(true) : undefined} />
               ) : (
                 <div className="h-full w-full bg-[#0B1429]" aria-hidden="true" />
               )}
@@ -208,8 +205,16 @@ function CarrosselBanners({ slides }: { slides: { src: string; alt: string }[] }
         </div>
       </div>
 
+      {/* Setas (só desktop): aparecem ao passar o mouse e ao focar */}
+      <button type="button" onClick={() => emblaApi?.scrollPrev()} aria-label="Banner anterior" className={cn(BOTAO_SETA, "left-3")}>
+        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+      </button>
+      <button type="button" onClick={() => emblaApi?.scrollNext()} aria-label="Próximo banner" className={cn(BOTAO_SETA, "right-3")}>
+        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+      </button>
+
       {/* Pontinhos: fundo translúcido escuro para ficarem visíveis em qualquer tema */}
-      <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/40 px-2 py-1 backdrop-blur-[2px]">
+      <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/40 px-2 py-1 backdrop-blur-[2px] md:bottom-3">
         {slides.map((_, i) => (
           <button
             key={i}
