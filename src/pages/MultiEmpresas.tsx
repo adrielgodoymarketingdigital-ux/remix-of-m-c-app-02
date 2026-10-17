@@ -133,10 +133,10 @@ function SeletorPeriodo({ periodo, onChange }: { periodo: Periodo; onChange: (p:
         ))}
       </div>
       {periodo.tipo === "customizado" && (
-        <div className="flex items-center gap-1.5">
-          <Input type="date" value={customInicio} onChange={e => setCustomInicio(e.target.value)} className="h-7 text-xs w-36" />
+        <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+          <Input type="date" value={customInicio} onChange={e => setCustomInicio(e.target.value)} className="h-7 min-w-[120px] flex-1 text-xs sm:w-36 sm:flex-none" />
           <span className="text-xs text-muted-foreground">até</span>
-          <Input type="date" value={customFim} onChange={e => setCustomFim(e.target.value)} className="h-7 text-xs w-36" />
+          <Input type="date" value={customFim} onChange={e => setCustomFim(e.target.value)} className="h-7 min-w-[120px] flex-1 text-xs sm:w-36 sm:flex-none" />
           <Button size="sm" className="h-7 text-xs px-2" onClick={aplicarCustom}>Aplicar</Button>
         </div>
       )}
@@ -159,7 +159,7 @@ function KpiCard({ titulo, valor, sub, icon: Icon, cor, variacao }: {
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-muted-foreground uppercase tracking-wider truncate">{titulo}</p>
-            <p className="text-2xl font-bold mt-0.5 truncate" style={{ color: cor }}>{valor}</p>
+            <p className="text-2xl lg:text-xl 2xl:text-2xl font-bold mt-0.5 truncate" style={{ color: cor }}>{valor}</p>
             {sub && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{sub}</p>}
           </div>
           <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${cor}18` }}>
@@ -284,7 +284,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
       {/* KPIs principais */}
       <div>
         <p className="text-xs text-muted-foreground mb-2">Resumo consolidado de todas as empresas no período selecionado.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard titulo="Faturamento Total" valor={formatarMoedaCompacta(fatTotal)} sub={`OS: ${formatarMoedaCompacta(fatOS)} · Vendas: ${formatarMoedaCompacta(fatVendas)}`} icon={DollarSign} cor="#3b82f6" />
           <KpiCard titulo="Ordens de Serviço" valor={String(osTotal)} sub={`${osFinalizadas} finalizadas · ${osAbertas} em aberto`} icon={Activity} cor="#10b981" />
           <KpiCard titulo="Ticket Médio Global" valor={formatarMoedaCompacta(ticketMedioGlobal)} sub={`${taxaFinalizacao}% taxa de finalização`} icon={TrendingUp} cor="#8b5cf6" />
@@ -338,7 +338,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
-                <ReBarChart data={dadosBarras} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <ReBarChart data={dadosBarras} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis dataKey="nome" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
@@ -417,12 +417,12 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               const ticket = emp.metricas.os_mes > 0 ? emp.metricas.faturamento_mes / emp.metricas.os_mes : 0;
               return (
                 <div key={emp.id} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+                    <div className="flex min-w-0 items-center gap-2">
                       <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: cor }} />
                       <span className="font-medium">{emp.nome}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <div className="ml-auto flex shrink-0 items-center gap-2 whitespace-nowrap text-[10px] text-muted-foreground">
                       <span className="text-emerald-400 font-medium">{emp.metricas.os_finalizadas} fin.</span>
                       <span>/</span>
                       <span className={emp.metricas.os_em_aberto > 0 ? "text-amber-400 font-medium" : ""}>{emp.metricas.os_em_aberto} ab.</span>
@@ -957,9 +957,9 @@ function RelatoriosFilial({ empresa, periodo }: { empresa: EmpresaCard; periodo:
     { key: "pagamento" as const, label: "Pagamentos", icon: CreditCard },
   ];
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1">
+    <div className="min-w-0 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1">
           {abas.map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setAba(key)}
               className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md transition-colors ${aba === key ? "bg-blue-500/20 text-blue-400 font-medium" : "text-muted-foreground hover:text-foreground"}`}>
@@ -1040,9 +1040,9 @@ function DialogRelatorios({ open, onClose, empresas, periodo }: { open: boolean;
   const empresa = empresas.find(e => e.id === empresaSel) || empresas[0];
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto content-start [&>*]:min-w-0">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><FileText className="h-4 w-4" />Relatórios por Filial</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><FileText className="h-4 w-4 shrink-0" />Relatórios por Filial</DialogTitle>
           <DialogDescription>Período: {formatarData(periodo.data_inicio)} – {formatarData(periodo.data_fim)}</DialogDescription>
         </DialogHeader>
         {empresas.length > 1 && (
@@ -1291,18 +1291,18 @@ export default function MultiEmpresas() {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">
+      <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto w-full min-w-0">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <h1 className="text-2xl font-bold">Multi Empresas</h1>
               <Badge variant="outline" className="text-xs">{isLoading ? "..." : filiais.length}/3 filiais</Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-1">Gerencie e compare todas as suas empresas.</p>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex flex-wrap gap-2 sm:shrink-0 sm:flex-nowrap [&>button]:flex-1 sm:[&>button]:flex-none">
             <Button variant="outline" size="sm" onClick={() => carregarDados()} disabled={isLoading} className="text-sm">
               <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} />
               Atualizar
@@ -1322,7 +1322,7 @@ export default function MultiEmpresas() {
         </div>
 
         {/* Abas */}
-        <div className="flex gap-1 border-b border-border/40 pb-0">
+        <div className="flex gap-1 overflow-x-auto border-b border-border/40 pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {([
             { key: "dashboard" as AbaAtiva, label: "Dashboard", icon: LayoutDashboard },
             { key: "empresas" as AbaAtiva, label: "Empresas", icon: Layers },
@@ -1331,7 +1331,7 @@ export default function MultiEmpresas() {
             <button
               key={key}
               onClick={() => setAbaAtiva(key)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`flex flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap px-2 sm:flex-none sm:px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 abaAtiva === key
                   ? "border-blue-500 text-blue-500"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
