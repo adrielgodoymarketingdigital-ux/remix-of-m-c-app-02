@@ -34,6 +34,26 @@ const BOTAO_TOPO = cn(
 // Barrinhas decorativas dos cards Entradas/Saídas: só enfeite, não representam dados.
 const BARRAS_DECORATIVAS = [14, 22, 12, 30, 18, 10, 24, 36, 16, 12, 20, 28, 14, 40, 18, 10, 26];
 
+/**
+ * Olho do card Saldo: alterna o mesmo "ocultar valores" do cabeçalho.
+ * Precisa ser um componente filho: o OcultarValoresProvider fica dentro do
+ * AppLayout, então o hook chamado direto em Extrato() não enxerga o estado.
+ */
+function BotaoOlhoSaldo() {
+  const { valoresOcultos, toggleValores } = useOcultarValores();
+  return (
+    <button
+      type="button"
+      onClick={toggleValores}
+      aria-label={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
+      aria-pressed={valoresOcultos}
+      className={cn("grid h-7 w-7 place-items-center rounded-lg text-[#101828] transition hover:bg-black/5 dark:text-foreground dark:hover:bg-white/10", FOCO)}
+    >
+      {valoresOcultos ? <EyeOff className="h-[19px] w-[19px]" aria-hidden="true" /> : <Eye className="h-[19px] w-[19px]" aria-hidden="true" />}
+    </button>
+  );
+}
+
 function CardResumo({ tipo, titulo, valor }: { tipo: "entrada" | "saida"; titulo: string; valor: number }) {
   const entrada = tipo === "entrada";
   const Icone = entrada ? TrendingUp : TrendingDown;
@@ -111,7 +131,6 @@ export default function Extrato() {
     atualizarLancamento,
     excluirLancamento,
   } = useExtratoFinanceiro();
-  const { valoresOcultos, toggleValores } = useOcultarValores();
 
   // Lançamento manual e ajuste de balanço: grava e recarrega cards + lista.
   const salvarLancamento = async (lancamento: NovoLancamentoExtrato) => {
@@ -201,15 +220,7 @@ export default function Extrato() {
               </div>
               <div className="flex items-center gap-[9px] pr-[62px]">
                 <span className="text-sm font-semibold text-[#101828] dark:text-foreground">Saldo Atual</span>
-                <button
-                  type="button"
-                  onClick={toggleValores}
-                  aria-label={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
-                  aria-pressed={valoresOcultos}
-                  className={cn("grid h-7 w-7 place-items-center rounded-lg text-[#101828] transition hover:bg-black/5 dark:text-foreground dark:hover:bg-white/10", FOCO)}
-                >
-                  {valoresOcultos ? <EyeOff className="h-[19px] w-[19px]" aria-hidden="true" /> : <Eye className="h-[19px] w-[19px]" aria-hidden="true" />}
-                </button>
+                <BotaoOlhoSaldo />
               </div>
               <div className="mt-[13px] whitespace-nowrap pr-[62px] text-[clamp(24px,6.9vw,40px)] font-extrabold leading-tight tracking-[-1px] text-[#0B1429] dark:text-foreground md:pr-0 md:text-[28px]">
                 <ValorMonetario valor={resumo?.saldo_atual ?? 0} />
