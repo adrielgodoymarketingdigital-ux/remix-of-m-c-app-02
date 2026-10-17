@@ -8,6 +8,8 @@ import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { fimDaCarencia, fimDaCarenciaPagamentoAtrasado } from "@/lib/carenciaAssinatura";
+import { partesDataHoraBrasilia } from "@/lib/dataBrasilia";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +24,13 @@ const SELOS_INSTITUCIONAIS = [
   { icone: Sparkles, titulo: "Atualizações", subtitulo: "Em dia" },
   { icone: UserCheck, titulo: "Satisfação", subtitulo: "98% de aprovação" },
 ];
+
+/** "20/10 às 09:00" em horário de Brasília, independente do fuso do navegador. */
+function formatarLimiteBrasilia(instante: Date): string {
+  const { data, hora } = partesDataHoraBrasilia(instante);
+  const [, mes, dia] = data.split("-");
+  return `${dia}/${mes} às ${hora}`;
+}
 
 export function BannerVencimentoPlano() {
   const { assinatura } = useAssinatura();
@@ -81,8 +90,26 @@ export function BannerVencimentoPlano() {
 
       const dataFormatada = format(dataVencimento, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
+      // Instante em que o acesso bloqueia — mesma conta dos hooks de acesso
+      // (useVerificacaoAcesso/useAssinatura), via lib/carenciaAssinatura
+      const limiteAcesso = isProblem
+        ? fimDaCarenciaPagamentoAtrasado(assinatura)
+        : fimDaCarencia(assinatura.data_fim);
+      const emCarencia = limiteAcesso !== null && agora.getTime() < limiteAcesso.getTime();
+      const limiteFormatado = limiteAcesso ? formatarLimiteBrasilia(limiteAcesso) : "";
+
       // Cobrança falhou (past_due/unpaid): sempre urgente, pede atualização imediata
       if (isProblem) {
+        if (emCarencia) {
+          return {
+            tipo: "vencido" as const,
+            texto: "Não identificamos o pagamento da sua assinatura",
+            destaque: `Acesso liberado até ${limiteFormatado}`,
+            botao: "Atualizar pagamento",
+            diasRestantes,
+            percentualDecorrido,
+          };
+        }
         return {
           tipo: "vencido" as const,
           texto: "Falha no pagamento da sua assinatura",
@@ -93,12 +120,14 @@ export function BannerVencimentoPlano() {
         };
       }
 
-      // Carência de 1 dia após o vencimento (Ticto não libera renovação no mesmo dia)
-      if (diasRestantes <= -1) {
+      // Venceu mas ainda dentro da carência: mostra até quando o acesso fica liberado
+      if (diasRestantes <= 0 && emCarencia) {
         return {
-          tipo: "vencido" as const,
-          texto: isCartaoAutomatico ? "Não conseguimos renovar sua assinatura automaticamente" : "Sua assinatura venceu",
-          destaque: dataFormatada,
+          tipo: "urgente" as const,
+          texto: isCartaoAutomatico
+            ? `Não identificamos a renovação automática de ${dataFormatada}`
+            : `Sua assinatura venceu em ${dataFormatada}`,
+          destaque: `Acesso liberado até ${limiteFormatado}`,
           botao: isCartaoAutomatico ? "Atualizar pagamento" : "Renovar plano",
           diasRestantes,
           percentualDecorrido,
@@ -107,8 +136,8 @@ export function BannerVencimentoPlano() {
 
       if (diasRestantes <= 0) {
         return {
-          tipo: "urgente" as const,
-          texto: isCartaoAutomatico ? "Falha na cobrança automática — 1 dia de carência" : "Sua assinatura venceu — 1 dia de carência",
+          tipo: "vencido" as const,
+          texto: isCartaoAutomatico ? "Não conseguimos renovar sua assinatura automaticamente" : "Sua assinatura venceu",
           destaque: dataFormatada,
           botao: isCartaoAutomatico ? "Atualizar pagamento" : "Renovar plano",
           diasRestantes,

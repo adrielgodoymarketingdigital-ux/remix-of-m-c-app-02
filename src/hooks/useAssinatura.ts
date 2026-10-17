@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Assinatura, LIMITES_POR_PLANO, PlanoTipo, LimitesPlano, getLimitesFree } from "@/types/assinatura";
 import { periodoLimiteDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
+import { carenciaEsgotada, pagamentoAtrasadoEmCarencia } from "@/lib/carenciaAssinatura";
 import { PLANOS } from "@/types/plano";
 import { trackInitiateCheckout } from "@/lib/tracking";
 
@@ -294,16 +295,9 @@ export function useAssinatura() {
       'profissional_ultra_mensal', 'profissional_ultra_anual',
     ];
     if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active') {
-      if (assinatura.data_fim) {
-        const dataFim = new Date(assinatura.data_fim);
-        // 3 dias de carência após o vencimento, alinhado com o prazo do
-        // cron cancelar-assinaturas-vencidas que tenta a cobrança de novo
-        const dataFimComCarencia = new Date(dataFim.getTime() + 3 * 24 * 60 * 60 * 1000);
-        if (!Number.isNaN(dataFim.getTime()) && dataFimComCarencia < new Date()) {
-          return true;
-        }
-      }
-      return false;
+      // Carência após o vencimento, alinhada com o prazo do cron
+      // cancelar-assinaturas-vencidas que tenta a cobrança de novo
+      return carenciaEsgotada(assinatura.data_fim, new Date());
     }
     
     // Trial cancelado = expirado
@@ -424,7 +418,10 @@ export function useAssinatura() {
     ];
 
     const statusExpirado = ['canceled', 'past_due', 'unpaid', 'incomplete_expired'];
-    
+
+    // Cobrança falhou mas ainda dentro da carência: plano segue valendo
+    if (pagamentoAtrasadoEmCarencia(assinatura, new Date())) return false;
+
     return planosPagos.includes(assinatura.plano_tipo) && statusExpirado.includes(assinatura.status);
   }, [assinatura]);
 
@@ -491,7 +488,9 @@ export function useAssinatura() {
     }
 
     // Pagamento problemático ou cancelado: downgrade para limites Free
-    if (assinatura.status === 'canceled' || assinatura.status === 'past_due' || assinatura.status === 'unpaid' || assinatura.status === 'incomplete_expired') {
+    // (exceto cobrança falha ainda dentro da carência: mantém os limites do plano)
+    if ((assinatura.status === 'canceled' || assinatura.status === 'past_due' || assinatura.status === 'unpaid' || assinatura.status === 'incomplete_expired') &&
+        !pagamentoAtrasadoEmCarencia(assinatura, new Date())) {
       console.log("📋 Assinatura com status problemático, aplicando limites Free:", assinatura.status);
       return aplicarModulosExtras(getLimitesFree(assinatura.created_at), assinatura);
     }

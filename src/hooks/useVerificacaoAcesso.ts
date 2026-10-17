@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { saveSessionMeta, saveSubscriptionCache, getSubscriptionCache } from "@/lib/sessionStorage";
+import { carenciaEsgotada, pagamentoAtrasadoEmCarencia } from "@/lib/carenciaAssinatura";
 
 export type StatusVerificacao = 
   | "verificando"        // Ainda carregando dados
@@ -148,18 +149,19 @@ export function useVerificacaoAcesso() {
       'profissional_ultra_mensal', 'profissional_ultra_anual',
     ];
     if (planosPagos.includes(assinatura.plano_tipo) && assinatura.status === 'active') {
-      if (assinatura.data_fim) {
-        const dataFim = new Date(assinatura.data_fim);
-        // 3 dias de carência após o vencimento, alinhado com o prazo do
-        // cron cancelar-assinaturas-vencidas que tenta a cobrança de novo
-        const dataFimComCarencia = new Date(dataFim.getTime() + 3 * 24 * 60 * 60 * 1000);
-        if (!Number.isNaN(dataFim.getTime()) && dataFimComCarencia < new Date()) {
-          console.log("⛔ [useVerificacaoAcesso] Plano pago com status 'active' mas data_fim + carência já passou - expirado", {
-            data_fim: assinatura.data_fim,
-          });
-          return true;
-        }
+      // Carência após o vencimento, alinhada com o prazo do cron
+      // cancelar-assinaturas-vencidas que tenta a cobrança de novo
+      if (carenciaEsgotada(assinatura.data_fim, new Date())) {
+        console.log("⛔ [useVerificacaoAcesso] Plano pago com status 'active' mas data_fim + carência já passou - expirado", {
+          data_fim: assinatura.data_fim,
+        });
+        return true;
       }
+      return false;
+    }
+
+    // Cobrança falhou (past_due/unpaid) mas ainda dentro da carência = não expirado
+    if (pagamentoAtrasadoEmCarencia(assinatura, new Date())) {
       return false;
     }
 
@@ -339,6 +341,15 @@ export function useVerificacaoAcesso() {
       console.log("✅ [useVerificacaoAcesso] Plano pago ativo - liberado", {
         plano: assinatura.plano_tipo,
         status: assinatura.status,
+      });
+      return true;
+    }
+
+    // 3.1 Plano pago com cobrança falha (past_due/unpaid) dentro da carência = liberado
+    if (pagamentoAtrasadoEmCarencia(assinatura, new Date())) {
+      console.log("✅ [useVerificacaoAcesso] Pagamento atrasado dentro da carência - liberado", {
+        status: assinatura.status,
+        data_fim: assinatura.data_fim,
       });
       return true;
     }
@@ -599,7 +610,8 @@ export function useVerificacaoAcesso() {
         const donoTemAssinatura = assinatura && (
           assinatura.status === 'active' ||
           assinatura.status === 'trialing' ||
-          (assinatura.trial_with_card && !assinatura.trial_canceled)
+          (assinatura.trial_with_card && !assinatura.trial_canceled) ||
+          pagamentoAtrasadoEmCarencia(assinatura, new Date())
         );
 
         if (donoTemAssinatura) {
