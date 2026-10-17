@@ -22,9 +22,10 @@ import {
   Pencil, UserCog, Trash2, Calendar, Download, BarChart2, FileText,
   CreditCard, Package, Trophy, Activity, Layers, LayoutDashboard,
   ArrowUpRight, ArrowDownRight, Minus, TrendingDown, Zap, CheckCircle2,
-  Clock, ShoppingBag, DollarSign, Users, BarChart, PieChart as PieChartIcon,
+  Clock, ShoppingBag, DollarSign, Users, BarChart, PieChart as PieChartIcon, PlusCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   BarChart as ReBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, LineChart, Line, CartesianGrid, RadarChart,
@@ -84,6 +85,17 @@ const PERIODOS_OPCOES: { valor: TipoPeriodo; label: string }[] = [
   { valor: "customizado", label: "Personalizado" },
 ];
 
+// ─── Visual (referência layout-multiempresas). Só classes, locais desta tela ──
+const FOCO = "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#246BFF]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+const BOTAO_ACAO = cn(
+  "flex h-[43px] min-w-0 items-center justify-center gap-[7px] whitespace-nowrap rounded-[10px] px-2 text-[11px] font-semibold transition sm:px-4 sm:text-sm",
+  "disabled:pointer-events-none disabled:opacity-50 [&>svg]:h-[15px] [&>svg]:w-[15px] [&>svg]:shrink-0",
+  FOCO,
+);
+const BOTAO_ACAO_NEUTRO = "border border-border bg-card text-[#101828] shadow-[0_2px_8px_rgba(16,24,40,0.03)] hover:bg-muted/60 dark:text-foreground";
+// Barrinhas decorativas dos cards de indicadores: só enfeite, não representam dados.
+const BARRAS_DECORATIVAS = [12, 22, 15, 25, 19, 31];
+
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
 function calcularPeriodo(tipo: TipoPeriodo): { data_inicio: string; data_fim: string } {
@@ -120,28 +132,38 @@ function SeletorPeriodo({ periodo, onChange }: { periodo: Periodo; onChange: (p:
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Calendar className="h-3.5 w-3.5" /><span>Período:</span>
+    <div className="space-y-3.5">
+      {/* Rótulo à esquerda e intervalo à direita (como na imagem de referência) */}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-[#526580] dark:text-muted-foreground sm:text-xs">
+        <span className="flex items-center gap-[7px]"><Calendar className="h-[15px] w-[15px]" aria-hidden="true" />Período</span>
+        {periodo.tipo !== "customizado" && (
+          <span className="flex items-center gap-[7px]">
+            <Calendar className="h-[15px] w-[15px]" aria-hidden="true" />
+            <span>({formatarData(periodo.data_inicio)} – {formatarData(periodo.data_fim)})</span>
+          </span>
+        )}
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div role="group" aria-label="Período" className="grid grid-cols-3 gap-2 md:flex md:flex-wrap">
         {PERIODOS_OPCOES.map(op => (
-          <button key={op.valor} onClick={() => handleTipo(op.valor)}
-            className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${periodo.tipo === op.valor ? "bg-blue-500 text-white border-blue-500" : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border"}`}>
+          <button key={op.valor} type="button" onClick={() => handleTipo(op.valor)} aria-pressed={periodo.tipo === op.valor}
+            className={cn(
+              "min-h-[39px] min-w-0 rounded-[9px] border px-1 py-[7px] text-[10px] leading-[1.3] transition sm:text-xs md:px-4",
+              periodo.tipo === op.valor
+                ? "border-transparent bg-[linear-gradient(110deg,#246BFF,#079FD0)] font-semibold text-white shadow-[0_4px_10px_rgba(36,107,255,0.13)]"
+                : "border-[#DFE6F2] bg-card text-[#526580] hover:text-[#101828] dark:border-border dark:text-muted-foreground dark:hover:text-foreground",
+              FOCO,
+            )}>
             {op.label}
           </button>
         ))}
       </div>
       {periodo.tipo === "customizado" && (
         <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
-          <Input type="date" value={customInicio} onChange={e => setCustomInicio(e.target.value)} className="h-7 min-w-[120px] flex-1 text-xs sm:w-36 sm:flex-none" />
+          <Input type="date" value={customInicio} onChange={e => setCustomInicio(e.target.value)} className="h-10 min-w-[120px] flex-1 rounded-[9px] bg-card text-xs sm:w-40 sm:flex-none" />
           <span className="text-xs text-muted-foreground">até</span>
-          <Input type="date" value={customFim} onChange={e => setCustomFim(e.target.value)} className="h-7 min-w-[120px] flex-1 text-xs sm:w-36 sm:flex-none" />
-          <Button size="sm" className="h-7 text-xs px-2" onClick={aplicarCustom}>Aplicar</Button>
+          <Input type="date" value={customFim} onChange={e => setCustomFim(e.target.value)} className="h-10 min-w-[120px] flex-1 rounded-[9px] bg-card text-xs sm:w-40 sm:flex-none" />
+          <Button size="sm" className="h-10 rounded-[9px] px-4 text-xs" onClick={aplicarCustom}>Aplicar</Button>
         </div>
-      )}
-      {periodo.tipo !== "customizado" && (
-        <span className="text-xs text-muted-foreground">({formatarData(periodo.data_inicio)} – {formatarData(periodo.data_fim)})</span>
       )}
     </div>
   );
@@ -154,26 +176,35 @@ function KpiCard({ titulo, valor, sub, icon: Icon, cor, variacao }: {
   icon: React.ElementType; cor: string; variacao?: number;
 }) {
   return (
-    <Card className={`border-l-4`} style={{ borderLeftColor: cor }}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider truncate">{titulo}</p>
-            <p className="text-2xl lg:text-xl 2xl:text-2xl font-bold mt-0.5 truncate" style={{ color: cor }}>{valor}</p>
-            {sub && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{sub}</p>}
-          </div>
-          <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${cor}18` }}>
-            <Icon className="h-5 w-5" style={{ color: cor }} />
-          </div>
-        </div>
+    <div
+      className="relative flex min-h-[135px] items-center gap-[13px] overflow-hidden rounded-[15px] border border-l-4 border-border bg-card px-[15px] py-[18px] shadow-[0_4px_15px_rgba(20,40,80,0.035)] max-[380px]:gap-2.5 max-[380px]:px-3"
+      style={{ borderLeftColor: cor }}
+    >
+      <div
+        aria-hidden="true"
+        className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[14px] text-white shadow-[0_6px_14px_rgba(16,24,40,0.08)] max-[380px]:h-11 max-[380px]:w-11"
+        style={{ background: `linear-gradient(135deg, ${cor}B3, ${cor})` }}
+      >
+        <Icon className="h-[26px] w-[26px] max-[380px]:h-[22px] max-[380px]:w-[22px]" />
+      </div>
+      {/* Barrinhas decorativas (não são dados) — ficam atrás do texto */}
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-[17px] right-[18px] flex h-[33px] items-end gap-1 opacity-35">
+        {BARRAS_DECORATIVAS.map((h, i) => (
+          <span key={i} className="w-1.5 rounded-t-[3px]" style={{ height: h, backgroundColor: cor }} />
+        ))}
+      </div>
+      <div className="relative z-10 min-w-0 flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#60718D] dark:text-muted-foreground">{titulo}</p>
+        <p className="mt-1.5 whitespace-nowrap text-[clamp(20px,6.6vw,26px)] font-extrabold leading-tight tracking-[-0.7px] md:text-[clamp(20px,2.1vw,26px)]" style={{ color: cor }}>{valor}</p>
+        {sub && <p className="mt-[5px] break-words pr-[62px] text-[10px] leading-[1.5] text-[#667895] dark:text-muted-foreground sm:text-[11px]">{sub}</p>}
         {variacao !== undefined && (
           <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${variacao > 0 ? "text-emerald-500" : variacao < 0 ? "text-red-500" : "text-muted-foreground"}`}>
             {variacao > 0 ? <ArrowUpRight className="h-3 w-3" /> : variacao < 0 ? <ArrowDownRight className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
             {variacao > 0 ? "+" : ""}{variacao.toFixed(1)}% vs período anterior
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -260,8 +291,8 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-[135px] rounded-[15px]" />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
@@ -283,12 +314,12 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
     <div className="space-y-6">
       {/* KPIs principais */}
       <div>
-        <p className="text-xs text-muted-foreground mb-2">Resumo consolidado de todas as empresas no período selecionado.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard titulo="Faturamento Total" valor={formatarMoedaCompacta(fatTotal)} sub={`OS: ${formatarMoedaCompacta(fatOS)} · Vendas: ${formatarMoedaCompacta(fatVendas)}`} icon={DollarSign} cor="#3b82f6" />
-          <KpiCard titulo="Ordens de Serviço" valor={String(osTotal)} sub={`${osFinalizadas} finalizadas · ${osAbertas} em aberto`} icon={Activity} cor="#10b981" />
-          <KpiCard titulo="Ticket Médio Global" valor={formatarMoedaCompacta(ticketMedioGlobal)} sub={`${taxaFinalizacao}% taxa de finalização`} icon={TrendingUp} cor="#8b5cf6" />
-          <KpiCard titulo="Vendas Realizadas" valor={String(vendasTotal)} sub={`${empresas.length} empresa(s) ativas`} icon={ShoppingBag} cor="#f59e0b" />
+        <p className="mb-[15px] text-[11px] leading-[1.6] text-muted-foreground sm:text-xs">Resumo consolidado de todas as empresas no período selecionado.</p>
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+          <KpiCard titulo="Faturamento Total" valor={formatarMoedaCompacta(fatTotal)} sub={`OS: ${formatarMoedaCompacta(fatOS)} · Vendas: ${formatarMoedaCompacta(fatVendas)}`} icon={DollarSign} cor="#246BFF" />
+          <KpiCard titulo="Ordens de Serviço" valor={String(osTotal)} sub={`${osFinalizadas} finalizadas · ${osAbertas} em aberto`} icon={Activity} cor="#10B981" />
+          <KpiCard titulo="Ticket Médio Global" valor={formatarMoedaCompacta(ticketMedioGlobal)} sub={`${taxaFinalizacao}% taxa de finalização`} icon={TrendingUp} cor="#8B5CF6" />
+          <KpiCard titulo="Vendas Realizadas" valor={String(vendasTotal)} sub={`${empresas.length} empresa(s) ativas`} icon={ShoppingBag} cor="#FF9900" />
         </div>
       </div>
 
@@ -1294,35 +1325,38 @@ export default function MultiEmpresas() {
       <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto w-full min-w-0">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 className="text-2xl font-bold">Multi Empresas</h1>
-              <Badge variant="outline" className="text-xs">{isLoading ? "..." : filiais.length}/3 filiais</Badge>
+        <div className="flex flex-col gap-[22px] sm:flex-row sm:items-center sm:justify-between sm:gap-4 lg:pr-12">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-[25px] font-extrabold tracking-[-0.8px] text-[#0B1429] dark:text-foreground md:text-3xl">Multi Empresas</h1>
+              <span className="rounded-full border border-border bg-card px-2.5 py-1.5 text-[11px] font-semibold leading-none text-[#101828] dark:text-foreground">
+                {isLoading ? "..." : filiais.length}/3 filiais
+              </span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">Gerencie e compare todas as suas empresas.</p>
+            <p className="mt-2 text-xs leading-[1.6] text-muted-foreground sm:text-sm">Gerencie e compare todas as suas empresas.</p>
           </div>
-          <div className="flex flex-wrap gap-2 sm:shrink-0 sm:flex-nowrap [&>button]:flex-1 sm:[&>button]:flex-none">
-            <Button variant="outline" size="sm" onClick={() => carregarDados()} disabled={isLoading} className="text-sm">
-              <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} />
+          <div className="grid grid-cols-[1fr_1fr_1.15fr] gap-2 sm:flex sm:shrink-0">
+            <button type="button" onClick={() => carregarDados()} disabled={isLoading} className={cn(BOTAO_ACAO, BOTAO_ACAO_NEUTRO)}>
+              <RefreshCw className={isLoading ? "animate-spin" : ""} aria-hidden="true" />
               Atualizar
-            </Button>
-            <Button variant="outline" onClick={() => setDialogRelatorios(true)} disabled={isLoading || todasEmpresas.length === 0} className="text-sm">
-              <FileText className="h-4 w-4 mr-2" />Relatórios
-            </Button>
-            <Button onClick={() => setDialogNova(true)} disabled={isLoading || filiais.length >= 3}>
-              <Plus className="h-4 w-4 mr-2" />Nova Filial
-            </Button>
+            </button>
+            <button type="button" onClick={() => setDialogRelatorios(true)} disabled={isLoading || todasEmpresas.length === 0} className={cn(BOTAO_ACAO, BOTAO_ACAO_NEUTRO)}>
+              <FileText aria-hidden="true" />Relatórios
+            </button>
+            <button type="button" onClick={() => setDialogNova(true)} disabled={isLoading || filiais.length >= 3}
+              className={cn(BOTAO_ACAO, "bg-[linear-gradient(110deg,#2448D8,#079FD0)] text-white shadow-[0_5px_12px_rgba(36,107,255,0.13)] hover:brightness-105")}>
+              <PlusCircle aria-hidden="true" />Nova Filial
+            </button>
           </div>
         </div>
 
         {/* Filtro período */}
-        <div className="rounded-xl border border-border/40 bg-muted/20 p-3">
+        <div className="rounded-2xl border border-border bg-[#F0F4FA] p-[15px] dark:bg-muted/40">
           <SeletorPeriodo periodo={periodo} onChange={handlePeriodoChange} />
         </div>
 
         {/* Abas */}
-        <div className="flex gap-1 overflow-x-auto border-b border-border/40 pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div role="tablist" aria-label="Seções do Multi Empresas" className="grid grid-cols-3 border-b border-border md:flex md:gap-2">
           {([
             { key: "dashboard" as AbaAtiva, label: "Dashboard", icon: LayoutDashboard },
             { key: "empresas" as AbaAtiva, label: "Empresas", icon: Layers },
@@ -1330,14 +1364,20 @@ export default function MultiEmpresas() {
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
+              type="button"
+              role="tab"
+              aria-selected={abaAtiva === key}
               onClick={() => setAbaAtiva(key)}
-              className={`flex flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap px-2 sm:flex-none sm:px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={cn(
+                "relative flex min-w-0 items-center justify-center gap-[7px] whitespace-nowrap px-1 py-3.5 text-[11px] transition-colors sm:text-sm md:px-4",
+                "after:absolute after:-bottom-px after:left-0 after:h-[3px] after:w-full after:rounded-[3px] after:content-['']",
                 abaAtiva === key
-                  ? "border-blue-500 text-blue-500"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-              }`}
+                  ? "font-bold text-[#246BFF] after:bg-[#246BFF] dark:text-primary dark:after:bg-primary"
+                  : "text-[#526580] after:bg-transparent hover:text-[#101828] dark:text-muted-foreground dark:hover:text-foreground",
+                FOCO,
+              )}
             >
-              <Icon className="h-4 w-4" />{label}
+              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />{label}
             </button>
           ))}
         </div>
