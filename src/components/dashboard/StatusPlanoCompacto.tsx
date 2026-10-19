@@ -38,7 +38,7 @@ export const getInfoPlanoCompacto = (assinatura: { plano_tipo: string; data_fim?
  * neutro com atalho para /plano.
  */
 export const StatusPlanoCompacto = () => {
-  const { assinatura } = useAssinatura();
+  const { assinatura, planoVencido } = useAssinatura();
   const navigate = useNavigate();
 
   const info = useMemo(() => getInfoPlanoCompacto(assinatura as any), [assinatura]);
@@ -49,8 +49,8 @@ export const StatusPlanoCompacto = () => {
     <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 shadow-sm shrink-0">
       <Crown className="h-3.5 w-3.5 text-primary shrink-0" />
       <span className="text-xs font-medium whitespace-nowrap">
-        {info.nome}
-        {info.diasRestantes !== null && (
+        {planoVencido ? "Plano vencido" : info.nome}
+        {!planoVencido && info.diasRestantes !== null && (
           <span className="text-muted-foreground">
             {" "}· {info.diasRestantes > 0 ? `${info.diasRestantes}d restantes` : "expirado"}
           </span>
@@ -62,7 +62,7 @@ export const StatusPlanoCompacto = () => {
         className="h-6 px-2 text-xs"
         onClick={() => navigate("/plano")}
       >
-        Ver plano
+        {planoVencido ? "Renovar agora" : "Ver plano"}
       </Button>
     </div>
   );

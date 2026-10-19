@@ -35,7 +35,7 @@ export function DialogConverterOrcamentoOS({
   const { toast } = useToast();
   const navigate = useNavigate();
   const { userId: resolvedUserId, empresaId } = useIdentidade();
-  const { obterContagemOSMes } = useAssinatura();
+  const { obterContagemOSMes, planoVencido, planoAnterior } = useAssinatura();
 
   if (!orcamento) return null;
 
@@ -155,6 +155,8 @@ export function DialogConverterOrcamentoOS({
       open={dialogLimiteAberto}
       onOpenChange={setDialogLimiteAberto}
       tipo="os"
+      planoVencido={planoVencido}
+      planoAnterior={planoAnterior}
     />
     <Dialog open={aberto} onOpenChange={onFechar}>
       <DialogContent className="max-w-md">

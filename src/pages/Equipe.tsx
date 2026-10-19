@@ -12,6 +12,7 @@ import { ConfiguracaoOSEquipe } from "@/components/equipe/ConfiguracaoOSEquipe";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import type { Funcionario, FuncionarioFormData } from "@/types/funcionario";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { rotuloPlano } from "@/lib/planoVencido";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -23,7 +24,7 @@ export default function Equipe() {
   const [funcionarioEditando, setFuncionarioEditando] = useState<Funcionario | null>(null);
   const [salvando, setSalvando] = useState(false);
 
-  const { assinatura, carregando: carregandoAssinatura } = useAssinatura();
+  const { assinatura, carregando: carregandoAssinatura, planoVencido, planoAnterior } = useAssinatura();
   const {
     funcionarios,
     carregando,
@@ -164,9 +165,11 @@ export default function Equipe() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              O gerenciamento de equipe está disponível apenas nos planos Intermediário e Profissional.
+              {planoVencido
+                ? `Seu plano venceu. Renove o ${rotuloPlano(planoAnterior)} para voltar a usar Equipe.`
+                : "O gerenciamento de equipe está disponível apenas nos planos Intermediário e Profissional."}
               <Button variant="link" className="px-1 h-auto" onClick={() => window.location.href = "/plano"}>
-                Fazer upgrade
+                {planoVencido ? "Renovar agora" : "Fazer upgrade"}
               </Button>
             </AlertDescription>
           </Alert>

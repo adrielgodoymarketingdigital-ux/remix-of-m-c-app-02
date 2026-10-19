@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { nomePlanoAmigavel, rotuloPlano, textoRenovarPlano } from "@/lib/planoVencido";
+import { partesDataHoraBrasilia } from "@/lib/dataBrasilia";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,7 +46,33 @@ export default function Plano() {
   // Todos os hooks DEVEM vir ANTES de qualquer return condicional
   const { isFuncionario, carregando: carregandoFuncionario } = useFuncionarioPermissoes();
   const [periodoPlano, setPeriodoPlano] = useState<"mensal" | "anual">("mensal");
-  const { assinatura, carregando, abrirPaginaPagamento, cancelarPlano, limites, recarregar, obterContagemDispositivos, periodoDispositivos, diasRestantesTrial, horasRestantesTrial, trialExpirado, migracaoNecessaria } = useAssinatura();
+  const { assinatura, carregando, abrirPaginaPagamento, cancelarPlano, limites, recarregar, obterContagemDispositivos, periodoDispositivos, diasRestantesTrial, horasRestantesTrial, trialExpirado, migracaoNecessaria, planoVencido, planoAnterior, planoVencidoEm } = useAssinatura();
+
+  // ── Plano vencido (só textos) ──
+  // Plano a renovar: o pago que venceu (canceled/past_due) ou o anterior ao free (coluna opcional)
+  const chavePlanoAnterior: string | null = migracaoNecessaria
+    ? (assinatura?.plano_tipo ?? null)
+    : planoVencido
+      ? ((assinatura as { plano_anterior?: string | null } | null)?.plano_anterior ?? null)
+      : null;
+  const [planoDestacado, setPlanoDestacado] = useState<string | null>(null);
+  const dataVencimentoBR = planoVencidoEm
+    ? partesDataHoraBrasilia(planoVencidoEm).data.split("-").reverse().join("/")
+    : null;
+  /** "Renovar agora": rola até o cartão do plano anterior (se conhecido) e o destaca. */
+  const renovarAgora = () => {
+    const base = chavePlanoAnterior?.replace(/_(mensal|anual)$/, "");
+    const alvo = chavePlanoAnterior
+      ? document.getElementById(`plan-${chavePlanoAnterior}`) ??
+        document.getElementById(`plan-${base}_${periodoPlano}`)
+      : null;
+    const destino = alvo ?? document.getElementById("planos-disponiveis");
+    destino?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (alvo) {
+      setPlanoDestacado(alvo.id);
+      window.setTimeout(() => setPlanoDestacado(null), 4000);
+    }
+  };
   const trialStatus = useTrialStatus();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -356,7 +384,32 @@ export default function Plano() {
             {migracaoNecessaria && (
               <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
                 <AlertDescription className="text-red-800 dark:text-red-200">
-                  ⏰ <strong>Sua assinatura venceu!</strong> Renove agora para continuar usando todas as funções do sistema.
+                  <span className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      <strong>Seu plano venceu.</strong> {textoRenovarPlano(nomePlanoAmigavel(assinatura?.plano_tipo))}
+                    </span>
+                    <Button size="sm" onClick={renovarAgora} className="shrink-0 gap-1.5">
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Renovar agora
+                    </Button>
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Plano vencido: free que já foi pagante */}
+            {planoVencido && (
+              <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
+                <AlertDescription className="text-red-800 dark:text-red-200">
+                  <span className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      <strong>Seu plano venceu.</strong> {textoRenovarPlano(planoAnterior)}
+                    </span>
+                    <Button size="sm" onClick={renovarAgora} className="shrink-0 gap-1.5">
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Renovar agora
+                    </Button>
+                  </span>
                 </AlertDescription>
               </Alert>
             )}
@@ -365,8 +418,8 @@ export default function Plano() {
             {contagemDispositivos.limite !== Infinity && contagemDispositivos.percentual >= 80 && contagemDispositivos.percentual < 100 && (
               <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
                 <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-                  ⚠️ Você está próximo do limite de dispositivos ({contagemDispositivos.restantes} restantes). 
-                  Considere fazer upgrade para um plano superior.
+                  ⚠️ Você está próximo do limite de dispositivos ({contagemDispositivos.restantes} restantes).{" "}
+                  {planoVencido ? "Renove seu plano para voltar a cadastrar sem limite." : "Considere fazer upgrade para um plano superior."}
                 </AlertDescription>
               </Alert>
             )}
@@ -374,8 +427,8 @@ export default function Plano() {
             {contagemDispositivos.limite !== Infinity && contagemDispositivos.percentual >= 100 && (
               <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
                 <AlertDescription className="text-red-800 dark:text-red-200">
-                  🚫 Você atingiu o limite de {contagemDispositivos.limite} dispositivos. 
-                  Faça upgrade para continuar cadastrando.
+                  🚫 Você atingiu o limite de {contagemDispositivos.limite} dispositivos.{" "}
+                  {planoVencido ? "Renove seu plano para voltar a cadastrar sem limite." : "Faça upgrade para continuar cadastrando."}
                 </AlertDescription>
               </Alert>
             )}
@@ -394,10 +447,19 @@ export default function Plano() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h2 className="text-2xl font-bold">Seu Plano Atual</h2>
-                      <Badge variant="secondary">
-                        {assinatura.plano_tipo.replace(/_/g, " ").toUpperCase()}
-                      </Badge>
+                      {planoVencido ? (
+                        <Badge variant="destructive">PLANO VENCIDO</Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          {assinatura.plano_tipo.replace(/_/g, " ").toUpperCase()}
+                        </Badge>
+                      )}
                     </div>
+                    {planoVencido && (
+                      <p className="text-sm text-muted-foreground">
+                        Seu {rotuloPlano(planoAnterior)} venceu{dataVencimentoBR ? ` em ${dataVencimentoBR}` : ""}. Renove agora para voltar a usar todos os recursos.
+                      </p>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                       <div className="flex items-center gap-3">
                         <HardDrive className="h-5 w-5 text-muted-foreground" />
@@ -598,7 +660,7 @@ export default function Plano() {
 
             {/* Comparação de Planos */}
             <div>
-              <div className="text-center space-y-2 mb-8">
+              <div id="planos-disponiveis" className="text-center space-y-2 mb-8">
                 <h2 className="text-3xl font-bold">Planos Disponíveis</h2>
                 <p className="text-muted-foreground max-w-xl mx-auto">
                   Investimento que se paga no primeiro mês. Cancele quando quiser.
@@ -646,7 +708,7 @@ export default function Plano() {
                 >
                   <div className="absolute top-2 left-4 flex gap-2 z-10">
                     {assinatura?.plano_tipo === "free" && (
-                      <Badge variant="secondary">Plano Atual</Badge>
+                      <Badge variant="secondary">{planoVencido ? "Em uso até renovar" : "Plano Atual"}</Badge>
                     )}
                   </div>
 
@@ -672,7 +734,7 @@ export default function Plano() {
 
                     {assinatura?.plano_tipo === "free" ? (
                       <Button className="w-full" disabled>
-                        Plano Atual
+                        {planoVencido ? "Recursos básicos" : "Plano Atual"}
                       </Button>
                     ) : (
                       <Button variant="outline" className="w-full" disabled>
@@ -696,7 +758,8 @@ export default function Plano() {
                       className={cn(
                         "p-6 pt-10 relative transition-all duration-300 hover:-translate-y-2 hover:shadow-xl group",
                         plano.popular && "border-2 border-primary shadow-lg md:scale-105",
-                        planoAtivo && "border-2 border-primary ring-2 ring-primary/20"
+                        planoAtivo && "border-2 border-primary ring-2 ring-primary/20",
+                        planoDestacado === `plan-${key}` && "ring-4 ring-red-500/50"
                       )}
                     >
                       {/* Badge Popular */}

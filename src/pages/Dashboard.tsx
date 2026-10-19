@@ -53,7 +53,7 @@ const Dashboard = () => {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [nomeUsuario, setNomeUsuario] = useState<string>("");
-  const { assinatura, carregando: carregandoAssinatura, trialExpirado, migracaoNecessaria } = useAssinatura();
+  const { assinatura, carregando: carregandoAssinatura, trialExpirado, migracaoNecessaria, planoVencido } = useAssinatura();
   const { isFuncionario, isDonoLoja, temAcessoModulo, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const dashboardBloqueado = isFuncionario && !temAcessoModulo('dashboard');
   const { calcularResumo } = useRelatorios();
@@ -964,7 +964,13 @@ const Dashboard = () => {
               <Crown className="h-4 w-4 text-indigo-400" />
             </div>
             <div className="min-w-0 flex-1">
-              {infoPlanoMobile ? (
+              {planoVencido ? (
+                // Já foi pagante e o plano venceu (continua com os recursos do free)
+                <>
+                  <p className="text-sm font-bold text-red-300 leading-tight">Plano vencido</p>
+                  <p className="text-[10px] text-slate-300 leading-tight font-semibold">Renovar agora</p>
+                </>
+              ) : infoPlanoMobile ? (
                 <>
                   <p className="text-sm font-bold text-white leading-tight">{infoPlanoMobile.nome}</p>
                   {infoPlanoMobile.diasRestantes !== null ? (

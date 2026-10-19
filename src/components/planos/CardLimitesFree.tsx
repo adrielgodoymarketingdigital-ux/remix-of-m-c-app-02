@@ -2,8 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Crown, Smartphone, Wrench, Package } from "lucide-react";
+import { AlertTriangle, Crown, Smartphone, Wrench, Package, RefreshCw } from "lucide-react";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { textoRenovarPlano } from "@/lib/planoVencido";
 import { formatarRenovacao } from "@/lib/assinatura/limiteDispositivosPeriodo";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,7 +16,7 @@ interface ContagemItem {
 }
 
 export function CardLimitesFree() {
-  const { assinatura, limites, carregando, periodoDispositivos, obterContagemDispositivos } = useAssinatura();
+  const { assinatura, limites, carregando, periodoDispositivos, obterContagemDispositivos, planoVencido, planoAnterior } = useAssinatura();
   // Com limite por período (marca na assinatura): dispositivos contados só no período atual.
   const [usadosNoPeriodo, setUsadosNoPeriodo] = useState<number | null>(null);
   useEffect(() => {
@@ -78,10 +79,22 @@ export function CardLimitesFree() {
 
   return (
     <div className="mx-4 sm:mx-6 mt-4 rounded-xl border border-blue-500/20 bg-gradient-to-br from-slate-900/80 to-slate-800/50 p-4 backdrop-blur-sm">
-      <div className="flex items-center gap-2 mb-3">
-        <Crown className="h-4 w-4 text-amber-400" />
-        <span className="text-sm font-semibold text-slate-200">Seus limites do Plano Gratuito</span>
-      </div>
+      {planoVencido ? (
+        // Já foi pagante: plano venceu (limites continuam os do gratuito)
+        <div className="mb-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            <span className="text-sm font-semibold text-slate-100">Seu plano venceu</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-300">{textoRenovarPlano(planoAnterior)}</p>
+          <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">Limites enquanto o plano estiver vencido</p>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 mb-3">
+          <Crown className="h-4 w-4 text-amber-400" />
+          <span className="text-sm font-semibold text-slate-200">Seus limites do Plano Gratuito</span>
+        </div>
+      )}
 
       <div className="space-y-3">
         {contagensComLimites.map((item) => {
@@ -113,8 +126,17 @@ export function CardLimitesFree() {
         className="w-full mt-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white font-semibold shadow-lg shadow-blue-500/20 transition-all hover:shadow-blue-500/40"
         size="sm"
       >
-        <Crown className="h-4 w-4 mr-1.5" />
-        Desbloqueie todo o potencial do Méc!
+        {planoVencido ? (
+          <>
+            <RefreshCw className="h-4 w-4 mr-1.5" />
+            Renovar agora
+          </>
+        ) : (
+          <>
+            <Crown className="h-4 w-4 mr-1.5" />
+            Desbloqueie todo o potencial do Méc!
+          </>
+        )}
       </Button>
     </div>
   );

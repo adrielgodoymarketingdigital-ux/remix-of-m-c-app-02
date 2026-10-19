@@ -10,7 +10,7 @@ import { useAssinatura } from "@/hooks/useAssinatura";
 const NUMERO_SUPORTE = "5519971454829";
 
 export function BotaoWhatsAppSuporte() {
-  const { assinatura, trialExpirado } = useAssinatura();
+  const { assinatura, trialExpirado, planoVencido, planoAnterior } = useAssinatura();
 
   const handleClick = () => {
     let mensagem: string;
@@ -35,7 +35,12 @@ export function BotaoWhatsAppSuporte() {
       planoExpirado 
     });
 
-    if (planoExpirado) {
+    if (planoVencido) {
+      // Já foi pagante e o plano venceu
+      mensagem = encodeURIComponent(
+        `Olá! Meu ${planoAnterior ? `plano ${planoAnterior}` : "plano"} do Méc venceu e quero renovar.`
+      );
+    } else if (planoExpirado) {
       mensagem = encodeURIComponent(
         "Olá! Meu plano do sistema Méc expirou e ainda não ativei uma assinatura. Gostaria de saber mais sobre os planos disponíveis e como posso continuar usando o sistema."
       );

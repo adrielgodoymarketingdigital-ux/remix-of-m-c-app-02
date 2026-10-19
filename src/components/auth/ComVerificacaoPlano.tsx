@@ -2,7 +2,8 @@ import { ReactNode } from "react";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Crown, AlertCircle } from "lucide-react";
+import { Crown, AlertCircle, RefreshCw } from "lucide-react";
+import { textoRenovarPlano } from "@/lib/planoVencido";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { LIMITES_POR_PLANO } from "@/types/assinatura";
@@ -13,7 +14,7 @@ interface ComVerificacaoPlanoProps {
 }
 
 export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoProps) {
-  const { temAcessoModulo, assinatura, carregando } = useAssinatura();
+  const { temAcessoModulo, assinatura, carregando, planoVencido, planoAnterior } = useAssinatura();
   const { isFuncionario, carregando: carregandoFuncionario, temAcessoModulo: temAcessoModuloFuncionario } = useFuncionarioPermissoes();
   const navigate = useNavigate();
 
@@ -71,6 +72,25 @@ export function ComVerificacaoPlano({ children, modulo }: ComVerificacaoPlanoPro
 
   // Verificar acesso ao módulo
   if (!temAcessoModulo(modulo)) {
+    // Já foi pagante e o plano venceu: qualquer módulo bloqueado pede para renovar
+    if (planoVencido) {
+      return (
+        <div className="container mx-auto py-12 px-4">
+          <Alert className="max-w-2xl mx-auto border-destructive/40">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <AlertTitle className="text-xl font-bold mb-2">Seu plano venceu</AlertTitle>
+            <AlertDescription className="space-y-4">
+              <p>{textoRenovarPlano(planoAnterior)}</p>
+              <Button onClick={() => navigate("/plano")} className="w-full sm:w-auto">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Renovar agora
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      );
+    }
+
     const personalizado = BLOQUEIOS_PERSONALIZADOS[modulo];
     return (
       <div className="container mx-auto py-12 px-4">

@@ -203,7 +203,7 @@ export default function OrdemServicoPage() {
   const { config: configuracaoLoja, refetch: refetchConfig } = useConfiguracaoLoja();
   const { empresas: empresasFiliais, nomeMatriz } = useEmpresa();
   const [lojaFiltro, setLojaFiltro] = useState("todos");
-  const { obterContagemOSMes, abrirPaginaPagamento, limites, carregando: assinaturaCarregando } = useAssinatura();
+  const { obterContagemOSMes, abrirPaginaPagamento, limites, carregando: assinaturaCarregando, planoVencido, planoAnterior } = useAssinatura();
   const { statusList, getStatusBySlug } = useOSStatusConfig();
   const { servicosAvulsos, criarServicoAvulso, atualizarStatusAvulso, excluirServicoAvulso } = useServicosAvulsos();
   const { compartilharWhatsApp, gerarLink } = useOSTracking();
@@ -1714,6 +1714,8 @@ export default function OrdemServicoPage() {
             open={dialogLimiteAtingido}
             onOpenChange={setDialogLimiteAtingido}
             tipo="ordens"
+            planoVencido={planoVencido}
+            planoAnterior={planoAnterior}
             usados={contadorOS.usadas}
             limite={contadorOS.limite}
           />

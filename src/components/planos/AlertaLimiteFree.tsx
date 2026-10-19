@@ -1,4 +1,4 @@
-import { AlertCircle, Sparkles } from "lucide-react";
+import { AlertCircle, RefreshCw, Sparkles } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ interface AlertaLimiteFreeProps {
   usados: number;
   limite: number;
   ilimitado?: boolean;
+  /** Cliente que já foi pagante e o plano venceu (useAssinatura().planoVencido). Só muda o texto. */
+  planoVencido?: boolean;
 }
 
 const LABELS = {
@@ -29,7 +31,7 @@ const LABELS = {
   },
 };
 
-export function AlertaLimiteFree({ tipo, usados, limite, ilimitado }: AlertaLimiteFreeProps) {
+export function AlertaLimiteFree({ tipo, usados, limite, ilimitado, planoVencido }: AlertaLimiteFreeProps) {
   const navigate = useNavigate();
   const { titulo, descricao, icone } = LABELS[tipo];
   
@@ -77,19 +79,23 @@ export function AlertaLimiteFree({ tipo, usados, limite, ilimitado }: AlertaLimi
         {(atingiuLimite || proximoLimite) && (
           <div className="flex items-center justify-between pt-1">
             <p className="text-xs text-muted-foreground">
-              {atingiuLimite 
-                ? "Faça upgrade para continuar usando esta funcionalidade." 
-                : "Você está próximo do limite do plano Free."
+              {planoVencido
+                ? atingiuLimite
+                  ? "Seu plano venceu. Renove agora para voltar a cadastrar sem limite."
+                  : "Seu plano venceu e você está perto do limite dos recursos básicos."
+                : atingiuLimite
+                  ? "Faça upgrade para continuar usando esta funcionalidade."
+                  : "Você está próximo do limite do plano Free."
               }
             </p>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant={atingiuLimite ? "default" : "outline"}
               onClick={() => navigate('/plano')}
               className="gap-1"
             >
-              <Sparkles className="h-3 w-3" />
-              Upgrade
+              {planoVencido ? <RefreshCw className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}
+              {planoVencido ? "Renovar agora" : "Upgrade"}
             </Button>
           </div>
         )}

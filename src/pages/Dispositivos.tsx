@@ -62,7 +62,7 @@ export default function Dispositivos() {
     excluirDispositivo,
   } = useDispositivos();
 
-  const { obterContagemDispositivos, assinatura, limites, periodoDispositivos } = useAssinatura();
+  const { obterContagemDispositivos, assinatura, limites, periodoDispositivos, planoVencido, planoAnterior } = useAssinatura();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
 
   const resumoInventario = useMemo(() => {
@@ -438,6 +438,8 @@ export default function Dispositivos() {
         open={dialogLimiteAtingido}
         onOpenChange={setDialogLimiteAtingido}
         tipo="dispositivos"
+        planoVencido={planoVencido}
+        planoAnterior={planoAnterior}
         usados={contadorDispositivos.usados}
         limite={contadorDispositivos.limite}
         textoUso={textoUsoDispositivos(periodoDispositivos)}

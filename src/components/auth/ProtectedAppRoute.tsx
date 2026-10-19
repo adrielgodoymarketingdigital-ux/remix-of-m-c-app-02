@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, RefreshCw, WifiOff, ShieldX, CreditCard, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useVerificacaoAcesso } from "@/hooks/useVerificacaoAcesso";
+import { planoVencido as calcularPlanoVencido, type AssinaturaPlanoVencido } from "@/lib/planoVencido";
 import { useNotificationTracking } from "@/hooks/useNotificationTracking";
 import { ModalMotivoNaoRenovacao } from "@/components/assinatura/ModalMotivoNaoRenovacao";
 
@@ -132,6 +133,8 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
   // Tela de bloqueio por admin
   if (status === "bloqueado_admin") {
     const isBloqueioAteAssinar = bloqueioAdmin?.tipo === "ate_assinar";
+    // Já foi pagante (free com sinal de pagamento): o texto fala em plano vencido
+    const eraPagante = isBloqueioAteAssinar && calcularPlanoVencido(assinatura as AssinaturaPlanoVencido | null).vencido;
     
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -149,7 +152,9 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
               {isBloqueioAteAssinar ? "Acesso Bloqueado" : "Conta Suspensa"}
             </h2>
             <p className="text-muted-foreground">
-              {isBloqueioAteAssinar 
+              {eraPagante
+                ? "Seu plano venceu. Renove agora para voltar a usar o MecApp."
+                : isBloqueioAteAssinar
                 ? "Seu período de teste expirou. Assine um plano para continuar usando o MecApp e desbloquear todas as funcionalidades!"
                 : "Sua conta foi suspensa pelo administrador. Entre em contato com o suporte para mais informações."
               }
@@ -169,7 +174,7 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
                 size="lg"
               >
                 <CreditCard className="h-4 w-4" />
-                Assinar Agora
+                {eraPagante ? "Renovar agora" : "Assinar Agora"}
               </Button>
             )}
             <Button 

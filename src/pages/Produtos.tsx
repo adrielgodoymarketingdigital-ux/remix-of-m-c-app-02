@@ -37,7 +37,7 @@ const Produtos = () => {
   const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, adicionarFotoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque, renomearVariacao, adicionarVariacaoAoGrupo, removerDoGrupo } = useProdutos();
   const { categorias, categoriasArvore, carregarCategorias, criarCategoria, atualizarCategoria, excluirCategoria } = useCategoriasProdutos();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
-  const { obterContagemProdutosMes, assinatura } = useAssinatura();
+  const { obterContagemProdutosMes, assinatura, planoVencido, planoAnterior } = useAssinatura();
   const { config: configLoja } = useConfiguracaoLoja();
   const { trocas, criar: criarTroca, excluir: excluirTroca } = useTrocasGarantia();
   const { colunasVisiveis, toggleColuna, resetarColunas } = useColunasVisiveis();
@@ -544,6 +544,8 @@ const Produtos = () => {
         open={dialogLimiteAtingido}
         onOpenChange={setDialogLimiteAtingido}
         tipo="produtos"
+        planoVencido={planoVencido}
+        planoAnterior={planoAnterior}
         usados={contadorProdutos.usados}
         limite={contadorProdutos.limite}
       />

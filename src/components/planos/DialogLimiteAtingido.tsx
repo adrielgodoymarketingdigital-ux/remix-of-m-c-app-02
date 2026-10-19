@@ -9,7 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, Sparkles } from "lucide-react";
+import { AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import { textoRenovarPlano } from "@/lib/planoVencido";
 
 interface DialogLimiteAtingidoProps {
   open: boolean;
@@ -19,6 +20,10 @@ interface DialogLimiteAtingidoProps {
   limite: number;
   /** Só dispositivos: texto do contador ("utilizados no total" ou "… neste período (renova em DD/MM)"). */
   textoUso?: string;
+  /** Cliente que já foi pagante e o plano venceu (useAssinatura().planoVencido). Só muda o texto. */
+  planoVencido?: boolean;
+  /** Nome amigável do plano anterior, quando conhecido. */
+  planoAnterior?: string;
 }
 
 const MENSAGENS = {
@@ -46,6 +51,8 @@ export function DialogLimiteAtingido({
   usados,
   limite,
   textoUso,
+  planoVencido,
+  planoAnterior,
 }: DialogLimiteAtingidoProps) {
   const navigate = useNavigate();
   const { titulo, descricao, icone } = MENSAGENS[tipo] ?? MENSAGENS.ordens;
@@ -68,7 +75,7 @@ export function DialogLimiteAtingido({
             {icone} {titulo}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-center space-y-3">
-            <p>{descricao}</p>
+            <p>{planoVencido ? `Seu plano venceu e, até renovar, o limite é de ${limite}.` : descricao}</p>
             <div className="p-3 rounded-lg bg-muted text-center">
               <p className="text-2xl font-bold text-foreground">
                 {usados} / {limite}
@@ -78,7 +85,9 @@ export function DialogLimiteAtingido({
               </p>
             </div>
             <p className="text-sm">
-              Para continuar criando ordens de serviço, é necessário fazer upgrade.
+              {planoVencido
+                ? textoRenovarPlano(planoAnterior)
+                : "Para continuar criando ordens de serviço, é necessário fazer upgrade."}
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -90,8 +99,8 @@ export function DialogLimiteAtingido({
             onClick={handleUpgrade}
             className="w-full sm:w-auto gap-2"
           >
-            <Sparkles className="h-4 w-4" />
-            Ver Planos
+            {planoVencido ? <RefreshCw className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+            {planoVencido ? "Renovar agora" : "Ver Planos"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

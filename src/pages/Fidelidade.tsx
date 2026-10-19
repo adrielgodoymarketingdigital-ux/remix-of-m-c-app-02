@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gift, Settings, Trophy, Star, Users, Search, Trash2, Plus, Award, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { rotuloPlano } from "@/lib/planoVencido";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -359,7 +360,7 @@ function DialogConfig({ open, onClose, config, niveis, onSalvarConfig, onSalvarN
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function Fidelidade() {
-  const { assinatura, carregando: carregandoAssinatura } = useAssinatura();
+  const { assinatura, carregando: carregandoAssinatura, planoVencido, planoAnterior } = useAssinatura();
   const navigate = useNavigate();
   const { config, niveis, clientes, isLoading, salvarConfig, salvarNivel, deletarNivel, resgatar } = useFidelidade();
   const [busca, setBusca] = useState("");
@@ -424,14 +425,20 @@ export default function Fidelidade() {
           <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center">
             <Lock className="h-8 w-8 text-amber-600" />
           </div>
-          <h2 className="text-2xl font-bold">Funcionalidade Exclusiva</h2>
-          <p className="text-muted-foreground max-w-md">
-            O programa de Fidelidade de Clientes está disponível apenas
-            no plano <strong>Profissional</strong>. Faça upgrade para
-            desbloquear esta e outras funcionalidades avançadas.
-          </p>
+          <h2 className="text-2xl font-bold">{planoVencido ? "Seu plano venceu" : "Funcionalidade Exclusiva"}</h2>
+          {planoVencido ? (
+            <p className="text-muted-foreground max-w-md">
+              Seu plano venceu. Renove o {rotuloPlano(planoAnterior)} para voltar a usar Fidelidade.
+            </p>
+          ) : (
+            <p className="text-muted-foreground max-w-md">
+              O programa de Fidelidade de Clientes está disponível apenas
+              no plano <strong>Profissional</strong>. Faça upgrade para
+              desbloquear esta e outras funcionalidades avançadas.
+            </p>
+          )}
           <Button onClick={() => navigate('/plano')}>
-            Ver Planos
+            {planoVencido ? "Renovar agora" : "Ver Planos"}
           </Button>
         </div>
       </AppLayout>
