@@ -46,12 +46,36 @@
 
     <!-- UTMify Pixel Code -->
     <script>
-      window.pixelId = "69389ff6e59dc06089d47ffb";
-      var a = document.createElement("script");
-      a.setAttribute("async", "");
-      a.setAttribute("defer", "");
-      a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
-      document.head.appendChild(a);
+      // UTMify SÓ nas páginas públicas (landing, cadastro/checkout, obrigado,
+      // renovação e páginas públicas das lojas). No app logado e no login o
+      // pixel "preenchia" todo campo de e-mail com o lead guardado no navegador
+      // (apagava/trocava o e-mail) e capturava e-mails/telefones digitados.
+      // Esta lista é a fonte única: o app lê window.__mecUtmify
+      // (src/components/GuardaUtmify.tsx) para a navegação sem recarregar.
+      window.__mecUtmify = {
+        exatas: ["/", "/lp1", "/lp2", "/es", "/cadastro-plano", "/completar-cadastro", "/obrigado", "/cadastro-trial", "/ativar-trial", "/renovar"],
+        prefixos: ["/c/", "/lp/", "/acompanhar/", "/acompanhar-cliente/", "/entrada/"],
+        carregado: false,
+        ehRotaPublica: function (caminho) {
+          var p = caminho.length > 1 ? caminho.replace(/\/+$/, "") : caminho;
+          if (this.exatas.indexOf(p) !== -1) return true;
+          for (var i = 0; i < this.prefixos.length; i++) {
+            if (p.indexOf(this.prefixos[i]) === 0) return true;
+          }
+          return false;
+        },
+        carregar: function () {
+          if (this.carregado) return;
+          this.carregado = true;
+          window.pixelId = "69389ff6e59dc06089d47ffb";
+          var a = document.createElement("script");
+          a.setAttribute("async", "");
+          a.setAttribute("defer", "");
+          a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
+          document.head.appendChild(a);
+        },
+      };
+      if (window.__mecUtmify.ehRotaPublica(window.location.pathname)) window.__mecUtmify.carregar();
     </script>
     <!-- End UTMify Pixel Code -->
 
