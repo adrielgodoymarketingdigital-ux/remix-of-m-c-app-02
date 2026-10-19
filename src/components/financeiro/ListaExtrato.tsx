@@ -102,7 +102,8 @@ export function ListaExtrato({ eventos, carregando, temMais, onCarregarMais, onV
 
                 <span
                   className={cn(
-                    "shrink-0 whitespace-nowrap text-sm font-bold max-[390px]:text-xs",
+                    // Desktop: coluna de valor com largura mínima fixa, alinhada à direita
+                    "shrink-0 whitespace-nowrap text-sm font-bold max-[390px]:text-xs lg:min-w-[140px] lg:text-right",
                     entrada ? "text-[#009C4A] dark:text-emerald-400" : "text-[#F02828] dark:text-red-400",
                   )}
                 >

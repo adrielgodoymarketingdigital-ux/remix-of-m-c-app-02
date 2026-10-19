@@ -178,9 +178,12 @@ export default function Extrato() {
   return (
     <AppLayout>
       <main className="flex-1 p-6 overflow-auto">
-        <div className="max-w-5xl mx-auto flex flex-col gap-6">
-          {/* Título + ações */}
-          <div className="order-1 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        {/* No desktop usa a área toda ao lado do menu (teto de 1600px para ultrawide) */}
+        <div className="max-w-5xl lg:max-w-[1600px] mx-auto flex flex-col gap-6">
+          {/* Título + ações. lg:pt-6: os botões encostam na borda direita e o
+              olho flutuante do layout (BotaoOcultarValores, fixed top-4 right-4,
+              só no desktop) ficaria por cima de "Lançar entrada/saída" */}
+          <div className="order-1 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between lg:pt-6">
             <div className="min-w-0">
               <h1 className="text-[32px] font-extrabold leading-tight tracking-[-1px] text-[#0B1429] dark:text-foreground">Extrato</h1>
               <p className="mt-1.5 max-w-[350px] text-[13px] leading-[1.6] text-muted-foreground">
