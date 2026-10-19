@@ -40,6 +40,30 @@ interface GerenciarAssinaturaPagarmeProps {
   onChanged?: () => void;
 }
 
+/** Resposta da edge function update-pagarme-card. */
+interface RespostaTrocaCartao {
+  success?: boolean;
+  last_four_digits?: string;
+  status_assinatura?: string;
+  cobranca?: "paga" | "recusada" | "pendente" | "nao_necessaria" | "assinatura_cancelada" | "erro";
+  mensagem?: string;
+}
+
+/**
+ * Depois de uma cobrança paga, quem libera o acesso é o webhook (charge.paid).
+ * Espera a assinatura ficar "active" no banco (até ~30s) antes de dizer que liberou.
+ */
+const aguardarAssinaturaAtiva = async (): Promise<boolean> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  for (let i = 0; i < 15; i++) {
+    const { data } = await supabase.from("assinaturas").select("status").eq("user_id", user.id).maybeSingle();
+    if (data?.status === "active") return true;
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return false;
+};
+
 const sanitizeDigits = (v: string) => v.replace(/\D/g, "");
 
 const formatCardNumber = (v: string) =>
@@ -147,18 +171,76 @@ export function GerenciarAssinaturaPagarme({
         const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
         throw new Error(corpo?.error || error.message || "Falha ao trocar cartão.");
       }
-      toast({
-        title: "Cartão atualizado!",
-        description:
-          data?.status_assinatura === "past_due"
-            ? "Cartão atualizado; a cobrança será tentada novamente automaticamente."
-            : data?.last_four_digits
-              ? `Novo cartão final ${data.last_four_digits} salvo com sucesso.`
-              : "Próximas cobranças usarão o novo cartão.",
-      });
-      setTrocaOpen(false);
-      resetForm();
-      onChanged?.();
+      const resposta = (data ?? {}) as RespostaTrocaCartao;
+      const final = resposta.last_four_digits ? ` final ${resposta.last_four_digits}` : "";
+
+      switch (resposta.cobranca) {
+        case "assinatura_cancelada": {
+          // Nada foi trocado: a assinatura não existe mais na Pagar.me
+          const msg = resposta.mensagem || "Sua assinatura foi cancelada. Assine um plano novamente para voltar a ter acesso.";
+          setErro(msg);
+          toast({ title: "Assinatura cancelada", description: msg, variant: "destructive" });
+          onChanged?.();
+          return;
+        }
+        case "recusada": {
+          resetForm();
+          setErro(`Seu novo cartão${final} foi salvo, mas o pagamento foi recusado: ${resposta.mensagem}. O pagamento continua pendente; tente outro cartão.`);
+          toast({ title: "Pagamento recusado", description: resposta.mensagem, variant: "destructive" });
+          onChanged?.();
+          return;
+        }
+        case "erro": {
+          resetForm();
+          setErro(`Seu novo cartão${final} foi salvo, mas não conseguimos cobrar a fatura em aberto agora (${resposta.mensagem}). O pagamento continua pendente; tente novamente em instantes ou fale com o suporte.`);
+          toast({ title: "Pagamento não realizado", description: resposta.mensagem, variant: "destructive" });
+          onChanged?.();
+          return;
+        }
+        case "pendente": {
+          toast({
+            title: "Pagamento em processamento",
+            description: `Novo cartão${final} salvo. O pagamento está sendo processado; o acesso é liberado assim que a operadora confirmar.`,
+          });
+          setTrocaOpen(false);
+          resetForm();
+          onChanged?.();
+          return;
+        }
+        case "paga": {
+          toast({ title: "Pagamento aprovado!", description: `Novo cartão${final} salvo. Liberando seu acesso...` });
+          setTrocaOpen(false);
+          resetForm();
+          if (await aguardarAssinaturaAtiva()) {
+            toast({ title: "Acesso liberado!", description: "Sua assinatura está ativa novamente." });
+            // Refaz a verificação de acesso (ProtectedAppRoute só verifica ao montar)
+            try { sessionStorage.removeItem("mec_verificacao_cache"); } catch { /* sem sessionStorage */ }
+            window.location.reload();
+          } else {
+            toast({
+              title: "Pagamento aprovado",
+              description: "Seu acesso será liberado em instantes, assim que a confirmação da operadora chegar.",
+            });
+            onChanged?.();
+          }
+          return;
+        }
+        default: {
+          // nao_necessaria (ou resposta antiga sem o campo)
+          const emAberto = resposta.status_assinatura === "past_due" || resposta.status_assinatura === "unpaid";
+          toast({
+            title: "Cartão atualizado!",
+            description: emAberto
+              ? `Novo cartão${final} salvo. Não há cobrança em aberto na operadora agora; se o acesso continuar bloqueado, fale com o suporte.`
+              : resposta.last_four_digits
+                ? `Novo cartão final ${resposta.last_four_digits} salvo com sucesso.`
+                : "Próximas cobranças usarão o novo cartão.",
+          });
+          setTrocaOpen(false);
+          resetForm();
+          onChanged?.();
+        }
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro inesperado.";
       setErro(msg);
