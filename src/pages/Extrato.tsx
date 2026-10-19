@@ -178,8 +178,8 @@ export default function Extrato() {
   return (
     <AppLayout>
       <main className="flex-1 p-6 overflow-auto">
-        {/* No desktop usa a área toda ao lado do menu (teto de 1600px para ultrawide) */}
-        <div className="max-w-5xl lg:max-w-[1600px] mx-auto flex flex-col gap-6">
+        {/* No desktop usa a área toda ao lado do menu, expandido ou recolhido (sem teto) */}
+        <div className="max-w-5xl lg:max-w-none mx-auto flex flex-col gap-6">
           {/* Título + ações. lg:pt-6: os botões encostam na borda direita e o
               olho flutuante do layout (BotaoOcultarValores, fixed top-4 right-4,
               só no desktop) ficaria por cima de "Lançar entrada/saída" */}
