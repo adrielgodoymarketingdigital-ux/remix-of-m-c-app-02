@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  STATUS_COM_FATURA_EM_ABERTO,
+  type ResultadoCobranca,
+  cobrarFaturaEmAberto,
+  consultarAssinatura,
+} from "./cobrarFaturaEmAberto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,6 +98,29 @@ serve(async (req) => {
     if (!pagarmeKey) throw new Error("PAGARME_SECRET_KEY não configurada.");
     const pagarmeAuth = `Basic ${btoa(`${pagarmeKey}:`)}`;
 
+    // Fatura em aberto (past_due/unpaid): antes de mexer em qualquer coisa, confere se
+    // a assinatura ainda existe na Pagar.me. Cancelada lá = trocar cartão não adianta.
+    const temFaturaEmAberto = STATUS_COM_FATURA_EM_ABERTO.includes(assinatura.status ?? "");
+    if (temFaturaEmAberto) {
+      const consulta = await consultarAssinatura(assinatura.pagarme_subscription_id, { pagarmeAuth, log });
+      if ("erro" in consulta) {
+        log("Erro ao consultar assinatura", { erro: consulta.erro });
+        throw new Error("Não foi possível consultar sua assinatura na Pagar.me. Tente novamente em instantes.");
+      }
+      if (consulta.cancelada) {
+        log("Assinatura cancelada na Pagar.me", { subscriptionId: assinatura.pagarme_subscription_id });
+        return new Response(
+          JSON.stringify({
+            success: false,
+            cobranca: "assinatura_cancelada",
+            mensagem: "Sua assinatura foi cancelada na operadora de pagamento depois das cobranças recusadas. Para voltar a ter acesso, assine um plano novamente.",
+            status_assinatura: assinatura.status,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // 1. Cria o novo cartão no customer a partir do token
     log("Criando novo cartão", {
       customerId: assinatura.pagarme_customer_id,
@@ -148,14 +177,22 @@ serve(async (req) => {
       .eq("id", assinatura.id);
 
     log("Cartão atualizado com sucesso");
+
+    // 4. Fatura em aberto: coloca o cartão novo na cobrança que falhou e retenta.
+    // A liberação do acesso continua sendo do webhook (charge.paid confirmado na API).
+    const resultado: ResultadoCobranca = temFaturaEmAberto
+      ? await cobrarFaturaEmAberto(assinatura.pagarme_subscription_id, newCardId, { pagarmeAuth, log })
+      : { cobranca: "nao_necessaria" };
+    log("Resultado da cobrança", resultado);
+
     return new Response(
       JSON.stringify({
         success: true,
         card_id: newCardId,
         last_four_digits: cardData.last_four_digits,
         brand: cardData.brand,
-        // past_due: a cobrança pendente fica para a nova tentativa automática da Pagar.me.
         status_assinatura: assinatura.status,
+        ...resultado,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
