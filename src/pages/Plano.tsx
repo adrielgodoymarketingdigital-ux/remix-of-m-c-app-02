@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { nomePlanoAmigavel, rotuloPlano, textoRenovarPlano } from "@/lib/planoVencido";
 import { partesDataHoraBrasilia } from "@/lib/dataBrasilia";
+import { fimDaCarenciaPagamentoAtrasado, pagamentoAtrasadoEmCarencia } from "@/lib/carenciaAssinatura";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,6 +57,12 @@ export default function Plano() {
       ? ((assinatura as { plano_anterior?: string | null } | null)?.plano_anterior ?? null)
       : null;
   const [planoDestacado, setPlanoDestacado] = useState<string | null>(null);
+  // Carência de pagamento (past_due/unpaid dentro dos 3 dias): só texto, a regra é a de carenciaAssinatura
+  const emCarenciaPagamento = pagamentoAtrasadoEmCarencia(assinatura, new Date());
+  const fimCarencia = emCarenciaPagamento ? fimDaCarenciaPagamentoAtrasado(assinatura ?? {}) : null;
+  const dataLimiteCarenciaBR = fimCarencia
+    ? partesDataHoraBrasilia(fimCarencia).data.split("-").reverse().join("/")
+    : null;
   const dataVencimentoBR = planoVencidoEm
     ? partesDataHoraBrasilia(planoVencidoEm).data.split("-").reverse().join("/")
     : null;
@@ -628,6 +635,24 @@ export default function Plano() {
                           </AlertDescription>
                         </Alert>
                         {/* Cobrança recusada no cartão: trocar o cartão resolve sem assinar de novo. */}
+                        {podeTrocarCartao && (
+                          <GerenciarAssinaturaPagarme
+                            dataProximaCobranca={assinatura?.data_proxima_cobranca}
+                            onChanged={recarregar}
+                          />
+                        )}
+                      </div>
+                    </>
+                  ) : emCarenciaPagamento ? (
+                    <>
+                      <AlertTriangle className="h-8 w-8 text-orange-500 mt-1" />
+                      <div className="flex-1">
+                        <h2 className="text-2xl font-bold mb-2">Pagamento pendente</h2>
+                        <p className="text-muted-foreground mb-4">
+                          Pagamento pendente. Seu acesso continua liberado
+                          {dataLimiteCarenciaBR ? ` até ${dataLimiteCarenciaBR}` : ""}. Atualize o cartão ou pague para não perder o acesso.
+                        </p>
+                        {/* Cobrança recusada no cartão: trocar o cartão já tenta cobrar a fatura em aberto */}
                         {podeTrocarCartao && (
                           <GerenciarAssinaturaPagarme
                             dataProximaCobranca={assinatura?.data_proxima_cobranca}
