@@ -141,7 +141,7 @@ export default function CompatibilidadePelicula() {
 
   return (
     <AppLayout>
-      <main className="flex-1 p-4 sm:p-6 overflow-auto space-y-6 max-w-2xl mx-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 overflow-auto space-y-6 max-w-2xl lg:max-w-none mx-auto w-full">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-blue-600">
             <ShieldCheck className="h-5 sm:h-6 w-5 sm:w-6 text-white" />
