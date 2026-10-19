@@ -782,8 +782,20 @@ export default function Plano() {
                         )}
                         {!planoAtivo && tipoMudanca === "upgrade" && (
                           <Badge variant="outline" className="bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400 border-green-200 dark:border-green-700">
-                            <ArrowUpCircle className="mr-1 h-3 w-3" />
-                            Upgrade
+                            {planoVencido ? (
+                              // Já foi pagante: renovar, não "upgrade" (plano anterior pelo nível, mensal ou anual)
+                              <>
+                                <RefreshCw className="mr-1 h-3 w-3" />
+                                {chavePlanoAnterior && key.replace(/_(mensal|anual)$/, "") === chavePlanoAnterior.replace(/_(mensal|anual)$/, "")
+                                  ? "Renovar o seu plano"
+                                  : "Renovar"}
+                              </>
+                            ) : (
+                              <>
+                                <ArrowUpCircle className="mr-1 h-3 w-3" />
+                                Upgrade
+                              </>
+                            )}
                           </Badge>
                         )}
                         {!planoAtivo && tipoMudanca === "downgrade" && (
