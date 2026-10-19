@@ -356,7 +356,7 @@ export default function Precificador() {
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
-        <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
+        <div className="max-w-5xl lg:max-w-none mx-auto space-y-4 sm:space-y-6">
 
           {/* Cabeçalho */}
           <div>
