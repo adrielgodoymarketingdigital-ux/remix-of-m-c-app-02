@@ -146,7 +146,7 @@ export default function Financeiro() {
   return (
     <AppLayout>
       <main className="flex-1 p-6 overflow-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="max-w-7xl lg:max-w-none mx-auto space-y-8">
           <AvisoCustoNaoConfirmado />
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
