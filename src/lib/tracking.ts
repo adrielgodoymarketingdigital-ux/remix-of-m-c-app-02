@@ -199,15 +199,36 @@ export async function trackPurchase(email?: string, value?: number, currency = '
       console.log('[Tracking] Purchase Pixel disparado com eventID:', eventId)
     }
 
-    sendMetaCapiEvent({
+    const envio = sendMetaCapiEvent({
       event_name: 'Purchase',
       event_id: eventId,
       email,
       custom_data: { currency, value: value || 0 },
     }).catch((err) => console.error('[Tracking] CAPI Purchase failed:', err))
+    purchasesPendentes.add(envio)
+    envio.finally(() => purchasesPendentes.delete(envio))
   } catch (error) {
     console.error('[Tracking] Erro em trackPurchase:', error)
   }
+}
+
+// Envios do Purchase para a CAPI ainda em andamento
+const purchasesPendentes = new Set<Promise<unknown>>()
+
+/**
+ * Resolve quando os envios pendentes do Purchase para a CAPI terminarem,
+ * ou após `limiteMs` (o que vier primeiro). Sem envio pendente, resolve na hora.
+ * Usado pelo GuardaUtmify para não cortar o envio com o recarregamento.
+ */
+export function aguardarPurchasePendente(limiteMs: number): Promise<void> {
+  if (purchasesPendentes.size === 0) return Promise.resolve()
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(resolve, limiteMs)
+    Promise.allSettled([...purchasesPendentes]).then(() => {
+      clearTimeout(timeoutId)
+      resolve()
+    })
+  })
 }
 
 /**

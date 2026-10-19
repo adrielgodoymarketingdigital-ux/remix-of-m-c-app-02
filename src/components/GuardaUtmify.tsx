@@ -1,5 +1,6 @@
-import { useLayoutEffect, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
+import { aguardarPurchasePendente } from "@/lib/tracking";
 
 /** Definido no index.html (fonte única da lista de rotas públicas da UTMify). */
 interface MecUtmify {
@@ -14,6 +15,11 @@ declare global {
   }
 }
 
+/** Espera máxima pelo envio do Purchase (CAPI) antes de recarregar, ao sair da /obrigado. */
+const ESPERA_MAXIMA_PURCHASE_MS = 4000;
+
+const ehObrigado = (caminho: string) => caminho.replace(/\/+$/, "") === "/obrigado";
+
 /**
  * Mantém o pixel da UTMify só nas páginas públicas também na navegação SPA.
  *
@@ -21,6 +27,7 @@ declare global {
  * observador + intervalo de 2s "preenchendo" campos de e-mail). Então:
  *  - pixel ativo e a rota passa a ser do app/login → não monta a tela e
  *    recarrega a página (que volta sem o pixel, pela regra do index.html);
+ *    vindo da /obrigado, antes espera o envio do Purchase terminar (com limite);
  *  - rota pública alcançada pelo app → carrega o pixel ali, como hoje.
  */
 export function GuardaUtmify({ children }: { children: ReactNode }) {
@@ -28,11 +35,24 @@ export function GuardaUtmify({ children }: { children: ReactNode }) {
   const utmify = typeof window !== "undefined" ? window.__mecUtmify : undefined;
   const publica = !utmify || utmify.ehRotaPublica(pathname);
   const precisaRecarregar = !!utmify?.carregado && !publica;
+  const anteriorRef = useRef(pathname);
+  const recarregandoRef = useRef(false);
 
   useLayoutEffect(() => {
+    const anterior = anteriorRef.current;
+    anteriorRef.current = pathname;
     if (!utmify) return;
-    if (publica) utmify.carregar();
-    else if (utmify.carregado) window.location.reload();
+    if (publica) {
+      utmify.carregar();
+      return;
+    }
+    if (!utmify.carregado || recarregandoRef.current) return;
+    recarregandoRef.current = true;
+    if (ehObrigado(anterior)) {
+      aguardarPurchasePendente(ESPERA_MAXIMA_PURCHASE_MS).then(() => window.location.reload());
+    } else {
+      window.location.reload();
+    }
   }, [pathname, publica, utmify]);
 
   // Enquanto o pixel estiver ativo, nenhuma tela do app/login é montada
