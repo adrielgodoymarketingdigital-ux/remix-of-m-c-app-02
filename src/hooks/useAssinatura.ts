@@ -4,6 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { Assinatura, LIMITES_POR_PLANO, PlanoTipo, LimitesPlano, getLimitesFree } from "@/types/assinatura";
 import { periodoLimiteDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
 import { carenciaEsgotada, pagamentoAtrasadoEmCarencia } from "@/lib/carenciaAssinatura";
+import { planoVencido as calcularPlanoVencido, type AssinaturaPlanoVencido } from "@/lib/planoVencido";
 import { PLANOS } from "@/types/plano";
 import { trackInitiateCheckout } from "@/lib/tracking";
 
@@ -882,10 +883,21 @@ export function useAssinatura() {
     }
   }, [carregarAssinatura]);
 
+  // Só para TEXTOS: free que já foi pagante ("seu plano venceu, renove").
+  // Não mexe em acesso nem limites. Campos novos (plano_anterior) são opcionais:
+  // a leitura é select("*"), então vêm undefined enquanto a coluna não existir.
+  const estadoPlanoVencido = useMemo(
+    () => calcularPlanoVencido(assinatura as unknown as AssinaturaPlanoVencido | null, new Date()),
+    [assinatura],
+  );
+
   return {
     assinatura,
     carregando,
     limites,
+    planoVencido: estadoPlanoVencido.vencido,
+    planoAnterior: estadoPlanoVencido.planoAnterior,
+    planoVencidoEm: estadoPlanoVencido.vencidoEm,
     temAcessoModulo,
     temRecursoPremium,
     podeCadastrarDispositivo,
