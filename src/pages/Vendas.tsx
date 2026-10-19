@@ -164,7 +164,7 @@ export default function Vendas() {
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
-        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        <div className="max-w-7xl lg:max-w-none mx-auto space-y-4 sm:space-y-6">
           {/* Cabeçalho da página */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 pt-1">
