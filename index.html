@@ -46,15 +46,17 @@
 
     <!-- UTMify Pixel Code -->
     <script>
-      // UTMify SÓ nas páginas públicas (landing, cadastro/checkout, obrigado,
-      // renovação e páginas públicas das lojas). No app logado e no login o
-      // pixel "preenchia" todo campo de e-mail com o lead guardado no navegador
-      // (apagava/trocava o e-mail) e capturava e-mails/telefones digitados.
+      // UTMify SÓ nas páginas do funil do MecApp (landing, LPs, cadastro/checkout,
+      // obrigado, renovação). No app logado e no login o pixel "preenchia" todo
+      // campo de e-mail com o lead guardado no navegador (apagava/trocava o
+      // e-mail) e capturava e-mails/telefones digitados. Também fica FORA das
+      // páginas públicas das lojas (/c, /lp/:slug, /acompanhar, /acompanhar-cliente,
+      // /entrada): quem as visita é cliente do lojista, não lead do MecApp.
       // Esta lista é a fonte única: o app lê window.__mecUtmify
       // (src/components/GuardaUtmify.tsx) para a navegação sem recarregar.
       window.__mecUtmify = {
         exatas: ["/", "/lp1", "/lp2", "/es", "/cadastro-plano", "/completar-cadastro", "/obrigado", "/cadastro-trial", "/ativar-trial", "/renovar"],
-        prefixos: ["/c/", "/lp/", "/acompanhar/", "/acompanhar-cliente/", "/entrada/"],
+        prefixos: [],
         carregado: false,
         ehRotaPublica: function (caminho) {
           var p = caminho.length > 1 ? caminho.replace(/\/+$/, "") : caminho;
