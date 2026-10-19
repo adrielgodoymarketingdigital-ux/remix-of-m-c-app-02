@@ -1292,7 +1292,7 @@ export default function MultiEmpresas() {
   // ─── Render: guards ────────────────────────────────────────────────────────
 
   if (carregandoAssinatura) {
-    return <AppLayout><div className="p-6 space-y-4 max-w-5xl mx-auto">{[1,2,3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div></AppLayout>;
+    return <AppLayout><div className="p-6 space-y-4 max-w-5xl lg:max-w-none mx-auto">{[1,2,3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div></AppLayout>;
   }
   if (semAcesso) {
     return (
@@ -1322,7 +1322,7 @@ export default function MultiEmpresas() {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto w-full min-w-0">
+      <div className="p-4 md:p-6 space-y-5 max-w-6xl lg:max-w-none mx-auto w-full min-w-0">
 
         {/* Header */}
         <div className="flex flex-col gap-[22px] sm:flex-row sm:items-center sm:justify-between sm:gap-4 lg:pr-12">
