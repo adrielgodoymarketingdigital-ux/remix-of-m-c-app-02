@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { nomePlanoAmigavel, rotuloPlano, textoRenovarPlano } from "@/lib/planoVencido";
+import { getLimitesFree } from "@/types/assinatura";
 import { partesDataHoraBrasilia } from "@/lib/dataBrasilia";
 import { fimDaCarenciaPagamentoAtrasado, pagamentoAtrasadoEmCarencia } from "@/lib/carenciaAssinatura";
 import { useSearchParams, Navigate } from "react-router-dom";
@@ -57,6 +58,16 @@ export default function Plano() {
       ? ((assinatura as { plano_anterior?: string | null } | null)?.plano_anterior ?? null)
       : null;
   const [planoDestacado, setPlanoDestacado] = useState<string | null>(null);
+  // Cartão Free: números lidos da fonte única (getLimitesFree pela data de cadastro:
+  // contas antigas têm o limite legado). Só o número muda; o texto é o de PLANOS.free.
+  const limitesFreeConta = getLimitesFree(assinatura?.created_at);
+  const recursosFreeDaConta = PLANOS.free.recursos.map((r) =>
+    r
+      .replace(/^Até \d+ dispositivos/, `Até ${limitesFreeConta.dispositivos} dispositivos`)
+      .replace(/^\d+ Ordens de Serviço/, `${limitesFreeConta.ordens_servico_mes} Ordens de Serviço`)
+      .replace(/^\d+ Produtos\/Peças/, `${limitesFreeConta.produtos_mes} Produtos/Peças`)
+      .replace(/^\d+MB de armazenamento/, `${limitesFreeConta.armazenamento_mb}MB de armazenamento`),
+  );
   // Carência de pagamento (past_due/unpaid dentro dos 3 dias): só texto, a regra é a de carenciaAssinatura
   const emCarenciaPagamento = pagamentoAtrasadoEmCarencia(assinatura, new Date());
   const fimCarencia = emCarenciaPagamento ? fimDaCarenciaPagamentoAtrasado(assinatura ?? {}) : null;
@@ -747,7 +758,7 @@ export default function Plano() {
                     </div>
 
                     <ul className="space-y-2 mb-4">
-                      {PLANOS.free.recursos.map((recurso, idx) => (
+                      {recursosFreeDaConta.map((recurso, idx) => (
                         <li key={idx} className="flex items-start gap-2 text-sm">
                           <div className="p-1 rounded-full bg-green-100 dark:bg-green-900 mt-0.5">
                             <Check className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
