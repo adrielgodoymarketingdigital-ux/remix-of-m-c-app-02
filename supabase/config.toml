@@ -20,3 +20,18 @@ verify_jwt = false
 
 [functions.update-pagarme-card]
 verify_jwt = true
+
+[functions.check-pix-payment]
+verify_jwt = false
+
+[functions.create-pagarme-subscription]
+verify_jwt = false
+
+[functions.dispatch-event]
+verify_jwt = false
+
+[functions.validar-cupom]
+verify_jwt = false
+
+[functions.webhook-n8n-cadastro]
+verify_jwt = false
