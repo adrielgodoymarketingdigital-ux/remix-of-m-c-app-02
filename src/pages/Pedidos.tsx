@@ -140,9 +140,10 @@ export default function Pedidos() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto p-4 space-y-6">
-        {/* Cabeçalho */}
-        <div className="flex items-center justify-between">
+      <div className="container mx-auto p-4 lg:p-6 lg:max-w-none space-y-6">
+        {/* Cabeçalho. lg:pt-6: o olho flutuante do layout (BotaoOcultarValores,
+            fixed top-4 right-4, só no desktop) ficava por cima de "Novo Pedido" */}
+        <div className="flex items-center justify-between lg:pt-6">
           <div>
             <h1 className="text-2xl font-bold">Pedidos / Encomendas</h1>
             <p className="text-sm text-muted-foreground">Gerencie pedidos e encomendas de clientes</p>
