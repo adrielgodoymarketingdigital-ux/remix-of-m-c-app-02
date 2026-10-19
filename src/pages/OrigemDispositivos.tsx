@@ -419,7 +419,7 @@ export default function OrigemDispositivos() {
                       placeholder="Data inicial"
                       value={filtroDataInicial}
                       onChange={(e) => setFiltroDataInicial(e.target.value)}
-                      className="h-11 flex-1"
+                      className="h-11 flex-1 lg:flex-none lg:w-48"
                     />
                   </div>
 
@@ -428,7 +428,7 @@ export default function OrigemDispositivos() {
                     placeholder="Data final"
                     value={filtroDataFinal}
                     onChange={(e) => setFiltroDataFinal(e.target.value)}
-                    className="h-11"
+                    className="h-11 lg:w-48"
                   />
 
                   {temFiltrosAtivos && (
