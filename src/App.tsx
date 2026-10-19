@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { GuardaUtmify } from "@/components/GuardaUtmify";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
 import { useThemeColorSync } from "@/hooks/useThemeColorSync";
 import { ThemeProvider } from "next-themes";
@@ -513,7 +514,9 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <AppRoutes />
+                <GuardaUtmify>
+                  <AppRoutes />
+                </GuardaUtmify>
               </BrowserRouter>
             </OSStatusConfigProvider>
           </EmpresaProvider>
