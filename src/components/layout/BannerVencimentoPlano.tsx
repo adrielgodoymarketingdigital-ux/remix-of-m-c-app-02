@@ -44,17 +44,9 @@ export function BannerVencimentoPlano() {
     const planoTipo = assinatura.plano_tipo;
     const status = assinatura.status;
 
-    // Free que já foi pagante: o plano venceu (acesso segue o do free)
-    if (planoVencido) {
-      return {
-        tipo: "vencido" as const,
-        texto: "Seu plano venceu",
-        destaque: "Renove para voltar a usar todos os recursos",
-        botao: "Renovar agora",
-        diasRestantes: null as number | null,
-        percentualDecorrido: null as number | null,
-      };
-    }
+    // Free que já foi pagante: o aviso fica só no cartão de limites (CardLimitesFree),
+    // que mostra os números e tem o "Renovar agora" — sem banner duplicado.
+    if (planoVencido) return null;
 
     // Não mostrar para admin, free, trial, demonstracao
     if (["free", "trial", "demonstracao"].includes(planoTipo)) return null;
