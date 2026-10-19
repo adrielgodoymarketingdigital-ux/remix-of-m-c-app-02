@@ -504,10 +504,10 @@ export default function Relatorios() {
                   </>
                 )}
                 <div className="flex items-end gap-2 sm:col-span-2">
-                  <Button onClick={handleFiltrar} disabled={loading} className="flex-1 h-11">
+                  <Button onClick={handleFiltrar} disabled={loading} className="flex-1 lg:flex-none lg:w-40 h-11">
                     Filtrar
                   </Button>
-                  <Button variant="outline" onClick={handleLimparFiltros} disabled={loading} className="flex-1 h-11">
+                  <Button variant="outline" onClick={handleLimparFiltros} disabled={loading} className="flex-1 lg:flex-none lg:w-40 h-11">
                     Limpar
                   </Button>
                 </div>
