@@ -339,9 +339,10 @@ export default function AdminFinanceiro() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-6 space-y-6 max-w-7xl">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="container mx-auto px-4 lg:px-6 py-6 space-y-6 max-w-7xl lg:max-w-none">
+        {/* Header. lg:pt-6: o olho flutuante do layout (BotaoOcultarValores,
+            fixed top-4 right-4, só no desktop) ficava por cima de "Atualizar" */}
+        <div className="flex flex-wrap items-center justify-between gap-3 lg:pt-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 tracking-tight">
               <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
