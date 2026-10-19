@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormularioPerfilLoja } from "@/components/configuracoes/FormularioPerfilLoja";
 import { UploadLogoLoja } from "@/components/configuracoes/UploadLogoLoja";
 import { AssinaturaLojaConfig } from "@/components/configuracoes/AssinaturaLojaConfig";
-import { BadgeStatusPerfil } from "@/components/configuracoes/BadgeStatusPerfil";
+import { CardProgressoPerfil, CardStatusPerfil } from "@/components/configuracoes/ProgressoPerfil";
 import { PreviewRecibo } from "@/components/configuracoes/PreviewRecibo";
 import { SeletorTema } from "@/components/configuracoes/SeletorTema";
 import { PersonalizacaoCores } from "@/components/configuracoes/PersonalizacaoCores";
@@ -15,12 +15,71 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useToast } from "@/hooks/use-toast";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Building2 } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  Download,
+  Droplet,
+  Eye,
+  Hash,
+  Image as ImageIcon,
+  Palette,
+  ShieldCheck,
+  User,
+  type LucideIcon,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { cn } from "@/lib/utils";
+
+/** Abas da página (mesmos values de antes; só ganham ícone). */
+const ABAS: { value: string; label: string; icone: LucideIcon }[] = [
+  { value: "perfil", label: "Perfil", icone: User },
+  { value: "logo", label: "Logo", icone: ImageIcon },
+  { value: "aparencia", label: "Aparência", icone: Palette },
+  { value: "cores", label: "Cores", icone: Droplet },
+  { value: "numeracao", label: "Numeração", icone: Hash },
+  { value: "notificacoes", label: "Notificações", icone: Bell },
+  { value: "permissoes", label: "Permissões", icone: ShieldCheck },
+  { value: "preview", label: "Preview", icone: Eye },
+  { value: "exportacao", label: "Exportação", icone: Download },
+];
+
+const BOTAO_CONTORNO =
+  "inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+/**
+ * "Ver minha loja": página pública da loja com os dados que o config já traz
+ * (select * em configuracoes_loja). Landing page ativa > catálogo ativo >
+ * tela /catalogo, onde a loja é configurada.
+ */
+function BotaoVerLoja({ config }: { config: ConfiguracaoLoja | null }) {
+  const extra = config as (ConfiguracaoLoja & {
+    catalogo_slug?: string | null;
+    catalogo_ativo?: boolean | null;
+    landing_page_ativa?: boolean | null;
+  }) | null;
+  const slug = extra?.catalogo_slug;
+  const destino = slug && extra?.landing_page_ativa ? `/lp/${slug}` : slug && extra?.catalogo_ativo ? `/c/${slug}` : null;
+  const conteudo = (
+    <>
+      <Eye className="h-4 w-4" aria-hidden="true" />
+      Ver minha loja
+    </>
+  );
+  return destino ? (
+    <a href={destino} target="_blank" rel="noopener noreferrer" className={BOTAO_CONTORNO}>
+      {conteudo}
+    </a>
+  ) : (
+    <Link to="/catalogo" className={BOTAO_CONTORNO} title="Ative o catálogo ou a landing page para publicar sua loja">
+      {conteudo}
+    </Link>
+  );
+}
 
 export default function Configuracoes() {
   const { isProprietario, empresas, nomeMatriz, empresaAtiva, setEmpresaAtiva } = useEmpresa();
@@ -61,7 +120,7 @@ export default function Configuracoes() {
     return (
       <AppLayout>
         <main className="flex-1 p-4 sm:p-6 overflow-auto">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-5xl lg:max-w-none mx-auto">
             <p className="text-center text-muted-foreground">Carregando...</p>
           </div>
         </main>
@@ -72,16 +131,21 @@ export default function Configuracoes() {
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
-        <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Configurações</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">
-              Gerencie as configurações e dados da sua loja
-            </p>
+        <div className="max-w-5xl lg:max-w-none mx-auto space-y-5 sm:space-y-6">
+          {/* Cabeçalho. lg:pt-6: o olho flutuante do layout (BotaoOcultarValores,
+              fixed top-4 right-4, só no desktop) ficaria por cima de "Ver minha loja" */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:pt-6">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-[28px]">Configurações</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Gerencie as configurações e dados da sua loja.
+              </p>
+            </div>
+            <BotaoVerLoja config={config} />
           </div>
 
           {isProprietario && empresas.length > 0 && (
-            <Card>
+            <Card className="rounded-2xl">
               <CardContent className="pt-4 sm:pt-6">
                 <div className="flex items-center gap-2 mb-2">
                   <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -113,112 +177,81 @@ export default function Configuracoes() {
             </Card>
           )}
 
-          {/* Card de Status */}
-          <Card>
-            <CardHeader className="pb-3 sm:pb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-base sm:text-lg">Status do Perfil</CardTitle>
-                  <CardDescription className="text-sm">
-                    Complete todos os dados para gerar recibos profissionais
-                  </CardDescription>
-                </div>
-                <BadgeStatusPerfil
-                  percentual={statusRecibos.percentual}
-                  camposFaltando={statusRecibos.camposFaltando}
-                />
-              </div>
-            </CardHeader>
-            {statusRecibos.percentual < 100 && (
-              <CardContent className="pt-0">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    Preencha os seguintes campos obrigatórios:{" "}
-                    <strong>{statusRecibos.camposFaltando.join(", ")}</strong>
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            )}
-          </Card>
+          {/* Status do perfil (mesma porcentagem/campos de validarParaRecibos) */}
+          <CardStatusPerfil status={statusRecibos} />
 
           <Tabs defaultValue="perfil" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-9 h-auto">
-              <TabsTrigger value="perfil" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Perfil
-              </TabsTrigger>
-              <TabsTrigger value="logo" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Logo
-              </TabsTrigger>
-              <TabsTrigger value="aparencia" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Aparência
-              </TabsTrigger>
-              <TabsTrigger value="cores" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Cores
-              </TabsTrigger>
-              <TabsTrigger value="numeracao" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Numeração
-              </TabsTrigger>
-              <TabsTrigger value="notificacoes" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Notificações
-              </TabsTrigger>
-              <TabsTrigger value="permissoes" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Permissões
-              </TabsTrigger>
-              <TabsTrigger value="preview" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Preview
-              </TabsTrigger>
-              <TabsTrigger value="exportacao" className="text-xs sm:text-sm py-2 sm:py-1.5">
-                Exportação
-              </TabsTrigger>
+            {/* Barra única de abas em pílula; rola na horizontal no celular/tablet */}
+            <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-muted/70 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {ABAS.map(({ value, label, icone: Icone }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className={cn(
+                    "shrink-0 gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium text-muted-foreground xl:flex-1",
+                    "hover:text-foreground",
+                    "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_4px_12px_hsl(var(--primary)/0.25)]",
+                  )}
+                >
+                  <Icone className="h-4 w-4" aria-hidden="true" />
+                  {label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
-            <TabsContent value="perfil" className="space-y-4 mt-4 sm:mt-6">
-              <FormularioPerfilLoja
-                configuracao={config}
-                onSalvar={handleSalvarDados}
-              />
-            </TabsContent>
+            {/* Conteúdo das abas + cartão "Progresso do Perfil" ao lado (1 coluna abaixo do xl) */}
+            <div className="mt-5 grid items-start gap-5 sm:mt-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+              <div className="min-w-0">
+                <TabsContent value="perfil" className="space-y-4 mt-0">
+                  <FormularioPerfilLoja
+                    configuracao={config}
+                    onSalvar={handleSalvarDados}
+                  />
+                </TabsContent>
 
-            <TabsContent value="logo" className="space-y-4 mt-4 sm:mt-6">
-              <UploadLogoLoja
-                logoAtual={config?.logo_url}
-                onUploadSuccess={handleUploadLogo}
-              />
-              <AssinaturaLojaConfig
-                assinaturaAtual={config?.assinatura_loja}
-                usarAssinatura={config?.usar_assinatura_loja}
-                onSalvar={handleSalvarDados}
-              />
-            </TabsContent>
+                <TabsContent value="logo" className="space-y-4 mt-0">
+                  <UploadLogoLoja
+                    logoAtual={config?.logo_url}
+                    onUploadSuccess={handleUploadLogo}
+                  />
+                  <AssinaturaLojaConfig
+                    assinaturaAtual={config?.assinatura_loja}
+                    usarAssinatura={config?.usar_assinatura_loja}
+                    onSalvar={handleSalvarDados}
+                  />
+                </TabsContent>
 
-            <TabsContent value="aparencia" className="space-y-4 mt-4 sm:mt-6">
-              <SeletorTema />
-            </TabsContent>
+                <TabsContent value="aparencia" className="space-y-4 mt-0">
+                  <SeletorTema />
+                </TabsContent>
 
-            <TabsContent value="cores" className="space-y-4 mt-4 sm:mt-6">
-              <PersonalizacaoCores />
-            </TabsContent>
+                <TabsContent value="cores" className="space-y-4 mt-0">
+                  <PersonalizacaoCores />
+                </TabsContent>
 
-            <TabsContent value="numeracao" className="space-y-4 mt-4 sm:mt-6">
-              <ConfiguracaoNumeracaoOS />
-            </TabsContent>
+                <TabsContent value="numeracao" className="space-y-4 mt-0">
+                  <ConfiguracaoNumeracaoOS />
+                </TabsContent>
 
-            <TabsContent value="notificacoes" className="space-y-4 mt-4 sm:mt-6">
-              <NotificationSettings />
-            </TabsContent>
+                <TabsContent value="notificacoes" className="space-y-4 mt-0">
+                  <NotificationSettings />
+                </TabsContent>
 
-            <TabsContent value="permissoes" className="space-y-4 mt-4 sm:mt-6">
-              <ConfiguracaoPermissoes />
-            </TabsContent>
+                <TabsContent value="permissoes" className="space-y-4 mt-0">
+                  <ConfiguracaoPermissoes />
+                </TabsContent>
 
-            <TabsContent value="preview" className="space-y-4 mt-4 sm:mt-6">
-              <PreviewRecibo configuracao={config} />
-            </TabsContent>
+                <TabsContent value="preview" className="space-y-4 mt-0">
+                  <PreviewRecibo configuracao={config} />
+                </TabsContent>
 
-            <TabsContent value="exportacao" className="space-y-4 mt-4 sm:mt-6">
-              <ExportacaoDados />
-            </TabsContent>
+                <TabsContent value="exportacao" className="space-y-4 mt-0">
+                  <ExportacaoDados />
+                </TabsContent>
+              </div>
+
+              <CardProgressoPerfil status={statusRecibos} />
+            </div>
           </Tabs>
         </div>
       </main>
