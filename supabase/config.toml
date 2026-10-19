@@ -1,4 +1,4 @@
-project_id = "zwzippdzxyunwdoiafko"
+project_id = "qztuzcchknptrvkdmdph"
 
 [functions.tiny-oauth-callback]
 verify_jwt = false
@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.create-pix-order-renovacao]
 verify_jwt = false
+
+[functions.update-pagarme-card]
+verify_jwt = true
