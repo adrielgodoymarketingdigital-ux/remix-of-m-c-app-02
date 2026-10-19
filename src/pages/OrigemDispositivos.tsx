@@ -217,7 +217,7 @@ export default function OrigemDispositivos() {
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl lg:max-w-none mx-auto">
           {isMobile ? (
             <div className="space-y-4">
               <div>
