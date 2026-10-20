@@ -3,6 +3,108 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import type { ManualChunkMeta } from "rollup";
+
+// Pacotes de cada chunk de vendor. Como no formato objeto do manualChunks, o
+// Rollup também puxa para o chunk as dependências que só eles usam.
+const GRUPOS_VENDOR: Record<string, string[]> = {
+  // Frameworks core — raramente mudam, ficam em cache por muito tempo
+  "vendor-react": ["react", "react-dom", "react-router-dom"],
+  "vendor-query": ["@tanstack/react-query"],
+  // tslib fixado aqui: no formato objeto ele caía no vendor-supabase (o Radix também usa)
+  "vendor-supabase": ["@supabase/supabase-js", "tslib"],
+  // Utilitários do cn() — num chunk próprio para não irem parar dentro do
+  // vendor-recharts (o Recharts também usa clsx), o que fazia toda página,
+  // inclusive a landing, baixar o Recharts só por causa do clsx.
+  "vendor-utils": ["clsx", "tailwind-merge"],
+  // Recharts fica num chunk próprio — lazy-loaded pelo GraficosDashboard
+  "vendor-recharts": ["recharts"],
+  // UI libs grandes
+  "vendor-radix": [
+    "@radix-ui/react-dialog",
+    "@radix-ui/react-select",
+    "@radix-ui/react-dropdown-menu",
+    "@radix-ui/react-tabs",
+    "@radix-ui/react-popover",
+    "@radix-ui/react-tooltip",
+  ],
+};
+
+const pacoteDoModulo = (id: string) => id.match(/node_modules\/((?:@[^/]+\/)?[^/]+)\//)?.[1];
+
+// Páginas de venda (/, /lp1, /lp2, /es) e suas seções.
+const ehModuloDaLanding = (id: string) =>
+  /\/src\/(components\/landing(-es)?\/|pages\/Landing(LP1|LP2|ES)?(Secoes)?\.tsx$|pages\/landingLP1)/.test(id);
+
+const ICONE_LUCIDE = /\/lucide-react\/dist\/esm\/icons\//;
+const INDICE_LUCIDE = /\/lucide-react\/dist\/esm\/lucide-react\.js$/;
+
+// Componentes importam do índice ("lucide-react"), que reexporta os ~1.500 ícones,
+// então o grafo não diz qual arquivo de ícone cada módulo usa. Os nomes importados
+// são traduzidos para o arquivo pelos `export … from './icons/x.js'` do índice.
+function iconesUsadosPor(modulos: Iterable<string>, { getModuleIds, getModuleInfo }: ManualChunkMeta) {
+  const indice = [...getModuleIds()].find((id) => INDICE_LUCIDE.test(id));
+  if (!indice) return new Set<string>();
+  const arquivoPorNome = new Map<string, string>();
+  const exportacoes = (getModuleInfo(indice)?.code ?? "").matchAll(/export\s*\{([^}]*)\}\s*from\s*['"](\.\/icons\/[^'"]+)['"]/g);
+  for (const [, nomes, arquivo] of exportacoes) {
+    for (const parte of nomes.split(",")) {
+      const nome = parte.trim().split(/\s+as\s+/).pop();
+      if (nome) arquivoPorNome.set(nome, path.join(path.dirname(indice), arquivo));
+    }
+  }
+  const usados = new Set<string>();
+  for (const id of modulos) {
+    const importacoes = (getModuleInfo(id)?.code ?? "").matchAll(/import\s*\{([^}]*)\}\s*from\s*["']lucide-react["']/g);
+    for (const [, nomes] of importacoes) {
+      for (const parte of nomes.split(",")) {
+        const arquivo = arquivoPorNome.get(parte.trim().split(/\s+as\s+/)[0]);
+        if (arquivo) usados.add(arquivo);
+      }
+    }
+  }
+  return usados;
+}
+
+// Módulos que o pacote principal (index) importa direto, sem passar pelo índice do lucide.
+function estaticosDaEntrada({ getModuleIds, getModuleInfo }: ManualChunkMeta) {
+  const vistos = new Set<string>();
+  const fila = [...getModuleIds()].filter((id) => getModuleInfo(id)?.isEntry);
+  for (const id of fila) {
+    if (vistos.has(id) || INDICE_LUCIDE.test(id)) continue;
+    vistos.add(id);
+    fila.push(...(getModuleInfo(id)?.importedIds ?? []));
+  }
+  return vistos;
+}
+
+// Ícones só das landings: os que elas usam menos os que o pacote principal já
+// carrega em toda página (senão o app inteiro baixaria o chunk de ícones no início).
+let iconesSoDaLanding: Set<string> | undefined;
+function calcularIconesSoDaLanding(meta: ManualChunkMeta) {
+  const daLanding = iconesUsadosPor([...meta.getModuleIds()].filter(ehModuloDaLanding), meta);
+  const daEntrada = iconesUsadosPor(estaticosDaEntrada(meta), meta);
+  return new Set([...daLanding].filter((id) => !daEntrada.has(id)));
+}
+
+function manualChunks(id: string, meta: ManualChunkMeta): string | undefined {
+  const pacote = pacoteDoModulo(id);
+  if (!pacote) return undefined;
+  for (const [chunk, pacotes] of Object.entries(GRUPOS_VENDOR)) {
+    if (pacotes.includes(pacote)) return chunk;
+  }
+  if (pacote !== "lucide-react") return undefined;
+  // Núcleo do lucide (createLucideIcon etc., ~2 KB): fica com os utilitários,
+  // que toda página já carrega, para o chunk de ícones não virar dependência do index.
+  // (Só o núcleo: o índice lucide-react.js puxaria todos os ícones junto.)
+  if (/\/lucide-react\/dist\/esm\/(createLucideIcon|Icon|defaultAttributes)\.js$|\/lucide-react\/dist\/esm\/shared\//.test(id)) {
+    return "vendor-utils";
+  }
+  if (!ICONE_LUCIDE.test(id)) return undefined;
+  // Ícones das landings num arquivo só, em vez de ~30 arquivos de 0,3–2 KB.
+  iconesSoDaLanding ??= calcularIconesSoDaLanding(meta);
+  return iconesSoDaLanding.has(id) ? "icones-landing" : undefined;
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -109,27 +211,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Frameworks core — raramente mudam, ficam em cache por muito tempo
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-query": ["@tanstack/react-query"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          // Utilitários do cn() — num chunk próprio para não irem parar dentro do
-          // vendor-recharts (o Recharts também usa clsx), o que fazia toda página,
-          // inclusive a landing, baixar o Recharts só por causa do clsx.
-          "vendor-utils": ["clsx", "tailwind-merge"],
-          // Recharts fica num chunk próprio — lazy-loaded pelo GraficosDashboard
-          "vendor-recharts": ["recharts"],
-          // UI libs grandes
-          "vendor-radix": [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-select",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-popover",
-            "@radix-ui/react-tooltip",
-          ],
-        },
+        manualChunks,
       },
     },
   },
