@@ -2,7 +2,7 @@
 // Troca de cartão com fatura em aberto: a "Pagar.me" é um fetch falso que responde
 // por método + caminho e registra as chamadas (para provar quando NÃO se cobra).
 import { assertEquals } from "jsr:@std/assert@1";
-import { cobrarFaturaEmAberto, consultarAssinatura, decidirAcao } from "./cobrarFaturaEmAberto.ts";
+import { acessoPagoValido, cobrarFaturaEmAberto, consultarAssinatura, decidirAcao } from "./cobrarFaturaEmAberto.ts";
 
 type Resposta = { status?: number; corpo?: unknown } | Error;
 
@@ -162,18 +162,56 @@ Deno.test("falha de rede → erro (nunca lança)", async () => {
   assertEquals((await rodar(p)).cobranca, "erro");
 });
 
-// ── assinatura cancelada na Pagar.me ───────────────────────────────────────
+// ── consulta da assinatura na Pagar.me ─────────────────────────────────────
+const opts = (p: ReturnType<typeof pagarme>) => ({ pagarmeAuth: "Basic x", fetchFn: p.fn });
+const GET_SUB = `GET /subscriptions/${SUB}`;
+
 Deno.test("consultarAssinatura: canceled → cancelada", async () => {
-  const p = pagarme({ [`GET /subscriptions/${SUB}`]: { corpo: { id: SUB, status: "canceled" } } });
-  assertEquals(await consultarAssinatura(SUB, { pagarmeAuth: "Basic x", fetchFn: p.fn }), { cancelada: true });
+  const p = pagarme({ [GET_SUB]: { corpo: { id: SUB, status: "canceled" } } });
+  assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "cancelada" });
 });
 
-Deno.test("consultarAssinatura: active → não cancelada", async () => {
-  const p = pagarme({ [`GET /subscriptions/${SUB}`]: { corpo: { id: SUB, status: "active" } } });
-  assertEquals(await consultarAssinatura(SUB, { pagarmeAuth: "Basic x", fetchFn: p.fn }), { cancelada: false });
+Deno.test("consultarAssinatura: active → viva, com a data da próxima cobrança", async () => {
+  const p = pagarme({ [GET_SUB]: { corpo: { id: SUB, status: "active", next_billing_at: "2026-11-17T00:00:00Z" } } });
+  assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "viva", proximaCobrancaEm: "2026-11-17T00:00:00Z" });
 });
 
-Deno.test("consultarAssinatura: erro do gateway → erro (index.ts não troca nada)", async () => {
-  const p = pagarme({ [`GET /subscriptions/${SUB}`]: { status: 500, corpo: { message: "Internal error" } } });
-  assertEquals(await consultarAssinatura(SUB, { pagarmeAuth: "Basic x", fetchFn: p.fn }), { erro: "Internal error" });
+Deno.test("consultarAssinatura: active sem next_billing_at → viva, sem data", async () => {
+  const p = pagarme({ [GET_SUB]: { corpo: { id: SUB, status: "active" } } });
+  assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "viva", proximaCobrancaEm: null });
+});
+
+Deno.test("consultarAssinatura: 404 → inexistente", async () => {
+  const p = pagarme({}); // rota não cadastrada = 404
+  assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "inexistente" });
+});
+
+Deno.test("consultarAssinatura: erro do gateway (500) → erro (nada é trocado)", async () => {
+  const p = pagarme({ [GET_SUB]: { status: 500, corpo: { message: "Internal error" } } });
+  assertEquals(await consultarAssinatura(SUB, opts(p)), { erro: "Internal error" });
+});
+
+// ── sem fatura em atraso ───────────────────────────────────────────────────
+Deno.test("sem fatura em aberto e com próxima cobrança → proxima_cobranca (nada é cobrado)", async () => {
+  const p = pagarme({ [FAILED]: lista(), [PENDING]: lista() });
+  const r = await cobrarFaturaEmAberto(SUB, CARD, opts(p), "2026-11-17T00:00:00Z");
+  assertEquals(r, { cobranca: "proxima_cobranca", proxima_cobranca_em: "2026-11-17T00:00:00Z" });
+  assertEquals(p.chamadas, [FAILED, PENDING]);
+});
+
+// ── acesso pago valendo? (decide se consulta a Pagar.me) ───────────────────
+const AGORA = new Date("2026-10-20T15:00:00Z");
+Deno.test("acessoPagoValido: Free com id de assinatura → não", () =>
+  assertEquals(acessoPagoValido({ plano_tipo: "free", status: "active", data_fim: null }, AGORA), false));
+Deno.test("acessoPagoValido: past_due/unpaid/canceled → não", () => {
+  for (const status of ["past_due", "unpaid", "canceled"])
+    assertEquals(acessoPagoValido({ plano_tipo: "profissional_mensal", status, data_fim: "2026-11-17T00:00:00Z" }, AGORA), false, status);
+});
+Deno.test("acessoPagoValido: active vencido fora da carência (>3 dias) → não", () =>
+  assertEquals(acessoPagoValido({ plano_tipo: "profissional_mensal", status: "active", data_fim: "2026-10-16T00:00:00Z" }, AGORA), false));
+Deno.test("acessoPagoValido: active vencido dentro da carência → sim", () =>
+  assertEquals(acessoPagoValido({ plano_tipo: "profissional_mensal", status: "active", data_fim: "2026-10-19T00:00:00Z" }, AGORA), true));
+Deno.test("acessoPagoValido: active no prazo / sem data_fim → sim", () => {
+  assertEquals(acessoPagoValido({ plano_tipo: "basico_anual", status: "active", data_fim: "2027-01-01T00:00:00Z" }, AGORA), true);
+  assertEquals(acessoPagoValido({ plano_tipo: "basico_mensal", status: "active", data_fim: null }, AGORA), true);
 });

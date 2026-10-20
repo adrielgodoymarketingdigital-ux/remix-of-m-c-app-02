@@ -1,8 +1,9 @@
-// Cobrança da fatura em aberto depois da troca de cartão (assinatura past_due/unpaid).
+// Cobrança da fatura em aberto depois da troca de cartão (acesso pago não válido:
+// past_due/unpaid, plano vencido, ou Free com assinatura ainda na Pagar.me).
 // Separado do index.ts para ser testável (fetch injetável).
 //
 // Endpoints (API core v5, conferidos na documentação da Pagar.me):
-//   GET   /subscriptions/{id}            → status active | canceled | future
+//   GET   /subscriptions/{id}            → status active | canceled | future, next_billing_at
 //   GET   /invoices?subscription_id&status → data[].charge { id, status }
 //   PATCH /charges/{id}/card             → só aceita cobrança com transação não autorizada
 //   POST  /charges/{id}/retry            → devolve a cobrança com o status novo
@@ -15,16 +16,47 @@
 
 export const PAGARME_API = "https://api.pagar.me/core/v5";
 
-/** Status local que indica fatura em aberto na Pagar.me. */
-export const STATUS_COM_FATURA_EM_ABERTO = ["past_due", "unpaid"];
+export const PLANOS_PAGOS = [
+  "basico_mensal", "basico_anual",
+  "intermediario_mensal", "intermediario_anual",
+  "profissional_mensal", "profissional_anual",
+  "profissional_ultra_mensal", "profissional_ultra_anual",
+];
+
+/** Mesma carência do app (src/lib/carenciaAssinatura.ts) e do job de vencidos. */
+const CARENCIA_MS = 3 * 24 * 60 * 60 * 1000;
+
+export interface AssinaturaLocal {
+  plano_tipo: string | null;
+  status: string | null;
+  data_fim: string | null;
+}
+
+/**
+ * O acesso pago está valendo? Só então a troca de cartão dispensa consultar a
+ * Pagar.me. Não depende só do status: plano Free com id de assinatura (ex.: depois
+ * de uma liberação temporária revertida), past_due/unpaid e plano pago vencido
+ * fora da carência contam como acesso NÃO válido.
+ */
+export function acessoPagoValido(a: AssinaturaLocal, agora: Date): boolean {
+  if (!PLANOS_PAGOS.includes(a.plano_tipo ?? "")) return false;
+  if (a.status !== "active" && a.status !== "trialing") return false;
+  if (!a.data_fim) return true;
+  const fim = new Date(a.data_fim).getTime();
+  return Number.isFinite(fim) && fim + CARENCIA_MS > agora.getTime();
+}
 
 export type ResultadoCobranca =
   | { cobranca: "nao_necessaria"; mensagem?: string }
   | { cobranca: "paga" }
   | { cobranca: "pendente"; mensagem?: string }
   | { cobranca: "recusada"; mensagem: string }
-  | { cobranca: "assinatura_cancelada"; mensagem: string }
-  | { cobranca: "erro"; mensagem: string };
+  | { cobranca: "erro"; mensagem: string }
+  // Assinatura ativa na Pagar.me, sem fatura em atraso: o cartão novo vale na próxima cobrança.
+  | { cobranca: "proxima_cobranca"; proxima_cobranca_em: string; mensagem?: string }
+  // Nada foi trocado: não há assinatura viva na Pagar.me para usar o cartão.
+  | { cobranca: "assinatura_cancelada_reassinar"; mensagem: string }
+  | { cobranca: "assinatura_inexistente"; mensagem: string };
 
 export interface OpcoesPagarme {
   pagarmeAuth: string;
@@ -68,7 +100,7 @@ async function chamar(
   metodo: "GET" | "PATCH" | "POST",
   caminho: string,
   corpo?: unknown,
-): Promise<{ ok: true; dados: Json } | { ok: false; mensagem: string }> {
+): Promise<{ ok: true; dados: Json } | { ok: false; mensagem: string; status?: number }> {
   const fetchFn = opts.fetchFn ?? fetch;
   try {
     const res = await fetchFn(`${PAGARME_API}${caminho}`, {
@@ -78,7 +110,7 @@ async function chamar(
     });
     const dados = await res.json().catch(() => null);
     if (!res.ok) {
-      return { ok: false, mensagem: mensagemGateway(dados) || `Pagar.me respondeu ${res.status}` };
+      return { ok: false, mensagem: mensagemGateway(dados) || `Pagar.me respondeu ${res.status}`, status: res.status };
     }
     return { ok: true, dados };
   } catch (err) {
@@ -86,17 +118,26 @@ async function chamar(
   }
 }
 
+export type SituacaoAssinatura =
+  | { situacao: "viva"; proximaCobrancaEm: string | null }
+  | { situacao: "cancelada" }
+  | { situacao: "inexistente" }
+  | { erro: string };
+
 /**
  * Consulta a assinatura na Pagar.me antes de trocar o cartão.
- * cancelada=true quando o status lá for "canceled"; erro quando não deu para consultar.
+ * viva = existe e não está cancelada (com a data da próxima cobrança, se houver);
+ * inexistente = a Pagar.me respondeu 404; erro = não deu para consultar.
  */
 export async function consultarAssinatura(
   subscriptionId: string,
   opts: OpcoesPagarme,
-): Promise<{ cancelada: boolean } | { erro: string }> {
+): Promise<SituacaoAssinatura> {
   const r = await chamar(opts, "GET", `/subscriptions/${encodeURIComponent(subscriptionId)}`);
-  if (!r.ok) return { erro: r.mensagem };
-  return { cancelada: r.dados?.status === "canceled" };
+  if (!r.ok) return r.status === 404 ? { situacao: "inexistente" } : { erro: r.mensagem };
+  if (r.dados?.status === "canceled") return { situacao: "cancelada" };
+  const proxima = r.dados?.next_billing_at;
+  return { situacao: "viva", proximaCobrancaEm: typeof proxima === "string" && proxima ? proxima : null };
 }
 
 /** Fatura em aberto mais recente da assinatura (failed ou pending), com a cobrança dela. */
@@ -138,6 +179,7 @@ export async function cobrarFaturaEmAberto(
   subscriptionId: string,
   cardId: string,
   opts: OpcoesPagarme,
+  proximaCobrancaEm: string | null = null,
 ): Promise<ResultadoCobranca> {
   const log = opts.log ?? (() => {});
 
@@ -145,7 +187,9 @@ export async function cobrarFaturaEmAberto(
   if (!busca.ok) return { cobranca: "erro", mensagem: busca.mensagem };
   const fatura = busca.fatura;
   if (!fatura) {
-    log("Nenhuma fatura em aberto na Pagar.me", { subscriptionId });
+    log("Nenhuma fatura em aberto na Pagar.me", { subscriptionId, proximaCobrancaEm });
+    // Nada em atraso: nunca cria cobrança avulsa; o cartão novo vale na próxima cobrança.
+    if (proximaCobrancaEm) return { cobranca: "proxima_cobranca", proxima_cobranca_em: proximaCobrancaEm };
     return { cobranca: "nao_necessaria", mensagem: "Não há cobrança em aberto na Pagar.me." };
   }
 
