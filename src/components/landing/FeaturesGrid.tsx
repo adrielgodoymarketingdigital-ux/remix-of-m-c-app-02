@@ -2,13 +2,8 @@ import { FeatureCard } from "./FeatureCard";
 import { Wrench, Smartphone, TrendingUp, Package, ShoppingCart, FileText, Play, Cpu } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
 import { useState } from "react";
-import checklistImg from "@/assets/screenshots/checklist.png";
-import avariasImg from "@/assets/screenshots/avarias.png";
-import dispositivosImg from "@/assets/screenshots/dispositivos.png";
-import vendasImg from "@/assets/screenshots/vendas.png";
-import financeiroImg from "@/assets/screenshots/financeiro.png";
-import lucrosImg from "@/assets/screenshots/lucros.png";
 import demoVideo from "@/assets/demo-recursos.mov";
+import { imgChecklist as checklistImg, imgAvarias as avariasImg, imgDispositivos as dispositivosImg, imgVendas as vendasImg, imgFinanceiro as financeiroImg, imgLucros as lucrosImg } from "@/components/landing/imagensLanding";
 
 const features = [
   {

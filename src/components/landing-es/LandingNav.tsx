@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import logoMec from "@/assets/logo-mec-new.png";
 import { Zap } from "lucide-react";
+import { imgLogo as logoMec } from "@/components/landing/imagensLanding";
 
 export function LandingNav() {
   const navigate = useNavigate();
@@ -10,7 +10,7 @@ export function LandingNav() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-white/10">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src={logoMec} alt="Méc" className="h-10 object-contain" />
+          <img src={logoMec.src} width={logoMec.width} height={logoMec.height} alt="Méc" className="h-10 object-contain" />
         </div>
 
         <div className="hidden md:flex items-center gap-8">

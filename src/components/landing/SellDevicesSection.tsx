@@ -1,9 +1,7 @@
 import { FeatureCard } from "./FeatureCard";
 import { Smartphone, FileSearch, BookOpen, Package } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
-import dispositivosEstoqueImg from "@/assets/screenshots/dispositivos-estoque.png";
-import origemDispositivosImg from "@/assets/screenshots/origem-dispositivos.png";
-import catalogoDispositivosImg from "@/assets/screenshots/catalogo-dispositivos.png";
+import { imgDispositivosEstoque as dispositivosEstoqueImg, imgOrigemDispositivos as origemDispositivosImg, imgCatalogoDispositivos as catalogoDispositivosImg } from "@/components/landing/imagensLanding";
 
 const sellFeatures = [
   {

@@ -1,6 +1,6 @@
-import adrielPhoto from "@/assets/adriel-fundador.jpg";
 import { Quote } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
+import { imgFundador as adrielPhoto, SIZES_FUNDADOR } from "@/components/landing/imagensLanding";
 
 export function FounderSection() {
   return (
@@ -29,7 +29,11 @@ export function FounderSection() {
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-[30px]" />
               <div className="relative w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 rounded-full overflow-hidden border-4 border-blue-400/50 shadow-2xl shadow-blue-500/15">
                 <img
-                  src={adrielPhoto}
+                  src={adrielPhoto.src}
+                  srcSet={adrielPhoto.srcSet}
+                  sizes={SIZES_FUNDADOR}
+                  width={adrielPhoto.width}
+                  height={adrielPhoto.height}
                   alt="Adriel - Fundador de Méc"
                   className="w-full h-full object-cover object-top"
                 />

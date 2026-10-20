@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
-import dashboardImg from "@/assets/screenshots/dashboard-landing.png";
 import { VideoWithCover } from "@/components/landing/VideoWithCover";
+import { imgDashboard as dashboardImg, SIZES_DASHBOARD } from "@/components/landing/imagensLanding";
 
 export function HeroSectionLP2() {
   const handleScrollToPlanos = () => {
@@ -118,7 +118,7 @@ export function HeroSectionLP2() {
           <div className="relative animate-fade-in hidden lg:block" style={{ animationDelay: '0.2s' }}>
             <div className="absolute inset-0 rounded-2xl blur-[60px]" style={{ background: 'linear-gradient(to bottom right, rgba(0,240,255,0.1), rgba(0,68,255,0.1))' }} />
             <div className="relative rounded-2xl overflow-hidden shadow-2xl" style={{ border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)' }}>
-              <img src={dashboardImg} alt="Dashboard do Sistema Méc" className="w-full h-auto" />
+              <img src={dashboardImg.src} srcSet={dashboardImg.srcSet} sizes={SIZES_DASHBOARD} width={dashboardImg.width} height={dashboardImg.height} alt="Dashboard do Sistema Méc" className="w-full h-auto" />
             </div>
           </div>
         </div>

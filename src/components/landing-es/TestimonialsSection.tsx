@@ -1,13 +1,9 @@
-import depoimentoWhatsapp1 from "@/assets/depoimento-whatsapp-1.jpg";
-import depoimentoWhatsapp2 from "@/assets/depoimento-whatsapp-2.png";
-import depoimentoWhatsapp3 from "@/assets/screenshots/depoimento-whatsapp-3.png";
-import depoimentoWhatsapp4 from "@/assets/screenshots/depoimento-whatsapp-4.png";
-import depoimentoWhatsapp5 from "@/assets/screenshots/depoimento-whatsapp-5.png";
 import depoimentoVideo from "@/assets/depoimento-video.mp4";
 import { MessageCircle, Quote, Play, Star, Shield, CheckCircle, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
 import { useState, useCallback } from "react";
 import { StatCard } from "@/components/landing/StatCard";
+import { imgDepoimentoWhatsapp1 as depoimentoWhatsapp1, imgDepoimentoWhatsapp2 as depoimentoWhatsapp2, imgDepoimentoWhatsapp3 as depoimentoWhatsapp3, imgDepoimentoWhatsapp4 as depoimentoWhatsapp4, imgDepoimentoWhatsapp5 as depoimentoWhatsapp5 } from "@/components/landing/imagensLanding";
 
 // Estatísticas
 const stats = [
@@ -19,12 +15,12 @@ const stats = [
 // brasileños (texto en portugués incrustado en la imagen) — se mantienen
 // sin traducir a propósito, son evidencia real, no contenido editable.
 const slides = [
-  { type: "video" as const, src: depoimentoVideo, alt: "Video testimonio" },
-  { type: "image" as const, src: depoimentoWhatsapp2, alt: "Testimonio de cliente mostrando el sistema" },
-  { type: "image" as const, src: depoimentoWhatsapp1, alt: "Testimonio de cliente vía WhatsApp" },
-  { type: "image" as const, src: depoimentoWhatsapp3, alt: "Cliente recomendando el soporte de Méc" },
-  { type: "image" as const, src: depoimentoWhatsapp4, alt: "Cliente elogiando la facilidad de la app" },
-  { type: "image" as const, src: depoimentoWhatsapp5, alt: "Cliente elogiando la atención y el programa" },
+  { type: "video" as const, src: depoimentoVideo, width: 886, height: 1270, alt: "Video testimonio" },
+  { type: "image" as const, ...depoimentoWhatsapp2, alt: "Testimonio de cliente mostrando el sistema" },
+  { type: "image" as const, ...depoimentoWhatsapp1, alt: "Testimonio de cliente vía WhatsApp" },
+  { type: "image" as const, ...depoimentoWhatsapp3, alt: "Cliente recomendando el soporte de Méc" },
+  { type: "image" as const, ...depoimentoWhatsapp4, alt: "Cliente elogiando la facilidad de la app" },
+  { type: "image" as const, ...depoimentoWhatsapp5, alt: "Cliente elogiando la atención y el programa" },
 ];
 
 export function TestimonialsSection() {
@@ -140,6 +136,8 @@ export function TestimonialsSection() {
                 <img
                   key={current}
                   src={slides[current].src}
+                  width={slides[current].width}
+                  height={slides[current].height}
                   alt={slides[current].alt}
                   className="rounded-xl w-full shadow-sm"
                 />

@@ -1,5 +1,5 @@
 import { Facebook, Instagram, Linkedin, Twitter } from "lucide-react";
-import logoMec from "@/assets/logo-mec-new.png";
+import { imgLogo as logoMec } from "@/components/landing/imagensLanding";
 
 export function LandingFooter() {
   return (
@@ -8,7 +8,7 @@ export function LandingFooter() {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <img src={logoMec} alt="Méc" className="h-10 object-contain" />
+              <img src={logoMec.src} width={logoMec.width} height={logoMec.height} alt="Méc" className="h-10 object-contain" />
             </div>
             <p className="text-sm text-slate-400">
               Sistema completo de gestão para assistências técnicas e lojas de celulares.

@@ -1,9 +1,7 @@
 import { FeatureCard } from "@/components/landing/FeatureCard";
 import { Users, BadgePercent, Shield } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
-import equipeListaImg from "@/assets/screenshots/equipe-lista.png";
-import equipeComissaoImg from "@/assets/screenshots/equipe-comissao.png";
-import equipePermissoesImg from "@/assets/screenshots/equipe-permissoes.png";
+import { imgEquipeLista as equipeListaImg, imgEquipeComissao as equipeComissaoImg, imgEquipePermissoes as equipePermissoesImg } from "@/components/landing/imagensLanding";
 
 const staffFeatures = [
   {

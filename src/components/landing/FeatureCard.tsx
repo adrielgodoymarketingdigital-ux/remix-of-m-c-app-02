@@ -1,11 +1,12 @@
 import { Card } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
+import { SIZES_CARTAO, type ImagemLanding } from "./imagensLanding";
 
 interface FeatureCardProps {
   icon: LucideIcon;
   title: string;
   description: string;
-  image: string;
+  image: ImagemLanding;
 }
 
 export function FeatureCard({ icon: Icon, title, description, image }: FeatureCardProps) {
@@ -17,9 +18,13 @@ export function FeatureCard({ icon: Icon, title, description, image }: FeatureCa
       <div className="relative">
         {/* Image Section */}
         <div className="relative h-52 sm:h-64 overflow-hidden border-b border-slate-100">
-          <img 
-            src={image} 
-            alt={title} 
+          <img
+            src={image.src}
+            srcSet={image.srcSet}
+            sizes={SIZES_CARTAO}
+            width={image.width}
+            height={image.height}
+            alt={title}
             className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />

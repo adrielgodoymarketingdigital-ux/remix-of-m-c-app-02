@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Zap, Play } from "lucide-react";
-import dashboardImg from "@/assets/screenshots/dashboard-landing.png";
 import { VideoWithCover } from "@/components/landing-es/VideoWithCover";
+import { imgDashboard as dashboardImg, SIZES_DASHBOARD } from "@/components/landing/imagensLanding";
 
 function AppStoreBadgeHero() {
   return (
@@ -190,7 +190,7 @@ saber dónde está la ganancia.
           <div className="relative animate-fade-in hidden lg:block" style={{ animationDelay: '0.2s' }}>
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl blur-[60px]" />
             <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xl shadow-slate-300/50">
-              <img src={dashboardImg} alt="Panel del Sistema Méc" className="w-full h-auto" />
+              <img src={dashboardImg.src} srcSet={dashboardImg.srcSet} sizes={SIZES_DASHBOARD} width={dashboardImg.width} height={dashboardImg.height} alt="Panel del Sistema Méc" className="w-full h-auto" />
             </div>
           </div>
         </div>
