@@ -36,6 +36,8 @@ import equipeComissao680 from "@/assets/screenshots/equipe-comissao-680.webp";
 import equipeComissao1300 from "@/assets/screenshots/equipe-comissao-1300.webp";
 import equipePermissoes680 from "@/assets/screenshots/equipe-permissoes-680.webp";
 import equipePermissoes1300 from "@/assets/screenshots/equipe-permissoes-1300.webp";
+import posterDemoRecursos from "@/assets/demo-recursos-poster.webp";
+import posterDepoimento from "@/assets/depoimento-video-poster.webp";
 
 /** width/height = proporção do arquivo menor (reserva o espaço e evita pulo de layout). */
 export interface ImagemLanding {
@@ -92,3 +94,10 @@ export const imgDepoimentoWhatsapp2: ImagemLanding = { src: depoimentoWhatsapp2,
 export const imgDepoimentoWhatsapp3: ImagemLanding = { src: depoimentoWhatsapp3, width: 900, height: 136 };
 export const imgDepoimentoWhatsapp4: ImagemLanding = { src: depoimentoWhatsapp4, width: 900, height: 110 };
 export const imgDepoimentoWhatsapp5: ImagemLanding = { src: depoimentoWhatsapp5, width: 900, height: 418 };
+
+// Capas (primeiro quadro) dos vídeos de demonstração e depoimento: com preload="none"
+// o vídeo só baixa no play, e a capa mostra o mesmo quadro que aparecia antes.
+export const POSTER_DEMO_RECURSOS = posterDemoRecursos;
+export const POSTER_DEPOIMENTO = posterDepoimento;
+/** Dimensões do depoimento-video.mp4 (reserva a altura antes de carregar). */
+export const VIDEO_DEPOIMENTO = { width: 886, height: 1270 };

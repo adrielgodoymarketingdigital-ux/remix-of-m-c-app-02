@@ -3,7 +3,7 @@ import { MessageCircle, Quote, Play, Star, Shield, CheckCircle, Users, ChevronLe
 import { SectionCTA } from "./SectionCTA";
 import { useState, useCallback } from "react";
 import { StatCard } from "./StatCard";
-import { imgDepoimentoWhatsapp1 as depoimentoWhatsapp1, imgDepoimentoWhatsapp2 as depoimentoWhatsapp2, imgDepoimentoWhatsapp3 as depoimentoWhatsapp3, imgDepoimentoWhatsapp4 as depoimentoWhatsapp4, imgDepoimentoWhatsapp5 as depoimentoWhatsapp5 } from "@/components/landing/imagensLanding";
+import { imgDepoimentoWhatsapp1 as depoimentoWhatsapp1, imgDepoimentoWhatsapp2 as depoimentoWhatsapp2, imgDepoimentoWhatsapp3 as depoimentoWhatsapp3, imgDepoimentoWhatsapp4 as depoimentoWhatsapp4, imgDepoimentoWhatsapp5 as depoimentoWhatsapp5, POSTER_DEPOIMENTO, VIDEO_DEPOIMENTO } from "@/components/landing/imagensLanding";
 
 // Estatísticas
 const stats = [
@@ -12,7 +12,7 @@ const stats = [
 ];
 
 const slides = [
-  { type: "video" as const, src: depoimentoVideo, width: 886, height: 1270, alt: "Vídeo depoimento" },
+  { type: "video" as const, src: depoimentoVideo, ...VIDEO_DEPOIMENTO, alt: "Vídeo depoimento" },
   { type: "image" as const, ...depoimentoWhatsapp2, alt: "Depoimento de cliente mostrando o sistema" },
   { type: "image" as const, ...depoimentoWhatsapp1, alt: "Depoimento de cliente via WhatsApp" },
   { type: "image" as const, ...depoimentoWhatsapp3, alt: "Cliente recomendando o suporte do Méc" },
@@ -110,6 +110,10 @@ export function TestimonialsSection() {
                   <video
                     key={current}
                     src={slides[current].src}
+                    poster={POSTER_DEPOIMENTO}
+                    preload="none"
+                    width={VIDEO_DEPOIMENTO.width}
+                    height={VIDEO_DEPOIMENTO.height}
                     className="w-full rounded-xl"
                     controls={videoPlaying}
                     playsInline

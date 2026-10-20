@@ -3,7 +3,7 @@ import { Wrench, Smartphone, TrendingUp, Package, ShoppingCart, FileText, Play, 
 import { SectionCTA } from "./SectionCTA";
 import { useState } from "react";
 import demoVideo from "@/assets/demo-recursos.mov";
-import { imgChecklist as checklistImg, imgAvarias as avariasImg, imgDispositivos as dispositivosImg, imgVendas as vendasImg, imgFinanceiro as financeiroImg, imgLucros as lucrosImg } from "@/components/landing/imagensLanding";
+import { imgChecklist as checklistImg, imgAvarias as avariasImg, imgDispositivos as dispositivosImg, imgVendas as vendasImg, imgFinanceiro as financeiroImg, imgLucros as lucrosImg, POSTER_DEMO_RECURSOS } from "@/components/landing/imagensLanding";
 
 const features = [
   {
@@ -93,6 +93,8 @@ export function FeaturesGrid() {
                 <div className="relative h-52 sm:h-64 overflow-hidden border-b border-slate-100 bg-slate-900">
                   <video
                     src={demoVideo}
+                    poster={POSTER_DEMO_RECURSOS}
+                    preload="none"
                     className="w-full h-full object-cover"
                     controls={videoPlaying}
                     playsInline
