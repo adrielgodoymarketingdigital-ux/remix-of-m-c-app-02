@@ -109,15 +109,21 @@ export interface DispositivoDisponibilidade {
 }
 
 /**
- * Dispositivos que podem receber uma compra: não vendidos, não excluídos e sem
- * compra registrada. O pré-selecionado (ex.: ?dispositivo= ou o recém-criado)
- * entra sempre, mesmo que algum desses filtros o tirasse.
+ * Dispositivos que podem receber uma compra: não vendidos e não excluídos. Os que
+ * já têm compra (compra_id, ex.: troca no PDV ou compra anterior) continuam na
+ * lista — o diálogo marca "já tem compra" e pede confirmação ao salvar. O
+ * pré-selecionado (ex.: ?dispositivo= ou o recém-criado) entra sempre.
  */
 export function dispositivosDisponiveisParaCompra<T extends DispositivoDisponibilidade>(
   lista: T[],
   idPreSelecionado?: string | null,
 ): T[] {
-  return lista.filter((d) => (idPreSelecionado && d.id === idPreSelecionado) || (!d.vendido && !d.deleted_at && !d.compra_id));
+  return lista.filter((d) => (idPreSelecionado && d.id === idPreSelecionado) || (!d.vendido && !d.deleted_at));
+}
+
+/** Aparelho que já tem uma compra registrada (dispositivos.compra_id). */
+export function jaTemCompra(d: Pick<DispositivoDisponibilidade, "compra_id"> | null | undefined): boolean {
+  return !!d?.compra_id;
 }
 
 /**

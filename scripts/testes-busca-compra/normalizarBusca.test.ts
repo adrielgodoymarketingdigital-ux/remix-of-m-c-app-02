@@ -10,6 +10,7 @@ import {
   filtrarDispositivos,
   garantirNaLista,
   filtrarPessoas,
+  jaTemCompra,
   normalizarCodigo,
   normalizarTexto,
 } from "../../src/lib/busca/normalizarBusca.ts";
@@ -98,14 +99,40 @@ Deno.test("dispositivo: termo vazio devolve a lista inteira na mesma ordem", () 
   assertEquals(filtrarDispositivos(DISPOSITIVOS, ""), DISPOSITIVOS);
 });
 
-Deno.test("disponíveis para compra: tira vendidos, excluídos e com compra", () => {
-  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS)), ["d1", "d2"]);
-  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS, null)), ["d1", "d2"]);
+Deno.test("disponíveis para compra: tira vendidos e excluídos; com compra_id continua", () => {
+  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS)), ["d1", "d2", "d5"]);
+  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS, null)), ["d1", "d2", "d5"]);
 });
 
-Deno.test("disponíveis para compra: o pré-selecionado entra mesmo com compra_id (?dispositivo=)", () => {
+Deno.test("disponíveis para compra: um caso por regra", () => {
+  const base = { vendido: false, deleted_at: null, compra_id: null };
+  const um = (d: Record<string, unknown>) => ids(dispositivosDisponiveisParaCompra([{ id: "x", ...base, ...d }]));
+  assertEquals(um({}), ["x"], "sem compra_id");
+  assertEquals(um({ compra_id: "compra-9" }), ["x"], "com compra_id (troca no PDV / compra anterior)");
+  assertEquals(um({ vendido: true }), [], "vendido");
+  assertEquals(um({ deleted_at: "2026-10-01T10:00:00Z" }), [], "excluído");
+  assertEquals(um({ vendido: true, compra_id: "compra-9" }), [], "vendido com compra");
+  assertEquals(um({ vendido: null, deleted_at: undefined, compra_id: undefined }), ["x"], "campos nulos/ausentes");
+});
+
+Deno.test("disponíveis para compra: o pré-selecionado entra mesmo vendido ou excluído", () => {
   assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS, "d5")), ["d1", "d2", "d5"]);
-  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS, "nao-existe")), ["d1", "d2"]);
+  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS, "d3")), ["d1", "d2", "d3", "d5"], "vendido pré-selecionado");
+  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS, "d4")), ["d1", "d2", "d4", "d5"], "excluído pré-selecionado");
+  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS, "nao-existe")), ["d1", "d2", "d5"]);
+  assertEquals(ids(dispositivosDisponiveisParaCompra(DISPOSITIVOS, "")), ["d1", "d2", "d5"], "string vazia não pré-seleciona");
+});
+
+Deno.test("busca por IMEI acha aparelho que já tem compra", () => {
+  const disponiveis = dispositivosDisponiveisParaCompra(DISPOSITIVOS);
+  assertEquals(ids(filtrarDispositivos(disponiveis, "0002")), ["d5"]);
+});
+
+Deno.test("jaTemCompra: só com compra_id preenchido", () => {
+  assertEquals(jaTemCompra({ compra_id: "compra-1" }), true);
+  assertEquals(jaTemCompra({ compra_id: null }), false);
+  assertEquals(jaTemCompra({}), false);
+  assertEquals(jaTemCompra(undefined), false);
 });
 
 Deno.test("pessoas por empresa: nulo aparece na matriz, não na filial; sem empresa vê todas", () => {
@@ -132,5 +159,5 @@ Deno.test("recém-criado entra na lista (no topo) antes do refetch, sem duplicar
   assertEquals(garantirNaLista(lista, null), lista);
   // Recém-criado com compra_id nulo continua disponível; e se for o pré-selecionado, entra de qualquer jeito.
   const disp = garantirNaLista(DISPOSITIVOS, { ...DISPOSITIVOS[0], id: "novo" });
-  assertEquals(ids(dispositivosDisponiveisParaCompra(disp, "novo")), ["novo", "d1", "d2"]);
+  assertEquals(ids(dispositivosDisponiveisParaCompra(disp, "novo")), ["novo", "d1", "d2", "d5"]);
 });
