@@ -32,7 +32,9 @@ export default function CadastroPlano() {
   const [isExistingUser, setIsExistingUser] = useState(false);
   const [abrirCartao, setAbrirCartao] = useState(false);
   const [abrirPix, setAbrirPix] = useState(false);
-  
+  // ?pagamento=pix (vindo da troca de cartão sem cobrança): abre o PIX ao chegar no checkout
+  const [abrirPixAoEntrar, setAbrirPixAoEntrar] = useState(() => searchParams.get("pagamento") === "pix");
+
   const [isLogin, setIsLogin] = useState(false);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -203,6 +205,15 @@ export default function CadastroPlano() {
 
   const escolherCartao = () => garantirSessaoEntao(() => setAbrirCartao(true));
   const escolherPix = () => garantirSessaoEntao(() => setAbrirPix(true));
+
+  // Mesmo caminho do clique em "PIX" (confere a sessão e registra o início do checkout)
+  useEffect(() => {
+    if (abrirPixAoEntrar && step === "checkout") {
+      setAbrirPixAoEntrar(false);
+      escolherPix();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirPixAoEntrar, step]);
 
   const onPagamentoConcluido = () => {
     setAbrirCartao(false);

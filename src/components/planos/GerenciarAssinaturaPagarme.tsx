@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,9 +46,36 @@ interface RespostaTrocaCartao {
   success?: boolean;
   last_four_digits?: string;
   status_assinatura?: string;
-  cobranca?: "paga" | "recusada" | "pendente" | "nao_necessaria" | "assinatura_cancelada" | "erro";
+  cobranca?:
+    | "paga"
+    | "recusada"
+    | "pendente"
+    | "nao_necessaria"
+    | "erro"
+    | "proxima_cobranca"
+    | "assinatura_cancelada_reassinar"
+    | "assinatura_inexistente"
+    | "assinatura_cancelada"; // nome antigo (função anterior à v13)
   mensagem?: string;
+  /** false quando o plano pago não está valendo (Free, vencido, past_due): a função consultou a Pagar.me. */
+  acesso_pago_valido?: boolean;
+  proxima_cobranca_em?: string;
+  /** Plano para o "Assinar novamente" (o local, ou o anterior a uma liberação temporária). */
+  plano_sugerido?: string | null;
 }
+
+/** Aviso que fica no diálogo depois da troca, com o próximo passo para o cliente. */
+interface AvisoPosTroca {
+  mensagem: string;
+  /** Mostra "Assinar novamente" (assinatura não existe mais na operadora). */
+  reassinar: boolean;
+  planoSugerido: string | null;
+}
+
+const dataBR = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+};
 
 /**
  * Depois de uma cobrança paga, quem libera o acesso é o webhook (charge.paid).
@@ -103,6 +131,18 @@ export function GerenciarAssinaturaPagarme({
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<AvisoPosTroca | null>(null);
+  // Recarregar a assinatura (onChanged) desmonta este componente no Plano e some com
+  // a mensagem do diálogo; quando há mensagem para o cliente ler, recarrega ao fechar.
+  const recarregarAoFechar = useRef(false);
+  const navigate = useNavigate();
+
+  // Checkout do plano (cartão ou PIX). Sem plano conhecido, vai para a lista de planos.
+  const irParaCheckout = (pix: boolean) => {
+    const plano = aviso?.planoSugerido;
+    setTrocaOpen(false);
+    navigate(plano ? `/cadastro-plano?plan=${plano}${pix ? "&pagamento=pix" : ""}` : "/plano");
+  };
 
   const cardDigits = sanitizeDigits(cardNumber);
   const expiryDigits = sanitizeDigits(expiry);
@@ -122,6 +162,7 @@ export function GerenciarAssinaturaPagarme({
     setExpiry("");
     setCvv("");
     setErro(null);
+    setAviso(null);
   };
 
   const tokenizarCartao = async (): Promise<string> => {
@@ -160,6 +201,7 @@ export function GerenciarAssinaturaPagarme({
     if (!podeTrocar) return;
     setTrocando(true);
     setErro(null);
+    setAviso(null);
     try {
       const card_token = await tokenizarCartao();
       const { data, error } = await supabase.functions.invoke(
@@ -175,26 +217,39 @@ export function GerenciarAssinaturaPagarme({
       const final = resposta.last_four_digits ? ` final ${resposta.last_four_digits}` : "";
 
       switch (resposta.cobranca) {
-        case "assinatura_cancelada": {
-          // Nada foi trocado: a assinatura não existe mais na Pagar.me
-          const msg = resposta.mensagem || "Sua assinatura foi cancelada. Assine um plano novamente para voltar a ter acesso.";
-          setErro(msg);
-          toast({ title: "Assinatura cancelada", description: msg, variant: "destructive" });
-          onChanged?.();
+        case "assinatura_cancelada":
+        case "assinatura_cancelada_reassinar":
+        case "assinatura_inexistente": {
+          // Nada foi trocado: não há assinatura viva na Pagar.me para usar o cartão.
+          const msg = resposta.mensagem || "Sua assinatura foi cancelada. Assine novamente para voltar a ter acesso.";
+          resetForm();
+          setAviso({ mensagem: msg, reassinar: true, planoSugerido: resposta.plano_sugerido ?? null });
+          toast({ title: "Assine novamente para voltar", description: msg, variant: "destructive" });
+          recarregarAoFechar.current = true;
+          return;
+        }
+        case "proxima_cobranca": {
+          // Assinatura viva, sem fatura em atraso: nada foi cobrado agora.
+          const quando = resposta.proxima_cobranca_em ? ` em ${dataBR(resposta.proxima_cobranca_em)}` : "";
+          const msg = `Novo cartão${final} salvo. Não há cobrança em atraso agora: a próxima cobrança será${quando}, já neste cartão. Para voltar a usar antes disso, você pode pagar agora com PIX.`;
+          resetForm();
+          setAviso({ mensagem: msg, reassinar: false, planoSugerido: resposta.plano_sugerido ?? null });
+          toast({ title: "Cartão salvo para a próxima cobrança", description: msg });
+          recarregarAoFechar.current = true;
           return;
         }
         case "recusada": {
           resetForm();
           setErro(`Seu novo cartão${final} foi salvo, mas o pagamento foi recusado: ${resposta.mensagem}. O pagamento continua pendente; tente outro cartão.`);
           toast({ title: "Pagamento recusado", description: resposta.mensagem, variant: "destructive" });
-          onChanged?.();
+          recarregarAoFechar.current = true;
           return;
         }
         case "erro": {
           resetForm();
           setErro(`Seu novo cartão${final} foi salvo, mas não conseguimos cobrar a fatura em aberto agora (${resposta.mensagem}). O pagamento continua pendente; tente novamente em instantes ou fale com o suporte.`);
           toast({ title: "Pagamento não realizado", description: resposta.mensagem, variant: "destructive" });
-          onChanged?.();
+          recarregarAoFechar.current = true;
           return;
         }
         case "pendente": {
@@ -227,6 +282,15 @@ export function GerenciarAssinaturaPagarme({
         }
         default: {
           // nao_necessaria (ou resposta antiga sem o campo)
+          if (resposta.acesso_pago_valido === false) {
+            // Plano não está valendo e nada foi cobrado: não é "Cartão atualizado!".
+            const msg = `Novo cartão${final} salvo, mas nenhuma cobrança foi feita agora e o acesso continua bloqueado. Assine novamente ou pague com PIX para voltar a usar.`;
+            resetForm();
+            setAviso({ mensagem: msg, reassinar: true, planoSugerido: resposta.plano_sugerido ?? null });
+            toast({ title: "Nenhuma cobrança foi feita", description: msg, variant: "destructive" });
+            recarregarAoFechar.current = true;
+            return;
+          }
           const emAberto = resposta.status_assinatura === "past_due" || resposta.status_assinatura === "unpaid";
           toast({
             title: "Cartão atualizado!",
@@ -407,7 +471,13 @@ export function GerenciarAssinaturaPagarme({
         onOpenChange={(v) => {
           if (trocando) return;
           setTrocaOpen(v);
-          if (!v) setTimeout(resetForm, 300);
+          if (!v) {
+            setTimeout(resetForm, 300);
+            if (recarregarAoFechar.current) {
+              recarregarAoFechar.current = false;
+              onChanged?.();
+            }
+          }
         }}
       >
         <DialogContent className="max-w-md">
@@ -478,6 +548,25 @@ export function GerenciarAssinaturaPagarme({
               <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-md">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{erro}</span>
+              </div>
+            )}
+
+            {aviso && (
+              <div className="space-y-3 text-sm bg-amber-50 text-amber-900 border border-amber-200 p-3 rounded-md dark:bg-amber-950/40 dark:text-amber-100 dark:border-amber-900">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span>{aviso.mensagem}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {aviso.reassinar && (
+                    <Button type="button" size="sm" className="flex-1" onClick={() => irParaCheckout(false)}>
+                      Assinar novamente
+                    </Button>
+                  )}
+                  <Button type="button" size="sm" variant="outline" className="flex-1" onClick={() => irParaCheckout(true)}>
+                    Pagar com PIX
+                  </Button>
+                </div>
               </div>
             )}
 
