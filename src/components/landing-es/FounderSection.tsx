@@ -34,6 +34,8 @@ export function FounderSection() {
                   sizes={SIZES_FUNDADOR}
                   width={adrielPhoto.width}
                   height={adrielPhoto.height}
+                  loading="lazy"
+                  decoding="async"
                   alt="Adriel - Fundador de Méc"
                   className="w-full h-full object-cover object-top"
                 />

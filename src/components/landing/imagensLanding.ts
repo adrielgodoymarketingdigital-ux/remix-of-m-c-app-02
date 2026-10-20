@@ -68,6 +68,10 @@ export const imgEquipeComissao = duas(equipeComissao680, 680, equipeComissao1300
 export const imgEquipePermissoes = duas(equipePermissoes680, 680, equipePermissoes1300, 1300, 363);
 
 // Dashboard do topo: só aparece a partir de lg (1024 px), com ~650 px de largura.
+// Abaixo disso fica escondido (hidden lg:block): o <picture> só oferece o WebP
+// para (min-width: 1024px) e o <img> usa este pixel embutido, então nada é baixado.
+export const MIDIA_DASHBOARD = "(min-width: 1024px)";
+export const PIXEL_VAZIO = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 export const SIZES_DASHBOARD = "(min-width: 1280px) 650px, 50vw";
 export const imgDashboard = duas(dashboard800, 800, dashboard1600, 1600, 402);
 

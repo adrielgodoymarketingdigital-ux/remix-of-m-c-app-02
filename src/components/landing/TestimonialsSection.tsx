@@ -135,6 +135,8 @@ export function TestimonialsSection() {
                   src={slides[current].src}
                   width={slides[current].width}
                   height={slides[current].height}
+                  loading="lazy"
+                  decoding="async"
                   alt={slides[current].alt}
                   className="rounded-xl w-full shadow-sm"
                 />

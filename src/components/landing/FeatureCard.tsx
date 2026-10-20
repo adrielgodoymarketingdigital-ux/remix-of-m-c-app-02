@@ -24,6 +24,8 @@ export function FeatureCard({ icon: Icon, title, description, image }: FeatureCa
             sizes={SIZES_CARTAO}
             width={image.width}
             height={image.height}
+            loading="lazy"
+            decoding="async"
             alt={title}
             className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
           />

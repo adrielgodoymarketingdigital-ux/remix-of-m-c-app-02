@@ -8,7 +8,7 @@ function PhoneMockup({ image, alt }: { image: ImagemLanding; alt: string }) {
       <div className="relative rounded-[2.5rem] border-[6px] border-slate-700 bg-black shadow-2xl shadow-slate-400/20 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-b-2xl z-10" />
         <div className="aspect-[9/19.5] overflow-hidden">
-          <img src={image.src} srcSet={image.srcSet} sizes={SIZES_NOTIFICACAO} width={image.width} height={image.height} alt={alt} className="w-full h-full object-cover" loading="lazy" />
+          <img src={image.src} srcSet={image.srcSet} sizes={SIZES_NOTIFICACAO} width={image.width} height={image.height} alt={alt} className="w-full h-full object-cover" loading="lazy" decoding="async" />
         </div>
       </div>
       <div className="absolute top-24 -right-[8px] w-[3px] h-10 bg-slate-700 rounded-r" />

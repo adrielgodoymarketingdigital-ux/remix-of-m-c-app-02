@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Zap, Play } from "lucide-react";
 import { VideoWithCover } from "@/components/landing/VideoWithCover";
-import { imgDashboard as dashboardImg, SIZES_DASHBOARD } from "@/components/landing/imagensLanding";
+import { imgDashboard as dashboardImg, SIZES_DASHBOARD, MIDIA_DASHBOARD, PIXEL_VAZIO } from "@/components/landing/imagensLanding";
 
 function AppStoreBadgeHero() {
   return (
@@ -190,7 +190,10 @@ saber onde está o lucro.
           <div className="relative animate-fade-in hidden lg:block" style={{ animationDelay: '0.2s' }}>
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl blur-[60px]" />
             <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-2xl shadow-slate-300/50">
-              <img src={dashboardImg.src} srcSet={dashboardImg.srcSet} sizes={SIZES_DASHBOARD} width={dashboardImg.width} height={dashboardImg.height} alt="Dashboard do Sistema Méc" className="w-full h-auto" />
+              <picture>
+                <source media={MIDIA_DASHBOARD} srcSet={dashboardImg.srcSet} sizes={SIZES_DASHBOARD} />
+                <img src={PIXEL_VAZIO} width={dashboardImg.width} height={dashboardImg.height} alt="Dashboard do Sistema Méc" className="w-full h-auto" />
+              </picture>
             </div>
           </div>
         </div>
