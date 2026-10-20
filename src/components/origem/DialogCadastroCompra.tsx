@@ -37,6 +37,7 @@ import {
   filtrarDispositivos,
   filtrarPessoas,
   garantirNaLista,
+  jaTemCompra,
 } from "@/lib/busca/normalizarBusca";
 import { parseValorMonetarioBR, formatarNumeroParaInputBR, formatCurrency } from "@/lib/formatters";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
@@ -51,6 +52,16 @@ import { UploadFotosCompra } from "./UploadFotosCompra";
 import { UploadDocumentosVendedor } from "./UploadDocumentosVendedor";
 import { AssinaturaCompra } from "./AssinaturaCompra";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Plus, Save, Loader2, AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -85,6 +96,7 @@ const dispositivoParaItem = (d: Dispositivo): ItemComboboxBusca => ({
   id: d.id,
   rotulo: `${d.marca ?? ""} ${d.modelo ?? ""}`.trim() || "Dispositivo",
   sublinha: [d.imei && `IMEI ${d.imei}`, d.numero_serie && `Série ${d.numero_serie}`].filter(Boolean).join(" · ") || null,
+  etiqueta: jaTemCompra(d) ? "já tem compra" : null,
 });
 
 /** "+" (mais uma unidade igual) e remover, ao lado de cada dispositivo da compra. */
@@ -181,6 +193,9 @@ export function DialogCadastroCompra({
   const [gerarPDF, setGerarPDF] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [erroEnvio, setErroEnvio] = useState<{ mensagem: string; detalhe: string | null } | null>(null);
+  // Aparelhos escolhidos que já têm compra: o envio espera o "Registrar mesmo assim".
+  const [confirmarComCompra, setConfirmarComCompra] = useState<string[] | null>(null);
+  const confirmouComCompra = useRef(false);
   const [abaAtiva, setAbaAtiva] = useState("compra");
   const [enviandoFotos, setEnviandoFotos] = useState(false);
   const [enviandoDocumentos, setEnviandoDocumentos] = useState(false);
@@ -355,6 +370,8 @@ export function DialogCadastroCompra({
       setAssinaturaCliente('');
       setAssinaturaClienteIP('');
       setErroEnvio(null);
+      setConfirmarComCompra(null);
+      confirmouComCompra.current = false;
       setAbaAtiva("compra");
       criadosNaSessao.current = {};
       setPessoaRecemCriada(null);
@@ -386,14 +403,21 @@ export function DialogCadastroCompra({
       return;
     }
 
-    const duplicado = primeiroDuplicadoNaLista(
-      [dados.dispositivo_id, ...adicionaisRef.current].filter((id): id is string => !!id).map(paraIdentificada),
-    );
+    const idsEscolhidos = [dados.dispositivo_id, ...adicionaisRef.current].filter((id): id is string => !!id);
+    const duplicado = primeiroDuplicadoNaLista(idsEscolhidos.map(paraIdentificada));
     if (duplicado) {
       toast.error(duplicado);
       setErroEnvio({ mensagem: "Há dispositivos repetidos nesta compra.", detalhe: duplicado });
       return;
     }
+
+    // Aparelho que já tem compra (troca no PDV ou compra anterior): confirma antes de duplicar.
+    const comCompra = idsEscolhidos.filter((id) => jaTemCompra(buscarDispositivo(id)));
+    if (comCompra.length > 0 && !confirmouComCompra.current) {
+      setConfirmarComCompra(comCompra.map((id) => paraIdentificada(id).rotulo ?? "Dispositivo"));
+      return;
+    }
+    confirmouComCompra.current = false;
 
     if (!iniciarEnvio(travaEnvio.current)) return;
     setErroEnvio(null);
@@ -698,6 +722,11 @@ export function DialogCadastroCompra({
                             onRemover={adicionais.length > 0 && !dispositivoId ? () => removerDaCompra(field.value!) : undefined}
                           />
                         </div>
+                        {jaTemCompra(buscarDispositivo(field.value)) && (
+                          <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="aviso-ja-tem-compra">
+                            Este aparelho já tem uma compra registrada (troca no PDV ou compra anterior). Ao salvar, vamos pedir confirmação para não duplicar.
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1025,6 +1054,39 @@ export function DialogCadastroCompra({
         valoresIniciais={unidadeCopiada}
         validarUnidades={validarNovasUnidades}
       />
+
+      <AlertDialog open={!!confirmarComCompra} onOpenChange={(aberto) => { if (!aberto) setConfirmarComCompra(null); }}>
+        <AlertDialogContent data-testid="confirmar-ja-tem-compra">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmarComCompra && confirmarComCompra.length > 1 ? "Estes aparelhos já têm compra" : "Este aparelho já tem compra"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Já existe uma compra registrada para{" "}
+                  <strong>{confirmarComCompra?.join(", ")}</strong> (troca no PDV ou compra anterior).
+                </p>
+                <p>
+                  Registrar de novo cria uma segunda compra para o mesmo aparelho, que passa a ficar ligado à nova. Confira em Origem de Dispositivos antes de continuar.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                confirmouComCompra.current = true;
+                setConfirmarComCompra(null);
+                void form.handleSubmit(handleSubmit, handleInvalido)();
+              }}
+            >
+              Registrar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
