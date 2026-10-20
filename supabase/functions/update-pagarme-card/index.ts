@@ -62,6 +62,23 @@ serve(async (req) => {
     if (!pagarmeKey) throw new Error("PAGARME_SECRET_KEY não configurada.");
     const pagarmeAuth = `Basic ${btoa(`${pagarmeKey}:`)}`;
 
+    // Plano pago conhecido, para "assinar de novo" e para restaurar depois de uma cobrança
+    // paga: o plano local se for pago; senão (ex.: virou Free ao fim de uma liberação)
+    // o anterior à liberação. Buscado ANTES: sem plano conhecido, trocarCartao não cobra.
+    let planoSugerido: string | null = null;
+    if (PLANOS_PAGOS.includes(assinatura.plano_tipo ?? "")) {
+      planoSugerido = assinatura.plano_tipo;
+    } else {
+      const { data: lib } = await supabaseAdmin
+        .from("liberacoes_temporarias")
+        .select("plano_anterior")
+        .eq("user_id", userId)
+        .order("concedido_em", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (PLANOS_PAGOS.includes(lib?.plano_anterior ?? "")) planoSugerido = lib!.plano_anterior;
+    }
+
     const resposta = await trocarCartao(
       {
         plano_tipo: assinatura.plano_tipo,
@@ -73,26 +90,8 @@ serve(async (req) => {
       card_token,
       new Date(),
       { pagarmeAuth, log },
+      planoSugerido,
     );
-
-    // Plano para "assinar de novo" quando o acesso não está valendo: o plano local se
-    // for pago; senão (ex.: virou Free ao fim de uma liberação) o anterior à liberação.
-    const acessoValido = resposta.trocou && resposta.corpo.acesso_pago_valido;
-    let planoSugerido: string | null = null;
-    if (!acessoValido) {
-      if (PLANOS_PAGOS.includes(assinatura.plano_tipo ?? "")) {
-        planoSugerido = assinatura.plano_tipo;
-      } else {
-        const { data: lib } = await supabaseAdmin
-          .from("liberacoes_temporarias")
-          .select("plano_anterior")
-          .eq("user_id", userId)
-          .order("concedido_em", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (PLANOS_PAGOS.includes(lib?.plano_anterior ?? "")) planoSugerido = lib!.plano_anterior;
-      }
-    }
 
     if (resposta.trocou) {
       const agora = new Date();
@@ -117,7 +116,8 @@ serve(async (req) => {
       log("Cartão atualizado", { cobranca: resposta.corpo.cobranca });
     }
 
-    return json({ ...resposta.corpo, plano_sugerido: planoSugerido });
+    const acessoValido = resposta.trocou && resposta.corpo.acesso_pago_valido;
+    return json({ ...resposta.corpo, plano_sugerido: acessoValido ? null : planoSugerido });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     log("ERRO", { msg });

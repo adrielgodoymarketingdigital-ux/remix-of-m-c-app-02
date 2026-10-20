@@ -55,6 +55,7 @@ interface RespostaTrocaCartao {
     | "proxima_cobranca"
     | "assinatura_cancelada_reassinar"
     | "assinatura_inexistente"
+    | "plano_desconhecido"
     | "assinatura_cancelada"; // nome antigo (função anterior à v13)
   mensagem?: string;
   /** false quando o plano pago não está valendo (Free, vencido, past_due): a função consultou a Pagar.me. */
@@ -225,6 +226,15 @@ export function GerenciarAssinaturaPagarme({
           resetForm();
           setAviso({ mensagem: msg, reassinar: true, planoSugerido: resposta.plano_sugerido ?? null });
           toast({ title: "Assine novamente para voltar", description: msg, variant: "destructive" });
+          recarregarAoFechar.current = true;
+          return;
+        }
+        case "plano_desconhecido": {
+          // Sem plano pago conhecido: a função não trocou nem cobrou nada.
+          const msg = resposta.mensagem || "Não conseguimos identificar o seu plano. Nada foi cobrado. Fale com o suporte.";
+          resetForm();
+          setErro(msg);
+          toast({ title: "Nada foi cobrado", description: msg, variant: "destructive" });
           recarregarAoFechar.current = true;
           return;
         }

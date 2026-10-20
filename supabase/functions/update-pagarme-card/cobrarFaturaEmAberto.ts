@@ -56,7 +56,9 @@ export type ResultadoCobranca =
   | { cobranca: "proxima_cobranca"; proxima_cobranca_em: string; mensagem?: string }
   // Nada foi trocado: não há assinatura viva na Pagar.me para usar o cartão.
   | { cobranca: "assinatura_cancelada_reassinar"; mensagem: string }
-  | { cobranca: "assinatura_inexistente"; mensagem: string };
+  | { cobranca: "assinatura_inexistente"; mensagem: string }
+  // Conta sem plano pago e sem como saber qual plano devolver: não troca nem cobra.
+  | { cobranca: "plano_desconhecido"; mensagem: string };
 
 export interface OpcoesPagarme {
   pagarmeAuth: string;

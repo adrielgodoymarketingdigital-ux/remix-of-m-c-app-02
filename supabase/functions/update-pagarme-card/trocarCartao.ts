@@ -26,13 +26,15 @@ export interface AssinaturaTroca extends AssinaturaLocal {
 
 export const MSG_CANCELADA =
   "Sua assinatura foi cancelada. Assine novamente para voltar a ter acesso.";
+export const MSG_PLANO_DESCONHECIDO =
+  "Não conseguimos identificar o seu plano para reativar a assinatura. Nada foi cobrado. Fale com o suporte para regularizar.";
 export const MSG_INEXISTENTE =
   "Não encontramos sua assinatura no cartão. Assine novamente para voltar a ter acesso.";
 
 export type RespostaTroca =
   | {
       trocou: false;
-      corpo: { success: false; cobranca: "assinatura_cancelada_reassinar" | "assinatura_inexistente"; mensagem: string; status_assinatura: string | null };
+      corpo: { success: false; cobranca: "assinatura_cancelada_reassinar" | "assinatura_inexistente" | "plano_desconhecido"; mensagem: string; status_assinatura: string | null };
     }
   | {
       trocou: true;
@@ -55,6 +57,8 @@ export async function trocarCartao(
   cardToken: string,
   agora: Date,
   opts: OpcoesPagarme,
+  /** Plano pago anterior conhecido (ex.: o de antes de uma liberação temporária). */
+  planoAnteriorConhecido: string | null = null,
 ): Promise<RespostaTroca> {
   const fetchFn = opts.fetchFn ?? fetch;
   const log = opts.log ?? (() => {});
@@ -84,6 +88,18 @@ export async function trocarCartao(
     }
     proximaCobrancaEm = consulta.proximaCobrancaEm;
     planoPagarme = consulta.planoTipo;
+
+    // Conta sem plano pago (ex.: Free depois de uma liberação) e sem como saber o plano:
+    // cobrar deixaria o cliente pago e no Free. Para antes de criar cartão ou cobrar.
+    const planoLocalPago = PLANOS_PAGOS.includes(assinatura.plano_tipo ?? "");
+    const planoAnteriorPago = PLANOS_PAGOS.includes(planoAnteriorConhecido ?? "");
+    if (!planoLocalPago && !planoPagarme && !planoAnteriorPago) {
+      log("Plano desconhecido — nada trocado nem cobrado", { subscriptionId: subId, planoLocal: assinatura.plano_tipo });
+      return {
+        trocou: false,
+        corpo: { success: false, cobranca: "plano_desconhecido", mensagem: MSG_PLANO_DESCONHECIDO, status_assinatura: assinatura.status },
+      };
+    }
   }
 
   // 2. Cria o novo cartão no customer a partir do token

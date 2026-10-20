@@ -3,7 +3,7 @@
 // um fetch falso que responde por método + caminho e registra as chamadas, para
 // provar quando NÃO se troca/cobra, que há no máximo um retry e nenhuma cobrança avulsa.
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
-import { type AssinaturaTroca, MSG_CANCELADA, MSG_INEXISTENTE, trocarCartao } from "./trocarCartao.ts";
+import { type AssinaturaTroca, MSG_CANCELADA, MSG_INEXISTENTE, MSG_PLANO_DESCONHECIDO, trocarCartao } from "./trocarCartao.ts";
 
 type Resposta = { status?: number; corpo?: unknown } | Error;
 
@@ -34,7 +34,8 @@ const TROCA_COBRANCA = "PATCH /charges/ch_1/card";
 const RETRY = "POST /charges/ch_1/retry";
 
 const cartaoCriado = { corpo: { id: "card_novo", last_four_digits: "4242", brand: "Visa" } };
-const subViva = { corpo: { id: SUB, status: "active", next_billing_at: PROXIMA } };
+const subViva = { corpo: { id: SUB, status: "active", next_billing_at: PROXIMA, metadata: { plano_tipo: "profissional_mensal" } } };
+const subVivaSemPlano = { corpo: { id: SUB, status: "active", next_billing_at: PROXIMA } }; // assinatura antiga, sem metadata
 const faturaFailed = { corpo: { data: [{ id: "in_1", status: "failed", created_at: "2026-10-17T09:00:00Z", charge: { id: "ch_1", status: "failed" } }] } };
 const semFaturas = { corpo: { data: [] } };
 
@@ -44,8 +45,8 @@ const pastDue: AssinaturaTroca = { ...free, plano_tipo: "profissional_mensal", s
 const ativaNoPrazo: AssinaturaTroca = { ...free, plano_tipo: "profissional_mensal", status: "active", data_fim: PROXIMA };
 const ativaVencida: AssinaturaTroca = { ...free, plano_tipo: "profissional_mensal", status: "active", data_fim: "2026-10-15T00:00:00Z" };
 
-const rodar = (a: AssinaturaTroca, p: ReturnType<typeof pagarme>) =>
-  trocarCartao(a, "tok_teste", AGORA, { pagarmeAuth: "Basic x", fetchFn: p.fn });
+const rodar = (a: AssinaturaTroca, p: ReturnType<typeof pagarme>, planoAnterior: string | null = null) =>
+  trocarCartao(a, "tok_teste", AGORA, { pagarmeAuth: "Basic x", fetchFn: p.fn }, planoAnterior);
 
 // ── Free com id de assinatura (caso do cliente) ────────────────────────────
 Deno.test("Free + fatura failed → consulta a Pagar.me, troca o cartão, retenta uma vez e fica paga", async () => {
@@ -203,4 +204,41 @@ Deno.test("fimDoPeriodoPago: 30 dias no mensal, 365 no anual (mesma regra do web
   const t = new Date("2026-10-20T12:00:00Z");
   assertEquals(fimDoPeriodoPago(t, "profissional_mensal").toISOString(), "2026-11-19T12:00:00.000Z");
   assertEquals(fimDoPeriodoPago(t, "basico_anual").toISOString(), "2027-10-20T12:00:00.000Z");
+});
+
+// ── plano desconhecido: não troca, não cobra, não inventa plano ────────────
+Deno.test("Free + assinatura viva SEM metadata.plano_tipo e sem plano anterior → plano_desconhecido, nada trocado nem cobrado", async () => {
+  const p = pagarme({
+    [GET_SUB]: subVivaSemPlano, [CRIA_CARTAO]: cartaoCriado, [TROCA_SUB]: { corpo: {} },
+    [FAILED]: faturaFailed, [PENDING]: semFaturas,
+    [TROCA_COBRANCA]: { corpo: { id: "ch_1", status: "failed" } }, [RETRY]: { corpo: { id: "ch_1", status: "paid" } },
+  });
+  const r = await rodar(free, p, null);
+  assertEquals(r, {
+    trocou: false,
+    corpo: { success: false, cobranca: "plano_desconhecido", mensagem: MSG_PLANO_DESCONHECIDO, status_assinatura: "active" },
+  });
+  assertEquals(p.chamadas, [GET_SUB]); // só a consulta: sem cartão novo, sem PATCH, sem retry
+});
+
+Deno.test("Free sem metadata, MAS com plano anterior da liberação → segue, cobra e restaura esse plano", async () => {
+  const p = pagarme({
+    [GET_SUB]: subVivaSemPlano, [CRIA_CARTAO]: cartaoCriado, [TROCA_SUB]: { corpo: {} },
+    [FAILED]: faturaFailed, [PENDING]: semFaturas,
+    [TROCA_COBRANCA]: { corpo: { id: "ch_1", status: "failed" } }, [RETRY]: { corpo: { id: "ch_1", status: "paid" } },
+  });
+  const r = await rodar(free, p, "profissional_mensal");
+  if (!r.trocou) throw new Error("devia trocar");
+  assertEquals(r.corpo.cobranca, "paga");
+  assertEquals(planoParaRestaurar("free", r.corpo, r.planoPagarme, "profissional_mensal"), "profissional_mensal");
+});
+
+Deno.test("plano local pago (past_due) sem metadata → não precisa de plano conhecido, segue como antes", async () => {
+  const p = pagarme({
+    [GET_SUB]: subVivaSemPlano, [CRIA_CARTAO]: cartaoCriado, [TROCA_SUB]: { corpo: {} },
+    [FAILED]: faturaFailed, [PENDING]: semFaturas,
+    [TROCA_COBRANCA]: { corpo: { id: "ch_1", status: "paid" } },
+  });
+  const r = await rodar(pastDue, p, null);
+  assertEquals(r.corpo.cobranca, "paga");
 });
