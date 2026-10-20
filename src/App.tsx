@@ -11,7 +11,11 @@ import { ThemeProvider } from "next-themes";
 import { lazy, Suspense, useEffect } from "react";
 import { initPixel } from "@/lib/pixel";
 import { trackPageView } from "@/lib/tracking";
-const Landing = lazy(() => import("./pages/Landing"));
+const importarLanding = () => import("./pages/Landing");
+const importarLandingLP1 = () => import("./pages/LandingLP1");
+const importarLandingLP2 = () => import("./pages/LandingLP2");
+const importarLandingES = () => import("./pages/LandingES");
+const Landing = lazy(importarLanding);
 const Auth = lazy(() => import("./pages/Auth"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 import { TrialEndWarning } from "./components/trial/TrialEndWarning";
@@ -26,9 +30,9 @@ import { OSStatusConfigProvider } from "@/contexts/OSStatusConfigContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Lazy-loaded pages — split into per-route bundles so o app inicial fica leve no mobile
-const LandingLP1 = lazy(() => import("./pages/LandingLP1"));
-const LandingLP2 = lazy(() => import("./pages/LandingLP2"));
-const LandingES = lazy(() => import("./pages/LandingES"));
+const LandingLP1 = lazy(importarLandingLP1);
+const LandingLP2 = lazy(importarLandingLP2);
+const LandingES = lazy(importarLandingES);
 const VideoBoasVindas = lazy(() => import("./pages/VideoBoasVindas"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Obrigado = lazy(() => import("./pages/Obrigado"));
@@ -132,6 +136,32 @@ const PUBLIC_ROUTES_NO_WAIT = [
   "/es",
 ];
 
+// Landings do funil (anúncios). O pedaço da página aberta já começa a baixar
+// aqui, junto com o pacote principal, em vez de esperar o React montar.
+const LANDINGS: Record<string, () => Promise<unknown>> = {
+  "/": importarLanding,
+  "/lp1": importarLandingLP1,
+  "/lp2": importarLandingLP2,
+  "/es": importarLandingES,
+};
+const normalizarCaminho = (caminho: string) => (caminho.length > 1 ? caminho.replace(/\/+$/, "") : caminho);
+LANDINGS[normalizarCaminho(window.location.pathname)]?.();
+
+// Visitante sem sessão guardada não tem o que restaurar: nas landings ele não
+// espera o useSessionRestore ("Carregando..."). Com sessão guardada a espera
+// continua igual a antes.
+const temSessaoGuardada = (() => {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const chave = localStorage.key(i);
+      if (chave?.startsWith("sb-") && chave.endsWith("-auth-token")) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+})();
+
 function AppRoutes() {
   const { isRestoring } = useSessionRestore();
   const location = useLocation();
@@ -145,7 +175,9 @@ function AppRoutes() {
     trackPageView(window.location.href)
   }, [location.pathname])
 
-  const skipWait = PUBLIC_ROUTES_NO_WAIT.some(r => location.pathname.startsWith(r));
+  const skipWait =
+    PUBLIC_ROUTES_NO_WAIT.some(r => location.pathname.startsWith(r)) ||
+    (!temSessaoGuardada && normalizarCaminho(location.pathname) in LANDINGS);
 
   if (isRestoring && !skipWait) {
     return (
