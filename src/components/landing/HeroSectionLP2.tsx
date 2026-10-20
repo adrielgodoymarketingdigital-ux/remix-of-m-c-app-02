@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
+import { useIrParaSecao } from "@/components/landing/SecoesAdiadas";
 import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import { VideoWithCover } from "@/components/landing/VideoWithCover";
 import { imgDashboard as dashboardImg, SIZES_DASHBOARD, MIDIA_DASHBOARD, PIXEL_VAZIO } from "@/components/landing/imagensLanding";
 
 export function HeroSectionLP2() {
-  const handleScrollToPlanos = () => {
-    const element = document.getElementById('planos');
-    element?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const irParaSecao = useIrParaSecao();
+  // Monta as seções adiadas antes de rolar (ver SecoesAdiadas.tsx).
+  const handleScrollToPlanos = () => irParaSecao("planos");
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16"

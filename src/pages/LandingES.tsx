@@ -3,20 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { ehAppInstalado } from "@/components/landing/appInstalado";
 import { LandingNav } from "@/components/landing-es/LandingNav";
 import { HeroSection } from "@/components/landing-es/HeroSection";
-import { MobileDemoSection } from "@/components/landing-es/MobileDemoSection";
-import { FeaturesGrid } from "@/components/landing-es/FeaturesGrid";
-import { SellDevicesSection } from "@/components/landing-es/SellDevicesSection";
-import { NotificationsSection } from "@/components/landing-es/NotificationsSection";
-import { StaffSection } from "@/components/landing-es/StaffSection";
-import { FounderSection } from "@/components/landing-es/FounderSection";
-import { TestimonialsSection } from "@/components/landing-es/TestimonialsSection";
-import { SupportSection } from "@/components/landing-es/SupportSection";
-import { SystemDemoSection } from "@/components/landing-es/SystemDemoSection";
-import { ComparisonSection } from "@/components/landing-es/ComparisonSection";
-import { PricingSection } from "@/components/landing-es/PricingSection";
-import { FAQSection } from "@/components/landing-es/FAQSection";
-import { FinalCTA } from "@/components/landing-es/FinalCTA";
-import { LandingFooter } from "@/components/landing-es/LandingFooter";
+import { PaginaComSecoesAdiadas } from "@/components/landing/SecoesAdiadas";
+import { SecoesDaLanding, criarSecoesDaLanding } from "@/components/landing/SecoesDaLanding";
+
+// Seções abaixo do topo: um arquivo só, baixado sob demanda (ver SecoesAdiadas.tsx).
+const carregarSecoes = () => import("@/components/landing-es/secoesAbaixoDaDobra");
+const SECOES = criarSecoesDaLanding(carregarSecoes);
 
 // Landing en español (MVP de validación de demanda internacional) — espejo
 // estructural exacto de src/pages/Landing.tsx (misma composición de
@@ -25,6 +17,9 @@ import { LandingFooter } from "@/components/landing-es/LandingFooter";
 // componentes 100% genéricos (sin texto propio) se reusan directo de
 // components/landing/ (FeatureCard, StatCard). Nada de esto toca
 // src/pages/Landing.tsx ni components/landing/* originales.
+// Las secciones debajo del hero se cargan bajo demanda, igual que en Landing.tsx
+// (mismas alturas reservadas: components/landing/SecoesDaLanding.tsx).
+
 export default function LandingES() {
   const navigate = useNavigate();
   // Checagem síncrona (matchMedia): o visitante vê o conteúdo já na primeira
@@ -40,23 +35,10 @@ export default function LandingES() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <PaginaComSecoesAdiadas carregar={carregarSecoes} className="min-h-screen bg-slate-50">
       <LandingNav />
       <HeroSection />
-      <SystemDemoSection />
-      <TestimonialsSection />
-      <SupportSection />
-      <MobileDemoSection />
-      <FeaturesGrid />
-      <SellDevicesSection />
-      <NotificationsSection />
-      <StaffSection />
-      <FounderSection />
-      <ComparisonSection />
-      <PricingSection />
-      <FAQSection />
-      <FinalCTA />
-      <LandingFooter />
-    </div>
+      <SecoesDaLanding secoes={SECOES} />
+    </PaginaComSecoesAdiadas>
   );
 }

@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
+import { useIrParaSecao } from "@/components/landing/SecoesAdiadas";
 import { useNavigate } from "react-router-dom";
 import { Zap } from "lucide-react";
 import { imgLogo as logoMec } from "@/components/landing/imagensLanding";
 
 export function LandingNav() {
   const navigate = useNavigate();
+  const irParaSecao = useIrParaSecao();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-white/10">
@@ -34,10 +36,7 @@ export function LandingNav() {
             Entrar
           </Button>
           <Button 
-            onClick={() => {
-              const element = document.getElementById('planos');
-              element?.scrollIntoView({ behavior: 'smooth' });
-            }} 
+            onClick={() => irParaSecao("planos")} 
             className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-medium shadow-lg shadow-blue-500/25 hidden sm:flex"
           >
             <Zap className="mr-2 h-4 w-4" />

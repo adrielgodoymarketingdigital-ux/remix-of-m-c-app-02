@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useIrParaSecao } from "@/components/landing/SecoesAdiadas";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Zap, Play } from "lucide-react";
@@ -74,10 +75,9 @@ function FaixaLojas() {
 export function HeroSection() {
   const navigate = useNavigate();
 
-  const handleScrollToPlanos = () => {
-    const element = document.getElementById('planos');
-    element?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const irParaSecao = useIrParaSecao();
+  // Monta as seções adiadas antes de rolar (ver SecoesAdiadas.tsx).
+  const handleScrollToPlanos = () => irParaSecao("planos");
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-white to-slate-50 pt-16">

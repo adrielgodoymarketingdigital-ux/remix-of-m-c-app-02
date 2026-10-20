@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from "react";
+import { useIrParaSecao } from "@/components/landing/SecoesAdiadas";
 import { Play, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function SystemDemoSection() {
+  const irParaSecao = useIrParaSecao();
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -80,7 +82,7 @@ export function SystemDemoSection() {
 
         <div className="flex justify-center mt-8">
           <Button
-            onClick={() => document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' })}
+            onClick={() => irParaSecao("planos")}
             size="lg"
             className="h-12 md:h-14 px-8 text-base font-semibold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg shadow-green-500/25"
           >

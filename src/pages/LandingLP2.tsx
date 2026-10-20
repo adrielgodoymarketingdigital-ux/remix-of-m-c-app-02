@@ -1,40 +1,19 @@
 import { LandingNav } from "@/components/landing/LandingNav";
-import { MobileDemoSection } from "@/components/landing/MobileDemoSection";
-import { FeaturesGrid } from "@/components/landing/FeaturesGrid";
-import { SellDevicesSection } from "@/components/landing/SellDevicesSection";
-import { NotificationsSection } from "@/components/landing/NotificationsSection";
-import { StaffSection } from "@/components/landing/StaffSection";
-import { FounderSection } from "@/components/landing/FounderSection";
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
-import { SupportSection } from "@/components/landing/SupportSection";
-import { SystemDemoSection } from "@/components/landing/SystemDemoSection";
-import { ComparisonSection } from "@/components/landing/ComparisonSection";
-import { PricingSection } from "@/components/landing/PricingSection";
-import { FAQSection } from "@/components/landing/FAQSection";
-import { FinalCTA } from "@/components/landing/FinalCTA";
-import { LandingFooter } from "@/components/landing/LandingFooter";
 import { HeroSectionLP2 } from "@/components/landing/HeroSectionLP2";
+import { PaginaComSecoesAdiadas } from "@/components/landing/SecoesAdiadas";
+import { SecoesDaLanding, criarSecoesDaLanding } from "@/components/landing/SecoesDaLanding";
 import "./LandingLP2.css";
+
+// Seções abaixo do topo: um arquivo só, baixado sob demanda (ver SecoesAdiadas.tsx).
+const carregarSecoes = () => import("@/components/landing/secoesAbaixoDaDobra");
+const SECOES = criarSecoesDaLanding(carregarSecoes);
 
 export default function LandingLP2() {
   return (
-    <div className="lp2-dark min-h-screen">
+    <PaginaComSecoesAdiadas carregar={carregarSecoes} className="lp2-dark min-h-screen">
       <LandingNav />
       <HeroSectionLP2 />
-      <SystemDemoSection />
-      <TestimonialsSection />
-      <SupportSection />
-      <MobileDemoSection />
-      <FeaturesGrid />
-      <SellDevicesSection />
-      <NotificationsSection />
-      <StaffSection />
-      <FounderSection />
-      <ComparisonSection />
-      <PricingSection />
-      <FAQSection />
-      <FinalCTA />
-      <LandingFooter />
-    </div>
+      <SecoesDaLanding secoes={SECOES} />
+    </PaginaComSecoesAdiadas>
   );
 }

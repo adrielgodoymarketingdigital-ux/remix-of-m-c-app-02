@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button";
+import { useIrParaSecao } from "@/components/landing/SecoesAdiadas";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Zap, Rocket } from "lucide-react";
 
 export function FinalCTA() {
   const navigate = useNavigate();
 
-  const handleScrollToPlanos = () => {
-    const element = document.getElementById('planos');
-    element?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const irParaSecao = useIrParaSecao();
+  // Monta as seções adiadas antes de rolar (ver SecoesAdiadas.tsx).
+  const handleScrollToPlanos = () => irParaSecao("planos");
 
   return (
     <section className="py-24 md:py-32 bg-white relative overflow-hidden">
