@@ -9,6 +9,20 @@ export interface ItemComboboxBusca {
   id: string;
   rotulo: string;
   sublinha?: string | null;
+  /** Etiqueta curta ao lado do rótulo (ex.: "já tem compra"). */
+  etiqueta?: string | null;
+}
+
+function RotuloComEtiqueta({ rotulo, etiqueta }: { rotulo: string; etiqueta?: string | null }) {
+  if (!etiqueta) return <span className="block truncate">{rotulo}</span>;
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="truncate">{rotulo}</span>
+      <span className="shrink-0 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-700 dark:text-amber-400">
+        {etiqueta}
+      </span>
+    </span>
+  );
 }
 
 interface ComboboxBuscaProps<T> {
@@ -115,7 +129,7 @@ export function ComboboxBusca<T>({
             className={cn("min-h-11 h-auto flex-1 min-w-0 justify-between font-normal py-2 text-left", !valor && "text-muted-foreground")}
           >
             <span className="min-w-0 flex-1">
-              <span className="block truncate">{textoGatilho}</span>
+              <RotuloComEtiqueta rotulo={textoGatilho} etiqueta={selecionado?.etiqueta} />
               {selecionado?.sublinha && (
                 <span className="block truncate text-xs text-muted-foreground">{selecionado.sublinha}</span>
               )}
@@ -160,7 +174,7 @@ export function ComboboxBusca<T>({
                     >
                       <Check className={cn("mr-2 h-4 w-4 shrink-0", item.id === valor ? "opacity-100" : "opacity-0")} />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate">{item.rotulo}</span>
+                        <RotuloComEtiqueta rotulo={item.rotulo} etiqueta={item.etiqueta} />
                         {item.sublinha && <span className="block truncate text-xs text-muted-foreground">{item.sublinha}</span>}
                       </span>
                     </CommandItem>
