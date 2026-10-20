@@ -114,6 +114,10 @@ export default defineConfig(({ mode }) => ({
           "vendor-react": ["react", "react-dom", "react-router-dom"],
           "vendor-query": ["@tanstack/react-query"],
           "vendor-supabase": ["@supabase/supabase-js"],
+          // Utilitários do cn() — num chunk próprio para não irem parar dentro do
+          // vendor-recharts (o Recharts também usa clsx), o que fazia toda página,
+          // inclusive a landing, baixar o Recharts só por causa do clsx.
+          "vendor-utils": ["clsx", "tailwind-merge"],
           // Recharts fica num chunk próprio — lazy-loaded pelo GraficosDashboard
           "vendor-recharts": ["recharts"],
           // UI libs grandes
