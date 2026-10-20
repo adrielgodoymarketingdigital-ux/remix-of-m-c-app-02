@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { PLANOS_PAGOS } from "./cobrarFaturaEmAberto.ts";
-import { trocarCartao } from "./trocarCartao.ts";
+import { fimDoPeriodoPago, planoParaRestaurar, trocarCartao } from "./trocarCartao.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,14 +75,6 @@ serve(async (req) => {
       { pagarmeAuth, log },
     );
 
-    if (resposta.trocou) {
-      await supabaseAdmin
-        .from("assinaturas")
-        .update({ pagarme_card_id: resposta.cardId, updated_at: new Date().toISOString() })
-        .eq("id", assinatura.id);
-      log("Cartão atualizado", { cobranca: resposta.corpo.cobranca });
-    }
-
     // Plano para "assinar de novo" quando o acesso não está valendo: o plano local se
     // for pago; senão (ex.: virou Free ao fim de uma liberação) o anterior à liberação.
     const acessoValido = resposta.trocou && resposta.corpo.acesso_pago_valido;
@@ -100,6 +92,29 @@ serve(async (req) => {
           .maybeSingle();
         if (PLANOS_PAGOS.includes(lib?.plano_anterior ?? "")) planoSugerido = lib!.plano_anterior;
       }
+    }
+
+    if (resposta.trocou) {
+      const agora = new Date();
+      const atualizacao: Record<string, unknown> = { pagarme_card_id: resposta.cardId, updated_at: agora.toISOString() };
+
+      // Cobrança paga (confirmada pela API da Pagar.me) numa conta Free com assinatura
+      // viva: o webhook não volta o plano, então ele é restaurado aqui. O período segue
+      // a regra do webhook; o webhook do charge.paid confirma depois, como sempre.
+      const plano = planoParaRestaurar(assinatura.plano_tipo, resposta.corpo, resposta.planoPagarme, planoSugerido);
+      if (plano) {
+        const fim = fimDoPeriodoPago(agora, plano).toISOString();
+        Object.assign(atualizacao, { plano_tipo: plano, status: "active", data_fim: fim, data_proxima_cobranca: fim });
+        log("Plano restaurado após cobrança paga", { de: assinatura.plano_tipo, para: plano, data_fim: fim });
+      }
+
+      // .eq no plano lido: se outro processo mudou o plano no meio, não sobrescreve.
+      await supabaseAdmin
+        .from("assinaturas")
+        .update(atualizacao)
+        .eq("id", assinatura.id)
+        .eq("plano_tipo", assinatura.plano_tipo);
+      log("Cartão atualizado", { cobranca: resposta.corpo.cobranca });
     }
 
     return json({ ...resposta.corpo, plano_sugerido: planoSugerido });

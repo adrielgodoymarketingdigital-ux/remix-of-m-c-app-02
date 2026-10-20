@@ -171,3 +171,36 @@ Deno.test("nenhum caminho cria cobrança avulsa (POST /orders ou /charges)", asy
     assertEquals(p.chamadas.some((c) => /^POST \/(orders|charges)$/.test(c)), false);
   }
 });
+
+// ── plano restaurado quando a cobrança de uma conta Free é paga ────────────
+import { fimDoPeriodoPago, planoParaRestaurar } from "./trocarCartao.ts";
+
+Deno.test("Free + fatura failed paga → devolve o plano da assinatura na Pagar.me (metadata)", async () => {
+  const p = pagarme({
+    [GET_SUB]: { corpo: { id: SUB, status: "active", next_billing_at: PROXIMA, metadata: { plano_tipo: "profissional_mensal" } } },
+    [CRIA_CARTAO]: cartaoCriado, [TROCA_SUB]: { corpo: {} },
+    [FAILED]: faturaFailed, [PENDING]: semFaturas,
+    [TROCA_COBRANCA]: { corpo: { id: "ch_1", status: "failed" } },
+    [RETRY]: { corpo: { id: "ch_1", status: "paid" } },
+  });
+  const r = await rodar(free, p);
+  if (!r.trocou) throw new Error("devia trocar");
+  assertEquals(r.planoPagarme, "profissional_mensal");
+  assertEquals(planoParaRestaurar("free", r.corpo, r.planoPagarme, null), "profissional_mensal");
+});
+
+Deno.test("planoParaRestaurar: só com cobrança paga e plano local não pago", () => {
+  const paga = { cobranca: "paga" } as const;
+  assertEquals(planoParaRestaurar("free", { cobranca: "pendente" }, "profissional_mensal", null), null);
+  assertEquals(planoParaRestaurar("free", { cobranca: "recusada", mensagem: "x" }, "profissional_mensal", null), null);
+  assertEquals(planoParaRestaurar("profissional_mensal", paga, "basico_mensal", null), null); // já é pago: não mexe
+  assertEquals(planoParaRestaurar("free", paga, null, "intermediario_anual"), "intermediario_anual"); // sem metadata: plano anterior
+  assertEquals(planoParaRestaurar("free", paga, "plano_invalido", null), null);
+  assertEquals(planoParaRestaurar("free", paga, null, null), null);
+});
+
+Deno.test("fimDoPeriodoPago: 30 dias no mensal, 365 no anual (mesma regra do webhook)", () => {
+  const t = new Date("2026-10-20T12:00:00Z");
+  assertEquals(fimDoPeriodoPago(t, "profissional_mensal").toISOString(), "2026-11-19T12:00:00.000Z");
+  assertEquals(fimDoPeriodoPago(t, "basico_anual").toISOString(), "2027-10-20T12:00:00.000Z");
+});

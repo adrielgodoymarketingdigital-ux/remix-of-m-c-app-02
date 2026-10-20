@@ -119,7 +119,8 @@ async function chamar(
 }
 
 export type SituacaoAssinatura =
-  | { situacao: "viva"; proximaCobrancaEm: string | null }
+  // planoTipo: metadata.plano_tipo gravado pelo create-pagarme-subscription (só se for plano pago)
+  | { situacao: "viva"; proximaCobrancaEm: string | null; planoTipo: string | null }
   | { situacao: "cancelada" }
   | { situacao: "inexistente" }
   | { erro: string };
@@ -137,7 +138,12 @@ export async function consultarAssinatura(
   if (!r.ok) return r.status === 404 ? { situacao: "inexistente" } : { erro: r.mensagem };
   if (r.dados?.status === "canceled") return { situacao: "cancelada" };
   const proxima = r.dados?.next_billing_at;
-  return { situacao: "viva", proximaCobrancaEm: typeof proxima === "string" && proxima ? proxima : null };
+  const plano = r.dados?.metadata?.plano_tipo;
+  return {
+    situacao: "viva",
+    proximaCobrancaEm: typeof proxima === "string" && proxima ? proxima : null,
+    planoTipo: typeof plano === "string" && PLANOS_PAGOS.includes(plano) ? plano : null,
+  };
 }
 
 /** Fatura em aberto mais recente da assinatura (failed ou pending), com a cobrança dela. */

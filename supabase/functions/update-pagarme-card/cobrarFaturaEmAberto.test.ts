@@ -171,14 +171,14 @@ Deno.test("consultarAssinatura: canceled → cancelada", async () => {
   assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "cancelada" });
 });
 
-Deno.test("consultarAssinatura: active → viva, com a data da próxima cobrança", async () => {
-  const p = pagarme({ [GET_SUB]: { corpo: { id: SUB, status: "active", next_billing_at: "2026-11-17T00:00:00Z" } } });
-  assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "viva", proximaCobrancaEm: "2026-11-17T00:00:00Z" });
+Deno.test("consultarAssinatura: active → viva, com a data da próxima cobrança e o plano do metadata", async () => {
+  const p = pagarme({ [GET_SUB]: { corpo: { id: SUB, status: "active", next_billing_at: "2026-11-17T00:00:00Z", metadata: { plano_tipo: "profissional_mensal" } } } });
+  assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "viva", proximaCobrancaEm: "2026-11-17T00:00:00Z", planoTipo: "profissional_mensal" });
 });
 
 Deno.test("consultarAssinatura: active sem next_billing_at → viva, sem data", async () => {
   const p = pagarme({ [GET_SUB]: { corpo: { id: SUB, status: "active" } } });
-  assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "viva", proximaCobrancaEm: null });
+  assertEquals(await consultarAssinatura(SUB, opts(p)), { situacao: "viva", proximaCobrancaEm: null, planoTipo: null });
 });
 
 Deno.test("consultarAssinatura: 404 → inexistente", async () => {

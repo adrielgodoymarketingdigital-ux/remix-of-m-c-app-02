@@ -11,6 +11,7 @@ import {
   type AssinaturaLocal,
   type OpcoesPagarme,
   PAGARME_API,
+  PLANOS_PAGOS,
   type ResultadoCobranca,
   acessoPagoValido,
   cobrarFaturaEmAberto,
@@ -36,6 +37,8 @@ export type RespostaTroca =
   | {
       trocou: true;
       cardId: string;
+      /** Plano da assinatura na Pagar.me (metadata.plano_tipo), quando foi consultada. */
+      planoPagarme: string | null;
       corpo: {
         success: true;
         card_id: string;
@@ -60,6 +63,7 @@ export async function trocarCartao(
 
   // 1. Acesso pago não valendo: antes de mexer em qualquer coisa, a Pagar.me diz o que existe.
   let proximaCobrancaEm: string | null = null;
+  let planoPagarme: string | null = null;
   if (!acessoValido) {
     const consulta = await consultarAssinatura(subId, opts);
     if ("erro" in consulta) {
@@ -79,6 +83,7 @@ export async function trocarCartao(
       };
     }
     proximaCobrancaEm = consulta.proximaCobrancaEm;
+    planoPagarme = consulta.planoTipo;
   }
 
   // 2. Cria o novo cartão no customer a partir do token
@@ -118,6 +123,7 @@ export async function trocarCartao(
   return {
     trocou: true,
     cardId,
+    planoPagarme,
     corpo: {
       success: true,
       card_id: cardId,
@@ -128,4 +134,30 @@ export async function trocarCartao(
       ...resultado,
     },
   };
+}
+
+/**
+ * Cobrança paga (confirmada pela própria API da Pagar.me) numa conta cujo plano
+ * local NÃO é pago — ex.: virou Free ao fim de uma liberação temporária. O webhook
+ * de renovação só atualiza status/data_fim, não o plano: sem isto o cliente pagaria
+ * e continuaria no Free. Devolve o plano a restaurar (o da assinatura na Pagar.me;
+ * senão o plano anterior conhecido) ou null quando não há nada a restaurar.
+ */
+export function planoParaRestaurar(
+  planoLocal: string | null,
+  resultado: ResultadoCobranca,
+  planoPagarme: string | null,
+  planoAnteriorConhecido: string | null,
+): string | null {
+  if (resultado.cobranca !== "paga") return null;
+  if (PLANOS_PAGOS.includes(planoLocal ?? "")) return null;
+  if (planoPagarme && PLANOS_PAGOS.includes(planoPagarme)) return planoPagarme;
+  if (planoAnteriorConhecido && PLANOS_PAGOS.includes(planoAnteriorConhecido)) return planoAnteriorConhecido;
+  return null;
+}
+
+/** Mesmo período do webhook (fimDoPeriodo em pagarme-webhook/confirmarNaPagarme.ts). */
+export function fimDoPeriodoPago(pagoEm: Date, planoTipo: string): Date {
+  const dias = planoTipo.includes("anual") ? 365 : 30;
+  return new Date(pagoEm.getTime() + dias * 24 * 60 * 60 * 1000);
 }
