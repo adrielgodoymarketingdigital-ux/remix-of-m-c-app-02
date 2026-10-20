@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { aguardarPurchasePendente } from "@/lib/tracking";
 
@@ -20,6 +20,14 @@ const ESPERA_MAXIMA_PURCHASE_MS = 4000;
 
 const ehObrigado = (caminho: string) => caminho.replace(/\/+$/, "") === "/obrigado";
 
+/** Tela da espera pelo Purchase ao sair da /obrigado (mesmo visual do RouteFallback do App). */
+const AbrindoPainel = () => (
+  <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 p-4">
+    <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+    <p className="text-sm text-muted-foreground">Abrindo seu painel…</p>
+  </div>
+);
+
 /**
  * Mantém o pixel da UTMify só nas páginas públicas também na navegação SPA.
  *
@@ -37,6 +45,7 @@ export function GuardaUtmify({ children }: { children: ReactNode }) {
   const precisaRecarregar = !!utmify?.carregado && !publica;
   const anteriorRef = useRef(pathname);
   const recarregandoRef = useRef(false);
+  const [aguardandoPurchase, setAguardandoPurchase] = useState(false);
 
   useLayoutEffect(() => {
     const anterior = anteriorRef.current;
@@ -49,6 +58,7 @@ export function GuardaUtmify({ children }: { children: ReactNode }) {
     if (!utmify.carregado || recarregandoRef.current) return;
     recarregandoRef.current = true;
     if (ehObrigado(anterior)) {
+      setAguardandoPurchase(true);
       aguardarPurchasePendente(ESPERA_MAXIMA_PURCHASE_MS).then(() => window.location.reload());
     } else {
       window.location.reload();
@@ -56,6 +66,6 @@ export function GuardaUtmify({ children }: { children: ReactNode }) {
   }, [pathname, publica, utmify]);
 
   // Enquanto o pixel estiver ativo, nenhuma tela do app/login é montada
-  if (precisaRecarregar) return null;
+  if (precisaRecarregar) return aguardandoPurchase ? <AbrindoPainel /> : null;
   return <>{children}</>;
 }
