@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { GuardaUtmify } from "@/components/GuardaUtmify";
 import { useSessionRestore } from "@/hooks/useSessionRestore";
+import { liberarPushPendente } from "@/hooks/useNotificacoes";
 import { useThemeColorSync } from "@/hooks/useThemeColorSync";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense, useEffect } from "react";
@@ -174,6 +175,12 @@ function AppRoutes() {
   useEffect(() => {
     trackPageView(window.location.href)
   }, [location.pathname])
+
+  // Push (OneSignal) do usuário logado: se a sessão foi restaurada numa landing,
+  // a identificação fica pendente até ele navegar para fora dela.
+  useEffect(() => {
+    liberarPushPendente(location.pathname);
+  }, [location.pathname]);
 
   const skipWait =
     PUBLIC_ROUTES_NO_WAIT.some(r => location.pathname.startsWith(r)) ||

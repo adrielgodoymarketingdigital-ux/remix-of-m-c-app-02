@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Bell, X } from "lucide-react";
 import OneSignal from "react-onesignal";
 import { supabase } from "@/integrations/supabase/client";
+import { iniciarOneSignal } from "@/hooks/useNotificacoes";
 
 export function BannerAtivarNotificacoes() {
   const [permissaoAtiva, setPermissaoAtiva] = useState(false);
@@ -11,6 +12,7 @@ export function BannerAtivarNotificacoes() {
   const isPWA = window.matchMedia("(display-mode: standalone)").matches;
 
   useEffect(() => {
+    iniciarOneSignal();
     setPermissaoAtiva(OneSignal.Notifications.permission);
     setDispensado(localStorage.getItem("notif_banner_dismissed") === "1");
 

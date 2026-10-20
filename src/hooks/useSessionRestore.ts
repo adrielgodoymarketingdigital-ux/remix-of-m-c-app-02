@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { saveSessionMeta, isSessionWithinLongTermWindow } from "@/lib/sessionStorage";
-import { inicializarOneSignal } from "@/hooks/useNotificacoes";
+import { agendarPushDoUsuario } from "@/hooks/useNotificacoes";
 
 interface SessionRestoreState {
   isRestoring: boolean;
@@ -46,7 +46,7 @@ export function useSessionRestore(): SessionRestoreState {
             saveSessionMeta(session.user.id);
             setState({ isRestoring: false, hasSession: true });
             setTimeout(() => {
-              inicializarOneSignal(session.user.id).catch(console.error);
+              agendarPushDoUsuario(session.user.id);
             }, 2000);
           }
           return;
@@ -76,7 +76,7 @@ export function useSessionRestore(): SessionRestoreState {
             saveSessionMeta(result.data.session.user.id);
             setState({ isRestoring: false, hasSession: true });
             setTimeout(() => {
-              inicializarOneSignal(result.data.session!.user.id).catch(console.error);
+              agendarPushDoUsuario(result.data.session!.user.id);
             }, 2000);
           }
           return;
