@@ -99,5 +99,7 @@ export const imgDepoimentoWhatsapp5: ImagemLanding = { src: depoimentoWhatsapp5,
 // o vídeo só baixa no play, e a capa mostra o mesmo quadro que aparecia antes.
 export const POSTER_DEMO_RECURSOS = posterDemoRecursos;
 export const POSTER_DEPOIMENTO = posterDepoimento;
+/** As capas só entram no <video> quando ele chega a esta distância da tela. */
+export const MARGEM_POSTER = "400px 0px";
 /** Dimensões do depoimento-video.mp4 (reserva a altura antes de carregar). */
 export const VIDEO_DEPOIMENTO = { width: 886, height: 1270 };

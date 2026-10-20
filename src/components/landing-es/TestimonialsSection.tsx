@@ -2,8 +2,9 @@ import depoimentoVideo from "@/assets/depoimento-video.mp4";
 import { MessageCircle, Quote, Play, Star, Shield, CheckCircle, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
 import { useState, useCallback } from "react";
+import { usePertoDaTela } from "@/components/landing/usePertoDaTela";
 import { StatCard } from "@/components/landing/StatCard";
-import { imgDepoimentoWhatsapp1 as depoimentoWhatsapp1, imgDepoimentoWhatsapp2 as depoimentoWhatsapp2, imgDepoimentoWhatsapp3 as depoimentoWhatsapp3, imgDepoimentoWhatsapp4 as depoimentoWhatsapp4, imgDepoimentoWhatsapp5 as depoimentoWhatsapp5, POSTER_DEPOIMENTO, VIDEO_DEPOIMENTO } from "@/components/landing/imagensLanding";
+import { imgDepoimentoWhatsapp1 as depoimentoWhatsapp1, imgDepoimentoWhatsapp2 as depoimentoWhatsapp2, imgDepoimentoWhatsapp3 as depoimentoWhatsapp3, imgDepoimentoWhatsapp4 as depoimentoWhatsapp4, imgDepoimentoWhatsapp5 as depoimentoWhatsapp5, POSTER_DEPOIMENTO, VIDEO_DEPOIMENTO, MARGEM_POSTER } from "@/components/landing/imagensLanding";
 
 // Estatísticas
 const stats = [
@@ -26,6 +27,8 @@ const slides = [
 export function TestimonialsSection() {
   const [current, setCurrent] = useState(0);
   const [videoPlaying, setVideoPlaying] = useState(false);
+  // Capa (42 KB) só baixa com o carrossel perto da tela (o <video> remonta a cada slide).
+  const [refCarrossel, carrosselPerto] = usePertoDaTela<HTMLDivElement>(MARGEM_POSTER);
 
   const prev = useCallback(() => {
     setVideoPlaying(false);
@@ -90,7 +93,7 @@ export function TestimonialsSection() {
             </p>
           </div>
 
-          <div className="relative max-w-lg mx-auto">
+          <div ref={refCarrossel} className="relative max-w-lg mx-auto">
             {/* Card */}
             <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
               <div className="flex items-center gap-2 mb-2 px-2">
@@ -113,7 +116,7 @@ export function TestimonialsSection() {
                   <video
                     key={current}
                     src={slides[current].src}
-                    poster={POSTER_DEPOIMENTO}
+                    poster={carrosselPerto ? POSTER_DEPOIMENTO : undefined}
                     preload="none"
                     width={VIDEO_DEPOIMENTO.width}
                     height={VIDEO_DEPOIMENTO.height}

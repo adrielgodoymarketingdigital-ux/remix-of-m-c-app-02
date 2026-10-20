@@ -2,8 +2,9 @@ import { FeatureCard } from "@/components/landing/FeatureCard";
 import { Wrench, Smartphone, TrendingUp, Package, ShoppingCart, FileText, Play, Cpu } from "lucide-react";
 import { SectionCTA } from "./SectionCTA";
 import { useState } from "react";
+import { usePertoDaTela } from "@/components/landing/usePertoDaTela";
 import demoVideo from "@/assets/demo-recursos.mov";
-import { imgChecklist as checklistImg, imgAvarias as avariasImg, imgDispositivos as dispositivosImg, imgVendas as vendasImg, imgFinanceiro as financeiroImg, imgLucros as lucrosImg, POSTER_DEMO_RECURSOS } from "@/components/landing/imagensLanding";
+import { imgChecklist as checklistImg, imgAvarias as avariasImg, imgDispositivos as dispositivosImg, imgVendas as vendasImg, imgFinanceiro as financeiroImg, imgLucros as lucrosImg, POSTER_DEMO_RECURSOS, MARGEM_POSTER } from "@/components/landing/imagensLanding";
 
 const features = [
   {
@@ -46,6 +47,8 @@ const features = [
 
 export function FeaturesGrid() {
   const [videoPlaying, setVideoPlaying] = useState(false);
+  // Capa (30 KB) só baixa com o vídeo perto da tela.
+  const [refVideo, videoPerto] = usePertoDaTela<HTMLVideoElement>(MARGEM_POSTER);
 
   return (
     <section id="recursos" className="py-24 md:py-32 bg-slate-50 relative overflow-hidden">
@@ -92,8 +95,9 @@ export function FeaturesGrid() {
                 {/* Video Section */}
                 <div className="relative h-52 sm:h-64 overflow-hidden border-b border-slate-100 bg-slate-900">
                   <video
+                    ref={refVideo}
                     src={demoVideo}
-                    poster={POSTER_DEMO_RECURSOS}
+                    poster={videoPerto ? POSTER_DEMO_RECURSOS : undefined}
                     preload="none"
                     className="w-full h-full object-cover"
                     controls={videoPlaying}
