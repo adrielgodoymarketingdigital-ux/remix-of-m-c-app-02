@@ -6,8 +6,14 @@
 // manualmente nos mesmos pontos onde o Meta Pixel já é disparado
 // (src/lib/tracking.ts), em vez de depender só do snippet global.
 // Sem CAPI (Events API) do TikTok configurada — só client-side por enquanto.
+//
+// DESLIGADO por padrão (não anunciamos mais no TikTok): só dispara com
+// VITE_TIKTOK_PIXEL_ATIVO=true, a mesma chave que libera o snippet no index.html.
+
+const TIKTOK_PIXEL_ATIVO = import.meta.env.VITE_TIKTOK_PIXEL_ATIVO === 'true';
 
 export function trackTiktokPageView(): void {
+  if (!TIKTOK_PIXEL_ATIVO) return;
   try {
     window.ttq?.page();
   } catch (error) {
@@ -17,6 +23,7 @@ export function trackTiktokPageView(): void {
 
 /** Disparar quando um cadastro é concluído com sucesso (página Auth). */
 export function trackTiktokCompleteRegistration(): void {
+  if (!TIKTOK_PIXEL_ATIVO) return;
   try {
     window.ttq?.track('CompleteRegistration');
   } catch (error) {
@@ -26,6 +33,7 @@ export function trackTiktokCompleteRegistration(): void {
 
 /** Disparar ao abrir uma página/dialog de checkout (Pix ou Cartão). */
 export function trackTiktokInitiateCheckout(value?: number): void {
+  if (!TIKTOK_PIXEL_ATIVO) return;
   try {
     window.ttq?.track('InitiateCheckout', { value: value || 0, currency: 'BRL' });
   } catch (error) {
