@@ -41,7 +41,12 @@ export function usePWA() {
 
     // Verificar se o usuário já recusou a instalação
     const checkIfDeclined = () => {
-      const declined = localStorage.getItem("pwa-install-declined");
+      let declined: string | null = null;
+      try {
+        declined = localStorage.getItem("pwa-install-declined");
+      } catch {
+        // localStorage bloqueado: segue sem a recusa salva (não derruba a página)
+      }
       if (declined) {
         const declinedDate = new Date(declined);
         const now = new Date();
@@ -67,7 +72,11 @@ export function usePWA() {
       setIsInstalled(true);
       setIsInstallable(false);
       setDeferredPrompt(null);
-      localStorage.removeItem("pwa-install-declined");
+      try {
+        localStorage.removeItem("pwa-install-declined");
+      } catch {
+        // localStorage bloqueado
+      }
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -112,7 +121,11 @@ export function usePWA() {
   }, [deferredPrompt]);
 
   const dismissInstallPrompt = useCallback(() => {
-    localStorage.setItem("pwa-install-declined", new Date().toISOString());
+    try {
+      localStorage.setItem("pwa-install-declined", new Date().toISOString());
+    } catch {
+      // localStorage bloqueado: recusa vale só nesta visita
+    }
     setHasDeclinedInstall(true);
   }, []);
 
