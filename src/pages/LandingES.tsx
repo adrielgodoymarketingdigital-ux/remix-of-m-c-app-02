@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ehAppInstalado } from "@/components/landing/appInstalado";
 import { LandingNav } from "@/components/landing-es/LandingNav";
 import { HeroSection } from "@/components/landing-es/HeroSection";
 import { MobileDemoSection } from "@/components/landing-es/MobileDemoSection";
@@ -26,22 +27,15 @@ import { LandingFooter } from "@/components/landing-es/LandingFooter";
 // src/pages/Landing.tsx ni components/landing/* originales.
 export default function LandingES() {
   const navigate = useNavigate();
-  const [checkingStandalone, setCheckingStandalone] = useState(true);
+  // Checagem síncrona (matchMedia): o visitante vê o conteúdo já na primeira
+  // renderização; só quem abriu pelo app instalado fica sem nada até o redirecionamento.
+  const [appInstalado] = useState(ehAppInstalado);
 
   useEffect(() => {
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true; // fallback iOS
+    if (appInstalado) navigate("/auth?intl=1", { replace: true });
+  }, [appInstalado, navigate]);
 
-    if (isStandalone) {
-      navigate("/auth?intl=1", { replace: true });
-      return;
-    }
-
-    setCheckingStandalone(false);
-  }, [navigate]);
-
-  if (checkingStandalone) {
+  if (appInstalado) {
     return null;
   }
 
