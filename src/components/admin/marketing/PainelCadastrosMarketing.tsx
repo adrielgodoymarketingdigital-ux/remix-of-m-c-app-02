@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertCircle, Info, Megaphone, RefreshCw, UserPlus, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,8 +61,12 @@ function CardResumo({ titulo, icone: Icone, valor, anterior, detalhe, carregando
   );
 }
 
-export function PainelCadastrosMarketing() {
-  const [periodo, setPeriodo] = useState<PeriodoMarketing>("30d");
+interface PainelCadastrosMarketingProps {
+  periodo: PeriodoMarketing;
+  onPeriodoChange: (periodo: PeriodoMarketing) => void;
+}
+
+export function PainelCadastrosMarketing({ periodo, onPeriodoChange }: PainelCadastrosMarketingProps) {
   const { data, isLoading, isError, refetch, isFetching } = useAdminMarketingCadastros(periodo);
   const totais = data?.totais;
   const anteriores = data?.totaisAnterior;
@@ -79,7 +82,7 @@ export function PainelCadastrosMarketing() {
             </p>
           )}
         </div>
-        <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoMarketing)}>
+        <Select value={periodo} onValueChange={(v) => onPeriodoChange(v as PeriodoMarketing)}>
           <SelectTrigger className="w-full sm:w-[200px]" aria-label="Período"><SelectValue /></SelectTrigger>
           <SelectContent>
             {PERIODOS_MARKETING.map((p) => <SelectItem key={p.valor} value={p.valor}>{p.rotulo}</SelectItem>)}

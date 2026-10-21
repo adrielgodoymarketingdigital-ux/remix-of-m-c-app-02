@@ -4,10 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { TrendingUp, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PainelCadastrosMarketing } from '@/components/admin/marketing/PainelCadastrosMarketing';
+import { CardOrigensMarketing } from '@/components/admin/marketing/CardOrigensMarketing';
+import type { PeriodoMarketing } from '@/lib/marketing/cadastrosPorDia';
 
 export default function AdminMarketing() {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [periodo, setPeriodo] = useState<PeriodoMarketing>('30d');
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -29,7 +32,10 @@ export default function AdminMarketing() {
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><TrendingUp className="h-5 w-5 text-primary" /></div>
           <div><h1 className="text-2xl sm:text-3xl font-semibold">Marketing</h1><p className="text-muted-foreground text-sm">Cadastros, conversão e cancelamentos</p></div>
         </div>
-        <PainelCadastrosMarketing />
+        <div className="space-y-6">
+          <PainelCadastrosMarketing periodo={periodo} onPeriodoChange={setPeriodo} />
+          <CardOrigensMarketing periodo={periodo} />
+        </div>
       </main>
     </AppLayout>
   );
