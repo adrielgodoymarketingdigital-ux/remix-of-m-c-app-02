@@ -33,6 +33,7 @@ import {
   Sparkles,
   Tablet,
   Ticket,
+  TrendingUp,
   Truck,
   Users,
   Video,
@@ -75,6 +76,7 @@ export const ICONES_MENU: Record<string, LucideIcon> = {
 export const ICONES_ADMIN: Record<string, LucideIcon> = {
   "/admin/usuarios": Users,
   "/admin/financeiro": DollarSign,
+  "/admin/marketing": TrendingUp,
   "/admin/cupons": Ticket,
   "/admin/novidades": Sparkles,
   "/admin/onboarding": ClipboardCheck,

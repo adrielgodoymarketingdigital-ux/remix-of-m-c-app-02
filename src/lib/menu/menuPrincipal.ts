@@ -76,6 +76,7 @@ export const GRUPOS_MENU: { key: string; urls: string[] }[] = [
 export const ADMIN_MENU: { title: string; url: string; badgeKey: "feedbacksPendentes" | "chatsAbertos" | null }[] = [
   { title: "Usuários", url: "/admin/usuarios", badgeKey: null },
   { title: "Financeiro", url: "/admin/financeiro", badgeKey: null },
+  { title: "Marketing", url: "/admin/marketing", badgeKey: null },
   { title: "Cupons", url: "/admin/cupons", badgeKey: null },
   { title: "Novidades", url: "/admin/novidades", badgeKey: null },
   { title: "Onboarding", url: "/admin/onboarding", badgeKey: null },
