@@ -59,7 +59,7 @@ BEGIN
     AND NOT EXISTS (
       SELECT 1 FROM public.assinaturas a
       WHERE a.user_id = p.user_id
-        AND (a.bloqueado_admin = true OR a.plano_tipo IN ('demonstracao', 'admin'))
+        AND a.plano_tipo IN ('demonstracao', 'admin')
     )
   GROUP BY 1
   ORDER BY 1;
@@ -69,4 +69,4 @@ $$;
 REVOKE ALL ON FUNCTION public.admin_mkt_cadastros_por_dia(date, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_mkt_cadastros_por_dia(date, date) TO authenticated;
 
-COMMENT ON FUNCTION public.admin_mkt_cadastros_por_dia(date, date) IS 'Painel Marketing: cadastros por dia (Brasília), só admin, só números agregados. Exclui funcionários, gerentes de filial, admins, bloqueados e demonstração.';
+COMMENT ON FUNCTION public.admin_mkt_cadastros_por_dia(date, date) IS 'Painel Marketing: cadastros por dia (Brasília), só admin, só números agregados. Exclui funcionários, gerentes de filial, admins e demonstração.';
