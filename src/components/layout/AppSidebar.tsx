@@ -27,13 +27,17 @@ import {
   PanelLeftClose,
   PanelLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
+import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
@@ -87,6 +91,7 @@ export function AppSidebar() {
     }
   });
   const { badges } = useAdminBadges(isAdmin);
+  const { menuAdminOculto, alternarMenuAdmin } = useMenuAdminOculto();
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
   const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
@@ -307,10 +312,26 @@ export function AppSidebar() {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className={`text-slate-500 ${collapsed ? "justify-center" : ""}`}>
+            {/* Cabeçalho fica visível também no modo ícones, para o botão de olho
+                (o padrão do SidebarGroupLabel é sumir com o menu recolhido). */}
+            <SidebarGroupLabel className={`text-slate-500 group-data-[collapsible=icon]:mt-0 group-data-[collapsible=icon]:opacity-100 ${collapsed ? "justify-center" : "justify-between"}`}>
               {!collapsed && <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-violet-400" /> Admin</span>}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={alternarMenuAdmin}
+                    aria-label={menuAdminOculto ? "Mostrar menu admin" : "Ver como usuário"}
+                    aria-pressed={menuAdminOculto}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-slate-500 hover:text-violet-300 hover:bg-violet-500/5"
+                  >
+                    {menuAdminOculto ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{menuAdminOculto ? "Mostrar menu admin" : "Ver como usuário"}</TooltipContent>
+              </Tooltip>
             </SidebarGroupLabel>
-            <SidebarGroupContent>
+            {!menuAdminOculto && <SidebarGroupContent>
               <SidebarMenu>
                 {adminMenuItems.map((item) => {
                   const badgeCount = item.badgeKey ? badges[item.badgeKey] : 0;
@@ -350,7 +371,7 @@ export function AppSidebar() {
                   );
                 })}
               </SidebarMenu>
-            </SidebarGroupContent>
+            </SidebarGroupContent>}
           </SidebarGroup>
         )}
 
