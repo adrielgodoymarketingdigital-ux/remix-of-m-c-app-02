@@ -5,6 +5,7 @@ import {
   Zap, Menu, X,
 } from "lucide-react";
 import { PaginaComSecoesAdiadas, SecaoAdiada, secaoDe, useIrParaSecao, useLinkParaSecao } from "@/components/landing/SecoesAdiadas";
+import { useRemoverTopoEstatico } from "@/components/landing/topoEstatico";
 import { BLUE } from "./landingLP1Tema";
 
 // ─── NAV ────────────────────────────────────────────────────
@@ -216,6 +217,7 @@ const SECOES = ([
 
 // ─── PÁGINA COMPLETA ────────────────────────────────────────
 export default function LandingLP1() {
+  useRemoverTopoEstatico();
   useEffect(() => {
     trackPageView()
   }, [])

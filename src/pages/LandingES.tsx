@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ehAppInstalado } from "@/components/landing/appInstalado";
+import { useRemoverTopoEstatico } from "@/components/landing/topoEstatico";
 import { LandingNav } from "@/components/landing-es/LandingNav";
 import { HeroSection } from "@/components/landing-es/HeroSection";
 import { PaginaComSecoesAdiadas } from "@/components/landing/SecoesAdiadas";
@@ -25,6 +26,7 @@ export default function LandingES() {
   // Checagem síncrona (matchMedia): o visitante vê o conteúdo já na primeira
   // renderização; só quem abriu pelo app instalado fica sem nada até o redirecionamento.
   const [appInstalado] = useState(ehAppInstalado);
+  useRemoverTopoEstatico();
 
   useEffect(() => {
     if (appInstalado) navigate("/auth?intl=1", { replace: true });
