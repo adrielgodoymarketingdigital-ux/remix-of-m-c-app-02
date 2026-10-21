@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import type { ManualChunkMeta } from "rollup";
+import { pluginTopoEstatico } from "./scripts/prerender/pluginTopoEstatico";
 
 // Pacotes de cada chunk de vendor. Como no formato objeto do manualChunks, o
 // Rollup também puxa para o chunk as dependências que só eles usam.
@@ -201,7 +202,9 @@ export default defineConfig(({ mode }) => ({
       devOptions: {
         enabled: false // Desabilitar em dev para evitar problemas
       }
-    })
+    }),
+    // Topo das landings em HTML puro (dist/index.html, _landing/*.html) e shell do app em dist/app.html
+    pluginTopoEstatico(),
   ].filter(Boolean),
   resolve: {
     alias: {

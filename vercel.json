@@ -1,5 +1,14 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/lp1", "destination": "/_landing/lp1.html" },
+    { "source": "/lp1/", "destination": "/_landing/lp1.html" },
+    { "source": "/lp2", "destination": "/_landing/lp2.html" },
+    { "source": "/lp2/", "destination": "/_landing/lp2.html" },
+    { "source": "/es", "destination": "/_landing/es.html" },
+    { "source": "/es/", "destination": "/_landing/es.html" },
+    { "source": "/(.*)", "destination": "/app.html" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",
@@ -30,6 +39,24 @@
     },
     {
       "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/app.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/_landing/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
