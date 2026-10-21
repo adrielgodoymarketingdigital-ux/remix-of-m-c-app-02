@@ -70,6 +70,7 @@ const AdminFinanceiro = lazy(() => import("./pages/AdminFinanceiro"));
 const AdminCupons = lazy(() => import("./pages/AdminCupons"));
 const AdminAlteracoesCorrecoes = lazy(() => import("./pages/AdminAlteracoesCorrecoes"));
 const AdminCompatibilidadePelicula = lazy(() => import("./pages/AdminCompatibilidadePelicula"));
+const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
 const CompatibilidadePelicula = lazy(() => import("./pages/CompatibilidadePelicula"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const CadastroPlano = lazy(() => import("./pages/CadastroPlano"));
@@ -525,6 +526,11 @@ function AppRoutes() {
           <Route path="/admin/compatibilidade-pelicula" element={
             <ProtectedAppRoute>
               <AdminCompatibilidadePelicula />
+            </ProtectedAppRoute>
+          } />
+          <Route path="/admin/marketing" element={
+            <ProtectedAppRoute>
+              <AdminMarketing />
             </ProtectedAppRoute>
           } />
 
