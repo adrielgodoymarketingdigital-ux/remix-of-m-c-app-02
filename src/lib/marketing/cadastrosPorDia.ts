@@ -55,8 +55,12 @@ function paraUTC(dataISO: string): number {
   return Date.UTC(ano, mes - 1, dia);
 }
 
+// ms aqui é sempre meia-noite UTC de uma data de calendário (ver paraUTC),
+// então os getters UTC devolvem a própria data, sem deslocamento de fuso.
 function deUTC(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
 export function somarDias(dataISO: string, dias: number): string {
