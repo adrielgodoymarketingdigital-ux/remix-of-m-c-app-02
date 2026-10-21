@@ -11,15 +11,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   LogOut,
   Shield,
   ChevronRight,
   X,
   Settings2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
+import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import type { PermissoesModulos } from "@/types/funcionario";
@@ -81,6 +85,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
     }
   });
   const { badges } = useAdminBadges(isAdmin);
+  const { menuAdminOculto, alternarMenuAdmin } = useMenuAdminOculto();
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
 
@@ -277,9 +282,23 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
             <div className="border-t border-white/5 pt-4 pb-2">
               <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-500">
                 <Shield className="h-4 w-4 text-violet-400" />
-                <span>Administração</span>
+                <span className="flex-1">Administração</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={alternarMenuAdmin}
+                      aria-label={menuAdminOculto ? "Mostrar menu admin" : "Ver como usuário"}
+                      aria-pressed={menuAdminOculto}
+                      className="-my-1 flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:text-violet-300 hover:bg-violet-500/5 active:scale-[0.98] touch-manipulation"
+                    >
+                      {menuAdminOculto ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">{menuAdminOculto ? "Mostrar menu admin" : "Ver como usuário"}</TooltipContent>
+                </Tooltip>
               </div>
-              <div className="space-y-1">
+              {!menuAdminOculto && <div className="space-y-1">
                 {adminMenuItems.map((item) => {
                   const badgeCount = item.badgeKey ? badges[item.badgeKey] : 0;
                   return (
@@ -305,7 +324,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                     </button>
                   );
                 })}
-              </div>
+              </div>}
             </div>
           )}
 
