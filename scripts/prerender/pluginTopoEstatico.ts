@@ -9,6 +9,9 @@
 //
 // O bloco fica FORA do #root: o React monta como sempre (createRoot, sem hydration) e a
 // página da landing remove o bloco ao montar (src/components/landing/topoEstatico.ts).
+// O bloco é position:absolute no topo, por cima do #root: o #root não muda de lugar quando
+// o bloco sai (senão o Chrome conta a página inteira como deslocamento, CLS ≈ 1), e o
+// spinner/"Carregando..." que o React mostra antes da landing fica escondido embaixo dele.
 // Fora da rota certa (rewrite errado) ou no app instalado, o bloco some antes de aparecer.
 //
 // O build FALHA e apaga dist/ se: app.html faltar ou não for igual ao index.html do Vite,
@@ -53,7 +56,8 @@ function montarBloco(rota: string, markup: string) {
     'if(document.documentElement.hasAttribute("data-sem-topo-estatico")){' +
     `var t=document.getElementById("${ID_BLOCO}");t&&t.remove()}`;
   return (
-    `<style data-topo-estatico>@media (display-mode: standalone){#${ID_BLOCO}{display:none}}` +
+    `<style data-topo-estatico>#${ID_BLOCO}{position:absolute;top:0;left:0;right:0}` +
+    `@media (display-mode: standalone){#${ID_BLOCO}{display:none}}` +
     `[data-sem-topo-estatico] #${ID_BLOCO}{display:none}</style>\n    ` +
     `<script>${guarda}</script>\n    ` +
     `<div id="${ID_BLOCO}">${markup}</div>\n    ` +
