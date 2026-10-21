@@ -12,8 +12,7 @@
 --   • funcionários           — loja_funcionarios.funcionario_user_id
 --   • gerentes de filial     — empresa_usuarios.gerente_id
 --   • admins                 — user_roles.role = 'admin'
---   • bloqueados pelo admin  — assinaturas.bloqueado_admin = true
---   • contas de demonstração — assinaturas.plano_tipo IN ('demonstracao', 'admin')
+--   • demonstração e admin   — assinaturas.plano_tipo IN ('demonstracao', 'admin')
 --
 -- Colunas:
 --   cadastros = total do dia
