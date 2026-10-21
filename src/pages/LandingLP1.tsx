@@ -109,14 +109,14 @@ function LP1Hero() {
             <div className="flex flex-wrap gap-4">
               <Link
                 to="/auth"
-                className="px-8 py-4 text-sm font-bold text-white tracking-wide rounded-lg transition-opacity hover:opacity-90"
+                className="inline-flex items-center justify-center px-8 py-4 text-sm font-bold text-white tracking-wide rounded-lg transition-opacity hover:opacity-90"
                 style={{ background: BLUE[600] }}
               >
                 Começar Agora — É Grátis
               </Link>
               <a
                 {...linkParaSecao("funcionalidades")}
-                className="px-8 py-4 text-sm font-bold border rounded-lg transition-colors"
+                className="inline-flex items-center justify-center px-8 py-4 text-sm font-bold border rounded-lg transition-colors"
                 style={{ borderColor: BLUE[200], color: BLUE[700] }}
               >
                 Ver Funcionalidades
