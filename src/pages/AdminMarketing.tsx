@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, Construction, Loader2 } from 'lucide-react';
+import { TrendingUp, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { PainelCadastrosMarketing } from '@/components/admin/marketing/PainelCadastrosMarketing';
 
 export default function AdminMarketing() {
   const navigate = useNavigate();
@@ -29,12 +29,7 @@ export default function AdminMarketing() {
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><TrendingUp className="h-5 w-5 text-primary" /></div>
           <div><h1 className="text-2xl sm:text-3xl font-semibold">Marketing</h1><p className="text-muted-foreground text-sm">Cadastros, conversão e cancelamentos</p></div>
         </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-            <Construction className="h-8 w-8 text-muted-foreground" />
-            <p className="font-medium">Indicadores em construção</p>
-          </CardContent>
-        </Card>
+        <PainelCadastrosMarketing />
       </main>
     </AppLayout>
   );
