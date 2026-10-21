@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useIrParaSecao } from "@/components/landing/SecoesAdiadas";
+import { useLinkParaSecao } from "@/components/landing/SecoesAdiadas";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Zap, Play } from "lucide-react";
@@ -75,9 +75,9 @@ function FaixaLojas() {
 export function HeroSection() {
   const navigate = useNavigate();
 
-  const irParaSecao = useIrParaSecao();
-  // Monta as seções adiadas antes de rolar (ver SecoesAdiadas.tsx).
-  const handleScrollToPlanos = () => irParaSecao("planos");
+  // Monta as seções adiadas antes de rolar (ver SecoesAdiadas.tsx). Os botões são
+  // links "#planos": funcionam no topo estático do HTML, antes do JavaScript.
+  const linkParaSecao = useLinkParaSecao();
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-white to-slate-50 pt-16">
@@ -156,21 +156,23 @@ saber onde está o lucro.
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4 justify-center lg:justify-start">
               <Button
-                onClick={handleScrollToPlanos}
+                asChild
                 size="lg"
                 className="h-12 md:h-14 px-6 md:px-8 text-base font-semibold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg shadow-green-500/25 transition-all">
-                
-                <Zap className="mr-2 h-4 w-4" />
-                Começar Grátis
+                <a {...linkParaSecao("planos")}>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Começar Grátis
+                </a>
               </Button>
               <Button
-                onClick={handleScrollToPlanos}
+                asChild
                 size="lg"
                 variant="outline"
                 className="h-12 md:h-14 px-6 md:px-8 text-base font-semibold border-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
-                
-                Ver Planos
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <a {...linkParaSecao("planos")}>
+                  Ver Planos
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
               </Button>
             </div>
 

@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { trackPageView } from "@/lib/pixel";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Zap, Menu, X,
 } from "lucide-react";
-import { PaginaComSecoesAdiadas, SecaoAdiada, secaoDe, useIrParaSecao } from "@/components/landing/SecoesAdiadas";
+import { PaginaComSecoesAdiadas, SecaoAdiada, secaoDe, useIrParaSecao, useLinkParaSecao } from "@/components/landing/SecoesAdiadas";
 import { BLUE } from "./landingLP1Tema";
 
 // ─── NAV ────────────────────────────────────────────────────
@@ -18,6 +18,9 @@ function LP1Nav() {
     irParaSecao(id);
     setOpen(false);
   };
+  // Menu do desktop e botões: links (<a href>), funcionam no topo estático do HTML.
+  const linkParaSecao = useLinkParaSecao();
+  const linkDoMenu = (id: string) => linkParaSecao(id, () => setOpen(false));
 
   return (
     <header className="fixed top-0 w-full z-50 border-b bg-white/80 backdrop-blur-md" style={{ borderColor: BLUE[100] }}>
@@ -27,27 +30,27 @@ function LP1Nav() {
         </span>
 
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: BLUE[800] }}>
-          <button onClick={() => scrollTo("funcionalidades")} className="hover:opacity-70 transition-opacity">Funcionalidades</button>
-          <button onClick={() => scrollTo("depoimentos")} className="hover:opacity-70 transition-opacity">Depoimentos</button>
-          <button onClick={() => scrollTo("planos")} className="hover:opacity-70 transition-opacity">Planos</button>
-          <button onClick={() => scrollTo("faq")} className="hover:opacity-70 transition-opacity">FAQ</button>
+          <a {...linkDoMenu("funcionalidades")} className="hover:opacity-70 transition-opacity">Funcionalidades</a>
+          <a {...linkDoMenu("depoimentos")} className="hover:opacity-70 transition-opacity">Depoimentos</a>
+          <a {...linkDoMenu("planos")} className="hover:opacity-70 transition-opacity">Planos</a>
+          <a {...linkDoMenu("faq")} className="hover:opacity-70 transition-opacity">FAQ</a>
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={() => navigate("/auth")}
+          <Link
+            to="/auth"
             className="px-4 py-2 text-sm font-semibold border rounded-lg transition-colors"
             style={{ borderColor: BLUE[200], color: BLUE[700] }}
           >
             Login
-          </button>
-          <button
-            onClick={() => navigate("/auth")}
+          </Link>
+          <Link
+            to="/auth"
             className="px-5 py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
             style={{ background: BLUE[600] }}
           >
             Começar Grátis
-          </button>
+          </Link>
         </div>
 
         <button className="md:hidden" onClick={() => setOpen(!open)}>
@@ -72,8 +75,8 @@ function LP1Nav() {
 
 // ─── HERO ───────────────────────────────────────────────────
 function LP1Hero() {
-  const navigate = useNavigate();
-  const irParaSecao = useIrParaSecao();
+  // Botões são links (<a href>): funcionam no topo estático do HTML, antes do JavaScript.
+  const linkParaSecao = useLinkParaSecao();
 
   return (
     <section className="min-h-screen flex items-center pt-20" style={{ background: BLUE[50] }}>
@@ -103,20 +106,20 @@ function LP1Hero() {
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <button
-                onClick={() => navigate("/auth")}
+              <Link
+                to="/auth"
                 className="px-8 py-4 text-sm font-bold text-white tracking-wide rounded-lg transition-opacity hover:opacity-90"
                 style={{ background: BLUE[600] }}
               >
                 Começar Agora — É Grátis
-              </button>
-              <button
-                onClick={() => irParaSecao("funcionalidades")}
+              </Link>
+              <a
+                {...linkParaSecao("funcionalidades")}
                 className="px-8 py-4 text-sm font-bold border rounded-lg transition-colors"
                 style={{ borderColor: BLUE[200], color: BLUE[700] }}
               >
                 Ver Funcionalidades
-              </button>
+              </a>
             </div>
 
             <div className="mt-12 pt-8 grid grid-cols-3 gap-6 max-w-md" style={{ borderTop: `1px solid ${BLUE[200]}` }}>

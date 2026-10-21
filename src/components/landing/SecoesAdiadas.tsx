@@ -156,6 +156,28 @@ export function useIrParaSecao() {
   );
 }
 
+/**
+ * Props de um link `<a>` para a seção `id` (botões do topo das landings).
+ *  - Clique normal: preventDefault e rola com irParaSecao, como o botão fazia (sem pôr #id na URL).
+ *  - Ctrl/Cmd/Shift/Alt + clique e botão do meio: ficam com o navegador (nova aba em #id).
+ *  - Antes do JavaScript (topo estático do HTML): âncora comum; ao montar, a página rola até #id.
+ */
+export function useLinkParaSecao() {
+  const irParaSecao = useIrParaSecao();
+  return useCallback(
+    (id: string, depois?: () => void) => ({
+      href: `#${id}`,
+      onClick: (evento: MouseEvent<HTMLAnchorElement>) => {
+        if (evento.button !== 0 || evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+        evento.preventDefault();
+        irParaSecao(id);
+        depois?.();
+      },
+    }),
+    [irParaSecao],
+  );
+}
+
 interface SecaoAdiadaProps {
   secao: SecaoPreguicosa;
   /** Posição entre as seções adiadas da página (0 = logo abaixo do topo). */

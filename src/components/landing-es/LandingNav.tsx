@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { useIrParaSecao } from "@/components/landing/SecoesAdiadas";
-import { useNavigate } from "react-router-dom";
+import { useLinkParaSecao } from "@/components/landing/SecoesAdiadas";
+import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
 import { imgLogo as logoMec } from "@/components/landing/imagensLanding";
 
+// Botões são links (<a href>): funcionam no topo estático do HTML, antes do JavaScript.
 export function LandingNav() {
-  const navigate = useNavigate();
-  const irParaSecao = useIrParaSecao();
+  const linkParaSecao = useLinkParaSecao();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-white/10">
@@ -29,18 +29,20 @@ export function LandingNav() {
 
         <div className="flex items-center gap-3">
           <Button
-            onClick={() => navigate("/auth?intl=1")}
+            asChild
             variant="ghost"
             className="text-slate-300 hover:text-white hover:bg-white/10"
           >
-            Iniciar sesión
+            <Link to="/auth?intl=1">Iniciar sesión</Link>
           </Button>
           <Button
-            onClick={() => irParaSecao("planos")}
+            asChild
             className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-medium shadow-lg shadow-blue-500/25 hidden sm:flex"
           >
-            <Zap className="mr-2 h-4 w-4" />
-            Suscribirme
+            <a {...linkParaSecao("planos")}>
+              <Zap className="mr-2 h-4 w-4" />
+              Suscribirme
+            </a>
           </Button>
         </div>
       </div>
