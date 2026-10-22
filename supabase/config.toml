@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.webhook-n8n-cadastro]
 verify_jwt = false
+
+[functions.fiscal-config-salvar]
+verify_jwt = true

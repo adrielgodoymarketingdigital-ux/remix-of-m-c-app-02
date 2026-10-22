@@ -24,6 +24,12 @@ export interface Servico {
    * peça; lucro = mão de obra). Ver lib/ordemServico/totaisPecasOS.
    */
   peca_repassada?: boolean;
+  // Colunas fiscais (etapa 2A), lidas pelo select '*'.
+  codigo_lc116?: string | null;
+  codigo_municipal?: string | null;
+  aliquota_iss?: number | null;
+  iss_retido?: boolean | null;
+  perfil_tributario_id?: string | null;
 }
 
 export interface FormularioServico {

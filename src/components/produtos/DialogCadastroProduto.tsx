@@ -41,6 +41,14 @@ import { Plus, Lock, Trash2, ArrowDownToLine } from 'lucide-react';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { toast } from 'sonner';
 import { SecaoVariacoesGrupo } from './SecaoVariacoesGrupo';
+import { useFiscalVisivel } from '@/hooks/useFiscalVisivel';
+import { CamposFiscaisItem } from '@/components/fiscal/CamposFiscais';
+import {
+  CAMPOS_FISCAIS_ITEM_VAZIOS,
+  camposFiscaisItemDaLinha,
+  colunasFiscaisItem,
+  type CamposFiscaisItem as ValoresFiscaisItem,
+} from '@/lib/fiscal/dadosFiscais';
 
 const formSchema = z.object({
   tipo: z.enum(['produto', 'peca'], {
@@ -106,6 +114,8 @@ export const DialogCadastroProduto = ({
   const [temVariacoes, setTemVariacoes] = useState(false);
   const [variacoes, setVariacoes] = useState<VariacaoInput[]>([]);
   const [enviando, setEnviando] = useState(false);
+  const fiscalVisivel = useFiscalVisivel();
+  const [fiscal, setFiscal] = useState<ValoresFiscaisItem>(CAMPOS_FISCAIS_ITEM_VAZIOS);
 
   // Grupo de variações do item em edição: se ele tem pai (é uma variação) ou
   // é raiz de um grupo (outros itens apontam pra ele), grupoVariacoes traz
@@ -168,6 +178,7 @@ export const DialogCadastroProduto = ({
         categoria_id: itemParaEditar.categoria_id || undefined,
       });
       setFotos(itemParaEditar.fotos || []);
+      setFiscal(camposFiscaisItemDaLinha(itemParaEditar));
       setTemVariacoes(false);
       setVariacoes([]);
     } else {
@@ -184,6 +195,7 @@ export const DialogCadastroProduto = ({
         categoria_id: undefined,
       });
       setFotos([]);
+      setFiscal(CAMPOS_FISCAIS_ITEM_VAZIOS);
       setTemVariacoes(false);
       setVariacoes([]);
     }
@@ -218,7 +230,8 @@ export const DialogCadastroProduto = ({
       return;
     }
 
-    const sucesso = await onSubmit({ ...dados, fotos });
+    // Sem o bloco fiscal na tela, a chave nem vai: nada existente é sobrescrito.
+    const sucesso = await onSubmit({ ...dados, fotos, ...(fiscalVisivel ? { fiscal: colunasFiscaisItem(fiscal) } : {}) });
     if (sucesso) {
       onOpenChange(false);
     }
@@ -705,6 +718,10 @@ export const DialogCadastroProduto = ({
                   )}
                 />
               </div>
+
+              {fiscalVisivel && !temVariacoes && (
+                <CamposFiscaisItem valores={fiscal} onChange={setFiscal} tiposPerfil={['produto']} />
+              )}
 
               {podeVerLucros && !temVariacoes && (
                 <div className="p-4 bg-muted rounded-lg">

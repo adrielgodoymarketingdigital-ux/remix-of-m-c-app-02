@@ -38,6 +38,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
+import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
@@ -66,7 +67,8 @@ const ROTULOS_GRUPOS: Record<string, { label: string; icon: LucideIcon }> = {
 };
 const GRUPOS_MENU_SIDEBAR = GRUPOS_MENU.map((g) => ({ ...g, ...ROTULOS_GRUPOS[g.key] }));
 // Sem label visível — Configurações é renderizada solta, sem cabeçalho de seção.
-const GRUPO_CONFIGURACOES = { key: "configuracoes", urls: ["/configuracoes"] };
+// Fiscal (só com useFiscalVisivel) fica logo abaixo, também solto.
+const GRUPO_CONFIGURACOES = { key: "configuracoes", urls: ["/configuracoes", "/configuracoes/fiscal"] };
 
 const adminMenuItems = ADMIN_MENU_COM_ICONE;
 
@@ -95,6 +97,7 @@ export function AppSidebar() {
   const { temAcessoModulo: temAcessoModuloFuncionario, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
   const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
+  const fiscalVisivel = useFiscalVisivel();
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -119,9 +122,10 @@ export function AppSidebar() {
     temAssinatura: !!assinatura,
     isUltra,
     isAdmin,
+    fiscalVisivel,
     temAcessoPlano: (modulo) => temAcessoModuloPlano(modulo as Parameters<typeof temAcessoModuloPlano>[0]),
     temAcessoFuncionario: (modulo) => temAcessoModuloFuncionario(modulo as keyof PermissoesModulos),
-  }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin]);
+  }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin, fiscalVisivel]);
 
   const handleLogout = async () => {
     clearSessionMeta();
@@ -292,13 +296,15 @@ export function AppSidebar() {
 
             {/* Configurações: item solto, sem cabeçalho/rótulo de seção acima */}
             {(() => {
-              const configItem = menusVisiveis.find(item => item.url === GRUPO_CONFIGURACOES.urls[0]);
-              if (!configItem) return null;
+              const configItens = GRUPO_CONFIGURACOES.urls
+                .map(url => menusVisiveis.find(item => item.url === url))
+                .filter((item): item is typeof menusVisiveis[number] => !!item);
+              if (configItens.length === 0) return null;
               return (
                 <SidebarGroup>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {renderMenuItem(configItem)}
+                      {configItens.map(renderMenuItem)}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>

@@ -162,6 +162,8 @@ export const useProdutos = () => {
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
           categoria_id: dados.categoria_id || null,
+          // Colunas fiscais só quando o formulário mostrou o bloco (useFiscalVisivel).
+          ...(dados.fiscal ?? {}),
         } as any);
 
         if (error) throw error;
@@ -179,6 +181,8 @@ export const useProdutos = () => {
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
           categoria_id: dados.categoria_id || null,
+          // Colunas fiscais só quando o formulário mostrou o bloco (useFiscalVisivel).
+          ...(dados.fiscal ?? {}),
         } as any);
 
         if (error) throw error;
@@ -239,6 +243,8 @@ export const useProdutos = () => {
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
           categoria_id: dados.categoria_id || null,
+          // Colunas fiscais só quando o formulário mostrou o bloco (useFiscalVisivel).
+          ...(dados.fiscal ?? {}),
         } as any).eq('id', id).eq('user_id', userId);
 
         if (error) throw error;
@@ -254,6 +260,8 @@ export const useProdutos = () => {
           fotos: dados.fotos || [],
           fornecedor_id: dados.fornecedor_id || null,
           categoria_id: dados.categoria_id || null,
+          // Colunas fiscais só quando o formulário mostrou o bloco (useFiscalVisivel).
+          ...(dados.fiscal ?? {}),
         } as any).eq('id', id).eq('user_id', userId);
 
         if (error) throw error;

@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
+import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import type { PermissoesModulos } from "@/types/funcionario";
@@ -108,6 +109,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
   }, [open]);
 
   const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
+  const fiscalVisivel = useFiscalVisivel();
   // Mesma regra da barra lateral do desktop (menuPrincipal.ts).
   const menusVisiveis = useMemo(() => filtrarMenuVisivel(menuItems, {
     carregandoPermissoes,
@@ -116,9 +118,10 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
     temAssinatura: !!assinatura,
     isUltra,
     isAdmin,
+    fiscalVisivel,
     temAcessoPlano: (modulo) => temAcessoModuloPlano(modulo as Parameters<typeof temAcessoModuloPlano>[0]),
     temAcessoFuncionario: (modulo) => temAcessoModuloFuncionario(modulo as keyof PermissoesModulos),
-  }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin]);
+  }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin, fiscalVisivel]);
 
   const handleLogout = async () => {
     clearSessionMeta();

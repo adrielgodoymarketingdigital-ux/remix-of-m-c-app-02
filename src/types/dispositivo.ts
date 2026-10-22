@@ -38,6 +38,10 @@ export interface Dispositivo {
   /** Compra (Origem de Dispositivos) já registrada para este aparelho. */
   compra_id?: string | null;
   deleted_at?: string | null;
+  ncm?: string | null;
+  cest?: string | null;
+  unidade?: string | null;
+  perfil_tributario_id?: string | null;
 }
 
 export interface FormularioDispositivo {
@@ -66,4 +70,9 @@ export interface FormularioDispositivo {
   };
   codigo_barras?: string | null;
   imeis?: string[];
+  /** Colunas fiscais: só vêm quando o bloco fiscal foi mostrado (comDadosFiscais + useFiscalVisivel). */
+  ncm?: string | null;
+  cest?: string | null;
+  unidade?: string | null;
+  perfil_tributario_id?: string | null;
 }

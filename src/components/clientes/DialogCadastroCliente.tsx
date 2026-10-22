@@ -12,6 +12,14 @@ import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import { buscarCEP } from "@/lib/buscarCEP";
 import { documentoDoCliente, documentoParaColunas } from "@/lib/clientes/dadosCliente";
 import { CamposDadosCliente, ValoresCamposCliente } from "./CamposDadosCliente";
+import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
+import { CamposFiscaisCliente } from "@/components/fiscal/CamposFiscais";
+import {
+  CAMPOS_FISCAIS_CLIENTE_VAZIOS,
+  camposFiscaisClienteDaLinha,
+  colunasFiscaisCliente,
+  type CamposFiscaisCliente as ValoresFiscaisCliente,
+} from "@/lib/fiscal/dadosFiscais";
 
 // Mesmas regras de antes deste cadastro ganhar os campos da OS.
 const formSchema = z.object({
@@ -71,9 +79,12 @@ export function DialogCadastroCliente({
   const [campoComErro, setCampoComErro] = useState<string | null>(null);
   const [buscandoCEP, setBuscandoCEP] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const fiscalVisivel = useFiscalVisivel();
+  const [fiscal, setFiscal] = useState<ValoresFiscaisCliente>(CAMPOS_FISCAIS_CLIENTE_VAZIOS);
 
   useEffect(() => {
     setValores(cliente ? valoresDoCliente(cliente) : VALORES_VAZIOS);
+    setFiscal(cliente ? camposFiscaisClienteDaLinha(cliente) : CAMPOS_FISCAIS_CLIENTE_VAZIOS);
     setErros([]);
     setCampoComErro(null);
   }, [cliente, open]);
@@ -117,6 +128,8 @@ export function DialogCadastroCliente({
       estado: valores.estado,
       cep: valores.cep,
       data_nascimento: valores.dataNascimento,
+      // Sem o bloco fiscal na tela, as chaves nem vão: nada existente é sobrescrito.
+      ...(fiscalVisivel ? colunasFiscaisCliente(fiscal) : {}),
     };
 
     setSalvando(true);
@@ -125,6 +138,7 @@ export function DialogCadastroCliente({
       if (sucesso) {
         onOpenChange(false);
         setValores(VALORES_VAZIOS);
+        setFiscal(CAMPOS_FISCAIS_CLIENTE_VAZIOS);
       }
     } finally {
       setSalvando(false);
@@ -150,6 +164,8 @@ export function DialogCadastroCliente({
             formatarTelefone={aplicarMascaraTelefone}
             placeholderTelefone="(00) 00000-0000"
           />
+
+          {fiscalVisivel && <CamposFiscaisCliente valores={fiscal} onChange={setFiscal} />}
 
           {erros.length > 0 && (
             <div className="space-y-1">

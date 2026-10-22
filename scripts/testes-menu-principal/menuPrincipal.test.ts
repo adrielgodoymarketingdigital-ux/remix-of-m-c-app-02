@@ -3,7 +3,7 @@
 // barra lateral (desktop) e o menu do celular/PWA. Caso real (out/2026): o
 // Extrato não aparecia no celular/PWA — o menu do celular tinha lista própria.
 import { assertEquals } from "jsr:@std/assert@1";
-import { ADMIN_MENU, GRUPOS_MENU, MENU_PRINCIPAL, filtrarMenuVisivel, urlsVisiveis, type ContextoMenu } from "../../src/lib/menu/menuPrincipal.ts";
+import { ADMIN_MENU, GRUPOS_MENU, MENU_PRINCIPAL, URL_FISCAL, filtrarMenuVisivel, urlsVisiveis, type ContextoMenu } from "../../src/lib/menu/menuPrincipal.ts";
 
 // Módulos de plano, como em src/types/assinatura.ts (LIMITES_*.modulos), só os que mudam.
 const PLANO = {
@@ -18,7 +18,7 @@ function dono(plano: keyof typeof PLANO, extra: Partial<ContextoMenu> = {}): Con
   const m = PLANO[plano] as Record<string, boolean>;
   return {
     carregandoPermissoes: false, isFuncionario: false, carregandoAssinatura: false, temAssinatura: true,
-    isUltra: plano === "ultra", isAdmin: false,
+    isUltra: plano === "ultra", isAdmin: false, fiscalVisivel: false,
     temAcessoPlano: (modulo) => m[modulo] ?? true,
     temAcessoFuncionario: () => true,
     ...extra,
@@ -27,7 +27,7 @@ function dono(plano: keyof typeof PLANO, extra: Partial<ContextoMenu> = {}): Con
 function funcionario(modulos: string[]): ContextoMenu {
   return {
     carregandoPermissoes: false, isFuncionario: true, carregandoAssinatura: false, temAssinatura: true,
-    isUltra: false, isAdmin: false,
+    isUltra: false, isAdmin: false, fiscalVisivel: false,
     temAcessoPlano: () => true,
     temAcessoFuncionario: (modulo) => modulos.includes(modulo),
   };
@@ -85,7 +85,10 @@ Deno.test("gerente de filial / funcionário da filial: mesma regra por permissã
 
 Deno.test("carregando permissões: nenhum item; assinatura carregando: todos (sem piscar)", () => {
   assertEquals(filtrarMenuVisivel(MENU_PRINCIPAL, { ...dono("free"), carregandoPermissoes: true }), []);
-  assertEquals(filtrarMenuVisivel(MENU_PRINCIPAL, { ...dono("free"), carregandoAssinatura: true, temAssinatura: false }).length, MENU_PRINCIPAL.length);
+  // "Todos" = todos os que a pessoa pode ver: Fiscal continua de fora sem fiscalVisivel.
+  const carregando = { ...dono("free"), carregandoAssinatura: true, temAssinatura: false };
+  assertEquals(filtrarMenuVisivel(MENU_PRINCIPAL, carregando).length, MENU_PRINCIPAL.length - 1);
+  assertEquals(filtrarMenuVisivel(MENU_PRINCIPAL, { ...carregando, fiscalVisivel: true }).length, MENU_PRINCIPAL.length);
 });
 
 Deno.test("desktop × celular × PWA instalado: a regra não depende de tela nem de display-mode", () => {
@@ -108,6 +111,20 @@ Deno.test("barra lateral e menu do celular usam a MESMA lista e a MESMA regra (s
 Deno.test("seções cobrem os itens certos e o menu admin tem Cupons e Alterações", () => {
   const agrupadas = GRUPOS_MENU.flatMap((g) => g.urls);
   const soltos = MENU_PRINCIPAL.map((i) => i.url).filter((u) => !agrupadas.includes(u));
-  assertEquals(soltos, ["/configuracoes"]);
+  assertEquals(soltos, ["/configuracoes", "/configuracoes/fiscal"]);
   assertEquals(ADMIN_MENU.some((a) => a.url === "/admin/cupons") && ADMIN_MENU.some((a) => a.url === "/admin/alteracoes-correcoes"), true);
+});
+
+Deno.test("Fiscal só aparece com fiscalVisivel (admin), em qualquer plano e mesmo carregando a assinatura", () => {
+  for (const p of ["free", "basico", "intermediario", "profissional", "ultra"] as const) {
+    assertEquals(ver(dono(p)).includes(URL_FISCAL), false, p);
+    assertEquals(ver(dono(p, { isAdmin: true })).includes(URL_FISCAL), false, `${p} admin sem fiscalVisivel`);
+    assertEquals(ver(dono(p, { isAdmin: true, fiscalVisivel: true })).includes(URL_FISCAL), true, p);
+  }
+  assertEquals(ver({ ...dono("free"), carregandoAssinatura: true, temAssinatura: false }).includes(URL_FISCAL), false);
+  assertEquals(ver(funcionario(["configuracoes"])).includes(URL_FISCAL), false);
+  // Ligar o fiscal não muda nenhum outro item.
+  const sem = ver(dono("profissional", { isAdmin: true }));
+  const com = ver(dono("profissional", { isAdmin: true, fiscalVisivel: true }));
+  assertEquals(com.filter((u) => u !== URL_FISCAL), sem);
 });

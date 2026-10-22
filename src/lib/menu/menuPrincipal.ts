@@ -53,6 +53,8 @@ export const MENU_PRINCIPAL: ItemMenu[] = [
   ]},
   { title: "Equipe", url: "/equipe", modulo: "equipe" },
   { title: "Configurações", url: "/configuracoes", modulo: "configuracoes" },
+  // Só com ctx.fiscalVisivel (useFiscalVisivel: hoje, admin). Solto, logo abaixo de Configurações.
+  { title: "Fiscal", url: "/configuracoes/fiscal", modulo: "configuracoes" },
   { title: "Suporte", url: "/suporte", modulo: "suporte" },
   { title: "Plano", url: "/plano", modulo: "plano" },
   { title: "Tutoriais", url: "/tutoriais", modulo: "tutoriais" },
@@ -96,6 +98,8 @@ export interface ContextoMenu {
   temAssinatura: boolean;
   isUltra: boolean;
   isAdmin: boolean;
+  /** Módulo fiscal liberado para quem está logado (useFiscalVisivel). */
+  fiscalVisivel: boolean;
   /** Plano do dono libera o módulo (useAssinatura().temAcessoModulo). */
   temAcessoPlano: (modulo: string) => boolean;
   /** Dono liberou o módulo para o funcionário (useFuncionarioPermissoes().temAcessoModulo). */
@@ -110,6 +114,7 @@ const MODULOS_SO_POR_FUNCIONARIO = ["novidades", "origem_dispositivos", "relator
 const MODULOS_SEMPRE_VISIVEIS = ["pedidos", "fornecedores"];
 // Funcionário nunca vê.
 const URLS_SO_DONO = ["/plano", "/equipe", "/multi-empresas"];
+export const URL_FISCAL = "/configuracoes/fiscal";
 
 /**
  * Itens que o usuário vê (a mesma regra em desktop, celular e PWA instalado —
@@ -119,9 +124,11 @@ const URLS_SO_DONO = ["/plano", "/equipe", "/multi-empresas"];
  *   ainda carregando, todos (evita itens piscando).
  * - Funcionário: pelo que o dono liberou, item e submenu; item com todos os
  *   submenus bloqueados some.
+ * - Fiscal: só com ctx.fiscalVisivel, antes de qualquer outra regra.
  */
-export function filtrarMenuVisivel<T extends ItemMenu>(itens: T[], ctx: ContextoMenu): T[] {
+export function filtrarMenuVisivel<T extends ItemMenu>(todos: T[], ctx: ContextoMenu): T[] {
   if (ctx.carregandoPermissoes) return [];
+  const itens = ctx.fiscalVisivel ? todos : todos.filter((item) => item.url !== URL_FISCAL);
 
   if (!ctx.isFuncionario) {
     if (ctx.carregandoAssinatura && !ctx.temAssinatura) return itens;

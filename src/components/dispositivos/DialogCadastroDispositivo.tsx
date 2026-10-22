@@ -43,6 +43,14 @@ import { ExternalLink, Shield, Lock, ChevronDown, ChevronRight } from "lucide-re
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { UnidadeCopiada } from "@/lib/origem/itensCompra";
 import { normalizarQuantidade, quantidadeAoDigitar, somenteDigitos } from "@/lib/dispositivos/campoQuantidade";
+import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
+import { CamposFiscaisItem } from "@/components/fiscal/CamposFiscais";
+import {
+  CAMPOS_FISCAIS_ITEM_VAZIOS,
+  camposFiscaisItemDaLinha,
+  colunasFiscaisItem,
+  type CamposFiscaisItem as ValoresFiscaisItem,
+} from "@/lib/fiscal/dadosFiscais";
 
 const optionalNumber = z.preprocess(
   (val) => (val === "" || val === undefined || val === null ? undefined : Number(val)),
@@ -150,6 +158,12 @@ interface DialogCadastroDispositivoProps {
   dispositivoParaEditar: Dispositivo | null;
   /** Só no cadastro novo: começa com estes dados (ex.: "+" da compra, copiando a unidade do lado). */
   valoresIniciais?: UnidadeCopiada | null;
+  /**
+   * Mostra o bloco "Dados fiscais" (e só então manda as colunas fiscais no envio),
+   * desde que useFiscalVisivel. Ligado só na tela Dispositivos: a compra e a origem
+   * de dispositivos gravam por outros caminhos e não devem receber essas chaves.
+   */
+  comDadosFiscais?: boolean;
 }
 
 const TIPOS_DISPOSITIVO = [
@@ -178,9 +192,13 @@ export function DialogCadastroDispositivo({
   dispositivoParaEditar,
   valoresIniciais,
   validarUnidades,
+  comDadosFiscais = false,
 }: DialogCadastroDispositivoProps) {
   const { fornecedores } = useFornecedores();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
+  const fiscalVisivel = useFiscalVisivel();
+  const mostrarFiscal = comDadosFiscais && fiscalVisivel;
+  const [fiscal, setFiscal] = useState<ValoresFiscaisItem>(CAMPOS_FISCAIS_ITEM_VAZIOS);
 
   // Unidades individuais (para quantidade > 1)
   const [unidades, setUnidades] = useState<CamposUnidade[]>([unidadeVazia()]);
@@ -252,6 +270,7 @@ export function DialogCadastroDispositivo({
   }, [quantidadeAtual]);
 
   useEffect(() => {
+    setFiscal(dispositivoParaEditar ? camposFiscaisItemDaLinha(dispositivoParaEditar) : CAMPOS_FISCAIS_ITEM_VAZIOS);
     if (dispositivoParaEditar) {
       // DEBUG TEMPORÁRIO — remover após confirmar a causa do crash em produção
       // eslint-disable-next-line no-console
@@ -422,11 +441,14 @@ export function DialogCadastroDispositivo({
         toast.error(erroValidacao);
         return;
       }
+      // Sem o bloco fiscal na tela, as chaves nem vão: nada existente é sobrescrito.
+      const colunasFiscais = mostrarFiscal ? colunasFiscaisItem(fiscal) : null;
       for (const envio of envios) {
-        await onSubmit(envio);
+        await onSubmit(colunasFiscais ? { ...envio, ...colunasFiscais } : envio);
       }
 
       form.reset();
+      setFiscal(CAMPOS_FISCAIS_ITEM_VAZIOS);
       setUnidades([unidadeVazia()]);
       setUnidadeAberta(0);
     } finally {
@@ -1222,6 +1244,10 @@ export function DialogCadastroDispositivo({
                 />
               )}
             </div>
+
+            {mostrarFiscal && (
+              <CamposFiscaisItem valores={fiscal} onChange={setFiscal} tiposPerfil={["produto", "aparelho_usado"]} />
+            )}
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
               <Button

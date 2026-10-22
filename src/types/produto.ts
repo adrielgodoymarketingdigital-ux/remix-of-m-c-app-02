@@ -1,3 +1,5 @@
+import type { ColunasFiscaisItem } from '@/lib/fiscal/dadosFiscais';
+
 export type TipoProduto = 'produto' | 'peca';
 
 export interface Produto {
@@ -21,6 +23,10 @@ export interface Produto {
   produto_pai_id?: string | null;
   variacao_label?: string | null;
   exibir_no_catalogo?: boolean;
+  ncm?: string | null;
+  cest?: string | null;
+  unidade?: string | null;
+  perfil_tributario_id?: string | null;
 }
 
 export interface Peca {
@@ -42,6 +48,10 @@ export interface Peca {
   peca_pai_id?: string | null;
   variacao_label?: string | null;
   exibir_no_catalogo?: boolean;
+  ncm?: string | null;
+  cest?: string | null;
+  unidade?: string | null;
+  perfil_tributario_id?: string | null;
 }
 
 export type ItemEstoque = Produto | Peca;
@@ -63,6 +73,8 @@ export interface FormularioProduto {
   fotos?: string[];
   fornecedor_id?: string;
   categoria_id?: string;
+  /** Só vem preenchido quando useFiscalVisivel; ausente = payload igual ao de antes. */
+  fiscal?: ColunasFiscaisItem;
 }
 
 // Uma linha de variação na tela de cadastro em lote (ex: "iPhone 11")

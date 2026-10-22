@@ -431,6 +431,7 @@ export default function Dispositivos() {
         onOpenChange={setDialogAberto}
         onSubmit={handleSubmit}
         dispositivoParaEditar={dispositivoParaEditar}
+        comDadosFiscais
       />
 
       {/* Dialog de Limite Atingido */}

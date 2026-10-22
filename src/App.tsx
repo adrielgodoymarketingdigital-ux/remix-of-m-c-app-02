@@ -55,6 +55,7 @@ const Extrato = lazy(() => import("./pages/Extrato"));
 const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Vendas = lazy(() => import("./pages/Vendas"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const ConfiguracaoFiscal = lazy(() => import("./pages/ConfiguracaoFiscal"));
 const Suporte = lazy(() => import("./pages/Suporte"));
 const Ajuda = lazy(() => import("./pages/Ajuda"));
 const AjudaDetalhe = lazy(() => import("./pages/AjudaDetalhe"));
@@ -401,6 +402,12 @@ function AppRoutes() {
                   <Configuracoes />
                 </ComVerificacaoPlano>
               </ComVerificacaoFuncionario>
+            </ProtectedAppRoute>
+          } />
+          {/* Fiscal: só quem passa em useFiscalVisivel (hoje admin); a página redireciona os demais */}
+          <Route path="/configuracoes/fiscal" element={
+            <ProtectedAppRoute>
+              <ConfiguracaoFiscal />
             </ProtectedAppRoute>
           } />
           <Route path="/orcamentos" element={

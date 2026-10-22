@@ -2072,6 +2072,128 @@ export type Database = {
           },
         ]
       }
+      fiscal_config: {
+        Row: {
+          ambiente: string
+          ativo: boolean
+          certificado_status: string | null
+          certificado_validade: string | null
+          cnae: string | null
+          codigo_ibge_municipio: string | null
+          created_at: string
+          empresa_id: string | null
+          id: string
+          regime_tributario: string | null
+          serie_nfce: string | null
+          serie_nfe: string | null
+          serie_nfse: string | null
+          spedy_company_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ambiente?: string
+          ativo?: boolean
+          certificado_status?: string | null
+          certificado_validade?: string | null
+          cnae?: string | null
+          codigo_ibge_municipio?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          regime_tributario?: string | null
+          serie_nfce?: string | null
+          serie_nfe?: string | null
+          serie_nfse?: string | null
+          spedy_company_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ambiente?: string
+          ativo?: boolean
+          certificado_status?: string | null
+          certificado_validade?: string | null
+          cnae?: string | null
+          codigo_ibge_municipio?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          regime_tributario?: string | null
+          serie_nfce?: string | null
+          serie_nfe?: string | null
+          serie_nfse?: string | null
+          spedy_company_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_perfis_tributarios: {
+        Row: {
+          ativo: boolean
+          cfop: string | null
+          created_at: string
+          csosn_cst: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          origem: string | null
+          pis_cofins: string | null
+          regime_tributario: string | null
+          tipo_item: string
+          uf: string | null
+          updated_at: string
+          validado_em: string | null
+          validado_por: string | null
+          versao: number
+        }
+        Insert: {
+          ativo?: boolean
+          cfop?: string | null
+          created_at?: string
+          csosn_cst?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          origem?: string | null
+          pis_cofins?: string | null
+          regime_tributario?: string | null
+          tipo_item: string
+          uf?: string | null
+          updated_at?: string
+          validado_em?: string | null
+          validado_por?: string | null
+          versao?: number
+        }
+        Update: {
+          ativo?: boolean
+          cfop?: string | null
+          created_at?: string
+          csosn_cst?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          origem?: string | null
+          pis_cofins?: string | null
+          regime_tributario?: string | null
+          tipo_item?: string
+          uf?: string | null
+          updated_at?: string
+          validado_em?: string | null
+          validado_por?: string | null
+          versao?: number
+        }
+        Relationships: []
+      }
       followup_control: {
         Row: {
           enviado_em: string | null

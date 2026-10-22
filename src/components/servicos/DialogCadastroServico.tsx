@@ -30,6 +30,16 @@ import { Servico } from "@/types/servico";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTiposServico } from "@/hooks/useTiposServico";
+import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
+import { CamposFiscaisServico } from "@/components/fiscal/CamposFiscais";
+import {
+  CAMPOS_FISCAIS_SERVICO_VAZIOS,
+  camposFiscaisServicoDaLinha,
+  colunasFiscaisServico,
+  type CamposFiscaisServico as ValoresFiscaisServico,
+  type ColunasFiscaisServico,
+} from "@/lib/fiscal/dadosFiscais";
+import { cn } from "@/lib/utils";
 
 const NENHUM_TIPO = "__nenhum__";
 
@@ -48,7 +58,10 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export interface DadosSubmitServico extends Omit<FormValues, "tempo_medio_estimado"> {
+export interface DadosSubmitServico
+  extends Omit<FormValues, "tempo_medio_estimado">,
+    /** Colunas fiscais: só vêm quando useFiscalVisivel (bloco na tela). */
+    Partial<ColunasFiscaisServico> {
   tempo_medio_estimado_horas: number | null;
 }
 
@@ -69,6 +82,8 @@ export function DialogCadastroServico({
   const { tiposServico, criar: criarTipoServico } = useTiposServico();
   const [criandoTipo, setCriandoTipo] = useState(false);
   const [novoTipoNome, setNovoTipoNome] = useState("");
+  const fiscalVisivel = useFiscalVisivel();
+  const [fiscal, setFiscal] = useState<ValoresFiscaisServico>(CAMPOS_FISCAIS_SERVICO_VAZIOS);
 
   // Tempo médio estimado é sempre persistido em horas decimais
   // (tempo_medio_estimado_horas), mas o usuário pode digitar em minutos ou
@@ -119,6 +134,7 @@ export function DialogCadastroServico({
   useEffect(() => {
     setCriandoTipo(false);
     setNovoTipoNome("");
+    setFiscal(servicoParaEditar ? camposFiscaisServicoDaLinha(servicoParaEditar) : CAMPOS_FISCAIS_SERVICO_VAZIOS);
     if (servicoParaEditar) {
       form.reset({
         codigo: servicoParaEditar.codigo || "",
@@ -201,13 +217,17 @@ export function DialogCadastroServico({
           ? resto.tipo_servico_id
           : undefined,
       tempo_medio_estimado_horas: tempoMedioEstimadoHoras,
+      // Sem o bloco fiscal na tela, as chaves nem vão: nada existente é sobrescrito.
+      ...(fiscalVisivel ? colunasFiscaisServico(fiscal) : {}),
     });
     form.reset();
+    setFiscal(CAMPOS_FISCAIS_SERVICO_VAZIOS);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      {/* Com o bloco fiscal o formulário fica mais alto: rola dentro do diálogo (celular). */}
+      <DialogContent className={cn("sm:max-w-2xl", fiscalVisivel && "max-h-[90vh] overflow-y-auto")}>
         <DialogHeader>
           <DialogTitle>
             {servicoParaEditar ? "Editar Serviço" : "Cadastrar Novo Serviço"}
@@ -447,6 +467,8 @@ export function DialogCadastroServico({
                 </span>
               </div>
             </div>
+
+            {fiscalVisivel && <CamposFiscaisServico valores={fiscal} onChange={setFiscal} />}
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
               <Button

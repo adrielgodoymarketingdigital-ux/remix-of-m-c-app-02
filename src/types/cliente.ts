@@ -13,6 +13,10 @@ export interface Cliente {
   cep?: string | null;
   data_nascimento?: string;
   created_at: string;
+  // Colunas fiscais (etapa 2A), lidas pelo select '*'.
+  email?: string | null;
+  complemento?: string | null;
+  inscricao_estadual?: string | null;
 }
 
 export interface FormularioCliente {
@@ -28,4 +32,8 @@ export interface FormularioCliente {
   estado?: string;
   cep?: string;
   data_nascimento?: string;
+  /** Colunas fiscais: só vêm quando useFiscalVisivel (bloco na tela). */
+  email?: string | null;
+  complemento?: string | null;
+  inscricao_estadual?: string | null;
 }
