@@ -60,6 +60,10 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+          hover: "hsl(var(--sidebar-hover))",
+          "hover-foreground": "hsl(var(--sidebar-hover-foreground))",
+          muted: "hsl(var(--sidebar-muted))",
+          subtle: "hsl(var(--sidebar-subtle))",
         },
         success: {
           DEFAULT: "hsl(var(--success))",

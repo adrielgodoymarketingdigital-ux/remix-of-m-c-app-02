@@ -87,15 +87,20 @@ All colors MUST be HSL.
     
     --radius: 0.625rem;
     
-    /* Sidebar colors - Tech Dark Theme */
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 215 20% 75%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 222 47% 5%;
-    --sidebar-accent: 222 47% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 47% 15%;
-    --sidebar-ring: 217 91% 60%;
+    /* Sidebar colors - escuro profundo, cor única de destaque (ciano do logo).
+       Iguais no .dark: o menu é escuro nos dois temas. */
+    --sidebar-background: 223 28% 5%;
+    --sidebar-foreground: 219 11% 61%;
+    --sidebar-primary: 198 93% 60%;
+    --sidebar-primary-foreground: 223 28% 5%;
+    --sidebar-accent: 206 43% 10%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 220 21% 11%;
+    --sidebar-ring: 198 93% 60%;
+    --sidebar-hover: 218 24% 9%;
+    --sidebar-hover-foreground: 220 22% 92%;
+    --sidebar-muted: 219 11% 53%;
+    --sidebar-subtle: 219 11% 41%;
 
     /* Orange color available for landing page */
     --orange: 24 100% 50%;
@@ -174,14 +179,18 @@ All colors MUST be HSL.
     --input: 222 16% 18%;
     --ring: 217 91% 60%;
 
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 215 20% 75%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 222 47% 5%;
-    --sidebar-accent: 222 47% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222 47% 15%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-background: 223 28% 5%;
+    --sidebar-foreground: 219 11% 61%;
+    --sidebar-primary: 198 93% 60%;
+    --sidebar-primary-foreground: 223 28% 5%;
+    --sidebar-accent: 206 43% 10%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 220 21% 11%;
+    --sidebar-ring: 198 93% 60%;
+    --sidebar-hover: 218 24% 9%;
+    --sidebar-hover-foreground: 220 22% 92%;
+    --sidebar-muted: 219 11% 53%;
+    --sidebar-subtle: 219 11% 41%;
   }
 }
 

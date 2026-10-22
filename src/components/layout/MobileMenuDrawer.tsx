@@ -159,12 +159,12 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
             className={cn(
               "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
               "active:scale-[0.98] touch-manipulation",
-              "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+              "text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
             )}
           >
             <item.icon className="h-5 w-5 flex-shrink-0" />
             <span className="flex-1 text-sm">{item.title}</span>
-            <ChevronRight className={cn("h-4 w-4 text-slate-600 transition-transform", expandido && "rotate-90")} />
+            <ChevronRight className={cn("h-4 w-4 text-sidebar-subtle transition-transform", expandido && "rotate-90")} />
           </button>
           {expandido && item.items?.map(sub => (
             <button
@@ -174,8 +174,8 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                 "w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-lg transition-colors text-left",
                 "active:scale-[0.98] touch-manipulation",
                 isActive(sub.url)
-                  ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary [&>svg:first-child]:text-sidebar-primary"
+                  : "text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
               )}
             >
               {(() => { const IconeSub = ICONES_MENU[sub.url] ?? item.icon; return <IconeSub className="h-4 w-4 flex-shrink-0" />; })()}
@@ -195,13 +195,13 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
           "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
           "active:scale-[0.98] touch-manipulation",
           isActive(item.url)
-            ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-            : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary [&>svg:first-child]:text-sidebar-primary"
+            : "text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
         )}
       >
         <item.icon className="h-5 w-5 flex-shrink-0" />
         <span className="flex-1 text-sm">{item.title}</span>
-        <ChevronRight className="h-4 w-4 text-slate-600" />
+        <ChevronRight className="h-4 w-4 text-sidebar-subtle" />
       </button>
     );
   };
@@ -217,13 +217,13 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
       if (!v && document.querySelector('[data-tutorial-active]')) return;
       onOpenChange(v);
     }} modal={false}>
-      <DrawerContent className="max-h-[90vh] flex flex-col bg-[hsl(222,47%,6%)] border-t border-white/10">
-        <DrawerHeader className="flex-shrink-0 flex items-center justify-between border-b border-white/5 pb-4">
-          <DrawerTitle className="text-lg font-semibold text-slate-100">Menu</DrawerTitle>
+      <DrawerContent className="max-h-[90vh] flex flex-col bg-sidebar border-t border-sidebar-border">
+        <DrawerHeader className="flex-shrink-0 flex items-center justify-between border-b border-sidebar-border pb-4">
+          <DrawerTitle className="text-lg font-semibold text-sidebar-accent-foreground">Menu</DrawerTitle>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 text-slate-400 hover:text-slate-200 hover:bg-white/5"
+            className="h-8 w-8 text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
             onClick={() => onOpenChange(false)}
           >
             <X className="h-5 w-5" />
@@ -235,8 +235,8 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
             {carregandoPermissoes ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-3 px-3 py-3">
-                  <Skeleton className="h-5 w-5 rounded bg-slate-800" />
-                  <Skeleton className="h-4 w-32 bg-slate-800" />
+                  <Skeleton className="h-5 w-5 rounded bg-sidebar-hover" />
+                  <Skeleton className="h-4 w-32 bg-sidebar-hover" />
                 </div>
               ))
             ) : (
@@ -249,17 +249,16 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                   const grupoColapsado = !gruposExpandidos[grupo.key];
                   return (
                     <div key={grupo.key} className={cn("last:mb-0 mt-2", grupoColapsado ? "mb-1" : "mb-3")}>
-                      {/* Cabeçalho de seção — VARIAÇÃO C (mais ousada): painel com fundo e
-                          borda própria, cor neutra (zinc, família diferente do slate usado
-                          nos itens), tracking bem largo. Mantém active:scale no toque (padrão
-                          já usado em todos os botões do drawer), sem nenhum outro feedback. */}
+                      {/* Cabeçalho de seção: só texto (sem painel), tracking bem largo.
+                          Mantém active:scale no toque (padrão já usado em todos os botões do
+                          drawer), sem nenhum outro feedback. */}
                       <button
                         type="button"
                         onClick={() => toggleGrupo(grupo.key)}
-                        className="w-full flex items-center justify-between gap-2 rounded-md border border-white/10 bg-white/[0.06] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500 active:scale-[0.98] touch-manipulation"
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.15em] text-sidebar-muted active:scale-[0.98] touch-manipulation"
                       >
                         <span>{grupo.label}</span>
-                        <ChevronRight className={cn("h-3 w-3 shrink-0 text-zinc-600 transition-transform", !grupoColapsado && "rotate-90")} />
+                        <ChevronRight className={cn("h-3 w-3 shrink-0 text-sidebar-subtle transition-transform", !grupoColapsado && "rotate-90")} />
                       </button>
                       {!grupoColapsado && (
                         <div className="space-y-1">
@@ -279,9 +278,9 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
           </div>
 
           {isAdmin && (
-            <div className="border-t border-white/5 pt-4 pb-2">
-              <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-500">
-                <Shield className="h-4 w-4 text-violet-400" />
+            <div className="border-t border-sidebar-border pt-4 pb-2">
+              <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-sidebar-muted">
+                <Shield className="h-4 w-4 text-sidebar-primary" />
                 <span className="flex-1">Administração</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -290,7 +289,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                       onClick={alternarMenuAdmin}
                       aria-label={menuAdminOculto ? "Mostrar menu admin" : "Ver como usuário"}
                       aria-pressed={menuAdminOculto}
-                      className="-my-1 flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:text-violet-300 hover:bg-violet-500/5 active:scale-[0.98] touch-manipulation"
+                      className="-my-1 flex h-8 w-8 items-center justify-center rounded-md text-sidebar-muted hover:text-sidebar-hover-foreground hover:bg-sidebar-hover active:scale-[0.98] touch-manipulation"
                     >
                       {menuAdminOculto ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -309,8 +308,8 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                         "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left",
                         "active:scale-[0.98] touch-manipulation",
                         isActive(item.url)
-                          ? "bg-violet-500/10 text-violet-400 font-medium border-l-2 border-violet-500"
-                          : "text-slate-400 hover:text-violet-300 hover:bg-violet-500/5"
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary [&>svg:first-child]:text-sidebar-primary"
+                          : "text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
                       )}
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -320,7 +319,7 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
                           {badgeCount}
                         </Badge>
                       )}
-                      <ChevronRight className="h-4 w-4 text-slate-600" />
+                      <ChevronRight className="h-4 w-4 text-sidebar-subtle" />
                     </button>
                   );
                 })}
@@ -328,18 +327,18 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
             </div>
           )}
 
-          <div className="border-t border-white/5 py-4 mb-4">
+          <div className="border-t border-sidebar-border py-4 mb-4">
             {onPersonalizarMenu && (
               <button
                 onClick={() => {
                   onPersonalizarMenu();
                   onOpenChange(false);
                 }}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left active:scale-[0.98] touch-manipulation text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-left active:scale-[0.98] touch-manipulation text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
               >
                 <Settings2 className="h-5 w-5 flex-shrink-0" />
                 <span className="flex-1 text-sm">Personalizar menu inferior</span>
-                <ChevronRight className="h-4 w-4 text-slate-600" />
+                <ChevronRight className="h-4 w-4 text-sidebar-subtle" />
               </button>
             )}
             <Button

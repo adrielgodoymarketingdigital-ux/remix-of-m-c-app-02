@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { clearSessionMeta, SIDEBAR_GRUPOS_EXPANDIDOS_KEY } from "@/lib/sessionStorage";
-import logoMec from "@/assets/logo-mec-sistema.png";
+import logoMec from "@/assets/logo-mec-icone.png";
 import {
   Sidebar,
   SidebarContent,
@@ -170,11 +170,9 @@ export function AppSidebar() {
           }
           isActive={isItemActive}
           className={
-            temSubmenu && subRotaAtiva && !expandido
-              ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-              : isItemActive
-              ? "bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+            (temSubmenu && subRotaAtiva && !expandido) || isItemActive
+              ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary [&>svg]:text-sidebar-primary"
+              : "text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
           }
         >
           {temSubmenu ? (
@@ -199,8 +197,8 @@ export function AppSidebar() {
             <NavLink
               to={sub.url}
               end
-              className="text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-all pl-8 text-sm"
-              activeClassName="bg-blue-500/10 text-blue-400 font-medium border-l-2 border-blue-500"
+              className="text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover transition-all pl-8 text-sm"
+              activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary"
             >
               <span>{sub.title}</span>
             </NavLink>
@@ -211,23 +209,24 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className={`hidden lg:flex border-r border-white/5 bg-[hsl(222,47%,6%)] ${collapsed ? "w-16" : "w-64"}`}>
+    <Sidebar collapsible="icon" className={`hidden lg:flex border-r border-sidebar-border bg-sidebar ${collapsed ? "w-16" : "w-64"}`}>
       <SidebarContent className="relative">
-        {/* Subtle glow effect at top */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className={`flex items-center border-b border-white/5 ${collapsed ? 'p-2 justify-center flex-col gap-2' : 'p-4 justify-between'}`}>
+        <div className={`flex items-center border-b border-sidebar-border ${collapsed ? 'p-2 justify-center flex-col gap-2' : 'p-4 justify-between'}`}>
+          {/* Logo é só o ícone; com o menu aberto o nome vai em texto ao lado. */}
           <img
             src={logoMec}
             alt="Méc"
-            className={`flex-shrink-0 object-contain transition-all ${collapsed ? 'h-10' : 'h-16'}`}
+            className="h-8 w-8 flex-shrink-0 rounded-lg object-contain"
           />
-          <SidebarTrigger className="hidden md:flex h-8 w-8 hover:bg-white/5 text-slate-400 hover:text-slate-200">
+          {!collapsed && (
+            <span className="ml-2.5 mr-auto text-xl font-bold leading-none tracking-tight text-sidebar-accent-foreground">Méc</span>
+          )}
+          <SidebarTrigger className="hidden md:flex h-8 w-8 hover:bg-sidebar-hover text-sidebar-foreground hover:text-sidebar-hover-foreground">
             {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </SidebarTrigger>
         </div>
         {!collapsed && (
-          <div className="px-4 py-2 border-b border-white/5">
+          <div className="px-4 py-2 border-b border-sidebar-border">
             <SeletorFilial />
           </div>
         )}
@@ -239,8 +238,8 @@ export function AppSidebar() {
                 {Array.from({ length: 6 }).map((_, i) => (
                   <SidebarMenuItem key={i}>
                     <div className="flex items-center gap-3 px-3 py-2">
-                      <Skeleton className="h-5 w-5 rounded bg-slate-800" />
-                      {!collapsed && <Skeleton className="h-4 w-24 bg-slate-800" />}
+                      <Skeleton className="h-5 w-5 rounded bg-sidebar-hover" />
+                      {!collapsed && <Skeleton className="h-4 w-24 bg-sidebar-hover" />}
                     </div>
                   </SidebarMenuItem>
                 ))}
@@ -261,23 +260,21 @@ export function AppSidebar() {
                   data-tutorial={idx === 0 ? "sidebar-menu" : undefined}
                   className={grupoColapsado ? "py-0.5" : undefined}
                 >
-                  {/* Cabeçalho de seção — VARIAÇÃO C (mais ousada): painel com fundo e borda
-                      própria (bg-white/[0.06] + border), cor neutra (zinc, família diferente
-                      do slate usado nos itens), tracking bem largo, SEM feedback de hover
-                      (cor estática) — só o cursor-pointer indica que é clicável. */}
+                  {/* Cabeçalho de seção: só texto (sem painel), tracking largo, SEM feedback
+                      de hover (cor estática) — só o cursor-pointer indica que é clicável. */}
                   <SidebarGroupLabel asChild className={`h-auto mt-2 ${collapsed ? "justify-center" : ""}`}>
                     <button
                       type="button"
                       onClick={() => !collapsed && toggleGrupo(grupo.key)}
-                      className={`w-full flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-2 cursor-pointer text-zinc-500 ${collapsed ? "justify-center" : "justify-between"}`}
+                      className={`w-full flex items-center gap-1.5 px-2 py-2 cursor-pointer text-sidebar-muted ${collapsed ? "justify-center" : "justify-between"}`}
                     >
                       {!collapsed && (
                         <>
                           <span className="flex items-center gap-1.5 min-w-0">
-                            <grupo.icon className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
-                            <span className="truncate text-[11px] font-bold uppercase tracking-[0.15em] text-zinc-500">{grupo.label}</span>
+                            <grupo.icon className="h-3.5 w-3.5 shrink-0 text-sidebar-muted" />
+                            <span className="truncate text-[11px] font-bold uppercase tracking-[0.15em] text-sidebar-muted">{grupo.label}</span>
                           </span>
-                          <ChevronRight className={`h-3 w-3 shrink-0 text-zinc-600 transition-transform ${grupoColapsado ? "" : "rotate-90"}`} />
+                          <ChevronRight className={`h-3 w-3 shrink-0 text-sidebar-subtle transition-transform ${grupoColapsado ? "" : "rotate-90"}`} />
                         </>
                       )}
                     </button>
@@ -314,8 +311,8 @@ export function AppSidebar() {
           <SidebarGroup>
             {/* Cabeçalho fica visível também no modo ícones, para o botão de olho
                 (o padrão do SidebarGroupLabel é sumir com o menu recolhido). */}
-            <SidebarGroupLabel className={`text-slate-500 group-data-[collapsible=icon]:mt-0 group-data-[collapsible=icon]:opacity-100 ${collapsed ? "justify-center" : "justify-between"}`}>
-              {!collapsed && <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-violet-400" /> Admin</span>}
+            <SidebarGroupLabel className={`text-sidebar-muted group-data-[collapsible=icon]:mt-0 group-data-[collapsible=icon]:opacity-100 ${collapsed ? "justify-center" : "justify-between"}`}>
+              {!collapsed && <span className="flex items-center gap-2"><Shield className="h-4 w-4 text-sidebar-primary" /> Admin</span>}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -323,7 +320,7 @@ export function AppSidebar() {
                     onClick={alternarMenuAdmin}
                     aria-label={menuAdminOculto ? "Mostrar menu admin" : "Ver como usuário"}
                     aria-pressed={menuAdminOculto}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-slate-500 hover:text-violet-300 hover:bg-violet-500/5"
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-sidebar-muted hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
                   >
                     {menuAdminOculto ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -341,8 +338,8 @@ export function AppSidebar() {
                         <NavLink
                           to={item.url}
                           end
-                          className="text-slate-400 hover:text-violet-300 hover:bg-violet-500/5 transition-all relative"
-                          activeClassName="bg-violet-500/10 text-violet-400 font-medium border-l-2 border-violet-500"
+                          className="text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover transition-all relative"
+                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary [&_svg]:text-sidebar-primary"
                         >
                           <div className="relative">
                             <item.icon className="h-5 w-5" />
@@ -375,10 +372,10 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        <div className="mt-auto p-4 border-t border-white/5 space-y-1">
+        <div className="mt-auto p-4 border-t border-sidebar-border space-y-1">
           <Button
             variant="ghost"
-            className={`w-full text-slate-400 hover:text-slate-200 hover:bg-white/5 ${collapsed ? "justify-center" : "justify-start"} ${location.pathname.startsWith(ajudaItem.url) ? "bg-blue-500/10 text-blue-400 font-medium" : ""}`}
+            className={`w-full ${collapsed ? "justify-center" : "justify-start"} ${location.pathname.startsWith(ajudaItem.url) ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground font-medium [&>svg]:text-sidebar-primary" :"text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"}`}
             onClick={() => navigate(ajudaItem.url)}
           >
             <ajudaItem.icon className="h-5 w-5" />
@@ -386,7 +383,7 @@ export function AppSidebar() {
           </Button>
           <Button
             variant="ghost"
-            className={`w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10 ${collapsed ? "justify-center" : "justify-start"}`}
+            className={`w-full text-sidebar-foreground hover:text-red-400 hover:bg-red-500/10 ${collapsed ? "justify-center" : "justify-start"}`}
             onClick={handleLogout}
           >
             <LogOut className="h-5 w-5" />
