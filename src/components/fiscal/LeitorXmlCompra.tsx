@@ -1,5 +1,4 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -20,12 +19,11 @@ import {
 /**
  * Importar XML de NF-e de compra — ETAPA 1: só lê o arquivo no navegador e
  * mostra o conteúdo. Nada é gravado e nenhum byte do arquivo vai ao servidor
- * (este componente não usa o supabase). Visível só via
- * useImportacaoXmlCompraVisivel.
+ * (este componente não usa o supabase). Usado pela página
+ * Configurações › Fiscal › Importar XML de compra (src/pages/ImportarXmlCompra.tsx),
+ * visível só via useImportacaoXmlCompraVisivel.
  */
-interface DialogImportarXmlCompraProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface LeitorXmlCompraProps {
   /** CNPJ/CPF cadastrados da loja, para conferir o destinatário da nota. */
   documentosLoja: Array<string | null | undefined>;
 }
@@ -87,7 +85,7 @@ function ListaMensagens({ mensagens, tipo }: { mensagens: MensagemLeitura[]; tip
   );
 }
 
-function Cabecalho({ nota, erros, documentosLoja }: { nota: NotaNfe; erros: MensagemLeitura[]; documentosLoja: DialogImportarXmlCompraProps['documentosLoja'] }) {
+function Cabecalho({ nota, erros, documentosLoja }: { nota: NotaNfe; erros: MensagemLeitura[]; documentosLoja: LeitorXmlCompraProps['documentosLoja'] }) {
   const chaveOk = !erros.some((e) => CODIGOS_CHAVE.includes(e.codigo));
   const destinatario = TEXTO_DESTINATARIO[conferirDestinatario(nota, documentosLoja)];
   return (
@@ -217,7 +215,7 @@ function TabelaItens({ itens }: { itens: ItemNfe[] }) {
   );
 }
 
-export function DialogImportarXmlCompra({ open, onOpenChange, documentosLoja }: DialogImportarXmlCompraProps) {
+export function LeitorXmlCompra({ documentosLoja }: LeitorXmlCompraProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [nomeArquivo, setNomeArquivo] = useState('');
   const [lendo, setLendo] = useState(false);
@@ -229,11 +227,6 @@ export function DialogImportarXmlCompra({ open, onOpenChange, documentosLoja }: 
     setErroArquivo(null);
     setResultado(null);
     if (inputRef.current) inputRef.current.value = '';
-  };
-
-  const fechar = (aberto: boolean) => {
-    if (!aberto) resetar();
-    onOpenChange(aberto);
   };
 
   const lerArquivo = async (arquivo: File | undefined) => {
@@ -262,73 +255,66 @@ export function DialogImportarXmlCompra({ open, onOpenChange, documentosLoja }: 
   };
 
   return (
-    <Dialog open={open} onOpenChange={fechar}>
-      <DialogContent className="flex flex-col gap-3 sm:max-w-5xl">
-        <DialogHeader>
-          <DialogTitle>Importar XML de nota de compra</DialogTitle>
-          <DialogDescription>Leia o XML da NF-e que o fornecedor emitiu para a sua loja.</DialogDescription>
-        </DialogHeader>
+    <div className="space-y-3" data-testid="leitor-xml-compra">
+      <Alert data-testid="xml-somente-leitura">
+        <Info className="h-4 w-4" />
+        <AlertDescription>Esta etapa só mostra o conteúdo do arquivo; nada é cadastrado.</AlertDescription>
+      </Alert>
 
-        <Alert data-testid="xml-somente-leitura">
-          <Info className="h-4 w-4" />
-          <AlertDescription>Esta etapa só mostra o conteúdo do arquivo; nada é cadastrado.</AlertDescription>
-        </Alert>
-
-        {!resultado ? (
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={lendo}
-              className="w-full border-2 border-dashed rounded-lg p-6 sm:p-10 flex flex-col items-center gap-2 text-center hover:bg-muted/50 transition-colors"
-            >
-              {lendo ? <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /> : <FileCode className="w-8 h-8 text-muted-foreground" />}
-              <span className="font-medium">{lendo ? 'Lendo arquivo…' : 'Escolher arquivo .xml'}</span>
-              <span className="text-xs text-muted-foreground">NF-e modelo 55, até 5 MB. O arquivo é lido no seu aparelho e não é enviado.</span>
-            </button>
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".xml,text/xml,application/xml"
-              className="hidden"
-              data-testid="xml-input"
-              onChange={(e) => lerArquivo(e.target.files?.[0])}
-            />
-            {erroArquivo && (
-              <Alert variant="destructive" data-testid="xml-erros">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>{erroArquivo}</AlertDescription>
-              </Alert>
-            )}
+      {!resultado ? (
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={lendo}
+            className="w-full border-2 border-dashed rounded-lg p-6 sm:p-10 flex flex-col items-center gap-2 text-center hover:bg-muted/50 transition-colors"
+          >
+            {lendo ? <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /> : <FileCode className="w-8 h-8 text-muted-foreground" />}
+            <span className="font-medium">{lendo ? 'Lendo arquivo…' : 'Escolher arquivo .xml'}</span>
+            <span className="text-xs text-muted-foreground">NF-e modelo 55, até 5 MB. O arquivo é lido no seu aparelho e não é enviado.</span>
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".xml,text/xml,application/xml"
+            className="hidden"
+            data-testid="xml-input"
+            onChange={(e) => lerArquivo(e.target.files?.[0])}
+          />
+          {erroArquivo && (
+            <Alert variant="destructive" data-testid="xml-erros">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>{erroArquivo}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="ghost" size="sm" onClick={resetar}>
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Outro arquivo
+            </Button>
+            <Badge variant="outline" className="truncate max-w-[60%]">{nomeArquivo}</Badge>
           </div>
-        ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 -mx-1 px-1">
-            <div className="flex items-center justify-between gap-2">
-              <Button variant="ghost" size="sm" onClick={resetar}>
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Outro arquivo
-              </Button>
-              <Badge variant="outline" className="truncate max-w-[60%]">{nomeArquivo}</Badge>
+
+          <ListaMensagens mensagens={resultado.erros} tipo="erro" />
+          {resultado.nota && <Cabecalho nota={resultado.nota} erros={resultado.erros} documentosLoja={documentosLoja} />}
+          <ListaMensagens mensagens={resultado.avisos} tipo="aviso" />
+          {resultado.nota?.imeisInfCpl.length ? (
+            <div className="text-xs rounded-lg border p-3">
+              <span className="text-muted-foreground">IMEIs nas informações complementares: </span>
+              <span className="font-mono break-all">{resultado.nota.imeisInfCpl.join(', ')}</span>
             </div>
-
-            <ListaMensagens mensagens={resultado.erros} tipo="erro" />
-            {resultado.nota && <Cabecalho nota={resultado.nota} erros={resultado.erros} documentosLoja={documentosLoja} />}
-            <ListaMensagens mensagens={resultado.avisos} tipo="aviso" />
-            {resultado.nota?.imeisInfCpl.length ? (
-              <div className="text-xs rounded-lg border p-3">
-                <span className="text-muted-foreground">IMEIs nas informações complementares: </span>
-                <span className="font-mono break-all">{resultado.nota.imeisInfCpl.join(', ')}</span>
-              </div>
-            ) : null}
-            {resultado.itens.length > 0 && (
-              <>
-                <p className="text-sm text-muted-foreground">{resultado.itens.length} {resultado.itens.length === 1 ? 'item' : 'itens'} na nota</p>
-                <TabelaItens itens={resultado.itens} />
-              </>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          ) : null}
+          {resultado.itens.length > 0 && (
+            <>
+              <p className="text-sm text-muted-foreground">{resultado.itens.length} {resultado.itens.length === 1 ? 'item' : 'itens'} na nota</p>
+              <TabelaItens itens={resultado.itens} />
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

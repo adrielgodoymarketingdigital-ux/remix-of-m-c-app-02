@@ -31,6 +31,7 @@ const routeTitles: Record<string, string> = {
   "/equipe": "Equipe",
   "/configuracoes": "Configurações",
   "/configuracoes/fiscal": "Fiscal",
+  "/configuracoes/fiscal/xml-compra": "Importar XML",
   "/suporte": "Suporte",
   "/plano": "Meu Plano",
   "/novidades": "Novidades",

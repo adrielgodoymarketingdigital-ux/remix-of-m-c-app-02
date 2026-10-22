@@ -39,6 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
 import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
+import { useImportacaoXmlCompraVisivel } from "@/hooks/useImportacaoXmlCompraVisivel";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { SeletorFilial } from "@/components/layout/SeletorFilial";
@@ -67,8 +68,9 @@ const ROTULOS_GRUPOS: Record<string, { label: string; icon: LucideIcon }> = {
 };
 const GRUPOS_MENU_SIDEBAR = GRUPOS_MENU.map((g) => ({ ...g, ...ROTULOS_GRUPOS[g.key] }));
 // Sem label visível — Configurações é renderizada solta, sem cabeçalho de seção.
-// Fiscal (só com useFiscalVisivel) fica logo abaixo, também solto.
-const GRUPO_CONFIGURACOES = { key: "configuracoes", urls: ["/configuracoes", "/configuracoes/fiscal"] };
+// Fiscal (só com useFiscalVisivel) e Importar XML de compra (só com
+// useImportacaoXmlCompraVisivel) ficam logo abaixo, também soltos.
+const GRUPO_CONFIGURACOES = { key: "configuracoes", urls: ["/configuracoes", "/configuracoes/fiscal", "/configuracoes/fiscal/xml-compra"] };
 
 const adminMenuItems = ADMIN_MENU_COM_ICONE;
 
@@ -98,6 +100,7 @@ export function AppSidebar() {
   const { assinatura, carregando: carregandoAssinatura, temAcessoModulo: temAcessoModuloPlano } = useAssinatura();
   const isUltra = ['profissional_ultra_mensal', 'profissional_ultra_anual'].includes(assinatura?.plano_tipo ?? '');
   const fiscalVisivel = useFiscalVisivel();
+  const importacaoXmlVisivel = useImportacaoXmlCompraVisivel();
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -123,9 +126,10 @@ export function AppSidebar() {
     isUltra,
     isAdmin,
     fiscalVisivel,
+    importacaoXmlVisivel,
     temAcessoPlano: (modulo) => temAcessoModuloPlano(modulo as Parameters<typeof temAcessoModuloPlano>[0]),
     temAcessoFuncionario: (modulo) => temAcessoModuloFuncionario(modulo as keyof PermissoesModulos),
-  }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin, fiscalVisivel]);
+  }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin, fiscalVisivel, importacaoXmlVisivel]);
 
   const handleLogout = async () => {
     clearSessionMeta();

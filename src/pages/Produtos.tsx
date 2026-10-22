@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw, Settings, FileCode } from 'lucide-react';
+import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,8 +14,6 @@ import { useAssinatura } from '@/hooks/useAssinatura';
 import { useColunasVisiveis } from '@/hooks/useColunasVisiveis';
 import { DialogCadastroProduto } from '@/components/produtos/DialogCadastroProduto';
 import { DialogImportarProdutos } from '@/components/produtos/DialogImportarProdutos';
-import { DialogImportarXmlCompra } from '@/components/produtos/DialogImportarXmlCompra';
-import { useImportacaoXmlCompraVisivel } from '@/hooks/useImportacaoXmlCompraVisivel';
 import { DialogLimiteAtingido } from '@/components/planos/DialogLimiteAtingido';
 import { AbaConfiguracoesProdutos, DialogConfiguracoesProdutos } from '@/components/produtos/DialogConfiguracoesProdutos';
 import { TabelaProdutos } from '@/components/produtos/TabelaProdutos';
@@ -49,8 +47,6 @@ const Produtos = () => {
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([]);
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dialogImportarAberto, setDialogImportarAberto] = useState(false);
-  const importacaoXmlVisivel = useImportacaoXmlCompraVisivel();
-  const [dialogImportarXmlAberto, setDialogImportarXmlAberto] = useState(false);
   const [dialogLimiteAtingido, setDialogLimiteAtingido] = useState(false);
   const [dialogConfiguracoesAberto, setDialogConfiguracoesAberto] = useState(false);
   const [abaConfiguracoes, setAbaConfiguracoes] = useState<AbaConfiguracoesProdutos>('categorias');
@@ -246,15 +242,6 @@ const Produtos = () => {
                 <Upload className="w-4 h-4 mr-2" />
                 Importar
               </Button>
-              {importacaoXmlVisivel && (
-                <Button
-                  variant="outline"
-                  onClick={() => setDialogImportarXmlAberto(true)}
-                >
-                  <FileCode className="w-4 h-4 mr-2" />
-                  Importar XML
-                </Button>
-              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" disabled={loading}>
@@ -551,15 +538,6 @@ const Produtos = () => {
         onImportar={importarEmLote}
         categorias={categorias}
       />
-
-      {/* Importar XML de NF-e de compra (etapa 1: só leitura, nada é gravado) */}
-      {importacaoXmlVisivel && (
-        <DialogImportarXmlCompra
-          open={dialogImportarXmlAberto}
-          onOpenChange={setDialogImportarXmlAberto}
-          documentosLoja={[configLoja?.cnpj]}
-        />
-      )}
 
       {/* Dialog de Limite Atingido */}
       <DialogLimiteAtingido

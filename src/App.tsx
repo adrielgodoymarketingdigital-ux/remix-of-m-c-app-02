@@ -56,6 +56,7 @@ const Relatorios = lazy(() => import("./pages/Relatorios"));
 const Vendas = lazy(() => import("./pages/Vendas"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const ConfiguracaoFiscal = lazy(() => import("./pages/ConfiguracaoFiscal"));
+const ImportarXmlCompra = lazy(() => import("./pages/ImportarXmlCompra"));
 const Suporte = lazy(() => import("./pages/Suporte"));
 const Ajuda = lazy(() => import("./pages/Ajuda"));
 const AjudaDetalhe = lazy(() => import("./pages/AjudaDetalhe"));
@@ -408,6 +409,12 @@ function AppRoutes() {
           <Route path="/configuracoes/fiscal" element={
             <ProtectedAppRoute>
               <ConfiguracaoFiscal />
+            </ProtectedAppRoute>
+          } />
+          {/* Importar XML de compra: só quem passa em useImportacaoXmlCompraVisivel (hoje admin); a página redireciona os demais */}
+          <Route path="/configuracoes/fiscal/xml-compra" element={
+            <ProtectedAppRoute>
+              <ImportarXmlCompra />
             </ProtectedAppRoute>
           } />
           <Route path="/orcamentos" element={

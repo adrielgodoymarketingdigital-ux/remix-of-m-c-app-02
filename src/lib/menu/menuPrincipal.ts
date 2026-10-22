@@ -55,6 +55,8 @@ export const MENU_PRINCIPAL: ItemMenu[] = [
   { title: "Configurações", url: "/configuracoes", modulo: "configuracoes" },
   // Só com ctx.fiscalVisivel (useFiscalVisivel: hoje, admin). Solto, logo abaixo de Configurações.
   { title: "Fiscal", url: "/configuracoes/fiscal", modulo: "configuracoes" },
+  // Só com ctx.importacaoXmlVisivel (useImportacaoXmlCompraVisivel: hoje, admin). Solto, logo abaixo de Fiscal.
+  { title: "Importar XML de compra", url: "/configuracoes/fiscal/xml-compra", modulo: "configuracoes" },
   { title: "Suporte", url: "/suporte", modulo: "suporte" },
   { title: "Plano", url: "/plano", modulo: "plano" },
   { title: "Tutoriais", url: "/tutoriais", modulo: "tutoriais" },
@@ -65,7 +67,7 @@ export const MENU_PRINCIPAL: ItemMenu[] = [
 
 /**
  * Seções do menu (só organização visual; a ordem dentro de cada uma é `urls`).
- * Itens fora de qualquer seção (Configurações) ficam soltos.
+ * Itens fora de qualquer seção (Configurações, Fiscal, Importar XML de compra) ficam soltos.
  */
 export const GRUPOS_MENU: { key: string; urls: string[] }[] = [
   { key: "atendimento", urls: ["/dashboard", "/pdv", "/os", "/orcamentos", "/pedidos", "/precificador"] },
@@ -100,6 +102,8 @@ export interface ContextoMenu {
   isAdmin: boolean;
   /** Módulo fiscal liberado para quem está logado (useFiscalVisivel). */
   fiscalVisivel: boolean;
+  /** Importação de XML de compra liberada para quem está logado (useImportacaoXmlCompraVisivel). */
+  importacaoXmlVisivel: boolean;
   /** Plano do dono libera o módulo (useAssinatura().temAcessoModulo). */
   temAcessoPlano: (modulo: string) => boolean;
   /** Dono liberou o módulo para o funcionário (useFuncionarioPermissoes().temAcessoModulo). */
@@ -115,6 +119,7 @@ const MODULOS_SEMPRE_VISIVEIS = ["pedidos", "fornecedores"];
 // Funcionário nunca vê.
 const URLS_SO_DONO = ["/plano", "/equipe", "/multi-empresas"];
 export const URL_FISCAL = "/configuracoes/fiscal";
+export const URL_XML_COMPRA = "/configuracoes/fiscal/xml-compra";
 
 /**
  * Itens que o usuário vê (a mesma regra em desktop, celular e PWA instalado —
@@ -125,10 +130,12 @@ export const URL_FISCAL = "/configuracoes/fiscal";
  * - Funcionário: pelo que o dono liberou, item e submenu; item com todos os
  *   submenus bloqueados some.
  * - Fiscal: só com ctx.fiscalVisivel, antes de qualquer outra regra.
+ * - Importar XML de compra: só com ctx.importacaoXmlVisivel, idem.
  */
 export function filtrarMenuVisivel<T extends ItemMenu>(todos: T[], ctx: ContextoMenu): T[] {
   if (ctx.carregandoPermissoes) return [];
-  const itens = ctx.fiscalVisivel ? todos : todos.filter((item) => item.url !== URL_FISCAL);
+  const itens = todos.filter((item) =>
+    (ctx.fiscalVisivel || item.url !== URL_FISCAL) && (ctx.importacaoXmlVisivel || item.url !== URL_XML_COMPRA));
 
   if (!ctx.isFuncionario) {
     if (ctx.carregandoAssinatura && !ctx.temAssinatura) return itens;
