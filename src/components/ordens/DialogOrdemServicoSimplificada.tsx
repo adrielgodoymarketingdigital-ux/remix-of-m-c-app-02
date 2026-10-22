@@ -86,7 +86,7 @@ interface FormDataSimplificada {
   senhaNaoInformada: boolean;
   defeitoRelatado: string;
   observacoesInternas: string;
-  checklistEntrada: Record<string, boolean>;
+  checklistEntrada: Checklist;
   servicos: Servico[];
   formaPagamento: string;
   desconto: number;
@@ -113,7 +113,7 @@ const formDataInicial: FormDataSimplificada = {
   senhaNaoInformada: false,
   defeitoRelatado: "",
   observacoesInternas: "",
-  checklistEntrada: {},
+  checklistEntrada: { entrada: {}, saida: {} },
   servicos: [],
   formaPagamento: "",
   desconto: 0,
@@ -336,7 +336,7 @@ export const DialogOrdemServicoSimplificada = ({
       );
 
       const avariasData: AvariasOS = {
-        checklist: { entrada: formData.checklistEntrada, saida: {} } as Checklist,
+        checklist: { ...formData.checklistEntrada, saida: {} },
         senha_desbloqueio: encryptSenhaDesbloqueio(
           formData.senhaNaoInformada
             ? { tipo: "letra", valor: "", nao_informada: true }
@@ -642,7 +642,7 @@ export const DialogOrdemServicoSimplificada = ({
                       dispositivoSistema: "",
                       dispositivoFabricante: "",
                       dispositivoSubtipo: "",
-                      checklistEntrada: {},
+                      checklistEntrada: { entrada: {}, saida: {} },
                     })
                   }
                   required
@@ -823,8 +823,8 @@ export const DialogOrdemServicoSimplificada = ({
                 sistema={formData.dispositivoSistema}
                 fabricante={formData.dispositivoFabricante}
                 subtipo={formData.dispositivoSubtipo}
-                value={{ entrada: formData.checklistEntrada, saida: {} }}
-                onChange={(checklist) => setFormData({ ...formData, checklistEntrada: checklist.entrada })}
+                value={formData.checklistEntrada}
+                onChange={(checklist) => setFormData({ ...formData, checklistEntrada: checklist })}
                 onSistemaChange={(sistema) => setFormData({ ...formData, dispositivoSistema: sistema })}
                 onFabricanteChange={(fabricante) => setFormData({ ...formData, dispositivoFabricante: fabricante })}
                 onSubtipoChange={(subtipo) => setFormData({ ...formData, dispositivoSubtipo: subtipo })}
