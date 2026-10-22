@@ -22,6 +22,9 @@ Deno.serve(async () => {
     'pecas',
     'orcamentos',
     'fornecedores',
+    'compras_xml_importadas',
+    'compras_xml_itens',
+    'compras_xml_mapeamento',
   ];
 
   try {
