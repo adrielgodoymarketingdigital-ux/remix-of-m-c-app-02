@@ -632,14 +632,17 @@ export type Database = {
           cep: string | null
           cidade: string | null
           cnpj: string | null
+          complemento: string | null
           cpf: string | null
           created_at: string | null
           data_nascimento: string | null
           deleted_at: string | null
+          email: string | null
           empresa_id: string | null
           endereco: string | null
           estado: string | null
           id: string
+          inscricao_estadual: string | null
           nome: string
           numero: string | null
           telefone: string | null
@@ -650,14 +653,17 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           cnpj?: string | null
+          complemento?: string | null
           cpf?: string | null
           created_at?: string | null
           data_nascimento?: string | null
           deleted_at?: string | null
+          email?: string | null
           empresa_id?: string | null
           endereco?: string | null
           estado?: string | null
           id?: string
+          inscricao_estadual?: string | null
           nome: string
           numero?: string | null
           telefone?: string | null
@@ -668,14 +674,17 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           cnpj?: string | null
+          complemento?: string | null
           cpf?: string | null
           created_at?: string | null
           data_nascimento?: string | null
           deleted_at?: string | null
+          email?: string | null
           empresa_id?: string | null
           endereco?: string | null
           estado?: string | null
           id?: string
+          inscricao_estadual?: string | null
           nome?: string
           numero?: string | null
           telefone?: string | null
@@ -1435,6 +1444,7 @@ export type Database = {
       dispositivos: {
         Row: {
           capacidade_gb: number | null
+          cest: string | null
           checklist: Json | null
           codigo_barras: string | null
           compra_id: string | null
@@ -1455,8 +1465,10 @@ export type Database = {
           lucro: number | null
           marca: string
           modelo: string
+          ncm: string | null
           numero_serie: string | null
           origem_tipo: string | null
+          perfil_tributario_id: string | null
           preco: number | null
           preco_promocional: number | null
           quantidade: number
@@ -1464,11 +1476,13 @@ export type Database = {
           subtipo_computador: string | null
           tempo_garantia: number | null
           tipo: string
+          unidade: string | null
           user_id: string
           vendido: boolean | null
         }
         Insert: {
           capacidade_gb?: number | null
+          cest?: string | null
           checklist?: Json | null
           codigo_barras?: string | null
           compra_id?: string | null
@@ -1489,8 +1503,10 @@ export type Database = {
           lucro?: number | null
           marca: string
           modelo: string
+          ncm?: string | null
           numero_serie?: string | null
           origem_tipo?: string | null
+          perfil_tributario_id?: string | null
           preco?: number | null
           preco_promocional?: number | null
           quantidade?: number
@@ -1498,11 +1514,13 @@ export type Database = {
           subtipo_computador?: string | null
           tempo_garantia?: number | null
           tipo: string
+          unidade?: string | null
           user_id: string
           vendido?: boolean | null
         }
         Update: {
           capacidade_gb?: number | null
+          cest?: string | null
           checklist?: Json | null
           codigo_barras?: string | null
           compra_id?: string | null
@@ -1523,8 +1541,10 @@ export type Database = {
           lucro?: number | null
           marca?: string
           modelo?: string
+          ncm?: string | null
           numero_serie?: string | null
           origem_tipo?: string | null
+          perfil_tributario_id?: string | null
           preco?: number | null
           preco_promocional?: number | null
           quantidade?: number
@@ -1532,6 +1552,7 @@ export type Database = {
           subtipo_computador?: string | null
           tempo_garantia?: number | null
           tipo?: string
+          unidade?: string | null
           user_id?: string
           vendido?: boolean | null
         }
@@ -3540,6 +3561,7 @@ export type Database = {
       pecas: {
         Row: {
           categoria_id: string | null
+          cest: string | null
           codigo_barras: string | null
           created_at: string | null
           custo: number | null
@@ -3549,16 +3571,20 @@ export type Database = {
           fornecedor_id: string | null
           fotos: Json | null
           id: string
+          ncm: string | null
           nome: string
           peca_pai_id: string | null
+          perfil_tributario_id: string | null
           preco: number | null
           preco_atacado: number | null
           quantidade: number | null
+          unidade: string | null
           user_id: string
           variacao_label: string | null
         }
         Insert: {
           categoria_id?: string | null
+          cest?: string | null
           codigo_barras?: string | null
           created_at?: string | null
           custo?: number | null
@@ -3568,16 +3594,20 @@ export type Database = {
           fornecedor_id?: string | null
           fotos?: Json | null
           id?: string
+          ncm?: string | null
           nome: string
           peca_pai_id?: string | null
+          perfil_tributario_id?: string | null
           preco?: number | null
           preco_atacado?: number | null
           quantidade?: number | null
+          unidade?: string | null
           user_id: string
           variacao_label?: string | null
         }
         Update: {
           categoria_id?: string | null
+          cest?: string | null
           codigo_barras?: string | null
           created_at?: string | null
           custo?: number | null
@@ -3587,11 +3617,14 @@ export type Database = {
           fornecedor_id?: string | null
           fotos?: Json | null
           id?: string
+          ncm?: string | null
           nome?: string
           peca_pai_id?: string | null
+          perfil_tributario_id?: string | null
           preco?: number | null
           preco_atacado?: number | null
           quantidade?: number | null
+          unidade?: string | null
           user_id?: string
           variacao_label?: string | null
         }
@@ -3681,6 +3714,7 @@ export type Database = {
       produtos: {
         Row: {
           categoria_id: string | null
+          cest: string | null
           codigo_barras: string | null
           created_at: string | null
           custo: number | null
@@ -3691,17 +3725,21 @@ export type Database = {
           fotos: Json | null
           id: string
           lucro: number | null
+          ncm: string | null
           nome: string
+          perfil_tributario_id: string | null
           preco: number | null
           preco_atacado: number | null
           produto_pai_id: string | null
           quantidade: number | null
           sku: string | null
+          unidade: string | null
           user_id: string
           variacao_label: string | null
         }
         Insert: {
           categoria_id?: string | null
+          cest?: string | null
           codigo_barras?: string | null
           created_at?: string | null
           custo?: number | null
@@ -3712,17 +3750,21 @@ export type Database = {
           fotos?: Json | null
           id?: string
           lucro?: number | null
+          ncm?: string | null
           nome: string
+          perfil_tributario_id?: string | null
           preco?: number | null
           preco_atacado?: number | null
           produto_pai_id?: string | null
           quantidade?: number | null
           sku?: string | null
+          unidade?: string | null
           user_id: string
           variacao_label?: string | null
         }
         Update: {
           categoria_id?: string | null
+          cest?: string | null
           codigo_barras?: string | null
           created_at?: string | null
           custo?: number | null
@@ -3733,12 +3775,15 @@ export type Database = {
           fotos?: Json | null
           id?: string
           lucro?: number | null
+          ncm?: string | null
           nome?: string
+          perfil_tributario_id?: string | null
           preco?: number | null
           preco_atacado?: number | null
           produto_pai_id?: string | null
           quantidade?: number | null
           sku?: string | null
+          unidade?: string | null
           user_id?: string
           variacao_label?: string | null
         }
@@ -4070,14 +4115,19 @@ export type Database = {
       }
       servicos: {
         Row: {
+          aliquota_iss: number | null
           codigo: string | null
+          codigo_lc116: string | null
+          codigo_municipal: string | null
           created_at: string | null
           custo: number | null
           empresa_id: string | null
           id: string
+          iss_retido: boolean | null
           lucro: number | null
           nome: string
           peca_id: string | null
+          perfil_tributario_id: string | null
           preco: number | null
           quantidade: number
           tempo_medio_estimado_horas: number | null
@@ -4085,14 +4135,19 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          aliquota_iss?: number | null
           codigo?: string | null
+          codigo_lc116?: string | null
+          codigo_municipal?: string | null
           created_at?: string | null
           custo?: number | null
           empresa_id?: string | null
           id?: string
+          iss_retido?: boolean | null
           lucro?: number | null
           nome: string
           peca_id?: string | null
+          perfil_tributario_id?: string | null
           preco?: number | null
           quantidade?: number
           tempo_medio_estimado_horas?: number | null
@@ -4100,14 +4155,19 @@ export type Database = {
           user_id: string
         }
         Update: {
+          aliquota_iss?: number | null
           codigo?: string | null
+          codigo_lc116?: string | null
+          codigo_municipal?: string | null
           created_at?: string | null
           custo?: number | null
           empresa_id?: string | null
           id?: string
+          iss_retido?: boolean | null
           lucro?: number | null
           nome?: string
           peca_id?: string | null
+          perfil_tributario_id?: string | null
           preco?: number | null
           quantidade?: number
           tempo_medio_estimado_horas?: number | null
