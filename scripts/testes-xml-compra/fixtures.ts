@@ -36,6 +36,13 @@ export interface ItemFicticio {
   vFrete?: string;
   vIPI?: string;
   vICMSST?: string;
+  vFCPST?: string;
+  vSeg?: string;
+  vOutro?: string;
+  /** Padrão: igual a cEAN / uCom / qCom. */
+  cEANTrib?: string;
+  uTrib?: string;
+  qTrib?: string;
   infAdProd?: string;
 }
 
@@ -63,7 +70,7 @@ export interface OpcoesFicticias {
   prologoExtra?: string;
 }
 
-const ITEM_PADRAO: Required<Omit<ItemFicticio, "vDesc" | "vFrete" | "vIPI" | "vICMSST" | "infAdProd" | "CEST">> = {
+const ITEM_PADRAO: Required<Omit<ItemFicticio, "vDesc" | "vFrete" | "vIPI" | "vICMSST" | "vFCPST" | "vSeg" | "vOutro" | "cEANTrib" | "uTrib" | "qTrib" | "infAdProd" | "CEST">> = {
   cProd: "FIC-001",
   cEAN: "7891234567895",
   xProd: "PELICULA FICTICIA 3D MODELO TESTE",
@@ -98,14 +105,15 @@ export function gerarXmlNfe(o: OpcoesFicticias = {}): string {
     const it = { ...ITEM_PADRAO, ...parcial };
     somaProd += Math.round(Number(it.vProd) * 100);
     const st = it.vICMSST
-      ? `<ICMS><ICMS10><orig>0</orig><CST>10</CST><vBCST>0.00</vBCST><pICMSST>0.00</pICMSST><vICMSST>${it.vICMSST}</vICMSST></ICMS10></ICMS>`
+      ? `<ICMS><ICMS10><orig>0</orig><CST>10</CST><vBCST>0.00</vBCST><pICMSST>0.00</pICMSST><vICMSST>${it.vICMSST}</vICMSST>${it.vFCPST ? `<vFCPST>${it.vFCPST}</vFCPST>` : ""}</ICMS10></ICMS>`
       : `<ICMS><ICMSSN102><orig>0</orig><CSOSN>102</CSOSN></ICMSSN102></ICMS>`;
     const ipi = it.vIPI ? `<IPI><cEnq>999</cEnq><IPITrib><CST>50</CST><vIPI>${it.vIPI}</vIPI></IPITrib></IPI>` : "";
     return `<det nItem="${i + 1}"><prod><cProd>${esc(it.cProd)}</cProd><cEAN>${esc(it.cEAN)}</cEAN><xProd>${esc(it.xProd)}</xProd>` +
       `<NCM>${it.NCM}</NCM>${it.CEST ? `<CEST>${it.CEST}</CEST>` : ""}<CFOP>${it.CFOP}</CFOP><uCom>${it.uCom}</uCom><qCom>${it.qCom}</qCom>` +
-      `<vUnCom>${it.vUnCom}</vUnCom><vProd>${it.vProd}</vProd><cEANTrib>${esc(it.cEAN)}</cEANTrib><uTrib>${it.uCom}</uTrib>` +
-      `<qTrib>${it.qCom}</qTrib><vUnTrib>${it.vUnCom}</vUnTrib>${it.vFrete ? `<vFrete>${it.vFrete}</vFrete>` : ""}` +
-      `${it.vDesc ? `<vDesc>${it.vDesc}</vDesc>` : ""}<indTot>1</indTot></prod>` +
+      `<vUnCom>${it.vUnCom}</vUnCom><vProd>${it.vProd}</vProd><cEANTrib>${esc(it.cEANTrib ?? it.cEAN)}</cEANTrib><uTrib>${it.uTrib ?? it.uCom}</uTrib>` +
+      `<qTrib>${it.qTrib ?? it.qCom}</qTrib><vUnTrib>${it.vUnCom}</vUnTrib>${it.vFrete ? `<vFrete>${it.vFrete}</vFrete>` : ""}` +
+      `${it.vSeg ? `<vSeg>${it.vSeg}</vSeg>` : ""}${it.vDesc ? `<vDesc>${it.vDesc}</vDesc>` : ""}` +
+      `${it.vOutro ? `<vOutro>${it.vOutro}</vOutro>` : ""}<indTot>1</indTot></prod>` +
       `<imposto>${st}${ipi}</imposto>${it.infAdProd ? `<infAdProd>${esc(it.infAdProd)}</infAdProd>` : ""}</det>`;
   }).join("");
   const vProd = (somaProd / 100).toFixed(2);

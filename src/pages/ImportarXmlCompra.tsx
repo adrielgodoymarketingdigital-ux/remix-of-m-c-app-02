@@ -4,17 +4,21 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { LeitorXmlCompra } from "@/components/fiscal/LeitorXmlCompra";
 import { useImportacaoXmlCompraVisivelStatus } from "@/hooks/useImportacaoXmlCompraVisivel";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import { useCandidatosVinculoXml } from "@/hooks/useCandidatosVinculoXml";
 
 /**
- * Configurações › Fiscal › Importar XML de compra (etapa 1: só leitura).
+ * Configurações › Fiscal › Importar XML de compra (etapas 1 e 2: leitura,
+ * sugestão de vínculo, custo e resumo — nada é gravado).
  * Só quem passa em useImportacaoXmlCompraVisivel (hoje admin); os demais são
  * redirecionados, mesmo abrindo a URL direto. A leitura do arquivo é toda no
- * navegador (LeitorXmlCompra); a única consulta da página é a configuração da
- * loja, para conferir o CNPJ do destinatário.
+ * navegador (LeitorXmlCompra). Consultas da página, só leitura e só ao abrir:
+ * a configuração da loja (CNPJ do destinatário) e os produtos/peças para as
+ * sugestões de vínculo (useCandidatosVinculoXml).
  */
 export default function ImportarXmlCompra() {
   const { visivel, carregando } = useImportacaoXmlCompraVisivelStatus();
   const { config: configLoja } = useConfiguracaoLoja();
+  const candidatos = useCandidatosVinculoXml(visivel);
 
   if (carregando) {
     return (
@@ -43,7 +47,7 @@ export default function ImportarXmlCompra() {
             </p>
           </div>
 
-          <LeitorXmlCompra documentosLoja={[configLoja?.cnpj]} />
+          <LeitorXmlCompra documentosLoja={[configLoja?.cnpj]} candidatos={candidatos} />
         </div>
       </main>
     </AppLayout>

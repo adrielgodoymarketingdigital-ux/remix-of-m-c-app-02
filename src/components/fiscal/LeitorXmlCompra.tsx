@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, ArrowLeft, CheckCircle2, FileCode, Info, Loader2, XCircle } from 'lucide-react';
-import { formatCurrency } from '@/lib/formatters';
 import {
   conferirDestinatario,
   lerXmlNfe,
@@ -15,23 +14,30 @@ import {
   type ResultadoLeituraNfe,
   type SituacaoDestinatario,
 } from '@/lib/nfe/lerXmlNfe';
+import { lerDadosTributaveis, type DadosTributaveisItem } from '@/lib/nfe/dadosTributaveisNfe';
+import type { CandidatosVinculoXml } from '@/hooks/useCandidatosVinculoXml';
+import { Extras, Fiscal, Imeis } from './detalhesItemXml';
+import { dinheiro, quantidade } from './formatoItemXml';
+import { ResumoNotaInvalida, VinculoItensXmlCompra } from './VinculoItensXmlCompra';
 
 /**
- * Importar XML de NF-e de compra — ETAPA 1: só lê o arquivo no navegador e
- * mostra o conteúdo. Nada é gravado e nenhum byte do arquivo vai ao servidor
- * (este componente não usa o supabase). Usado pela página
- * Configurações › Fiscal › Importar XML de compra (src/pages/ImportarXmlCompra.tsx),
- * visível só via useImportacaoXmlCompraVisivel.
+ * Importar XML de NF-e de compra. Etapa 1: lê o arquivo no navegador e mostra
+ * o conteúdo. Etapa 2: com a nota válida, sugere vínculo, quantidade e custo
+ * por item e resume (VinculoItensXmlCompra). Nada é gravado e nenhum byte do
+ * arquivo vai ao servidor (este componente não usa o supabase; os produtos
+ * cadastrados chegam prontos em `candidatos`, carregados ao abrir a página).
+ * Usado pela página Configurações › Fiscal › Importar XML de compra
+ * (src/pages/ImportarXmlCompra.tsx), visível só via useImportacaoXmlCompraVisivel.
  */
 interface LeitorXmlCompraProps {
   /** CNPJ/CPF cadastrados da loja, para conferir o destinatário da nota. */
   documentosLoja: Array<string | null | undefined>;
+  /** Produtos e peças da loja (somente leitura) para sugerir vínculos. */
+  candidatos: CandidatosVinculoXml;
 }
 
 const CODIGOS_CHAVE = ['chave_invalida', 'chave_divergente', 'chave_protocolo'];
 
-const dinheiro = (v: string) => (v ? formatCurrency(Number(v)) : '—');
-const quantidade = (v: string) => (v ? Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 4 }) : '—');
 /** dhEmi/dVenc "2026-10-15..." → "15/10/2026" sem passar por Date (sem fuso). */
 const data = (v: string) => (/^\d{4}-\d{2}-\d{2}/.test(v) ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}` : v || '—');
 const documento = (d: string | null | undefined) => {
@@ -127,36 +133,6 @@ function Cabecalho({ nota, erros, documentosLoja }: { nota: NotaNfe; erros: Mens
   );
 }
 
-function Fiscal({ item }: { item: ItemNfe }) {
-  return (
-    <span className="text-xs text-muted-foreground">
-      NCM {item.ncm || '—'}{item.cest ? ` · CEST ${item.cest}` : ''} · CFOP {item.cfop || '—'}
-    </span>
-  );
-}
-
-function Extras({ item }: { item: ItemNfe }) {
-  const partes = [
-    item.vDesc && Number(item.vDesc) > 0 ? `desc. ${dinheiro(item.vDesc)}` : '',
-    item.vFrete && Number(item.vFrete) > 0 ? `frete ${dinheiro(item.vFrete)}` : '',
-    item.vSeg && Number(item.vSeg) > 0 ? `seguro ${dinheiro(item.vSeg)}` : '',
-    item.vOutro && Number(item.vOutro) > 0 ? `outras ${dinheiro(item.vOutro)}` : '',
-    item.vIPI && Number(item.vIPI) > 0 ? `IPI ${dinheiro(item.vIPI)}` : '',
-    item.vST && Number(item.vST) > 0 ? `ST ${dinheiro(item.vST)}` : '',
-  ].filter(Boolean);
-  return partes.length ? <span className="text-xs text-muted-foreground">{partes.join(' · ')}</span> : null;
-}
-
-function Imeis({ item }: { item: ItemNfe }) {
-  if (item.imeisSugeridos.length === 0) return null;
-  return (
-    <div className="text-xs mt-1">
-      <span className="text-muted-foreground">IMEI sugerido (confira): </span>
-      <span className="font-mono break-all">{item.imeisSugeridos.join(', ')}</span>
-    </div>
-  );
-}
-
 function TabelaItens({ itens }: { itens: ItemNfe[] }) {
   return (
     <div data-testid="xml-itens">
@@ -215,12 +191,13 @@ function TabelaItens({ itens }: { itens: ItemNfe[] }) {
   );
 }
 
-export function LeitorXmlCompra({ documentosLoja }: LeitorXmlCompraProps) {
+export function LeitorXmlCompra({ documentosLoja, candidatos }: LeitorXmlCompraProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [nomeArquivo, setNomeArquivo] = useState('');
   const [lendo, setLendo] = useState(false);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ResultadoLeituraNfe | null>(null);
+  const [dadosTributaveis, setDadosTributaveis] = useState<Map<number, DadosTributaveisItem>>(new Map());
 
   const resetar = () => {
     setNomeArquivo('');
@@ -246,7 +223,10 @@ export function LeitorXmlCompra({ documentosLoja }: LeitorXmlCompraProps) {
     try {
       const texto = await arquivo.text();
       setNomeArquivo(arquivo.name);
-      setResultado(lerXmlNfe(texto, { tamanhoBytes: arquivo.size }));
+      const lido = lerXmlNfe(texto, { tamanhoBytes: arquivo.size });
+      // cEANTrib/uTrib/qTrib só de nota válida (as checagens de segurança já passaram).
+      setDadosTributaveis(lido.ok ? lerDadosTributaveis(texto, { tamanhoBytes: arquivo.size }) : new Map());
+      setResultado(lido);
     } catch {
       setErroArquivo('Não foi possível ler o arquivo.');
     } finally {
@@ -307,10 +287,17 @@ export function LeitorXmlCompra({ documentosLoja }: LeitorXmlCompraProps) {
               <span className="font-mono break-all">{resultado.nota.imeisInfCpl.join(', ')}</span>
             </div>
           ) : null}
-          {resultado.itens.length > 0 && (
+          {resultado.ok ? (
+            <VinculoItensXmlCompra resultado={resultado} dadosTributaveis={dadosTributaveis} candidatos={candidatos} />
+          ) : (
             <>
-              <p className="text-sm text-muted-foreground">{resultado.itens.length} {resultado.itens.length === 1 ? 'item' : 'itens'} na nota</p>
-              <TabelaItens itens={resultado.itens} />
+              {resultado.itens.length > 0 && (
+                <>
+                  <p className="text-sm text-muted-foreground">{resultado.itens.length} {resultado.itens.length === 1 ? 'item' : 'itens'} na nota</p>
+                  <TabelaItens itens={resultado.itens} />
+                </>
+              )}
+              <ResumoNotaInvalida />
             </>
           )}
         </div>
