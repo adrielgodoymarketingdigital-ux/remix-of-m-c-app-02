@@ -18,6 +18,12 @@ export interface ComissaoItemInput {
   custo?: number | null;
   /** flag explícita respondida no banner "custo R$ 0,00 está correto?" */
   custoConfirmado?: boolean;
+  /**
+   * Quantidade da linha (serviço "x3"). preco/custo já são o TOTAL da linha,
+   * então a % não muda; só a comissão de VALOR FIXO é paga por unidade.
+   * Ausente ou inválida = 1 (toda OS antiga).
+   */
+  quantidade?: number;
 }
 
 export interface ComissaoItemCalculo {
@@ -79,8 +85,11 @@ export function calcularComissaoDoItem(
   }
 
   if (config.comissao_tipo !== "porcentagem") {
-    // Valor fixo por serviço: não depende de faturamento nem de lucro.
-    return { valor: valorConfig, aplicada: true, custoNaoConfirmado: false, base: preco };
+    // Valor fixo por serviço: não depende de faturamento nem de lucro; é pago
+    // por unidade (Formatação x3 paga 3x o valor fixo).
+    const q = Number(item.quantidade);
+    const quantidade = Number.isInteger(q) && q >= 1 ? q : 1;
+    return { valor: valorConfig * quantidade, aplicada: true, custoNaoConfirmado: false, base: preco };
   }
 
   if (calculo === "lucro" && !custoConfirmadoDoItem(item.custo, item.custoConfirmado)) {

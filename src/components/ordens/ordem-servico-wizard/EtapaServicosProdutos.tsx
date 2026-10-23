@@ -7,6 +7,8 @@ import { SelecionadorProduto } from "../SelecionadorProduto";
 import { EtapaCabecalho } from "./EtapaCabecalho";
 import { FormData, TecnicoOS } from "./tipos";
 import { Funcionario } from "@/types/funcionario";
+import { useQuantidadeServicoOSVisivel } from "@/hooks/useQuantidadeServicoOSVisivel";
+import { chaveLinhaForm, nomeLinhaForm } from "@/lib/ordemServico/linhaServicoOS";
 
 interface EtapaServicosProdutosProps {
   formData: FormData;
@@ -28,6 +30,7 @@ export function EtapaServicosProdutos({
   setTecnicosOS,
   comissaoLucroAtiva = false,
 }: EtapaServicosProdutosProps) {
+  const permitirQuantidade = useQuantidadeServicoOSVisivel();
   return (
     <div>
       <EtapaCabecalho
@@ -43,6 +46,7 @@ export function EtapaServicosProdutos({
             value={formData.servicos}
             onChange={(servicos) => setFormData({ ...formData, servicos })}
             comissaoLucroAtiva={comissaoLucroAtiva}
+            permitirQuantidade={permitirQuantidade}
           />
         </div>
 
@@ -90,13 +94,15 @@ export function EtapaServicosProdutos({
                   <div key={index} className="flex gap-2 items-start p-3 border rounded-xl bg-muted/30">
                     <div className="flex-1 space-y-2">
                       <Select
-                        value={tec.servico_id || "selecionar"}
+                        value={tec.servico_linha_id || tec.servico_id || "selecionar"}
                         onValueChange={(value) => {
                           const novos = [...tecnicosOS];
-                          const servico = formData.servicos.find(s => s.id === value);
+                          // Opção = chave da linha (linha_id, senão o id do serviço — como sempre foi).
+                          const servico = formData.servicos.find(s => chaveLinhaForm(s) === value);
                           novos[index] = {
                             ...novos[index],
-                            servico_id: value === "selecionar" ? "" : value,
+                            servico_id: value === "selecionar" ? "" : (servico?.id ?? value),
+                            servico_linha_id: servico?.linha_os?.linha_id,
                             descricao_servico: servico?.nome || novos[index].descricao_servico,
                           };
                           setTecnicosOS(novos);
@@ -108,8 +114,8 @@ export function EtapaServicosProdutos({
                         <SelectContent>
                           <SelectItem value="selecionar">Selecione o serviço...</SelectItem>
                           {formData.servicos.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.nome} — {s.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            <SelectItem key={chaveLinhaForm(s)} value={chaveLinhaForm(s)}>
+                              {nomeLinhaForm(s)} — {s.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                             </SelectItem>
                           ))}
                         </SelectContent>

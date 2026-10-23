@@ -356,13 +356,17 @@ export function useOrdemServicoWizardState({
       // Carregar técnicos da OS
       supabase
         .from("os_tecnicos")
-        .select("funcionario_id, descricao_servico")
+        // "*" (e não a lista de colunas): servico_linha_id só existe depois da
+        // migration da etapa 2 — antes dela, a leitura continua funcionando.
+        .select("*")
         .eq("os_id", ordem.id)
         .then(({ data }) => {
           if (data && data.length > 0) {
             setTecnicosOS(data.map(t => ({
               funcionario_id: t.funcionario_id,
               descricao_servico: t.descricao_servico || "",
+              // Só técnico ligado a uma linha repetida/com quantidade traz isto.
+              ...(t.servico_linha_id ? { servico_linha_id: t.servico_linha_id } : {}),
             })));
           } else {
             setTecnicosOS([]);

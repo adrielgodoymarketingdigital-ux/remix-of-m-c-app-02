@@ -55,3 +55,80 @@ export function extrairCamposNovosLinhaServico(s: unknown): CamposNovosLinhaServ
   if (typeof o.dispositivo_ref === "string" && o.dispositivo_ref !== "") campos.dispositivo_ref = o.dispositivo_ref;
   return Object.keys(campos).length > 0 ? campos : undefined;
 }
+
+// ---------------------------------------------------------------------------
+// Linha no FORMULÁRIO da OS (assistente). Lá o objeto é o Servico do catálogo,
+// cujo `quantidade` é do CATÁLOGO — a quantidade da linha mora só em
+// `linha_os`. `preco`, `custo` e `peca_valor` do formulário são o TOTAL da
+// linha (como é gravado), para que as somas de hoje (valorLinhaServico,
+// resumo, total da OS, comissão %) continuem certas sem conhecer a quantidade.
+// ---------------------------------------------------------------------------
+
+export interface LinhaServicoForm {
+  id: string;
+  nome: string;
+  preco: number;
+  custo?: number | null;
+  peca_valor?: number;
+  linha_os?: CamposNovosLinhaServico;
+}
+
+const centavos = (v: number): number => Math.round(v * 100) / 100;
+
+/** Quantidade da linha do formulário (de linha_os; sem ela, 1). */
+export function quantidadeLinhaForm(s: object): number {
+  return quantidadeLinhaServico((s as { linha_os?: CamposNovosLinhaServico }).linha_os);
+}
+
+/** Nome com "3x" para a linha do formulário (ignora o `quantidade` do catálogo). */
+export function nomeLinhaForm(s: { nome: string; linha_os?: CamposNovosLinhaServico }): string {
+  return nomeLinhaServico({ nome: s.nome, quantidade: quantidadeLinhaForm(s) });
+}
+
+/**
+ * Chave da linha no formulário: linha_id quando existe, senão o id do serviço.
+ * Sem linha_id é exatamente a chave de hoje (o seletor não deixava repetir).
+ */
+export function chaveLinhaForm(s: { id: string; linha_os?: CamposNovosLinhaServico }): string {
+  return s.linha_os?.linha_id || s.id;
+}
+
+/** Preço e custo UNITÁRIOS da linha (custo = peça quando houver peca_valor). */
+export function unitariosLinhaForm(s: LinhaServicoForm): { quantidade: number; precoUnitario: number; custoUnitario: number } {
+  const quantidade = quantidadeLinhaForm(s);
+  const custoTotal = Number(s.peca_valor ?? s.custo) || 0;
+  return {
+    quantidade,
+    precoUnitario: s.linha_os?.preco_unitario ?? centavos((Number(s.preco) || 0) / quantidade),
+    custoUnitario: s.linha_os?.custo_unitario ?? centavos(custoTotal / quantidade),
+  };
+}
+
+/**
+ * Grava na linha os valores unitários e a quantidade, recalculando os totais
+ * (preco, custo e — se a linha usa peca_valor — peca_valor). Garante linha_id.
+ */
+export function definirLinhaForm<T extends LinhaServicoForm>(
+  s: T,
+  valores: { quantidade?: number; precoUnitario?: number; custoUnitario?: number },
+  novoLinhaId: () => string,
+): T & { linha_os: CamposNovosLinhaServico } {
+  const atual = unitariosLinhaForm(s);
+  const quantidade = quantidadeLinhaServico({ quantidade: valores.quantidade ?? atual.quantidade });
+  const precoUnitario = valores.precoUnitario ?? atual.precoUnitario;
+  const custoUnitario = valores.custoUnitario ?? atual.custoUnitario;
+  const custoTotal = centavos(custoUnitario * quantidade);
+  return {
+    ...s,
+    preco: centavos(precoUnitario * quantidade),
+    custo: custoTotal,
+    ...(s.peca_valor !== undefined ? { peca_valor: custoTotal } : {}),
+    linha_os: {
+      ...s.linha_os,
+      linha_id: s.linha_os?.linha_id || novoLinhaId(),
+      quantidade,
+      preco_unitario: precoUnitario,
+      custo_unitario: custoUnitario,
+    },
+  };
+}

@@ -72,6 +72,8 @@ export interface TecnicoOS {
   funcionario_id: string;
   descricao_servico: string;
   servico_id?: string;
+  /** Linha do serviço (linha_id) — distingue o mesmo serviço repetido na OS. */
+  servico_linha_id?: string;
 }
 
 export interface ResultadoValidacaoEtapa {

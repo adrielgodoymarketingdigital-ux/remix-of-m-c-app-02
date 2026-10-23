@@ -18,6 +18,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { chaveLinhaForm, nomeLinhaForm } from "@/lib/ordemServico/linhaServicoOS";
 
 interface Servico {
   id: string;
@@ -149,9 +150,9 @@ export const ResumoFinanceiro = ({
             <Label className="text-xs text-muted-foreground">Serviços Selecionados:</Label>
             <div className="space-y-1">
               {servicos.map((servico) => (
-                <div key={servico.id} className="flex justify-between text-sm">
+                <div key={chaveLinhaForm(servico)} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    • {servico.nome}
+                    • {nomeLinhaForm(servico)}
                     {servico.peca_repassada && (
                       <span className="block pl-3 text-xs">
                         mão de obra {formatCurrency(servico.preco)} + peça {formatCurrency(custoLinhaServico(servico))}

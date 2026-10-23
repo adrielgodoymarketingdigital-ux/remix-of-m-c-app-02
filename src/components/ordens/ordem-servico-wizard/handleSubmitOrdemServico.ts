@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { AvariasOS } from "@/types/ordem-servico";
 import { encryptSenhaDesbloqueio, encryptValue } from "@/lib/password-encryption";
@@ -22,6 +23,7 @@ import {
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
 import { FormData, TecnicoOS } from "./tipos";
+import { quantidadeLinhaForm } from "@/lib/ordemServico/linhaServicoOS";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
 
 /**
@@ -29,15 +31,18 @@ import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanham
  * a base é só a mão de obra (preço), em qualquer modo — a peça não gera
  * comissão nem reduz o lucro da linha. Sem repasse: preço − custo, como antes.
  */
-function entradaComissaoServico(servico: FormData["servicos"][number]): { preco: number; custo: number; custoConfirmado?: boolean } {
+function entradaComissaoServico(servico: FormData["servicos"][number]): { preco: number; custo: number; custoConfirmado?: boolean; quantidade: number } {
+  // preco/custo são o total da linha; a quantidade só pesa na comissão de valor fixo.
+  const quantidade = quantidadeLinhaForm(servico);
   if (servico.peca_repassada) {
-    return { preco: Number(servico.preco) || 0, custo: 0, custoConfirmado: true };
+    return { preco: Number(servico.preco) || 0, custo: 0, custoConfirmado: true, quantidade };
   }
   return {
     preco: servico.preco,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     custo: (servico as any).peca_valor ?? servico.custo,
     custoConfirmado: servico.custo_confirmado,
+    quantidade,
   };
 }
 
@@ -413,7 +418,7 @@ async function salvarTecnicosOS(
     nomePorFuncionario.set(f.id, f.nome);
   });
 
-  const tecnicosParaInserir = [];
+  const tecnicosParaInserir: TablesInsert<"os_tecnicos">[] = [];
 
   for (const tec of tecnicos) {
     let comissaoTipo: string | null = null;
@@ -421,10 +426,13 @@ async function salvarTecnicosOS(
     let comissaoCalculada: number | null = null;
 
     // Serviço vinculado a este técnico (preço próprio); se não houver
-    // vínculo (dados antigos ou não informado), cai no total da OS.
-    const servicoVinculado = tec.servico_id
-      ? servicosOS.find(s => s.id === tec.servico_id)
-      : undefined;
+    // vínculo (dados antigos ou não informado), cai no total da OS. Com o mesmo
+    // serviço repetido, a linha (servico_linha_id) decide qual delas.
+    const servicoVinculado = tec.servico_linha_id
+      ? servicosOS.find(s => s.linha_os?.linha_id === tec.servico_linha_id)
+      : tec.servico_id
+        ? servicosOS.find(s => s.id === tec.servico_id)
+        : undefined;
     const baseCalculo = servicoVinculado ? servicoVinculado.preco : totalOS;
 
     let comissaoConfig: ComissaoConfig | undefined;
@@ -509,10 +517,25 @@ async function salvarTecnicosOS(
       comissao_tipo_snapshot: comissaoTipo,
       comissao_valor_snapshot: comissaoValor,
       comissao_calculada_snapshot: comissaoCalculada,
+      // Só linhas com linha_id (serviço repetido/quantidade) levam a coluna;
+      // as demais gravam exatamente como antes.
+      ...(servicoVinculado?.linha_os?.linha_id ? { servico_linha_id: servicoVinculado.linha_os.linha_id } : {}),
     });
   }
 
-  await supabase.from("os_tecnicos").insert(tecnicosParaInserir);
+  const { error: erroInsertTecnicos } = await supabase.from("os_tecnicos").insert(tecnicosParaInserir);
+  // Coluna servico_linha_id ainda não criada no banco (migration da etapa 2
+  // não aplicada): grava sem ela, como antes, em vez de perder os técnicos.
+  if (erroInsertTecnicos && /servico_linha_id/.test(erroInsertTecnicos.message || "")) {
+    console.warn("[os_tecnicos] coluna servico_linha_id ausente — gravando sem ela:", erroInsertTecnicos.message);
+    await supabase.from("os_tecnicos").insert(
+      tecnicosParaInserir.map((tec) => {
+        const semColuna = { ...tec };
+        delete semColuna.servico_linha_id;
+        return semColuna;
+      }),
+    );
+  }
   return resultado;
 }
 
@@ -1005,6 +1028,10 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
 
       // === CRIAR/ATUALIZAR CONTAS A PAGAR PARA PEÇAS NA EDIÇÃO ===
       if (ordem.numero_os) {
+        // Contas já casadas com uma linha nesta edição: com o mesmo serviço/peça
+        // repetido, cada linha fica com uma conta (em vez de a busca achar
+        // várias e criar outra a cada salvamento).
+        const contasPecaJaUsadas = new Set<string>();
         for (const servico of formData.servicos) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const s = servico as any;
@@ -1014,15 +1041,19 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
             const fornecedorNome = s.peca_fornecedor_nome ? ` - ${s.peca_fornecedor_nome}` : '';
             const nomeConta = `Peça: ${pecaNome}${fornecedorNome} (OS ${ordem.numero_os})`;
 
-            // Verificar se já existe conta para esta peça nesta OS
-            const { data: contaPecaExistente } = await supabase
+            // Verificar se já existe conta para esta peça nesta OS (prefere a de
+            // nome idêntico; ainda não usada por outra linha desta edição)
+            const { data: contasPecaMesmoNome } = await supabase
               .from("contas")
-              .select("id")
+              .select("id, nome")
               .eq("user_id", effectiveUserId)
               .eq("os_numero", ordem.numero_os)
               .eq("tipo", "pagar")
               .ilike("nome", `%Peça:%${pecaNome}%`)
-              .maybeSingle();
+              .order("created_at", { ascending: true });
+            const livres = (contasPecaMesmoNome || []).filter(c => !contasPecaJaUsadas.has(c.id));
+            const contaPecaExistente = livres.find(c => c.nome === nomeConta) ?? livres[0];
+            if (contaPecaExistente) contasPecaJaUsadas.add(contaPecaExistente.id);
 
             if (contaPecaExistente) {
               await supabase.from("contas").update({

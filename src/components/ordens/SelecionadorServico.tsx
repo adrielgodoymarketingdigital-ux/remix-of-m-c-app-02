@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, X, Pencil, Check, User, AlertCircle, CheckCircle2, ChevronsUpDown, Package, ChevronDown, ChevronUp, Wrench } from "lucide-react";
+import { Plus, Minus, X, Pencil, Check, User, AlertCircle, CheckCircle2, ChevronsUpDown, Package, ChevronDown, ChevronUp, Wrench } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { DialogNovoServico, ServicoComFornecedor } from "./DialogNovoServico";
@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format } from "date-fns";
 import { custoLinhaServico, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { chaveLinhaForm, definirLinhaForm, nomeLinhaForm, unitariosLinhaForm } from "@/lib/ordemServico/linhaServicoOS";
 
 export interface ServicoComPrecoEditado extends Servico {
   precoOriginal?: number;
@@ -43,9 +44,17 @@ interface SelecionadorServicoProps {
    * mostram um banner pedindo confirmação (resolve a ambiguidade de custo=0).
    */
   comissaoLucroAtiva?: boolean;
+  /**
+   * true: permite adicionar o mesmo serviço mais de uma vez e mostra a
+   * quantidade de cada linha (hoje só admin, ver useQuantidadeServicoOSVisivel).
+   * Ausente/false: seletor como sempre foi.
+   */
+  permitirQuantidade?: boolean;
 }
 
-export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = false }: SelecionadorServicoProps) => {
+const novoLinhaId = () => crypto.randomUUID();
+
+export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = false, permitirQuantidade = false }: SelecionadorServicoProps) => {
   const { servicos, criarServico } = useServicos();
   const { isFuncionario, isDonoLoja, permissoes } = useFuncionarioPermissoes();
   const podeCriarServico = isDonoLoja || (isFuncionario && (permissoes?.recursos?.criar_servico_os ?? false));
@@ -72,39 +81,64 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
     precoEditado: (s as ServicoComPrecoEditado).precoEditado,
   }));
 
+  // Linhas são identificadas por chaveLinhaForm (linha_id, senão o id do
+  // serviço — sem linha_id é a mesma chave de sempre). Linha com linha_os
+  // (quantidade) é editada pelos valores UNITÁRIOS; preco/custo seguem sendo o
+  // total da linha.
+  const comLinhaNova = (s: ServicoComPrecoEditado): ServicoComPrecoEditado =>
+    permitirQuantidade ? definirLinhaForm(s, { quantidade: 1 }, novoLinhaId) : s;
+
   const handleAdicionarServico = (servicoId: string) => {
     const servico = servicos.find(s => s.id === servicoId);
-    if (servico && !servicosValue.find(s => s.id === servico.id)) {
+    if (servico && (permitirQuantidade || !servicosValue.find(s => s.id === servico.id))) {
       // Serviço com peça vinculada: o preço é só a mão de obra e a peça é
       // repassada ao cliente pelo custo (somada ao valor da linha).
       const pecaRepassada = !!(servico.peca_id && servico.peca_nome);
-      onChange([...servicosValue, { ...servico, precoOriginal: servico.preco, peca_repassada: pecaRepassada || undefined }]);
+      const linha = comLinhaNova({ ...servico, precoOriginal: servico.preco, peca_repassada: pecaRepassada || undefined });
+      onChange([...servicosValue, linha]);
       setOpen(false);
       // Auto-expandir seção de peça se o serviço tem peça vinculada
       if (servico.peca_id && servico.peca_nome) {
-        setPecaExpandidaId(servico.id);
+        setPecaExpandidaId(chaveLinhaForm(linha));
       }
     }
   };
 
-  const handleRemoverServico = (id: string) => {
-    onChange(servicosValue.filter(s => s.id !== id));
+  const handleRemoverServico = (chave: string) => {
+    onChange(servicosValue.filter(s => chaveLinhaForm(s) !== chave));
+  };
+
+  const handleQuantidade = (chave: string, quantidade: number) => {
+    onChange(servicosValue.map(s => (chaveLinhaForm(s) === chave ? definirLinhaForm(s, { quantidade }, novoLinhaId) : s)));
   };
 
   const handleIniciarEdicao = (servico: ServicoComPrecoEditado) => {
-    setEditandoId(servico.id);
+    setEditandoId(chaveLinhaForm(servico));
+    if (servico.linha_os) {
+      const { precoUnitario, custoUnitario } = unitariosLinhaForm(servico);
+      setPrecoEditando(precoUnitario.toString());
+      setCustoEditando(custoUnitario.toString());
+      return;
+    }
     setPrecoEditando(servico.preco.toString());
     const custoAtual = servico.peca_valor !== undefined ? servico.peca_valor : servico.custo;
     setCustoEditando(custoAtual !== undefined ? custoAtual.toString() : "");
   };
 
-  const handleConfirmarEdicao = (id: string) => {
+  const handleConfirmarEdicao = (chave: string) => {
     const novoPreco = parseFloat(precoEditando);
     const novoCusto = parseFloat(custoEditando);
     if (!isNaN(novoPreco) && novoPreco >= 0) {
       const custo = !isNaN(novoCusto) && novoCusto >= 0 ? novoCusto : undefined;
       onChange(servicosValue.map(s => {
-        if (s.id !== id) return s;
+        if (chaveLinhaForm(s) !== chave) return s;
+        if (s.linha_os) {
+          // Valores digitados são unitários; informar custo passa a usar peca_valor (como abaixo).
+          const base = custo !== undefined && s.peca_valor === undefined ? { ...s, peca_valor: 0 } : s;
+          const linha = definirLinhaForm(base, { precoUnitario: novoPreco, custoUnitario: custo }, novoLinhaId);
+          const custoLinha = Number(linha.peca_valor ?? linha.custo) || 0;
+          return { ...linha, precoEditado: novoPreco, custo_confirmado: custoLinha > 0 ? true : s.custo_confirmado };
+        }
         const custoFinal = custo !== undefined ? custo : (s.peca_valor !== undefined ? s.peca_valor : s.custo);
         // Informou um custo > 0 → confirma automaticamente o custo do item.
         const custoConfirmado = (custoFinal ?? 0) > 0 ? true : s.custo_confirmado;
@@ -132,14 +166,14 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
   };
 
   // Banner de custo 0 — "Sim, o custo é R$ 0,00 mesmo".
-  const handleConfirmarCustoZero = (id: string) => {
-    onChange(servicosValue.map(s => (s.id === id ? { ...s, custo_confirmado: true } : s)));
+  const handleConfirmarCustoZero = (chave: string) => {
+    onChange(servicosValue.map(s => (chaveLinhaForm(s) === chave ? { ...s, custo_confirmado: true } : s)));
   };
 
   // Banner de custo 0 — "Não, vou informar o valor": abre edição com foco no custo.
   const handleInformarCusto = (servico: ServicoComPrecoEditado) => {
     handleIniciarEdicao(servico);
-    setFocarCustoId(servico.id);
+    setFocarCustoId(chaveLinhaForm(servico));
   };
 
   const handleCriarServico = async (dados: ServicoComFornecedor) => {
@@ -153,14 +187,14 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
     if (novoServico) {
       onChange([
         ...servicosValue, 
-        { 
+        comLinhaNova({ 
           ...novoServico, 
           precoOriginal: novoServico.preco,
           fornecedor_id: dados.fornecedor_id,
           fornecedor_nome: dados.fornecedor_nome,
           status_pagamento: dados.status_pagamento,
           data_pagamento: dados.data_pagamento,
-        }
+        })
       ]);
     }
     setDialogNovoOpen(false);
@@ -182,7 +216,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
       created_at: new Date().toISOString(),
       precoOriginal: preco,
     };
-    onChange([...servicosValue, servicoManual]);
+    onChange([...servicosValue, comLinhaNova(servicoManual)]);
     setManualNome("");
     setManualCusto("");
     setManualPreco("");
@@ -191,8 +225,10 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
 
   const total = servicosValue.reduce((sum, s) => sum + valorLinhaServico(s), 0);
 
-  // Filtrar serviços já adicionados
-  const servicosDisponiveis = servicos.filter(s => !servicosValue.find(sv => sv.id === s.id));
+  // Filtrar serviços já adicionados (com quantidade liberada, o mesmo serviço pode entrar de novo)
+  const servicosDisponiveis = permitirQuantidade
+    ? servicos
+    : servicos.filter(s => !servicosValue.find(sv => sv.id === s.id));
 
   return (
     <div className="space-y-4">
@@ -325,12 +361,15 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
         <Card className="p-4">
           <Label className="mb-3 block">Serviços Selecionados</Label>
           <div className="space-y-2">
-            {servicosValue.map((servico) => (
-              <div key={servico.id} className="p-3 bg-muted rounded-lg space-y-2">
+            {servicosValue.map((servico) => {
+              const chave = chaveLinhaForm(servico);
+              const { quantidade, precoUnitario, custoUnitario } = unitariosLinhaForm(servico);
+              return (
+              <div key={chave} className="p-3 bg-muted rounded-lg space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium truncate">{servico.nome}</p>
+                      <p className="font-medium truncate">{nomeLinhaForm(servico)}</p>
                       {servico.id.startsWith('manual_') && (
                         <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-300">
                           Avulso
@@ -377,13 +416,13 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                       <Badge 
                         variant="outline" 
                         className="text-xs flex items-center gap-1 cursor-pointer hover:bg-accent"
-                        onClick={() => setPecaExpandidaId(pecaExpandidaId === servico.id ? null : servico.id)}
+                        onClick={() => setPecaExpandidaId(pecaExpandidaId === chave ? null : chave)}
                       >
                         <Package className="h-3 w-3" />
                         {servico.peca_fornecedor_nome 
                           ? `Fornecedor: ${servico.peca_fornecedor_nome}` 
                           : 'Vincular Fornecedor/Peça'}
-                        {pecaExpandidaId === servico.id ? (
+                        {pecaExpandidaId === chave ? (
                           <ChevronUp className="h-3 w-3 ml-1" />
                         ) : (
                           <ChevronDown className="h-3 w-3 ml-1" />
@@ -413,7 +452,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                       )}
                     </div>
 
-                    {editandoId === servico.id ? (
+                    {editandoId === chave ? (
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">Custo R$</span>
@@ -425,9 +464,9 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                             value={custoEditando}
                             onChange={(e) => setCustoEditando(e.target.value)}
                             className="h-8 w-24"
-                            autoFocus={focarCustoId === servico.id}
+                            autoFocus={focarCustoId === chave}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') { e.preventDefault(); handleConfirmarEdicao(servico.id); }
+                              if (e.key === 'Enter') { e.preventDefault(); handleConfirmarEdicao(chave); }
                               else if (e.key === 'Escape') { handleCancelarEdicao(); }
                             }}
                           />
@@ -441,9 +480,9 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                             value={precoEditando}
                             onChange={(e) => setPrecoEditando(e.target.value)}
                             className="h-8 w-24"
-                            autoFocus={focarCustoId !== servico.id}
+                            autoFocus={focarCustoId !== chave}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') { e.preventDefault(); handleConfirmarEdicao(servico.id); }
+                              if (e.key === 'Enter') { e.preventDefault(); handleConfirmarEdicao(chave); }
                               else if (e.key === 'Escape') { handleCancelarEdicao(); }
                             }}
                           />
@@ -453,7 +492,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
-                          onClick={() => handleConfirmarEdicao(servico.id)}
+                          onClick={() => handleConfirmarEdicao(chave)}
                         >
                           <Check className="w-4 h-4" />
                         </Button>
@@ -471,9 +510,12 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm text-muted-foreground">
                           {servico.peca_repassada && <span className="text-xs">Mão de obra </span>}
+                          {quantidade > 1 && (
+                            <span className="text-xs">{quantidade} × <ValorMonetario valor={precoUnitario} tipo="preco" /> = </span>
+                          )}
                           <ValorMonetario valor={servico.preco} tipo="preco" />
                         </p>
-                        {servico.precoEditado !== undefined && servico.precoOriginal !== servico.preco && (
+                        {servico.precoEditado !== undefined && servico.precoOriginal !== (servico.linha_os ? precoUnitario : servico.preco) && (
                           <span className="text-xs text-muted-foreground line-through">
                             <ValorMonetario valor={servico.precoOriginal || 0} tipo="preco" />
                           </span>
@@ -488,8 +530,32 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                       </div>
                     )}
                   </div>
-                  {editandoId !== servico.id && (
+                  {editandoId !== chave && (
                     <div className="flex items-center gap-1">
+                      {permitirQuantidade && (
+                        <div className="flex items-center gap-0.5 mr-1 rounded-md border bg-background">
+                          <button
+                            type="button"
+                            onClick={() => handleQuantidade(chave, quantidade - 1)}
+                            disabled={quantidade <= 1}
+                            className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                            title="Diminuir quantidade"
+                            aria-label="Diminuir quantidade"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="min-w-6 text-center text-sm tabular-nums" aria-label="Quantidade">{quantidade}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleQuantidade(chave, quantidade + 1)}
+                            className="p-1 text-muted-foreground hover:text-foreground"
+                            title="Aumentar quantidade"
+                            aria-label="Aumentar quantidade"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleIniciarEdicao(servico)}
@@ -500,7 +566,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleRemoverServico(servico.id)}
+                        onClick={() => handleRemoverServico(chave)}
                         className="text-destructive hover:text-destructive/80 p-1"
                         title="Remover serviço"
                       >
@@ -511,7 +577,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                 </div>
 
                 {/* Seção expandida para configurar fornecedor/pagamento da peça */}
-                {pecaExpandidaId === servico.id && (
+                {pecaExpandidaId === chave && (
                   <div className="mt-2 p-3 bg-background rounded-md border space-y-3">
                     <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                       <Package className="h-3 w-3" />
@@ -526,7 +592,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                         onValueChange={(value) => {
                           const forn = fornecedoresAtivos.find(f => f.id === value);
                           onChange(servicosValue.map(s => 
-                            s.id === servico.id 
+                            chaveLinhaForm(s) === chave 
                               ? { ...s, peca_fornecedor_id: value === "none" ? undefined : value, peca_fornecedor_nome: forn?.nome }
                               : s
                           ));
@@ -548,7 +614,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
 
                     {/* Valor da Peça */}
                     <div className="space-y-1">
-                      <Label className="text-xs">Valor da Peça (custo)</Label>
+                      <Label className="text-xs">Valor da Peça (custo{quantidade > 1 ? ", por unidade" : ""})</Label>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">R$</span>
                         <Input
@@ -557,14 +623,17 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                           min="0"
                           placeholder="0,00"
                           className="h-8 text-xs w-32"
-                          value={servico.peca_valor ?? servico.custo ?? ''}
+                          value={servico.linha_os ? custoUnitario : (servico.peca_valor ?? servico.custo ?? '')}
                           onChange={(e) => {
                             const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
-                            onChange(servicosValue.map(s => 
-                              s.id === servico.id 
-                                ? { ...s, peca_valor: val }
-                                : s
-                            ));
+                            onChange(servicosValue.map(s => {
+                              if (chaveLinhaForm(s) !== chave) return s;
+                              // Linha com quantidade: o valor digitado é por unidade.
+                              if (s.linha_os && val !== undefined && !isNaN(val)) {
+                                return definirLinhaForm({ ...s, peca_valor: s.peca_valor ?? 0 }, { custoUnitario: val }, novoLinhaId);
+                              }
+                              return { ...s, peca_valor: val };
+                            }));
                           }}
                         />
                       </div>
@@ -577,7 +646,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                         value={servico.peca_status_pagamento || 'pago'}
                         onValueChange={(value) => {
                           onChange(servicosValue.map(s => 
-                            s.id === servico.id 
+                            chaveLinhaForm(s) === chave 
                               ? { 
                                   ...s, 
                                   peca_status_pagamento: value as 'pago' | 'a_pagar',
@@ -589,9 +658,9 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                         className="flex gap-4"
                       >
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="pago" id={`peca-pago-${servico.id}`} />
+                          <RadioGroupItem value="pago" id={`peca-pago-${chave}`} />
                           <Label 
-                            htmlFor={`peca-pago-${servico.id}`} 
+                            htmlFor={`peca-pago-${chave}`} 
                             className="flex items-center gap-1 cursor-pointer text-xs text-green-700 dark:text-green-400"
                           >
                             <CheckCircle2 className="h-3 w-3" />
@@ -599,9 +668,9 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                           </Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="a_pagar" id={`peca-a_pagar-${servico.id}`} />
+                          <RadioGroupItem value="a_pagar" id={`peca-a_pagar-${chave}`} />
                           <Label 
-                            htmlFor={`peca-a_pagar-${servico.id}`} 
+                            htmlFor={`peca-a_pagar-${chave}`} 
                             className="flex items-center gap-1 cursor-pointer text-xs text-orange-700 dark:text-orange-400"
                           >
                             <AlertCircle className="h-3 w-3" />
@@ -622,7 +691,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                         value={servico.peca_data_pagamento || format(new Date(), 'yyyy-MM-dd')}
                         onChange={(e) => {
                           onChange(servicosValue.map(s => 
-                            s.id === servico.id 
+                            chaveLinhaForm(s) === chave 
                               ? { ...s, peca_data_pagamento: e.target.value }
                               : s
                           ));
@@ -649,7 +718,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                     responsável tem "Comissão sobre Lucro" e o item ainda não
                     teve o custo confirmado. Resolve a ambiguidade de custo=0. */}
                 {comissaoLucroAtiva
-                  && editandoId !== servico.id
+                  && editandoId !== chave
                   && (Number(servico.peca_valor ?? servico.custo ?? 0) === 0)
                   && servico.custo_confirmado !== true && (
                   <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
@@ -666,7 +735,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                         size="sm"
                         variant="outline"
                         className="h-8 text-xs"
-                        onClick={() => handleConfirmarCustoZero(servico.id)}
+                        onClick={() => handleConfirmarCustoZero(chave)}
                       >
                         <Check className="w-3.5 h-3.5 mr-1" />
                         Sim, o custo é R$ 0,00 mesmo
@@ -684,7 +753,8 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
           <div className="mt-4 pt-4 border-t">
             <div className="flex justify-between items-center">

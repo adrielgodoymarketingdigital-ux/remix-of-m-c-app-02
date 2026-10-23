@@ -3508,6 +3508,7 @@ export type Database = {
           os_id: string
           preco_servico_snapshot: number | null
           servico_id: string | null
+          servico_linha_id: string | null
           servico_nome_snapshot: string | null
         }
         Insert: {
@@ -3521,6 +3522,7 @@ export type Database = {
           os_id: string
           preco_servico_snapshot?: number | null
           servico_id?: string | null
+          servico_linha_id?: string | null
           servico_nome_snapshot?: string | null
         }
         Update: {
@@ -3534,6 +3536,7 @@ export type Database = {
           os_id?: string
           preco_servico_snapshot?: number | null
           servico_id?: string | null
+          servico_linha_id?: string | null
           servico_nome_snapshot?: string | null
         }
         Relationships: [
