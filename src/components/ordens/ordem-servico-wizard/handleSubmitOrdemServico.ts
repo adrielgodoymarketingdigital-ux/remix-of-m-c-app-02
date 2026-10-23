@@ -627,6 +627,8 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           peca_data_pagamento: (s as any).peca_data_pagamento || undefined,
           peca_valor: pecaValor !== undefined ? pecaValor : undefined,
+          // Só o que veio da OS salva (linha_id, quantidade, ...); OS antiga não tem nada aqui.
+          ...s.linha_os,
         };
       }),
       produtos_utilizados: formData.produtos.map(p => ({

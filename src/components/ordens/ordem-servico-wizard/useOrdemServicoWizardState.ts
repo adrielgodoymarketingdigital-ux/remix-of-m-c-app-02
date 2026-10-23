@@ -8,6 +8,7 @@ import { AvariasOS } from "@/types/ordem-servico";
 import { aplicarMascaraCPF, aplicarMascaraCNPJ, removerMascara } from "@/lib/mascaras";
 import { buscarCEP } from "@/lib/buscarCEP";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
+import { extrairCamposNovosLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import { FormData, TecnicoOS, EtapaWizard } from "./tipos";
 
 const formDataVazio: FormData = {
@@ -278,6 +279,8 @@ export function useOrdemServicoWizardState({
         // Preserva a regra com que a linha foi lançada: OS antigas (sem a flag)
         // continuam com o preço cheio; reabrir não soma a peça ao valor.
         peca_repassada: s.peca_repassada === true ? true : undefined,
+        // linha_id/quantidade/... da linha salva: devolvidos intactos ao regravar.
+        linha_os: extrairCamposNovosLinhaServico(s),
       }));
 
       // Recuperar produtos salvos no campo avarias

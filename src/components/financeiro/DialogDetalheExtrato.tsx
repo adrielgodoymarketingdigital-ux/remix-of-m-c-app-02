@@ -6,6 +6,7 @@ import { formatDataVenda, formatPhone } from "@/lib/formatters";
 import { nomeFormaPagamento } from "@/lib/formaPagamento";
 import { getNomeItem } from "@/lib/vendas/itensVenda";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { chaveLinhaServico, nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import type { Venda } from "@/types/venda";
 import type { EventoExtrato } from "@/hooks/useExtratoFinanceiro";
 import { OrdemDetalheExtrato, TrocaDetalheExtrato, useDetalheExtrato } from "@/hooks/useDetalheExtrato";
@@ -153,7 +154,7 @@ function DetalheOrdem({ ordem }: { ordem: OrdemDetalheExtrato }) {
       <Secao titulo="Serviços e peças">
         {!temItens && <p className="text-sm text-muted-foreground">Nenhum item detalhado nesta OS.</p>}
         {servicos.map((s, i) => (
-          <LinhaValor key={`s-${s.id}-${i}`} rotulo={s.nome} valor={valorLinhaServico(s)} />
+          <LinhaValor key={`s-${chaveLinhaServico(s, i)}`} rotulo={nomeLinhaServico(s)} valor={valorLinhaServico(s)} />
         ))}
         {pecas.map((p, i) => (
           <LinhaValor

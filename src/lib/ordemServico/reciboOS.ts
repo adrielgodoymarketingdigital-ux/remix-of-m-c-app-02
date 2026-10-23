@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { toBrasilia } from "@/lib/dataBrasilia";
 import type { AvariasOS, ServicoRealizado, ProdutoUtilizado } from "@/types/ordem-servico";
+import { nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import type { RecebimentoOS } from "@/lib/ordemServico/calcularRecebimentoOS";
 import { adicionarImagemContida } from "@/lib/assinaturaLoja";
 
@@ -61,7 +62,7 @@ export function montarDadosReciboOS(
   // Mesmo fallback da impressão da OS: servicos_realizados (novo) ou servicos_inline (onboarding)
   const servicos: ServicoRealizado[] = avarias?.servicos_realizados ?? [];
   const nomesServicos = servicos.length > 0
-    ? servicos.map((s) => s.nome)
+    ? servicos.map(nomeLinhaServico)
     : (avarias?.servicos_inline ?? []).map((s) => s.nome);
   const produtos: ProdutoUtilizado[] = avarias?.produtos_utilizados ?? [];
   const nomesProdutos = produtos.map((p) => (p.quantidade > 1 ? `${p.quantidade}x ${p.nome}` : p.nome));

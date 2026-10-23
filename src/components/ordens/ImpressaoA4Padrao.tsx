@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { chaveLinhaServico, nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import { htmlGradeFotos, type FotoImpressao } from "@/lib/os/fotosImpressaoOS";
 
 interface Props {
@@ -183,9 +184,9 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
             {servicosRealizados.length > 0 && (
               <div className="impressao-itens-lista">
                 <div className="impressao-itens-titulo">Serviços:</div>
-                {servicosRealizados.map((servico) => (
-                  <div key={servico.id} className="impressao-item-linha">
-                    <span className="impressao-item-nome">• {servico.nome}</span>
+                {servicosRealizados.map((servico, i) => (
+                  <div key={chaveLinhaServico(servico, i)} className="impressao-item-linha">
+                    <span className="impressao-item-nome">• {nomeLinhaServico(servico)}</span>
                     <span className="impressao-item-valor">{formatCurrency(valorLinhaServico(servico))}</span>
                   </div>
                 ))}

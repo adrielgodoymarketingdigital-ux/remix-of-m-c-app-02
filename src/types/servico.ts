@@ -1,3 +1,5 @@
+import type { CamposNovosLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+
 export interface Servico {
   id: string;
   codigo?: string;
@@ -24,6 +26,12 @@ export interface Servico {
    * peça; lucro = mão de obra). Ver lib/ordemServico/totaisPecasOS.
    */
   peca_repassada?: boolean;
+  /**
+   * Na OS: campos novos da linha salva (linha_id, quantidade, ...) guardados
+   * à parte para não se confundir com `quantidade` do catálogo. O assistente só
+   * os devolve ao regravar; ausente em toda OS antiga.
+   */
+  linha_os?: CamposNovosLinhaServico;
   // Colunas fiscais (etapa 2A), lidas pelo select '*'.
   codigo_lc116?: string | null;
   codigo_municipal?: string | null;

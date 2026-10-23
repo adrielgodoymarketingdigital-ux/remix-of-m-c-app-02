@@ -7,6 +7,7 @@ import { decryptSenhaDesbloqueio } from './password-encryption';
 import { obterTermoGarantia, LAYOUT_PADRAO } from './termo-garantia-utils';
 import { adicionarImagemContida, assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import { TITULO_FOTOS, encaixarNaCaixa, formatoImagemDataUrl, geometriaGradeFotosPDF, textoExcedentes, type FotoImpressao } from './os/fotosImpressaoOS';
 
 // Formatar data/hora Brasil
@@ -675,7 +676,7 @@ export async function gerarOrdemServicoPDF(
       
       servicosRealizados.forEach((servico: any) => {
         verificarNovaPagina(8);
-        doc.text(`• ${servico.nome}`, margemEsquerda + 3, yPos);
+        doc.text(`• ${nomeLinhaServico(servico)}`, margemEsquerda + 3, yPos);
         doc.text(formatarMoeda(valorLinhaServico(servico)), margemDireita, yPos, { align: 'right' });
         yPos += 5;
       });
@@ -1423,7 +1424,7 @@ export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: 
       if (servicosRealizados.length > 0) {
         tituloSecao('Serviços');
         servicosRealizados.forEach((servico: any) => {
-          linhaComValor(servico.nome, formatarMoeda(valorLinhaServico(servico)));
+          linhaComValor(nomeLinhaServico(servico), formatarMoeda(valorLinhaServico(servico)));
         });
         y += 2;
       }

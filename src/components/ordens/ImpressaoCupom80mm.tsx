@@ -11,6 +11,7 @@ import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { obterTermoGarantia } from "@/lib/termo-garantia-utils";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { chaveLinhaServico, nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 
 const CONFIG_80MM_PADRAO: Layout80mmConfig = {
   mostrar_logo: true,
@@ -136,9 +137,9 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
           {servicosRealizados.length > 0 && (
             <>
               <div className="cupom-section-title">SERVIÇOS</div>
-              {servicosRealizados.map((s) => (
-                <div key={s.id} className="cupom-line-between">
-                  <span>{s.nome}</span>
+              {servicosRealizados.map((s, i) => (
+                <div key={chaveLinhaServico(s, i)} className="cupom-line-between">
+                  <span>{nomeLinhaServico(s)}</span>
                   <span>{formatCurrency(valorLinhaServico(s))}</span>
                 </div>
               ))}

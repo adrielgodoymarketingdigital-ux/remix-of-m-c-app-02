@@ -56,6 +56,16 @@ export interface ServicoRealizado {
    * em que `preco` já é o valor cheio. Ver lib/ordemServico/totaisPecasOS.
    */
   peca_repassada?: boolean;
+  // Serviço repetido / quantidade (ver lib/ordemServico/linhaServicoOS). Todos
+  // opcionais: ausentes = quantidade 1. preco/custo/lucro seguem sendo o TOTAL da linha.
+  /** Id único da linha — o mesmo serviço (id) pode aparecer em mais de uma linha. */
+  linha_id?: string;
+  /** Quantidade da linha (inteiro ≥ 1). Ausente = 1. */
+  quantidade?: number;
+  preco_unitario?: number;
+  custo_unitario?: number;
+  /** Dispositivo adicional a que a linha se refere. Ausente = OS inteira / dispositivo principal. */
+  dispositivo_ref?: string;
 }
 
 export type TipoAssinatura = 'digital' | 'fisica';
