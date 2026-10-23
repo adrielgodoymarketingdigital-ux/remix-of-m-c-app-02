@@ -51,6 +51,8 @@ const SEM_ADICIONAIS: DispositivoAdicionalOS[] = [];
 export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicionais = SEM_ADICIONAIS }: ImpressaoCupom80mmProps) {
   const c: Layout80mmConfig = { ...CONFIG_80MM_PADRAO, ...config80mm };
   const temAdicionais = adicionais.length > 0;
+  // Com adicionais, as seções do 1º aparelho (que vêm depois dos adicionais) dizem de quem são.
+  const doDispositivo1 = (titulo: string) => (temAdicionais ? `${titulo} — ${tituloDispositivo(1).toUpperCase()}` : titulo);
 
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistEntrada = avariasData?.checklist?.entrada || {};
@@ -139,7 +141,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
       {/* Defeito */}
       {c.mostrar_defeito && (
         <div className="cupom-section cupom-border-bottom">
-          <div className="cupom-section-title">{temAdicionais ? `DEFEITO — ${tituloDispositivo(1).toUpperCase()}` : "DEFEITO"}</div>
+          <div className="cupom-section-title">{doDispositivo1("DEFEITO")}</div>
           <div>{ordem.defeito_relatado}</div>
         </div>
       )}
@@ -179,7 +181,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
       {/* Sem Teste */}
       {c.mostrar_checklist && avariasData?.checklist?.sem_teste && (
         <div className="cupom-section cupom-border-bottom">
-          <div className="cupom-section-title">CHECKLIST ENTRADA</div>
+          <div className="cupom-section-title">{doDispositivo1("CHECKLIST ENTRADA")}</div>
           <div style={{ fontSize: "7pt", fontStyle: "italic", padding: "2px 0" }}>
             ⚠️ Sem teste: aparelho chegou desligado.
           </div>
@@ -190,7 +192,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
       {c.mostrar_checklist && Object.keys(checklistEntrada).length > 0 && (
         <div className="cupom-section cupom-border-bottom">
           {!avariasData?.checklist?.sem_teste && (
-            <div className="cupom-section-title">CHECKLIST</div>
+            <div className="cupom-section-title">{doDispositivo1("CHECKLIST")}</div>
           )}
           {Object.entries(checklistEntrada).map(([item, status]) => {
             const Icon = checklistIcons[item] || Smartphone;
@@ -218,7 +220,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
       {/* Checklist de Saída */}
       {c.mostrar_checklist && Object.keys(checklistSaida).length > 0 && (
         <div className="cupom-section cupom-border-bottom">
-          <div className="cupom-section-title">CHECKLIST SAÍDA</div>
+          <div className="cupom-section-title">{doDispositivo1("CHECKLIST SAÍDA")}</div>
           {Object.entries(checklistSaida).map(([item, status]) => {
             const Icon = checklistIcons[item] || Smartphone;
             return (
@@ -245,7 +247,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
       {/* Avarias */}
       {c.mostrar_avarias && avariasVisuais.length > 0 && (
         <div className="cupom-section cupom-border-bottom">
-          <div className="cupom-section-title">AVARIAS</div>
+          <div className="cupom-section-title">{doDispositivo1("AVARIAS")}</div>
           <div className="cupom-center">
             {avariasVisuais.filter((a) => a.lado === "frente").length > 0 && (
               <div style={{ marginBottom: "2mm" }}>
@@ -278,7 +280,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
       {/* Senha */}
       {c.mostrar_senha && senhaDesbloqueio && (
         <div className="cupom-section cupom-border-bottom">
-          <div className="cupom-section-title">SENHA</div>
+          <div className="cupom-section-title">{doDispositivo1("SENHA")}</div>
           {senhaDesbloqueio.nao_informada ? (
             <div>Cliente não quis passar a senha</div>
           ) : senhaDesbloqueio.tipo === "padrao" && senhaDesbloqueio.padrao ? (

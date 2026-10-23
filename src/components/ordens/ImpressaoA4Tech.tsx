@@ -32,6 +32,8 @@ const SEM_ADICIONAIS: DispositivoAdicionalOS[] = [];
 
 export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGarantia, fotosImpressao, fotosExcedentes, adicionais = SEM_ADICIONAIS }: Props) {
   const temAdicionais = adicionais.length > 0;
+  // Com adicionais, os blocos do 1º aparelho (que vêm depois dos adicionais) dizem de quem são.
+  const doDispositivo1 = (titulo: string) => (temAdicionais ? `${titulo} — ${tituloDispositivo(1)}` : titulo);
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistEntrada = avariasData?.checklist?.entrada || {};
   const checklistSaida = avariasData?.checklist?.saida || {};
@@ -154,7 +156,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
         <div className="impressao-block impressao-defeito-block">
           <div className="impressao-block-header">
             <FileText className="impressao-icon" />
-            <h2 className="impressao-block-title">{temAdicionais ? `Defeito Relatado — ${tituloDispositivo(1)}` : "Defeito Relatado"}</h2>
+            <h2 className="impressao-block-title">{doDispositivo1("Defeito Relatado")}</h2>
           </div>
           <div className="impressao-block-content">
             <p className="impressao-defeito">{ordem.defeito_relatado}</p>
@@ -258,7 +260,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
           <div className="impressao-block">
             <div className="impressao-block-header">
               <Lock className="impressao-icon" />
-              <h2 className="impressao-block-title">Senha de Desbloqueio</h2>
+              <h2 className="impressao-block-title">{doDispositivo1("Senha de Desbloqueio")}</h2>
             </div>
             <div className="impressao-block-content impressao-senha-content">
               <div className="impressao-senha-info">
@@ -300,7 +302,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
           <div className="impressao-block">
             <div className="impressao-block-header">
               <CheckCircle2 className="impressao-icon" />
-              <h2 className="impressao-block-title">Checklist de Entrada</h2>
+              <h2 className="impressao-block-title">{doDispositivo1("Checklist de Entrada")}</h2>
             </div>
             <div className="impressao-block-content">
               <p style={{ fontSize: '9pt', fontStyle: 'italic', margin: '4px 0' }}>
@@ -315,7 +317,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
             {!avariasData?.checklist?.sem_teste && (
               <div className="impressao-block-header">
                 <CheckCircle2 className="impressao-icon" />
-                <h2 className="impressao-block-title">Checklist de Entrada</h2>
+                <h2 className="impressao-block-title">{doDispositivo1("Checklist de Entrada")}</h2>
               </div>
             )}
             <div className="impressao-block-content">
@@ -350,7 +352,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
           <div className="impressao-block">
             <div className="impressao-block-header">
               <CheckCircle2 className="impressao-icon" />
-              <h2 className="impressao-block-title">Checklist de Saída</h2>
+              <h2 className="impressao-block-title">{doDispositivo1("Checklist de Saída")}</h2>
             </div>
             <div className="impressao-block-content">
               <div className="impressao-checklist">
@@ -384,7 +386,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
           <div className="impressao-block">
             <div className="impressao-block-header">
               <Smartphone className="impressao-icon" />
-              <h2 className="impressao-block-title">Avarias Visuais</h2>
+              <h2 className="impressao-block-title">{doDispositivo1("Avarias Visuais")}</h2>
             </div>
             <div className="impressao-block-content">
               <div className="impressao-avarias-container">

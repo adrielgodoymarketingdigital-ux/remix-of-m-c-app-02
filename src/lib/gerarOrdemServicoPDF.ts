@@ -104,7 +104,7 @@ function textoSenhaAdicional(a: DispositivoAdicionalOS): string | null {
   const senha = decryptSenhaDesbloqueio(a.senha_desbloqueio ?? undefined);
   if (!senha) return null;
   if (senha.nao_informada) return 'Senha: Cliente não quis passar a senha';
-  if (senha.tipo === 'padrao' && senha.padrao) return `Senha: Padrão Android | Sequência: ${senha.padrao.join(' → ')}`;
+  if (senha.tipo === 'padrao' && senha.padrao) return `Senha: Padrão Android | Sequência: ${senha.padrao.join(' - ')}`; // '→' não existe na fonte do PDF
   return `Senha: ${senha.tipo === 'numero' ? 'PIN Numérico' : 'Senha Texto'} | ${senha.valor || 'N/A'}`;
 }
 
@@ -368,48 +368,6 @@ export async function gerarOrdemServicoPDF(
   yPos += 4;
   doc.line(margemEsquerda, yPos, margemDireita, yPos);
   yPos += 8;
-
-  // ===== DISPOSITIVOS ADICIONAIS (mesmas regras do dispositivo 1) =====
-  adicionais.forEach((a, i) => {
-    verificarNovaPagina(35);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text(tituloDispositivo(numeroAdicional(i)).toUpperCase(), margemEsquerda, yPos);
-    yPos += 6;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text(`Tipo: ${a.dispositivo_tipo}`, margemEsquerda, yPos);
-    doc.text(`Marca: ${a.dispositivo_marca}`, 80, yPos);
-    doc.text(`Modelo: ${a.dispositivo_modelo}`, 130, yPos);
-    yPos += 5;
-    if (a.dispositivo_cor || a.dispositivo_imei) {
-      if (a.dispositivo_cor) doc.text(`Cor: ${a.dispositivo_cor}`, margemEsquerda, yPos);
-      if (a.dispositivo_imei) doc.text(`IMEI: ${a.dispositivo_imei}`, 80, yPos);
-      yPos += 5;
-    }
-    const textos = [
-      a.dispositivo_numero_serie ? `Nº Série: ${a.dispositivo_numero_serie}` : null,
-      textoSenhaAdicional(a),
-      a.defeito_relatado ? `Defeito: ${a.defeito_relatado}` : null,
-      a.checklist?.sem_teste && layoutConfig.mostrar_checklist ? 'Sem teste: aparelho chegou desligado.' : null,
-      layoutConfig.mostrar_checklist ? textoChecklistAdicional(a) : null,
-      layoutConfig.mostrar_avarias ? textoAvariasAdicional(a) : null,
-      a.observacoes ? `Obs.: ${a.observacoes}` : null,
-    ];
-    textos.forEach((t) => {
-      if (!t) return;
-      doc.splitTextToSize(t, larguraUtil).forEach((linha: string) => {
-        verificarNovaPagina(6);
-        doc.text(linha, margemEsquerda, yPos);
-        yPos += 5;
-      });
-    });
-
-    yPos += 4;
-    doc.line(margemEsquerda, yPos, margemDireita, yPos);
-    yPos += 8;
-  });
 
   // ===== SEM TESTE - ENTRADA =====
   const semTeste = avariasData?.checklist?.sem_teste === true;
@@ -713,6 +671,48 @@ export async function gerarOrdemServicoPDF(
     doc.line(margemEsquerda, yPos, margemDireita, yPos);
     yPos += 8;
   }
+
+  // ===== DISPOSITIVOS ADICIONAIS (depois de tudo do dispositivo 1; mesmas regras) =====
+  adicionais.forEach((a, i) => {
+    verificarNovaPagina(35);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(tituloDispositivo(numeroAdicional(i)).toUpperCase(), margemEsquerda, yPos);
+    yPos += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Tipo: ${a.dispositivo_tipo}`, margemEsquerda, yPos);
+    doc.text(`Marca: ${a.dispositivo_marca}`, 80, yPos);
+    doc.text(`Modelo: ${a.dispositivo_modelo}`, 130, yPos);
+    yPos += 5;
+    if (a.dispositivo_cor || a.dispositivo_imei) {
+      if (a.dispositivo_cor) doc.text(`Cor: ${a.dispositivo_cor}`, margemEsquerda, yPos);
+      if (a.dispositivo_imei) doc.text(`IMEI: ${a.dispositivo_imei}`, 80, yPos);
+      yPos += 5;
+    }
+    const textos = [
+      a.dispositivo_numero_serie ? `Nº Série: ${a.dispositivo_numero_serie}` : null,
+      textoSenhaAdicional(a),
+      a.defeito_relatado ? `Defeito: ${a.defeito_relatado}` : null,
+      a.checklist?.sem_teste && layoutConfig.mostrar_checklist ? 'Sem teste: aparelho chegou desligado.' : null,
+      layoutConfig.mostrar_checklist ? textoChecklistAdicional(a) : null,
+      layoutConfig.mostrar_avarias ? textoAvariasAdicional(a) : null,
+      a.observacoes ? `Obs.: ${a.observacoes}` : null,
+    ];
+    textos.forEach((t) => {
+      if (!t) return;
+      doc.splitTextToSize(t, larguraUtil).forEach((linha: string) => {
+        verificarNovaPagina(6);
+        doc.text(linha, margemEsquerda, yPos);
+        yPos += 5;
+      });
+    });
+
+    yPos += 4;
+    doc.line(margemEsquerda, yPos, margemDireita, yPos);
+    yPos += 8;
+  });
 
   // ===== SERVIÇOS E PRODUTOS =====
   // Suportar ambos os formatos: servicos_realizados (novo) e servicos_inline (onboarding)
@@ -1368,28 +1368,6 @@ export async function gerarOrdemServicoCupom80mmPDF(
       y += 2;
     }
 
-    // ===== DISPOSITIVOS ADICIONAIS (mesmas chaves do cupom do dispositivo 1) =====
-    adicionais.forEach((a, i) => {
-      const textos = [
-        ...(mostrar('mostrar_dados_dispositivo', true)
-          ? [
-              `${a.dispositivo_tipo} ${a.dispositivo_marca} ${a.dispositivo_modelo}`.trim(),
-              a.dispositivo_cor ? `Cor: ${a.dispositivo_cor}` : null,
-              imeiOuSerie(a) ? `IMEI/Série: ${imeiOuSerie(a)}` : null,
-            ]
-          : []),
-        mostrar('mostrar_defeito', true) && a.defeito_relatado ? `Defeito: ${a.defeito_relatado}` : null,
-        mostrar('mostrar_checklist', false) && a.checklist?.sem_teste ? 'Sem teste: aparelho chegou desligado.' : null,
-        mostrar('mostrar_checklist', false) ? textoChecklistAdicional(a) : null,
-        mostrar('mostrar_avarias', false) ? textoAvariasAdicional(a) : null,
-        mostrar('mostrar_senha', true) ? textoSenhaAdicional(a) : null,
-      ].filter((t): t is string => !!t);
-      if (textos.length === 0) return;
-      tituloSecao(tituloDispositivo(numeroAdicional(i)));
-      textos.forEach((t) => linhaTexto(t));
-      y += 2;
-    });
-
     // ===== CHECKLIST (texto — sem os ícones/duas colunas da tela) =====
     if (mostrar('mostrar_checklist', false)) {
       const semTeste = avariasData?.checklist?.sem_teste === true;
@@ -1508,6 +1486,28 @@ export async function gerarOrdemServicoCupom80mmPDF(
       }
       y += 2;
     }
+
+    // ===== DISPOSITIVOS ADICIONAIS (depois de tudo do dispositivo 1; mesmas chaves do cupom) =====
+    adicionais.forEach((a, i) => {
+      const textos = [
+        ...(mostrar('mostrar_dados_dispositivo', true)
+          ? [
+              `${a.dispositivo_tipo} ${a.dispositivo_marca} ${a.dispositivo_modelo}`.trim(),
+              a.dispositivo_cor ? `Cor: ${a.dispositivo_cor}` : null,
+              imeiOuSerie(a) ? `IMEI/Série: ${imeiOuSerie(a)}` : null,
+            ]
+          : []),
+        mostrar('mostrar_defeito', true) && a.defeito_relatado ? `Defeito: ${a.defeito_relatado}` : null,
+        mostrar('mostrar_checklist', false) && a.checklist?.sem_teste ? 'Sem teste: aparelho chegou desligado.' : null,
+        mostrar('mostrar_checklist', false) ? textoChecklistAdicional(a) : null,
+        mostrar('mostrar_avarias', false) ? textoAvariasAdicional(a) : null,
+        mostrar('mostrar_senha', true) ? textoSenhaAdicional(a) : null,
+      ].filter((t): t is string => !!t);
+      if (textos.length === 0) return;
+      tituloSecao(tituloDispositivo(numeroAdicional(i)));
+      textos.forEach((t) => linhaTexto(t));
+      y += 2;
+    });
 
     // ===== SERVIÇOS E PRODUTOS =====
     let servicosRealizados = avariasData?.servicos_realizados || [];
