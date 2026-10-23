@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
+import { SeloDispositivosAdicionais } from "./SeloDispositivosAdicionais";
 import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { OrdemServico } from "@/hooks/useOrdensServico";
@@ -228,6 +229,7 @@ export const TabelaOrdensServico = ({
                     <p className="text-xs text-muted-foreground truncate">
                       {isAvulso ? "Serviço Avulso" : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
                     </p>
+                    {!isAvulso && <SeloDispositivosAdicionais osId={ordem.id} />}
                     {!isAvulso && colunasAtivas.includes("defeito") && ordem.defeito_relatado && (
                       <p className="text-xs text-muted-foreground/70 truncate italic mt-0.5">
                         {ordem.defeito_relatado}
@@ -435,6 +437,7 @@ export const TabelaOrdensServico = ({
                         {isAvulso ? ordem.defeito_relatado : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
                       </span>
                       <span className="text-[10px] text-muted-foreground/60 truncate">{ordem.dispositivo_tipo}</span>
+                      {!isAvulso && <SeloDispositivosAdicionais osId={ordem.id} />}
                     </div>
                   </TableCell>
                 )}

@@ -12,6 +12,7 @@ import { FaWhatsapp } from "react-icons/fa";
 import { toast } from "sonner";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
+import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot, urlParaBase64 } from "@/lib/printMobile";
@@ -48,6 +49,7 @@ const podeCompartilharArquivo = (file: File): boolean =>
 // (DialogCompartilharClienteLink) — aqui com 2 opções: WhatsApp e Imprimir.
 export function DialogEmitirReciboOS({ open, onOpenChange, ordem }: DialogEmitirReciboOSProps) {
   const { config: configLoja } = useConfiguracaoLoja(ordem?.empresa_id);
+  const { adicionais } = useOsDispositivosAdicionais(ordem?.id);
   const [recebimento, setRecebimento] = useState<RecebimentoOS | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(false);
@@ -102,7 +104,7 @@ export function DialogEmitirReciboOS({ open, onOpenChange, ordem }: DialogEmitir
       cnpj: configLoja?.cnpj,
       telefone: configLoja?.telefone,
       endereco: configLoja?.endereco,
-    }, assinaturaLojaAtiva(configLoja));
+    }, assinaturaLojaAtiva(configLoja), adicionais);
 
   const compartilharPDF = async (formato: FormatoReciboOS, comMensagem: boolean) => {
     const dados = dadosRecibo();

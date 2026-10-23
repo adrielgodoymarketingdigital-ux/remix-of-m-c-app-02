@@ -9,6 +9,9 @@ import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import type { OrdemServico } from "@/hooks/useOrdensServico";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
+import { SeloDispositivosAdicionais } from "./SeloDispositivosAdicionais";
+import { useAdicionaisPorOS } from "@/contexts/AdicionaisPorOSContext";
+import { adicionaisCorrespondemBusca } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 interface KanbanTempoAbertoProps {
   ordens: OrdemServico[];
@@ -111,6 +114,7 @@ function KanbanCard({
         <span className="truncate">
           {ordem.dispositivo_marca} {ordem.dispositivo_modelo}
         </span>
+        <SeloDispositivosAdicionais osId={ordem.id} />
       </div>
 
       <p className="text-xs text-muted-foreground line-clamp-2">
@@ -167,6 +171,7 @@ export function KanbanTempoAberto({
   termoAtivo,
 }: KanbanTempoAbertoProps) {
   const [buscasPorColuna, setBuscasPorColuna] = useState<Record<string, string>>({});
+  const adicionaisPorOs = useAdicionaisPorOS();
 
   const colunas = useMemo(() => {
     const ordensAbertas = ordens
@@ -187,13 +192,14 @@ export function KanbanTempoAberto({
             ordem.defeito_relatado,
           ]
             .filter(Boolean)
-            .some((valor) => valor?.toLowerCase().includes(busca));
+            .some((valor) => valor?.toLowerCase().includes(busca)) ||
+            adicionaisCorrespondemBusca(adicionaisPorOs[ordem.id], busca);
         })
         .sort((a, b) => b.dias - a.dias);
 
       return { ...faixa, itens: itensColuna };
     });
-  }, [ordens, buscasPorColuna]);
+  }, [ordens, buscasPorColuna, adicionaisPorOs]);
 
   const totalAbertas = colunas.reduce((acc, col) => acc + col.itens.length, 0);
   const totalCriticas = colunas.find((c) => c.id === "30+")?.itens.length || 0;

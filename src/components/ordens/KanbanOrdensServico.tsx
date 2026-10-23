@@ -8,6 +8,9 @@ import { formatDate, formatTime } from "@/lib/formatters";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import type { OrdemServico } from "@/hooks/useOrdensServico";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
+import { SeloDispositivosAdicionais } from "./SeloDispositivosAdicionais";
+import { useAdicionaisPorOS } from "@/contexts/AdicionaisPorOSContext";
+import { adicionaisCorrespondemBusca } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 interface KanbanOrdensServicoProps {
   ordens: OrdemServico[];
@@ -83,6 +86,7 @@ function KanbanCard({
       <p className="text-xs text-muted-foreground truncate">
         {ordem.dispositivo_marca} {ordem.dispositivo_modelo}
       </p>
+      <SeloDispositivosAdicionais osId={ordem.id} />
       {ordem.defeito_relatado && (
         <p className="text-xs text-muted-foreground/70 italic truncate">
           {ordem.defeito_relatado}
@@ -166,6 +170,7 @@ export function KanbanOrdensServico({
     setDragOverCol(colId);
   };
 
+  const adicionaisPorOs = useAdicionaisPorOS();
   const colunas = useMemo(() => {
     return activeStatusList.map((status) => {
       const busca = (buscasPorColuna[status.slug] || "").toLowerCase().trim();
@@ -182,7 +187,8 @@ export function KanbanOrdensServico({
             ordem.defeito_relatado,
           ]
             .filter(Boolean)
-            .some((valor) => valor?.toLowerCase().includes(busca));
+            .some((valor) => valor?.toLowerCase().includes(busca)) ||
+            adicionaisCorrespondemBusca(adicionaisPorOs[ordem.id], busca);
         })
         .sort(
           (a, b) =>
@@ -191,7 +197,7 @@ export function KanbanOrdensServico({
 
       return { ...status, ordens: ordensColuna };
     });
-  }, [activeStatusList, buscasPorColuna, ordens]);
+  }, [activeStatusList, buscasPorColuna, ordens, adicionaisPorOs]);
 
   if (loading) {
     return (

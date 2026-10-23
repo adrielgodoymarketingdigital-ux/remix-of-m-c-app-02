@@ -27,6 +27,8 @@ import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
+import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
+import { marcaModelo, numeroAdicional, tituloDispositivo } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 const FORMAS_PAGAMENTO = [
   { value: 'dinheiro', label: 'Dinheiro', icon: Banknote },
@@ -55,6 +57,7 @@ export const DialogAssinaturaSaida = ({
 }: DialogAssinaturaSaidaProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const { adicionais } = useOsDispositivosAdicionais(ordem?.id);
   const [assinaturaSaida, setAssinaturaSaida] = useState<string | null>(null);
   const [tipoAssinaturaSaida, setTipoAssinaturaSaida] = useState<TipoAssinatura>("digital");
   const [formaPagamento, setFormaPagamento] = useState<string>("");
@@ -420,11 +423,17 @@ export const DialogAssinaturaSaida = ({
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Dispositivo:</span>
+                <span className="text-muted-foreground">{adicionais.length > 0 ? `${tituloDispositivo(1)}:` : "Dispositivo:"}</span>
                 <span className="font-medium">
                   {ordem.dispositivo_marca} {ordem.dispositivo_modelo}
                 </span>
               </div>
+              {adicionais.map((a, i) => (
+                <div key={a.id} className="flex justify-between">
+                  <span className="text-muted-foreground">{`${tituloDispositivo(numeroAdicional(i))}:`}</span>
+                  <span className="font-medium">{marcaModelo(a)}</span>
+                </div>
+              ))}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Defeito:</span>
                 <span className="font-medium truncate max-w-[200px]">

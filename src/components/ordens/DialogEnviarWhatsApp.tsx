@@ -8,7 +8,7 @@ import { FaWhatsapp } from "react-icons/fa";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { ConfiguracaoLoja, MensagensWhatsAppOS } from "@/types/configuracao-loja";
 import { gerarOrdemServicoPDF, TipoPDFOS, type OpcoesPDFOS } from "@/lib/gerarOrdemServicoPDF";
-import { decidirFotos, montarFotosParaImpressao, selecionarFotos, textoFalhas } from "@/lib/os/fotosImpressaoOS";
+import { decidirFotos, montarFotosParaImpressao, selecionarFotosComAdicionais, textoFalhas } from "@/lib/os/fotosImpressaoOS";
 import { carregarFotosImpressao, lerEscolhaFotos } from "@/lib/os/carregarFotosImpressaoOS";
 import { toast } from "sonner";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
@@ -16,6 +16,8 @@ import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStat
 import { useOSTracking } from "@/hooks/useOSTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { cn } from "@/lib/utils";
+import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
+import { juntarDispositivos, type DispositivoAdicionalOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 interface DialogEnviarWhatsAppProps {
   open: boolean;
@@ -32,9 +34,14 @@ Qualquer dúvida, estamos à disposição!
 
 *{{loja}}* 📱`;
 
-const gerarMensagemPadrao = (ordem: OrdemServico, loja?: ConfiguracaoLoja, nomeStatus?: string): string => {
+const gerarMensagemPadrao = (
+  ordem: OrdemServico,
+  loja?: ConfiguracaoLoja,
+  nomeStatus?: string,
+  adicionais: DispositivoAdicionalOS[] = [],
+): string => {
   const nomeLoja = loja?.nome_loja || "Nossa Loja";
-  const dispositivo = `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`;
+  const dispositivo = juntarDispositivos(`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, adicionais);
   const nomeCliente = ordem.cliente?.nome?.split(" ")[0] || "";
   const status = ordem.status || "pendente";
 
@@ -82,6 +89,7 @@ export const DialogEnviarWhatsApp = ({
   const { statusList } = useOSStatusConfig();
   const { gerarLink } = useOSTracking();
   const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
+  const { adicionais } = useOsDispositivosAdicionais(ordem?.id);
 
   // Detecta suporte a compartilhamento de arquivos (Web Share API nível 2)
   const suportaCompartilharArquivo = podeCompartilharArquivo(
@@ -118,11 +126,11 @@ export const DialogEnviarWhatsApp = ({
         setTelefone("");
       }
       const nomeStatus = statusList.find(s => s.slug === ordem.status)?.nome;
-      setMensagem(gerarMensagemPadrao(ordem, loja, nomeStatus));
+      setMensagem(gerarMensagemPadrao(ordem, loja, nomeStatus, adicionais));
       setPdfBaixado(false);
       setTipoPDF('completo');
     }
-  }, [open, ordem, loja, statusList]);
+  }, [open, ordem, loja, statusList, adicionais]);
 
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTelefone(aplicarMascaraTelefone(e.target.value));
@@ -137,8 +145,11 @@ export const DialogEnviarWhatsApp = ({
   // Fotos no PDF: mesma escolha da impressão A4 (lembrada no aparelho → padrão da loja,
   // desligado se ausente). Só miniaturas; null = o usuário desistiu por fotos que não carregaram.
   const prepararFotosPDF = async (): Promise<OpcoesPDFOS | null> => {
-    if (!ordem || tipoPDF === 'termo_garantia') return {};
-    const selecao = selecionarFotos((ordem.avarias as { fotos_dispositivo?: unknown } | null)?.fotos_dispositivo);
+    if (!ordem || tipoPDF === 'termo_garantia') return { adicionais };
+    const selecao = selecionarFotosComAdicionais(
+      (ordem.avarias as { fotos_dispositivo?: unknown } | null)?.fotos_dispositivo,
+      adicionais.map((a) => a.fotos_dispositivo),
+    );
     const decisao = decidirFotos({
       padraoLoja: loja?.layout_os_config?.mostrar_fotos_impressao,
       escolhaLembrada: lerEscolhaFotos(),
@@ -146,11 +157,11 @@ export const DialogEnviarWhatsApp = ({
       formato: 'a4',
       duasOsPorFolha: false,
     });
-    if (!decisao.incluir) return {};
+    if (!decisao.incluir) return { adicionais };
     const carregadas = await carregarFotosImpressao(selecao.urls, { verificarOriginal: false });
-    const { fotos, falhas } = montarFotosParaImpressao(carregadas, 'pdf');
+    const { fotos, falhas } = montarFotosParaImpressao(carregadas, 'pdf', selecao.legendas);
     if (falhas > 0 && !window.confirm(textoFalhas(falhas))) return null;
-    return { fotos, fotosExcedentes: selecao.excedentes };
+    return { fotos, fotosExcedentes: selecao.excedentes, adicionais };
   };
 
   const handleBaixarPDF = async () => {

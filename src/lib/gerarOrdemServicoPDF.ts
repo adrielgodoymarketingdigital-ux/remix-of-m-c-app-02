@@ -7,7 +7,14 @@ import { decryptSenhaDesbloqueio } from './password-encryption';
 import { obterTermoGarantia, LAYOUT_PADRAO } from './termo-garantia-utils';
 import { adicionarImagemContida, assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
-import { nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import {
+  imeiOuSerie,
+  juntarDispositivos,
+  nomeLinhaServicoComDispositivo,
+  numeroAdicional,
+  tituloDispositivo,
+  type DispositivoAdicionalOS,
+} from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { TITULO_FOTOS, encaixarNaCaixa, formatoImagemDataUrl, geometriaGradeFotosPDF, textoExcedentes, type FotoImpressao } from './os/fotosImpressaoOS';
 
 // Formatar data/hora Brasil
@@ -77,6 +84,28 @@ export interface OpcoesPDFOS {
   fotos?: FotoImpressao[];
   /** Fotos além do limite ("+N fotos não impressas"). */
   fotosExcedentes?: number;
+  /** Dispositivos adicionais da OS. Ausente/vazio = PDF de sempre. */
+  adicionais?: DispositivoAdicionalOS[];
+}
+
+/** Texto curto do checklist de entrada/avarias do adicional (PDF não tem ícones). */
+function textoChecklistAdicional(a: DispositivoAdicionalOS): string | null {
+  const itens = Object.entries(a.checklist?.entrada || {});
+  if (itens.length === 0) return null;
+  return `Checklist de entrada: ${itens.map(([item, ok]) => `${item.replace(/_/g, ' ')} ${ok ? 'OK' : 'X'}`).join(', ')}`;
+}
+
+function textoAvariasAdicional(a: DispositivoAdicionalOS): string | null {
+  if (a.avarias_visuais.length === 0) return null;
+  return `Avarias: ${a.avarias_visuais.map((v) => `${v.tipo} (${v.lado})`).join(', ')}`;
+}
+
+function textoSenhaAdicional(a: DispositivoAdicionalOS): string | null {
+  const senha = decryptSenhaDesbloqueio(a.senha_desbloqueio ?? undefined);
+  if (!senha) return null;
+  if (senha.nao_informada) return 'Senha: Cliente não quis passar a senha';
+  if (senha.tipo === 'padrao' && senha.padrao) return `Senha: Padrão Android | Sequência: ${senha.padrao.join(' → ')}`;
+  return `Senha: ${senha.tipo === 'numero' ? 'PIN Numérico' : 'Senha Texto'} | ${senha.valor || 'N/A'}`;
 }
 
 export async function gerarOrdemServicoPDF(
@@ -109,6 +138,8 @@ export async function gerarOrdemServicoPDF(
   const checklistEntrada = avariasData?.checklist?.entrada || {};
   const checklistSaida = avariasData?.checklist?.saida || {};
   const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
+  const adicionais = opcoes.adicionais ?? [];
+  const temAdicionais = adicionais.length > 0;
 
   // Status
   const statusMap: Record<string, string> = {
@@ -277,7 +308,7 @@ export async function gerarOrdemServicoPDF(
   verificarNovaPagina(35);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('DISPOSITIVO', margemEsquerda, yPos);
+  doc.text(temAdicionais ? tituloDispositivo(1).toUpperCase() : 'DISPOSITIVO', margemEsquerda, yPos);
   yPos += 6;
 
   doc.setFont('helvetica', 'normal');
@@ -337,6 +368,48 @@ export async function gerarOrdemServicoPDF(
   yPos += 4;
   doc.line(margemEsquerda, yPos, margemDireita, yPos);
   yPos += 8;
+
+  // ===== DISPOSITIVOS ADICIONAIS (mesmas regras do dispositivo 1) =====
+  adicionais.forEach((a, i) => {
+    verificarNovaPagina(35);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(tituloDispositivo(numeroAdicional(i)).toUpperCase(), margemEsquerda, yPos);
+    yPos += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Tipo: ${a.dispositivo_tipo}`, margemEsquerda, yPos);
+    doc.text(`Marca: ${a.dispositivo_marca}`, 80, yPos);
+    doc.text(`Modelo: ${a.dispositivo_modelo}`, 130, yPos);
+    yPos += 5;
+    if (a.dispositivo_cor || a.dispositivo_imei) {
+      if (a.dispositivo_cor) doc.text(`Cor: ${a.dispositivo_cor}`, margemEsquerda, yPos);
+      if (a.dispositivo_imei) doc.text(`IMEI: ${a.dispositivo_imei}`, 80, yPos);
+      yPos += 5;
+    }
+    const textos = [
+      a.dispositivo_numero_serie ? `Nº Série: ${a.dispositivo_numero_serie}` : null,
+      textoSenhaAdicional(a),
+      a.defeito_relatado ? `Defeito: ${a.defeito_relatado}` : null,
+      a.checklist?.sem_teste && layoutConfig.mostrar_checklist ? 'Sem teste: aparelho chegou desligado.' : null,
+      layoutConfig.mostrar_checklist ? textoChecklistAdicional(a) : null,
+      layoutConfig.mostrar_avarias ? textoAvariasAdicional(a) : null,
+      a.observacoes ? `Obs.: ${a.observacoes}` : null,
+    ];
+    textos.forEach((t) => {
+      if (!t) return;
+      doc.splitTextToSize(t, larguraUtil).forEach((linha: string) => {
+        verificarNovaPagina(6);
+        doc.text(linha, margemEsquerda, yPos);
+        yPos += 5;
+      });
+    });
+
+    yPos += 4;
+    doc.line(margemEsquerda, yPos, margemDireita, yPos);
+    yPos += 8;
+  });
 
   // ===== SEM TESTE - ENTRADA =====
   const semTeste = avariasData?.checklist?.sem_teste === true;
@@ -676,7 +749,7 @@ export async function gerarOrdemServicoPDF(
       
       servicosRealizados.forEach((servico: any) => {
         verificarNovaPagina(8);
-        doc.text(`• ${nomeLinhaServico(servico)}`, margemEsquerda + 3, yPos);
+        doc.text(`• ${nomeLinhaServicoComDispositivo(servico, adicionais)}`, margemEsquerda + 3, yPos);
         doc.text(formatarMoeda(valorLinhaServico(servico)), margemDireita, yPos, { align: 'right' });
         yPos += 5;
       });
@@ -807,7 +880,7 @@ export async function gerarOrdemServicoPDF(
     yT += 8;
     docTermo.setFontSize(10);
     docTermo.setFont('helvetica', 'normal');
-    docTermo.text(`OS #${ordem.numero_os} — ${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, 105, yT, { align: 'center' });
+    docTermo.text(`OS #${ordem.numero_os} — ${juntarDispositivos(`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, adicionais)}`, 105, yT, { align: 'center' });
     yT += 4;
     if (ordem.cliente?.nome) {
       docTermo.text(`Cliente: ${ordem.cliente.nome}`, 105, yT, { align: 'center' });
@@ -831,7 +904,7 @@ export async function gerarOrdemServicoPDF(
       termoConfig: loja?.termo_garantia_config,
       nomeLoja: loja?.nome_loja,
       nomeCliente: ordem.cliente?.nome,
-      dispositivo: `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`,
+      dispositivo: juntarDispositivos(`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, adicionais),
     });
 
     const linhasTermoSolo = docTermo.splitTextToSize(termoGarantiaSolo, lU);
@@ -896,7 +969,7 @@ export async function gerarOrdemServicoPDF(
       termoConfig: loja?.termo_garantia_config,
       nomeLoja: loja?.nome_loja,
       nomeCliente: ordem.cliente?.nome,
-      dispositivo: `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`,
+      dispositivo: juntarDispositivos(`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, adicionais),
     });
 
     const linhasTermo = doc.splitTextToSize(termoGarantia, larguraUtil);
@@ -1098,7 +1171,12 @@ export async function gerarOrdemServicoPDF(
  * pra descobrir a altura real, depois o doc definitivo já nasce com essa
  * altura exata.
  */
-export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: ConfiguracaoLoja): Promise<Blob> {
+export async function gerarOrdemServicoCupom80mmPDF(
+  ordem: OrdemServico,
+  loja?: ConfiguracaoLoja,
+  adicionais: DispositivoAdicionalOS[] = [],
+): Promise<Blob> {
+  const temAdicionais = adicionais.length > 0;
   const larguraPagina = 80;
   const margin = 3;
 
@@ -1275,7 +1353,7 @@ export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: 
 
     // ===== DISPOSITIVO =====
     if (mostrar('mostrar_dados_dispositivo', true)) {
-      tituloSecao('Dispositivo');
+      tituloSecao(temAdicionais ? tituloDispositivo(1) : 'Dispositivo');
       linhaTexto(`${ordem.dispositivo_tipo || ''} ${ordem.dispositivo_marca || ''} ${ordem.dispositivo_modelo || ''}`.trim());
       if (ordem.dispositivo_cor) linhaTexto(`Cor: ${ordem.dispositivo_cor}`);
       const imeiSerie = ordem.dispositivo_imei || ordem.dispositivo_numero_serie;
@@ -1285,10 +1363,32 @@ export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: 
 
     // ===== DEFEITO =====
     if (mostrar('mostrar_defeito', true) && ordem.defeito_relatado) {
-      tituloSecao('Defeito Relatado');
+      tituloSecao(temAdicionais ? `Defeito Relatado — ${tituloDispositivo(1)}` : 'Defeito Relatado');
       linhaTexto(ordem.defeito_relatado);
       y += 2;
     }
+
+    // ===== DISPOSITIVOS ADICIONAIS (mesmas chaves do cupom do dispositivo 1) =====
+    adicionais.forEach((a, i) => {
+      const textos = [
+        ...(mostrar('mostrar_dados_dispositivo', true)
+          ? [
+              `${a.dispositivo_tipo} ${a.dispositivo_marca} ${a.dispositivo_modelo}`.trim(),
+              a.dispositivo_cor ? `Cor: ${a.dispositivo_cor}` : null,
+              imeiOuSerie(a) ? `IMEI/Série: ${imeiOuSerie(a)}` : null,
+            ]
+          : []),
+        mostrar('mostrar_defeito', true) && a.defeito_relatado ? `Defeito: ${a.defeito_relatado}` : null,
+        mostrar('mostrar_checklist', false) && a.checklist?.sem_teste ? 'Sem teste: aparelho chegou desligado.' : null,
+        mostrar('mostrar_checklist', false) ? textoChecklistAdicional(a) : null,
+        mostrar('mostrar_avarias', false) ? textoAvariasAdicional(a) : null,
+        mostrar('mostrar_senha', true) ? textoSenhaAdicional(a) : null,
+      ].filter((t): t is string => !!t);
+      if (textos.length === 0) return;
+      tituloSecao(tituloDispositivo(numeroAdicional(i)));
+      textos.forEach((t) => linhaTexto(t));
+      y += 2;
+    });
 
     // ===== CHECKLIST (texto — sem os ícones/duas colunas da tela) =====
     if (mostrar('mostrar_checklist', false)) {
@@ -1424,7 +1524,7 @@ export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: 
       if (servicosRealizados.length > 0) {
         tituloSecao('Serviços');
         servicosRealizados.forEach((servico: any) => {
-          linhaComValor(nomeLinhaServico(servico), formatarMoeda(valorLinhaServico(servico)));
+          linhaComValor(nomeLinhaServicoComDispositivo(servico, adicionais), formatarMoeda(valorLinhaServico(servico)));
         });
         y += 2;
       }
@@ -1495,7 +1595,7 @@ export async function gerarOrdemServicoCupom80mmPDF(ordem: OrdemServico, loja?: 
         termoConfig: loja?.termo_garantia_config,
         nomeLoja: loja?.nome_loja,
         nomeCliente: ordem.cliente?.nome,
-        dispositivo: `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`,
+        dispositivo: juntarDispositivos(`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, adicionais),
       });
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'normal');

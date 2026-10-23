@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { toBrasilia } from "@/lib/dataBrasilia";
 import type { AvariasOS, ServicoRealizado, ProdutoUtilizado } from "@/types/ordem-servico";
-import { nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { juntarDispositivos, nomeLinhaServicoComDispositivo, type DispositivoAdicionalOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import type { RecebimentoOS } from "@/lib/ordemServico/calcularRecebimentoOS";
 import { adicionarImagemContida } from "@/lib/assinaturaLoja";
 
@@ -56,13 +56,15 @@ export function montarDadosReciboOS(
   recebimento: RecebimentoOS,
   loja: DadosReciboOS["loja"],
   assinaturaLoja: string | null = null,
+  /** Dispositivos adicionais da OS; vazio = recibo de sempre. */
+  adicionais: readonly Pick<DispositivoAdicionalOS, "id" | "dispositivo_marca" | "dispositivo_modelo">[] = [],
 ): DadosReciboOS {
   const avarias = (ordem.avarias ?? null) as (AvariasOS & { servicos_inline?: { nome: string }[] }) | null;
 
   // Mesmo fallback da impressão da OS: servicos_realizados (novo) ou servicos_inline (onboarding)
   const servicos: ServicoRealizado[] = avarias?.servicos_realizados ?? [];
   const nomesServicos = servicos.length > 0
-    ? servicos.map(nomeLinhaServico)
+    ? servicos.map((s) => nomeLinhaServicoComDispositivo(s, adicionais))
     : (avarias?.servicos_inline ?? []).map((s) => s.nome);
   const produtos: ProdutoUtilizado[] = avarias?.produtos_utilizados ?? [];
   const nomesProdutos = produtos.map((p) => (p.quantidade > 1 ? `${p.quantidade}x ${p.nome}` : p.nome));
@@ -71,7 +73,7 @@ export function montarDadosReciboOS(
     loja,
     numeroOS: ordem.numero_os,
     clienteNome: ordem.cliente?.nome,
-    dispositivo: [ordem.dispositivo_marca, ordem.dispositivo_modelo].filter(Boolean).join(" ") || null,
+    dispositivo: juntarDispositivos([ordem.dispositivo_marca, ordem.dispositivo_modelo].filter(Boolean).join(" "), adicionais) || null,
     itens: [...nomesServicos, ...nomesProdutos].filter(Boolean),
     emitidoEm: formatarBrasilia(new Date(), true),
     dataConclusao: ordem.status === "entregue" && ordem.data_saida

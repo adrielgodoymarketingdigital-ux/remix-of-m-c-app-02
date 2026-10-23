@@ -6,7 +6,9 @@ import { formatDataVenda, formatPhone } from "@/lib/formatters";
 import { nomeFormaPagamento } from "@/lib/formaPagamento";
 import { getNomeItem } from "@/lib/vendas/itensVenda";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
-import { chaveLinhaServico, nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { chaveLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { marcaModelo, nomeLinhaServicoComDispositivo, numeroAdicional, tituloDispositivo } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
 import type { Venda } from "@/types/venda";
 import type { EventoExtrato } from "@/hooks/useExtratoFinanceiro";
 import { OrdemDetalheExtrato, TrocaDetalheExtrato, useDetalheExtrato } from "@/hooks/useDetalheExtrato";
@@ -134,6 +136,8 @@ function DetalheVenda({ linhas, troca }: { linhas: Venda[]; troca: TrocaDetalheE
 }
 
 function DetalheOrdem({ ordem }: { ordem: OrdemDetalheExtrato }) {
+  const { adicionais } = useOsDispositivosAdicionais(ordem.id);
+  const temAdicionais = adicionais.length > 0;
   const servicos = ordem.avarias?.servicos_realizados ?? [];
   const pecas = ordem.avarias?.produtos_utilizados ?? [];
   const custosRepassados = (ordem.avarias?.custos_adicionais ?? []).filter((c) => c.repassar_cliente);
@@ -147,14 +151,20 @@ function DetalheOrdem({ ordem }: { ordem: OrdemDetalheExtrato }) {
       <Cliente cliente={ordem.cliente} />
 
       <Secao titulo="Aparelho">
-        <p className="text-sm">{`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`.trim()}</p>
+        <p className="text-sm">{`${temAdicionais ? `${tituloDispositivo(1)}: ` : ""}${`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`.trim()}`}</p>
         {ordem.defeito_relatado && <p className="text-xs text-muted-foreground break-words">{ordem.defeito_relatado}</p>}
+        {adicionais.map((a, i) => (
+          <div key={a.id}>
+            <p className="text-sm">{`${tituloDispositivo(numeroAdicional(i))}: ${marcaModelo(a)}`}</p>
+            {a.defeito_relatado && <p className="text-xs text-muted-foreground break-words">{a.defeito_relatado}</p>}
+          </div>
+        ))}
       </Secao>
 
       <Secao titulo="Serviços e peças">
         {!temItens && <p className="text-sm text-muted-foreground">Nenhum item detalhado nesta OS.</p>}
         {servicos.map((s, i) => (
-          <LinhaValor key={`s-${chaveLinhaServico(s, i)}`} rotulo={nomeLinhaServico(s)} valor={valorLinhaServico(s)} />
+          <LinhaValor key={`s-${chaveLinhaServico(s, i)}`} rotulo={nomeLinhaServicoComDispositivo(s, adicionais)} valor={valorLinhaServico(s)} />
         ))}
         {pecas.map((p, i) => (
           <LinhaValor

@@ -48,6 +48,7 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { DashboardOrdensServico } from "@/components/ordens/DashboardOrdensServico";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AdicionaisPorOSProvider } from "@/contexts/AdicionaisPorOSContext";
 import { TermoResponsabilidadeConfig } from "@/types/configuracao-loja";
 import { supabase } from "@/integrations/supabase/client";
 import { useServicosAvulsos } from "@/hooks/useServicosAvulsos";
@@ -258,6 +259,7 @@ export default function OrdemServicoPage() {
 
   const {
     ordens: ordensRaw,
+    adicionaisPorOs,
     loading,
     busca,
     setBusca,
@@ -703,6 +705,7 @@ export default function OrdemServicoPage() {
   };
 
   return (
+    <AdicionaisPorOSProvider value={adicionaisPorOs}>
     <AppLayout>
       <Suspense fallback={null}>
        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto">
@@ -1819,5 +1822,6 @@ export default function OrdemServicoPage() {
         </Suspense>
       )}
     </AppLayout>
+    </AdicionaisPorOSProvider>
   );
 }

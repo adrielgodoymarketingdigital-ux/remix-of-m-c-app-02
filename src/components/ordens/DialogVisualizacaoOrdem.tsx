@@ -33,6 +33,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { custoServicosOS, totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
+import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
+import { numeroAdicional, tituloDispositivo, type DispositivoAdicionalOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 interface DialogVisualizacaoOrdemProps {
   open: boolean;
@@ -55,6 +57,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
   const { statusList } = useOSStatusConfig();
   const { gerarLink, gerando } = useOSTracking();
   const { lojaUserId, podeCompartilharLink } = useFuncionarioPermissoes();
+  const { adicionais } = useOsDispositivosAdicionais(ordem?.id);
 
   if (!ordem) return null;
 
@@ -69,6 +72,11 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
   const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
   const assinaturas = avariasData?.assinaturas;
   const fotosDispositivo = avariasData?.fotos_dispositivo || [];
+  // Com dispositivos adicionais os blocos do 1º ganham o título "Dispositivo 1";
+  // sem eles, nada muda.
+  const temAdicionais = adicionais.length > 0;
+  const comDispositivo1 = (titulo: string) => (temAdicionais ? `${titulo} — ${tituloDispositivo(1)}` : titulo);
+  const totalFotos = fotosDispositivo.length + adicionais.reduce((n, a) => n + a.fotos_dispositivo.length, 0);
 
   const statusConfig = statusList.find(s => s.slug === ordem.status);
   const statusCor = statusConfig?.cor || "#eab308";
@@ -191,7 +199,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
           {/* Meta chips */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
             <MetaChip icon={<User className="h-3.5 w-3.5" />} value={ordem.cliente?.nome || "—"} />
-            <MetaChip icon={<Smartphone className="h-3.5 w-3.5" />} value={`${ordem.dispositivo_marca || ""} ${ordem.dispositivo_modelo || ""}`.trim() || "—"} />
+            <MetaChip icon={<Smartphone className="h-3.5 w-3.5" />} value={`${`${ordem.dispositivo_marca || ""} ${ordem.dispositivo_modelo || ""}`.trim() || "—"}${temAdicionais ? ` +${adicionais.length}` : ""}`} />
             <MetaChip icon={<Calendar className="h-3.5 w-3.5" />} value={formatDate(ordem.created_at)} />
             <MetaChip icon={<DollarSign className="h-3.5 w-3.5" />} value={<ValorMonetario valor={ordem.total || 0} tipo="preco" />} highlight />
           </div>
@@ -208,7 +216,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
               {[
                 { value: "cliente", icon: User, label: "Cliente" },
                 { value: "dispositivo", icon: Smartphone, label: "Dispositivo" },
-                { value: "fotos", icon: Camera, label: "Fotos", badge: fotosDispositivo.length },
+                { value: "fotos", icon: Camera, label: "Fotos", badge: totalFotos },
                 { value: "entrada", icon: CheckCircle2, label: "Entrada" },
                 { value: "saida", icon: XCircle, label: "Saída" },
                 { value: "assinaturas", icon: PenTool, label: "Assinatura" },
@@ -254,7 +262,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                   )}
                 </InfoGrid>
                 <div className="mt-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60 mb-1">Defeito Relatado</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60 mb-1">{comDispositivo1("Defeito Relatado")}</p>
                   <p className="text-sm text-foreground/80 leading-relaxed">{ordem.defeito_relatado}</p>
                 </div>
                 {avariasData?.observacoes_internas && (
@@ -305,7 +313,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
 
             {/* ── Tab Dispositivo ── */}
             <TabsContent value="dispositivo" className="space-y-4 mt-0 focus-visible:ring-0 focus-visible:outline-none">
-              <Section title="Dispositivo" icon={<Smartphone className="h-3.5 w-3.5" />} onEditar={onEditar ? () => onEditar(ordem) : undefined}>
+              <Section title={temAdicionais ? tituloDispositivo(1) : "Dispositivo"} icon={<Smartphone className="h-3.5 w-3.5" />} onEditar={onEditar ? () => onEditar(ordem) : undefined}>
                 <InfoGrid>
                   <InfoItem label="Tipo" value={ordem.dispositivo_tipo} />
                   <InfoItem label="Marca" value={ordem.dispositivo_marca} />
@@ -316,7 +324,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                 </InfoGrid>
               </Section>
 
-              <Section title="Senha de Desbloqueio" icon={<Lock className="h-3.5 w-3.5" />}>
+              <Section title={comDispositivo1("Senha de Desbloqueio")} icon={<Lock className="h-3.5 w-3.5" />}>
                 {senhaDesbloqueio ? (
                   senhaDesbloqueio.nao_informada ? (
                     <EmptyState label="Cliente não quis passar a senha" />
@@ -338,11 +346,15 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                   <EmptyState label="Nenhuma senha registrada" />
                 )}
               </Section>
+
+              {adicionais.map((a, i) => (
+                <DadosDispositivoAdicional key={a.id} adicional={a} numero={numeroAdicional(i)} />
+              ))}
             </TabsContent>
 
             {/* ── Tab Fotos ── */}
             <TabsContent value="fotos" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
-              <Section title="Fotos do Dispositivo" icon={<Camera className="h-3.5 w-3.5" />}>
+              <Section title={comDispositivo1("Fotos do Dispositivo")} icon={<Camera className="h-3.5 w-3.5" />}>
                 {fotosDispositivo.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {fotosDispositivo.map((url, index) => (
@@ -360,12 +372,18 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                   <EmptyState label="Nenhuma foto registrada" />
                 )}
               </Section>
+
+              {adicionais.map((a, i) => (
+                <Section key={a.id} title={`Fotos do Dispositivo — ${tituloDispositivo(numeroAdicional(i))}`} icon={<Camera className="h-3.5 w-3.5" />}>
+                  <GradeFotos fotos={a.fotos_dispositivo} />
+                </Section>
+              ))}
             </TabsContent>
 
             {/* ── Tab Entrada ── */}
             <TabsContent value="entrada" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
               <div className="grid md:grid-cols-2 gap-4">
-                <Section title="Checklist de Entrada" icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
+                <Section title={comDispositivo1("Checklist de Entrada")} icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
                   {avariasData?.checklist?.sem_teste && (
                     <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-xs text-amber-700 dark:text-amber-400 mb-3">
                       <span className="font-semibold">Sem teste</span>
@@ -402,7 +420,7 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                 </Section>
 
                 {avariasVisuais.length > 0 && (
-                  <Section title="Avarias Visuais" icon={<Smartphone className="h-3.5 w-3.5" />}>
+                  <Section title={comDispositivo1("Avarias Visuais")} icon={<Smartphone className="h-3.5 w-3.5" />}>
                     <div className="space-y-4">
                       {avariasVisuais.filter(a => a.lado === "frente").length > 0 && (
                         <SilhuetaComAvarias
@@ -424,11 +442,15 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                   </Section>
                 )}
               </div>
+
+              {adicionais.map((a, i) => (
+                <EntradaDispositivoAdicional key={a.id} adicional={a} numero={numeroAdicional(i)} />
+              ))}
             </TabsContent>
 
             {/* ── Tab Saída ── */}
             <TabsContent value="saida" className="mt-0 focus-visible:ring-0 focus-visible:outline-none">
-              <Section title="Checklist de Saída" icon={<XCircle className="h-3.5 w-3.5" />}>
+              <Section title={comDispositivo1("Checklist de Saída")} icon={<XCircle className="h-3.5 w-3.5" />}>
                 {Object.keys(checklistSaida).length > 0 ? (
                   <div className="grid grid-cols-2 gap-1.5">
                     {Object.entries(checklistSaida).map(([item, status]) => {
@@ -457,6 +479,12 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
                   <EmptyState label="Nenhum checklist de saída registrado" />
                 )}
               </Section>
+
+              {adicionais.map((a, i) => (
+                <Section key={a.id} title={`Checklist de Saída — ${tituloDispositivo(numeroAdicional(i))}`} icon={<XCircle className="h-3.5 w-3.5" />}>
+                  <ListaChecklist itens={a.checklist?.saida} descricaoPeca={a.checklist?.peca_trocada_descricao_saida} vazio="Nenhum checklist de saída registrado" />
+                </Section>
+              ))}
             </TabsContent>
 
             {/* ── Tab Assinaturas ── */}
@@ -698,6 +726,143 @@ export const DialogVisualizacaoOrdem = ({ open, onOpenChange, ordem, onSuccess, 
     </Dialog>
   );
 };
+
+// ── Dispositivos adicionais (só leitura; mesmo visual dos blocos do dispositivo 1) ──
+
+function DadosDispositivoAdicional({ adicional: a, numero }: { adicional: DispositivoAdicionalOS; numero: number }) {
+  const senha = decryptSenhaDesbloqueio(a.senha_desbloqueio ?? undefined);
+  return (
+    <>
+      <Section title={tituloDispositivo(numero)} icon={<Smartphone className="h-3.5 w-3.5" />}>
+        <InfoGrid>
+          <InfoItem label="Tipo" value={a.dispositivo_tipo} />
+          <InfoItem label="Marca" value={a.dispositivo_marca} />
+          <InfoItem label="Modelo" value={a.dispositivo_modelo} />
+          <InfoItem label="Cor" value={a.dispositivo_cor} />
+          <InfoItem label="IMEI" value={a.dispositivo_imei} mono />
+          <InfoItem label="Nº Série" value={a.dispositivo_numero_serie} mono />
+        </InfoGrid>
+        {a.defeito_relatado && (
+          <div className="mt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60 mb-1">Defeito Relatado</p>
+            <p className="text-sm text-foreground/80 leading-relaxed">{a.defeito_relatado}</p>
+          </div>
+        )}
+        {a.observacoes && (
+          <div className="mt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60 mb-1">Observações</p>
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{a.observacoes}</p>
+          </div>
+        )}
+      </Section>
+
+      <Section title={`Senha de Desbloqueio — ${tituloDispositivo(numero)}`} icon={<Lock className="h-3.5 w-3.5" />}>
+        {senha ? (
+          senha.nao_informada ? (
+            <EmptyState label="Cliente não quis passar a senha" />
+          ) : (
+            <div className="space-y-2">
+              <InfoItem label="Tipo" value={
+                senha.tipo === "numero" ? "PIN Numérico" :
+                senha.tipo === "letra" ? "Senha Texto" : "Padrão Android"
+              } />
+              {senha.tipo !== "padrao" && (
+                <InfoItem label="Senha" value={senha.valor} mono />
+              )}
+              {senha.tipo === "padrao" && senha.padrao && (
+                <PatternLockVisualizacao pattern={senha.padrao} size={100} />
+              )}
+            </div>
+          )
+        ) : (
+          <EmptyState label="Nenhuma senha registrada" />
+        )}
+      </Section>
+    </>
+  );
+}
+
+function EntradaDispositivoAdicional({ adicional: a, numero }: { adicional: DispositivoAdicionalOS; numero: number }) {
+  const titulo = tituloDispositivo(numero);
+  const frente = a.avarias_visuais.filter((v) => v.lado === "frente");
+  const traseira = a.avarias_visuais.filter((v) => v.lado === "traseira");
+  return (
+    <div className="grid md:grid-cols-2 gap-4 mt-4">
+      <Section title={`Checklist de Entrada — ${titulo}`} icon={<CheckCircle2 className="h-3.5 w-3.5" />}>
+        {a.checklist?.sem_teste && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/8 px-3 py-2 text-xs text-amber-700 dark:text-amber-400 mb-3">
+            <span className="font-semibold">Sem teste</span>
+            <span className="text-muted-foreground">Aparelho chegou desligado.</span>
+          </div>
+        )}
+        <ListaChecklist
+          itens={a.checklist?.entrada}
+          descricaoPeca={a.checklist?.peca_trocada_descricao_entrada}
+          vazio={a.checklist?.sem_teste ? null : "Nenhum checklist registrado"}
+        />
+      </Section>
+
+      {a.avarias_visuais.length > 0 && (
+        <Section title={`Avarias Visuais — ${titulo}`} icon={<Smartphone className="h-3.5 w-3.5" />}>
+          <div className="space-y-4">
+            {frente.length > 0 && (
+              <SilhuetaComAvarias tipoDispositivo={a.dispositivo_tipo} subtipoRelogio={a.dispositivo_subtipo ?? undefined} lado="frente" avarias={frente} />
+            )}
+            {traseira.length > 0 && (
+              <SilhuetaComAvarias tipoDispositivo={a.dispositivo_tipo} subtipoRelogio={a.dispositivo_subtipo ?? undefined} lado="traseira" avarias={traseira} />
+            )}
+          </div>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function ListaChecklist({ itens, descricaoPeca, vazio }: { itens?: Record<string, boolean>; descricaoPeca?: string; vazio: string | null }) {
+  const entradas = Object.entries(itens || {});
+  if (entradas.length === 0) return vazio ? <EmptyState label={vazio} /> : null;
+  return (
+    <div className="space-y-1.5">
+      {entradas.map(([item, status]) => {
+        const Icon = checklistIcons[item] || Smartphone;
+        return (
+          <div key={item}>
+            <div className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/30 transition-colors">
+              <Icon className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+              <span className="flex-1 text-xs capitalize">{item.replace(/_/g, " ")}</span>
+              {status ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+              )}
+            </div>
+            {item === "peca_trocada" && status && descricaoPeca && (
+              <p className="text-[10px] text-muted-foreground italic pl-7">{descricaoPeca}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function GradeFotos({ fotos }: { fotos: string[] }) {
+  if (fotos.length === 0) return <EmptyState label="Nenhuma foto registrada" />;
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+      {fotos.map((url, index) => (
+        <a key={index} href={url} target="_blank" rel="noopener noreferrer"
+          className="relative aspect-square rounded-lg overflow-hidden border border-border/40 hover:border-primary/40 transition-colors group"
+        >
+          <img src={url} alt={`Foto ${index + 1}`}
+            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+        </a>
+      ))}
+    </div>
+  );
+}
 
 // ── Sub-componentes de layout ──
 

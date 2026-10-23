@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
-import { chaveLinhaServico, nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { chaveLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { nomeLinhaServicoComDispositivo, tituloDispositivo, type DispositivoAdicionalOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { DispositivosAdicionaisImpressao } from "./DispositivosAdicionaisImpressao";
 import { htmlGradeFotos, type FotoImpressao } from "@/lib/os/fotosImpressaoOS";
 
 interface Props {
@@ -22,9 +24,14 @@ interface Props {
   fotosImpressao?: FotoImpressao[];
   /** Fotos além do limite (aparece "+N fotos não impressas"). */
   fotosExcedentes?: number;
+  /** Dispositivos adicionais da OS (os_dispositivos_adicionais). Ausente/vazio = impressão de sempre. */
+  adicionais?: DispositivoAdicionalOS[];
 }
 
-export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termoGarantia, fotosImpressao, fotosExcedentes }: Props) {
+const SEM_ADICIONAIS: DispositivoAdicionalOS[] = [];
+
+export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termoGarantia, fotosImpressao, fotosExcedentes, adicionais = SEM_ADICIONAIS }: Props) {
+  const temAdicionais = adicionais.length > 0;
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistEntrada = avariasData?.checklist?.entrada || {};
   const checklistSaida = avariasData?.checklist?.saida || {};
@@ -114,6 +121,7 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
         <div className="impressao-block impressao-block-minimal">
           <div className="impressao-block-header-minimal">
             <Smartphone className="impressao-icon" />
+            {temAdicionais && <h2 className="impressao-block-title">{tituloDispositivo(1)}</h2>}
           </div>
           <div className="impressao-block-content">
             <div className="impressao-field">
@@ -143,7 +151,7 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
         <div className="impressao-block impressao-defeito-block">
           <div className="impressao-block-header">
             <FileText className="impressao-icon" />
-            <h2 className="impressao-block-title">Defeito Relatado</h2>
+            <h2 className="impressao-block-title">{temAdicionais ? `Defeito Relatado — ${tituloDispositivo(1)}` : "Defeito Relatado"}</h2>
           </div>
           <div className="impressao-block-content">
             <p className="impressao-defeito">{ordem.defeito_relatado}</p>
@@ -173,6 +181,8 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
         </div>
       </div>
 
+      <DispositivosAdicionaisImpressao adicionais={adicionais} layoutConfig={layoutConfig} />
+
       {/* Itens do Serviço */}
       {(servicosRealizados.length > 0 || produtosUtilizados.length > 0) && (
         <div className="impressao-block">
@@ -186,7 +196,7 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
                 <div className="impressao-itens-titulo">Serviços:</div>
                 {servicosRealizados.map((servico, i) => (
                   <div key={chaveLinhaServico(servico, i)} className="impressao-item-linha">
-                    <span className="impressao-item-nome">• {nomeLinhaServico(servico)}</span>
+                    <span className="impressao-item-nome">• {nomeLinhaServicoComDispositivo(servico, adicionais)}</span>
                     <span className="impressao-item-valor">{formatCurrency(valorLinhaServico(servico))}</span>
                   </div>
                 ))}

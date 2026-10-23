@@ -11,7 +11,15 @@ import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { obterTermoGarantia } from "@/lib/termo-garantia-utils";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
-import { chaveLinhaServico, nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { chaveLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import {
+  imeiOuSerie,
+  juntarDispositivos,
+  nomeLinhaServicoComDispositivo,
+  numeroAdicional,
+  tituloDispositivo,
+  type DispositivoAdicionalOS,
+} from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 const CONFIG_80MM_PADRAO: Layout80mmConfig = {
   mostrar_logo: true,
@@ -34,10 +42,15 @@ interface ImpressaoCupom80mmProps {
   ordem: OrdemServico;
   configuracaoLoja?: ConfiguracaoLoja;
   config80mm?: Layout80mmConfig;
+  /** Dispositivos adicionais da OS. Ausente/vazio = cupom de sempre. */
+  adicionais?: DispositivoAdicionalOS[];
 }
 
-export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: ImpressaoCupom80mmProps) {
+const SEM_ADICIONAIS: DispositivoAdicionalOS[] = [];
+
+export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicionais = SEM_ADICIONAIS }: ImpressaoCupom80mmProps) {
   const c: Layout80mmConfig = { ...CONFIG_80MM_PADRAO, ...config80mm };
+  const temAdicionais = adicionais.length > 0;
 
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistEntrada = avariasData?.checklist?.entrada || {};
@@ -67,7 +80,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
     termoConfig: configuracaoLoja?.termo_garantia_config,
     nomeLoja: configuracaoLoja?.nome_loja,
     nomeCliente: ordem.cliente?.nome,
-    dispositivo: `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`,
+    dispositivo: juntarDispositivos(`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, adicionais),
   });
 
   return (
@@ -114,7 +127,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
       {/* Dispositivo */}
       {c.mostrar_dados_dispositivo && (
         <div className="cupom-section cupom-border-bottom">
-          <div className="cupom-section-title">DISPOSITIVO</div>
+          <div className="cupom-section-title">{temAdicionais ? tituloDispositivo(1).toUpperCase() : "DISPOSITIVO"}</div>
           <div>{ordem.dispositivo_tipo} {ordem.dispositivo_marca} {ordem.dispositivo_modelo}</div>
           {ordem.dispositivo_cor && <div>Cor: {ordem.dispositivo_cor}</div>}
           {(ordem.dispositivo_imei || ordem.dispositivo_numero_serie) && (
@@ -126,10 +139,15 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
       {/* Defeito */}
       {c.mostrar_defeito && (
         <div className="cupom-section cupom-border-bottom">
-          <div className="cupom-section-title">DEFEITO</div>
+          <div className="cupom-section-title">{temAdicionais ? `DEFEITO — ${tituloDispositivo(1).toUpperCase()}` : "DEFEITO"}</div>
           <div>{ordem.defeito_relatado}</div>
         </div>
       )}
+
+      {/* Dispositivos adicionais */}
+      {adicionais.map((a, i) => (
+        <SecaoDispositivoAdicional80mm key={a.id} adicional={a} numero={numeroAdicional(i)} c={c} />
+      ))}
 
       {/* Serviços + Produtos */}
       {c.mostrar_servicos && (servicosRealizados.length > 0 || produtosUtilizados.length > 0) && (
@@ -139,7 +157,7 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
               <div className="cupom-section-title">SERVIÇOS</div>
               {servicosRealizados.map((s, i) => (
                 <div key={chaveLinhaServico(s, i)} className="cupom-line-between">
-                  <span>{nomeLinhaServico(s)}</span>
+                  <span>{nomeLinhaServicoComDispositivo(s, adicionais)}</span>
                   <span>{formatCurrency(valorLinhaServico(s))}</span>
                 </div>
               ))}
@@ -365,6 +383,64 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm }: Impr
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** "DISPOSITIVO 2" no cupom: dados, defeito, checklist e senha (mesmas chaves do 1º); avarias em texto. */
+function SecaoDispositivoAdicional80mm({ adicional: a, numero, c }: { adicional: DispositivoAdicionalOS; numero: number; c: Layout80mmConfig }) {
+  const senha = decryptSenhaDesbloqueio(a.senha_desbloqueio ?? undefined);
+  const entrada = Object.entries(a.checklist?.entrada || {});
+  const mostrarSenha = c.mostrar_senha && !!senha;
+  const mostrarChecklist = c.mostrar_checklist && (entrada.length > 0 || !!a.checklist?.sem_teste);
+  const mostrarAvarias = c.mostrar_avarias && a.avarias_visuais.length > 0;
+  const mostrarDefeito = c.mostrar_defeito && !!a.defeito_relatado;
+  if (!c.mostrar_dados_dispositivo && !mostrarDefeito && !mostrarChecklist && !mostrarAvarias && !mostrarSenha) return null;
+  return (
+    <div className="cupom-section cupom-border-bottom">
+      <div className="cupom-section-title">{tituloDispositivo(numero).toUpperCase()}</div>
+      {c.mostrar_dados_dispositivo && (
+        <>
+          <div>{a.dispositivo_tipo} {a.dispositivo_marca} {a.dispositivo_modelo}</div>
+          {a.dispositivo_cor && <div>Cor: {a.dispositivo_cor}</div>}
+          {imeiOuSerie(a) && <div>IMEI/Série: {imeiOuSerie(a)}</div>}
+        </>
+      )}
+      {mostrarDefeito && <div>Defeito: {a.defeito_relatado}</div>}
+      {mostrarChecklist && (
+        <>
+          {a.checklist?.sem_teste && (
+            <div style={{ fontSize: "7pt", fontStyle: "italic", padding: "2px 0" }}>⚠️ Sem teste: aparelho chegou desligado.</div>
+          )}
+          {entrada.map(([item, status]) => (
+            <div key={item} className="cupom-checklist-item">
+              {status ? (
+                <CheckCircle2 style={{ width: "8px", height: "8px", color: "green" }} />
+              ) : (
+                <XCircle style={{ width: "8px", height: "8px", color: "red" }} />
+              )}
+              <span>{item.replace(/_/g, " ")}</span>
+            </div>
+          ))}
+        </>
+      )}
+      {mostrarAvarias && (
+        <div>Avarias: {a.avarias_visuais.map((v) => `${v.tipo} (${v.lado})`).join(", ")}</div>
+      )}
+      {mostrarSenha && senha && (
+        senha.nao_informada ? (
+          <div>Senha: Cliente não quis passar a senha</div>
+        ) : senha.tipo === "padrao" && senha.padrao ? (
+          <>
+            <div>Senha: Padrão Android</div>
+            <div className="cupom-center">
+              <PatternLockVisualizacao pattern={senha.padrao} size={60} />
+            </div>
+          </>
+        ) : (
+          <div>{senha.tipo === "numero" ? "PIN" : "Texto"}: {senha.valor || "N/A"}</div>
+        )
       )}
     </div>
   );

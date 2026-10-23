@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { ConfiguracaoLoja, TermoResponsabilidadeConfig } from "@/types/configuracao-loja";
+import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
+import { numeroAdicional, tituloDispositivo } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import {
   formatarTextoComVariaveis,
   TERMO_RESPONSABILIDADE_PADRAO,
@@ -20,6 +22,8 @@ export function ImpressaoTermoResponsabilidade({
   configuracaoLoja,
   onFecharImpressao,
 }: ImpressaoTermoResponsabilidadeProps) {
+  // Adicionais entram como campos extras; as variáveis do texto ({{marca}}, {{modelo}}...) seguem do dispositivo 1.
+  const { adicionais } = useOsDispositivosAdicionais(ordem.id);
   const termo = (configuracaoLoja?.termo_responsabilidade_config as TermoResponsabilidadeConfig) ||
     TERMO_RESPONSABILIDADE_PADRAO;
   
@@ -172,6 +176,12 @@ export function ImpressaoTermoResponsabilidade({
               {ordem.dispositivo_marca} {ordem.dispositivo_modelo}
             </span>
           </div>
+          {adicionais.map((a, i) => (
+            <div key={a.id} className="termo-campo">
+              <span className="termo-campo-label">{`${tituloDispositivo(numeroAdicional(i))}:`}</span>
+              <span className="termo-campo-valor">{[a.dispositivo_tipo, a.dispositivo_marca, a.dispositivo_modelo].filter(Boolean).join(" ")}</span>
+            </div>
+          ))}
           <div className="termo-campo termo-campo-full">
             <span className="termo-campo-label">Defeito informado pelo cliente:</span>
             <span className="termo-campo-valor">{ordem.defeito_relatado || "_____________"}</span>

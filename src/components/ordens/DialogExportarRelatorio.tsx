@@ -23,6 +23,8 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
+import { juntarDispositivos, juntarImeis, type ResumoDispositivoAdicional } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { useAdicionaisPorOS } from "@/contexts/AdicionaisPorOSContext";
 
 interface DialogExportarRelatorioProps {
   aberto: boolean;
@@ -68,7 +70,12 @@ function baixarArquivo(conteudo: string, nomeArquivo: string, tipo: string) {
   URL.revokeObjectURL(url);
 }
 
-function resolverValorColuna(ordem: OrdemServico, colId: string, statusLabel: string): string {
+function resolverValorColuna(
+  ordem: OrdemServico,
+  colId: string,
+  statusLabel: string,
+  adicionais?: ResumoDispositivoAdicional[],
+): string {
   switch (colId) {
     case "numero_os":
       return ordem.numero_os || "";
@@ -85,9 +92,9 @@ function resolverValorColuna(ordem: OrdemServico, colId: string, statusLabel: st
     case "telefone":
       return ordem.cliente?.telefone || "";
     case "dispositivo":
-      return [ordem.dispositivo_marca, ordem.dispositivo_modelo].filter(Boolean).join(" ") || "";
+      return juntarDispositivos([ordem.dispositivo_marca, ordem.dispositivo_modelo].filter(Boolean).join(" ") || "", adicionais, " / ");
     case "imei":
-      return ordem.dispositivo_imei || ordem.dispositivo_numero_serie || "";
+      return juntarImeis(ordem.dispositivo_imei || ordem.dispositivo_numero_serie || "", adicionais);
     case "defeito_relatado":
       return ordem.defeito_relatado || "";
     case "status":
@@ -108,6 +115,7 @@ export function DialogExportarRelatorio({
   itensSelecionados,
 }: DialogExportarRelatorioProps) {
   const { statusList, getStatusBySlug } = useOSStatusConfig();
+  const adicionaisPorOs = useAdicionaisPorOS();
 
   const [modo, setModo] = useState<ModoExport>(
     itensSelecionados && itensSelecionados.size > 0 ? "selecionadas" : "todas"
@@ -147,7 +155,7 @@ export function DialogExportarRelatorio({
     const linhas = ordensParaExportar.map((ordem) => {
       const statusConfig = getStatusBySlug(ordem.status || "");
       const statusLabel = statusConfig?.nome || ordem.status || "";
-      return colunasOrdenadas.map((c) => resolverValorColuna(ordem, c.id, statusLabel));
+      return colunasOrdenadas.map((c) => resolverValorColuna(ordem, c.id, statusLabel, adicionaisPorOs[ordem.id]));
     });
 
     const dataHoje = format(new Date(), "yyyy-MM-dd");

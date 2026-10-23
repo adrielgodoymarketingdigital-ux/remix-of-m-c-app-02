@@ -21,13 +21,15 @@ import {
   AVISO_DOCUMENTO,
   decidirFotos,
   montarFotosParaImpressao,
-  selecionarFotos,
+  selecionarFotosComAdicionais,
   textoBotaoSemFotos,
   textoFalhas,
   type FotoCarregada,
   type ModoImpressaoFotos,
 } from "@/lib/os/fotosImpressaoOS";
 import { carregarFotosImpressao, lerEscolhaFotos, salvarEscolhaFotos } from "@/lib/os/carregarFotosImpressaoOS";
+import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
+import { juntarDispositivos } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 // Converte <img> externas (logo) para data URI base64 dentro do HTML serializado,
 // evitando bloqueio de CORS no documento isolado. Timeout de 4s por imagem.
@@ -269,6 +271,9 @@ export const ImpressaoOrdemServico = ({
   onFecharImpressao,
 }: ImpressaoOrdemServicoProps) => {
   const avariasData = ordem.avarias as AvariasOS | null;
+  // Dispositivos adicionais (já no cache quando a OS veio de buscarOrdemCompleta).
+  // Enquanto a 1ª busca não termina, "Imprimir Agora" fica travado.
+  const { adicionais, carregando: carregandoAdicionais } = useOsDispositivosAdicionais(ordem.id);
 
   // Obter configurações de layout
   const layoutConfig: LayoutOSConfig = {
@@ -305,7 +310,7 @@ export const ImpressaoOrdemServico = ({
     termoConfig: configuracaoLoja?.termo_garantia_config,
     nomeLoja: configuracaoLoja?.nome_loja,
     nomeCliente: ordem.cliente?.nome,
-    dispositivo: `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`,
+    dispositivo: juntarDispositivos(`${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`, adicionais),
   });
 
   // Detect standalone PWA mode (installed app)
@@ -368,7 +373,11 @@ export const ImpressaoOrdemServico = ({
   const isMobile = isAndroid || isIOS;
 
   // ── Fotos do aparelho (só A4 e PDF; regras em lib/os/fotosImpressaoOS.ts) ──
-  const selecaoFotos = useMemo(() => selecionarFotos(avariasData?.fotos_dispositivo), [avariasData]);
+  // Com adicionais: as fotos deles entram na mesma grade, depois das do dispositivo 1 (limite de sempre).
+  const selecaoFotos = useMemo(
+    () => selecionarFotosComAdicionais(avariasData?.fotos_dispositivo, adicionais.map((a) => a.fotos_dispositivo)),
+    [avariasData, adicionais],
+  );
   // Escolha lembrada no aparelho (null = ainda não escolheu: vale o padrão da loja, desligado se ausente).
   const [escolhaFotos, setEscolhaFotos] = useState<boolean | null>(() => lerEscolhaFotos());
   const decisaoFotos = decidirFotos({
@@ -386,7 +395,7 @@ export const ImpressaoOrdemServico = ({
   const [confirmandoFalhas, setConfirmandoFalhas] = useState(false);
   // Pré-carrega as miniaturas antes de liberar "Imprimir Agora" (timeout de 8 s por foto).
   useEffect(() => {
-    if (!decisaoFotos.incluir || fotosCarregadas) return;
+    if (!decisaoFotos.incluir || fotosCarregadas || carregandoAdicionais) return;
     let ativo = true;
     setCarregandoFotos(true);
     carregarFotosImpressao(selecaoFotos.urls, { verificarOriginal: modoFotos === "html-direto" })
@@ -397,10 +406,11 @@ export const ImpressaoOrdemServico = ({
       setCarregandoFotos(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decisaoFotos.incluir]);
-  const fotosMontadas = decisaoFotos.incluir && fotosCarregadas ? montarFotosParaImpressao(fotosCarregadas, modoFotos) : null;
+  }, [decisaoFotos.incluir, carregandoAdicionais]);
+  const fotosMontadas = decisaoFotos.incluir && fotosCarregadas ? montarFotosParaImpressao(fotosCarregadas, modoFotos, selecaoFotos.legendas) : null;
   const falhasFotos = fotosMontadas?.falhas ?? 0;
   const fotosAguardando = decisaoFotos.incluir && (carregandoFotos || !fotosMontadas);
+  const aguardandoImpressao = fotosAguardando || carregandoAdicionais;
   const escolherIncluirFotos = (incluir: boolean) => {
     setEscolhaFotos(incluir);
     salvarEscolhaFotos(incluir);
@@ -765,12 +775,15 @@ export const ImpressaoOrdemServico = ({
   const gerarPDFECompartilhar = async (formato80mm: boolean) => {
     try {
       const pdfBlob = formato80mm
-        ? await gerarOrdemServicoCupom80mmPDF(ordem, configuracaoLoja)
+        ? await gerarOrdemServicoCupom80mmPDF(ordem, configuracaoLoja, adicionais)
         : await gerarOrdemServicoPDF(
             ordem,
             configuracaoLoja,
             'completo',
-            fotosMontadas ? { fotos: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {},
+            {
+              ...(fotosMontadas ? { fotos: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {}),
+              adicionais,
+            },
           );
       const nomeArquivo = formato80mm ? `OS-${ordem.numero_os}-80mm.pdf` : `OS-${ordem.numero_os}.pdf`;
       const pdfFile = new File([pdfBlob], nomeArquivo, { type: 'application/pdf' });
@@ -871,6 +884,7 @@ export const ImpressaoOrdemServico = ({
           layoutConfig={layoutConfig}
           termoGarantia={termoGarantia}
           {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
+          adicionais={adicionais}
         />
       );
     }
@@ -881,6 +895,7 @@ export const ImpressaoOrdemServico = ({
         layoutConfig={layoutConfig}
         termoGarantia={termoGarantia}
         {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
+        adicionais={adicionais}
       />
     );
   };
@@ -942,11 +957,11 @@ export const ImpressaoOrdemServico = ({
                 }
                 handlePrint();
               }}
-              disabled={fotosAguardando}
+              disabled={aguardandoImpressao}
               className="print-trigger-button"
-              style={{ flex: 1, opacity: fotosAguardando ? 0.6 : 1 }}
+              style={{ flex: 1, opacity: aguardandoImpressao ? 0.6 : 1 }}
             >
-              {fotosAguardando ? "Carregando fotos…" : confirmandoFalhas && falhasFotos > 0 ? textoBotaoSemFotos(falhasFotos) : "Imprimir Agora"}
+              {fotosAguardando ? "Carregando fotos…" : carregandoAdicionais ? "Carregando…" : confirmandoFalhas && falhasFotos > 0 ? textoBotaoSemFotos(falhasFotos) : "Imprimir Agora"}
             </button>
             <button onClick={onFecharImpressao} className="print-close-button">
               {isStandalone ? "Voltar" : "Cancelar"}
@@ -965,6 +980,7 @@ export const ImpressaoOrdemServico = ({
             ordem={ordem}
             configuracaoLoja={configuracaoLoja}
             config80mm={c80}
+            adicionais={adicionais}
           />
         </>
       ) : duasOsPorFolha ? (
