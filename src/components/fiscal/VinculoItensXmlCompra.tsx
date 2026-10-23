@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,9 +8,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { AlertTriangle, ChevronDown, Info, Loader2, Lock, Search, Smartphone, XCircle } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Info, Loader2, Search, Smartphone, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ItemNfe, ResultadoLeituraNfe } from '@/lib/nfe/lerXmlNfe';
+import type { ItemNfe, ResultadoLeituraNfe, SituacaoDestinatario } from '@/lib/nfe/lerXmlNfe';
 import type { DadosTributaveisItem } from '@/lib/nfe/dadosTributaveisNfe';
 import {
   buscarCandidatos,
@@ -22,6 +22,7 @@ import {
   type SugestaoVinculo,
 } from '@/lib/nfe/sugestaoVinculo';
 import {
+  acumularPrevisaoCustoMedio,
   centavosParaTexto,
   decisaoInicial,
   montarLinha,
@@ -29,23 +30,39 @@ import {
   sugerirFator,
   type AcaoItem,
   type DecisaoItem,
-  type LinhaPlano,
+  type ResumoImportacao,
 } from '@/lib/nfe/planoImportacao';
+import type { RetornoImportacao } from '@/lib/nfe/gravarImportacao';
 import type { CandidatosVinculoXml } from '@/hooks/useCandidatosVinculoXml';
 import { LIMITE_CANDIDATOS_POR_TABELA } from '@/hooks/useCandidatosVinculoXml';
+import { useNotaJaImportada } from '@/hooks/useGravarXmlCompra';
 import { Extras, Fiscal, Imeis } from './detalhesItemXml';
 import { dinheiro, dinheiroCentavos, quantidade } from './formatoItemXml';
+import { ConfirmarImportacaoXml } from './ConfirmarImportacaoXml';
 
 /**
- * Importar XML de compra — ETAPA 2: para cada item, sugere o vínculo com um
- * produto/peça já cadastrado, calcula quantidade inteira e custo, prevê o
- * custo médio e resume. NADA É GRAVADO: sem botão de confirmar; as decisões
- * vivem só no estado desta tela.
+ * Importar XML de compra — ETAPAS 2 e 4: para cada item, sugere o vínculo com
+ * um produto/peça já cadastrado, calcula quantidade inteira e custo, prevê o
+ * custo médio e resume. As decisões vivem só no estado desta tela até o
+ * "Confirmar importação" do resumo (ConfirmarImportacaoXml), que grava pela
+ * RPC importar_nfe_compra.
  */
 interface VinculoItensXmlCompraProps {
   resultado: ResultadoLeituraNfe;
   dadosTributaveis: Map<number, DadosTributaveisItem>;
   candidatos: CandidatosVinculoXml;
+  /** Arquivo original (enviado ao bucket só na confirmação). */
+  arquivo: File;
+  situacaoDestinatario: SituacaoDestinatario;
+  onImportada: (retorno: RetornoImportacao) => void;
+}
+
+/** Previsão com outras linhas da nota entrando antes no mesmo produto. */
+interface PrevisaoAcumulada {
+  quantidadeAntes: number;
+  custoAntesCentavos: number | null;
+  custoDepoisCentavos: number | null;
+  itensAnteriores: number[];
 }
 
 const ROTULO_MOTIVO: Record<NonNullable<DecisaoItem['origemVinculo']>, { texto: string; fraco: boolean }> = {
@@ -130,10 +147,15 @@ interface CartaoItemProps {
   atualizarCustoMedioGeral: boolean;
   indice: IndiceCandidatos;
   onAlterar: (nItem: number, mudanca: Partial<DecisaoItem>) => void;
+  /** Só quando o mesmo produto aparece em mais de uma linha. */
+  acumulado?: PrevisaoAcumulada;
 }
 
-const CartaoItem = memo(function CartaoItem({ item, decisao, sugestao, trib, atualizarCustoMedioGeral, indice, onAlterar }: CartaoItemProps) {
-  const linha = useMemo(() => montarLinha(item, decisao, atualizarCustoMedioGeral), [item, decisao, atualizarCustoMedioGeral]);
+const CartaoItem = memo(function CartaoItem({ item, decisao, sugestao, trib, atualizarCustoMedioGeral, indice, onAlterar, acumulado }: CartaoItemProps) {
+  const base = useMemo(() => montarLinha(item, decisao, atualizarCustoMedioGeral), [item, decisao, atualizarCustoMedioGeral]);
+  const linha = acumulado
+    ? { ...base, custoAtualCentavos: acumulado.custoAntesCentavos, custoDepoisCentavos: acumulado.custoDepoisCentavos }
+    : base;
   const [ajustarQuantidade, setAjustarQuantidade] = useState(false);
   const alterar = (m: Partial<DecisaoItem>) => onAlterar(item.nItem, m);
   const fatorSugerido = useMemo(() => sugerirFator(item, trib), [item, trib]);
@@ -227,7 +249,25 @@ const CartaoItem = memo(function CartaoItem({ item, decisao, sugestao, trib, atu
                   {tipoTexto(t)}
                 </Button>
               ))}
-              <span className="text-xs text-muted-foreground">(só marca a intenção; nada é criado nesta etapa)</span>
+            </div>
+          )}
+          {decisao.acao === 'novo' && (
+            <div className="space-y-1 max-w-xs">
+              <Label className="text-xs" htmlFor={`xml-preco-${item.nItem}`}>Preço de venda (R$, opcional)</Label>
+              <Input
+                id={`xml-preco-${item.nItem}`}
+                data-testid="xml-preco-venda"
+                inputMode="decimal"
+                className="h-8"
+                placeholder="0,00"
+                value={decisao.precoVenda}
+                onChange={(e) => alterar({ precoVenda: e.target.value })}
+              />
+              {!decisao.precoVenda.trim() && (
+                <p className="text-xs text-amber-700 dark:text-amber-400" data-testid="xml-sem-preco">
+                  sem preço de venda: defina depois em Produtos
+                </p>
+              )}
             </div>
           )}
 
@@ -336,6 +376,12 @@ const CartaoItem = memo(function CartaoItem({ item, decisao, sugestao, trib, atu
                         Custo depois da entrada (previsão): <strong>{dinheiroCentavos(linha.custoDepoisCentavos)}</strong>
                       </div>
                     )}
+                    {acumulado && acumulado.itensAnteriores.length > 0 && (
+                      <div className="text-amber-700 dark:text-amber-400" data-testid="xml-custo-acumulado">
+                        Considera {acumulado.itensAnteriores.length === 1 ? 'o item' : 'os itens'} {acumulado.itensAnteriores.join(', ')} da nota
+                        entrando antes neste produto (estoque {acumulado.quantidadeAntes}, custo {dinheiroCentavos(acumulado.custoAntesCentavos)}).
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -377,8 +423,7 @@ export function ResumoNotaInvalida() {
   );
 }
 
-function Resumo({ resultado, linhas }: { resultado: ResultadoLeituraNfe; linhas: LinhaPlano[] }) {
-  const r = useMemo(() => resumirImportacao(resultado, linhas), [resultado, linhas]);
+function Resumo({ r, children }: { r: ResumoImportacao; children: ReactNode }) {
   if (r.notaInvalida) return <ResumoNotaInvalida />;
   return (
     <section className="rounded-lg border p-3 sm:p-4 space-y-3" data-testid="xml-resumo">
@@ -415,10 +460,7 @@ function Resumo({ resultado, linhas }: { resultado: ResultadoLeituraNfe; linhas:
           ))}
         </ul>
       )}
-      <div className="flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-sm" data-testid="xml-resumo-proxima-etapa">
-        <Lock className="w-4 h-4 mt-0.5 shrink-0" />
-        <span>Gravar no estoque será liberado na próxima etapa.</span>
-      </div>
+      {children}
     </section>
   );
 }
@@ -427,8 +469,9 @@ function Resumo({ resultado, linhas }: { resultado: ResultadoLeituraNfe; linhas:
 // Tela
 // ---------------------------------------------------------------------------
 
-export function VinculoItensXmlCompra({ resultado, dadosTributaveis, candidatos }: VinculoItensXmlCompraProps) {
+export function VinculoItensXmlCompra({ resultado, dadosTributaveis, candidatos, arquivo, situacaoDestinatario, onImportada }: VinculoItensXmlCompraProps) {
   const [alteracoes, setAlteracoes] = useState<Record<number, DecisaoItem>>({});
+  const [jaImportadaRpc, setJaImportadaRpc] = useState<string | null>(null);
   const [atualizarCustoMedioGeral, setAtualizarCustoMedioGeral] = useState(true);
 
   const indice = useMemo(() => indexarCandidatos(candidatos.candidatos), [candidatos.candidatos]);
@@ -457,8 +500,33 @@ export function VinculoItensXmlCompra({ resultado, dadosTributaveis, candidatos 
   }, [iniciais]);
 
   const linhas = useMemo(
-    () => resultado.itens.map((it) => montarLinha(it, decisaoDe(it.nItem), atualizarCustoMedioGeral)),
+    () => acumularPrevisaoCustoMedio(resultado.itens.map((it) => montarLinha(it, decisaoDe(it.nItem), atualizarCustoMedioGeral))),
     [resultado.itens, decisaoDe, atualizarCustoMedioGeral],
+  );
+  const acumulados = useMemo(() => {
+    const m = new Map<number, PrevisaoAcumulada>();
+    const contagem = new Map<string, number>();
+    for (const l of linhas) {
+      const v = l.situacao === 'importar' && l.decisao.acao === 'vincular' ? l.decisao.vinculo : null;
+      if (v) contagem.set(`${v.tipo}:${v.id}`, (contagem.get(`${v.tipo}:${v.id}`) ?? 0) + 1);
+    }
+    for (const l of linhas) {
+      const v = l.situacao === 'importar' && l.decisao.acao === 'vincular' ? l.decisao.vinculo : null;
+      if (!v || (contagem.get(`${v.tipo}:${v.id}`) ?? 0) < 2) continue;
+      m.set(l.nItem, {
+        quantidadeAntes: l.quantidadeAntes ?? 0,
+        custoAntesCentavos: l.custoAtualCentavos,
+        custoDepoisCentavos: l.custoDepoisCentavos,
+        itensAnteriores: l.itensAnteriores,
+      });
+    }
+    return m;
+  }, [linhas]);
+
+  const verificacao = useNotaJaImportada(resultado.ok ? resultado.nota?.chave ?? null : null);
+  const resumo = useMemo(
+    () => resumirImportacao(resultado, linhas, jaImportadaRpc ?? verificacao.jaImportada),
+    [resultado, linhas, jaImportadaRpc, verificacao.jaImportada],
   );
 
   return (
@@ -507,11 +575,24 @@ export function VinculoItensXmlCompra({ resultado, dadosTributaveis, candidatos 
             atualizarCustoMedioGeral={atualizarCustoMedioGeral}
             indice={indice}
             onAlterar={onAlterar}
+            acumulado={acumulados.get(it.nItem)}
           />
         ))}
       </div>
 
-      <Resumo resultado={resultado} linhas={linhas} />
+      <Resumo r={resumo}>
+        <ConfirmarImportacaoXml
+          resultado={resultado}
+          linhas={linhas}
+          resumo={resumo}
+          dadosTributaveis={dadosTributaveis}
+          arquivo={arquivo}
+          situacaoDestinatario={situacaoDestinatario}
+          verificacaoNota={{ verificando: verificacao.verificando, falhou: verificacao.falhou, tentarDeNovo: () => void verificacao.tentarDeNovo() }}
+          onJaImportada={setJaImportadaRpc}
+          onImportada={onImportada}
+        />
+      </Resumo>
     </div>
   );
 }

@@ -901,6 +901,65 @@ export type Database = {
           },
         ]
       }
+      compras_xml_importadas: {
+        Row: {
+          chave_acesso: string
+          created_at: string
+          criado_por: string
+          data_emissao: string
+          emitente_cnpj: string
+          emitente_nome: string
+          empresa_id: string | null
+          id: string
+          numero: string
+          serie: string
+          status: string
+          user_id: string
+          valor_total_centavos: number
+          xml_path: string | null
+        }
+        Insert: {
+          chave_acesso: string
+          created_at?: string
+          criado_por?: string
+          data_emissao: string
+          emitente_cnpj: string
+          emitente_nome: string
+          empresa_id?: string | null
+          id?: string
+          numero: string
+          serie: string
+          status?: string
+          user_id: string
+          valor_total_centavos: number
+          xml_path?: string | null
+        }
+        Update: {
+          chave_acesso?: string
+          created_at?: string
+          criado_por?: string
+          data_emissao?: string
+          emitente_cnpj?: string
+          emitente_nome?: string
+          empresa_id?: string | null
+          id?: string
+          numero?: string
+          serie?: string
+          status?: string
+          user_id?: string
+          valor_total_centavos?: number
+          xml_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compras_xml_importadas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_loja: {
         Row: {
           bairro: string | null
@@ -6282,6 +6341,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      importar_nfe_compra: { Args: { payload: Json }; Returns: Json }
       incrementar_uso_cupom: { Args: { cupom_id: string }; Returns: undefined }
       is_colleague_of: {
         Args: { target_loja_user_id: string }

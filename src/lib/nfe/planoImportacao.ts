@@ -1,8 +1,9 @@
 /**
- * Plano da importação de uma NF-e de compra (etapa 2: só calcula e mostra;
- * nada é gravado). Para cada item: o que fazer (vincular / cadastrar como novo
- * / ignorar), quantidade inteira que entra no estoque, custo por unidade e a
- * previsão do custo médio; no fim, o resumo e as pendências.
+ * Plano da importação de uma NF-e de compra. Para cada item: o que fazer
+ * (vincular / cadastrar como novo / ignorar), quantidade inteira que entra no
+ * estoque, custo por unidade e a previsão do custo médio; no fim, o resumo e
+ * as pendências. Só calcula: quem grava é a RPC importar_nfe_compra (payload
+ * montado em gravarImportacao.ts).
  *
  * Dinheiro sempre em CENTAVOS inteiros; produtos de decimais (vUnCom × qCom,
  * qCom × fator) em BigInt exato, arredondando meio-para-cima só no fim.
@@ -68,6 +69,10 @@ export function lerCustoUsuario(texto: string): number | null {
 }
 
 export const centavosParaTexto = (c: number) => (c / 100).toFixed(2).replace(".", ",");
+
+/** Limites da RPC importar_nfe_compra (c_max_quantidade, c_max_custo). */
+export const QUANTIDADE_MAXIMA_ITEM = 99999;
+export const CENTAVOS_MAXIMO_UNITARIO = 9999999;
 
 // ---------------------------------------------------------------------------
 // Quantidade e fator
@@ -209,6 +214,8 @@ export interface DecisaoItem {
   custoManual: string;
   /** null = segue a opção geral "Atualizar custo médio". */
   atualizarCustoMedio: boolean | null;
+  /** Só "novo": preço de venda do cadastro novo; vazio = sem preço. */
+  precoVenda: string;
 }
 
 export const ehAparelho = (item: Pick<ItemNfe, "imeisSugeridos">) => item.imeisSugeridos.length > 0;
@@ -224,6 +231,7 @@ export function decisaoInicial(item: ItemNfe, sugestao: SugestaoVinculo | null, 
     quantidadeManual: "",
     custoManual: "",
     atualizarCustoMedio: null,
+    precoVenda: "",
   };
 }
 
@@ -239,10 +247,19 @@ export interface LinhaPlano {
   /** Custo final por unidade (digitado ou calculado), centavos. */
   custoUnitarioCentavos: number | null;
   custoTotalCentavos: number | null;
-  /** Só vínculo: custo atual do cadastro e custo depois da entrada (centavos). */
+  /**
+   * Só vínculo: estoque e custo do cadastro ANTES desta linha e custo depois
+   * dela (centavos). Com o mesmo produto em várias linhas, a partir da 2ª já
+   * contam as anteriores (acumularPrevisaoCustoMedio).
+   */
+  quantidadeAntes: number | null;
   custoAtualCentavos: number | null;
   custoDepoisCentavos: number | null;
+  /** Linhas anteriores da nota que entram no mesmo produto antes desta. */
+  itensAnteriores: number[];
   atualizaCustoMedio: boolean;
+  /** Só "novo": preço de venda digitado (centavos); null = sem preço. */
+  precoVendaCentavos: number | null;
   erros: string[];
 }
 
@@ -257,9 +274,12 @@ export function montarLinha(item: ItemNfe, decisao: DecisaoItem, atualizarCustoM
     custo,
     custoUnitarioCentavos: null,
     custoTotalCentavos: null,
+    quantidadeAntes: null,
     custoAtualCentavos: null,
     custoDepoisCentavos: null,
+    itensAnteriores: [] as number[],
     atualizaCustoMedio: false,
+    precoVendaCentavos: null,
     erros: [] as string[],
   };
 
@@ -267,8 +287,12 @@ export function montarLinha(item: ItemNfe, decisao: DecisaoItem, atualizarCustoM
   if (decisao.acao === "ignorar") return { ...base, situacao: "ignorado" };
 
   const erros: string[] = [];
+  if (!item.cProd.trim()) erros.push("A nota não informa o código do produto do fornecedor (cProd).");
   if (decisao.acao === "vincular" && !decisao.vinculo) erros.push("Escolha o produto a vincular.");
   if (quantidade.erro) erros.push(quantidade.erro);
+  else if (quantidade.inteira !== null && quantidade.inteira > QUANTIDADE_MAXIMA_ITEM) {
+    erros.push(`Quantidade acima do máximo por item (${QUANTIDADE_MAXIMA_ITEM.toLocaleString("pt-BR")}).`);
+  }
 
   let unitario: number | null = custo.unitarioCentavos;
   const manual = lerCustoUsuario(decisao.custoManual);
@@ -277,6 +301,14 @@ export function montarLinha(item: ItemNfe, decisao: DecisaoItem, atualizarCustoM
     unitario = Number.isNaN(manual) ? null : manual;
   } else if (custo.erro) {
     erros.push(custo.erro);
+  }
+  if (unitario !== null && unitario > CENTAVOS_MAXIMO_UNITARIO) erros.push("Custo por unidade acima do máximo (R$ 99.999,99).");
+
+  let precoVenda: number | null = null;
+  if (decisao.acao === "novo") {
+    const p = lerCustoUsuario(decisao.precoVenda ?? "");
+    if (p !== null && (Number.isNaN(p) || p > CENTAVOS_MAXIMO_UNITARIO)) erros.push("Preço de venda inválido (use, por exemplo, 19,90).");
+    else precoVenda = p;
   }
 
   const vinculado = decisao.acao === "vincular" ? decisao.vinculo : null;
@@ -292,11 +324,53 @@ export function montarLinha(item: ItemNfe, decisao: DecisaoItem, atualizarCustoM
     situacao: erros.length ? "erro" : "importar",
     custoUnitarioCentavos: unitario,
     custoTotalCentavos: unitario !== null && quantidade.inteira !== null ? unitario * quantidade.inteira : null,
+    quantidadeAntes: vinculado ? vinculado.quantidade : null,
     custoAtualCentavos: custoAtual,
     custoDepoisCentavos: custoDepois,
     atualizaCustoMedio: atualiza,
+    precoVendaCentavos: precoVenda,
     erros,
   };
+}
+
+/** "produto:<id>" / "peca:<id>" de uma linha vinculada a importar; null nas demais. */
+export function chaveDestino(l: LinhaPlano): string | null {
+  const v = l.decisao.vinculo;
+  return l.situacao === "importar" && l.decisao.acao === "vincular" && v ? `${v.tipo}:${v.id}` : null;
+}
+
+/**
+ * Mesmo produto/peça em mais de uma linha: a RPC processa as linhas de um
+ * mesmo cadastro em sequência, por nItem crescente (o payload vai ordenado por
+ * nItem e ela ordena por item_id e depois pela posição). Aqui a previsão segue
+ * a mesma ordem: cada linha parte do estoque/custo deixado pela anterior
+ * (mesma regra de registrar_entrada_estoque). Linhas de cadastro único não mudam.
+ */
+export function acumularPrevisaoCustoMedio(linhas: LinhaPlano[]): LinhaPlano[] {
+  const grupos = new Map<string, LinhaPlano[]>();
+  for (const l of linhas) {
+    const k = chaveDestino(l);
+    if (k) grupos.set(k, [...(grupos.get(k) ?? []), l]);
+  }
+  const trocas = new Map<LinhaPlano, LinhaPlano>();
+  for (const grupo of grupos.values()) {
+    if (grupo.length < 2) continue;
+    const ordenado = [...grupo].sort((a, b) => a.nItem - b.nItem);
+    const v = ordenado[0].decisao.vinculo as CandidatoEstoque;
+    let qtd = v.quantidade;
+    let custo: number | null = v.custo !== null ? Math.round(v.custo * 100) : null;
+    const anteriores: number[] = [];
+    for (const l of ordenado) {
+      const entra = l.quantidade.inteira as number;
+      const unit = l.custoUnitarioCentavos as number;
+      const depois = l.atualizaCustoMedio ? preverCustoMedio({ quantidade: qtd, custo: custo === null ? null : custo / 100 }, entra, unit) : custo;
+      trocas.set(l, { ...l, quantidadeAntes: qtd, custoAtualCentavos: custo, custoDepoisCentavos: depois, itensAnteriores: [...anteriores] });
+      qtd += entra;
+      custo = depois;
+      anteriores.push(l.nItem);
+    }
+  }
+  return trocas.size ? linhas.map((l) => trocas.get(l) ?? l) : linhas;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,6 +393,9 @@ export interface ResumoImportacao {
   aImportar: number;
   vinculados: number;
   novos: number;
+  /** Cadastros novos por tipo (o limite do plano conta os dois juntos). */
+  novosProdutos: number;
+  novosPecas: number;
   ignorados: number;
   aparelhos: number;
   comErro: number;
@@ -328,11 +405,17 @@ export interface ResumoImportacao {
   pendencias: PendenciaImportacao[];
   /** Não bloqueiam (ex.: dois itens no mesmo produto). */
   avisos: PendenciaImportacao[];
-  /** Tudo certo para a etapa de gravar (que ainda não existe). */
+  /** Sem pendências e com pelo menos 1 item a importar. */
   prontoParaGravar: boolean;
 }
 
-export function resumirImportacao(resultado: ResultadoLeituraNfe, linhas: LinhaPlano[]): ResumoImportacao {
+/**
+ * `jaImportada`: frase pronta ("Esta nota já foi importada em dd/mm/aaaa
+ * hh:mm.") quando a consulta a compras_xml_importadas (por chave de acesso,
+ * na loja) achou a nota ou a RPC respondeu 23505 — vira pendência. A RPC
+ * confere sempre: a UNIQUE (user_id, chave_acesso) é a garantia de verdade.
+ */
+export function resumirImportacao(resultado: ResultadoLeituraNfe, linhas: LinhaPlano[], jaImportada: string | null = null): ResumoImportacao {
   const nota = resultado.nota;
   const vazio: ResumoImportacao = {
     notaInvalida: true,
@@ -345,6 +428,8 @@ export function resumirImportacao(resultado: ResultadoLeituraNfe, linhas: LinhaP
     aImportar: 0,
     vinculados: 0,
     novos: 0,
+    novosProdutos: 0,
+    novosPecas: 0,
     ignorados: 0,
     aparelhos: 0,
     comErro: 0,
@@ -356,13 +441,8 @@ export function resumirImportacao(resultado: ResultadoLeituraNfe, linhas: LinhaP
   };
   if (!resultado.ok || !nota) return vazio;
 
-  // PONTO DA ETAPA DE GRAVAR: antes de liberar a confirmação, consultar se a
-  // chave de acesso (nota.chave) já foi importada por este dono
-  // (compras_xml_importadas, UNIQUE (user_id, chave_acesso)) e, se sim, entrar
-  // em `pendencias` ("Esta nota já foi importada em dd/mm"). A RPC de gravação
-  // confere de novo (a constraint é a garantia de verdade).
-
   const r: ResumoImportacao = { ...vazio, notaInvalida: false };
+  if (jaImportada) r.pendencias.push({ texto: jaImportada });
   const porProduto = new Map<string, number[]>();
   for (const l of linhas) {
     if (l.situacao === "aparelho") r.aparelhos++;
@@ -373,17 +453,23 @@ export function resumirImportacao(resultado: ResultadoLeituraNfe, linhas: LinhaP
     } else {
       r.aImportar++;
       if (l.decisao.acao === "vincular") r.vinculados++;
-      else r.novos++;
+      else {
+        r.novos++;
+        if (l.decisao.tipoNovo === "peca") r.novosPecas++;
+        else r.novosProdutos++;
+      }
       r.unidades += l.quantidade.inteira ?? 0;
       r.custoTotalCentavos += l.custoTotalCentavos ?? 0;
-      if (l.decisao.acao === "vincular" && l.decisao.vinculo) {
-        const chave = `${l.decisao.vinculo.tipo}:${l.decisao.vinculo.id}`;
-        porProduto.set(chave, [...(porProduto.get(chave) ?? []), l.nItem]);
-      }
+      const chave = chaveDestino(l);
+      if (chave) porProduto.set(chave, [...(porProduto.get(chave) ?? []), l.nItem]);
     }
   }
   for (const itens of porProduto.values()) {
-    if (itens.length > 1) r.avisos.push({ texto: `Os itens ${itens.join(", ")} estão vinculados ao mesmo produto (as quantidades somam).` });
+    if (itens.length > 1) {
+      r.avisos.push({
+        texto: `Os itens ${itens.join(", ")} estão vinculados ao mesmo produto: as quantidades somam e a previsão do custo médio considera um item depois do outro, nessa ordem.`,
+      });
+    }
   }
   if (r.aImportar === 0 && r.comErro === 0) r.pendencias.push({ texto: "Nenhum item marcado para importar." });
   r.prontoParaGravar = r.pendencias.length === 0;

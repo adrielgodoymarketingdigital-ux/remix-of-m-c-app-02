@@ -3,21 +3,22 @@ import { ChevronRight, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { LeitorXmlCompra } from "@/components/fiscal/LeitorXmlCompra";
 import { useImportacaoXmlCompraVisivelStatus } from "@/hooks/useImportacaoXmlCompraVisivel";
-import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useCandidatosVinculoXml } from "@/hooks/useCandidatosVinculoXml";
+import { useDocumentoEmpresaAtiva } from "@/hooks/useGravarXmlCompra";
 
 /**
- * Configurações › Fiscal › Importar XML de compra (etapas 1 e 2: leitura,
- * sugestão de vínculo, custo e resumo — nada é gravado).
+ * Configurações › Fiscal › Importar XML de compra (leitura, sugestão de
+ * vínculo, custo, resumo e, na confirmação, gravação pela RPC
+ * importar_nfe_compra).
  * Só quem passa em useImportacaoXmlCompraVisivel (hoje admin); os demais são
  * redirecionados, mesmo abrindo a URL direto. A leitura do arquivo é toda no
- * navegador (LeitorXmlCompra). Consultas da página, só leitura e só ao abrir:
- * a configuração da loja (CNPJ do destinatário) e os produtos/peças para as
- * sugestões de vínculo (useCandidatosVinculoXml).
+ * navegador (LeitorXmlCompra). Consultas da página ao abrir, só leitura: o
+ * CNPJ da empresa ativa (destinatário) e os produtos/peças para as sugestões
+ * de vínculo (useCandidatosVinculoXml).
  */
 export default function ImportarXmlCompra() {
   const { visivel, carregando } = useImportacaoXmlCompraVisivelStatus();
-  const { config: configLoja } = useConfiguracaoLoja();
+  const { documento } = useDocumentoEmpresaAtiva(visivel);
   const candidatos = useCandidatosVinculoXml(visivel);
 
   if (carregando) {
@@ -43,11 +44,11 @@ export default function ImportarXmlCompra() {
             </nav>
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-[28px]">Importar XML de compra</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Leia o XML da NF-e que o fornecedor emitiu para a sua loja.
+              Leia o XML da NF-e que o fornecedor emitiu para a sua loja, confira os itens e dê entrada no estoque.
             </p>
           </div>
 
-          <LeitorXmlCompra documentosLoja={[configLoja?.cnpj]} candidatos={candidatos} />
+          <LeitorXmlCompra documentosLoja={[documento]} candidatos={candidatos} />
         </div>
       </main>
     </AppLayout>

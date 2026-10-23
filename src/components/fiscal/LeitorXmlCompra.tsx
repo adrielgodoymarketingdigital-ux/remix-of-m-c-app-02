@@ -19,18 +19,21 @@ import type { CandidatosVinculoXml } from '@/hooks/useCandidatosVinculoXml';
 import { Extras, Fiscal, Imeis } from './detalhesItemXml';
 import { dinheiro, quantidade } from './formatoItemXml';
 import { ResumoNotaInvalida, VinculoItensXmlCompra } from './VinculoItensXmlCompra';
+import { SucessoImportacaoXml } from './ConfirmarImportacaoXml';
+import type { RetornoImportacao } from '@/lib/nfe/gravarImportacao';
 
 /**
  * Importar XML de NF-e de compra. Etapa 1: lê o arquivo no navegador e mostra
  * o conteúdo. Etapa 2: com a nota válida, sugere vínculo, quantidade e custo
- * por item e resume (VinculoItensXmlCompra). Nada é gravado e nenhum byte do
- * arquivo vai ao servidor (este componente não usa o supabase; os produtos
- * cadastrados chegam prontos em `candidatos`, carregados ao abrir a página).
+ * por item e resume (VinculoItensXmlCompra). Etapa 4: o "Confirmar
+ * importação" do resumo envia o arquivo original e grava pela RPC; antes disso
+ * nada é gravado e nenhum byte do arquivo vai ao servidor. Depois de gravar,
+ * mostra o resultado e limpa o estado da tela.
  * Usado pela página Configurações › Fiscal › Importar XML de compra
  * (src/pages/ImportarXmlCompra.tsx), visível só via useImportacaoXmlCompraVisivel.
  */
 interface LeitorXmlCompraProps {
-  /** CNPJ/CPF cadastrados da loja, para conferir o destinatário da nota. */
+  /** CNPJ/CPF da empresa ativa (matriz ou filial), para conferir o destinatário da nota. */
   documentosLoja: Array<string | null | undefined>;
   /** Produtos e peças da loja (somente leitura) para sugerir vínculos. */
   candidatos: CandidatosVinculoXml;
@@ -197,19 +200,31 @@ export function LeitorXmlCompra({ documentosLoja, candidatos }: LeitorXmlCompraP
   const [lendo, setLendo] = useState(false);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ResultadoLeituraNfe | null>(null);
+  const [arquivo, setArquivo] = useState<File | null>(null);
   const [dadosTributaveis, setDadosTributaveis] = useState<Map<number, DadosTributaveisItem>>(new Map());
+  const [importada, setImportada] = useState<RetornoImportacao | null>(null);
 
   const resetar = () => {
     setNomeArquivo('');
     setErroArquivo(null);
     setResultado(null);
+    setArquivo(null);
+    setDadosTributaveis(new Map());
     if (inputRef.current) inputRef.current.value = '';
+  };
+
+  const aoImportar = (retorno: RetornoImportacao) => {
+    resetar();
+    setImportada(retorno);
+    window.scrollTo({ top: 0 });
   };
 
   const lerArquivo = async (arquivo: File | undefined) => {
     if (!arquivo) return;
     setErroArquivo(null);
     setResultado(null);
+    setArquivo(null);
+    setImportada(null);
     if (!arquivo.name.toLowerCase().endsWith('.xml')) {
       setErroArquivo('Escolha o arquivo .xml da nota (não o PDF/DANFE).');
       return;
@@ -226,6 +241,7 @@ export function LeitorXmlCompra({ documentosLoja, candidatos }: LeitorXmlCompraP
       const lido = lerXmlNfe(texto, { tamanhoBytes: arquivo.size });
       // cEANTrib/uTrib/qTrib só de nota válida (as checagens de segurança já passaram).
       setDadosTributaveis(lido.ok ? lerDadosTributaveis(texto, { tamanhoBytes: arquivo.size }) : new Map());
+      setArquivo(arquivo);
       setResultado(lido);
     } catch {
       setErroArquivo('Não foi possível ler o arquivo.');
@@ -236,12 +252,16 @@ export function LeitorXmlCompra({ documentosLoja, candidatos }: LeitorXmlCompraP
 
   return (
     <div className="space-y-3" data-testid="leitor-xml-compra">
-      <Alert data-testid="xml-somente-leitura">
-        <Info className="h-4 w-4" />
-        <AlertDescription>Esta etapa só mostra o conteúdo do arquivo; nada é cadastrado.</AlertDescription>
-      </Alert>
+      {importada ? (
+        <SucessoImportacaoXml retorno={importada} onOutraNota={() => { setImportada(null); resetar(); }} />
+      ) : (
+        <Alert data-testid="xml-somente-leitura">
+          <Info className="h-4 w-4" />
+          <AlertDescription>Nada é gravado até você conferir os itens e confirmar a importação no fim da página.</AlertDescription>
+        </Alert>
+      )}
 
-      {!resultado ? (
+      {importada ? null : !resultado ? (
         <div className="space-y-3">
           <button
             type="button"
@@ -251,7 +271,7 @@ export function LeitorXmlCompra({ documentosLoja, candidatos }: LeitorXmlCompraP
           >
             {lendo ? <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /> : <FileCode className="w-8 h-8 text-muted-foreground" />}
             <span className="font-medium">{lendo ? 'Lendo arquivo…' : 'Escolher arquivo .xml'}</span>
-            <span className="text-xs text-muted-foreground">NF-e modelo 55, até 5 MB. O arquivo é lido no seu aparelho e não é enviado.</span>
+            <span className="text-xs text-muted-foreground">NF-e modelo 55, até 5 MB. O arquivo é lido no seu aparelho; só é enviado se você confirmar a importação.</span>
           </button>
           <input
             ref={inputRef}
@@ -287,8 +307,15 @@ export function LeitorXmlCompra({ documentosLoja, candidatos }: LeitorXmlCompraP
               <span className="font-mono break-all">{resultado.nota.imeisInfCpl.join(', ')}</span>
             </div>
           ) : null}
-          {resultado.ok ? (
-            <VinculoItensXmlCompra resultado={resultado} dadosTributaveis={dadosTributaveis} candidatos={candidatos} />
+          {resultado.ok && resultado.nota && arquivo ? (
+            <VinculoItensXmlCompra
+              resultado={resultado}
+              dadosTributaveis={dadosTributaveis}
+              candidatos={candidatos}
+              arquivo={arquivo}
+              situacaoDestinatario={conferirDestinatario(resultado.nota, documentosLoja)}
+              onImportada={aoImportar}
+            />
           ) : (
             <>
               {resultado.itens.length > 0 && (
