@@ -16,6 +16,7 @@ Deno.serve(async () => {
   const tabelas = [
     'clientes',
     'ordens_servico',
+    'os_dispositivos_adicionais',
     'vendas',
     'produtos',
     'dispositivos',
