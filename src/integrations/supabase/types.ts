@@ -3397,6 +3397,93 @@ export type Database = {
         }
         Relationships: []
       }
+      os_dispositivos_adicionais: {
+        Row: {
+          avarias_visuais: Json | null
+          checklist: Json | null
+          created_at: string
+          defeito_relatado: string | null
+          dispositivo_cor: string | null
+          dispositivo_fabricante: string | null
+          dispositivo_imei: string | null
+          dispositivo_marca: string
+          dispositivo_modelo: string
+          dispositivo_numero_serie: string | null
+          dispositivo_sistema: string | null
+          dispositivo_subtipo: string | null
+          dispositivo_tipo: string
+          fotos_dispositivo: Json | null
+          id: string
+          observacoes: string | null
+          ordem: number
+          os_id: string
+          senha_desbloqueio: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avarias_visuais?: Json | null
+          checklist?: Json | null
+          created_at?: string
+          defeito_relatado?: string | null
+          dispositivo_cor?: string | null
+          dispositivo_fabricante?: string | null
+          dispositivo_imei?: string | null
+          dispositivo_marca: string
+          dispositivo_modelo: string
+          dispositivo_numero_serie?: string | null
+          dispositivo_sistema?: string | null
+          dispositivo_subtipo?: string | null
+          dispositivo_tipo: string
+          fotos_dispositivo?: Json | null
+          id?: string
+          observacoes?: string | null
+          ordem: number
+          os_id: string
+          senha_desbloqueio?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avarias_visuais?: Json | null
+          checklist?: Json | null
+          created_at?: string
+          defeito_relatado?: string | null
+          dispositivo_cor?: string | null
+          dispositivo_fabricante?: string | null
+          dispositivo_imei?: string | null
+          dispositivo_marca?: string
+          dispositivo_modelo?: string
+          dispositivo_numero_serie?: string | null
+          dispositivo_sistema?: string | null
+          dispositivo_subtipo?: string | null
+          dispositivo_tipo?: string
+          fotos_dispositivo?: Json | null
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          os_id?: string
+          senha_desbloqueio?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_dispositivos_adicionais_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_dispositivos_adicionais_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico_ativas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_localizacoes: {
         Row: {
           created_at: string | null
