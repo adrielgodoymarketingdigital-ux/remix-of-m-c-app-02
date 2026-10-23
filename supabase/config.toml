@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.fiscal-config-salvar]
 verify_jwt = true
+
+[functions.zerar-dados-storage]
+verify_jwt = true
