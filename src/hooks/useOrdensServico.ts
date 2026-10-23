@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { startOfMonth, endOfMonth, format } from "date-fns";
@@ -11,6 +12,8 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 import { estornarEstoqueOS, ItemOSEstoque } from "@/lib/ordemServico/estoqueItensOS";
 import { lucroLinhaServico, totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
+import { adicionaisCorrespondemBusca, type AdicionaisPorOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { buscarResumoAdicionaisLoja, precarregarDispositivosAdicionaisOS } from "./useOsDispositivosAdicionais";
 
 export interface OrdemServico {
   id: string;
@@ -64,6 +67,9 @@ export interface ContadorOSMes {
 
 export const useOrdensServico = (mostrarOsFiliais = false) => {
   const [ordensBase, setOrdensBase] = useState<OrdemServico[]>([]);
+  // Dispositivos adicionais por OS (selo "+1 aparelho" e busca). Vazio = como antes.
+  const [adicionaisPorOs, setAdicionaisPorOs] = useState<AdicionaisPorOS>({});
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [busca, setBusca] = useState("");
   const [statusFiltro, setStatusFiltro] = useState("todos");
@@ -114,7 +120,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           modelo.includes(termo) ||
           marca.includes(termo) ||
           numeroOs.includes(termo) ||
-          defeito.includes(termo)
+          defeito.includes(termo) ||
+          adicionaisCorrespondemBusca(adicionaisPorOs[o.id], termo)
         );
       });
     }
@@ -138,7 +145,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
     }
 
     return resultado;
-  }, [busca, origemFiltro, midiaFiltro, somenteRemessaCorporativa, tecnicoFiltro, ordensBase]);
+  }, [busca, origemFiltro, midiaFiltro, somenteRemessaCorporativa, tecnicoFiltro, ordensBase, adicionaisPorOs]);
 
   useEffect(() => { resolvedUserIdRef.current = resolvedUserIdFromContext; }, [resolvedUserIdFromContext]);
 
@@ -229,6 +236,9 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
         return;
       }
 
+      // Em paralelo à lista e com o MESMO userId (dono da loja). Nunca rejeita.
+      const resumoAdicionais = buscarResumoAdicionaisLoja(userId);
+
       const resultado = await withRetry(async () => {
         let query = supabase
           .from("ordens_servico")
@@ -313,6 +323,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       }, 'useOrdensServico.carregarOrdens');
 
       detalhesCacheRef.current = {};
+      setAdicionaisPorOs(await resumoAdicionais);
       setOrdensBase(resultado as OrdemServico[]);
     } catch (error) {
       if (!shouldSuppressToast(error)) {
@@ -329,7 +340,11 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
   }, [statusFiltro, dataInicio, dataFim, toast, resolverUserId, isFuncionario, permissoes, funcionarioId, empresaFiltro, identidadeCarregando, funcionarioCarregando, isFilial, isProprietario, mostrarOsFiliais]);
 
   const buscarOrdemCompleta = useCallback(async (id: string, forcarAtualizacao = false): Promise<OrdemServico | null> => {
+    // Adicionais da OS vão para o cache do React Query junto com a OS: quem abre
+    // (detalhes, impressão, recibo, WhatsApp) já os encontra. Nunca rejeita.
+    const adicionaisProntos = precarregarDispositivosAdicionaisOS(queryClient, id, forcarAtualizacao);
     if (!forcarAtualizacao && detalhesCacheRef.current[id]) {
+      await adicionaisProntos;
       return detalhesCacheRef.current[id];
     }
 
@@ -337,16 +352,19 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       const userId = await resolverUserId();
       if (!userId) return null;
 
-      const { data, error } = await supabase
-        .from("ordens_servico")
-        .select(`
-          *,
-          cliente:clientes!ordens_servico_cliente_fkey(*)
-        `)
-        .eq("id", id)
-        .eq("user_id", userId)
-        .is("deleted_at", null)
-        .single();
+      const [{ data, error }] = await Promise.all([
+        supabase
+          .from("ordens_servico")
+          .select(`
+            *,
+            cliente:clientes!ordens_servico_cliente_fkey(*)
+          `)
+          .eq("id", id)
+          .eq("user_id", userId)
+          .is("deleted_at", null)
+          .single(),
+        adicionaisProntos,
+      ]);
 
       if (error) throw error;
       detalhesCacheRef.current[id] = data as OrdemServico;
@@ -362,7 +380,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       }
       return null;
     }
-  }, [resolverUserId, toast]);
+  }, [resolverUserId, toast, queryClient]);
 
   const carregarLucroOrdensEntregues = useCallback(async () => {
     try {
@@ -1069,6 +1087,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
 
   return {
     ordens,
+    adicionaisPorOs,
     loading,
     busca,
     setBusca,

@@ -46,12 +46,39 @@ export function urlMiniatura(url: string): string {
   return `${m[1]}/storage/v1/render/image/public/${m[2]}?${PARAMETROS_MINIATURA}`;
 }
 
-/** Fotos válidas na ordem de envio, no máximo MAX_FOTOS_IMPRESSAO, e quantas ficaram de fora. */
-export function selecionarFotos(fotos: unknown): { urls: string[]; excedentes: number } {
-  const validas = Array.isArray(fotos)
+function fotosValidas(fotos: unknown): string[] {
+  return Array.isArray(fotos)
     ? fotos.filter((f): f is string => typeof f === "string" && /^https?:\/\//i.test(f.trim())).map((f) => f.trim())
     : [];
+}
+
+/** Fotos válidas na ordem de envio, no máximo MAX_FOTOS_IMPRESSAO, e quantas ficaram de fora. */
+export function selecionarFotos(fotos: unknown): { urls: string[]; excedentes: number } {
+  const validas = fotosValidas(fotos);
   return { urls: validas.slice(0, MAX_FOTOS_IMPRESSAO), excedentes: Math.max(0, validas.length - MAX_FOTOS_IMPRESSAO) };
+}
+
+/**
+ * Com dispositivos adicionais: as fotos do dispositivo 1 primeiro, depois as
+ * de cada adicional, no MESMO limite de MAX_FOTOS_IMPRESSAO, com a legenda
+ * "Dispositivo N · Foto K". Sem adicionais devolve exatamente selecionarFotos
+ * e legendas null (a legenda continua "Foto N").
+ */
+export function selecionarFotosComAdicionais(
+  fotosDispositivo1: unknown,
+  fotosAdicionais: readonly unknown[] | null | undefined,
+): { urls: string[]; excedentes: number; legendas: string[] | null } {
+  if (!fotosAdicionais || fotosAdicionais.length === 0) return { ...selecionarFotos(fotosDispositivo1), legendas: null };
+  const todas: { url: string; legenda: string }[] = [];
+  [fotosDispositivo1, ...fotosAdicionais].forEach((fotos, d) => {
+    fotosValidas(fotos).forEach((url, k) => todas.push({ url, legenda: `Dispositivo ${d + 1} · Foto ${k + 1}` }));
+  });
+  const impressas = todas.slice(0, MAX_FOTOS_IMPRESSAO);
+  return {
+    urls: impressas.map((f) => f.url),
+    excedentes: Math.max(0, todas.length - MAX_FOTOS_IMPRESSAO),
+    legendas: impressas.map((f) => f.legenda),
+  };
 }
 
 export interface DecisaoFotos {
@@ -100,11 +127,11 @@ export interface FotoImpressao {
   legenda: string;
 }
 
-export function montarFotosParaImpressao(carregadas: FotoCarregada[], modo: ModoImpressaoFotos): { fotos: FotoImpressao[]; falhas: number } {
+export function montarFotosParaImpressao(carregadas: FotoCarregada[], modo: ModoImpressaoFotos, legendas?: string[] | null): { fotos: FotoImpressao[]; falhas: number } {
   const fotos: FotoImpressao[] = [];
   let falhas = 0;
   carregadas.forEach((f, i) => {
-    const legenda = `Foto ${i + 1}`;
+    const legenda = legendas?.[i] ?? `Foto ${i + 1}`;
     if (f.dataUrl) fotos.push({ src: f.dataUrl, legenda });
     else if (modo === "html-direto" && f.originalAbre) fotos.push({ src: f.original, legenda });
     else falhas++;
