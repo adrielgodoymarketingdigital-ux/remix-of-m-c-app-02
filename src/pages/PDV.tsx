@@ -74,6 +74,7 @@ import {
   planejarTroca,
   ratearPorPeso,
   valorSegundaFormaItem,
+  valoresContaReceberComTroca,
 } from "@/lib/vendas/trocaPDV";
 import { ContextoEntradaTroca, ProgressoEntradaTroca, registrarEntradaTroca } from "@/lib/vendas/registrarEntradaTroca";
 
@@ -582,6 +583,8 @@ const PDV = () => {
       if (plano?.bloqueio) throw new Error(plano.bloqueio); // validarVenda já barra; defesa extra
       const trocaPorLinha = plano ? plano.trocaPorLinha : null;
       const segundaPorItem = plano?.segundaPorItem ?? null;
+      // Troca sem pagamento duplo: desconto dividido entre os itens em centavos exatos, só para as contas a receber.
+      const descontoContasComTroca = trocaPorLinha && !duplo ? ratearPorPeso(calcularDescontoReal(), itensCarrinho.map(() => 1)) : null;
       const valorDevolucao = plano && totais.exigeFormaDevolucao ? calcularDevolucao(totais.valorEntrada, plano.trocaAplicada) : 0;
 
       const vendasRegistradas = [];
@@ -620,6 +623,15 @@ const PDV = () => {
         const valorPorParcela = totalBrutoItem / totalParcelas;
         // Troca que cobre tudo: desconto proporcional ao valor do item (plano). Senão, o de sempre.
         const descontoPorParcela = (plano?.descontoPorItem ? plano.descontoPorItem[idxItem] : valorDescontoManualPorItem) / totalParcelas;
+        // Venda com troca: conta a receber = o que o cliente ainda deve do item, por parcela (null = conta de sempre).
+        const contasComTroca = descontoContasComTroca && trocaPorLinha
+          ? valoresContaReceberComTroca({
+              bruto: totalBrutoItem,
+              desconto: descontoContasComTroca[idxItem],
+              trocaPorParcela: trocaPorLinha[idxItem],
+              duplo,
+            })
+          : null;
 
         for (let parcIdx = 0; parcIdx < totalParcelas; parcIdx++) {
           let dataPrevisao: string | null = null;
@@ -698,10 +710,12 @@ const PDV = () => {
               const valorBaseConta = duplo
                 ? totalBrutoItem - (segundaPorItem?.[idxItem] ?? valorSegundaPagamento)
                 : vendaData.total;
-              // Com troca, a conta é só o que o cliente ainda deve.
-              const valorPrimeiraForma = trocaPorLinha
-                ? Math.max(0, valorBaseConta - trocaPorLinha[idxItem][parcIdx])
-                : valorBaseConta;
+              // Com troca, a conta é só o que o cliente ainda deve (com o desconto; no duplo, como antes).
+              const valorPrimeiraForma = contasComTroca
+                ? contasComTroca[parcIdx]
+                : trocaPorLinha
+                  ? Math.max(0, valorBaseConta - trocaPorLinha[idxItem][parcIdx])
+                  : valorBaseConta;
 
               await supabase.from("contas").insert({
                 nome: `Venda - ${nomeItem} - ${nomeCliente}${sufixoParcela}`,
