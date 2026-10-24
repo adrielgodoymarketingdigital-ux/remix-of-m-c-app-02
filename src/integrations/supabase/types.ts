@@ -6514,6 +6514,14 @@ export type Database = {
         Args: { _step: string; _user_id: string }
         Returns: undefined
       }
+      zerar_meus_dados_executar: {
+        Args: { p_categorias: string[]; p_confirmacao: string; p_impressao: string }
+        Returns: Json
+      }
+      zerar_meus_dados_previa: {
+        Args: { p_categorias: string[] }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "tecnico" | "vendedor"
