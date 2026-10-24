@@ -1239,6 +1239,33 @@ export type Database = {
         }
         Relationships: []
       }
+      cota_registros_apagados: {
+        Row: {
+          apagado_em: string
+          criado_em: string | null
+          execucao_id: string | null
+          id: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          apagado_em?: string
+          criado_em?: string | null
+          execucao_id?: string | null
+          id?: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          apagado_em?: string
+          criado_em?: string | null
+          execucao_id?: string | null
+          id?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       crm_automacoes: {
         Row: {
           ativo: boolean | null
