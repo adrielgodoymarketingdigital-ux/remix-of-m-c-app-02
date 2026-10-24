@@ -177,11 +177,19 @@ export function linhasResumo(categoria: Categoria, resumo: Record<string, number
     .map(([chave, rotulo]) => contagemAmigavel(resumo[chave], rotulo));
 }
 
-/** Detalhe por tabela (prévia `tabelas` ou execução `apagados`), maiores primeiro, só o que tem quantidade. */
+/** O que o lojista reconhece vem antes; históricos e registros de apoio por último. */
+const PRIORIDADE_TABELA = ["ordens_servico", "clientes", "vendas", "produtos", "pecas", "dispositivos", "contas", "orcamentos",
+  "caixas", "fornecedores", "compras_dispositivos", "servicos_avulsos", "vendas_avulsas", "pedidos"];
+const prioridade = (t: string) => {
+  const i = PRIORIDADE_TABELA.indexOf(t);
+  return i >= 0 ? i : t.endsWith("_audit_log") ? 1000 : 500;
+};
+
+/** Detalhe por tabela (prévia `tabelas` ou execução `apagados`): principais primeiro, históricos por último; só o que tem quantidade. */
 export function linhasPorTabela(tabelas: Record<string, number> | undefined): string[] {
   return Object.entries(tabelas ?? {})
     .filter(([, n]) => n > 0)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .sort((a, b) => prioridade(a[0]) - prioridade(b[0]) || b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([t, n]) => contagemAmigavel(n, rotuloOuNome(t)));
 }
 

@@ -380,12 +380,27 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
       <div className="flex items-center gap-2 text-base font-semibold">
         <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden="true" /> Pronto. Os dados foram apagados.
       </div>
-      <div className="rounded-lg border p-3 text-sm">
-        <p className="font-medium">Apagado: {r.categorias_efetivas.map((c) => TITULO_CATEGORIA[c]).join(", ")}</p>
-        <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
-          {linhasPorTabela(r.apagados).map((l) => <li key={l}>{l}</li>)}
-        </ul>
-      </div>
+      <ul className="flex flex-col gap-2">
+        {r.categorias_efetivas.map((c) => {
+          const linhas = linhasResumo(c, previa?.resumo?.[c]);
+          return (
+            <li key={c} className="rounded-lg border p-3 text-sm">
+              <p className="font-medium">{TITULO_CATEGORIA[c]}</p>
+              <p className="mt-1 text-muted-foreground">{linhas.length ? linhas.join(" · ") : "Nada havia para apagar aqui."}</p>
+            </li>
+          );
+        })}
+      </ul>
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:underline">
+          <ChevronDown className="h-3 w-3" aria-hidden="true" /> Ver o detalhe de tudo que foi apagado
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
+            {linhasPorTabela(r.apagados).map((l) => <li key={l}>{l}</li>)}
+          </ul>
+        </CollapsibleContent>
+      </Collapsible>
       <div className="space-y-1 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
         {fotos && <p>• {textoFotos[fotos]}</p>}
         {textosNumeracao(r.categorias_efetivas, previa?.contadores).map((t) => <p key={t}>• {t}</p>)}

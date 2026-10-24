@@ -58,6 +58,9 @@ Deno.test("contagens em português", () => {
   assertEquals(linhasResumo("os", { ordens_servico: 14, na_lixeira: 2 }), ["14 ordens de serviço", "2 delas na lixeira"]);
   assertEquals(linhasResumo("estoque", { produtos: 0, pecas: 1, aparelhos: 3, compras_aparelhos: 0, fornecedores: 0, notas_xml: 0 }), ["1 peça", "3 aparelhos"]);
   assertEquals(linhasPorTabela({ clientes: 342, pedidos: 0, os_tecnicos: 5, tabela_nova_x: 2 }), ["342 clientes", "5 registros de técnicos das OS", "2 tabela nova x"]);
+  // principais primeiro, históricos por último (mesmo sendo maiores)
+  assertEquals(linhasPorTabela({ os_audit_log: 1503, clientes: 342, ordens_servico: 128, os_tecnicos: 90 }),
+    ["128 ordens de serviço", "342 clientes", "90 registros de técnicos das OS", "1.503 registros do histórico das OS"]);
 });
 
 Deno.test("todas as tabelas que a prévia pode devolver têm nome amigável", () => {
