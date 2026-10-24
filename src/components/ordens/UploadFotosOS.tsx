@@ -11,6 +11,11 @@ interface UploadFotosOSProps {
   onFotosChange: (fotos: string[]) => void;
   maxFotos?: number;
   disabled?: boolean;
+  /**
+   * false: remover só tira a foto da lista, sem apagar do storage (o editor de
+   * aparelho adicional pode ser cancelado depois). Padrão: apaga na hora, como sempre.
+   */
+  removerDoArmazenamento?: boolean;
 }
 
 export function UploadFotosOS({
@@ -18,6 +23,7 @@ export function UploadFotosOS({
   onFotosChange,
   maxFotos = 10,
   disabled = false,
+  removerDoArmazenamento = true,
 }: UploadFotosOSProps) {
   const [uploading, setUploading] = useState(false);
 
@@ -89,6 +95,10 @@ export function UploadFotosOS({
   }, [fotos, onFotosChange, maxFotos]);
 
   const removerFoto = useCallback(async (urlParaRemover: string) => {
+    if (!removerDoArmazenamento) {
+      onFotosChange(fotos.filter(url => url !== urlParaRemover));
+      return;
+    }
     try {
       // Extrai o path do arquivo da URL
       const urlObj = new URL(urlParaRemover);
@@ -107,7 +117,7 @@ export function UploadFotosOS({
       // Mesmo com erro no storage, remove da lista local
       onFotosChange(fotos.filter(url => url !== urlParaRemover));
     }
-  }, [fotos, onFotosChange]);
+  }, [fotos, onFotosChange, removerDoArmazenamento]);
 
   return (
     <Card>
