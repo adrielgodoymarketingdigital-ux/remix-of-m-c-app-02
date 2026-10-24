@@ -279,6 +279,67 @@ export function valoresContaReceberComTroca(p: {
   return ratearPorPeso(restanteC / 100, p.trocaPorParcela.map(() => 1));
 }
 
+/** Linha de `vendas` como a tela de Vendas recebe (só os campos usados aqui). */
+export interface LinhaVendaTela {
+  id: string;
+  grupo_venda?: string | null;
+  dispositivo_id?: string | null;
+  produto_id?: string | null;
+  peca_id?: string | null;
+  imei_dispositivo?: string | null;
+  parcela_numero?: number | null;
+  total_parcelas?: number | null;
+  total: number;
+  valor_desconto_manual?: number | null;
+  valor_desconto_cupom?: number | null;
+  valor_troca?: number | null;
+  segunda_forma_pagamento?: string | null;
+}
+
+export interface ParcelaComTrocaTela {
+  /** Quanto o cliente paga nesta parcela (a mesma conta de valoresContaReceberComTroca). */
+  valor: number;
+  /** Troca da venda inteira (soma de valor_troca das linhas do grupo na lista). */
+  trocaVenda: number;
+}
+
+/**
+ * Parcelas de vendas COM troca para a tela de Vendas mostrar o que o cliente
+ * paga por parcela. Só entram linhas com valor_troca, parceladas
+ * (total_parcelas > 1) e sem pagamento duplo; o resto fica fora do mapa e a
+ * tela mostra o valor de sempre. Se faltar parcela do item na lista, cada
+ * linha é calculada sozinha (total − descontos − troca, em centavos).
+ */
+export function parcelasComTrocaNaTela(linhas: LinhaVendaTela[]): Map<string, ParcelaComTrocaTela> {
+  const resultado = new Map<string, ParcelaComTrocaTela>();
+  const trocaPorGrupoC = new Map<string, number>();
+  const itens = new Map<string, LinhaVendaTela[]>();
+  for (const l of linhas) {
+    if (l.valor_troca == null || !l.grupo_venda) continue;
+    trocaPorGrupoC.set(l.grupo_venda, (trocaPorGrupoC.get(l.grupo_venda) ?? 0) + centavos(l.valor_troca));
+    if (l.segunda_forma_pagamento || !l.parcela_numero || !l.total_parcelas || l.total_parcelas <= 1) continue;
+    const chave = [l.grupo_venda, l.dispositivo_id, l.produto_id, l.peca_id, l.imei_dispositivo, l.total_parcelas].join("|");
+    itens.set(chave, [...(itens.get(chave) ?? []), l]);
+  }
+
+  const descontoDe = (l: LinhaVendaTela) => (Number(l.valor_desconto_manual) || 0) + (Number(l.valor_desconto_cupom) || 0);
+  for (const doItem of itens.values()) {
+    const ordenadas = [...doItem].sort((a, b) => (a.parcela_numero ?? 0) - (b.parcela_numero ?? 0));
+    const completas = ordenadas.length === ordenadas[0].total_parcelas && ordenadas.every((l, i) => l.parcela_numero === i + 1);
+    const valores = completas
+      ? valoresContaReceberComTroca({
+          bruto: ordenadas.reduce((acc, l) => acc + (Number(l.total) || 0), 0),
+          desconto: ordenadas.reduce((acc, l) => acc + descontoDe(l), 0),
+          trocaPorParcela: ordenadas.map((l) => Number(l.valor_troca) || 0),
+          duplo: false,
+        }) ?? []
+      : ordenadas.map((l) => Math.max(0, centavos((Number(l.total) || 0) - descontoDe(l)) - centavos(Number(l.valor_troca) || 0)) / 100);
+    const trocaVenda = (trocaPorGrupoC.get(ordenadas[0].grupo_venda as string) ?? 0) / 100;
+    ordenadas.forEach((l, i) => resultado.set(l.id, { valor: valores[i], trocaVenda }));
+  }
+  return resultado;
+}
+
 // ── Cancelamento ────────────────────────────────────────────────────────────
 
 export type AcaoAparelhoTroca = "manter" | "remover";

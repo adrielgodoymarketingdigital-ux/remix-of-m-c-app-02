@@ -182,6 +182,7 @@ export const useVendas = () => {
           valor_desconto_cupom: Number(v.valor_desconto_cupom || 0),
           parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
           total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
+          valor_troca: v.valor_troca != null ? Number(v.valor_troca) : null,
         }));
       } else {
         console.error("[useVendas] Vendas query failed after retries:", vendasResult.reason);
@@ -406,6 +407,7 @@ export const useVendas = () => {
             valor_desconto_cupom: Number(v.valor_desconto_cupom || 0),
             parcela_numero: v.parcela_numero != null ? Number(v.parcela_numero) : null,
             total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
+            valor_troca: v.valor_troca != null ? Number(v.valor_troca) : null,
           }));
 
         const { data: allAvulsasData } = await supabase

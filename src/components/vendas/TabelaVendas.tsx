@@ -32,7 +32,7 @@ import { DialogAlterarDataVenda } from "./DialogAlterarDataVenda";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { DialogReimpressaoRecibo } from "./DialogReimpressaoRecibo";
 import { DialogCancelarVenda } from "./DialogCancelarVenda";
-import type { AcaoAparelhoTroca } from "@/lib/vendas/trocaPDV";
+import { parcelasComTrocaNaTela, type AcaoAparelhoTroca } from "@/lib/vendas/trocaPDV";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   AlertDialog,
@@ -230,6 +230,12 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   const isMobile = useIsMobile();
 
   const vendasAgrupadas = useMemo(() => agruparVendas(vendas), [vendas]);
+  // Venda com troca parcelada: o que o cliente paga por parcela (sem troca, fora do mapa: valor de sempre).
+  const parcelasComTroca = useMemo(() => parcelasComTrocaNaTela(vendas), [vendas]);
+  const indicacaoTroca = (venda: Venda) => {
+    const comTroca = parcelasComTroca.get(venda.id);
+    return comTroca ? <span className="block text-[10px] font-normal text-amber-600">troca −{formatCurrency(comTroca.trocaVenda)}</span> : null;
+  };
 
   const toggleGrupo = (grupoId: string) => {
     setGruposExpandidos(prev => {
@@ -693,6 +699,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                             {venda.parcela_numero && venda.total_parcelas && (
                               <span className="text-xs text-muted-foreground">({venda.parcela_numero}/{venda.total_parcelas})</span>
                             )}
+                            {indicacaoTroca(venda)}
                             {venda.segunda_forma_pagamento && (
                               <span className="text-xs text-muted-foreground">
                                 + {formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}
@@ -701,7 +708,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                             )}
                           </div>
                         </div>
-                        <PrecoVenda valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} cancelada={venda.cancelada} />
+                        <PrecoVenda valor={parcelasComTroca.get(venda.id)?.valor ?? (Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0))} cancelada={venda.cancelada} />
                       </div>
                     </div>
                   </div>
@@ -774,7 +781,8 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-xs text-muted-foreground">Qtd: {venda.quantidade}</span>
                             <span className={`font-medium text-sm ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                              <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
+                              <ValorMonetario valor={parcelasComTroca.get(venda.id)?.valor ?? (Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0))} tipo="preco" />
+                              {indicacaoTroca(venda)}
                             </span>
                           </div>
                           {renderAcoesVenda(venda)}
@@ -852,7 +860,8 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     <TextoTruncado texto={venda.clientes?.nome || "Cliente não informado"} />
                   </TableCell>
                   <TableCell className={`${TD} text-right font-medium whitespace-nowrap ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                    <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
+                    <ValorMonetario valor={parcelasComTroca.get(venda.id)?.valor ?? (Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0))} tipo="preco" />
+                    {indicacaoTroca(venda)}
                   </TableCell>
                   <TableCell className={TD}>{renderPagamentoCompacto(venda)}</TableCell>
                   <TableCell className={TD}>{renderAcoesVendaCompacto(venda)}</TableCell>
@@ -922,7 +931,8 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                       <TableCell className={TD}>{renderItemCompacto(venda)}</TableCell>
                       <TableCell className={TD}></TableCell>
                       <TableCell className={`${TD} text-right font-medium whitespace-nowrap ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
-                        <ValorMonetario valor={Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0)} tipo="preco" />
+                        <ValorMonetario valor={parcelasComTroca.get(venda.id)?.valor ?? (Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0))} tipo="preco" />
+                        {indicacaoTroca(venda)}
                       </TableCell>
                       <TableCell className={TD}>{renderPagamentoCompacto(venda)}</TableCell>
                       <TableCell className={TD}>{renderAcoesVendaCompacto(venda)}</TableCell>
