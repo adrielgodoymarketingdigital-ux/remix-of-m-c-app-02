@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Assinatura, LIMITES_POR_PLANO, PlanoTipo, LimitesPlano, getLimitesFree } from "@/types/assinatura";
 import { periodoLimiteDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
+import { filtroDispositivos, filtroOSMes, filtroProdutosMes } from "@/lib/assinatura/cotaComApagados";
+import { contarApagadosDaCota } from "@/lib/assinatura/consultaCotaApagados";
 import { carenciaEsgotada, pagamentoAtrasadoEmCarencia } from "@/lib/carenciaAssinatura";
 import { planoVencido as calcularPlanoVencido, type AssinaturaPlanoVencido } from "@/lib/planoVencido";
 import { PLANOS } from "@/types/plano";
@@ -544,7 +546,8 @@ export function useAssinatura() {
   const periodoDispositivos = useMemo(() => periodoLimiteDispositivos(assinatura), [assinatura]);
 
   /** Quantos aparelhos contam no limite agora (o período é recalculado a cada chamada). */
-  const contarDispositivosNoLimite = useCallback(async (userId: string): Promise<number> => {
+  // comApagados: soma os aparelhos apagados pelo Começar do zero (só quando o plano tem limite).
+  const contarDispositivosNoLimite = useCallback(async (userId: string, comApagados: boolean): Promise<number> => {
     const periodo = periodoLimiteDispositivos(assinatura, new Date());
     let query = supabase
       .from("dispositivos")
@@ -553,9 +556,12 @@ export function useAssinatura() {
     if (periodo) {
       query = query.gte("created_at", periodo.inicio.toISOString()).lt("created_at", periodo.fim.toISOString());
     }
-    const { count, error } = await query;
+    const [{ count, error }, apagados] = await Promise.all([
+      query,
+      comApagados ? contarApagadosDaCota(userId, filtroDispositivos(periodo)) : 0,
+    ]);
     if (error) throw error;
-    return count || 0;
+    return (count || 0) + apagados;
   }, [assinatura]);
 
   const podeCadastrarDispositivo = useCallback(async (): Promise<boolean> => {
@@ -566,7 +572,7 @@ export function useAssinatura() {
       if (!session) return false;
       const user = session.user;
 
-      const count = await contarDispositivosNoLimite(user.id);
+      const count = await contarDispositivosNoLimite(user.id, true);
       return count < limites.dispositivos;
     } catch (error) {
       console.error("Erro ao verificar limite:", error);
@@ -585,7 +591,7 @@ export function useAssinatura() {
       if (!session) return { usados: 0, limite: 0, restantes: 0, percentual: 0 };
       const user = session.user;
 
-      const usados = await contarDispositivosNoLimite(user.id);
+      const usados = await contarDispositivosNoLimite(user.id, limites.dispositivos !== -1);
       const limite = limites.dispositivos === -1 ? Infinity : limites.dispositivos;
       const restantes = limite === Infinity ? Infinity : Math.max(0, limite - usados);
       const percentual = limite === Infinity ? 0 : (usados / limite) * 100;
@@ -621,7 +627,7 @@ export function useAssinatura() {
       const fimMes = new Date(inicioMes.getFullYear(), inicioMes.getMonth() + 1, 0);
       fimMes.setHours(23, 59, 59, 999);
 
-      const { count, error } = await supabase
+      const [{ count, error }, apagadas] = await Promise.all([supabase
         .from("ordens_servico")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
@@ -629,11 +635,13 @@ export function useAssinatura() {
         // OS do card "Primeiros Passos" (nao_conta_limite=true) não entra na cota
         .eq("nao_conta_limite", false)
         .gte("created_at", inicioMes.toISOString())
-        .lte("created_at", fimMes.toISOString());
+        .lte("created_at", fimMes.toISOString()),
+        contarApagadosDaCota(user.id, filtroOSMes(inicioMes, fimMes)),
+      ]);
 
       if (error) throw error;
 
-      const usadas = count || 0;
+      const usadas = (count || 0) + apagadas;
       return {
         permitido: usadas < limites.ordens_servico_mes,
         usadas,
@@ -666,7 +674,7 @@ export function useAssinatura() {
       const fimMes = new Date(inicioMes.getFullYear(), inicioMes.getMonth() + 1, 0);
       fimMes.setHours(23, 59, 59, 999);
 
-      const { count, error } = await supabase
+      const [{ count, error }, apagadas] = await Promise.all([supabase
         .from("ordens_servico")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
@@ -674,11 +682,14 @@ export function useAssinatura() {
         // OS do card "Primeiros Passos" (nao_conta_limite=true) não entra na cota
         .eq("nao_conta_limite", false)
         .gte("created_at", inicioMes.toISOString())
-        .lte("created_at", fimMes.toISOString());
+        .lte("created_at", fimMes.toISOString()),
+        // Ilimitado não consulta os fantasmas (nenhuma consulta a mais).
+        limites.ordens_servico_mes === -1 ? 0 : contarApagadosDaCota(user.id, filtroOSMes(inicioMes, fimMes)),
+      ]);
 
       if (error) throw error;
 
-      const usadas = count || 0;
+      const usadas = (count || 0) + apagadas;
       const ilimitado = limites.ordens_servico_mes === -1;
       const limite = ilimitado ? Infinity : limites.ordens_servico_mes;
       const restantes = ilimitado ? Infinity : Math.max(0, limite - usadas);
@@ -751,7 +762,7 @@ export function useAssinatura() {
       const fimMes = new Date(inicioMes.getFullYear(), inicioMes.getMonth() + 1, 0);
       fimMes.setHours(23, 59, 59, 999);
 
-      const [produtosResult, pecasResult] = await Promise.all([
+      const [produtosResult, pecasResult, apagados] = await Promise.all([
         supabase
           .from("produtos")
           .select("*", { count: "exact", head: true })
@@ -764,12 +775,13 @@ export function useAssinatura() {
           .eq("user_id", user.id)
           .gte("created_at", inicioMes.toISOString())
           .lte("created_at", fimMes.toISOString()),
+        contarApagadosDaCota(user.id, filtroProdutosMes(inicioMes, fimMes)),
       ]);
 
       if (produtosResult.error) throw produtosResult.error;
       if (pecasResult.error) throw pecasResult.error;
 
-      const usados = (produtosResult.count || 0) + (pecasResult.count || 0);
+      const usados = (produtosResult.count || 0) + (pecasResult.count || 0) + apagados;
       return {
         permitido: usados < limites.produtos_mes,
         usados,
@@ -803,7 +815,7 @@ export function useAssinatura() {
       const fimMes = new Date(inicioMes.getFullYear(), inicioMes.getMonth() + 1, 0);
       fimMes.setHours(23, 59, 59, 999);
 
-      const [produtosResult, pecasResult] = await Promise.all([
+      const [produtosResult, pecasResult, apagados] = await Promise.all([
         supabase
           .from("produtos")
           .select("*", { count: "exact", head: true })
@@ -816,12 +828,14 @@ export function useAssinatura() {
           .eq("user_id", user.id)
           .gte("created_at", inicioMes.toISOString())
           .lte("created_at", fimMes.toISOString()),
+        // Ilimitado não consulta os fantasmas (nenhuma consulta a mais).
+        limites.produtos_mes === -1 ? 0 : contarApagadosDaCota(user.id, filtroProdutosMes(inicioMes, fimMes)),
       ]);
 
       if (produtosResult.error) throw produtosResult.error;
       if (pecasResult.error) throw pecasResult.error;
 
-      const usados = (produtosResult.count || 0) + (pecasResult.count || 0);
+      const usados = (produtosResult.count || 0) + (pecasResult.count || 0) + apagados;
       const ilimitado = limites.produtos_mes === -1;
       const limite = ilimitado ? Infinity : limites.produtos_mes;
       const restantes = ilimitado ? Infinity : Math.max(0, limite - usados);

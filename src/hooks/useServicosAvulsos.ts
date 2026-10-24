@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { dataHoje } from "@/lib/formatters";
+import { filtroServicosAvulsosMes } from "@/lib/assinatura/cotaComApagados";
+import { contarApagadosDaCota } from "@/lib/assinatura/consultaCotaApagados";
 
 export interface ServicoAvulso {
   id: string;
@@ -88,13 +90,17 @@ export function useServicosAvulsos() {
         inicioMes.setDate(1);
         inicioMes.setHours(0, 0, 0, 0);
 
-        const { count } = await supabase
-          .from("servicos_avulsos")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .gte("created_at", inicioMes.toISOString());
+        const [{ count }, apagados] = await Promise.all([
+          supabase
+            .from("servicos_avulsos")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .gte("created_at", inicioMes.toISOString()),
+          // serviços avulsos apagados pelo Começar do zero continuam contando no mês
+          contarApagadosDaCota(userId, filtroServicosAvulsosMes(inicioMes)),
+        ]);
 
-        if ((count || 0) >= limiteServicosAvulsos) {
+        if ((count || 0) + apagados >= limiteServicosAvulsos) {
           toast.error(`Limite de ${limiteServicosAvulsos} serviços avulsos/mês atingido. Faça upgrade!`);
           return false;
         }

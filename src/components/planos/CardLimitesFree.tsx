@@ -18,11 +18,14 @@ interface ContagemItem {
 export function CardLimitesFree() {
   const { assinatura, limites, carregando, periodoDispositivos, obterContagemDispositivos, planoVencido, planoAnterior } = useAssinatura();
   // Com limite por período (marca na assinatura): dispositivos contados só no período atual.
+  // No grátis a contagem vem sempre do hook, que soma os aparelhos apagados pelo
+  // Começar do zero (mesma regra de total do limite real; sem apagados, mesmo número).
   const [usadosNoPeriodo, setUsadosNoPeriodo] = useState<number | null>(null);
+  const contaPeloHook = !!periodoDispositivos || assinatura?.plano_tipo === "free";
   useEffect(() => {
-    if (!periodoDispositivos) { setUsadosNoPeriodo(null); return; }
+    if (!contaPeloHook) { setUsadosNoPeriodo(null); return; }
     obterContagemDispositivos().then((c) => setUsadosNoPeriodo(c.usados));
-  }, [periodoDispositivos, obterContagemDispositivos]);
+  }, [contaPeloHook, obterContagemDispositivos]);
   const navigate = useNavigate();
   const [contagens, setContagens] = useState<ContagemItem[] | null>(null);
   const contagensCarregadas = useRef(false);
