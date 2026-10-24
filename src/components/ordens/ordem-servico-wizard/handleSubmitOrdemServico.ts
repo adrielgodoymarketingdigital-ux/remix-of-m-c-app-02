@@ -25,6 +25,27 @@ import {
 import { FormData, TecnicoOS } from "./tipos";
 import { quantidadeLinhaForm } from "@/lib/ordemServico/linhaServicoOS";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
+import {
+  BUCKET_FOTOS_OS,
+  ClienteGravacaoAdicionais,
+  EntradaGravacaoAdicionais,
+  ResultadoGravacaoAdicionais,
+  executarGravacaoAdicionais,
+  limparLigacoesOrfas,
+  planejarGravacaoAdicionais,
+  validarDispositivosAdicionais,
+} from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
+
+/** Banco real da gravação dos dispositivos adicionais (a lógica fica no módulo puro). */
+const clienteAdicionaisSupabase: ClienteGravacaoAdicionais = {
+  upsert: (linhas) =>
+    supabase
+      .from("os_dispositivos_adicionais")
+      .upsert(linhas as unknown as TablesInsert<"os_dispositivos_adicionais">[], { onConflict: "id" }),
+  remover: (osId, ids) =>
+    supabase.from("os_dispositivos_adicionais").delete().eq("os_id", osId).in("id", ids),
+  apagarFotos: (caminhos) => supabase.storage.from(BUCKET_FOTOS_OS).remove(caminhos),
+};
 
 /**
  * Entrada da comissão de um serviço. Com peça repassada ao cliente pelo custo,
@@ -80,6 +101,29 @@ interface SalvarOrdemServicoParams {
    * suprime o redirect automático para /financeiro pós-save.
    */
   primeiraOsOnboarding?: boolean;
+  /**
+   * Dispositivos adicionais da OS (os_dispositivos_adicionais). Ausente = a
+   * gravação não toca na tabela nem nas ligações de serviço — é o caso de
+   * todo mundo hoje (nenhuma tela envia ainda).
+   */
+  dispositivosAdicionais?: EntradaGravacaoAdicionais;
+}
+
+/** Aviso dos adicionais para o toast; null quando não há o que avisar (sempre, sem a lista). */
+function avisoAdicionaisToast(r: ResultadoGravacaoAdicionais | null): string | null {
+  if (r?.status === "falhou") return "⚠️ Os aparelhos adicionais NÃO foram gravados. Tente salvar de novo.";
+  if (r?.status === "remocao_falhou") {
+    return `⚠️ Não foi possível remover ${r.idsNaoRemovidos.length} aparelho(s) adicional(is). Tente salvar de novo.`;
+  }
+  return null;
+}
+
+/** O que a tela recebe quando a OS foi salva (undefined = OS não salva, erro já avisado). */
+export interface ResultadoSalvarOrdemServico {
+  osId: string | null;
+  numeroOS: string | null;
+  /** null quando dispositivosAdicionais não foi enviado. "falhou" = OS salva, adicionais não. */
+  adicionais: ResultadoGravacaoAdicionais | null;
 }
 
 /**
@@ -546,7 +590,7 @@ async function salvarTecnicosOS(
  * comissoes_tipo_servico (leitura), contas, produtos, pecas, vendas,
  * user_onboarding.
  */
-export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Promise<void> {
+export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Promise<ResultadoSalvarOrdemServico | undefined> {
   const {
     formData,
     ordem,
@@ -571,6 +615,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     onSuccess,
     onOpenChange,
     primeiraOsOnboarding,
+    dispositivosAdicionais,
   } = params;
 
   // Validar técnico obrigatório antes de qualquer operação
@@ -582,6 +627,29 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     });
     throw new Error("TECNICO_OBRIGATORIO");
   }
+
+  // Aparelho adicional incompleto (ou mais de 10): nada é gravado, nem a OS.
+  if (dispositivosAdicionais) {
+    const errosAdicionais = validarDispositivosAdicionais(dispositivosAdicionais.dispositivos);
+    if (errosAdicionais.length > 0) {
+      toast({
+        title: "Aparelho adicional incompleto",
+        description: errosAdicionais[0].mensagem,
+        variant: "destructive",
+      });
+      return undefined;
+    }
+  }
+
+  // Serviço ligado a aparelho que não existe mais volta para a OS/aparelho principal.
+  // Sem dispositivosAdicionais as linhas seguem intactas (inclusive as ligações).
+  const servicosParaGravar = dispositivosAdicionais
+    ? limparLigacoesOrfas(formData.servicos, dispositivosAdicionais.dispositivos.map((d) => d.id))
+    : formData.servicos;
+
+  let resultadoAdicionais: ResultadoGravacaoAdicionais | null = null;
+  let osIdSalva: string | null = null;
+  let numeroOSSalva: string | null = null;
 
   try {
     // Obter usuário autenticado
@@ -619,7 +687,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       senha_desbloqueio: encryptSenhaDesbloqueio(formData.senhaDesbloqueio),
       checklist: formData.checklist,
       avarias_visuais: formData.avarias,
-      servicos_realizados: formData.servicos.map(s => {
+      servicos_realizados: servicosParaGravar.map(s => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pecaValor = (s as any).peca_valor;
         const custo = pecaValor !== undefined ? Number(pecaValor) : Number(s.custo || 0);
@@ -854,6 +922,25 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         : `⚠️ Comissão do técnico incompleta — revise: ${motivos.join(" • ")}`;
     };
 
+    // Dispositivos adicionais: logo depois da OS gravada, antes de técnicos,
+    // estoque e contas. user_id = dono da OS (effectiveUserId), nunca da tela.
+    const gravarAdicionais = async (osId: string | null): Promise<ResultadoGravacaoAdicionais | null> => {
+      if (!dispositivosAdicionais) return null;
+      if (!osId) {
+        return { status: "falhou", etapa: "os_sem_id", mensagem: "Não foi possível localizar a OS recém-criada.", tentativas: 0 };
+      }
+      const plano = planejarGravacaoAdicionais(dispositivosAdicionais, {
+        osId,
+        userId: effectiveUserId,
+        fotosDispositivo1: formData.fotosDispositivo,
+      });
+      const resultado = await executarGravacaoAdicionais(clienteAdicionaisSupabase, plano);
+      if (resultado.status !== "ok" || resultado.avisos.length > 0) {
+        console.warn("[OS] Gravação dos dispositivos adicionais:", resultado);
+      }
+      return resultado;
+    };
+
     if (ordem) {
       // Status da conta a receber ANTES da edição — usado para o ajuste
       // retroativo de caixas fechados (getValorFaturavelOS depende dele).
@@ -927,6 +1014,11 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .eq("user_id", effectiveUserId);
 
       if (error) throw error;
+      osIdSalva = ordem.id;
+      numeroOSSalva = ordem.numero_os ?? null;
+
+      // === DISPOSITIVOS ADICIONAIS (só se a tela enviou a lista) ===
+      resultadoAdicionais = await gravarAdicionais(ordem.id);
 
       // === ESTOQUE DAS PEÇAS/PRODUTOS ALTERADOS NESTA EDIÇÃO ===
       // Item adicionado baixa, removido devolve, quantidade alterada ajusta a
@@ -1124,10 +1216,13 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       toast({
         // O aviso BRANDO (fallback do tipo do formulário) NÃO deixa o título
         // como "precisa de revisão" — a comissão foi calculada normalmente.
-        title: avisoComissaoTexto ? "Ordem atualizada — comissão precisa de revisão" : "Ordem atualizada",
-        description: ["A ordem de serviço foi atualizada com sucesso.", avisoComissaoTexto, avisoComissaoBrando]
+        title: resultadoAdicionais?.status === "falhou"
+          ? "Ordem atualizada — aparelhos adicionais não gravados"
+          : avisoComissaoTexto ? "Ordem atualizada — comissão precisa de revisão" : "Ordem atualizada",
+        description: ["A ordem de serviço foi atualizada com sucesso.", avisoAdicionaisToast(resultadoAdicionais), avisoComissaoTexto, avisoComissaoBrando]
           .filter(Boolean)
           .join(" "),
+        ...(resultadoAdicionais?.status === "falhou" ? { variant: "destructive" as const } : {}),
       });
       window.dispatchEvent(new Event("os-salva"));
     } else {
@@ -1185,6 +1280,11 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         .eq("numero_os", numeroOS)
         .eq("user_id", effectiveUserId)
         .maybeSingle();
+      osIdSalva = osCriada?.id ?? null;
+      numeroOSSalva = numeroOS;
+
+      // === DISPOSITIVOS ADICIONAIS (só se a tela enviou a lista) ===
+      resultadoAdicionais = await gravarAdicionais(osCriada?.id ?? null);
 
       if (osCriada) {
         const resTecnicosCreate = await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos);
@@ -1293,10 +1393,13 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       dispararConfetti('celebracao');
 
       toast({
-        title: avisoComissaoTexto ? "Ordem criada — comissão precisa de revisão" : "Ordem criada",
-        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, avisoComissaoTexto, avisoComissaoBrando]
+        title: resultadoAdicionais?.status === "falhou"
+          ? "Ordem criada — aparelhos adicionais não gravados"
+          : avisoComissaoTexto ? "Ordem criada — comissão precisa de revisão" : "Ordem criada",
+        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, avisoAdicionaisToast(resultadoAdicionais), avisoComissaoTexto, avisoComissaoBrando]
           .filter(Boolean)
           .join(" "),
+        ...(resultadoAdicionais?.status === "falhou" ? { variant: "destructive" as const } : {}),
       });
 
       window.dispatchEvent(new Event("os-salva"));
@@ -1310,13 +1413,18 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // Navegar para próximo passo se ainda não visualizou lucro e tem acesso ao módulo.
       // Suprimido quando a OS vem do card "Primeiros Passos": ali o usuário deve
       // continuar no Dashboard, sem ser jogado para /financeiro.
-      if (!primeiraOsOnboarding && !onboardingData?.step_lucro_visualizado && temAcessoModulo('financeiro')) {
+      // Também suprimido se os adicionais falharam: o assistente fica aberto (ver abaixo).
+      if (!primeiraOsOnboarding && !onboardingData?.step_lucro_visualizado && temAcessoModulo('financeiro')
+        && resultadoAdicionais?.status !== "falhou") {
         setTimeout(() => navigate('/financeiro'), 1000);
       }
     }
 
     onSuccess();
-    onOpenChange(false);
+    // Adicionais não gravados: o assistente fica aberto com o que o usuário
+    // preencheu, para a tela tentar de novo (etapa 5b). A OS já está salva.
+    if (resultadoAdicionais?.status !== "falhou") onOpenChange(false);
+    return { osId: osIdSalva, numeroOS: numeroOSSalva, adicionais: resultadoAdicionais };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error?.message === "TECNICO_OBRIGATORIO") return;
@@ -1338,5 +1446,6 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       description: mensagemErro,
       variant: "destructive",
     });
+    return undefined;
   }
 }
