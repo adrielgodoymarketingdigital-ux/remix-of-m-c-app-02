@@ -50,8 +50,11 @@ export interface DispositivoAdicionalForm {
 /** O que a tela entrega para gravar: a lista atual (em ordem) e o que o usuário removeu. */
 export interface EntradaGravacaoAdicionais {
   dispositivos: DispositivoAdicionalForm[];
-  /** Aparelhos que vieram do banco e o usuário removeu (com as fotos, para apagar depois). */
-  removidos: { id: string; fotos_dispositivo: string[] }[];
+  /**
+   * Aparelhos que vieram do banco e o usuário removeu (com as fotos, para apagar
+   * depois). `rotulo` ("iPhone 12") só serve para o aviso se a remoção falhar.
+   */
+  removidos: { id: string; fotos_dispositivo: string[]; rotulo?: string }[];
 }
 
 /** Linha enviada ao upsert (colunas de os_dispositivos_adicionais). */

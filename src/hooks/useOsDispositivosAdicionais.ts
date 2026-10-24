@@ -9,6 +9,7 @@ import {
   type AdicionaisPorOS,
   type DispositivoAdicionalOS,
 } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { consultarRelatandoErro } from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
 
 /**
  * Leitura dos dispositivos adicionais da OS (os_dispositivos_adicionais).
@@ -26,6 +27,19 @@ export function buscarDispositivosAdicionaisOS(osId: string): Promise<Dispositiv
     () => supabase.from("os_dispositivos_adicionais").select("*").eq("os_id", osId),
     lerDispositivosAdicionais,
     SEM_ADICIONAIS,
+  );
+}
+
+/**
+ * Leitura para o assistente EDITAR a OS: diferente de buscarDispositivosAdicionaisOS,
+ * devolve { ok: false } em erro em vez de lista vazia (a seção fica travada).
+ */
+export function buscarDispositivosAdicionaisOSParaEditar(
+  osId: string,
+): Promise<{ ok: true; dados: DispositivoAdicionalOS[] } | { ok: false }> {
+  return consultarRelatandoErro(
+    () => supabase.from("os_dispositivos_adicionais").select("*").eq("os_id", osId),
+    lerDispositivosAdicionais,
   );
 }
 
