@@ -16,6 +16,7 @@ import {
   estadoAdicionaisCarregando,
   estadoAdicionaisErro,
   estadoAdicionaisNovaOS,
+  estadoAdicionaisVazio,
 } from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
 import { FormData, TecnicoOS, EtapaWizard } from "./tipos";
 
@@ -408,7 +409,8 @@ export function useOrdemServicoWizardState({
   // apagaria o que o usuário já digitou. Quem não vê os adicionais nunca lê.
   useEffect(() => {
     if (!open || !ordem || !adicionaisVisiveis) {
-      setEstadoAdicionais(estadoAdicionaisNovaOS());
+      // Mesmo objeto se já está vazio: quem não vê os adicionais não ganha render a mais.
+      setEstadoAdicionais((e) => (estadoAdicionaisVazio(e) ? e : estadoAdicionaisNovaOS()));
       return;
     }
     let cancelado = false;

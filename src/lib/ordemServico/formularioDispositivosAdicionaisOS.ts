@@ -48,6 +48,10 @@ export const estadoAdicionaisNovaOS = (): EstadoAdicionaisForm => ({ ...VAZIO })
 export const estadoAdicionaisCarregando = (): EstadoAdicionaisForm => ({ ...VAZIO, carga: "carregando" });
 export const estadoAdicionaisErro = (): EstadoAdicionaisForm => ({ ...VAZIO, carga: "erro" });
 
+/** Já é o estado de OS nova (nada carregado, nada mudado)? */
+export const estadoAdicionaisVazio = (e: EstadoAdicionaisForm): boolean =>
+  e.carga === "ok" && e.dispositivos.length === 0 && e.removidos.length === 0 && e.idsGravados.length === 0;
+
 /** Aparelhos lidos do banco → estado do formulário (senha já em claro). */
 export function estadoAdicionaisCarregados(lidos: readonly DispositivoAdicionalOS[]): EstadoAdicionaisForm {
   const dispositivos = lidos.map(adicionalParaFormulario);

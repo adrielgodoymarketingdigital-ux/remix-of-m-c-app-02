@@ -14,6 +14,7 @@ import {
   estadoAdicionaisCarregando,
   estadoAdicionaisErro,
   estadoAdicionaisNovaOS,
+  estadoAdicionaisVazio,
   estadoAposGravacao,
   opcoesAparelhoServico,
   podeAdicionarAparelho,
@@ -66,6 +67,9 @@ Deno.test("carga: OS nova livre; carregando e erro travam a seção", () => {
   assertEquals(podeAdicionarAparelho(estadoAdicionaisErro()), false);
   assertEquals(podeAdicionarAparelho(estadoAdicionaisCarregando()), false);
   assertEquals(podeAdicionarAparelho(estadoAdicionaisNovaOS()), true);
+  assertEquals(estadoAdicionaisVazio(estadoAdicionaisNovaOS()), true);
+  assertEquals(estadoAdicionaisVazio(estadoAdicionaisErro()), false);
+  assertEquals(estadoAdicionaisVazio(salvarAparelhoNoEstado(estadoAdicionaisNovaOS(), aparelho("a"))), false);
 });
 
 Deno.test("envio: nada vai para gravar sem visibilidade, carregando ou com erro de leitura", () => {
