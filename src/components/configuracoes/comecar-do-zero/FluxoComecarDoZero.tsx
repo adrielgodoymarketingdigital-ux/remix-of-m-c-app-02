@@ -7,19 +7,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { TurnstileWidget, type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import { cn } from "@/lib/utils";
 import {
   CATEGORIAS,
   type Categoria,
   categoriasParaEnviar,
   contagemAmigavel,
+  contaTemSenha,
   type Contadores,
   type Escolha,
   expandirEscolha,
   type Inclusao,
   linhasPorTabela,
   linhasResumo,
+  MENSAGEM_CONTA_SEM_SENHA,
   mensagemErro,
+  mensagemErroSenha,
   type MensagemErro,
   PALAVRA_CONFIRMACAO,
   podeConfirmar,
@@ -113,6 +117,9 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
   const [erroPrevia, setErroPrevia] = useState<MensagemErro | null>(null);
   const [senha, setSenha] = useState("");
   const [palavra, setPalavra] = useState("");
+  // O Supabase Auth exige captcha (Turnstile) em todo login, inclusive nesta confirmação de senha.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [executando, setExecutando] = useState(false);
   const [erroExec, setErroExec] = useState<MensagemErro | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
@@ -169,16 +176,36 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
   };
 
   const apagar = async () => {
-    if (emAndamento.current || !podeConfirmar({ revisaoValida, senha, palavra, executando })) return;
+    if (emAndamento.current || !podeConfirmar({ revisaoValida, senha, palavra, captchaOk: !!captchaToken, executando })) return;
     emAndamento.current = true;
     setExecutando(true);
     setErroExec(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.email) throw { code: "ZD000" };
-      // Login por senha recente: a função do banco exige (amr < 10 min).
-      const { error: erroSenha } = await supabase.auth.signInWithPassword({ email: user.email, password: senha });
-      if (erroSenha) throw erroSenha;
+      if (!contaTemSenha(user)) { setErroExec(MENSAGEM_CONTA_SEM_SENHA); return; }
+      // Login por senha recente: a função do banco exige (amr < 10 min). Com o captcha que o
+      // Auth exige; o token é de uso único, então o widget é resetado depois de toda tentativa.
+      let erroSenha: unknown = null;
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: senha,
+          options: { captchaToken: captchaToken ?? undefined },
+        });
+        erroSenha = error;
+      } catch (falha) {
+        erroSenha = falha;
+      } finally {
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
+      }
+      if (erroSenha) {
+        const { code, status } = erroSenha as { code?: string; status?: number };
+        console.warn("[Começar do zero] confirmação de senha recusada", { code, status });
+        setErroExec(mensagemErroSenha(erroSenha));
+        return;
+      }
       const { data, error } = await supabase.rpc("zerar_meus_dados_executar", {
         p_categorias: enviar,
         p_confirmacao: palavra,
@@ -329,7 +356,7 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
 
   // ---------------- passo 3 ----------------
   if (passo === 3) {
-    const liberado = podeConfirmar({ revisaoValida, senha, palavra, executando });
+    const liberado = podeConfirmar({ revisaoValida, senha, palavra, captchaOk: !!captchaToken, executando });
     return (
       <form
         className="flex flex-col gap-4"
@@ -351,10 +378,14 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
           <Input id="zerar-palavra" value={palavra} onChange={(e) => setPalavra(e.target.value)} autoComplete="off"
             autoCapitalize="characters" spellCheck={false} placeholder={PALAVRA_CONFIRMACAO} disabled={executando} />
         </div>
+        <div className="space-y-1.5">
+          <TurnstileWidget ref={turnstileRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+          {!captchaToken && <p className="text-xs text-muted-foreground">Aguarde a verificação de segurança.</p>}
+        </div>
         {erroExec && <CaixaErro erro={erroExec} />}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" disabled={executando}
-            onClick={() => { setErroExec(null); irParaRevisao(); }}>
+            onClick={() => { setErroExec(null); setCaptchaToken(null); irParaRevisao(); }}>
             Voltar
           </Button>
           <Button type="submit" variant="destructive" disabled={!liberado}>

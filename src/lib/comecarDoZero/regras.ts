@@ -263,22 +263,63 @@ export function mensagemErro(erro: unknown): MensagemErro {
       return { titulo: "Demorou demais", texto: `A operação passou do tempo limite e foi desfeita. ${NADA} Tente de novo em alguns minutos.` };
     case "55P03":
       return { titulo: "Já existe uma operação em andamento", texto: `Espere a outra terminar e tente de novo. ${NADA}` };
-    case "invalid_credentials":
-      return { titulo: "Senha incorreta", texto: `Confira a senha da sua conta e tente de novo. ${NADA}` };
-  }
-  if (e.name === "AuthApiError" || /invalid login credentials/i.test(msg)) {
-    return { titulo: "Senha incorreta", texto: `Confira a senha da sua conta e tente de novo. ${NADA}` };
   }
   return { titulo: "Não foi possível concluir", texto: `Verifique sua internet e tente de novo. ${NADA}` };
+}
+
+/**
+ * Erro do login de confirmação (signInWithPassword) → mensagem, pelo CÓDIGO do erro.
+ * Só invalid_credentials vira "Senha incorreta": captcha, limite de tentativas,
+ * e-mail não confirmado e rede têm mensagem própria; o resto é genérico.
+ */
+export function mensagemErroSenha(erro: unknown): MensagemErro {
+  const e = (erro ?? {}) as { code?: string; status?: number; name?: string };
+  if (e.code === "invalid_credentials") {
+    return { titulo: "Senha incorreta", texto: `A senha não confere com a da sua conta. Se não lembra, use "Esqueci minha senha" na tela de entrada. ${NADA}` };
+  }
+  if (e.code === "captcha_failed") {
+    return { titulo: "Verificação de segurança", texto: `A verificação de segurança falhou ou expirou. Faça a verificação de novo e tente outra vez. ${NADA}` };
+  }
+  if (e.code === "over_request_rate_limit" || e.status === 429) {
+    return { titulo: "Muitas tentativas", texto: `Espere alguns minutos antes de tentar de novo. ${NADA}` };
+  }
+  if (e.code === "email_not_confirmed") {
+    return { titulo: "E-mail ainda não confirmado", texto: `Confirme o seu e-mail pelo link que enviamos e tente de novo. ${NADA}` };
+  }
+  if (e.code === "user_banned") {
+    return { titulo: "Conta bloqueada", texto: `Fale com o suporte. ${NADA}` };
+  }
+  if (e.name === "AuthRetryableFetchError" || e.name === "TypeError" || e.code === "request_timeout") {
+    return { titulo: "Sem conexão", texto: `Não conseguimos falar com o servidor. Verifique sua internet e tente de novo. ${NADA}` };
+  }
+  return { titulo: "Não foi possível confirmar sua senha", texto: `Não foi possível confirmar sua senha agora. ${NADA}` };
+}
+
+export const MENSAGEM_CONTA_SEM_SENHA: MensagemErro = {
+  titulo: "Sua conta não tem senha",
+  texto: `Você entra sem senha (por exemplo, pelo Google ou por link). Para usar este recurso, crie uma senha em "Esqueci minha senha" na tela de entrada. ${NADA}`,
+};
+
+/** A conta entra com e-mail e senha? Sem informação, considera que sim (o login dirá se não). */
+export function contaTemSenha(usuario: { identities?: { provider: string }[] | null; app_metadata?: { provider?: string; providers?: string[] } } | null | undefined): boolean {
+  const ids = usuario?.identities;
+  if (Array.isArray(ids) && ids.length > 0) return ids.some((i) => i.provider === "email");
+  const meta = usuario?.app_metadata;
+  if (meta?.providers?.length) return meta.providers.includes("email");
+  if (meta?.provider) return meta.provider === "email";
+  return true;
 }
 
 // ---------------- botão final ----------------
 
 export const PALAVRA_CONFIRMACAO = "APAGAR";
 
-/** "Apagar definitivamente" só libera com revisão válida, senha preenchida e APAGAR exato, e fora de uma execução. */
-export function podeConfirmar(estado: { revisaoValida: boolean; senha: string; palavra: string; executando: boolean }): boolean {
-  return estado.revisaoValida && estado.senha.length > 0 && estado.palavra === PALAVRA_CONFIRMACAO && !estado.executando;
+/**
+ * "Apagar definitivamente" só libera com revisão válida, senha preenchida, APAGAR exato e a
+ * verificação de segurança feita (o Auth exige captcha no login), e fora de uma execução.
+ */
+export function podeConfirmar(estado: { revisaoValida: boolean; senha: string; palavra: string; captchaOk: boolean; executando: boolean }): boolean {
+  return estado.revisaoValida && estado.senha.length > 0 && estado.palavra === PALAVRA_CONFIRMACAO && estado.captchaOk && !estado.executando;
 }
 
 // ---------------- quem vê ----------------

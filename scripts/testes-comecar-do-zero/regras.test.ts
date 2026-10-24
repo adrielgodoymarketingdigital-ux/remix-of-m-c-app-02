@@ -10,8 +10,10 @@ import {
   type Escolha,
   expandirEscolha,
   linhasPorTabela,
+  contaTemSenha,
   linhasResumo,
   mensagemErro,
+  mensagemErroSenha,
   ORDEM_CATEGORIAS,
   podeConfirmar,
   ROTULOS_TABELA,
@@ -95,8 +97,6 @@ Deno.test("erros ZD000–ZD007, tempo esgotado, trava, senha e rede: todos dizem
     [{ code: "ZD007" }, "Escolha inválida"],
     [{ code: "57014", message: "canceling statement due to statement timeout" }, "Demorou demais"],
     [{ code: "55P03" }, "Já existe uma operação em andamento"],
-    [{ code: "invalid_credentials", message: "Invalid login credentials" }, "Senha incorreta"],
-    [{ name: "AuthApiError", message: "Invalid login credentials" }, "Senha incorreta"],
     [new TypeError("Failed to fetch"), "Não foi possível concluir"],
     [null, "Não foi possível concluir"],
   ];
@@ -112,12 +112,13 @@ Deno.test("erros ZD000–ZD007, tempo esgotado, trava, senha e rede: todos dizem
 });
 
 Deno.test("botão final: só com revisão válida, senha e APAGAR exato, fora de execução", () => {
-  const base = { revisaoValida: true, senha: "segredo", palavra: "APAGAR", executando: false };
+  const base = { revisaoValida: true, senha: "segredo", palavra: "APAGAR", captchaOk: true, executando: false };
   assertEquals(podeConfirmar(base), true);
   assertEquals(podeConfirmar({ ...base, senha: "" }), false);
   for (const palavra of ["apagar", "Apagar", "APAGAR ", " APAGAR", "APAGA", ""]) assertEquals(podeConfirmar({ ...base, palavra }), false, palavra);
   assertEquals(podeConfirmar({ ...base, executando: true }), false);
   assertEquals(podeConfirmar({ ...base, revisaoValida: false }), false);
+  assertEquals(podeConfirmar({ ...base, captchaOk: false }), false, "sem a verificação de segurança");
 });
 
 Deno.test("marca de conta de teste: só true liga", () => {
@@ -125,4 +126,40 @@ Deno.test("marca de conta de teste: só true liga", () => {
   for (const v of [null, undefined, {}, { comecar_do_zero: false }, { comecar_do_zero: "true" }, { comecar_do_zero: 1 }, [true], "x"]) {
     assertEquals(temMarcaComecarDoZero(v), false, JSON.stringify(v));
   }
+});
+
+Deno.test("erros do login de confirmação: pelo código, e só invalid_credentials vira 'Senha incorreta'", () => {
+  const casos: [unknown, string][] = [
+    [{ name: "AuthApiError", code: "invalid_credentials", status: 400, message: "Invalid login credentials" }, "Senha incorreta"],
+    [{ name: "AuthApiError", code: "captcha_failed", status: 400, message: "captcha protection: request disallowed (no captcha_token found)" }, "Verificação de segurança"],
+    [{ name: "AuthApiError", code: "over_request_rate_limit", status: 429, message: "Request rate limit reached" }, "Muitas tentativas"],
+    [{ name: "AuthApiError", status: 429, message: "Too many requests" }, "Muitas tentativas"],
+    [{ name: "AuthApiError", code: "email_not_confirmed", status: 400, message: "Email not confirmed" }, "E-mail ainda não confirmado"],
+    [{ name: "AuthApiError", code: "user_banned", status: 400, message: "User is banned" }, "Conta bloqueada"],
+    [{ name: "AuthRetryableFetchError", status: 0, message: "Failed to fetch" }, "Sem conexão"],
+    [new TypeError("Failed to fetch"), "Sem conexão"],
+    [{ name: "AuthApiError", code: "request_timeout", status: 504 }, "Sem conexão"],
+    [{ name: "AuthApiError", code: "unexpected_failure", status: 500, message: "boom" }, "Não foi possível confirmar sua senha"],
+    [{ name: "AuthApiError", status: 400, message: "Invalid login credentials" }, "Não foi possível confirmar sua senha"],
+    [null, "Não foi possível confirmar sua senha"],
+  ];
+  for (const [erro, titulo] of casos) {
+    const m = mensagemErroSenha(erro);
+    assertEquals(m.titulo, titulo, JSON.stringify(erro));
+    assert(m.texto.includes("Nada foi apagado."), titulo);
+    assert(!/captcha_|invalid_|rate limit|AuthApi/i.test(m.texto), `sem jargão: ${m.texto}`);
+  }
+  assertEquals(mensagemErroSenha({ code: "unexpected_failure" }).texto, "Não foi possível confirmar sua senha agora. Nada foi apagado.");
+  // os erros do banco não viram mais "Senha incorreta" por engano
+  assert(mensagemErro({ name: "AuthApiError", code: "captcha_failed" }).titulo !== "Senha incorreta");
+});
+
+Deno.test("conta sem senha (Google/link): detectada pelas identidades", () => {
+  assertEquals(contaTemSenha({ identities: [{ provider: "email" }] }), true);
+  assertEquals(contaTemSenha({ identities: [{ provider: "google" }] }), false);
+  assertEquals(contaTemSenha({ identities: [{ provider: "google" }, { provider: "email" }] }), true);
+  assertEquals(contaTemSenha({ identities: [], app_metadata: { providers: ["google"] } }), false);
+  assertEquals(contaTemSenha({ app_metadata: { provider: "email" } }), true);
+  assertEquals(contaTemSenha({}), true, "sem informação: deixa o login decidir");
+  assertEquals(contaTemSenha(null), true);
 });
