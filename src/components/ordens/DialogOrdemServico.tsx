@@ -1,5 +1,7 @@
-import { Loader2, ChevronRight, ChevronLeft, ClipboardList } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, ChevronRight, ChevronLeft, ClipboardList, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useConfetti } from "@/hooks/useConfetti";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useTiposServico } from "@/hooks/useTiposServico";
@@ -11,6 +13,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { useEventTracking } from "@/hooks/useEventTracking";
@@ -21,10 +33,25 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useEmpresaInfo } from "@/hooks/useResolvedUserId";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { useLocalizacoesOS } from "@/hooks/useLocalizacoesOS";
+import { useDispositivosAdicionaisOSVisivel } from "@/hooks/useDispositivosAdicionaisOSVisivel";
+import { chaveDispositivosAdicionaisOS } from "@/hooks/useOsDispositivosAdicionais";
+import type { EntradaGravacaoAdicionais } from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
+import {
+  entradaGravacaoParaSalvar,
+  estadoAposGravacao,
+  removerAparelhoDoEstado,
+  salvarAparelhoNoEstado,
+  textoAparelhosPerdidos,
+} from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
 
 import { useOrdemServicoWizardState } from "./ordem-servico-wizard/useOrdemServicoWizardState";
 import { validarEtapa } from "./ordem-servico-wizard/useOrdemServicoWizardValidacao";
-import { salvarOrdemServico } from "./ordem-servico-wizard/handleSubmitOrdemServico";
+import {
+  avisoAdicionaisToast,
+  gravarSomenteDispositivosAdicionais,
+  salvarOrdemServico,
+} from "./ordem-servico-wizard/handleSubmitOrdemServico";
+import { SecaoDispositivosAdicionais } from "./ordem-servico-wizard/SecaoDispositivosAdicionais";
 import { OrdemServicoWizardProgresso } from "./ordem-servico-wizard/OrdemServicoWizardProgresso";
 import { EtapaCardWrapper } from "./ordem-servico-wizard/EtapaCardWrapper";
 import { EtapaOrigemCliente } from "./ordem-servico-wizard/EtapaOrigemCliente";
@@ -71,6 +98,16 @@ export const DialogOrdemServico = ({
   const { taxasAtivas, calcularTaxa } = useTaxasCartao();
   const { localizacoes } = useLocalizacoesOS();
   const modoUnico = useIsPwaMobile();
+  const queryClient = useQueryClient();
+  // Dispositivos adicionais: tudo abaixo só age para quem os vê (hoje, admin do MecApp).
+  const adicionaisVisiveis = useDispositivosAdicionaisOSVisivel();
+  // OS salva, mas os adicionais não (resultado "falhou" da gravação): o
+  // assistente fica aberto até "Gravar aparelhos de novo" ou fechar confirmando.
+  const [falhaAdicionais, setFalhaAdicionais] = useState<
+    { osId: string | null; numeroOS: string | null; entrada: EntradaGravacaoAdicionais } | null
+  >(null);
+  const [gravandoAdicionaisDeNovo, setGravandoAdicionaisDeNovo] = useState(false);
+  const [confirmarFecharSemAdicionais, setConfirmarFecharSemAdicionais] = useState(false);
 
   const {
     loading, setLoading,
@@ -91,12 +128,76 @@ export const DialogOrdemServico = ({
     etapaMaximaAlcancada, setEtapaMaximaAlcancada,
     campoComErro, setCampoComErro,
     formData, setFormData,
+    estadoAdicionais, setEstadoAdicionais, recarregarAdicionais,
     buscarClientes,
     selecionarCliente,
     handleClienteNomeChange,
     handleClienteCPFChange,
     handleBuscarCEPOS,
-  } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId, carregandoPermissoes });
+  } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId, carregandoPermissoes, adicionaisVisiveis });
+
+  useEffect(() => {
+    if (!open) {
+      setFalhaAdicionais(null);
+      setConfirmarFecharSemAdicionais(false);
+    }
+  }, [open]);
+
+  /** Fechar o assistente: com adicionais pendentes de gravar, pede confirmação. */
+  const fecharAssistente = (aberto: boolean) => {
+    if (!aberto && falhaAdicionais) {
+      setConfirmarFecharSemAdicionais(true);
+      return;
+    }
+    onOpenChange(aberto);
+  };
+
+  const gravarAdicionaisDeNovo = async () => {
+    if (!falhaAdicionais?.osId) return;
+    const osId = falhaAdicionais.osId;
+    setGravandoAdicionaisDeNovo(true);
+    try {
+      const resultado = await gravarSomenteDispositivosAdicionais({
+        osId,
+        entrada: falhaAdicionais.entrada,
+        fotosDispositivo1: formData.fotosDispositivo,
+        isProprietario,
+        empresaAtivaCtx,
+      });
+      queryClient.invalidateQueries({ queryKey: chaveDispositivosAdicionaisOS(osId) });
+      if (resultado.status === "falhou") {
+        toast({ title: "Aparelhos adicionais ainda não gravados", description: resultado.mensagem, variant: "destructive" });
+        return;
+      }
+      toast({
+        title: "Aparelhos adicionais gravados",
+        description: avisoAdicionaisToast(resultado, falhaAdicionais.entrada) ?? undefined,
+      });
+      setEstadoAdicionais(estadoAposGravacao);
+      setFalhaAdicionais(null);
+      onSuccess();
+      onOpenChange(false);
+    } finally {
+      setGravandoAdicionaisDeNovo(false);
+    }
+  };
+
+  // Só montada para quem vê os adicionais; para os demais é null (nada muda na tela).
+  const secaoAdicionais = adicionaisVisiveis ? (
+    <SecaoDispositivosAdicionais
+      estado={estadoAdicionais}
+      servicos={formData.servicos}
+      imeiDispositivo1={formData.dispositivoIMEI}
+      bloqueada={!!falhaAdicionais}
+      onSalvarAparelho={(aparelho) => setEstadoAdicionais((e) => salvarAparelhoNoEstado(e, aparelho))}
+      onRemoverAparelho={(id) => {
+        const r = removerAparelhoDoEstado(estadoAdicionais, id, formData.servicos);
+        setEstadoAdicionais(r.estado);
+        if (r.servicosDesligados > 0) setFormData({ ...formData, servicos: r.servicos });
+      }}
+      onTentarCarregarDeNovo={recarregarAdicionais}
+    />
+  ) : null;
 
   // Banner de confirmação de custo (Comissão sobre Lucro): deve aparecer se
   // QUALQUER técnico envolvido na OS calcula comissão sobre lucro — o técnico
@@ -155,8 +256,10 @@ export const DialogOrdemServico = ({
 
   const handleSalvar = async () => {
     setLoading(true);
+    // undefined para quem não vê os adicionais (ou se a lista não carregou): a gravação não toca na tabela.
+    const entradaAdicionais = entradaGravacaoParaSalvar(adicionaisVisiveis, estadoAdicionais);
     try {
-      await salvarOrdemServico({
+      const resultado = await salvarOrdemServico({
         formData,
         ordem,
         tecnicoId,
@@ -180,7 +283,16 @@ export const DialogOrdemServico = ({
         onSuccess,
         onOpenChange,
         primeiraOsOnboarding,
+        dispositivosAdicionais: entradaAdicionais,
       });
+      if (entradaAdicionais && resultado) {
+        if (resultado.osId) queryClient.invalidateQueries({ queryKey: chaveDispositivosAdicionaisOS(resultado.osId) });
+        if (resultado.adicionais?.status === "falhou") {
+          setFalhaAdicionais({ osId: resultado.osId, numeroOS: resultado.numeroOS, entrada: entradaAdicionais });
+        } else {
+          setEstadoAdicionais(estadoAposGravacao);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -247,7 +359,7 @@ export const DialogOrdemServico = ({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={fecharAssistente}>
       <DialogContent className="!inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !w-[calc(100vw-1rem)] !h-[92dvh] !max-w-2xl !rounded-2xl sm:!w-screen sm:!h-screen sm:!max-w-none sm:!max-h-none sm:!rounded-none sm:!left-0 sm:!top-0 sm:!translate-x-0 sm:!translate-y-0 sm:!border-0 sm:zoom-in-100 sm:slide-in-from-left-0 sm:slide-in-from-top-0 sm:data-[state=closed]:slide-out-to-left-0 sm:data-[state=closed]:slide-out-to-top-0 sm:data-[state=closed]:zoom-out-100 p-0 gap-0 overflow-hidden flex flex-col bg-background [&>button]:h-7 [&>button]:w-7 sm:[&>button]:h-8 sm:[&>button]:w-8 [&>button]:rounded-full [&>button]:bg-muted [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:top-3 [&>button]:right-3 sm:[&>button]:top-6 sm:[&>button]:right-6">
         <div className="shrink-0 px-3 pt-3 pb-2.5 sm:px-6 sm:pt-6 sm:pb-5 border-b">
           <div className="w-full sm:max-w-5xl sm:mx-auto">
@@ -276,6 +388,25 @@ export const DialogOrdemServico = ({
             )}
           </div>
         </div>
+
+        {falhaAdicionais && (
+          <div className="shrink-0 px-3 py-2.5 sm:px-6 border-b border-destructive/40 bg-destructive/10" data-falha-adicionais>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:max-w-5xl sm:mx-auto text-sm text-destructive">
+              <span className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                {falhaAdicionais.osId
+                  ? `A OS nº ${falhaAdicionais.numeroOS ?? ""} foi salva, mas os aparelhos adicionais não. Toque em Gravar aparelhos de novo.`
+                  : `A OS nº ${falhaAdicionais.numeroOS ?? ""} foi salva, mas os aparelhos adicionais não. Abra a OS pela lista e cadastre-os de novo.`}
+              </span>
+              {falhaAdicionais.osId && (
+                <Button type="button" size="sm" variant="destructive" onClick={gravarAdicionaisDeNovo} disabled={gravandoAdicionaisDeNovo} className="shrink-0">
+                  {gravandoAdicionaisDeNovo && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Gravar aparelhos de novo
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:px-6 sm:py-5">
           <div className="text-sm sm:max-w-5xl sm:mx-auto">
@@ -313,6 +444,7 @@ export const DialogOrdemServico = ({
                   setFormData={setFormData}
                   campoComErro={campoComErro}
                 />
+                {secaoAdicionais}
               </EtapaCardWrapper>
 
               <EtapaCardWrapper dataEtapa={4}>
@@ -394,11 +526,14 @@ export const DialogOrdemServico = ({
           )}
 
           {etapaAtual === 3 && (
-            <EtapaDispositivo
-              formData={formData}
-              setFormData={setFormData}
-              campoComErro={campoComErro}
-            />
+            <>
+              <EtapaDispositivo
+                formData={formData}
+                setFormData={setFormData}
+                campoComErro={campoComErro}
+              />
+              {secaoAdicionais}
+            </>
           )}
 
           {etapaAtual === 4 && (
@@ -463,14 +598,14 @@ export const DialogOrdemServico = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => onOpenChange(false)}
+                  onClick={() => fecharAssistente(false)}
                   disabled={loading}
                   className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Cancelar
                 </Button>
-                <Button type="button" size="sm" onClick={tentarSalvarModoUnico} disabled={loading} className="sm:h-10 sm:px-4 sm:text-sm">
+                <Button type="button" size="sm" onClick={tentarSalvarModoUnico} disabled={loading || !!falhaAdicionais} className="sm:h-10 sm:px-4 sm:text-sm">
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -487,7 +622,7 @@ export const DialogOrdemServico = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={etapaAtual === 1 ? () => onOpenChange(false) : voltarEtapa}
+                  onClick={etapaAtual === 1 ? () => fecharAssistente(false) : voltarEtapa}
                   disabled={loading}
                   className="gap-1.5 sm:h-10 sm:px-4 sm:text-sm"
                 >
@@ -500,7 +635,7 @@ export const DialogOrdemServico = ({
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button type="button" size="sm" onClick={tentarSalvarWizard} disabled={loading} className="sm:h-10 sm:px-4 sm:text-sm">
+                  <Button type="button" size="sm" onClick={tentarSalvarWizard} disabled={loading || !!falhaAdicionais} className="sm:h-10 sm:px-4 sm:text-sm">
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -516,6 +651,29 @@ export const DialogOrdemServico = ({
           </div>
         </div>
       </DialogContent>
+
+      <AlertDialog open={confirmarFecharSemAdicionais} onOpenChange={setConfirmarFecharSemAdicionais}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fechar sem gravar os aparelhos?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A OS nº {falhaAdicionais?.numeroOS ?? ""} já foi salva, mas {textoAparelhosPerdidos(falhaAdicionais?.entrada.dispositivos.length ?? 0)} se você fechar agora.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar aqui</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setFalhaAdicionais(null);
+                onOpenChange(false);
+              }}
+            >
+              Fechar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

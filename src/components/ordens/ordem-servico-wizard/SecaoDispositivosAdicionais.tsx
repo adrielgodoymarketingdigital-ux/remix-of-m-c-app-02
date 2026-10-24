@@ -37,6 +37,8 @@ interface SecaoDispositivosAdicionaisProps {
   onSalvarAparelho: (aparelho: DispositivoAdicionalForm) => void;
   onRemoverAparelho: (id: string) => void;
   onTentarCarregarDeNovo: () => void;
+  /** Mostra os aparelhos sem permitir mudar (ex.: OS salva e adicionais pendentes de gravar). */
+  bloqueada?: boolean;
 }
 
 /**
@@ -52,11 +54,13 @@ export function SecaoDispositivosAdicionais({
   onSalvarAparelho,
   onRemoverAparelho,
   onTentarCarregarDeNovo,
+  bloqueada = false,
 }: SecaoDispositivosAdicionaisProps) {
   const [editando, setEditando] = useState<{ aparelho: DispositivoAdicionalForm; indice: number } | null>(null);
   const [removendoId, setRemovendoId] = useState<string | null>(null);
 
   const travada = secaoAdicionaisTravada(estado);
+  const semEdicao = travada || bloqueada;
   const avisosImei = travada ? [] : avisosImeiRepetido(imeiDispositivo1, estado.dispositivos);
   const indiceRemovendo = removendoId ? estado.dispositivos.findIndex((d) => d.id === removendoId) : -1;
   const textosRemover = indiceRemovendo >= 0
@@ -106,26 +110,30 @@ export function SecaoDispositivosAdicionais({
           {estado.dispositivos.map((d, i) => (
             <div key={d.id} className="flex items-center gap-2 p-3 border rounded-xl bg-muted/30" data-cartao-dispositivo-adicional>
               <p className="flex-1 min-w-0 text-sm font-medium truncate">{rotuloCartaoAdicional(d, i)}</p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-9 w-9 p-0 shrink-0"
-                aria-label={`Editar ${tituloDispositivo(numeroAdicional(i))}`}
-                onClick={() => setEditando({ aparelho: d, indice: i })}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-9 w-9 p-0 text-destructive hover:text-destructive shrink-0"
-                aria-label={`Remover ${tituloDispositivo(numeroAdicional(i))}`}
-                onClick={() => setRemovendoId(d.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {!semEdicao && (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 shrink-0"
+                    aria-label={`Editar ${tituloDispositivo(numeroAdicional(i))}`}
+                    onClick={() => setEditando({ aparelho: d, indice: i })}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 text-destructive hover:text-destructive shrink-0"
+                    aria-label={`Remover ${tituloDispositivo(numeroAdicional(i))}`}
+                    onClick={() => setRemovendoId(d.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -137,7 +145,7 @@ export function SecaoDispositivosAdicionais({
         </div>
       )}
 
-      {!travada && (
+      {!semEdicao && (
         <div className="flex items-center gap-3 flex-wrap">
           <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={novo} disabled={!podeAdicionarAparelho(estado)}>
             <Plus className="h-3.5 w-3.5 mr-1" />

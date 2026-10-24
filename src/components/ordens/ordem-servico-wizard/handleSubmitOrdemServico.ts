@@ -110,12 +110,46 @@ interface SalvarOrdemServicoParams {
 }
 
 /** Aviso dos adicionais para o toast; null quando não há o que avisar (sempre, sem a lista). */
-function avisoAdicionaisToast(r: ResultadoGravacaoAdicionais | null): string | null {
+export function avisoAdicionaisToast(
+  r: ResultadoGravacaoAdicionais | null,
+  entrada?: EntradaGravacaoAdicionais,
+): string | null {
   if (r?.status === "falhou") return "⚠️ Os aparelhos adicionais NÃO foram gravados. Tente salvar de novo.";
   if (r?.status === "remocao_falhou") {
-    return `⚠️ Não foi possível remover ${r.idsNaoRemovidos.length} aparelho(s) adicional(is). Tente salvar de novo.`;
+    const rotulos = r.idsNaoRemovidos
+      .map((id) => entrada?.removidos.find((x) => x.id === id)?.rotulo)
+      .filter((x): x is string => !!x);
+    return rotulos.length > 0
+      ? `⚠️ Não consegui remover o aparelho ${rotulos.join(", ")}. Abra a OS e tente de novo.`
+      : `⚠️ Não foi possível remover ${r.idsNaoRemovidos.length} aparelho(s) adicional(is). Tente salvar de novo.`;
   }
   return null;
+}
+
+/**
+ * "Gravar aparelhos de novo": grava SÓ os adicionais na OS que já foi salva
+ * (osId), sem tocar na OS nem criar outra. Nunca rejeita.
+ */
+export async function gravarSomenteDispositivosAdicionais(params: {
+  osId: string;
+  entrada: EntradaGravacaoAdicionais;
+  fotosDispositivo1: string[];
+  isProprietario: boolean;
+  empresaAtivaCtx: string | null;
+}): Promise<ResultadoGravacaoAdicionais> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { status: "falhou", etapa: "upsert", mensagem: "Usuário não autenticado", tentativas: 0 };
+    const { effectiveUserId } = await resolverIdentidadeOS(user.id, params.isProprietario, params.empresaAtivaCtx);
+    const plano = planejarGravacaoAdicionais(params.entrada, {
+      osId: params.osId,
+      userId: effectiveUserId,
+      fotosDispositivo1: params.fotosDispositivo1,
+    });
+    return await executarGravacaoAdicionais(clienteAdicionaisSupabase, plano);
+  } catch (e) {
+    return { status: "falhou", etapa: "upsert", mensagem: e instanceof Error ? e.message : String(e), tentativas: 0 };
+  }
 }
 
 /** O que a tela recebe quando a OS foi salva (undefined = OS não salva, erro já avisado). */
@@ -1219,7 +1253,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         title: resultadoAdicionais?.status === "falhou"
           ? "Ordem atualizada — aparelhos adicionais não gravados"
           : avisoComissaoTexto ? "Ordem atualizada — comissão precisa de revisão" : "Ordem atualizada",
-        description: ["A ordem de serviço foi atualizada com sucesso.", avisoAdicionaisToast(resultadoAdicionais), avisoComissaoTexto, avisoComissaoBrando]
+        description: ["A ordem de serviço foi atualizada com sucesso.", avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
           .filter(Boolean)
           .join(" "),
         ...(resultadoAdicionais?.status === "falhou" ? { variant: "destructive" as const } : {}),
@@ -1396,7 +1430,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         title: resultadoAdicionais?.status === "falhou"
           ? "Ordem criada — aparelhos adicionais não gravados"
           : avisoComissaoTexto ? "Ordem criada — comissão precisa de revisão" : "Ordem criada",
-        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, avisoAdicionaisToast(resultadoAdicionais), avisoComissaoTexto, avisoComissaoBrando]
+        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
           .filter(Boolean)
           .join(" "),
         ...(resultadoAdicionais?.status === "falhou" ? { variant: "destructive" as const } : {}),

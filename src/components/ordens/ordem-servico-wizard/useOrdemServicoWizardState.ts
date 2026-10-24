@@ -9,6 +9,14 @@ import { aplicarMascaraCPF, aplicarMascaraCNPJ, removerMascara } from "@/lib/mas
 import { buscarCEP } from "@/lib/buscarCEP";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { extrairCamposNovosLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { buscarDispositivosAdicionaisOSParaEditar } from "@/hooks/useOsDispositivosAdicionais";
+import {
+  EstadoAdicionaisForm,
+  estadoAdicionaisCarregados,
+  estadoAdicionaisCarregando,
+  estadoAdicionaisErro,
+  estadoAdicionaisNovaOS,
+} from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
 import { FormData, TecnicoOS, EtapaWizard } from "./tipos";
 
 const formDataVazio: FormData = {
@@ -73,6 +81,8 @@ interface UseOrdemServicoWizardStateParams {
   isFilialCtx: boolean;
   empresaInfoId: string | null;
   carregandoPermissoes: boolean;
+  /** Quem vê os dispositivos adicionais (useDispositivosAdicionaisOSVisivel). false = nunca lê a tabela. */
+  adicionaisVisiveis?: boolean;
 }
 
 /**
@@ -87,6 +97,7 @@ export function useOrdemServicoWizardState({
   isFilialCtx,
   empresaInfoId,
   carregandoPermissoes,
+  adicionaisVisiveis = false,
 }: UseOrdemServicoWizardStateParams) {
   const [loading, setLoading] = useState(false);
   const [tecnicoId, setTecnicoId] = useState<string | null>(null);
@@ -109,6 +120,11 @@ export function useOrdemServicoWizardState({
   const [campoComErro, setCampoComErro] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<FormData>(formDataVazio);
+
+  // Dispositivos adicionais (só para quem os vê): fora do formData porque são
+  // gravados em tabela própria (os_dispositivos_adicionais).
+  const [estadoAdicionais, setEstadoAdicionais] = useState<EstadoAdicionaisForm>(estadoAdicionaisNovaOS);
+  const [tentativaCargaAdicionais, setTentativaCargaAdicionais] = useState(0);
 
   const resolvedUserIdFromContext = useResolvedUserId();
 
@@ -387,6 +403,24 @@ export function useOrdemServicoWizardState({
     }
   }, [ordem, open]);
 
+  // Adicionais da OS em edição — junto com a abertura acima, mas num efeito
+  // próprio: a permissão (admin) chega depois, e reabrir o efeito de cima
+  // apagaria o que o usuário já digitou. Quem não vê os adicionais nunca lê.
+  useEffect(() => {
+    if (!open || !ordem || !adicionaisVisiveis) {
+      setEstadoAdicionais(estadoAdicionaisNovaOS());
+      return;
+    }
+    let cancelado = false;
+    setEstadoAdicionais(estadoAdicionaisCarregando());
+    buscarDispositivosAdicionaisOSParaEditar(ordem.id).then((r) => {
+      if (!cancelado) setEstadoAdicionais(r.ok ? estadoAdicionaisCarregados(r.dados) : estadoAdicionaisErro());
+    });
+    return () => { cancelado = true; };
+  }, [ordem, open, adicionaisVisiveis, tentativaCargaAdicionais]);
+
+  const recarregarAdicionais = () => setTentativaCargaAdicionais((n) => n + 1);
+
   return {
     loading, setLoading,
     tecnicoId, setTecnicoId,
@@ -406,6 +440,7 @@ export function useOrdemServicoWizardState({
     etapaMaximaAlcancada, setEtapaMaximaAlcancada,
     campoComErro, setCampoComErro,
     formData, setFormData,
+    estadoAdicionais, setEstadoAdicionais, recarregarAdicionais,
     buscarClientes,
     selecionarCliente,
     handleClienteNomeChange,
