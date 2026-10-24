@@ -294,6 +294,9 @@ export interface LinhaVendaTela {
   valor_desconto_cupom?: number | null;
   valor_troca?: number | null;
   segunda_forma_pagamento?: string | null;
+  forma_pagamento?: string | null;
+  /** Valor da conta a receber ligada a esta linha (carregado só em venda com troca). */
+  valor_conta_receber?: number | null;
 }
 
 export interface ParcelaComTrocaTela {
@@ -307,8 +310,10 @@ export interface ParcelaComTrocaTela {
  * Parcelas de vendas COM troca para a tela de Vendas mostrar o que o cliente
  * paga por parcela. Só entram linhas com valor_troca, parceladas
  * (total_parcelas > 1) e sem pagamento duplo; o resto fica fora do mapa e a
- * tela mostra o valor de sempre. Se faltar parcela do item na lista, cada
- * linha é calculada sozinha (total − descontos − troca, em centavos).
+ * tela mostra o valor de sempre. Valor: o da conta a receber da linha, se
+ * houver; senão a conta do PDV refeita (valoresContaReceberComTroca). Se faltar
+ * parcela do item na lista, cada linha é calculada sozinha (total − descontos −
+ * troca, em centavos).
  */
 export function parcelasComTrocaNaTela(linhas: LinhaVendaTela[]): Map<string, ParcelaComTrocaTela> {
   const resultado = new Map<string, ParcelaComTrocaTela>();
@@ -335,7 +340,37 @@ export function parcelasComTrocaNaTela(linhas: LinhaVendaTela[]): Map<string, Pa
         }) ?? []
       : ordenadas.map((l) => Math.max(0, centavos((Number(l.total) || 0) - descontoDe(l)) - centavos(Number(l.valor_troca) || 0)) / 100);
     const trocaVenda = (trocaPorGrupoC.get(ordenadas[0].grupo_venda as string) ?? 0) / 100;
-    ordenadas.forEach((l, i) => resultado.set(l.id, { valor: valores[i], trocaVenda }));
+    ordenadas.forEach((l, i) => resultado.set(l.id, { valor: l.valor_conta_receber ?? valores[i], trocaVenda }));
+  }
+  return resultado;
+}
+
+/** Valor "a receber" de uma linha COM troca sem conta: total − descontos − troca (centavos, nunca negativo). */
+export function valorAReceberSemConta(l: Pick<LinhaVendaTela, "total" | "valor_desconto_manual" | "valor_desconto_cupom" | "valor_troca">): number {
+  const descontoC = centavos(Number(l.valor_desconto_manual) || 0) + centavos(Number(l.valor_desconto_cupom) || 0);
+  return Math.max(0, centavos(Number(l.total) || 0) - descontoC - centavos(Number(l.valor_troca) || 0)) / 100;
+}
+
+/**
+ * "Vendas a Receber" (cards e lista): o que falta receber de cada linha "a
+ * receber" COM troca — o valor da conta a receber, se carregado; senão a
+ * parcela refeita (parcelasComTrocaNaTela) ou total − descontos − troca.
+ * Linhas sem troca ficam fora do mapa e a tela usa a conta de sempre.
+ */
+export function aReceberComTrocaNaTela(linhas: LinhaVendaTela[]): Map<string, ParcelaComTrocaTela> {
+  const parcelas = parcelasComTrocaNaTela(linhas);
+  const trocaPorGrupoC = new Map<string, number>();
+  for (const l of linhas) {
+    if (l.valor_troca != null && l.grupo_venda) {
+      trocaPorGrupoC.set(l.grupo_venda, (trocaPorGrupoC.get(l.grupo_venda) ?? 0) + centavos(l.valor_troca));
+    }
+  }
+  const resultado = new Map<string, ParcelaComTrocaTela>();
+  for (const l of linhas) {
+    if (l.valor_troca == null || (l.forma_pagamento !== "a_receber" && l.forma_pagamento !== "a_prazo")) continue;
+    const trocaVenda = l.grupo_venda ? (trocaPorGrupoC.get(l.grupo_venda) ?? 0) / 100 : Math.max(0, centavos(l.valor_troca)) / 100;
+    const valor = l.valor_conta_receber ?? parcelas.get(l.id)?.valor ?? valorAReceberSemConta(l);
+    resultado.set(l.id, { valor, trocaVenda });
   }
   return resultado;
 }
