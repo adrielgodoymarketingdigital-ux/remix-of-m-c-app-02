@@ -5,11 +5,12 @@ import { Venda } from "@/types/venda";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { TextoAjustado } from "@/components/vendas/TextoAjustado";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Clock, AlertTriangle, CheckCircle, DollarSign, type LucideIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { getVendaReceitaLiquida } from "@/lib/vendasFinanceiras";
+import { aReceberComTrocaNaTela } from "@/lib/vendas/trocaPDV";
 
 interface DashboardAReceberProps {
   vendas: Venda[];
@@ -22,6 +23,10 @@ export const DashboardAReceber = ({
   loading,
   onMarcarRecebido,
 }: DashboardAReceberProps) => {
+  // Venda com troca: o que falta receber é a conta a receber (sem a troca); sem troca, a conta de sempre.
+  const aReceberComTroca = useMemo(() => aReceberComTrocaNaTela(vendas), [vendas]);
+  const valorAReceber = (v: Venda) => aReceberComTroca.get(v.id)?.valor ?? getVendaReceitaLiquida(v);
+
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   
@@ -37,7 +42,7 @@ export const DashboardAReceber = ({
   );
 
   const totalAReceber = vendasAReceber.reduce(
-    (acc, v) => acc + getVendaReceitaLiquida(v),
+    (acc, v) => acc + valorAReceber(v),
     0
   );
 
@@ -89,7 +94,7 @@ export const DashboardAReceber = ({
           Icone={AlertTriangle}
           caracteres={String(vendasVencidas.length).length}
           valor={vendasVencidas.length}
-          descricao={<ValorMonetario valor={vendasVencidas.reduce((acc, v) => acc + getVendaReceitaLiquida(v), 0)} />}
+          descricao={<ValorMonetario valor={vendasVencidas.reduce((acc, v) => acc + valorAReceber(v), 0)} />}
         />
         <CardReceber
           cor="laranja"
@@ -98,7 +103,7 @@ export const DashboardAReceber = ({
           Icone={Clock}
           caracteres={String(vendasVencendo.length).length}
           valor={vendasVencendo.length}
-          descricao={<ValorMonetario valor={vendasVencendo.reduce((acc, v) => acc + getVendaReceitaLiquida(v), 0)} />}
+          descricao={<ValorMonetario valor={vendasVencendo.reduce((acc, v) => acc + valorAReceber(v), 0)} />}
         />
         <CardReceber
           cor="roxo"
@@ -163,7 +168,12 @@ export const DashboardAReceber = ({
                     </div>
                     <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
                       <span className="font-semibold whitespace-nowrap">
-                        <ValorMonetario valor={getVendaReceitaLiquida(venda)} tipo="preco" />
+                        <ValorMonetario valor={valorAReceber(venda)} tipo="preco" />
+                        {aReceberComTroca.has(venda.id) && (
+                          <span className="block text-right text-[10px] font-normal text-amber-600">
+                            troca −{formatCurrency(aReceberComTroca.get(venda.id)?.trocaVenda ?? 0)}
+                          </span>
+                        )}
                       </span>
                       {onMarcarRecebido && (
                         <Button
