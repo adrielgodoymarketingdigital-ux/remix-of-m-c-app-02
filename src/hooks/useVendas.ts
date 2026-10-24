@@ -31,6 +31,35 @@ import { reconhecerRecebimentoVendaVinculada, MENSAGEM_CUSTO_NAO_CONFIRMADO } fr
 import { alterarDataVenda as alterarDataVendaNoBanco } from "@/lib/vendas/alterarDataVenda";
 import { SELECT_VENDA_COM_ITENS } from "@/lib/vendas/itensVenda";
 
+const ehAReceber = (forma: string | null | undefined) => forma === "a_receber" || forma === "a_prazo";
+
+/**
+ * Venda com troca "a receber": anexa a cada linha o valor da sua conta a
+ * receber (o que o cliente paga), para a tela de Vendas. Sem linhas assim,
+ * não consulta nada e devolve a mesma lista.
+ */
+async function anexarContasDaTroca(lista: Venda[], userId: string): Promise<Venda[]> {
+  const ids = lista.filter((v) => v.valor_troca != null && ehAReceber(v.forma_pagamento)).map((v) => v.id);
+  if (ids.length === 0) return lista;
+  const valorPorVenda = new Map<string, number>();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await supabase
+      .from("contas")
+      .select("descricao, valor")
+      .eq("user_id", userId)
+      .eq("tipo", "receber")
+      .in("descricao", ids.slice(i, i + 100).map((id) => `venda_id:${id}`));
+    if (error) {
+      console.error("[useVendas] etapa=contas das vendas com troca", error);
+      return lista;
+    }
+    for (const c of data ?? []) {
+      if (c.descricao) valorPorVenda.set(c.descricao.replace("venda_id:", ""), Number(c.valor));
+    }
+  }
+  return lista.map((v) => (valorPorVenda.has(v.id) ? { ...v, valor_conta_receber: valorPorVenda.get(v.id) } : v));
+}
+
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [todasVendas, setTodasVendas] = useState<Venda[]>([]);
@@ -184,6 +213,7 @@ export const useVendas = () => {
           total_parcelas: v.total_parcelas != null ? Number(v.total_parcelas) : null,
           valor_troca: v.valor_troca != null ? Number(v.valor_troca) : null,
         }));
+        vendasData = await anexarContasDaTroca(vendasData, resolvedUserId);
       } else {
         console.error("[useVendas] Vendas query failed after retries:", vendasResult.reason);
       }
@@ -438,7 +468,7 @@ export const useVendas = () => {
           grupo_venda: null,
         }));
 
-        const allCombined = [...allVendasNormalizadas, ...allOrdensComoVendas, ...allAvulsasComoVendas];
+        const allCombined = [...await anexarContasDaTroca(allVendasNormalizadas, resolvedUserId), ...allOrdensComoVendas, ...allAvulsasComoVendas];
         allCombined.sort((a, b) => extrairDataLocal(b.data).localeCompare(extrairDataLocal(a.data)));
         setTodasVendas(allCombined);
       } else {
@@ -826,14 +856,34 @@ export const useVendas = () => {
       }
 
       // Marcar conta correspondente como recebida
-      await supabase.from("contas")
-        .update({
-          status: "recebido",
-          valor_pago: vendaOriginal.total,
-        })
-        .eq("user_id", vendaOriginal.user_id)
-        .ilike("descricao", `%venda_id:${vendaId}%`)
-        .eq("status", "pendente");
+      let totalRecebido = vendaOriginal.total;
+      if (vendaOriginal.valor_troca != null) {
+        // Venda com troca: o cliente pagou o valor da conta (sem a troca), não o total da linha.
+        const { data: contasDaVenda, error: erroContas } = await supabase.from("contas")
+          .select("id, valor")
+          .eq("user_id", vendaOriginal.user_id)
+          .ilike("descricao", `%venda_id:${vendaId}%`)
+          .eq("status", "pendente");
+        if (erroContas) throw erroContas;
+        totalRecebido = 0;
+        for (const conta of contasDaVenda ?? []) {
+          const { error: erroBaixa } = await supabase.from("contas")
+            .update({ status: "recebido", valor_pago: conta.valor })
+            .eq("id", conta.id)
+            .eq("status", "pendente");
+          if (erroBaixa) throw erroBaixa;
+          totalRecebido += Number(conta.valor);
+        }
+      } else {
+        await supabase.from("contas")
+          .update({
+            status: "recebido",
+            valor_pago: vendaOriginal.total,
+          })
+          .eq("user_id", vendaOriginal.user_id)
+          .ilike("descricao", `%venda_id:${vendaId}%`)
+          .eq("status", "pendente");
+      }
 
       toast({
         title: "Pagamento confirmado",
@@ -842,7 +892,7 @@ export const useVendas = () => {
 
       // Disparar evento de notificação automática
       dispatchEvent("PAYMENT_CONFIRMED", {
-        total: vendaOriginal.total?.toString() || "0",
+        total: totalRecebido?.toString() || "0",
       });
 
       await carregarVendas();

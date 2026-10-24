@@ -54,6 +54,8 @@ export interface Venda {
   valor_segunda_forma?: number | null;
   /** Aparelho recebido na troca que abate esta linha (NULL = sem troca). */
   valor_troca?: number | null;
+  /** Valor da conta a receber desta linha (carregado só em venda com troca "a receber"). */
+  valor_conta_receber?: number | null;
   observacoes?: string | null;
   empresa_id?: string | null;
   contaAPrazoPendente?: {
