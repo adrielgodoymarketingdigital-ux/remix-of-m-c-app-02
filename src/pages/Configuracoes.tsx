@@ -10,6 +10,7 @@ import { NotificationSettings } from "@/components/pwa/NotificationSettings";
 import { ConfiguracaoNumeracaoOS } from "@/components/configuracoes/ConfiguracaoNumeracaoOS";
 import { ConfiguracaoPermissoes } from "@/components/configuracoes/ConfiguracaoPermissoes";
 import { ExportacaoDados } from "@/components/configuracoes/ExportacaoDados";
+import { CardComecarDoZero } from "@/components/configuracoes/comecar-do-zero/CardComecarDoZero";
 
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useToast } from "@/hooks/use-toast";
@@ -246,7 +247,11 @@ export default function Configuracoes() {
                 </TabsContent>
 
                 <TabsContent value="exportacao" className="space-y-4 mt-0">
-                  <ExportacaoDados />
+                  <div id="exportacao-dados">
+                    <ExportacaoDados />
+                  </div>
+                  {/* Só existe para quem pode ver (useComecarDoZeroVisivel); para os demais, nada muda. */}
+                  <CardComecarDoZero idExportacao="exportacao-dados" />
                 </TabsContent>
               </div>
 
