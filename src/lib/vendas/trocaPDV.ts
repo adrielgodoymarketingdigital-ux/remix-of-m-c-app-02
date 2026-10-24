@@ -255,6 +255,30 @@ export function valorSegundaFormaItem(p: {
   return p.totalAPagar > 0 ? p.itemBruto * (p.valorSegunda / p.totalAPagar) : 0;
 }
 
+// ── Conta a receber da venda com troca ──────────────────────────────────────
+
+/**
+ * Contas a receber da 1ª forma de UM item numa venda COM troca e sem pagamento
+ * duplo: o que o cliente ainda deve do item (bruto − desconto − troca do item),
+ * dividido em centavos exatos entre as parcelas (soma = restante do item).
+ * null = venda sem troca ou com pagamento duplo: o PDV usa a conta de sempre,
+ * sem nenhuma mudança.
+ */
+export function valoresContaReceberComTroca(p: {
+  /** preço × quantidade do item */
+  bruto: number;
+  /** Desconto do item (soma de valor_desconto_manual das parcelas). */
+  desconto: number;
+  /** valor_troca de cada parcela do item; null = venda sem troca. */
+  trocaPorParcela: number[] | null;
+  duplo: boolean;
+}): number[] | null {
+  if (!p.trocaPorParcela || p.trocaPorParcela.length === 0 || p.duplo) return null;
+  const trocaC = p.trocaPorParcela.reduce((acc, t) => acc + Math.max(0, centavos(t)), 0);
+  const restanteC = Math.max(0, centavos(p.bruto) - centavos(p.desconto) - trocaC);
+  return ratearPorPeso(restanteC / 100, p.trocaPorParcela.map(() => 1));
+}
+
 // ── Cancelamento ────────────────────────────────────────────────────────────
 
 export type AcaoAparelhoTroca = "manter" | "remover";
