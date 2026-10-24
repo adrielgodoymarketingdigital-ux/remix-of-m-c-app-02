@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
+import { bloqueioEditarVendaComTroca } from "@/lib/vendas/trocaPDV";
 import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
 
 const formSchema = z.object({
@@ -58,6 +59,8 @@ export interface VendaDispositivoParaEditar {
   forma_pagamento: string;
   dispositivo_marca?: string;
   dispositivo_modelo?: string;
+  /** Venda com troca: valor e forma de pagamento não podem mudar aqui. */
+  tem_troca?: boolean;
 }
 
 interface DialogEditarVendaDispositivoProps {
@@ -114,6 +117,16 @@ export function DialogEditarVendaDispositivo({
 
   const onSubmit = async (values: FormValues) => {
     if (!venda) return;
+    // Venda com troca: valor e forma não mudam por aqui (a troca e as contas não seriam refeitas).
+    const bloqueioTroca = bloqueioEditarVendaComTroca({
+      temTroca: !!venda.tem_troca,
+      mudaValor: Number(values.total) !== Number(venda.total),
+      mudaForma: values.forma_pagamento !== venda.forma_pagamento,
+    });
+    if (bloqueioTroca) {
+      toast.error("Não foi possível editar", { description: bloqueioTroca });
+      return;
+    }
     setSalvando(true);
 
     try {

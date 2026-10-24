@@ -12,7 +12,7 @@ import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { cancelarSecundariasEmCascata, type ResultadoCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
-import { AcaoAparelhoTroca, decidirCancelamentoTroca } from "@/lib/vendas/trocaPDV";
+import { AcaoAparelhoTroca, bloqueioEditarVendaComTroca, decidirCancelamentoTroca } from "@/lib/vendas/trocaPDV";
 import { carregarTrocaDaVenda, marcarTrocaCancelada, tirarAparelhoDaTrocaDoEstoque } from "@/lib/vendas/cancelamentoTroca";
 
 /** Campos de uma linha de venda que o cancelamento usa (estorno de estoque e cascata). */
@@ -884,6 +884,17 @@ export const useVendas = () => {
           description: "Vendas canceladas não podem ter seus dados alterados.",
           variant: "destructive",
         });
+        return false;
+      }
+
+      // Venda com troca: valor e forma não mudam por aqui (a troca e as contas não seriam refeitas).
+      const bloqueioTroca = bloqueioEditarVendaComTroca({
+        temTroca: vendaOriginal.valor_troca != null,
+        mudaValor: dados.total !== undefined && Number(dados.total) !== Number(vendaOriginal.total),
+        mudaForma: dados.forma_pagamento !== vendaOriginal.forma_pagamento,
+      });
+      if (bloqueioTroca) {
+        toast({ title: "Não foi possível editar", description: bloqueioTroca, variant: "destructive" });
         return false;
       }
 

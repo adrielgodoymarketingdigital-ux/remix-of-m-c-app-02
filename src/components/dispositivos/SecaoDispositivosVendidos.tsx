@@ -60,6 +60,8 @@ interface VendaDispositivo {
   dispositivo_checklist?: any;
   empresa_id?: string | null;
   total_itens_grupo?: number;
+  /** Venda com troca (alguma linha do grupo tem valor_troca). */
+  tem_troca?: boolean;
 }
 
 const FORMAS_PAGAMENTO_LABEL: Record<string, string> = {
@@ -126,7 +128,7 @@ export function SecaoDispositivosVendidos() {
       // First fetch vendas filtered by user
       let queryVendas = supabase
         .from("vendas")
-        .select("id, dispositivo_id, cliente_id, quantidade, total, valor_desconto_manual, valor_desconto_cupom, custo_unitario, forma_pagamento, data, grupo_venda, observacoes, empresa_id, imei_dispositivo, tempo_garantia")
+        .select("id, dispositivo_id, cliente_id, quantidade, total, valor_desconto_manual, valor_desconto_cupom, custo_unitario, forma_pagamento, data, grupo_venda, observacoes, empresa_id, imei_dispositivo, tempo_garantia, valor_troca")
         .eq("user_id", userId)
         .eq("tipo", "dispositivo")
         .not("dispositivo_id", "is", null)
@@ -171,6 +173,8 @@ export function SecaoDispositivosVendidos() {
           mapGrupoCusto.set(v.grupo_venda, custoAtual + Number(v.custo_unitario || 0) * Number(v.quantidade || 1));
         }
       }
+
+      const gruposComTroca = new Set(vendasData.filter((v) => v.grupo_venda && v.valor_troca != null).map((v) => v.grupo_venda));
 
       for (const v of vendasData) {
         if (v.grupo_venda) {
@@ -232,6 +236,7 @@ export function SecaoDispositivosVendidos() {
           dispositivo_checklist: disp?.checklist,
           empresa_id: v.empresa_id ?? null,
           total_itens_grupo: v.grupo_venda ? (mapGrupoCount.get(v.grupo_venda) || 1) : 1,
+          tem_troca: !!v.grupo_venda && gruposComTroca.has(v.grupo_venda),
         };
       });
 
@@ -330,6 +335,7 @@ export function SecaoDispositivosVendidos() {
       forma_pagamento: venda.forma_pagamento,
       dispositivo_marca: venda.dispositivo_marca,
       dispositivo_modelo: venda.dispositivo_modelo,
+      tem_troca: venda.tem_troca,
     });
     setDialogEdicaoAberto(true);
   };

@@ -440,6 +440,20 @@ export function linhasParaCancelarVendaInteira<T extends LinhaVendaCancelavel>(l
     .map((linha) => ({ linha, estornar: linha.parcela_numero == null || linha.parcela_numero <= 1 }));
 }
 
+// ── Editar venda (tela de Vendas e Dispositivos vendidos) ───────────────────
+
+export const MENSAGEM_EDITAR_VENDA_COM_TROCA = "Venda com troca: cancele e refaça";
+
+/**
+ * "Editar venda" não refaz a troca nem as contas a receber dela: numa venda com
+ * troca, mudar o valor ou a forma de pagamento é bloqueado (cancela-se e refaz).
+ * Outras mudanças, e qualquer edição de venda sem troca, seguem como sempre.
+ * null = pode salvar.
+ */
+export function bloqueioEditarVendaComTroca(p: { temTroca: boolean; mudaValor: boolean; mudaForma: boolean }): string | null {
+  return p.temTroca && (p.mudaValor || p.mudaForma) ? MENSAGEM_EDITAR_VENDA_COM_TROCA : null;
+}
+
 // ── Excluir em Dispositivos vendidos ────────────────────────────────────────
 
 export const MENSAGEM_EXCLUIR_VENDA_COM_TROCA = "Esta venda tem troca de aparelho. Cancele pela tela de Vendas.";
