@@ -9,6 +9,7 @@ import { pagamentoDoCadastro } from "@/lib/financeiro/pagamentoDoCadastro";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { cancelarParcelaDaContaExcluida } from "@/lib/vendas/estornoParcelaSecundaria";
+import { valorAReceberSemConta } from "@/lib/vendas/trocaPDV";
 import {
   propagarStatusContaParaVenda,
   reconhecerRecebimentoVendaVinculada,
@@ -65,7 +66,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           : withRetry(async () => {
               const r = await supabase
                 .from("vendas")
-                .select("id, data, total, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_fkey(nome), produtos(nome), dispositivos(marca, modelo), pecas(nome)")
+                .select("id, data, total, valor_desconto_manual, valor_desconto_cupom, valor_troca, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_fkey(nome), produtos(nome), dispositivos(marca, modelo), pecas(nome)")
                 .eq("user_id", targetUserId)
                 .in("forma_pagamento", ["a_receber", "a_prazo"])
                 .eq("cancelada", false);
@@ -136,7 +137,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           id: `venda_${v.id}`,
           nome: `Venda - ${nomeItem} - ${nomeCliente}${sufixoParcela}`,
           tipo: "receber" as const,
-          valor: Number(v.total),
+          // Venda com troca sem conta: só o que o cliente paga (sem a troca).
+          valor: v.valor_troca != null ? valorAReceberSemConta(v) : Number(v.total),
           data: dataVenda,
           status: v.recebido ? ("recebido" as const) : ("pendente" as const),
           recorrente: false,

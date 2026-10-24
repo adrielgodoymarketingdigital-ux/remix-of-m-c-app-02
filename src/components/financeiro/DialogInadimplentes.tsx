@@ -9,6 +9,7 @@ import { Loader2, Phone, MessageCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useResolvedUserId } from "@/hooks/useResolvedUserId";
+import { valorAReceberSemConta } from "@/lib/vendas/trocaPDV";
 
 interface Inadimplente {
   clienteId: string;
@@ -102,7 +103,7 @@ export function DialogInadimplentes({ open, onOpenChange }: Props) {
       // 3) Vendas a prazo/a receber vencidas sem conta correspondente
       const { data: vendasVencidas } = await supabase
         .from("vendas")
-        .select("id, total, data_prevista_recebimento, data, cliente_id, clientes!vendas_cliente_fkey(id, nome, telefone)")
+        .select("id, total, valor_desconto_manual, valor_desconto_cupom, valor_troca, data_prevista_recebimento, data, cliente_id, clientes!vendas_cliente_fkey(id, nome, telefone)")
         .eq("user_id", targetUserId)
         .in("forma_pagamento", ["a_receber", "a_prazo"])
         .eq("recebido", false)
@@ -118,7 +119,8 @@ export function DialogInadimplentes({ open, onOpenChange }: Props) {
           if (idsComConta.has(v.id)) return;
           const cliente = v.clientes as any;
           if (!cliente) return;
-          adicionarInadimplente(mapa, cliente.id, cliente.nome, cliente.telefone, Number(v.total));
+          // Venda com troca sem conta: só o que o cliente deve (sem a troca).
+          adicionarInadimplente(mapa, cliente.id, cliente.nome, cliente.telefone, v.valor_troca != null ? valorAReceberSemConta(v) : Number(v.total));
         });
       }
 
