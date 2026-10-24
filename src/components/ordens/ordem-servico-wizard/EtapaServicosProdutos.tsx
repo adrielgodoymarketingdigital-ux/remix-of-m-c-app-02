@@ -9,6 +9,13 @@ import { FormData, TecnicoOS } from "./tipos";
 import { Funcionario } from "@/types/funcionario";
 import { useQuantidadeServicoOSVisivel } from "@/hooks/useQuantidadeServicoOSVisivel";
 import { chaveLinhaForm, nomeLinhaForm } from "@/lib/ordemServico/linhaServicoOS";
+import type { DispositivoAdicionalForm } from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
+import {
+  definirDispositivoRefLinha,
+  opcoesAparelhoServico,
+  VALOR_APARELHO_PRINCIPAL,
+  valorAparelhoDaLinha,
+} from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
 
 interface EtapaServicosProdutosProps {
   formData: FormData;
@@ -19,6 +26,11 @@ interface EtapaServicosProdutosProps {
   setTecnicosOS: (tecnicos: TecnicoOS[]) => void;
   /** Técnico responsável da OS tem "Comissão sobre Lucro" configurada */
   comissaoLucroAtiva?: boolean;
+  /**
+   * Aparelhos adicionais da OS — só para quem os vê (admin). Com algum, cada
+   * linha de serviço ganha o seletor "Aparelho". Ausente/vazio: etapa de sempre.
+   */
+  dispositivosAdicionais?: DispositivoAdicionalForm[];
 }
 
 export function EtapaServicosProdutos({
@@ -29,8 +41,42 @@ export function EtapaServicosProdutos({
   tecnicosOS,
   setTecnicosOS,
   comissaoLucroAtiva = false,
+  dispositivosAdicionais,
 }: EtapaServicosProdutosProps) {
   const permitirQuantidade = useQuantidadeServicoOSVisivel();
+  const opcoesAparelho = dispositivosAdicionais && dispositivosAdicionais.length > 0
+    ? opcoesAparelhoServico(dispositivosAdicionais)
+    : null;
+  const seletorAparelho = opcoesAparelho
+    ? (servico: FormData["servicos"][number]) => {
+        const chave = chaveLinhaForm(servico);
+        return (
+          <div className="flex items-center gap-2" data-seletor-aparelho>
+            <Label className="text-xs text-muted-foreground shrink-0">Aparelho:</Label>
+            <Select
+              value={valorAparelhoDaLinha(servico, dispositivosAdicionais!)}
+              onValueChange={(valor) =>
+                setFormData({
+                  ...formData,
+                  servicos: formData.servicos.map((s) =>
+                    chaveLinhaForm(s) === chave ? definirDispositivoRefLinha(s, valor === VALOR_APARELHO_PRINCIPAL ? null : valor) : s,
+                  ),
+                })
+              }
+            >
+              <SelectTrigger className="h-8 rounded-lg text-xs bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {opcoesAparelho.map((o) => (
+                  <SelectItem key={o.valor} value={o.valor}>{o.rotulo}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      }
+    : undefined;
   return (
     <div>
       <EtapaCabecalho
@@ -47,6 +93,7 @@ export function EtapaServicosProdutos({
             onChange={(servicos) => setFormData({ ...formData, servicos })}
             comissaoLucroAtiva={comissaoLucroAtiva}
             permitirQuantidade={permitirQuantidade}
+            extraLinha={seletorAparelho}
           />
         </div>
 

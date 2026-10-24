@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -50,11 +50,16 @@ interface SelecionadorServicoProps {
    * Ausente/false: seletor como sempre foi.
    */
   permitirQuantidade?: boolean;
+  /**
+   * Conteúdo extra no fim de cada linha (hoje: o seletor "Aparelho" dos
+   * dispositivos adicionais, só admin). Ausente: a linha é a de sempre.
+   */
+  extraLinha?: (servico: ServicoComPrecoEditado) => ReactNode;
 }
 
 const novoLinhaId = () => crypto.randomUUID();
 
-export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = false, permitirQuantidade = false }: SelecionadorServicoProps) => {
+export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = false, permitirQuantidade = false, extraLinha }: SelecionadorServicoProps) => {
   const { servicos, criarServico } = useServicos();
   const { isFuncionario, isDonoLoja, permissoes } = useFuncionarioPermissoes();
   const podeCriarServico = isDonoLoja || (isFuncionario && (permissoes?.recursos?.criar_servico_os ?? false));
@@ -752,6 +757,7 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                     </div>
                   </div>
                 )}
+                {extraLinha?.(servico)}
               </div>
               );
             })}

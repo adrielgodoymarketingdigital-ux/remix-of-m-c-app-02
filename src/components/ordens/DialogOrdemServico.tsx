@@ -482,6 +482,7 @@ export const DialogOrdemServico = ({
                   tecnicosOS={tecnicosOS}
                   setTecnicosOS={setTecnicosOS}
                   comissaoLucroAtiva={comissaoLucroAtiva}
+                  dispositivosAdicionais={adicionaisVisiveis ? estadoAdicionais.dispositivos : undefined}
                 />
               </EtapaCardWrapper>
 
@@ -571,6 +572,7 @@ export const DialogOrdemServico = ({
               tecnicosOS={tecnicosOS}
               setTecnicosOS={setTecnicosOS}
               comissaoLucroAtiva={comissaoLucroAtiva}
+              dispositivosAdicionais={adicionaisVisiveis ? estadoAdicionais.dispositivos : undefined}
             />
           )}
 
