@@ -157,6 +157,74 @@ export function estadoAposGravacao(estado: EstadoAdicionaisForm): EstadoAdiciona
   return { ...estado, removidos: [], idsGravados: estado.dispositivos.map((d) => d.id) };
 }
 
+// ---------------------------------------------------------------------------
+// Etapas 4 (defeito/observações) e 5 (checklist/avarias) com um bloco por
+// aparelho (etapa 6 da OS com vários dispositivos). Os blocos editam o MESMO
+// estadoAdicionais que o diálogo do aparelho — não há cópia para sincronizar.
+
+/** O que os blocos das etapas 4 e 5 podem mudar no aparelho (tipo, marca e modelo só no diálogo). */
+export type CamposAparelhoNasEtapas = Partial<
+  Pick<
+    DispositivoAdicionalForm,
+    | "defeito_relatado"
+    | "observacoes"
+    | "checklist"
+    | "avarias_visuais"
+    | "dispositivo_sistema"
+    | "dispositivo_fabricante"
+    | "dispositivo_subtipo"
+  >
+>;
+
+/**
+ * Muda campos de UM aparelho. Devolve o MESMO estado (sem render a mais)
+ * quando nada muda: seção travada, id que não existe mais (aparelho removido)
+ * ou valores iguais aos atuais. Os demais aparelhos continuam os mesmos objetos.
+ */
+export function alterarAparelhoNoEstado(
+  estado: EstadoAdicionaisForm,
+  id: string,
+  parcial: CamposAparelhoNasEtapas,
+): EstadoAdicionaisForm {
+  if (secaoAdicionaisTravada(estado)) return estado;
+  const atual = estado.dispositivos.find((d) => d.id === id);
+  if (!atual) return estado;
+  const mudancas = (Object.keys(parcial) as (keyof CamposAparelhoNasEtapas)[]).filter(
+    (k) => parcial[k] !== undefined && !Object.is(parcial[k], atual[k]),
+  );
+  if (mudancas.length === 0) return estado;
+  const novo: DispositivoAdicionalForm = { ...atual };
+  for (const k of mudancas) Object.assign(novo, { [k]: parcial[k] });
+  return { ...estado, dispositivos: estado.dispositivos.map((d) => (d.id === id ? novo : d)) };
+}
+
+/** "Dispositivo 2 — Apple iPhone 12"; sem marca/modelo usa o tipo; sem nada, só "Dispositivo 2". */
+export function tituloBlocoDispositivo(
+  numero: number,
+  d: { dispositivo_tipo?: string | null; dispositivo_marca?: string | null; dispositivo_modelo?: string | null },
+): string {
+  const nome = marcaModelo({ dispositivo_marca: d.dispositivo_marca?.trim(), dispositivo_modelo: d.dispositivo_modelo?.trim() }) ||
+    d.dispositivo_tipo?.trim() || "";
+  return nome ? `${tituloDispositivo(numero)} — ${nome}` : tituloDispositivo(numero);
+}
+
+/**
+ * O que as etapas 4 e 5 mostram dos adicionais. "nenhuma" = a etapa fica
+ * idêntica à de quem não vê os adicionais (sem estado, ou carregado e sem
+ * aparelhos). "carregando"/"erro" = aviso, sem blocos.
+ */
+export type ExibicaoAparelhosNasEtapas = "nenhuma" | "carregando" | "erro" | "blocos";
+
+export function exibicaoAparelhosNasEtapas(estado: EstadoAdicionaisForm | undefined): ExibicaoAparelhosNasEtapas {
+  if (!estado) return "nenhuma";
+  if (estado.carga === "carregando") return "carregando";
+  if (estado.carga === "erro") return "erro";
+  return estado.dispositivos.length > 0 ? "blocos" : "nenhuma";
+}
+
+/** Prefixo dos ids dos campos do bloco (ids únicos com vários aparelhos na mesma página). */
+export const prefixoIdAparelho = (id: string): string => `adicional-${id}-`;
+
 /** Troca de tipo no aparelho: zera o que depende do tipo (como no aparelho 1). */
 export function aoMudarTipoAdicional(d: DispositivoAdicionalForm, tipo: string): DispositivoAdicionalForm {
   return {
