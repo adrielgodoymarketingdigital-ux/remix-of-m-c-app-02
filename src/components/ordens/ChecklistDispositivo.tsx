@@ -26,6 +26,11 @@ interface ChecklistDispositivoProps {
   apenasEntrada?: boolean;
   /** Quando true, oculta a coluna/seção de Entrada — usado na confirmação de entrega. */
   apenasSaida?: boolean;
+  /**
+   * Prefixo dos ids dos campos, para mais de um checklist na mesma página
+   * (aparelhos adicionais da OS). Sem ele os ids são os de sempre.
+   */
+  idPrefixo?: string;
 }
 
 export const ChecklistDispositivo = ({
@@ -40,6 +45,7 @@ export const ChecklistDispositivo = ({
   onSubtipoChange,
   apenasEntrada = false,
   apenasSaida = false,
+  idPrefixo = "",
 }: ChecklistDispositivoProps) => {
   // Proteção contra checklist undefined/null vindo de dados legados no banco
   const value = valueProp || { entrada: {}, saida: {} };
@@ -531,9 +537,9 @@ export const ChecklistDispositivo = ({
         {/* Sistema Operacional (iOS/Android) */}
         {!apenasSaida && mostrarSistema && (
           <div className="mb-3">
-            <Label htmlFor="sistema" className="text-xs">Sistema Operacional</Label>
+            <Label htmlFor={`${idPrefixo}sistema`} className="text-xs">Sistema Operacional</Label>
             <Select value={sistemaSelecionado} onValueChange={handleSistemaChange}>
-              <SelectTrigger id="sistema" className="w-full h-10 sm:h-8">
+              <SelectTrigger id={`${idPrefixo}sistema`} className="w-full h-10 sm:h-8">
                 <SelectValue placeholder="Selecione o sistema" />
               </SelectTrigger>
               <SelectContent>
@@ -547,9 +553,9 @@ export const ChecklistDispositivo = ({
         {/* Fabricante Notebook (Macbook/Outro) */}
         {!apenasSaida && mostrarFabricante && (
           <div className="mb-3">
-            <Label htmlFor="fabricante" className="text-xs">Fabricante</Label>
+            <Label htmlFor={`${idPrefixo}fabricante`} className="text-xs">Fabricante</Label>
             <Select value={fabricanteSelecionado} onValueChange={handleFabricanteChange}>
-              <SelectTrigger id="fabricante" className="w-full h-10 sm:h-8">
+              <SelectTrigger id={`${idPrefixo}fabricante`} className="w-full h-10 sm:h-8">
                 <SelectValue placeholder="Selecione o fabricante" />
               </SelectTrigger>
               <SelectContent>
@@ -563,9 +569,9 @@ export const ChecklistDispositivo = ({
         {/* Subtipo Relógio Smart */}
         {!apenasSaida && mostrarSubtipo && (
           <div className="mb-3">
-            <Label htmlFor="subtipo" className="text-xs">Modelo</Label>
+            <Label htmlFor={`${idPrefixo}subtipo`} className="text-xs">Modelo</Label>
             <Select value={subtipoSelecionado} onValueChange={handleSubtipoChange}>
-              <SelectTrigger id="subtipo" className="w-full h-10 sm:h-8">
+              <SelectTrigger id={`${idPrefixo}subtipo`} className="w-full h-10 sm:h-8">
                 <SelectValue placeholder="Selecione o modelo" />
               </SelectTrigger>
               <SelectContent>
@@ -583,7 +589,7 @@ export const ChecklistDispositivo = ({
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
               <div>
-                <Label htmlFor="sem-teste" className="text-sm font-medium cursor-pointer">
+                <Label htmlFor={`${idPrefixo}sem-teste`} className="text-sm font-medium cursor-pointer">
                   Sem teste (entrada)
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -592,7 +598,7 @@ export const ChecklistDispositivo = ({
               </div>
             </div>
             <Switch
-              id="sem-teste"
+              id={`${idPrefixo}sem-teste`}
               checked={value?.sem_teste === true}
               onCheckedChange={(checked) => {
                 onChange({

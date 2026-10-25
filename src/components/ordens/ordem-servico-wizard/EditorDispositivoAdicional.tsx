@@ -242,6 +242,7 @@ export function EditorDispositivoAdicional({ aparelho, titulo, onSalvar, onCance
                   <div>
                     <h4 className="text-sm font-semibold text-foreground mb-3">Checklist de Entrada e Saída</h4>
                     <ChecklistDispositivo
+                      idPrefixo="editor-adicional-"
                       tipoDispositivo={d.dispositivo_tipo}
                       sistema={d.dispositivo_sistema}
                       fabricante={d.dispositivo_fabricante}

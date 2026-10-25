@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
-import { AlertTriangle, Loader2, Smartphone } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { AlertTriangle, ChevronDown, Loader2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type {
   CamposAparelhoNasEtapas,
@@ -42,6 +43,38 @@ export function BlocoDispositivoEtapa({ titulo, children, bloqueado = false }: B
         {children}
       </fieldset>
     </div>
+  );
+}
+
+/**
+ * Como BlocoDispositivoEtapa, mas começa RECOLHIDO e só monta o conteúdo
+ * (checklist com silhueta) quando aberto — com até 11 aparelhos na mesma
+ * página, montar tudo pesaria, principalmente no celular.
+ */
+export function BlocoDispositivoRecolhivel({ titulo, children, bloqueado = false }: BlocoDispositivoEtapaProps) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <Collapsible open={aberto} onOpenChange={setAberto} className="rounded-xl border" data-bloco-dispositivo-etapa data-recolhivel>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center gap-1.5 p-3 sm:p-4 text-left text-sm font-semibold text-foreground min-w-0"
+        >
+          <Smartphone className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1 truncate">{titulo}</span>
+          <span className="hidden sm:inline text-xs font-normal text-muted-foreground shrink-0">{aberto ? "Recolher" : "Abrir"}</span>
+          <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", aberto && "rotate-180")} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <fieldset
+          disabled={bloqueado}
+          className={cn("space-y-5 min-w-0 px-3 pb-3 sm:px-4 sm:pb-4", bloqueado && "pointer-events-none opacity-70")}
+        >
+          {children}
+        </fieldset>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

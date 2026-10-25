@@ -484,7 +484,7 @@ export const DialogOrdemServico = ({
               </EtapaCardWrapper>
 
               <EtapaCardWrapper dataEtapa={5}>
-                <EtapaChecklistAvarias formData={formData} setFormData={setFormData} />
+                <EtapaChecklistAvarias formData={formData} setFormData={setFormData} dispositivosAdicionais={aparelhosNasEtapas} />
               </EtapaCardWrapper>
 
               <EtapaCardWrapper dataEtapa={6}>
@@ -575,7 +575,7 @@ export const DialogOrdemServico = ({
           )}
 
           {etapaAtual === 5 && (
-            <EtapaChecklistAvarias formData={formData} setFormData={setFormData} />
+            <EtapaChecklistAvarias formData={formData} setFormData={setFormData} dispositivosAdicionais={aparelhosNasEtapas} />
           )}
 
           {etapaAtual === 6 && (
