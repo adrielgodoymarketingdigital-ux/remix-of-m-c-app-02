@@ -83,7 +83,8 @@ const uuid = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
 
 function montar(m: Montagem): CenarioDialogo {
   const grupo = `grupo-${m.id}`;
-  const vendas = m.linhas.map((l) => ({
+  // Linha solta (Record): os cenários acrescentam colunas diferentes (observacoes, valor_troca...).
+  const vendas: Linha[] = m.linhas.map((l) => ({
     id: uuid(),
     grupo_venda: grupo,
     cliente_id: CLIENTE.id,
@@ -106,7 +107,7 @@ function montar(m: Montagem): CenarioDialogo {
   const dispositivos = m.dispositivos ?? [IPHONE];
   const produtos = m.produtos ?? [PELICULA];
   const principais = vendas.filter((v) => v.observacoes !== "pagamento_duplo_secundario");
-  const juntar = (v: (typeof vendas)[number]): Venda => {
+  const juntar = (v: Linha): Venda => {
     const disp = dispositivos.find((d) => d.id === v.dispositivo_id);
     const prod = produtos.find((p) => p.id === v.produto_id);
     return {
@@ -140,7 +141,7 @@ function montar(m: Montagem): CenarioDialogo {
     vendaVendas: grupoVendas[0],
     grupoVendas,
     vendaDispositivo: {
-      id: primeira.id,
+      id: String(primeira.id),
       quantidade: 1,
       total: Number(primeira.total),
       forma_pagamento: String(primeira.forma_pagamento),
