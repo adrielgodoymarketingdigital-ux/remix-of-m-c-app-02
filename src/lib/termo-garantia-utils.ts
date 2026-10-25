@@ -1,4 +1,4 @@
-import { TermoGarantiaConfig, LayoutOSConfig } from "@/types/configuracao-loja";
+import type { TermoGarantiaConfig, LayoutOSConfig } from "@/types/configuracao-loja";
 
 export interface TermoDispositivoVars {
   cliente?: string;
