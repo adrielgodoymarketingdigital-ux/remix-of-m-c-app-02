@@ -99,9 +99,15 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
       <header className={m.qr ? "rvn-cab" : "rvn-cab rvn-cab--sem-qr"}>
         <div className="rvn-cab-marca">
           {logoOk ? (
-            <div className="rvn-cab-logo">
-              <img src={m.cabecalho.logoUrl as string} alt={m.cabecalho.nomeLoja} onError={() => quebrar(m.cabecalho.logoUrl as string)} />
-            </div>
+            <>
+              <div className="rvn-cab-logo" data-rvn-ocultar-se-falhar="">
+                <img src={m.cabecalho.logoUrl as string} alt={m.cabecalho.nomeLoja} onError={() => quebrar(m.cabecalho.logoUrl as string)} />
+              </div>
+              {/* Na janela de impressão, se o logo falhar, o nome aparece no lugar. */}
+              <div className="rvn-cab-nome" data-rvn-reserva="" style={{ display: "none" }}>
+                {m.cabecalho.nomeLoja}
+              </div>
+            </>
           ) : (
             <div className="rvn-cab-nome">{m.cabecalho.nomeLoja}</div>
           )}
@@ -209,7 +215,7 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
                   <td className="rvn-col-num">{item.numero}</td>
                   {colunaFoto && (
                     <td className="rvn-col-foto">
-                      {fotoOk(item.fotoUrl) && <img className="rvn-foto" src={item.fotoUrl} alt="" onError={() => quebrar(item.fotoUrl as string)} />}
+                      {fotoOk(item.fotoUrl) && <img className="rvn-foto" data-rvn-ocultar-se-falhar="" src={item.fotoUrl} alt="" onError={() => quebrar(item.fotoUrl as string)} />}
                     </td>
                   )}
                   <td>
@@ -249,7 +255,7 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
             </div>
             <div className="rvn-troca-grade">
               <div className="rvn-troca-aparelho">
-                {fotoTroca && <img className="rvn-foto" src={fotoTroca} alt="" onError={() => quebrar(fotoTroca)} />}
+                {fotoTroca && <img className="rvn-foto" data-rvn-ocultar-se-falhar="" src={fotoTroca} alt="" onError={() => quebrar(fotoTroca)} />}
                 <div>
                   <p className="rvn-negrito">{m.troca.aparelhoTitulo}:</p>
                   <p>{m.troca.aparelhoDescricao}</p>
