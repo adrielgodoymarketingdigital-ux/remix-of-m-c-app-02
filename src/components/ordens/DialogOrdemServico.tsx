@@ -35,6 +35,7 @@ import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { useLocalizacoesOS } from "@/hooks/useLocalizacoesOS";
 import { useDispositivosAdicionaisOSVisivel } from "@/hooks/useDispositivosAdicionaisOSVisivel";
 import { chaveDispositivosAdicionaisOS } from "@/hooks/useOsDispositivosAdicionais";
+import { chaveLinhasServicoOS } from "@/hooks/useLinhasServicoOS";
 import type { EntradaGravacaoAdicionais } from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
 import {
   alterarAparelhoNoEstado,
@@ -298,6 +299,8 @@ export const DialogOrdemServico = ({
         primeiraOsOnboarding,
         dispositivosAdicionais: entradaAdicionais,
       });
+      // Linha expandida da lista (só para quem vê os adicionais) volta a buscar os serviços.
+      if (adicionaisVisiveis && resultado?.osId) queryClient.invalidateQueries({ queryKey: chaveLinhasServicoOS(resultado.osId) });
       if (entradaAdicionais && resultado) {
         if (resultado.osId) queryClient.invalidateQueries({ queryKey: chaveDispositivosAdicionaisOS(resultado.osId) });
         if (resultado.adicionais?.status === "falhou") {
