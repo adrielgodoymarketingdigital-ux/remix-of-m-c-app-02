@@ -28,9 +28,6 @@ import {
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
 import { useReciboVendaNovoVisivel } from "@/hooks/useReciboVendaNovoVisivel";
 import { useModeloReciboNovoReaberto } from "@/components/vendas/recibo-novo/useModeloReciboNovo";
-import { ReciboVendaNovoSeguro } from "@/components/vendas/recibo-novo/ReciboVendaNovoSeguro";
-import { cssReciboVendaNovo } from "@/components/vendas/recibo-novo/cssReciboVendaNovo";
-import { documentoImpressaoReciboNovo } from "@/components/vendas/recibo-novo/impressaoReciboVendaNovo";
 import type { ReciboVendaModelo } from "@/lib/vendas/reciboVendaModelo";
 
 /** Recibo antigo fora da tela (continua sendo o do 80mm/58mm e do "Copiar texto"). */
@@ -108,7 +105,7 @@ export function DialogReimpressaoRecibo({
   const reciboNovoRef = useRef<HTMLDivElement>(null);
   const reciboNovo = useModeloReciboNovoReaberto({ ativo: reciboNovoVisivel && open, vendaId: venda?.id, grupoVenda: venda?.grupo_venda, loja: configLoja });
   const [modeloQueFalhou, setModeloQueFalhou] = useState<ReciboVendaModelo | null>(null);
-  const usarReciboNovo = !!reciboNovo.modelo && reciboNovo.modelo !== modeloQueFalhou;
+  const usarReciboNovo = !!reciboNovo.kit && !!reciboNovo.modelo && reciboNovo.modelo !== modeloQueFalhou;
   const [clienteCompleto, setClienteCompleto] = useState<any>(null);
   const [itensCompletos, setItensCompletos] = useState<ItemReciboCompleto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -239,11 +236,11 @@ export function DialogReimpressaoRecibo({
   const showValor = vendasConfig?.mostrar_valor !== false;
 
   const imprimirRecibo = (formato: FormatoPapel) => {
-    if (formato === "a4" && usarReciboNovo && reciboNovoRef.current) {
+    if (formato === "a4" && usarReciboNovo && reciboNovo.kit && reciboNovoRef.current) {
       salvarUltimoFormatoPapel(formato);
       const janela = window.open("", "_blank");
       if (!janela) return;
-      janela.document.write(documentoImpressaoReciboNovo(reciboNovoRef.current.innerHTML, `Recibo de Venda${venda?.numero_venda ? ` - ${venda.numero_venda}` : ""}`));
+      janela.document.write(reciboNovo.kit.documentoImpressaoReciboNovo(reciboNovoRef.current.innerHTML, `Recibo de Venda${venda?.numero_venda ? ` - ${venda.numero_venda}` : ""}`));
       janela.document.close();
       return;
     }
@@ -616,11 +613,11 @@ export function DialogReimpressaoRecibo({
         </DialogHeader>
 
         {/* Preview do Recibo */}
-        {usarReciboNovo && reciboNovo.modelo && (
+        {usarReciboNovo && reciboNovo.kit && reciboNovo.modelo && (
           <>
-            <style>{cssReciboVendaNovo()}</style>
+            <style>{reciboNovo.kit.cssReciboVendaNovo()}</style>
             <div ref={reciboNovoRef}>
-              <ReciboVendaNovoSeguro modelo={reciboNovo.modelo} onFalha={() => setModeloQueFalhou(reciboNovo.modelo)} />
+              <reciboNovo.kit.ReciboVendaNovoSeguro modelo={reciboNovo.modelo} onFalha={() => setModeloQueFalhou(reciboNovo.modelo)} />
             </div>
           </>
         )}

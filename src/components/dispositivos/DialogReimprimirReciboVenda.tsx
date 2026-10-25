@@ -28,8 +28,6 @@ import { toast } from "sonner";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
 import { useReciboVendaNovoVisivel } from "@/hooks/useReciboVendaNovoVisivel";
 import { useModeloReciboNovoReaberto } from "@/components/vendas/recibo-novo/useModeloReciboNovo";
-import { ReciboVendaNovoSeguro } from "@/components/vendas/recibo-novo/ReciboVendaNovoSeguro";
-import { cssPrintRootReciboNovo, documentoImpressaoReciboNovo } from "@/components/vendas/recibo-novo/impressaoReciboVendaNovo";
 import type { ReciboVendaModelo } from "@/lib/vendas/reciboVendaModelo";
 
 /** Recibo novo renderizado fora da tela: só fornece o HTML da impressão A4 (o diálogo mostra o resumo de sempre). */
@@ -181,7 +179,7 @@ export function DialogReimprimirReciboVenda({
   const reciboNovoRef = useRef<HTMLDivElement>(null);
   const reciboNovo = useModeloReciboNovoReaberto({ ativo: reciboNovoAtivo, vendaId: venda?.id, grupoVenda: grupoVendaId, loja: configLoja });
   const [modeloQueFalhou, setModeloQueFalhou] = useState<ReciboVendaModelo | null>(null);
-  const usarReciboNovo = !!reciboNovo.modelo && reciboNovo.modelo !== modeloQueFalhou;
+  const usarReciboNovo = !!reciboNovo.kit && !!reciboNovo.modelo && reciboNovo.modelo !== modeloQueFalhou;
 
   useEffect(() => {
     if (open) refetch();
@@ -439,13 +437,14 @@ export function DialogReimprimirReciboVenda({
 
     // Recibo novo (A4): mesmos caminhos de impressão — #print-root no iOS,
     // iframe no Android, janela no computador. iOS instalado segue no PDF acima.
-    if (formato === "a4" && usarReciboNovo && reciboNovoRef.current) {
+    if (formato === "a4" && usarReciboNovo && reciboNovo.kit && reciboNovoRef.current) {
+      const kit = reciboNovo.kit;
       const htmlRecibo = reciboNovoRef.current.innerHTML;
       if (usarPrintRoot) {
-        printViaPrintRoot(htmlRecibo, cssPrintRootReciboNovo());
+        printViaPrintRoot(htmlRecibo, kit.cssPrintRootReciboNovo());
         return;
       }
-      const documento = documentoImpressaoReciboNovo(htmlRecibo, `Recibo de Venda - ${[venda.dispositivo_marca, venda.dispositivo_modelo].filter(Boolean).join(" ")}`);
+      const documento = kit.documentoImpressaoReciboNovo(htmlRecibo, `Recibo de Venda - ${[venda.dispositivo_marca, venda.dispositivo_modelo].filter(Boolean).join(" ")}`);
       if (usarIframe) {
         printViaIframe(documento, isIOS);
         return;
@@ -936,10 +935,10 @@ ${bodyRecibo}
           {blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
         </div>
 
-        {usarReciboNovo && reciboNovo.modelo && (
+        {usarReciboNovo && reciboNovo.kit && reciboNovo.modelo && (
           <div style={RECIBO_NOVO_FORA_DA_TELA} aria-hidden="true">
             <div ref={reciboNovoRef}>
-              <ReciboVendaNovoSeguro modelo={reciboNovo.modelo} onFalha={() => setModeloQueFalhou(reciboNovo.modelo)} />
+              <reciboNovo.kit.ReciboVendaNovoSeguro modelo={reciboNovo.modelo} onFalha={() => setModeloQueFalhou(reciboNovo.modelo)} />
             </div>
           </div>
         )}

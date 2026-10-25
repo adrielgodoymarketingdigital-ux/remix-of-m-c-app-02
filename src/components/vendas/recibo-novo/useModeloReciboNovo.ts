@@ -1,74 +1,68 @@
 /**
- * Monta o recibo novo para os diálogos de recibo (só quando `ativo`: quem não
- * vê o recibo novo não faz nenhuma consulta a mais). Qualquer falha ao ler ou
- * montar → modelo null, e o diálogo segue com o recibo antigo (sem toast).
+ * Monta o recibo novo para os diálogos de recibo, só quando `ativo` (a regra
+ * de visibilidade liberou): aí carrega sob demanda o kit do recibo novo
+ * (kitReciboNovo: componente, QR, CSS, montagem) e lê a venda. Quem não vê o
+ * recibo novo não baixa o kit nem faz consulta a mais. Qualquer falha ao
+ * carregar, ler ou montar → modelo null, e o diálogo segue com o recibo antigo
+ * (sem toast, só console).
  */
 import { useEffect, useMemo, useState } from "react";
 import type { ConfiguracaoLoja } from "@/types/configuracao-loja";
-import {
-  type DadosPDVParaRecibo,
-  type DadosVendaCarregados,
-  type EntradaReciboVenda,
-  entradaDasLinhas,
-  entradaDoPDV,
-  extrasDoBanco,
-  type LojaReciboEntrada,
-  type ModeloTermoEntrada,
-  montarReciboVenda,
-  type ReciboVendaModelo,
-  type TermoConfigEntrada,
-} from "@/lib/vendas/reciboVendaModelo";
-import { carregarReciboVenda } from "@/lib/vendas/carregarReciboVenda";
-import { MODELOS_PADRAO_GARANTIA } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
+import type { DadosPDVParaRecibo, DadosVendaCarregados, ReciboVendaModelo } from "@/lib/vendas/reciboVendaModelo";
+import type { KitReciboNovo } from "./kitReciboNovo";
 
 export interface EstadoReciboNovo {
+  /** Kit carregado (componente, CSS e impressão do recibo novo). */
+  kit: KitReciboNovo | null;
   modelo: ReciboVendaModelo | null;
-  /** Ainda lendo o banco: o botão A4 espera (o recibo antigo não muda). */
+  /** Ainda carregando o kit ou lendo o banco: o botão A4 espera (o recibo antigo não muda). */
   carregando: boolean;
 }
 
-/** Termo da loja como os recibos de hoje resolvem (modelos salvos ou os padrão). */
-function termoDaLoja(config: ConfiguracaoLoja | null): EntradaReciboVenda["termo"] {
-  const termo = (config?.termo_garantia_dispositivo_config ?? null) as (TermoConfigEntrada & { modelos?: ModeloTermoEntrada[] }) | null;
-  return {
-    config: termo,
-    modelos: termo?.modelos?.length ? termo.modelos : (MODELOS_PADRAO_GARANTIA as ModeloTermoEntrada[]),
-  };
-}
-
-function montarComSeguranca(montar: () => EntradaReciboVenda): ReciboVendaModelo | null {
-  try {
-    return montarReciboVenda(montar());
-  } catch (erro) {
-    console.error("[recibo novo] falha ao montar; usando o recibo antigo", erro);
+let kitPromessa: Promise<KitReciboNovo | null> | null = null;
+function carregarKit(): Promise<KitReciboNovo | null> {
+  kitPromessa ??= import("./kitReciboNovo").catch((erro) => {
+    console.error("[recibo novo] falha ao carregar; usando o recibo antigo", erro);
+    kitPromessa = null;
     return null;
-  }
+  });
+  return kitPromessa;
 }
 
-async function carregarComSeguranca(vendaId: string, grupoVenda: string | null | undefined): Promise<DadosVendaCarregados | null> {
-  try {
-    return await carregarReciboVenda({ vendaId, grupoVenda });
-  } catch (erro) {
-    console.error("[recibo novo] falha ao ler a venda; usando o recibo antigo", erro);
-    return null;
-  }
-}
-
-function useDadosDoBanco(ativo: boolean, vendaId: string | null | undefined, grupoVenda: string | null | undefined) {
-  const [estado, setEstado] = useState<{ chave: string; dados: DadosVendaCarregados | null } | null>(null);
+/** Kit + dados da venda no banco. */
+function useKitEDados(ativo: boolean, vendaId: string | null | undefined, grupoVenda: string | null | undefined) {
   const chave = ativo && vendaId ? `${vendaId}|${grupoVenda ?? ""}` : null;
+  const [estado, setEstado] = useState<{ chave: string; kit: KitReciboNovo | null; dados: DadosVendaCarregados | null } | null>(null);
   useEffect(() => {
     if (!chave || !vendaId) return;
     let cancelado = false;
-    carregarComSeguranca(vendaId, grupoVenda).then((dados) => {
-      if (!cancelado) setEstado({ chave, dados });
-    });
+    (async () => {
+      const kit = await carregarKit();
+      let dados: DadosVendaCarregados | null = null;
+      if (kit) {
+        try {
+          dados = await kit.carregarReciboVenda({ vendaId, grupoVenda });
+        } catch (erro) {
+          console.error("[recibo novo] falha ao ler a venda; usando o recibo antigo", erro);
+        }
+      }
+      if (!cancelado) setEstado({ chave, kit, dados });
+    })();
     return () => {
       cancelado = true;
     };
   }, [chave, vendaId, grupoVenda]);
   const pronto = !!chave && estado?.chave === chave;
-  return { dados: pronto ? estado.dados : null, carregando: !!chave && !pronto };
+  return { kit: pronto ? estado.kit : null, dados: pronto ? estado.dados : null, carregando: !!chave && !pronto };
+}
+
+function montarComSeguranca(montar: () => ReciboVendaModelo): ReciboVendaModelo | null {
+  try {
+    return montar();
+  } catch (erro) {
+    console.error("[recibo novo] falha ao montar; usando o recibo antigo", erro);
+    return null;
+  }
 }
 
 /** Recibo reaberto (Vendas, Dispositivos vendidos): lê a venda e monta pelas linhas. */
@@ -78,42 +72,29 @@ export function useModeloReciboNovoReaberto(p: {
   grupoVenda: string | null | undefined;
   loja: ConfiguracaoLoja | null;
 }): EstadoReciboNovo {
-  const { dados, carregando } = useDadosDoBanco(p.ativo, p.vendaId, p.grupoVenda);
+  const { kit, dados, carregando } = useKitEDados(p.ativo, p.vendaId, p.grupoVenda);
   const modelo = useMemo(
-    () =>
-      p.ativo && dados && p.loja
-        ? montarComSeguranca(() => entradaDasLinhas(dados, { loja: p.loja as LojaReciboEntrada, termo: termoDaLoja(p.loja), origemApp: window.location.origin }))
-        : null,
-    [p.ativo, dados, p.loja],
+    () => (kit && dados && p.loja ? montarComSeguranca(() => kit.montarReciboReaberto(dados, p.loja as ConfiguracaoLoja)) : null),
+    [kit, dados, p.loja],
   );
-  return { modelo, carregando: p.ativo && (carregando || !p.loja) };
+  return { kit, modelo, carregando: p.ativo && (carregando || !p.loja) };
 }
 
 /**
- * Recibo logo após o PDV: valores, troca e forma do PDV (entradaDoPDV),
- * completados pelo que a finalização gravou (extrasDoBanco). Se a leitura
- * falhar, sai só com os dados do PDV.
+ * Recibo logo após o PDV: valores, troca e forma do PDV, completados pelo que
+ * a finalização gravou. Se a leitura falhar, sai só com os dados do PDV.
  */
 export function useModeloReciboNovoPDV(p: {
   ativo: boolean;
   dados: (DadosPDVParaRecibo & { grupoVendaId?: string | null }) | null;
-  vendaId: string | null | undefined;
   loja: ConfiguracaoLoja | null;
 }): EstadoReciboNovo {
-  const { dados: banco, carregando } = useDadosDoBanco(p.ativo && !!p.dados, p.vendaId, p.dados?.grupoVendaId);
+  const ativo = p.ativo && !!p.dados;
+  const grupo = p.dados?.grupoVendaId ?? null;
+  const { kit, dados: banco, carregando } = useKitEDados(ativo, grupo, grupo);
   const modelo = useMemo(
-    () =>
-      p.ativo && p.dados && p.loja && !carregando
-        ? montarComSeguranca(() =>
-            entradaDoPDV(p.dados as DadosPDVParaRecibo, {
-              loja: p.loja as LojaReciboEntrada,
-              termo: termoDaLoja(p.loja),
-              origemApp: window.location.origin,
-              ...(banco ? extrasDoBanco(banco) : {}),
-            }),
-          )
-        : null,
-    [p.ativo, p.dados, p.loja, banco, carregando],
+    () => (kit && p.dados && p.loja ? montarComSeguranca(() => kit.montarReciboPDV(p.dados as DadosPDVParaRecibo, banco, p.loja as ConfiguracaoLoja)) : null),
+    [kit, p.dados, p.loja, banco],
   );
-  return { modelo, carregando: p.ativo && !!p.dados && (carregando || !p.loja) };
+  return { kit, modelo, carregando: ativo && (carregando || !p.loja) };
 }
