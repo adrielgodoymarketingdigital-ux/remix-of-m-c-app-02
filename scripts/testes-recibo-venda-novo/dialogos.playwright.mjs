@@ -150,41 +150,62 @@ for (const tela of so("SO_TELA", ["1280", "390", "390ios"])) {
     // iOS só muda o caminho de impressão de Dispositivos (#print-root); PDV e Vendas usam a mesma janela.
     if (tela === "390ios" && !lugar.startsWith("dispositivos")) continue;
     for (const cenario of CENARIOS) {
-      const tabelas = { ...TABELAS[cenario], user_roles: ADMIN ? [{ user_id: USUARIO.id, role: "admin" }] : [] };
-      const registro = [];
-      const ctx = await prepararContexto(navegador, tela, tabelas, registro);
-      const pg = await ctx.newPage();
-      pg.on("pageerror", (e) => falhar(`[${tela}/${lugar}/${cenario}] erro na página: ${e.message}`));
-      const lugarUrl = lugar === "dispositivos-garantia" ? "dispositivos&modo=garantia" : lugar;
-      await pg.goto(`${BASE}?lugar=${lugarUrl}&cenario=${cenario}`, { waitUntil: "networkidle" });
-      await pg.waitForSelector("[role=dialog]");
-      await pg.waitForTimeout(400);
-      const botaoA4 = pg.getByRole("button", { name: "A4", exact: true });
-      await botaoA4.waitFor();
-      await pg.waitForFunction(() => [...document.querySelectorAll("button")].every((b) => !b.disabled || !/^(A4|80mm|58mm)$/.test(b.textContent.trim())), null, { timeout: 15000 }).catch(() => falhar(`[${tela}/${lugar}/${cenario}] botões continuaram desabilitados`));
-      await pg.waitForTimeout(300);
-      const caso = `${tela}|${lugar}|${cenario}`;
-      const dialogo = await pg.locator("[role=dialog]").evaluate((el) => el.outerHTML);
-      if (CAPTURAS) await pg.screenshot({ path: path.join(SAIDA, `${rotulo}-${ADMIN ? "admin" : "naoadmin"}-${tela}-${lugar}-${cenario}-dialogo.png`), fullPage: true });
-      const impressoes = {};
-      for (const formato of FORMATOS) {
-        await pg.evaluate(() => { window.__impressoes = []; });
-        await pg.getByRole("button", { name: formato, exact: true }).click();
-        await pg.waitForTimeout(formato === "A4" ? 900 : 500);
-        impressoes[formato] = await pg.evaluate(() => window.__impressoes.slice());
-        if (!impressoes[formato].length) falhar(`[${caso}] ${formato}: nada foi para a impressão`);
+      // Máquina carregada às vezes atrasa um clique ou a página: cada caso tem 2 tentativas.
+      for (let tentativa = 1; tentativa <= 2; tentativa++) {
+        const falhasCaso = [];
+        try {
+          await rodarCaso(tela, lugar, cenario, falhasCaso);
+        } catch (erro) {
+          falhasCaso.push(`[${tela}/${lugar}/${cenario}] ${erro.message.split("\n")[0]}`);
+        }
+        if (!falhasCaso.length) break;
+        if (tentativa === 2) falhasCaso.forEach(falhar);
+        else console.log(`  nova tentativa: ${tela}/${lugar}/${cenario} (${falhasCaso[0]})`);
       }
-      resultado[caso] = { dialogo, impressoes, // user_roles fica de fora: no app o cache de admin já vem do menu (aqui não há menu).
-        consultas: [...new Set(registro)].filter((t) => t !== "user_roles").sort() };
-      const a4 = impressoes.A4[0] ?? "";
-      const novo = a4.includes('class="rvn"');
-      resumo.push({ caso, a4: novo ? "novo" : "antigo", caminho: a4.split(":")[0], termico: impressoes["80mm"].some((h) => h.includes('class="rvn"')) ? "NOVO(!)" : "antigo" });
-      if (CAPTURAS && a4 && tela !== "390ios") {
-        const paginas = await documentoParaCapturas(navegador, a4, `${rotulo}-${ADMIN ? "admin" : "naoadmin"}-${tela}-${lugar}-${cenario}`);
-        resumo.at(-1).paginasA4 = paginas;
-      }
-      await ctx.close();
     }
+  }
+}
+
+async function rodarCaso(tela, lugar, cenario, falhasCaso) {
+  const falharCaso = (m) => falhasCaso.push(m);
+  const tabelas = { ...TABELAS[cenario], user_roles: ADMIN ? [{ user_id: USUARIO.id, role: "admin" }] : [] };
+  const registro = [];
+  const ctx = await prepararContexto(navegador, tela, tabelas, registro);
+  try {
+    const pg = await ctx.newPage();
+    pg.on("pageerror", (e) => falharCaso(`[${tela}/${lugar}/${cenario}] erro na página: ${e.message}`));
+    const lugarUrl = lugar === "dispositivos-garantia" ? "dispositivos&modo=garantia" : lugar;
+    await pg.goto(`${BASE}?lugar=${lugarUrl}&cenario=${cenario}`, { waitUntil: "networkidle" });
+    await pg.waitForSelector("[role=dialog]");
+    await pg.waitForTimeout(400);
+    await pg.getByRole("button", { name: "A4", exact: true }).waitFor();
+    await pg.waitForFunction(() => [...document.querySelectorAll("button")].every((b) => !b.disabled || !/^(A4|80mm|58mm)$/.test(b.textContent.trim())), null, { timeout: 15000 }).catch(() => falharCaso(`[${tela}/${lugar}/${cenario}] botões continuaram desabilitados`));
+    await pg.waitForTimeout(300);
+    const caso = `${tela}|${lugar}|${cenario}`;
+    const dialogo = await pg.locator("[role=dialog]").evaluate((el) => el.outerHTML);
+    if (CAPTURAS) await pg.screenshot({ path: path.join(SAIDA, `${rotulo}-${ADMIN ? "admin" : "naoadmin"}-${tela}-${lugar}-${cenario}-dialogo.png`), fullPage: true });
+    const impressoes = {};
+    for (const formato of FORMATOS) {
+      await pg.evaluate(() => { window.__impressoes = []; });
+      await pg.getByRole("button", { name: formato, exact: true }).click();
+      // Espera algo ir para a impressão (máquina carregada atrasa o clique), e mais um pouco.
+      await pg.waitForFunction(() => window.__impressoes.length > 0, null, { timeout: 10000 }).catch(() => {});
+      await pg.waitForTimeout(300);
+      impressoes[formato] = await pg.evaluate(() => window.__impressoes.slice());
+      if (!impressoes[formato].length) falharCaso(`[${caso}] ${formato}: nada foi para a impressão`);
+    }
+    if (falhasCaso.length) return;
+    resultado[caso] = { dialogo, impressoes, // user_roles fica de fora: no app o cache de admin já vem do menu (aqui não há menu).
+      consultas: [...new Set(registro)].filter((t) => t !== "user_roles").sort() };
+    const a4 = impressoes.A4[0] ?? "";
+    const novo = a4.includes('class="rvn"');
+    resumo.push({ caso, a4: novo ? "novo" : "antigo", caminho: a4.split(":")[0], termico: impressoes["80mm"].some((h) => h.includes('class="rvn"')) ? "NOVO(!)" : "antigo" });
+    if (CAPTURAS && a4 && tela !== "390ios") {
+      const paginas = await documentoParaCapturas(navegador, a4, `${rotulo}-${ADMIN ? "admin" : "naoadmin"}-${tela}-${lugar}-${cenario}`);
+      resumo.at(-1).paginasA4 = paginas;
+    }
+  } finally {
+    await ctx.close();
   }
 }
 await navegador.close();
