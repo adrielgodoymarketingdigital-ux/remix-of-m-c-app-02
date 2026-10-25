@@ -52,7 +52,7 @@ export async function carregarReciboVenda(p: { vendaId: string; grupoVenda?: str
   const [cliente, disps, prods, pecas, funcionario, contas, troca] = await Promise.all([
     clienteId ? supabase.from("clientes").select("nome, cpf, telefone, endereco").eq("id", clienteId).maybeSingle() : null,
     dispIds.length
-      ? supabase.from("dispositivos").select("id, marca, modelo, cor, capacidade_gb, condicao, imei, numero_serie, fotos, foto_url").in("id", dispIds)
+      ? supabase.from("dispositivos").select("id, marca, modelo, cor, capacidade_gb, condicao, imei, imei2, numero_serie, fotos, foto_url").in("id", dispIds)
       : null,
     prodIds.length ? supabase.from("produtos").select("id, nome, sku, fotos").in("id", prodIds) : null,
     pecaIds.length ? supabase.from("pecas").select("id, nome, fotos").in("id", pecaIds) : null,
@@ -70,6 +70,7 @@ export async function carregarReciboVenda(p: { vendaId: string; grupoVenda?: str
       capacidade_gb: num(d.capacidade_gb),
       condicao: d.condicao as string | null,
       imei: d.imei as string | null,
+      imei2: d.imei2 as string | null,
       numero_serie: d.numero_serie as string | null,
       fotoUrl: primeiraFoto(d.fotos, d.foto_url as string | null),
     };

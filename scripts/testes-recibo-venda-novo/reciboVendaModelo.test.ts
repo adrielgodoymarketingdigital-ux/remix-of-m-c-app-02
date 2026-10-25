@@ -212,7 +212,7 @@ Deno.test("pagamento duplo (PDV): as duas formas com valor; soma = total", () =>
     pagamentoDuplo: { valorPrimeira: 600, segundaForma: "credito", valorSegunda: 400 },
   };
   const r = montarReciboVenda(entradaDoPDV(dados, { loja: LOJA }));
-  assertEquals(r.pagamento.formas.map((f) => [f.nome, n(f.valor)]), [["PIX", "R$ 600,00"], ["Cartão de Crédito", "R$ 400,00"]]);
+  assertEquals(r.pagamento.formas.map((f) => [f.nome, n(f.valor)]), [["PIX", "R$ 600,00"], ["Crédito", "R$ 400,00"]]);
   assertEquals(r.faixaTotal.rotulo, ROTULO_TOTAL_VENDA);
 });
 

@@ -663,6 +663,9 @@ export interface DadosPDVParaRecibo {
     nome: string;
     preco: number;
     quantidade: number;
+    dispositivo_id?: string;
+    produto_id?: string;
+    peca_id?: string;
     imei_dispositivo?: string;
     imei?: string;
     imei2?: string;
@@ -702,38 +705,40 @@ export interface ExtrasPDVParaRecibo {
   vencimentoAReceber?: string | null;
   parcelasReceberSegunda?: ParcelaReciboEntrada[] | null;
   vencimentoSegunda?: string | null;
+  /** Dados do banco por id do item (aparelho/produto/peça): completam o que o carrinho não traz (cor, SKU, foto...). */
+  produtos?: Record<string, ProdutoRecibo>;
   origemApp?: string;
 }
 
-const NOMES_FORMA_PDV: Record<string, string> = {
-  dinheiro: "Dinheiro",
-  pix: "PIX",
-  debito: "Cartão de Débito",
-  credito: "Cartão de Crédito",
-  credito_parcelado: "Crédito Parcelado",
-  a_receber: "A Receber",
-};
-
 export function entradaDoPDV(dados: DadosPDVParaRecibo, extras: ExtrasPDVParaRecibo): EntradaReciboVenda {
-  const nomeForma = (forma: string, nome?: string) => nome || NOMES_FORMA_PDV[forma] || forma;
+  // Formas padrão com o mesmo nome do recibo reaberto (nomeFormaPagamento);
+  // personalizadas e "Troca" ("outro") com o nome que o PDV gravou.
+  const nomeForma = (forma: string, nome?: string) => {
+    const padrao = nomeFormaPagamento(forma);
+    return padrao !== forma && forma !== "outro" ? padrao : nome || forma;
+  };
   return {
     loja: extras.loja,
     cliente: dados.cliente,
-    itens: dados.itens.map((i) => ({
-      tipo: i.tipo,
-      nome: i.nome,
-      quantidade: i.quantidade,
-      bruto: i.preco * i.quantidade,
-      cor: i.cor,
-      capacidadeGb: i.capacidade_gb,
-      condicao: i.condicao,
-      imei: i.imei_dispositivo || i.imei,
-      imei2: i.imei2,
-      numeroSerie: i.numero_serie,
-      fotoUrl: extras.fotos?.[i.id] ?? null,
-      tempoGarantiaMeses: i.tempo_garantia,
-      modeloTermoId: i.modelo_termo_garantia_id,
-    })),
+    itens: dados.itens.map((i) => {
+      const p = extras.produtos?.[i.dispositivo_id || i.produto_id || i.peca_id || i.id];
+      return {
+        tipo: i.tipo,
+        nome: i.nome,
+        quantidade: i.quantidade,
+        bruto: i.preco * i.quantidade,
+        cor: i.cor || p?.cor,
+        capacidadeGb: i.capacidade_gb || p?.capacidade_gb,
+        condicao: i.condicao || p?.condicao,
+        imei: i.imei_dispositivo || i.imei || p?.imei,
+        imei2: i.imei2 || p?.imei2,
+        numeroSerie: i.numero_serie || p?.numero_serie,
+        sku: p?.sku,
+        fotoUrl: extras.fotos?.[i.id] ?? p?.fotoUrl ?? null,
+        tempoGarantiaMeses: i.tempo_garantia,
+        modeloTermoId: i.modelo_termo_garantia_id,
+      };
+    }),
     numeroVenda: dados.numeroVenda,
     data: dados.data,
     vendedorNome: extras.vendedorNome,
@@ -809,6 +814,7 @@ export interface ProdutoRecibo {
   capacidade_gb?: number | null;
   condicao?: string | null;
   imei?: string | null;
+  imei2?: string | null;
   numero_serie?: string | null;
   fotoUrl?: string | null;
 }
@@ -963,6 +969,7 @@ export function entradaDasLinhas(
       capacidadeGb: p.capacidade_gb,
       condicao: p.condicao,
       imei: l.imei_dispositivo || p.imei,
+      imei2: p.imei2,
       numeroSerie: p.numero_serie,
       sku: p.sku,
       fotoUrl: p.fotoUrl,
@@ -1021,5 +1028,25 @@ export function entradaDasLinhas(
       : null,
     termo: ctx.termo,
     origemApp: ctx.origemApp,
+  };
+}
+
+/**
+ * Recibo logo após o PDV: o que só o banco sabe (gravado na finalização), para
+ * completar entradaDoPDV — vendedor, detalhes e foto de cada item, condição e
+ * foto do aparelho da troca e as parcelas "a receber" com vencimento (as mesmas
+ * regras do recibo reaberto). Valores, troca e forma continuam os do PDV.
+ */
+export function extrasDoBanco(dados: DadosVendaCarregados): Partial<ExtrasPDVParaRecibo> {
+  const pagamento = entradaDasLinhas(dados, { loja: null }).pagamento;
+  return {
+    vendedorNome: dados.vendedorNome,
+    produtos: dados.produtos,
+    fotoTroca: dados.troca?.fotoUrl ?? null,
+    condicaoTroca: dados.troca?.condicao ?? null,
+    parcelasReceber: pagamento.primeira.parcelasReceber,
+    vencimentoAReceber: pagamento.primeira.vencimento,
+    parcelasReceberSegunda: pagamento.segunda?.parcelasReceber,
+    vencimentoSegunda: pagamento.segunda?.vencimento,
   };
 }
