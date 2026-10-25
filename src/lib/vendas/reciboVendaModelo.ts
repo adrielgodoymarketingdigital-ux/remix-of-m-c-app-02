@@ -438,6 +438,14 @@ function textoBaseTermo(item: ItemReciboEntrada, termo: EntradaReciboVenda["term
   return resolverTextoTermoDispositivo(termo?.config, temGarantia, TERMOS_GARANTIA_PADRAO_NOVO.com, TERMOS_GARANTIA_PADRAO_NOVO.sem);
 }
 
+/** O painel já mostra o título: a 1ª linha do termo igual a ele sai (com as linhas em branco logo depois). */
+function semTituloRepetido(texto: string, titulo: string): string {
+  const linhas = texto.split("\n");
+  const primeira = linhas.findIndex((l) => l.trim() !== "");
+  if (primeira < 0 || linhas[primeira].trim().toUpperCase() !== titulo) return texto;
+  return linhas.slice(primeira + 1).join("\n").replace(/^\s*\n/, "");
+}
+
 function imeisTermo(imei1?: string | null, imei2?: string | null): string | undefined {
   if (!limpo(imei2)) return limpo(imei1) || undefined;
   return `${limpo(imei1) || "—"}\nIMEI 2: ${limpo(imei2)}`;
@@ -595,7 +603,8 @@ export function montarReciboVenda(e: EntradaReciboVenda): ReciboVendaModelo {
         loja_cnpj: limpo(loja.cnpj) || undefined,
         loja_endereco: enderecoLoja(loja) || undefined,
       });
-      return { titulo: meses > 0 ? "TERMO DE GARANTIA" : "TERMO DE VENDA", produto: limpo(item.nome), texto };
+      const titulo = meses > 0 ? "TERMO DE GARANTIA" : "TERMO DE VENDA";
+      return { titulo, produto: limpo(item.nome), texto: semTituloRepetido(texto, titulo) };
     });
 
   const dataCancelamento = formatarDataRecibo(e.cancelamento?.data);

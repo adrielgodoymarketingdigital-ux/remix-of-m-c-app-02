@@ -425,6 +425,8 @@ Deno.test("endereço montado das partes quando o campo endereço está vazio", (
 Deno.test("garantia com meses: prazo no termo e bloco dos 90 dias removido", () => {
   const r = montarReciboVenda(base({ itens: [{ tipo: "dispositivo", nome: "iPhone", quantidade: 1, bruto: 1000, tempoGarantiaMeses: 12 }] }));
   assertEquals(r.garantias[0].titulo, "TERMO DE GARANTIA");
+  // O título do painel não se repete na 1ª linha do texto.
+  assert(r.garantias[0].texto.startsWith("Loja: Loja Exemplo Celulares"));
   assert(r.garantias[0].texto.includes("2. GARANTIA CONTRATUAL (1 ano)"));
   assert(r.garantias[0].texto.includes("Garantia de 1 ano a partir da data desta venda"));
   assert(!r.garantias[0].texto.includes("1. GARANTIA LEGAL"));
