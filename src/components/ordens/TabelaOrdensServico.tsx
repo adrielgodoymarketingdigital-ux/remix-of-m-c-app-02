@@ -13,14 +13,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
 import { SeloDispositivosAdicionais } from "./SeloDispositivosAdicionais";
+import { AparelhosServicosOS } from "./AparelhosServicosOS";
 import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { OrdemServico } from "@/hooks/useOrdensServico";
-import { Check, ClipboardList, Building2, ArrowDownUp } from "lucide-react";
-import { useState } from "react";
+import { Check, ClipboardList, Building2, ArrowDownUp, ChevronRight } from "lucide-react";
+import { Fragment, useState } from "react";
+import { cn } from "@/lib/utils";
 import { useIsMobile, useIsMobileOrTablet } from "@/hooks/use-mobile";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSColunas } from "@/hooks/useOSColunas";
+import { useDispositivosAdicionaisOSVisivel } from "@/hooks/useDispositivosAdicionaisOSVisivel";
+import { useAdicionaisPorOS } from "@/contexts/AdicionaisPorOSContext";
 
 const fallbackColors: Record<string, string> = {
   aguardando_aprovacao: "#eab308",
@@ -93,6 +97,26 @@ export const TabelaOrdensServico = ({
   const { config } = useOSColunas();
   const colunasAtivas = config.colunas;
   const acoesAtivas = config.acoes_principais;
+  // Aparelhos e serviços da OS (etapa 6d): só para quem vê os adicionais e só
+  // nas OS com adicionais (as do selo "+N aparelho"); para as demais, nada muda.
+  const adicionaisVisiveis = useDispositivosAdicionaisOSVisivel();
+  const adicionaisPorOs = useAdicionaisPorOS();
+  const [osAbertas, setOsAbertas] = useState<ReadonlySet<string>>(() => new Set());
+  const podeAbrir = (ordem: OrdemServico, isAvulso: unknown) =>
+    adicionaisVisiveis && !isAvulso && (adicionaisPorOs[ordem.id]?.length ?? 0) > 0;
+  const alternarOS = (id: string) =>
+    setOsAbertas((atual) => {
+      const novo = new Set(atual);
+      if (!novo.delete(id)) novo.add(id);
+      return novo;
+    });
+  const dispositivo1 = (ordem: OrdemServico) => ({
+    dispositivo_tipo: ordem.dispositivo_tipo,
+    dispositivo_marca: ordem.dispositivo_marca,
+    dispositivo_modelo: ordem.dispositivo_modelo,
+    dispositivo_imei: ordem.dispositivo_imei,
+    dispositivo_numero_serie: ordem.dispositivo_numero_serie,
+  });
 
   const statusColors = Object.fromEntries(statusList.map(s => [s.slug, s.cor]));
   const statusLabels = Object.fromEntries(statusList.map(s => [s.slug, s.nome]));
@@ -316,6 +340,7 @@ export const TabelaOrdensServico = ({
   const totalBaseWidth = fixedWidth + activeOptionalBaseWidth + lojaWidth;
   const scale = 100 / totalBaseWidth;
   const w = (col: string) => `${(baseWidths[col] * scale).toFixed(2)}%`;
+  const totalColunas = (selecaoAtiva ? 1 : 0) + 3 + optionalCols.filter(c => colunasAtivas.includes(c)).length + (mostrarColunaLoja ? 1 : 0);
 
   return (
     <div className="h-[calc(100vh-24rem)] min-h-[24rem] max-h-[36rem] w-full overflow-x-hidden overflow-y-auto rounded-xl border border-border/40 bg-card">
@@ -382,186 +407,209 @@ export const TabelaOrdensServico = ({
             const cor = statusColors[ordem.status as string] || "#eab308";
             const label = statusLabels[ordem.status as string] || "Aguardando";
             const isAvulso = (ordem.avarias as any)?.is_avulso;
+            const expansivel = podeAbrir(ordem, isAvulso);
+            const aberta = expansivel && osAbertas.has(ordem.id);
 
             return (
-              <TableRow
-                key={ordem.id}
-                className={`group border-b border-border/20 transition-colors duration-100 hover:bg-muted/30 cursor-default ${selecaoAtiva && itensSelecionados.has(ordem.id) ? "bg-primary/5" : ""}`}
-              >
-                {selecaoAtiva && (
+              <Fragment key={ordem.id}>
+                <TableRow
+                  className={`group border-b border-border/20 transition-colors duration-100 hover:bg-muted/30 cursor-default ${selecaoAtiva && itensSelecionados.has(ordem.id) ? "bg-primary/5" : ""}`}
+                >
+                  {selecaoAtiva && (
+                    <TableCell className="px-3 py-2">
+                      <Checkbox
+                        checked={itensSelecionados.has(ordem.id)}
+                        onCheckedChange={() => onToggleSelecionado?.(ordem.id)}
+                        className="h-4 w-4"
+                      />
+                    </TableCell>
+                  )}
+                  {/* OS */}
+                  <TableCell className="px-3 py-2 font-mono">
+                    {expansivel && (
+                      <button
+                        type="button"
+                        onClick={() => alternarOS(ordem.id)}
+                        aria-expanded={aberta}
+                        aria-label={`${aberta ? "Recolher" : "Ver"} aparelhos e serviços da OS ${ordem.numero_os}`}
+                        title="Aparelhos e serviços"
+                        className="mr-0.5 inline-flex h-4 w-4 items-center justify-center rounded align-middle text-muted-foreground hover:bg-muted hover:text-foreground"
+                        data-expandir-os
+                      >
+                        <ChevronRight className={cn("h-3 w-3 transition-transform", aberta && "rotate-90")} />
+                      </button>
+                    )}
+                    {isAvulso ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-500">Avulso</span>
+                    ) : (
+                      <span className="text-xs font-bold text-foreground/75">#{ordem.numero_os}</span>
+                    )}
+                    {(ordem as any).is_teste && (
+                      <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-600">T</span>
+                    )}
+                    {(ordem as any).tipo_os === "simplificada" && (
+                      <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-sky-500/15 text-sky-600">S</span>
+                    )}
+                    {ordem.origem_remessa_corporativa && (
+                      <span
+                        className="ml-1 text-[10px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-600"
+                        title="Remessa Corporativa"
+                      >
+                        RC
+                      </span>
+                    )}
+                  </TableCell>
+
+                  {/* Cliente */}
+                  {colunasAtivas.includes("cliente") && (
+                    <TableCell className="px-3 py-2 overflow-hidden">
+                      <span className="block truncate text-xs">
+                        {isAvulso ? <span className="text-muted-foreground/40">—</span> : (ordem.cliente?.nome || "N/A")}
+                      </span>
+                    </TableCell>
+                  )}
+
+                  {/* Dispositivo */}
+                  {colunasAtivas.includes("dispositivo") && (
+                    <TableCell className="px-3 py-2 overflow-hidden">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate text-xs">
+                          {isAvulso ? ordem.defeito_relatado : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/60 truncate">{ordem.dispositivo_tipo}</span>
+                        {!isAvulso && <SeloDispositivosAdicionais osId={ordem.id} />}
+                      </div>
+                    </TableCell>
+                  )}
+
+                  {/* Entrada */}
                   <TableCell className="px-3 py-2">
-                    <Checkbox
-                      checked={itensSelecionados.has(ordem.id)}
-                      onCheckedChange={() => onToggleSelecionado?.(ordem.id)}
-                      className="h-4 w-4"
+                    <div className="font-mono text-[10px] leading-tight text-foreground/70">{formatDate(ordem.created_at)}</div>
+                    <div className="font-mono text-[9px] text-muted-foreground/50">{formatTime(ordem.created_at)}</div>
+                  </TableCell>
+
+                  {/* Saída */}
+                  {colunasAtivas.includes("data_saida") && (
+                    <TableCell className="px-3 py-2">
+                      {ordem.data_saida ? (
+                        <>
+                          <div className="font-mono text-[10px] leading-tight text-foreground/70">{formatDate(ordem.data_saida)}</div>
+                          <div className="font-mono text-[9px] text-muted-foreground/50">{formatTime(ordem.data_saida)}</div>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground/30 font-mono text-[10px]">—</span>
+                      )}
+                    </TableCell>
+                  )}
+
+                  {/* Defeito/Serviço */}
+                  {colunasAtivas.includes("defeito") && (
+                    <TableCell className="max-w-0 truncate px-3 py-2 text-xs text-muted-foreground">
+                      {ordem.defeito_relatado}
+                    </TableCell>
+                  )}
+
+                  {/* Status */}
+                  {colunasAtivas.includes("status") && (
+                    <TableCell className="overflow-hidden px-3 py-2">
+                      {onAtualizarStatus ? (
+                        <Popover
+                          open={popoverAberto === ordem.id}
+                          onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold cursor-pointer transition-all hover:opacity-80 border max-w-full overflow-hidden"
+                              style={{ color: cor, borderColor: `${cor}35`, backgroundColor: `${cor}10` }}
+                            >
+                              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+                              <span className="truncate">{label}</span>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-52 p-0" align="start">
+                            <Command>
+                              <CommandGroup>
+                                {opcoesStatus.map((opcao) => (
+                                  <CommandItem
+                                    key={opcao.value}
+                                    value={opcao.value}
+                                    onSelect={() => { onAtualizarStatus(ordem.id, opcao.value); setPopoverAberto(null); }}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: statusColors[opcao.value] || "#3b82f6" }} />
+                                    <span className="flex-1 text-xs">{opcao.label}</span>
+                                    {ordem.status === opcao.value && <Check className="h-3.5 w-3.5 shrink-0" />}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold border"
+                          style={{ color: cor, borderColor: `${cor}35`, backgroundColor: `${cor}10` }}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
+                          {label}
+                        </span>
+                      )}
+                    </TableCell>
+                  )}
+
+                  {/* Valor */}
+                  {colunasAtivas.includes("valor") && (
+                    <TableCell className="px-3 py-2 text-right">
+                      <div className="font-mono text-xs font-semibold">
+                        <ValorMonetario valor={ordem.total} tipo="preco" />
+                      </div>
+                      {(() => {
+                        const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
+                        return entrada > 0 ? (
+                          <div className="font-mono text-[9px] text-green-500/80">+<ValorMonetario valor={entrada} tipo="preco" /></div>
+                        ) : null;
+                      })()}
+                    </TableCell>
+                  )}
+
+                  {/* Loja */}
+                  {mostrarColunaLoja && (
+                    <TableCell className="px-3 py-2 overflow-hidden">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Building2 className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {resolverNomeLoja ? resolverNomeLoja((ordem as any).empresa_id) : "—"}
+                        </span>
+                      </div>
+                    </TableCell>
+                  )}
+
+                  {/* Ações */}
+                  <TableCell className="overflow-hidden px-3 py-2 text-right">
+                    <BotoesAcaoOrdem
+                      onVisualizar={() => onVisualizar(ordem)}
+                      onEditar={() => onEditar(ordem)}
+                      onImprimir={() => onImprimir(ordem)}
+                      onExcluir={() => onExcluir(ordem)}
+                      onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
+                      onCompartilhar={() => onCompartilhar?.(ordem)}
+                      onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
+                      onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
+                      onEmitirRecibo={onEmitirRecibo && !(ordem.avarias as { is_avulso?: boolean } | null)?.is_avulso ? () => onEmitirRecibo(ordem) : undefined}
+                      termoAtivo={termoAtivo}
+                      acoesAtivas={acoesAtivas}
+                      compacto
                     />
                   </TableCell>
+                </TableRow>
+                {aberta && (
+                  <TableRow className="border-b border-border/20 bg-muted/20 hover:bg-muted/20" data-linha-aparelhos-servicos>
+                    <TableCell colSpan={totalColunas} className="p-0">
+                      <AparelhosServicosOS osId={ordem.id} dispositivo1={dispositivo1(ordem)} />
+                    </TableCell>
+                  </TableRow>
                 )}
-                {/* OS */}
-                <TableCell className="px-3 py-2 font-mono">
-                  {isAvulso ? (
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-500">Avulso</span>
-                  ) : (
-                    <span className="text-xs font-bold text-foreground/75">#{ordem.numero_os}</span>
-                  )}
-                  {(ordem as any).is_teste && (
-                    <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-600">T</span>
-                  )}
-                  {(ordem as any).tipo_os === "simplificada" && (
-                    <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-sky-500/15 text-sky-600">S</span>
-                  )}
-                  {ordem.origem_remessa_corporativa && (
-                    <span
-                      className="ml-1 text-[10px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-600"
-                      title="Remessa Corporativa"
-                    >
-                      RC
-                    </span>
-                  )}
-                </TableCell>
-
-                {/* Cliente */}
-                {colunasAtivas.includes("cliente") && (
-                  <TableCell className="px-3 py-2 overflow-hidden">
-                    <span className="block truncate text-xs">
-                      {isAvulso ? <span className="text-muted-foreground/40">—</span> : (ordem.cliente?.nome || "N/A")}
-                    </span>
-                  </TableCell>
-                )}
-
-                {/* Dispositivo */}
-                {colunasAtivas.includes("dispositivo") && (
-                  <TableCell className="px-3 py-2 overflow-hidden">
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-medium truncate text-xs">
-                        {isAvulso ? ordem.defeito_relatado : `${ordem.dispositivo_marca} ${ordem.dispositivo_modelo}`}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/60 truncate">{ordem.dispositivo_tipo}</span>
-                      {!isAvulso && <SeloDispositivosAdicionais osId={ordem.id} />}
-                    </div>
-                  </TableCell>
-                )}
-
-                {/* Entrada */}
-                <TableCell className="px-3 py-2">
-                  <div className="font-mono text-[10px] leading-tight text-foreground/70">{formatDate(ordem.created_at)}</div>
-                  <div className="font-mono text-[9px] text-muted-foreground/50">{formatTime(ordem.created_at)}</div>
-                </TableCell>
-
-                {/* Saída */}
-                {colunasAtivas.includes("data_saida") && (
-                  <TableCell className="px-3 py-2">
-                    {ordem.data_saida ? (
-                      <>
-                        <div className="font-mono text-[10px] leading-tight text-foreground/70">{formatDate(ordem.data_saida)}</div>
-                        <div className="font-mono text-[9px] text-muted-foreground/50">{formatTime(ordem.data_saida)}</div>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground/30 font-mono text-[10px]">—</span>
-                    )}
-                  </TableCell>
-                )}
-
-                {/* Defeito/Serviço */}
-                {colunasAtivas.includes("defeito") && (
-                  <TableCell className="max-w-0 truncate px-3 py-2 text-xs text-muted-foreground">
-                    {ordem.defeito_relatado}
-                  </TableCell>
-                )}
-
-                {/* Status */}
-                {colunasAtivas.includes("status") && (
-                  <TableCell className="overflow-hidden px-3 py-2">
-                    {onAtualizarStatus ? (
-                      <Popover
-                        open={popoverAberto === ordem.id}
-                        onOpenChange={(open) => setPopoverAberto(open ? ordem.id : null)}
-                      >
-                        <PopoverTrigger asChild>
-                          <button
-                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold cursor-pointer transition-all hover:opacity-80 border max-w-full overflow-hidden"
-                            style={{ color: cor, borderColor: `${cor}35`, backgroundColor: `${cor}10` }}
-                          >
-                            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: cor }} />
-                            <span className="truncate">{label}</span>
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-52 p-0" align="start">
-                          <Command>
-                            <CommandGroup>
-                              {opcoesStatus.map((opcao) => (
-                                <CommandItem
-                                  key={opcao.value}
-                                  value={opcao.value}
-                                  onSelect={() => { onAtualizarStatus(ordem.id, opcao.value); setPopoverAberto(null); }}
-                                  className="flex items-center gap-2 cursor-pointer"
-                                >
-                                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: statusColors[opcao.value] || "#3b82f6" }} />
-                                  <span className="flex-1 text-xs">{opcao.label}</span>
-                                  {ordem.status === opcao.value && <Check className="h-3.5 w-3.5 shrink-0" />}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-semibold border"
-                        style={{ color: cor, borderColor: `${cor}35`, backgroundColor: `${cor}10` }}
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
-                        {label}
-                      </span>
-                    )}
-                  </TableCell>
-                )}
-
-                {/* Valor */}
-                {colunasAtivas.includes("valor") && (
-                  <TableCell className="px-3 py-2 text-right">
-                    <div className="font-mono text-xs font-semibold">
-                      <ValorMonetario valor={ordem.total} tipo="preco" />
-                    </div>
-                    {(() => {
-                      const entrada = (ordem.avarias as any)?.dados_pagamento?.entrada;
-                      return entrada > 0 ? (
-                        <div className="font-mono text-[9px] text-green-500/80">+<ValorMonetario valor={entrada} tipo="preco" /></div>
-                      ) : null;
-                    })()}
-                  </TableCell>
-                )}
-
-                {/* Loja */}
-                {mostrarColunaLoja && (
-                  <TableCell className="px-3 py-2 overflow-hidden">
-                    <div className="flex items-center gap-1 min-w-0">
-                      <Building2 className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                      <span className="text-[10px] text-muted-foreground truncate">
-                        {resolverNomeLoja ? resolverNomeLoja((ordem as any).empresa_id) : "—"}
-                      </span>
-                    </div>
-                  </TableCell>
-                )}
-
-                {/* Ações */}
-                <TableCell className="overflow-hidden px-3 py-2 text-right">
-                  <BotoesAcaoOrdem
-                    onVisualizar={() => onVisualizar(ordem)}
-                    onEditar={() => onEditar(ordem)}
-                    onImprimir={() => onImprimir(ordem)}
-                    onExcluir={() => onExcluir(ordem)}
-                    onEnviarWhatsApp={onEnviarWhatsApp ? () => onEnviarWhatsApp(ordem) : undefined}
-                    onCompartilhar={() => onCompartilhar?.(ordem)}
-                    onImprimirTermo={onImprimirTermo ? () => onImprimirTermo(ordem) : undefined}
-                    onImprimirEtiqueta={onImprimirEtiqueta ? () => onImprimirEtiqueta(ordem) : undefined}
-                    onEmitirRecibo={onEmitirRecibo && !(ordem.avarias as { is_avulso?: boolean } | null)?.is_avulso ? () => onEmitirRecibo(ordem) : undefined}
-                    termoAtivo={termoAtivo}
-                    acoesAtivas={acoesAtivas}
-                    compacto
-                  />
-                </TableCell>
-              </TableRow>
+              </Fragment>
             );
           })}
         </TableBody>
