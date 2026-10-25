@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 import {
   Dialog,
@@ -26,6 +26,14 @@ import { DadosTrocaRecibo, htmlBlocoTrocaRecibo, montarBlocoTrocaRecibo, textoBl
 import { BlocoTrocaRecibo } from "@/components/vendas/BlocoTrocaRecibo";
 import { toast } from "sonner";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
+import { useReciboVendaNovoVisivel } from "@/hooks/useReciboVendaNovoVisivel";
+import { useModeloReciboNovoReaberto } from "@/components/vendas/recibo-novo/useModeloReciboNovo";
+import { ReciboVendaNovoSeguro } from "@/components/vendas/recibo-novo/ReciboVendaNovoSeguro";
+import { cssPrintRootReciboNovo, documentoImpressaoReciboNovo } from "@/components/vendas/recibo-novo/impressaoReciboVendaNovo";
+import type { ReciboVendaModelo } from "@/lib/vendas/reciboVendaModelo";
+
+/** Recibo novo renderizado fora da tela: só fornece o HTML da impressão A4 (o diálogo mostra o resumo de sempre). */
+const RECIBO_NOVO_FORA_DA_TELA = { position: "absolute", left: -10000, top: 0, width: 850, pointerEvents: "none" } as const;
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -166,6 +174,14 @@ export function DialogReimprimirReciboVenda({
   grupoVendaId,
 }: DialogReimprimirReciboVendaProps) {
   const { config: configLoja, refetch } = useConfiguracaoLoja(venda?.empresa_id);
+
+  // Recibo novo (A4, modo recibo), só para quem a regra libera; falhou → recibo antigo.
+  const reciboNovoVisivel = useReciboVendaNovoVisivel();
+  const reciboNovoAtivo = reciboNovoVisivel && open && modo === "recibo";
+  const reciboNovoRef = useRef<HTMLDivElement>(null);
+  const reciboNovo = useModeloReciboNovoReaberto({ ativo: reciboNovoAtivo, vendaId: venda?.id, grupoVenda: grupoVendaId, loja: configLoja });
+  const [modeloQueFalhou, setModeloQueFalhou] = useState<ReciboVendaModelo | null>(null);
+  const usarReciboNovo = !!reciboNovo.modelo && reciboNovo.modelo !== modeloQueFalhou;
 
   useEffect(() => {
     if (open) refetch();
@@ -420,6 +436,26 @@ export function DialogReimprimirReciboVenda({
     const usarMecanismoMobile = isMobile || isStandalone;
     const usarPrintRoot = usarMecanismoMobile && isIOS;
     const usarIframe = usarMecanismoMobile && !isIOS;
+
+    // Recibo novo (A4): mesmos caminhos de impressão — #print-root no iOS,
+    // iframe no Android, janela no computador. iOS instalado segue no PDF acima.
+    if (formato === "a4" && usarReciboNovo && reciboNovoRef.current) {
+      const htmlRecibo = reciboNovoRef.current.innerHTML;
+      if (usarPrintRoot) {
+        printViaPrintRoot(htmlRecibo, cssPrintRootReciboNovo());
+        return;
+      }
+      const documento = documentoImpressaoReciboNovo(htmlRecibo, `Recibo de Venda - ${[venda.dispositivo_marca, venda.dispositivo_modelo].filter(Boolean).join(" ")}`);
+      if (usarIframe) {
+        printViaIframe(documento, isIOS);
+        return;
+      }
+      const janela = window.open("", "_blank");
+      if (!janela) return;
+      janela.document.write(documento);
+      janela.document.close();
+      return;
+    }
 
     // window.open precisa ser chamado de forma síncrona, no mesmo tick do
     // clique — qualquer await antes dele arrisca o navegador não reconhecer
@@ -900,11 +936,19 @@ ${bodyRecibo}
           {blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
         </div>
 
+        {usarReciboNovo && reciboNovo.modelo && (
+          <div style={RECIBO_NOVO_FORA_DA_TELA} aria-hidden="true">
+            <div ref={reciboNovoRef}>
+              <ReciboVendaNovoSeguro modelo={reciboNovo.modelo} onFalha={() => setModeloQueFalhou(reciboNovo.modelo)} />
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button variant="outline" disabled={carregandoGrupo || carregandoTroca} onClick={() => imprimirRecibo('a4')} className="gap-1.5">
+          <Button variant="outline" disabled={carregandoGrupo || carregandoTroca || (reciboNovoAtivo && reciboNovo.carregando)} onClick={() => imprimirRecibo('a4')} className="gap-1.5">
             <Printer className="h-4 w-4" />
             A4
           </Button>
