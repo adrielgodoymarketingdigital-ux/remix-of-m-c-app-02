@@ -26,6 +26,15 @@ import {
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
+import { useReciboVendaNovoVisivel } from "@/hooks/useReciboVendaNovoVisivel";
+import { useModeloReciboNovoReaberto } from "@/components/vendas/recibo-novo/useModeloReciboNovo";
+import { ReciboVendaNovoSeguro } from "@/components/vendas/recibo-novo/ReciboVendaNovoSeguro";
+import { cssReciboVendaNovo } from "@/components/vendas/recibo-novo/cssReciboVendaNovo";
+import { documentoImpressaoReciboNovo } from "@/components/vendas/recibo-novo/impressaoReciboVendaNovo";
+import type { ReciboVendaModelo } from "@/lib/vendas/reciboVendaModelo";
+
+/** Recibo antigo fora da tela (continua sendo o do 80mm/58mm e do "Copiar texto"). */
+const RECIBO_ANTIGO_FORA_DA_TELA = { position: "absolute", left: -10000, top: 0, width: 720, pointerEvents: "none" } as const;
 
 function formatarGarantia(meses: number): string {
   const m = meses >= 360 ? Math.round(meses / 30) : meses;
@@ -93,6 +102,13 @@ export function DialogReimpressaoRecibo({
   const reciboRef = useRef<HTMLDivElement>(null);
   const { config: configLoja } = useConfiguracaoLoja(venda?.empresa_id);
   const { toast } = useToast();
+
+  // Recibo novo (A4), só para quem a regra libera; falhou → recibo antigo.
+  const reciboNovoVisivel = useReciboVendaNovoVisivel();
+  const reciboNovoRef = useRef<HTMLDivElement>(null);
+  const reciboNovo = useModeloReciboNovoReaberto({ ativo: reciboNovoVisivel && open, vendaId: venda?.id, grupoVenda: venda?.grupo_venda, loja: configLoja });
+  const [modeloQueFalhou, setModeloQueFalhou] = useState<ReciboVendaModelo | null>(null);
+  const usarReciboNovo = !!reciboNovo.modelo && reciboNovo.modelo !== modeloQueFalhou;
   const [clienteCompleto, setClienteCompleto] = useState<any>(null);
   const [itensCompletos, setItensCompletos] = useState<ItemReciboCompleto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -223,6 +239,14 @@ export function DialogReimpressaoRecibo({
   const showValor = vendasConfig?.mostrar_valor !== false;
 
   const imprimirRecibo = (formato: FormatoPapel) => {
+    if (formato === "a4" && usarReciboNovo && reciboNovoRef.current) {
+      salvarUltimoFormatoPapel(formato);
+      const janela = window.open("", "_blank");
+      if (!janela) return;
+      janela.document.write(documentoImpressaoReciboNovo(reciboNovoRef.current.innerHTML, `Recibo de Venda${venda?.numero_venda ? ` - ${venda.numero_venda}` : ""}`));
+      janela.document.close();
+      return;
+    }
     if (!reciboRef.current) return;
 
     salvarUltimoFormatoPapel(formato);
@@ -397,9 +421,193 @@ export function DialogReimpressaoRecibo({
     ].filter(Boolean).join(" + "),
   });
 
+  const previaAntiga = (
+    <>
+      <style>{cssCabecalhoRecibo("80mm", { escopo: ".recibo-previa-cab" })}</style>
+      <div className="border rounded-lg p-6 bg-background recibo-previa-cab">
+        <div ref={reciboRef}>
+          <div className="recibo-header">
+            {/* Logo à esquerda e dados da loja ao lado (módulo único dos recibos de venda). */}
+            <div
+              dangerouslySetInnerHTML={{
+                __html: montarCabecalhoReciboHtml({
+                  logoSrc: showLogo ? configLoja?.logo_url : null,
+                  nomeLoja: configLoja?.nome_loja,
+                  linhas: showDadosLoja ? linhasDadosLoja(configLoja) : [],
+                }),
+              }}
+            />
+
+            <div className="recibo-titulo-bloco">
+              <h2>RECIBO DE VENDA</h2>
+              {venda.numero_venda && <p>Nº {venda.numero_venda}</p>}
+              <p>Data: {dataVenda}</p>
+            </div>
+          </div>
+
+          {showDadosCliente && (
+            <div className="recibo-section">
+              <h3>Dados do Comprador</h3>
+              <div className="recibo-info">
+                <span>Nome:</span>
+                <span>{clienteCompleto?.nome || venda.clientes?.nome || "Não informado"}</span>
+              </div>
+              {clienteCompleto?.cpf && (
+                <div className="recibo-info">
+                  <span>CPF:</span>
+                  <span>{clienteCompleto.cpf}</span>
+                </div>
+              )}
+              {(clienteCompleto?.telefone || venda.clientes?.telefone) && (
+                <div className="recibo-info">
+                  <span>Telefone:</span>
+                  <span>{clienteCompleto?.telefone || venda.clientes?.telefone}</span>
+                </div>
+              )}
+              {clienteCompleto?.endereco && (
+                <div className="recibo-info">
+                  <span>Endereço:</span>
+                  <span>{clienteCompleto.endereco}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {showDadosDispositivo && itensCompletos.map((item, idx) => {
+            const v = item.venda;
+            const valorUnitarioItem = Number(v.total) / (v.quantidade || 1);
+            return (
+              <div className="recibo-section" key={v.id}>
+                <h3>
+                  {itensCompletos.length > 1 ? `Produto Vendido (${idx + 1}/${itensCompletos.length})` : "Produto Vendido"}
+                </h3>
+                <div className="recibo-info">
+                  <span>Produto:</span>
+                  <span>
+                    {v.tipo === "dispositivo"
+                      ? `${v.dispositivos?.marca} ${v.dispositivos?.modelo}`
+                      : v.pecas?.nome || v.produtos?.nome || item.produto?.nome || "Produto não encontrado"}
+                  </span>
+                </div>
+                {v.tipo === "dispositivo" && v.dispositivos && (
+                  <>
+                    <div className="recibo-info">
+                      <span>Tipo:</span>
+                      <span>{v.dispositivos.tipo}</span>
+                    </div>
+                    {item.dispositivo?.imei && (
+                      <div className="recibo-info">
+                        <span>IMEI:</span>
+                        <span>{item.dispositivo.imei}</span>
+                      </div>
+                    )}
+                    {item.dispositivo?.numero_serie && (
+                      <div className="recibo-info">
+                        <span>Número de Série:</span>
+                        <span>{item.dispositivo.numero_serie}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {v.tipo === "produto" && (item.produto?.sku || v.produtos?.sku) && (
+                  <div className="recibo-info">
+                    <span>SKU:</span>
+                    <span>{item.produto?.sku || v.produtos?.sku}</span>
+                  </div>
+                )}
+                <div className="recibo-info">
+                  <span>Quantidade:</span>
+                  <span>{v.quantidade}</span>
+                </div>
+                {showValor && (
+                  <div className="recibo-info">
+                    <span>Valor Unitário:</span>
+                    <span>{formatCurrency(valorUnitarioItem)}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {showChecklist && itensCompletos.filter(item => item.venda.tipo === "dispositivo" && item.dispositivo?.checklist).map(item => {
+            const checklistData = (item.dispositivo!.checklist as any)?.entrada || item.dispositivo!.checklist;
+            const entries = Object.entries(checklistData as Record<string, any>).filter(
+              ([, val]) => typeof val === 'boolean'
+            );
+            if (entries.length === 0) return null;
+            return (
+              <div className="recibo-section" key={item.venda.id}>
+                <h3>
+                  Estado do Aparelho na Venda
+                  {itensCompletos.length > 1 && item.venda.dispositivos ? ` — ${item.venda.dispositivos.marca} ${item.venda.dispositivos.modelo}` : ""}
+                </h3>
+                <div className="recibo-checklist">
+                  {entries.map(([itemChecklist, funciona]) => (
+                    <div key={itemChecklist} className="recibo-checklist-item">
+                      <span className="recibo-checklist-icon">
+                        {funciona ? '✅' : '❌'}
+                      </span>
+                      <span className="recibo-checklist-label">
+                        {checklistLabels[itemChecklist] || itemChecklist}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {showGarantia && itensCompletos.some(item => item.venda.tipo === "dispositivo") && (
+            <div className="recibo-section">
+              <h3>Termos de Garantia e Direitos do Consumidor</h3>
+              <div className="termos-garantia">
+                {TERMOS_GARANTIA_CDC(
+                  itensCompletos.find(item => item.venda.tipo === "dispositivo" && item.dispositivo?.garantia)?.dispositivo?.tempo_garantia
+                )}
+              </div>
+            </div>
+          )}
+
+          {showValor && (
+            <div className="recibo-total">
+              {totalDescontos > 0 && (
+                <>
+                  <div style={{ fontSize: '14px', fontWeight: 'normal', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(totalBruto)}</span>
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 'normal', marginBottom: '5px', color: '#e11d48', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Desconto:</span>
+                    <span>- {formatCurrency(totalDescontos)}</span>
+                  </div>
+                </>
+              )}
+              <div>VALOR TOTAL: {formatCurrency(totalLiquido)}</div>
+            </div>
+          )}
+
+          {showValor && blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
+
+          {showAssinaturas && (
+            <>
+              <div style={{ marginTop: "40px", textAlign: "center" }}>
+                <p>_________________________________________</p>
+                <p>Assinatura do Vendedor</p>
+              </div>
+              <div style={{ marginTop: "40px", textAlign: "center" }}>
+                <p>_________________________________________</p>
+                <p>Assinatura do Comprador</p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className={usarReciboNovo ? "sm:max-w-3xl max-h-[90vh] overflow-y-auto" : "sm:max-w-3xl"}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -408,185 +616,21 @@ export function DialogReimpressaoRecibo({
         </DialogHeader>
 
         {/* Preview do Recibo */}
-        <style>{cssCabecalhoRecibo("80mm", { escopo: ".recibo-previa-cab" })}</style>
-        <div className="border rounded-lg p-6 bg-background recibo-previa-cab">
-          <div ref={reciboRef}>
-            <div className="recibo-header">
-              {/* Logo à esquerda e dados da loja ao lado (módulo único dos recibos de venda). */}
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: montarCabecalhoReciboHtml({
-                    logoSrc: showLogo ? configLoja?.logo_url : null,
-                    nomeLoja: configLoja?.nome_loja,
-                    linhas: showDadosLoja ? linhasDadosLoja(configLoja) : [],
-                  }),
-                }}
-              />
-
-              <div className="recibo-titulo-bloco">
-                <h2>RECIBO DE VENDA</h2>
-                {venda.numero_venda && <p>Nº {venda.numero_venda}</p>}
-                <p>Data: {dataVenda}</p>
-              </div>
+        {usarReciboNovo && reciboNovo.modelo && (
+          <>
+            <style>{cssReciboVendaNovo()}</style>
+            <div ref={reciboNovoRef}>
+              <ReciboVendaNovoSeguro modelo={reciboNovo.modelo} onFalha={() => setModeloQueFalhou(reciboNovo.modelo)} />
             </div>
-
-            {showDadosCliente && (
-              <div className="recibo-section">
-                <h3>Dados do Comprador</h3>
-                <div className="recibo-info">
-                  <span>Nome:</span>
-                  <span>{clienteCompleto?.nome || venda.clientes?.nome || "Não informado"}</span>
-                </div>
-                {clienteCompleto?.cpf && (
-                  <div className="recibo-info">
-                    <span>CPF:</span>
-                    <span>{clienteCompleto.cpf}</span>
-                  </div>
-                )}
-                {(clienteCompleto?.telefone || venda.clientes?.telefone) && (
-                  <div className="recibo-info">
-                    <span>Telefone:</span>
-                    <span>{clienteCompleto?.telefone || venda.clientes?.telefone}</span>
-                  </div>
-                )}
-                {clienteCompleto?.endereco && (
-                  <div className="recibo-info">
-                    <span>Endereço:</span>
-                    <span>{clienteCompleto.endereco}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {showDadosDispositivo && itensCompletos.map((item, idx) => {
-              const v = item.venda;
-              const valorUnitarioItem = Number(v.total) / (v.quantidade || 1);
-              return (
-                <div className="recibo-section" key={v.id}>
-                  <h3>
-                    {itensCompletos.length > 1 ? `Produto Vendido (${idx + 1}/${itensCompletos.length})` : "Produto Vendido"}
-                  </h3>
-                  <div className="recibo-info">
-                    <span>Produto:</span>
-                    <span>
-                      {v.tipo === "dispositivo"
-                        ? `${v.dispositivos?.marca} ${v.dispositivos?.modelo}`
-                        : v.pecas?.nome || v.produtos?.nome || item.produto?.nome || "Produto não encontrado"}
-                    </span>
-                  </div>
-                  {v.tipo === "dispositivo" && v.dispositivos && (
-                    <>
-                      <div className="recibo-info">
-                        <span>Tipo:</span>
-                        <span>{v.dispositivos.tipo}</span>
-                      </div>
-                      {item.dispositivo?.imei && (
-                        <div className="recibo-info">
-                          <span>IMEI:</span>
-                          <span>{item.dispositivo.imei}</span>
-                        </div>
-                      )}
-                      {item.dispositivo?.numero_serie && (
-                        <div className="recibo-info">
-                          <span>Número de Série:</span>
-                          <span>{item.dispositivo.numero_serie}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {v.tipo === "produto" && (item.produto?.sku || v.produtos?.sku) && (
-                    <div className="recibo-info">
-                      <span>SKU:</span>
-                      <span>{item.produto?.sku || v.produtos?.sku}</span>
-                    </div>
-                  )}
-                  <div className="recibo-info">
-                    <span>Quantidade:</span>
-                    <span>{v.quantidade}</span>
-                  </div>
-                  {showValor && (
-                    <div className="recibo-info">
-                      <span>Valor Unitário:</span>
-                      <span>{formatCurrency(valorUnitarioItem)}</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {showChecklist && itensCompletos.filter(item => item.venda.tipo === "dispositivo" && item.dispositivo?.checklist).map(item => {
-              const checklistData = (item.dispositivo!.checklist as any)?.entrada || item.dispositivo!.checklist;
-              const entries = Object.entries(checklistData as Record<string, any>).filter(
-                ([, val]) => typeof val === 'boolean'
-              );
-              if (entries.length === 0) return null;
-              return (
-                <div className="recibo-section" key={item.venda.id}>
-                  <h3>
-                    Estado do Aparelho na Venda
-                    {itensCompletos.length > 1 && item.venda.dispositivos ? ` — ${item.venda.dispositivos.marca} ${item.venda.dispositivos.modelo}` : ""}
-                  </h3>
-                  <div className="recibo-checklist">
-                    {entries.map(([itemChecklist, funciona]) => (
-                      <div key={itemChecklist} className="recibo-checklist-item">
-                        <span className="recibo-checklist-icon">
-                          {funciona ? '✅' : '❌'}
-                        </span>
-                        <span className="recibo-checklist-label">
-                          {checklistLabels[itemChecklist] || itemChecklist}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-            {showGarantia && itensCompletos.some(item => item.venda.tipo === "dispositivo") && (
-              <div className="recibo-section">
-                <h3>Termos de Garantia e Direitos do Consumidor</h3>
-                <div className="termos-garantia">
-                  {TERMOS_GARANTIA_CDC(
-                    itensCompletos.find(item => item.venda.tipo === "dispositivo" && item.dispositivo?.garantia)?.dispositivo?.tempo_garantia
-                  )}
-                </div>
-              </div>
-            )}
-
-            {showValor && (
-              <div className="recibo-total">
-                {totalDescontos > 0 && (
-                  <>
-                    <div style={{ fontSize: '14px', fontWeight: 'normal', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Subtotal:</span>
-                      <span>{formatCurrency(totalBruto)}</span>
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: 'normal', marginBottom: '5px', color: '#e11d48', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Desconto:</span>
-                      <span>- {formatCurrency(totalDescontos)}</span>
-                    </div>
-                  </>
-                )}
-                <div>VALOR TOTAL: {formatCurrency(totalLiquido)}</div>
-              </div>
-            )}
-
-            {showValor && blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
-
-            {showAssinaturas && (
-              <>
-                <div style={{ marginTop: "40px", textAlign: "center" }}>
-                  <p>_________________________________________</p>
-                  <p>Assinatura do Vendedor</p>
-                </div>
-                <div style={{ marginTop: "40px", textAlign: "center" }}>
-                  <p>_________________________________________</p>
-                  <p>Assinatura do Comprador</p>
-                </div>
-              </>
-            )}
+          </>
+        )}
+        {usarReciboNovo ? (
+          <div style={RECIBO_ANTIGO_FORA_DA_TELA} aria-hidden="true">
+            {previaAntiga}
           </div>
-        </div>
+        ) : (
+          previaAntiga
+        )}
 
         {/* Botões */}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
@@ -607,7 +651,7 @@ export function DialogReimpressaoRecibo({
             <Copy className="h-4 w-4 mr-2" />
             Copiar Texto
           </Button>
-          <Button variant="outline" onClick={() => imprimirRecibo('a4')} disabled={loading} className="w-full sm:w-auto gap-1.5">
+          <Button variant="outline" onClick={() => imprimirRecibo('a4')} disabled={loading || (reciboNovoVisivel && reciboNovo.carregando)} className="w-full sm:w-auto gap-1.5">
             <Printer className="h-4 w-4" />
             A4
           </Button>
