@@ -17,7 +17,7 @@ import { AparelhosServicosOS } from "./AparelhosServicosOS";
 import { formatCurrency, formatDate, formatTime } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { OrdemServico } from "@/hooks/useOrdensServico";
-import { Check, ClipboardList, Building2, ArrowDownUp, ChevronRight } from "lucide-react";
+import { Check, ClipboardList, Building2, ArrowDownUp, ChevronDown, ChevronRight } from "lucide-react";
 import { Fragment, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile, useIsMobileOrTablet } from "@/hooks/use-mobile";
@@ -169,6 +169,8 @@ export const TabelaOrdensServico = ({
             const cor = statusColors[ordem.status as string] || "#eab308";
             const label = statusLabels[ordem.status as string] || "Aguardando";
             const isAvulso = (ordem.avarias as any)?.is_avulso;
+            const expansivel = podeAbrir(ordem, isAvulso);
+            const aberta = expansivel && osAbertas.has(ordem.id);
 
             return (
               <div
@@ -308,6 +310,26 @@ export const TabelaOrdensServico = ({
                     />
                   </div>
                 </div>
+
+                {expansivel && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => alternarOS(ordem.id)}
+                      aria-expanded={aberta}
+                      className="flex w-full items-center justify-center gap-1.5 border-t border-border/40 px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                      data-expandir-os
+                    >
+                      {aberta ? "Ocultar aparelhos e serviços" : "Ver aparelhos e serviços"}
+                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", aberta && "rotate-180")} />
+                    </button>
+                    {aberta && (
+                      <div className="border-t border-border/40 bg-muted/20" data-linha-aparelhos-servicos>
+                        <AparelhosServicosOS osId={ordem.id} dispositivo1={dispositivo1(ordem)} empilhado />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             );
           })}
