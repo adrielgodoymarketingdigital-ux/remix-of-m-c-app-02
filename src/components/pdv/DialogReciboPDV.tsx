@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 import { FormatoPapel, salvarUltimoFormatoPapel } from "@/components/recibo/SeletorFormatoPapelDialog";
 import {
@@ -26,6 +26,15 @@ import {
   MODELOS_PADRAO_GARANTIA,
 } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
+import { useReciboVendaNovoVisivel } from "@/hooks/useReciboVendaNovoVisivel";
+import { useModeloReciboNovoPDV } from "@/components/vendas/recibo-novo/useModeloReciboNovo";
+import { ReciboVendaNovoSeguro } from "@/components/vendas/recibo-novo/ReciboVendaNovoSeguro";
+import { cssReciboVendaNovo } from "@/components/vendas/recibo-novo/cssReciboVendaNovo";
+import { documentoImpressaoReciboNovo } from "@/components/vendas/recibo-novo/impressaoReciboVendaNovo";
+import type { ReciboVendaModelo } from "@/lib/vendas/reciboVendaModelo";
+
+/** Recibo antigo fora da tela (continua sendo o do 80mm/58mm e do "Copiar texto"). */
+const RECIBO_ANTIGO_FORA_DA_TELA = { position: "absolute", left: -10000, top: 0, width: 720, pointerEvents: "none" } as const;
 
 // Normaliza tempo_garantia (sempre em meses) para exibição legível.
 function formatarGarantia(meses: number): string {
@@ -145,6 +154,13 @@ export function DialogReciboPDV({
   const { config: configLoja } = useConfiguracaoLoja(dados?.empresaId);
   const { toast } = useToast();
 
+  // Recibo novo (A4), só para quem a regra libera; falhou → recibo antigo.
+  const reciboNovoVisivel = useReciboVendaNovoVisivel();
+  const reciboNovoRef = useRef<HTMLDivElement>(null);
+  const reciboNovo = useModeloReciboNovoPDV({ ativo: reciboNovoVisivel && open, dados, vendaId: dados?.grupoVendaId, loja: configLoja });
+  const [modeloQueFalhou, setModeloQueFalhou] = useState<ReciboVendaModelo | null>(null);
+  const usarReciboNovo = !!reciboNovo.modelo && reciboNovo.modelo !== modeloQueFalhou;
+
   const copiarTextoRecibo = async () => {
     if (!reciboRef.current) return;
     
@@ -180,6 +196,14 @@ export function DialogReciboPDV({
   const showAssinaturas = config80mm?.mostrar_assinaturas !== false;
 
   const imprimirRecibo = (formato: FormatoPapel) => {
+    if (formato === "a4" && usarReciboNovo && reciboNovoRef.current) {
+      salvarUltimoFormatoPapel(formato);
+      const janela = window.open("", "_blank");
+      if (!janela) return;
+      janela.document.write(documentoImpressaoReciboNovo(reciboNovoRef.current.innerHTML, "Recibo de Venda - PDV"));
+      janela.document.close();
+      return;
+    }
     if (!reciboRef.current) return;
 
     salvarUltimoFormatoPapel(formato);
@@ -436,6 +460,209 @@ export function DialogReciboPDV({
     });
   };
 
+  const previaAntiga = (
+    <>
+      <style>{cssCabecalhoRecibo("80mm", { escopo: ".recibo-previa-cab" })}</style>
+      <div className="border rounded-lg p-6 bg-background recibo-previa-cab">
+        <div ref={reciboRef}>
+          <div className="recibo-header">
+            {/* Logo à esquerda e dados da loja ao lado (módulo único dos recibos de venda). */}
+            <div
+              dangerouslySetInnerHTML={{
+                __html: montarCabecalhoReciboHtml({
+                  logoSrc: showLogo ? configLoja?.logo_url : null,
+                  nomeLoja: configLoja?.nome_loja,
+                  linhas: showDadosLoja ? linhasDadosLoja(configLoja) : [],
+                }),
+              }}
+            />
+
+            <div className="recibo-titulo-bloco">
+              <h2>RECIBO DE VENDA</h2>
+              {dados.numeroVenda && <p>Nº {dados.numeroVenda}</p>}
+              <p>Data: {dataFormatada}</p>
+            </div>
+          </div>
+
+          {showDadosCliente && dados.cliente && (
+            <div className="recibo-section">
+              <h3 style={{ borderBottom: '1px solid #ccc', paddingBottom: '5px', marginBottom: '10px' }}>Dados do Cliente</h3>
+              <div className="recibo-info" style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
+                <span>Nome:</span>
+                <span>{dados.cliente.nome}</span>
+              </div>
+              {dados.cliente.cpf && (
+                <div className="recibo-info" style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
+                  <span>CPF:</span>
+                  <span>{dados.cliente.cpf}</span>
+                </div>
+              )}
+              {dados.cliente.telefone && (
+                <div className="recibo-info" style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
+                  <span>Telefone:</span>
+                  <span>{dados.cliente.telefone}</span>
+                </div>
+              )}
+              {dados.cliente.endereco && (
+                <div className="recibo-info" style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
+                  <span>Endereço:</span>
+                  <span>{dados.cliente.endereco}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {showItens && (
+            <div className="recibo-section">
+              <h3 style={{ borderBottom: '1px solid #ccc', paddingBottom: '5px', marginBottom: '10px' }}>
+                Itens da Venda ({dados.itens.length} {dados.itens.length === 1 ? 'item' : 'itens'})
+              </h3>
+              
+              {dados.itens.map((item, index) => (
+                <div 
+                  key={item.id} 
+                  className="item-venda"
+                  style={{ padding: '8px 0', borderBottom: index < dados.itens.length - 1 ? '1px dashed #ddd' : 'none' }}
+                >
+                  <div className="item-nome" style={{ fontWeight: 500 }}>
+                    {index + 1}. {item.nome}
+                  </div>
+                  <div
+                    className="item-detalhes"
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      color: '#000',
+                      fontSize: '12px',
+                      marginTop: '4px'
+                    }}
+                  >
+                    <span>
+                      {item.quantidade}x {formatCurrency(item.preco)}
+                    </span>
+                    <span style={{ fontWeight: 500, color: '#000' }}>
+                      {formatCurrency(item.preco * item.quantidade)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="resumo-section" style={{ marginTop: '20px', paddingTop: '15px', borderTop: '2px solid #000' }}>
+            {showSubtotal && (
+              <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
+                <span>Subtotal:</span>
+                <span>{formatCurrency(dados.subtotal)}</span>
+              </div>
+            )}
+
+            {showDescontos && dados.descontoManual > 0 && (
+              <div 
+                className="resumo-linha desconto" 
+                style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0', color: '#e11d48' }}
+              >
+                <span>Desconto:</span>
+                <span>- {formatCurrency(dados.descontoManual)}</span>
+              </div>
+            )}
+
+            {showDescontos && dados.descontoCupom > 0 && dados.cupom && (
+              <div 
+                className="resumo-linha desconto" 
+                style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0', color: '#e11d48' }}
+              >
+                <span>Cupom ({dados.cupom.codigo}):</span>
+                <span>- {formatCurrency(dados.descontoCupom)}</span>
+              </div>
+            )}
+
+            {blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
+
+            {showTotal && (
+              <div 
+                className="resumo-linha total" 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  margin: '15px 0 8px', 
+                  paddingTop: '10px',
+                  borderTop: '1px solid #000',
+                  fontSize: '20px', 
+                  fontWeight: 'bold' 
+                }}
+              >
+                <span>TOTAL:</span>
+                <span>{formatCurrency(dados.total)}</span>
+              </div>
+            )}
+
+            {showFormaPagamento && dados.pagamentoDuplo ? (
+              <>
+                <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
+                  <span>1ª forma:</span>
+                  <span>
+                    {formatCurrency(dados.pagamentoDuplo.valorPrimeira)}{" "}
+                    em {dados.nomeFormaPagamento || labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
+                  </span>
+                </div>
+                <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
+                  <span>2ª forma:</span>
+                  <span>
+                    {formatCurrency(dados.pagamentoDuplo.valorSegunda)}{" "}
+                    em {dados.pagamentoDuplo.nomeSegundaForma || labelFormaPagamento[dados.pagamentoDuplo.segundaForma] || dados.pagamentoDuplo.segundaForma}
+                  </span>
+                </div>
+              </>
+            ) : showFormaPagamento && (
+              <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
+                <span>Forma de Pagamento:</span>
+                <span>
+                  {dados.nomeFormaPagamento || labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
+                  {dados.formaPagamento === "credito_parcelado" && dados.numeroParcelas && (
+                    <span> ({dados.numeroParcelas}x)</span>
+                  )}
+                </span>
+              </div>
+            )}
+
+            {showFormaPagamento && !dados.pagamentoDuplo && dados.formaPagamento === "credito_parcelado" && dados.numeroParcelas && (
+              <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
+                <span>Valor por Parcela:</span>
+                <span>{formatCurrency(dados.total / dados.numeroParcelas)}</span>
+              </div>
+            )}
+          </div>
+
+          {itensDispositivo.map((item) => (
+            <div key={item.id} className="termo-garantia-pdv-section" style={{ marginTop: '20px', pageBreakInside: 'avoid' }}>
+              <h3>
+                Termo de Garantia — {item.nome}
+              </h3>
+              <div className="termo-garantia-pdv-texto">
+                {gerarTextoTermo(item)}
+              </div>
+            </div>
+          ))}
+
+          {showAssinaturas && (
+            <>
+              <div className="assinatura-section" style={{ marginTop: '40px', textAlign: 'center' }}>
+                <p>_________________________________________</p>
+                <p>Assinatura do Vendedor</p>
+              </div>
+
+              <div style={{ marginTop: '40px', textAlign: 'center' }}>
+                <p>_________________________________________</p>
+                <p>Assinatura do Comprador</p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto">
@@ -447,204 +674,21 @@ export function DialogReciboPDV({
         </DialogHeader>
 
         {/* Preview do Recibo */}
-        <style>{cssCabecalhoRecibo("80mm", { escopo: ".recibo-previa-cab" })}</style>
-        <div className="border rounded-lg p-6 bg-background recibo-previa-cab">
-          <div ref={reciboRef}>
-            <div className="recibo-header">
-              {/* Logo à esquerda e dados da loja ao lado (módulo único dos recibos de venda). */}
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: montarCabecalhoReciboHtml({
-                    logoSrc: showLogo ? configLoja?.logo_url : null,
-                    nomeLoja: configLoja?.nome_loja,
-                    linhas: showDadosLoja ? linhasDadosLoja(configLoja) : [],
-                  }),
-                }}
-              />
-
-              <div className="recibo-titulo-bloco">
-                <h2>RECIBO DE VENDA</h2>
-                {dados.numeroVenda && <p>Nº {dados.numeroVenda}</p>}
-                <p>Data: {dataFormatada}</p>
-              </div>
+        {usarReciboNovo && reciboNovo.modelo && (
+          <>
+            <style>{cssReciboVendaNovo()}</style>
+            <div ref={reciboNovoRef}>
+              <ReciboVendaNovoSeguro modelo={reciboNovo.modelo} onFalha={() => setModeloQueFalhou(reciboNovo.modelo)} />
             </div>
-
-            {showDadosCliente && dados.cliente && (
-              <div className="recibo-section">
-                <h3 style={{ borderBottom: '1px solid #ccc', paddingBottom: '5px', marginBottom: '10px' }}>Dados do Cliente</h3>
-                <div className="recibo-info" style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
-                  <span>Nome:</span>
-                  <span>{dados.cliente.nome}</span>
-                </div>
-                {dados.cliente.cpf && (
-                  <div className="recibo-info" style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
-                    <span>CPF:</span>
-                    <span>{dados.cliente.cpf}</span>
-                  </div>
-                )}
-                {dados.cliente.telefone && (
-                  <div className="recibo-info" style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
-                    <span>Telefone:</span>
-                    <span>{dados.cliente.telefone}</span>
-                  </div>
-                )}
-                {dados.cliente.endereco && (
-                  <div className="recibo-info" style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}>
-                    <span>Endereço:</span>
-                    <span>{dados.cliente.endereco}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {showItens && (
-              <div className="recibo-section">
-                <h3 style={{ borderBottom: '1px solid #ccc', paddingBottom: '5px', marginBottom: '10px' }}>
-                  Itens da Venda ({dados.itens.length} {dados.itens.length === 1 ? 'item' : 'itens'})
-                </h3>
-                
-                {dados.itens.map((item, index) => (
-                  <div 
-                    key={item.id} 
-                    className="item-venda"
-                    style={{ padding: '8px 0', borderBottom: index < dados.itens.length - 1 ? '1px dashed #ddd' : 'none' }}
-                  >
-                    <div className="item-nome" style={{ fontWeight: 500 }}>
-                      {index + 1}. {item.nome}
-                    </div>
-                    <div
-                      className="item-detalhes"
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        color: '#000',
-                        fontSize: '12px',
-                        marginTop: '4px'
-                      }}
-                    >
-                      <span>
-                        {item.quantidade}x {formatCurrency(item.preco)}
-                      </span>
-                      <span style={{ fontWeight: 500, color: '#000' }}>
-                        {formatCurrency(item.preco * item.quantidade)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="resumo-section" style={{ marginTop: '20px', paddingTop: '15px', borderTop: '2px solid #000' }}>
-              {showSubtotal && (
-                <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency(dados.subtotal)}</span>
-                </div>
-              )}
-
-              {showDescontos && dados.descontoManual > 0 && (
-                <div 
-                  className="resumo-linha desconto" 
-                  style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0', color: '#e11d48' }}
-                >
-                  <span>Desconto:</span>
-                  <span>- {formatCurrency(dados.descontoManual)}</span>
-                </div>
-              )}
-
-              {showDescontos && dados.descontoCupom > 0 && dados.cupom && (
-                <div 
-                  className="resumo-linha desconto" 
-                  style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0', color: '#e11d48' }}
-                >
-                  <span>Cupom ({dados.cupom.codigo}):</span>
-                  <span>- {formatCurrency(dados.descontoCupom)}</span>
-                </div>
-              )}
-
-              {blocoTroca && <BlocoTrocaRecibo bloco={blocoTroca} />}
-
-              {showTotal && (
-                <div 
-                  className="resumo-linha total" 
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    margin: '15px 0 8px', 
-                    paddingTop: '10px',
-                    borderTop: '1px solid #000',
-                    fontSize: '20px', 
-                    fontWeight: 'bold' 
-                  }}
-                >
-                  <span>TOTAL:</span>
-                  <span>{formatCurrency(dados.total)}</span>
-                </div>
-              )}
-
-              {showFormaPagamento && dados.pagamentoDuplo ? (
-                <>
-                  <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
-                    <span>1ª forma:</span>
-                    <span>
-                      {formatCurrency(dados.pagamentoDuplo.valorPrimeira)}{" "}
-                      em {dados.nomeFormaPagamento || labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
-                    </span>
-                  </div>
-                  <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
-                    <span>2ª forma:</span>
-                    <span>
-                      {formatCurrency(dados.pagamentoDuplo.valorSegunda)}{" "}
-                      em {dados.pagamentoDuplo.nomeSegundaForma || labelFormaPagamento[dados.pagamentoDuplo.segundaForma] || dados.pagamentoDuplo.segundaForma}
-                    </span>
-                  </div>
-                </>
-              ) : showFormaPagamento && (
-                <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
-                  <span>Forma de Pagamento:</span>
-                  <span>
-                    {dados.nomeFormaPagamento || labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento}
-                    {dados.formaPagamento === "credito_parcelado" && dados.numeroParcelas && (
-                      <span> ({dados.numeroParcelas}x)</span>
-                    )}
-                  </span>
-                </div>
-              )}
-
-              {showFormaPagamento && !dados.pagamentoDuplo && dados.formaPagamento === "credito_parcelado" && dados.numeroParcelas && (
-                <div className="resumo-linha" style={{ display: 'flex', justifyContent: 'space-between', margin: '8px 0' }}>
-                  <span>Valor por Parcela:</span>
-                  <span>{formatCurrency(dados.total / dados.numeroParcelas)}</span>
-                </div>
-              )}
-            </div>
-
-            {itensDispositivo.map((item) => (
-              <div key={item.id} className="termo-garantia-pdv-section" style={{ marginTop: '20px', pageBreakInside: 'avoid' }}>
-                <h3>
-                  Termo de Garantia — {item.nome}
-                </h3>
-                <div className="termo-garantia-pdv-texto">
-                  {gerarTextoTermo(item)}
-                </div>
-              </div>
-            ))}
-
-            {showAssinaturas && (
-              <>
-                <div className="assinatura-section" style={{ marginTop: '40px', textAlign: 'center' }}>
-                  <p>_________________________________________</p>
-                  <p>Assinatura do Vendedor</p>
-                </div>
-
-                <div style={{ marginTop: '40px', textAlign: 'center' }}>
-                  <p>_________________________________________</p>
-                  <p>Assinatura do Comprador</p>
-                </div>
-              </>
-            )}
+          </>
+        )}
+        {usarReciboNovo ? (
+          <div style={RECIBO_ANTIGO_FORA_DA_TELA} aria-hidden="true">
+            {previaAntiga}
           </div>
-        </div>
+        ) : (
+          previaAntiga
+        )}
 
         {/* Botões */}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
@@ -664,7 +708,7 @@ export function DialogReciboPDV({
             <Copy className="h-4 w-4 mr-2" />
             Copiar Texto
           </Button>
-          <Button variant="outline" onClick={() => imprimirRecibo('a4')} className="w-full sm:w-auto gap-1.5">
+          <Button variant="outline" onClick={() => imprimirRecibo('a4')} disabled={reciboNovoVisivel && reciboNovo.carregando} className="w-full sm:w-auto gap-1.5">
             <Printer className="h-4 w-4" />
             A4
           </Button>
