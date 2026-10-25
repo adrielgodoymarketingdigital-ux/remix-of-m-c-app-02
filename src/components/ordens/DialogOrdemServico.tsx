@@ -37,6 +37,7 @@ import { useDispositivosAdicionaisOSVisivel } from "@/hooks/useDispositivosAdici
 import { chaveDispositivosAdicionaisOS } from "@/hooks/useOsDispositivosAdicionais";
 import type { EntradaGravacaoAdicionais } from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
 import {
+  alterarAparelhoNoEstado,
   entradaGravacaoParaSalvar,
   estadoAposGravacao,
   removerAparelhoDoEstado,
@@ -52,6 +53,7 @@ import {
   salvarOrdemServico,
 } from "./ordem-servico-wizard/handleSubmitOrdemServico";
 import { SecaoDispositivosAdicionais } from "./ordem-servico-wizard/SecaoDispositivosAdicionais";
+import type { AparelhosNasEtapas } from "./ordem-servico-wizard/BlocoDispositivoEtapa";
 import { OrdemServicoWizardProgresso } from "./ordem-servico-wizard/OrdemServicoWizardProgresso";
 import { EtapaCardWrapper } from "./ordem-servico-wizard/EtapaCardWrapper";
 import { EtapaOrigemCliente } from "./ordem-servico-wizard/EtapaOrigemCliente";
@@ -198,6 +200,17 @@ export const DialogOrdemServico = ({
       onTentarCarregarDeNovo={recarregarAdicionais}
     />
   ) : null;
+
+  // Blocos por aparelho das etapas 4 e 5: mesmo estadoAdicionais do diálogo do
+  // aparelho. undefined para quem não vê os adicionais (etapas como sempre foram).
+  const aparelhosNasEtapas: AparelhosNasEtapas | undefined = adicionaisVisiveis
+    ? {
+        estado: estadoAdicionais,
+        bloqueada: !!falhaAdicionais,
+        onAlterar: (id, parcial) => setEstadoAdicionais((e) => alterarAparelhoNoEstado(e, id, parcial)),
+        onTentarCarregarDeNovo: recarregarAdicionais,
+      }
+    : undefined;
 
   // Banner de confirmação de custo (Comissão sobre Lucro): deve aparecer se
   // QUALQUER técnico envolvido na OS calcula comissão sobre lucro — o técnico
@@ -466,6 +479,7 @@ export const DialogOrdemServico = ({
                   novoTipoServicoNome={novoTipoServicoNome}
                   setNovoTipoServicoNome={setNovoTipoServicoNome}
                   criarTipoServico={criarTipoServico}
+                  dispositivosAdicionais={aparelhosNasEtapas}
                 />
               </EtapaCardWrapper>
 
@@ -556,6 +570,7 @@ export const DialogOrdemServico = ({
               novoTipoServicoNome={novoTipoServicoNome}
               setNovoTipoServicoNome={setNovoTipoServicoNome}
               criarTipoServico={criarTipoServico}
+              dispositivosAdicionais={aparelhosNasEtapas}
             />
           )}
 

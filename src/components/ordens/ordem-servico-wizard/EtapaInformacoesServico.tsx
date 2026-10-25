@@ -15,7 +15,14 @@ import { TipoServico } from "@/hooks/useTiposServico";
 import { LocalizacaoOS } from "@/hooks/useLocalizacoesOS";
 import { EtapaCabecalho } from "./EtapaCabecalho";
 import { CampoLabel } from "./CampoLabel";
+import { AparelhosNasEtapas, AvisoAparelhosNasEtapas, BlocoDispositivoEtapa } from "./BlocoDispositivoEtapa";
 import { FormData } from "./tipos";
+import {
+  exibicaoAparelhosNasEtapas,
+  prefixoIdAparelho,
+  tituloBlocoDispositivo,
+} from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
+import { numeroAdicional } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 interface EtapaInformacoesServicoProps {
   formData: FormData;
@@ -35,6 +42,8 @@ interface EtapaInformacoesServicoProps {
   novoTipoServicoNome: string;
   setNovoTipoServicoNome: (v: string) => void;
   criarTipoServico: (nome: string) => Promise<TipoServico | null>;
+  /** Só para quem vê os adicionais; undefined = etapa como sempre foi. */
+  dispositivosAdicionais?: AparelhosNasEtapas;
 }
 
 export function EtapaInformacoesServico({
@@ -55,7 +64,54 @@ export function EtapaInformacoesServico({
   novoTipoServicoNome,
   setNovoTipoServicoNome,
   criarTipoServico,
+  dispositivosAdicionais,
 }: EtapaInformacoesServicoProps) {
+  const exibicaoAdicionais = exibicaoAparelhosNasEtapas(dispositivosAdicionais?.estado);
+
+  const camposDispositivo1 = (
+    <>
+      <div>
+        <CampoLabel htmlFor="defeitoRelatado" texto="Defeito Relatado" obrigatorio />
+        <Textarea
+          id="defeitoRelatado"
+          value={formData.defeitoRelatado}
+          onChange={(e) =>
+            setFormData({ ...formData, defeitoRelatado: e.target.value })
+          }
+          rows={3}
+          className={cn("rounded-xl", campoComErro === "defeitoRelatado" && "border-destructive")}
+        />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <CampoLabel htmlFor="observacoesInternas" texto="Observações Internas" />
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-muted-foreground">
+              {formData.mostrarObsInternasImpressao ? "Aparece na impressão" : "Não aparece na impressão"}
+            </span>
+            <Switch
+              checked={formData.mostrarObsInternasImpressao}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, mostrarObsInternasImpressao: checked })
+              }
+            />
+          </div>
+        </div>
+        <Textarea
+          id="observacoesInternas"
+          value={formData.observacoesInternas}
+          onChange={(e) =>
+            setFormData({ ...formData, observacoesInternas: e.target.value })
+          }
+          rows={2}
+          placeholder="Anotações internas sobre o aparelho"
+          className="rounded-xl"
+        />
+      </div>
+    </>
+  );
+
   return (
     <div>
       <EtapaCabecalho
@@ -65,45 +121,59 @@ export function EtapaInformacoesServico({
       />
 
       <div className="space-y-5">
-        <div>
-          <CampoLabel htmlFor="defeitoRelatado" texto="Defeito Relatado" obrigatorio />
-          <Textarea
-            id="defeitoRelatado"
-            value={formData.defeitoRelatado}
-            onChange={(e) =>
-              setFormData({ ...formData, defeitoRelatado: e.target.value })
-            }
-            rows={3}
-            className={cn("rounded-xl", campoComErro === "defeitoRelatado" && "border-destructive")}
-          />
-        </div>
+        {exibicaoAdicionais === "blocos" && dispositivosAdicionais ? (
+          <>
+            <BlocoDispositivoEtapa
+              titulo={tituloBlocoDispositivo(1, {
+                dispositivo_tipo: formData.dispositivoTipo,
+                dispositivo_marca: formData.dispositivoMarca,
+                dispositivo_modelo: formData.dispositivoModelo,
+              })}
+            >
+              {camposDispositivo1}
+            </BlocoDispositivoEtapa>
+            {dispositivosAdicionais.estado.dispositivos.map((d, i) => {
+              const prefixo = prefixoIdAparelho(d.id);
+              return (
+                <BlocoDispositivoEtapa
+                  key={d.id}
+                  titulo={tituloBlocoDispositivo(numeroAdicional(i), d)}
+                  bloqueado={dispositivosAdicionais.bloqueada}
+                >
+                  <div>
+                    <CampoLabel htmlFor={`${prefixo}defeito`} texto="Defeito Relatado" subtexto="Opcional." />
+                    <Textarea
+                      id={`${prefixo}defeito`}
+                      value={d.defeito_relatado}
+                      onChange={(e) => dispositivosAdicionais.onAlterar(d.id, { defeito_relatado: e.target.value })}
+                      rows={3}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <CampoLabel htmlFor={`${prefixo}observacoes`} texto="Observações — aparece na impressão" />
+                    <Textarea
+                      id={`${prefixo}observacoes`}
+                      value={d.observacoes}
+                      onChange={(e) => dispositivosAdicionais.onAlterar(d.id, { observacoes: e.target.value })}
+                      rows={2}
+                      className="rounded-xl"
+                    />
+                  </div>
+                </BlocoDispositivoEtapa>
+              );
+            })}
+          </>
+        ) : (
+          camposDispositivo1
+        )}
 
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <CampoLabel htmlFor="observacoesInternas" texto="Observações Internas" />
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs text-muted-foreground">
-                {formData.mostrarObsInternasImpressao ? "Aparece na impressão" : "Não aparece na impressão"}
-              </span>
-              <Switch
-                checked={formData.mostrarObsInternasImpressao}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, mostrarObsInternasImpressao: checked })
-                }
-              />
-            </div>
-          </div>
-          <Textarea
-            id="observacoesInternas"
-            value={formData.observacoesInternas}
-            onChange={(e) =>
-              setFormData({ ...formData, observacoesInternas: e.target.value })
-            }
-            rows={2}
-            placeholder="Anotações internas sobre o aparelho"
-            className="rounded-xl"
+        {dispositivosAdicionais && (
+          <AvisoAparelhosNasEtapas
+            exibicao={exibicaoAdicionais}
+            onTentarCarregarDeNovo={dispositivosAdicionais.onTentarCarregarDeNovo}
           />
-        </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
           {localizacoes.length > 0 && (
