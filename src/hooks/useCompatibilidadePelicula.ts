@@ -47,10 +47,14 @@ async function carregarGruposComModelos(tipo: TipoCompatibilidade): Promise<Grup
   }));
 }
 
-/** Verifica se o usuário logado é admin do MecApp (user_roles.role = 'admin'), mesmo mecanismo das telas /admin/*. */
-export function useIsAdminMecApp() {
+/**
+ * Verifica se o usuário logado é admin do MecApp (user_roles.role = 'admin'), mesmo mecanismo das telas /admin/*.
+ * enabled: false = não consulta (usa só o que já estiver no cache).
+ */
+export function useIsAdminMecApp(opcoes: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["is-admin-mecapp"],
+    enabled: opcoes.enabled ?? true,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
