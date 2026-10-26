@@ -27,7 +27,7 @@ interface EtapaServicosProdutosProps {
   /** Técnico responsável da OS tem "Comissão sobre Lucro" configurada */
   comissaoLucroAtiva?: boolean;
   /**
-   * Aparelhos adicionais da OS — só para quem os vê (admin). Com algum, cada
+   * Aparelhos adicionais da OS — só para quem os vê (useDispositivosAdicionaisOSVisivel). Com algum, cada
    * linha de serviço ganha o seletor "Aparelho". Ausente/vazio: etapa de sempre.
    */
   dispositivosAdicionais?: DispositivoAdicionalForm[];

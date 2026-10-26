@@ -33,8 +33,10 @@ import {
   planejarGravacaoAdicionais,
 } from "../../src/lib/ordemServico/gravacaoDispositivosAdicionaisOS.ts";
 import { lerDispositivosAdicionais } from "../../src/lib/ordemServico/dispositivosAdicionaisOS.ts";
-import { dispositivosAdicionaisOSVisivelPara } from "../../src/lib/ordemServico/visibilidadeDispositivosAdicionais.ts";
-import { quantidadeServicoOSVisivelPara } from "../../src/lib/ordemServico/visibilidadeQuantidadeServico.ts";
+import {
+  dispositivosAdicionaisOSVisivelPara,
+  OS_MULTI_DISPOSITIVO_PARA_TODOS,
+} from "../../src/lib/ordemServico/visibilidadeDispositivosAdicionais.ts";
 import { opcoesCatalogoDispositivo } from "../../src/lib/ordemServico/opcoesCatalogoDispositivo.ts";
 import { OPCAO_OUTRA } from "../../src/data/catalogoDispositivos.ts";
 
@@ -50,12 +52,10 @@ const linha = (nome: string, linha_os?: Record<string, unknown>) => ({ id: `s-${
 
 // ---------------------------------------------------------------- visibilidade
 
-Deno.test("visibilidade: só admin (mesmo padrão da quantidade)", () => {
+Deno.test("visibilidade: liberada a todos pela constante (admin continua vendo)", () => {
+  assertEquals(OS_MULTI_DISPOSITIVO_PARA_TODOS, true);
   assertEquals(dispositivosAdicionaisOSVisivelPara({ isAdmin: true }), true);
-  assertEquals(dispositivosAdicionaisOSVisivelPara({ isAdmin: false }), false);
-  for (const isAdmin of [true, false]) {
-    assertEquals(dispositivosAdicionaisOSVisivelPara({ isAdmin }), quantidadeServicoOSVisivelPara({ isAdmin }));
-  }
+  assertEquals(dispositivosAdicionaisOSVisivelPara({ isAdmin: false }), true);
 });
 
 // ---------------------------------------------------------------- carga / trava

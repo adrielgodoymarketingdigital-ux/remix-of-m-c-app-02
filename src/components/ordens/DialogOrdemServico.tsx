@@ -102,7 +102,7 @@ export const DialogOrdemServico = ({
   const { localizacoes } = useLocalizacoesOS();
   const modoUnico = useIsPwaMobile();
   const queryClient = useQueryClient();
-  // Dispositivos adicionais: tudo abaixo só age para quem os vê (hoje, admin do MecApp).
+  // Dispositivos adicionais: tudo abaixo só age para quem os vê (regra em visibilidadeDispositivosAdicionais; hoje, todos).
   const adicionaisVisiveis = useDispositivosAdicionaisOSVisivel();
   // OS salva, mas os adicionais não (resultado "falhou" da gravação): o
   // assistente fica aberto até "Gravar aparelhos de novo" ou fechar confirmando.
