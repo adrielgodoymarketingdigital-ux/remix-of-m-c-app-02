@@ -48,6 +48,20 @@ const TELAS = {
   "390ios": { ...devices["iPhone 13"], viewport: { width: 390, height: 844 } },
 };
 const USUARIO = { id: "00000000-0000-4000-8000-0000000000aa", email: "loja.teste@exemplo.test" };
+// PERFIL=funcionario: a sessão é de um funcionário ativo; a configuração da loja é do dono.
+const PERFIL = process.env.PERFIL ?? "dono";
+const DONO_ID = "00000000-0000-4000-8000-0000000000bb";
+// FALHA=kit (o chunk do recibo novo não carrega) | FALHA=banco (a leitura da venda do recibo novo dá erro 500).
+const FALHA = process.env.FALHA ?? "";
+
+function tabelasDoPerfil(base) {
+  if (PERFIL !== "funcionario") return base;
+  return {
+    ...base,
+    configuracoes_loja: base.configuracoes_loja.map((c) => ({ ...c, user_id: DONO_ID })),
+    loja_funcionarios: [...base.loja_funcionarios, { id: "func-self", nome: "Funcionário Teste", funcionario_user_id: USUARIO.id, loja_user_id: DONO_ID, ativo: true }],
+  };
+}
 
 const b64url = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const exp = Math.floor(Date.now() / 1000) + 3600 * 24;
@@ -74,6 +88,9 @@ async function prepararContexto(navegador, tela, tabelas, registro) {
   await ctx.addInitScript(({ sessao }) => {
     localStorage.setItem("sb-qztuzcchknptrvkdmdph-auth-token", JSON.stringify(sessao));
     window.__impressoes = [];
+    window.__copias = [];
+    // "Copiar Texto": guarda o que iria para a área de transferência.
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: async (t) => { window.__copias.push(t); } }, configurable: true });
     // Janela de impressão (PDV, Vendas, Dispositivos no computador): guarda o HTML escrito.
     window.open = () => {
       const doc = { write: (h) => window.__impressoes.push(`JANELA:${h}`), close: () => {} };
@@ -94,6 +111,7 @@ async function prepararContexto(navegador, tela, tabelas, registro) {
   await ctx.route("**/*", async (rota) => {
     const req = rota.request();
     const url = new URL(req.url());
+    if (FALHA === "kit" && url.pathname.includes("kitReciboNovo")) return rota.abort();
     if (["127.0.0.1", "localhost"].includes(url.hostname) || url.protocol === "data:") return rota.continue();
     if (url.hostname.endsWith(".supabase.co")) {
       if (url.pathname.startsWith("/auth/v1/user")) return rota.fulfill({ status: 200, json: SESSAO.user });
@@ -101,6 +119,10 @@ async function prepararContexto(navegador, tela, tabelas, registro) {
       const m = url.pathname.match(/\/rest\/v1\/([a-z_]+)/);
       if (m && req.method() === "GET") {
         registro.push(m[1]);
+        // Leitura da venda pelo recibo novo (carregarReciboVenda é a única que pede valor_troca + funcionario_id).
+        if (FALHA === "banco" && m[1] === "vendas" && (url.searchParams.get("select") ?? "").includes("funcionario_id")) {
+          return rota.fulfill({ status: 500, json: { message: "erro simulado" } });
+        }
         const linhas = m[1] in tabelas ? filtrar(tabelas[m[1]], url.searchParams) : (falhar(`tabela sem mock: ${m[1]}`), []);
         if ((req.headers()["accept"] ?? "").includes("vnd.pgrst.object")) {
           return linhas.length === 1 ? rota.fulfill({ status: 200, json: linhas[0] }) : rota.fulfill({ status: 406, json: { code: "PGRST116", message: "0 ou várias linhas" } });
@@ -168,7 +190,7 @@ for (const tela of so("SO_TELA", ["1280", "390", "390ios"])) {
 
 async function rodarCaso(tela, lugar, cenario, falhasCaso) {
   const falharCaso = (m) => falhasCaso.push(m);
-  const tabelas = { ...TABELAS[cenario], user_roles: ADMIN ? [{ user_id: USUARIO.id, role: "admin" }] : [] };
+  const tabelas = { ...tabelasDoPerfil(TABELAS[cenario]), user_roles: ADMIN ? [{ user_id: USUARIO.id, role: "admin" }] : [] };
   const registro = [];
   const ctx = await prepararContexto(navegador, tela, tabelas, registro);
   try {
@@ -194,8 +216,17 @@ async function rodarCaso(tela, lugar, cenario, falhasCaso) {
       impressoes[formato] = await pg.evaluate(() => window.__impressoes.slice());
       if (!impressoes[formato].length) falharCaso(`[${caso}] ${formato}: nada foi para a impressão`);
     }
+    // "Copiar Texto" (PDV e Vendas): o texto copiado também tem de ser o de sempre.
+    let copia = null;
+    const botaoCopiar = pg.getByRole("button", { name: "Copiar Texto" });
+    if (await botaoCopiar.count()) {
+      await pg.evaluate(() => { window.__copias = []; });
+      await botaoCopiar.click();
+      await pg.waitForFunction(() => window.__copias.length > 0, null, { timeout: 10000 }).catch(() => falharCaso(`[${caso}] Copiar Texto não copiou nada`));
+      copia = await pg.evaluate(() => window.__copias[0] ?? null);
+    }
     if (falhasCaso.length) return;
-    resultado[caso] = { dialogo, impressoes, // user_roles fica de fora: no app o cache de admin já vem do menu (aqui não há menu).
+    resultado[caso] = { dialogo, impressoes, copia, // user_roles fica de fora: no app o cache de admin já vem do menu (aqui não há menu).
       consultas: [...new Set(registro)].filter((t) => t !== "user_roles").sort() };
     const a4 = impressoes.A4[0] ?? "";
     const novo = a4.includes('class="rvn"');
