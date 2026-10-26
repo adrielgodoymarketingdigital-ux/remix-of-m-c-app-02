@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { resolvePaperSize, getThermalPrintCSS } from "@/lib/paper-size-utils";
 import { FormatoPapel, salvarUltimoFormatoPapel } from "@/components/recibo/SeletorFormatoPapelDialog";
+import { abrirDestinoImpressaoRecibo, caminhoImpressaoRecibo } from "@/lib/impressao/destinoImpressaoRecibo";
 import {
   Dialog,
   DialogContent,
@@ -193,9 +194,12 @@ export function DialogReciboPDV({
   const showAssinaturas = config80mm?.mostrar_assinaturas !== false;
 
   const imprimirRecibo = (formato: FormatoPapel) => {
+    // Janela de sempre; só o iOS com app instalado abre a camada do app.
+    const caminho = caminhoImpressaoRecibo("pdv") === "camada-ios" ? "camada-ios" : "janela";
+    const destino = { titulo: "Recibo de Venda - PDV", formato };
     if (formato === "a4" && usarReciboNovo && reciboNovo.kit && reciboNovoRef.current) {
       salvarUltimoFormatoPapel(formato);
-      const janela = window.open("", "_blank");
+      const janela = abrirDestinoImpressaoRecibo(caminho, destino);
       if (!janela) return;
       janela.document.write(reciboNovo.kit.documentoImpressaoReciboNovo(reciboNovoRef.current.innerHTML, "Recibo de Venda - PDV"));
       janela.document.close();
@@ -206,7 +210,7 @@ export function DialogReciboPDV({
     salvarUltimoFormatoPapel(formato);
 
     const conteudo = reciboRef.current.innerHTML;
-    const janelaImpressao = window.open("", "_blank");
+    const janelaImpressao = abrirDestinoImpressaoRecibo(caminho, destino);
 
     if (janelaImpressao) {
       const isThermal = formato !== 'a4';

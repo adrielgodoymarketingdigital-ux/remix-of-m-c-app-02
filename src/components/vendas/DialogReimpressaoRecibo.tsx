@@ -25,6 +25,7 @@ import {
   FormatoPapel,
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
+import { abrirDestinoImpressaoRecibo, caminhoImpressaoRecibo } from "@/lib/impressao/destinoImpressaoRecibo";
 import { cssCabecalhoRecibo, linhasDadosLoja, montarCabecalhoReciboHtml } from "@/lib/recibo/cabecalhoRecibo";
 import { useReciboVendaNovoVisivel } from "@/hooks/useReciboVendaNovoVisivel";
 import { useModeloReciboNovoReaberto } from "@/components/vendas/recibo-novo/useModeloReciboNovo";
@@ -236,9 +237,12 @@ export function DialogReimpressaoRecibo({
   const showValor = vendasConfig?.mostrar_valor !== false;
 
   const imprimirRecibo = (formato: FormatoPapel) => {
+    // Janela de sempre; só o iOS com app instalado abre a camada do app.
+    const caminho = caminhoImpressaoRecibo("vendas") === "camada-ios" ? "camada-ios" : "janela";
+    const destino = { titulo: `Recibo de Venda${venda?.numero_venda ? ` - ${venda.numero_venda}` : ""}`, formato };
     if (formato === "a4" && usarReciboNovo && reciboNovo.kit && reciboNovoRef.current) {
       salvarUltimoFormatoPapel(formato);
-      const janela = window.open("", "_blank");
+      const janela = abrirDestinoImpressaoRecibo(caminho, destino);
       if (!janela) return;
       janela.document.write(reciboNovo.kit.documentoImpressaoReciboNovo(reciboNovoRef.current.innerHTML, `Recibo de Venda${venda?.numero_venda ? ` - ${venda.numero_venda}` : ""}`));
       janela.document.close();
@@ -249,7 +253,7 @@ export function DialogReimpressaoRecibo({
     salvarUltimoFormatoPapel(formato);
 
     const conteudo = reciboRef.current.innerHTML;
-    const janelaImpressao = window.open("", "_blank");
+    const janelaImpressao = abrirDestinoImpressaoRecibo(caminho, destino);
 
     if (janelaImpressao) {
       const isThermalImpressao = formato !== 'a4';
