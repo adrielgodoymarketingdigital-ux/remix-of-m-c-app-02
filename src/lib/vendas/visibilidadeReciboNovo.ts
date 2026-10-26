@@ -4,13 +4,17 @@
  * useReciboVendaNovoVisivel só chama isto. Quem não vê fica com os recibos de
  * sempre, sem nenhuma diferença (nem consulta a mais).
  *
- * Hoje: só admin do MecApp (liberação admin-first). Para liberar a todos,
- * devolva true. Para esconder de todo mundo, devolva false.
+ * Hoje: LIBERADO A TODOS (lojistas, funcionários, qualquer plano). Para voltar
+ * a só admin do MecApp, mude RECIBO_VENDA_NOVO_PARA_TODOS para false (o hook
+ * volta a consultar admin sozinho). Para esconder de todo mundo, devolva false.
  */
 export interface ContextoReciboVendaNovo {
   isAdmin: boolean;
 }
 
+/** true = recibo novo para todos (a regra não olha admin e o hook nem consulta admin). */
+export const RECIBO_VENDA_NOVO_PARA_TODOS = true;
+
 export function reciboVendaNovoVisivelPara(ctx: ContextoReciboVendaNovo): boolean {
-  return ctx.isAdmin;
+  return RECIBO_VENDA_NOVO_PARA_TODOS || ctx.isAdmin;
 }
