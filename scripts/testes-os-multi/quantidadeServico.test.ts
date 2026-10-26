@@ -13,7 +13,10 @@ import {
 } from "../../src/lib/ordemServico/linhaServicoOS.ts";
 import { valorLinhaServico, lucroLinhaServico, custoLinhaServico } from "../../src/lib/ordemServico/totaisPecasOS.ts";
 import { calcularComissaoDoItem } from "../../src/lib/ordemServico/comissaoPorTipoServico.ts";
-import { quantidadeServicoOSVisivelPara } from "../../src/lib/ordemServico/visibilidadeQuantidadeServico.ts";
+import {
+  QUANTIDADE_SERVICO_OS_PARA_TODOS,
+  quantidadeServicoOSVisivelPara,
+} from "../../src/lib/ordemServico/visibilidadeQuantidadeServico.ts";
 
 let seq = 0;
 const novoId = () => `linha-${++seq}`;
@@ -126,7 +129,8 @@ Deno.test("comissão %: sobre o total da linha, igual a 3 linhas de 1", () => {
 });
 
 // ---- Visibilidade ------------------------------------------------------
-Deno.test("visibilidade: só admin", () => {
+Deno.test("visibilidade: liberada a todos pela constante (admin continua vendo)", () => {
+  assertEquals(QUANTIDADE_SERVICO_OS_PARA_TODOS, true);
   assertEquals(quantidadeServicoOSVisivelPara({ isAdmin: true }), true);
-  assertEquals(quantidadeServicoOSVisivelPara({ isAdmin: false }), false);
+  assertEquals(quantidadeServicoOSVisivelPara({ isAdmin: false }), true);
 });

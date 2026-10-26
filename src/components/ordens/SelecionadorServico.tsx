@@ -46,7 +46,7 @@ interface SelecionadorServicoProps {
   comissaoLucroAtiva?: boolean;
   /**
    * true: permite adicionar o mesmo serviço mais de uma vez e mostra a
-   * quantidade de cada linha (hoje só admin, ver useQuantidadeServicoOSVisivel).
+   * quantidade de cada linha (ver useQuantidadeServicoOSVisivel).
    * Ausente/false: seletor como sempre foi.
    */
   permitirQuantidade?: boolean;
