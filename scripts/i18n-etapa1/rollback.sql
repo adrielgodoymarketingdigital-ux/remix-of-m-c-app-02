@@ -4,9 +4,11 @@
 -- Ordem importa: handle_new_user volta ao corpo de 20260525000002 ANTES de
 -- apagar as colunas (senão o próximo cadastro falharia ao gravar mercado).
 --
--- Guarda: se já existir conta/loja fora do padrão BR, a reversão aborta,
--- porque apagaria rótulos verdadeiros. Nesse caso, fale com o Adriel antes.
+-- Guarda: se já existir conta fora do padrão BR (mercado, idioma, pais,
+-- moeda ou fuso), a reversão aborta, porque apagaria valores verdadeiros.
+-- Nesse caso, fale com o Adriel antes.
 -- Só serve enquanto o app ainda não lê essas colunas (etapas seguintes).
+-- configuracoes_loja não foi tocada pela etapa 1 e não é tocada aqui.
 -- Idempotente, numa transação só.
 -- =====================================================================
 
@@ -14,25 +16,20 @@ BEGIN;
 
 SET LOCAL lock_timeout = '5s';
 
--- 0) Guarda
+-- 0) Guarda (consulta dinâmica: numa reexecução as colunas já não existem)
 DO $$
 DECLARE
-  v_qtd bigint := 0;
-  v_tmp bigint;
+  v_qtd bigint;
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-              WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'mercado') THEN
-    EXECUTE $q$SELECT count(*) FROM public.profiles WHERE mercado <> 'BR' OR idioma <> 'pt-BR'$q$ INTO v_tmp;
-    v_qtd := v_qtd + v_tmp;
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-              WHERE table_schema = 'public' AND table_name = 'configuracoes_loja' AND column_name = 'moeda') THEN
-    EXECUTE $q$SELECT count(*) FROM public.configuracoes_loja
-               WHERE moeda <> 'BRL' OR pais <> 'BR' OR fuso_horario <> 'America/Sao_Paulo'$q$ INTO v_tmp;
-    v_qtd := v_qtd + v_tmp;
-  END IF;
-  IF v_qtd > 0 THEN
-    RAISE EXCEPTION 'I18N-RB001: % linha(s) fora do padrão BR; a reversão apagaria esses rótulos. Nada foi alterado.', v_qtd;
+  IF (SELECT count(*) FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'profiles'
+         AND column_name IN ('mercado', 'idioma', 'pais', 'moeda', 'fuso_horario')) = 5 THEN
+    EXECUTE $q$SELECT count(*) FROM public.profiles
+               WHERE mercado <> 'BR' OR idioma <> 'pt-BR' OR pais <> 'BR'
+                  OR moeda <> 'BRL' OR fuso_horario <> 'America/Sao_Paulo'$q$ INTO v_qtd;
+    IF v_qtd > 0 THEN
+      RAISE EXCEPTION 'I18N-RB001: % conta(s) fora do padrão BR; a reversão apagaria esses valores. Nada foi alterado.', v_qtd;
+    END IF;
   END IF;
 END;
 $$;
@@ -86,11 +83,9 @@ ALTER TABLE public.profiles
   DROP CONSTRAINT IF EXISTS profiles_mercado_check,
   DROP CONSTRAINT IF EXISTS profiles_idioma_check,
   DROP COLUMN IF EXISTS mercado,
-  DROP COLUMN IF EXISTS idioma;
-
-ALTER TABLE public.configuracoes_loja
-  DROP COLUMN IF EXISTS moeda,
+  DROP COLUMN IF EXISTS idioma,
   DROP COLUMN IF EXISTS pais,
+  DROP COLUMN IF EXISTS moeda,
   DROP COLUMN IF EXISTS fuso_horario;
 
 -- 4) Conferência
@@ -99,10 +94,9 @@ DECLARE
   v_src text;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns
-              WHERE table_schema = 'public'
-                AND ((table_name = 'profiles' AND column_name IN ('mercado', 'idioma'))
-                  OR (table_name = 'configuracoes_loja' AND column_name IN ('moeda', 'pais', 'fuso_horario')))) THEN
-    RAISE EXCEPTION 'I18N-RB002: ainda há coluna da etapa 1';
+              WHERE table_schema = 'public' AND table_name = 'profiles'
+                AND column_name IN ('mercado', 'idioma', 'pais', 'moeda', 'fuso_horario')) THEN
+    RAISE EXCEPTION 'I18N-RB002: ainda há coluna da etapa 1 em profiles';
   END IF;
   IF to_regprocedure('public.get_mercado_loja()') IS NOT NULL
      OR to_regprocedure('public.profiles_travar_mercado()') IS NOT NULL THEN
