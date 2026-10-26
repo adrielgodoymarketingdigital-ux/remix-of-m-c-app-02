@@ -13,7 +13,7 @@ export interface ContextoReciboVendaNovo {
 }
 
 /** true = recibo novo para todos (a regra não olha admin e o hook nem consulta admin). */
-export const RECIBO_VENDA_NOVO_PARA_TODOS = true;
+export const RECIBO_VENDA_NOVO_PARA_TODOS = false;
 
 export function reciboVendaNovoVisivelPara(ctx: ContextoReciboVendaNovo): boolean {
   return RECIBO_VENDA_NOVO_PARA_TODOS || ctx.isAdmin;
