@@ -1,22 +1,26 @@
 -- =====================================================================
--- Internacionalização — ETAPA 1 (somente banco): mercado e idioma
+-- Internacionalização — ETAPA 1 (somente banco): mercado, idioma e
+-- configuração regional da conta
 --
--- Mercado é só um rótulo da loja (BR / ES_LATAM / EN / IT). O isolamento
--- continua por user_id: NENHUMA policy de RLS muda aqui.
+-- Mercado é só um rótulo da conta (BR / ES_LATAM / EN / IT). O isolamento
+-- continua por user_id: NENHUMA policy de RLS muda aqui, e configuracoes_loja
+-- não é tocada (só ~38% dos donos têm linha nela; profiles existe para todos).
 --
---   1) profiles.mercado ('BR') e profiles.idioma ('pt-BR'), com CHECK.
---      Os usuários atuais ficam todos BR / pt-BR pelo DEFAULT.
---   2) configuracoes_loja.moeda ('BRL'), .pais ('BR'), .fuso_horario
---      ('America/Sao_Paulo'). Só ~38% dos donos têm linha nessa tabela: quem
---      não tem continua sem, e o app deve tratar "sem linha" como esses padrões.
---   3) handle_new_user(): igual à de 20260525000002 (confere com a produção
+--   1) profiles: mercado ('BR'), idioma ('pt-BR'), pais ('BR'), moeda ('BRL'),
+--      fuso_horario ('America/Sao_Paulo'), todas NOT NULL. Os usuários atuais
+--      ficam todos BR pelo DEFAULT. CHECK só em mercado e idioma.
+--   2) handle_new_user(): igual à de 20260525000002 (confere com a produção
 --      em 2026-10-26) + grava mercado e idioma do signUp (options.data).
 --      Valor ausente ou fora da lista cai no padrão; o cadastro nunca falha.
---   4) Trava: quem vem do app (anon/authenticated) não muda o próprio mercado.
---      UPDATE mantém o valor antigo; INSERT direto pelo app (só possível
---      apagando o próprio perfil antes) nasce BR. Admin, service_role, SQL
+--      pais, moeda e fuso nascem pelo DEFAULT para qualquer mercado; o valor
+--      certo de quem não é BR vem depois, por admin/service_role
+--      (ex.: provisionar-conta). Nada é deduzido do mercado aqui.
+--   3) Trava: quem vem do app (anon/authenticated) não muda o próprio mercado,
+--      pais, moeda nem fuso_horario. UPDATE mantém os valores antigos; INSERT
+--      direto pelo app (só possível apagando o próprio perfil antes) nasce
+--      com os padrões BR. idioma continua livre. Admin, service_role, SQL
 --      Editor e o cadastro passam livres.
---   5) get_mercado_loja(): mercado da loja de quem chama. Funcionário herda
+--   4) get_mercado_loja(): mercado da loja de quem chama. Funcionário herda
 --      do dono, gerente de filial herda do proprietário da matriz.
 --
 -- Idempotente, numa transação só. Reversão em
@@ -32,19 +36,28 @@ SET LOCAL lock_timeout = '5s';
 
 
 -- ---------------------------------------------------------------------
--- 1) profiles.mercado / profiles.idioma
+-- 1) profiles: mercado, idioma, pais, moeda, fuso_horario
 --    ADD COLUMN com DEFAULT constante não reescreve a tabela (PG 11+).
 --    O segundo ALTER só garante default/NOT NULL numa reexecução.
 -- ---------------------------------------------------------------------
 ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS mercado text NOT NULL DEFAULT 'BR',
-  ADD COLUMN IF NOT EXISTS idioma  text NOT NULL DEFAULT 'pt-BR';
+  ADD COLUMN IF NOT EXISTS mercado      text NOT NULL DEFAULT 'BR',
+  ADD COLUMN IF NOT EXISTS idioma       text NOT NULL DEFAULT 'pt-BR',
+  ADD COLUMN IF NOT EXISTS pais         text NOT NULL DEFAULT 'BR',
+  ADD COLUMN IF NOT EXISTS moeda        text NOT NULL DEFAULT 'BRL',
+  ADD COLUMN IF NOT EXISTS fuso_horario text NOT NULL DEFAULT 'America/Sao_Paulo';
 
 ALTER TABLE public.profiles
-  ALTER COLUMN mercado SET DEFAULT 'BR',
-  ALTER COLUMN mercado SET NOT NULL,
-  ALTER COLUMN idioma  SET DEFAULT 'pt-BR',
-  ALTER COLUMN idioma  SET NOT NULL;
+  ALTER COLUMN mercado      SET DEFAULT 'BR',
+  ALTER COLUMN mercado      SET NOT NULL,
+  ALTER COLUMN idioma       SET DEFAULT 'pt-BR',
+  ALTER COLUMN idioma       SET NOT NULL,
+  ALTER COLUMN pais         SET DEFAULT 'BR',
+  ALTER COLUMN pais         SET NOT NULL,
+  ALTER COLUMN moeda        SET DEFAULT 'BRL',
+  ALTER COLUMN moeda        SET NOT NULL,
+  ALTER COLUMN fuso_horario SET DEFAULT 'America/Sao_Paulo',
+  ALTER COLUMN fuso_horario SET NOT NULL;
 
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_mercado_check;
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_mercado_check
@@ -58,28 +71,17 @@ COMMENT ON COLUMN public.profiles.mercado IS
   'Mercado da conta (BR, ES_LATAM, EN, IT). Gravado no cadastro; o próprio usuário não altera (trigger profiles_travar_mercado).';
 COMMENT ON COLUMN public.profiles.idioma IS
   'Idioma da interface (pt-BR, es, en, it). O usuário pode alterar.';
+COMMENT ON COLUMN public.profiles.pais IS
+  'País da conta. Padrão BR; só admin/service_role altera (trigger profiles_travar_mercado).';
+COMMENT ON COLUMN public.profiles.moeda IS
+  'Moeda da conta. Padrão BRL; só admin/service_role altera (trigger profiles_travar_mercado).';
+COMMENT ON COLUMN public.profiles.fuso_horario IS
+  'Fuso da conta. Padrão America/Sao_Paulo; só admin/service_role altera (trigger profiles_travar_mercado).';
 
 
 -- ---------------------------------------------------------------------
--- 2) configuracoes_loja: moeda, país e fuso
--- ---------------------------------------------------------------------
-ALTER TABLE public.configuracoes_loja
-  ADD COLUMN IF NOT EXISTS moeda        text NOT NULL DEFAULT 'BRL',
-  ADD COLUMN IF NOT EXISTS pais         text NOT NULL DEFAULT 'BR',
-  ADD COLUMN IF NOT EXISTS fuso_horario text NOT NULL DEFAULT 'America/Sao_Paulo';
-
-ALTER TABLE public.configuracoes_loja
-  ALTER COLUMN moeda        SET DEFAULT 'BRL',
-  ALTER COLUMN moeda        SET NOT NULL,
-  ALTER COLUMN pais         SET DEFAULT 'BR',
-  ALTER COLUMN pais         SET NOT NULL,
-  ALTER COLUMN fuso_horario SET DEFAULT 'America/Sao_Paulo',
-  ALTER COLUMN fuso_horario SET NOT NULL;
-
-
--- ---------------------------------------------------------------------
--- 3) handle_new_user(): corpo igual ao de 20260525000002 + mercado/idioma.
---    O ON CONFLICT continua sem tocar em mercado/idioma (perfil que já
+-- 2) handle_new_user(): corpo igual ao de 20260525000002 + mercado/idioma.
+--    O ON CONFLICT continua sem tocar nas colunas novas (perfil que já
 --    existia fica como está).
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -137,7 +139,7 @@ $function$;
 
 
 -- ---------------------------------------------------------------------
--- 4) Trava do mercado
+-- 3) Trava de mercado, pais, moeda e fuso_horario (idioma fica livre)
 --    SECURITY INVOKER de propósito: current_user precisa ser quem chamou.
 --    - Pedido do app (PostgREST): current_user = anon/authenticated.
 --    - Função SECURITY DEFINER chamada pelo app: current_user = postgres,
@@ -160,7 +162,10 @@ BEGIN
     -- Só INSERT direto do app; o cadastro passa por handle_new_user como postgres.
     IF current_user IN ('anon', 'authenticated')
        AND NOT public.has_role(auth.uid(), 'admin') THEN
-      NEW.mercado := 'BR';
+      NEW.mercado      := 'BR';
+      NEW.pais         := 'BR';
+      NEW.moeda        := 'BRL';
+      NEW.fuso_horario := 'America/Sao_Paulo';
     END IF;
     RETURN NEW;
   END IF;
@@ -168,7 +173,10 @@ BEGIN
   IF (current_user IN ('anon', 'authenticated')
       OR COALESCE(auth.role(), '') IN ('anon', 'authenticated'))
      AND NOT public.has_role(auth.uid(), 'admin') THEN
-    NEW.mercado := OLD.mercado;
+    NEW.mercado      := OLD.mercado;
+    NEW.pais         := OLD.pais;
+    NEW.moeda        := OLD.moeda;
+    NEW.fuso_horario := OLD.fuso_horario;
   END IF;
   RETURN NEW;
 END;
@@ -180,22 +188,26 @@ DROP TRIGGER IF EXISTS profiles_travar_mercado_upd ON public.profiles;
 CREATE TRIGGER profiles_travar_mercado_upd
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW
-  WHEN (NEW.mercado IS DISTINCT FROM OLD.mercado)
+  WHEN ((NEW.mercado, NEW.pais, NEW.moeda, NEW.fuso_horario)
+        IS DISTINCT FROM (OLD.mercado, OLD.pais, OLD.moeda, OLD.fuso_horario))
   EXECUTE FUNCTION public.profiles_travar_mercado();
 
 DROP TRIGGER IF EXISTS profiles_travar_mercado_ins ON public.profiles;
 CREATE TRIGGER profiles_travar_mercado_ins
   BEFORE INSERT ON public.profiles
   FOR EACH ROW
-  WHEN (NEW.mercado IS DISTINCT FROM 'BR')
+  WHEN ((NEW.mercado, NEW.pais, NEW.moeda, NEW.fuso_horario)
+        IS DISTINCT FROM ('BR'::text, 'BR'::text, 'BRL'::text, 'America/Sao_Paulo'::text))
   EXECUTE FUNCTION public.profiles_travar_mercado();
 
 
 -- ---------------------------------------------------------------------
--- 5) get_mercado_loja(): mesmo molde de get_loja_owner_id()
+-- 4) get_mercado_loja(): mesmo molde de get_loja_owner_id()
 --    funcionário ativo -> dono; gerente de filial -> proprietário da matriz
 --    (mesma ordem de storage_mesma_loja); senão, o próprio usuário.
 --    Sem perfil: 'BR'. Sem login: NULL.
+--    plpgsql só valida as colunas ao executar: a autoverificação abaixo
+--    confere as colunas e roda a função de verdade.
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_mercado_loja()
 RETURNS text
@@ -238,32 +250,34 @@ GRANT EXECUTE ON FUNCTION public.get_mercado_loja() TO authenticated;
 
 
 -- ---------------------------------------------------------------------
--- 6) Autoverificação: qualquer divergência desfaz a transação inteira.
+-- 5) Autoverificação: qualquer divergência desfaz a transação inteira.
 -- ---------------------------------------------------------------------
 DO $$
 DECLARE
-  r       record;
-  v_src   text;
-  v_def   text;
-  v_falta text;
+  r        record;
+  v_src    text;
+  v_def    text;
+  v_falta  text;
+  v_claims text;
+  v_res    text;
 BEGIN
-  -- colunas: tipo, NOT NULL e default
+  -- colunas novas: tipo, NOT NULL e default
   FOR r IN
     SELECT * FROM (VALUES
-      ('profiles',           'mercado',      '''BR''::text'),
-      ('profiles',           'idioma',       '''pt-BR''::text'),
-      ('configuracoes_loja', 'moeda',        '''BRL''::text'),
-      ('configuracoes_loja', 'pais',         '''BR''::text'),
-      ('configuracoes_loja', 'fuso_horario', '''America/Sao_Paulo''::text')
-    ) AS t(tabela, coluna, padrao)
+      ('mercado',      '''BR''::text'),
+      ('idioma',       '''pt-BR''::text'),
+      ('pais',         '''BR''::text'),
+      ('moeda',        '''BRL''::text'),
+      ('fuso_horario', '''America/Sao_Paulo''::text')
+    ) AS t(coluna, padrao)
   LOOP
     IF NOT EXISTS (
       SELECT 1 FROM information_schema.columns c
-       WHERE c.table_schema = 'public' AND c.table_name = r.tabela
+       WHERE c.table_schema = 'public' AND c.table_name = 'profiles'
          AND c.column_name = r.coluna AND c.data_type = 'text'
          AND c.is_nullable = 'NO' AND c.column_default = r.padrao
     ) THEN
-      RAISE EXCEPTION 'I18N001: coluna %.% ausente ou com tipo/NOT NULL/default errado', r.tabela, r.coluna;
+      RAISE EXCEPTION 'I18N001: coluna profiles.% ausente ou com tipo/NOT NULL/default errado', r.coluna;
     END IF;
   END LOOP;
 
@@ -343,6 +357,44 @@ BEGIN
   END IF;
   IF NOT has_function_privilege('authenticated', 'public.get_mercado_loja()', 'EXECUTE') THEN
     RAISE EXCEPTION 'I18N015: get_mercado_loja sem EXECUTE para authenticated';
+  END IF;
+
+  -- get_mercado_loja: colunas que ela (e get_loja_owner_id) leem
+  SELECT string_agg(t.tabela || '.' || t.coluna, ', ') INTO v_falta
+    FROM (VALUES
+      ('empresa_usuarios',  'gerente_id'),
+      ('empresa_usuarios',  'proprietario_id'),
+      ('empresa_usuarios',  'ativa'),
+      ('empresa_usuarios',  'created_at'),
+      ('loja_funcionarios', 'loja_user_id'),
+      ('loja_funcionarios', 'funcionario_user_id'),
+      ('loja_funcionarios', 'ativo')
+    ) AS t(tabela, coluna)
+   WHERE NOT EXISTS (SELECT 1 FROM information_schema.columns c
+                      WHERE c.table_schema = 'public'
+                        AND c.table_name = t.tabela AND c.column_name = t.coluna);
+  IF v_falta IS NOT NULL THEN
+    RAISE EXCEPTION 'I18N016: get_mercado_loja depende de coluna inexistente: %', v_falta;
+  END IF;
+  IF to_regprocedure('public.get_loja_owner_id()') IS NULL THEN
+    RAISE EXCEPTION 'I18N017: get_loja_owner_id() não existe';
+  END IF;
+
+  -- get_mercado_loja de verdade, com um uid que não existe: percorre as três
+  -- consultas (funcionário, filial, perfil) e tem de responder 'BR'.
+  -- O JWT falso vale só aqui e é desfeito logo em seguida.
+  v_claims := current_setting('request.jwt.claims', true);
+  PERFORM set_config('request.jwt.claims',
+    '{"sub":"00000000-0000-0000-0000-000000000000","role":"authenticated"}', true);
+  BEGIN
+    v_res := public.get_mercado_loja();
+  EXCEPTION WHEN OTHERS THEN
+    PERFORM set_config('request.jwt.claims', COALESCE(v_claims, ''), true);
+    RAISE EXCEPTION 'I18N018: get_mercado_loja falhou ao executar: %', SQLERRM;
+  END;
+  PERFORM set_config('request.jwt.claims', COALESCE(v_claims, ''), true);
+  IF v_res IS DISTINCT FROM 'BR' THEN
+    RAISE EXCEPTION 'I18N019: get_mercado_loja devolveu % para uid inexistente (esperado BR)', v_res;
   END IF;
 
   RAISE NOTICE 'I18N OK: etapa 1 aplicada e conferida';
