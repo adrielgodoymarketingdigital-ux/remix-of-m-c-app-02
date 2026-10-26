@@ -6323,9 +6323,11 @@ export type Database = {
           cores_personalizadas: Json
           data_saida: string
           defeito_relatado: string
+          dispositivos_adicionais: Json
           dispositivo_marca: string
           dispositivo_imei: string
           dispositivo_modelo: string
+          fotos: Json
           logo_url: string
           loja_endereco: string
           loja_telefone: string
@@ -6374,8 +6376,10 @@ export type Database = {
           cores_personalizadas: Json
           data_saida: string
           defeito_relatado: string
+          dispositivos_adicionais: Json
           dispositivo_marca: string
           dispositivo_modelo: string
+          fotos: Json
           logo_url: string
           loja_endereco: string
           loja_telefone: string

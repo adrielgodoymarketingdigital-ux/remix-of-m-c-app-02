@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { urlMiniatura } from "@/lib/os/fotosImpressaoOS";
 import { TITULO_FOTOS_ACOMPANHAMENTO, textoVerFotos } from "@/lib/acompanhamento/fotosAcompanhamento";
 import { VisualizadorFotos } from "@/components/galeria/VisualizadorFotos";
+import { AparelhoAcompanhamento, listaAparelhosOS } from "@/lib/acompanhamento/aparelhosAcompanhamento";
 
 // Mapeamento de status do sistema → label/ícone de exibição. Compartilhado entre
 // a página de acompanhamento de uma OS (AcompanharOS) e a de um cliente
@@ -67,6 +68,11 @@ export interface OSTrackingCardData {
    * vazio quando a loja ou a OS não liberou). Ausente = sem fotos.
    */
   fotos?: string[];
+  /**
+   * Aparelhos extras da OS (RPC, só na carga inicial; só tipo, marca, modelo e
+   * defeito). Ausente ou vazio = OS de 1 aparelho, card igual ao de sempre.
+   */
+  dispositivos_adicionais?: AparelhoAcompanhamento[];
 }
 
 /**
@@ -109,6 +115,8 @@ export function CardStatusOS({ os, tc, nomeLoja, clienteNome, mostrarNomeCliente
   const cancelada = statusKey === "cancelada";
   const etapaAtual = PROGRESSO[statusKey] || 0;
   const prim = tc.cor_primaria;
+  // Vazia sem extras: aí ficam as linhas "Dispositivo" e "Problema Relatado" de sempre.
+  const aparelhos = listaAparelhosOS(os, tc.mostrar_defeito);
 
   const handleBaixarPDF = async () => {
     setBaixandoPDF(true);
@@ -125,6 +133,7 @@ export function CardStatusOS({ os, tc, nomeLoja, clienteNome, mostrarNomeCliente
         dispositivoModelo: os.dispositivo_modelo,
         clienteNome,
         nomeLoja,
+        ...(aparelhos.length > 0 ? { aparelhos } : {}),
       });
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
@@ -238,22 +247,28 @@ export function CardStatusOS({ os, tc, nomeLoja, clienteNome, mostrarNomeCliente
 
           {/* ── Informações ──────────────────────────────────── */}
           <div className="space-y-3.5">
-            {(os.dispositivo_marca || os.dispositivo_modelo) && (
-              <InfoRow
-                icon={<Smartphone className="h-4 w-4" />}
-                label="Dispositivo"
-                value={`${os.dispositivo_marca || ""} ${os.dispositivo_modelo || ""}`.trim()}
-                tc={tc}
-              />
-            )}
+            {aparelhos.length > 0 ? (
+              <ListaAparelhos aparelhos={aparelhos} tc={tc} />
+            ) : (
+              <>
+                {(os.dispositivo_marca || os.dispositivo_modelo) && (
+                  <InfoRow
+                    icon={<Smartphone className="h-4 w-4" />}
+                    label="Dispositivo"
+                    value={`${os.dispositivo_marca || ""} ${os.dispositivo_modelo || ""}`.trim()}
+                    tc={tc}
+                  />
+                )}
 
-            {tc.mostrar_defeito && os.defeito_relatado && (
-              <InfoRow
-                icon={<AlertCircle className="h-4 w-4" />}
-                label="Problema Relatado"
-                value={os.defeito_relatado}
-                tc={tc}
-              />
+                {tc.mostrar_defeito && os.defeito_relatado && (
+                  <InfoRow
+                    icon={<AlertCircle className="h-4 w-4" />}
+                    label="Problema Relatado"
+                    value={os.defeito_relatado}
+                    tc={tc}
+                  />
+                )}
+              </>
             )}
 
             {tc.mostrar_valor && os.total != null && os.total > 0 && (
@@ -406,6 +421,42 @@ function InfoRow({
         >
           {value}
         </p>
+      </div>
+    </div>
+  );
+}
+
+// OS com vários aparelhos: um bloco no lugar de "Dispositivo" + "Problema
+// Relatado", com o mesmo ícone e as mesmas cores do InfoRow.
+function ListaAparelhos({
+  aparelhos, tc,
+}: {
+  aparelhos: ReturnType<typeof listaAparelhosOS>;
+  tc: TrackingPageConfig;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: tc.cor_texto_secundario + "12", color: tc.cor_texto_secundario }}>
+        <Smartphone className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] uppercase tracking-wider" style={{ color: tc.cor_texto_secundario + "80" }}>
+          Aparelhos ({aparelhos.length})
+        </p>
+        <ul className="mt-1 space-y-2">
+          {aparelhos.map((a) => (
+            <li key={a.titulo}>
+              <p className="text-[10px]" style={{ color: tc.cor_texto_secundario + "60" }}>{a.titulo}</p>
+              <p className="text-sm break-words" style={{ color: tc.cor_texto }}>{a.nome}</p>
+              {a.defeito && (
+                <p className="text-xs mt-0.5 break-words" style={{ color: tc.cor_texto_secundario }}>
+                  Problema: {a.defeito}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

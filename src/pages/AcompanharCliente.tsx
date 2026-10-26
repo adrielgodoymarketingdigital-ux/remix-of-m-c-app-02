@@ -9,6 +9,7 @@ import {
 import { HeaderLojaTracking } from "@/components/tracking/HeaderLojaTracking";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fotosDoAcompanhamento } from "@/lib/acompanhamento/fotosAcompanhamento";
+import { aparelhosDoAcompanhamento, nomesExtras } from "@/lib/acompanhamento/aparelhosAcompanhamento";
 import { useNoIndex } from "@/hooks/useNoIndex";
 
 interface ClienteTrackingDados {
@@ -46,6 +47,8 @@ type LinhaClienteTracking = {
   status_nome?: string | null;
   /** Fotos liberadas para o link — só get_cliente_tracking traz; ausente antes da migration das fotos. */
   fotos?: unknown;
+  /** Aparelhos extras da OS — só get_cliente_tracking traz; ausente antes da migration = nenhum. */
+  dispositivos_adicionais?: unknown;
 };
 
 // Uma linha por OS (LEFT JOIN no RPC) — cliente sem nenhuma OS ainda vem como
@@ -73,6 +76,7 @@ const mapearLinhas = (linhas: LinhaClienteTracking[]): ClienteTrackingDados => {
         dispositivo_imei: l.dispositivo_imei,
         status_nome: l.status_nome ?? null,
         fotos: fotosDoAcompanhamento(l.fotos),
+        dispositivos_adicionais: aparelhosDoAcompanhamento(l.dispositivos_adicionais),
       })),
     loja: primeira ? {
       nome_loja: primeira.nome_loja,
@@ -128,7 +132,8 @@ const osNaBusca = (os: OSResumo, busca: string, clienteNome: string | null): boo
   const termo = normalizar(busca);
   if (!termo) return true;
   const texto = normalizar(
-    [os.numero_os, os.dispositivo_marca, os.dispositivo_modelo, os.dispositivo_imei, clienteNome].filter(Boolean).join(" "),
+    [os.numero_os, os.dispositivo_marca, os.dispositivo_modelo, os.dispositivo_imei, clienteNome, ...nomesExtras(os.dispositivos_adicionais)]
+      .filter(Boolean).join(" "),
   );
   if (texto.includes(termo)) return true;
   // IMEI digitado com espaço/traço/barra ("35 123456-789012")
@@ -197,11 +202,18 @@ export default function AcompanharCliente() {
     const atualizarStatus = async () => {
       const { data, error } = await supabase.rpc("get_cliente_tracking_status", { p_token: token });
       if (error || !data || data.length === 0) return;
-      // O polling não traz fotos: mantém as da carga inicial, por OS.
+      // O polling não traz fotos nem aparelhos extras: mantém os da carga inicial, por OS.
       setDados((anterior) => {
         const novo = mapearLinhas(data as LinhaClienteTracking[]);
-        const fotosPorOS = new Map((anterior?.osList ?? []).map((os) => [os.os_id, os.fotos ?? []]));
-        return { ...novo, osList: novo.osList.map((os) => ({ ...os, fotos: fotosPorOS.get(os.os_id) ?? [] })) };
+        const anteriorPorOS = new Map((anterior?.osList ?? []).map((os) => [os.os_id, os]));
+        return {
+          ...novo,
+          osList: novo.osList.map((os) => ({
+            ...os,
+            fotos: anteriorPorOS.get(os.os_id)?.fotos ?? [],
+            dispositivos_adicionais: anteriorPorOS.get(os.os_id)?.dispositivos_adicionais ?? [],
+          })),
+        };
       });
     };
 
@@ -358,7 +370,7 @@ async function exportarOSParaExcel(osList: OSResumo[], clienteNome: string | nul
     "OS": os.numero_os,
     "Cliente": clienteNome ?? "",
     "Status": nomeStatusOS(os),
-    "Modelo": formatModelo(os) === "—" ? "" : formatModelo(os),
+    "Modelo": [formatModelo(os) === "—" ? "" : formatModelo(os), ...nomesExtras(os.dispositivos_adicionais)].filter(Boolean).join(" + "),
     // String, não número: IMEI tem 15 dígitos e o Excel viraria notação científica
     "IMEI": os.dispositivo_imei ?? "",
     "Data de Entrada": os.created_at ? formatDate(os.created_at) : "",
@@ -569,6 +581,20 @@ const formatModelo = (os: OSResumo) => {
   return texto || "—";
 };
 
+// Aparelhos extras da OS no resumo (tabela e celular): um por linha, "+ Samsung A55".
+// Sem extras não renderiza nada — a linha fica igual à de sempre.
+function ExtrasResumo({ os, tc }: { os: OSResumo; tc: TrackingPageConfig }) {
+  const nomes = nomesExtras(os.dispositivos_adicionais);
+  if (nomes.length === 0) return null;
+  return (
+    <span className="block text-xs mt-0.5 space-y-0.5" style={{ color: tc.cor_texto_secundario }}>
+      {nomes.map((nome, i) => (
+        <span key={i} className="block">+ {nome}</span>
+      ))}
+    </span>
+  );
+}
+
 function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
   const prim = tc.cor_primaria;
   return (
@@ -600,6 +626,7 @@ function TabelaOSResumo({ osList, tc, onSelecionar }: ListaResumoProps) {
               </td>
               <td className="px-4 py-3" style={{ color: tc.cor_texto }}>
                 {formatModelo(os)}
+                <ExtrasResumo os={os} tc={tc} />
               </td>
               <td className="px-4 py-3 font-mono text-xs" style={{ color: tc.cor_texto_secundario }}>
                 {os.dispositivo_imei || "—"}
@@ -646,6 +673,7 @@ function ListaOSResumoMobile({ osList, tc, onSelecionar }: ListaResumoProps) {
                 )}
               </div>
             )}
+            <ExtrasResumo os={os} tc={tc} />
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs" style={{ color: tc.cor_texto_secundario }}>
               <span>Entrada: {os.created_at ? formatDate(os.created_at) : "—"}</span>
               <span style={{ color: os.data_saida ? tc.cor_texto_secundario : tc.cor_texto_secundario + "80" }}>

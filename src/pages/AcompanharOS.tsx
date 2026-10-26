@@ -6,6 +6,7 @@ import { TrackingPageConfig, TRACKING_CONFIG_PADRAO } from "@/types/configuracao
 import { CardStatusOS, OSTrackingCardData, lighten } from "@/components/tracking/CardStatusOS";
 import { HeaderLojaTracking } from "@/components/tracking/HeaderLojaTracking";
 import { fotosDoAcompanhamento } from "@/lib/acompanhamento/fotosAcompanhamento";
+import { aparelhosDoAcompanhamento } from "@/lib/acompanhamento/aparelhosAcompanhamento";
 import { useNoIndex } from "@/hooks/useNoIndex";
 
 interface TrackingDados {
@@ -53,6 +54,8 @@ export default function AcompanharOS() {
       status_nome?: string | null;
       /** Fotos liberadas para o link — só get_os_tracking traz; ausente antes da migration das fotos. */
       fotos?: unknown;
+      /** Aparelhos extras — só get_os_tracking traz; ausente antes da migration = nenhum. */
+      dispositivos_adicionais?: unknown;
     };
 
     const mapearLinha = (linha: LinhaTracking): TrackingDados => {
@@ -71,6 +74,7 @@ export default function AcompanharOS() {
           dispositivo_modelo: linha.dispositivo_modelo,
           status_nome: linha.status_nome ?? null,
           fotos: fotosDoAcompanhamento(linha.fotos),
+          dispositivos_adicionais: aparelhosDoAcompanhamento(linha.dispositivos_adicionais),
           cliente: linha.cliente_nome ? { nome: linha.cliente_nome, telefone: linha.cliente_telefone } : null,
         },
         loja: {
@@ -103,10 +107,19 @@ export default function AcompanharOS() {
       const { data, error } = await supabase.rpc("get_os_tracking_status", { p_token: token });
       const linha = data?.[0];
       if (error || !linha) return;
-      // O polling não traz fotos: mantém as da carga inicial.
+      // O polling não traz fotos nem aparelhos extras: mantém os da carga inicial.
       setDados((anterior) => {
         const novo = mapearLinha(linha as LinhaTracking);
-        return novo.os ? { ...novo, os: { ...novo.os, fotos: anterior?.os?.fotos ?? [] } } : novo;
+        return novo.os
+          ? {
+            ...novo,
+            os: {
+              ...novo.os,
+              fotos: anterior?.os?.fotos ?? [],
+              dispositivos_adicionais: anterior?.os?.dispositivos_adicionais ?? [],
+            },
+          }
+          : novo;
       });
     };
 

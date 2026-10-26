@@ -1725,6 +1725,11 @@ export interface DadosPublicosOS {
   dispositivoModelo: string | null;
   clienteNome: string | null;
   nomeLoja: string | null;
+  /**
+   * OS com vários aparelhos: a mesma lista do card (aparelho 1 + extras, defeito
+   * já escondido se a loja desligou). Ausente = PDF de 1 aparelho, como sempre.
+   */
+  aparelhos?: { titulo: string; nome: string; defeito: string | null }[];
 }
 
 // PDF simplificado para download público na página de acompanhamento — usa
@@ -1782,7 +1787,38 @@ export async function gerarPDFAcompanhamentoPublico(dados: DadosPublicosOS): Pro
   }
 
   const dispositivo = `${dados.dispositivoMarca || ''} ${dados.dispositivoModelo || ''}`.trim();
-  if (dispositivo) {
+  const aparelhos = dados.aparelhos ?? [];
+  if (aparelhos.length > 0) {
+    // No lugar de DISPOSITIVO + PROBLEMA RELATADO, igual ao card da página.
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('APARELHOS', margemEsquerda, yPos);
+    yPos += 6;
+    doc.setFontSize(9);
+    aparelhos.forEach((a) => {
+      const linhas = [
+        ...doc.splitTextToSize(`${a.titulo}: ${a.nome}`, larguraUtil),
+        ...(a.defeito ? doc.splitTextToSize(`Problema: ${a.defeito}`, larguraUtil - 4) : []),
+      ];
+      if (yPos + linhas.length * 5 > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+      linhas.forEach((linha: string, i: number) => {
+        doc.setFont('helvetica', i === 0 ? 'bold' : 'normal');
+        doc.text(linha, margemEsquerda + (i === 0 ? 0 : 4), yPos);
+        yPos += 5;
+      });
+      yPos += 1;
+    });
+    yPos += 3;
+    doc.setFont('helvetica', 'normal');
+    doc.line(margemEsquerda, yPos - 4, margemDireita, yPos - 4);
+    if (yPos > 240) {
+      doc.addPage();
+      yPos = 20;
+    }
+  } else if (dispositivo) {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text('DISPOSITIVO', margemEsquerda, yPos);
@@ -1794,7 +1830,7 @@ export async function gerarPDFAcompanhamentoPublico(dados: DadosPublicosOS): Pro
     doc.line(margemEsquerda, yPos - 4, margemDireita, yPos - 4);
   }
 
-  if (dados.defeitoRelatado) {
+  if (dados.defeitoRelatado && aparelhos.length === 0) {
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text('PROBLEMA RELATADO', margemEsquerda, yPos);
