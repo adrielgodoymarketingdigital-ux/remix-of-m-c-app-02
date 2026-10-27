@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -37,6 +38,10 @@ import {
 import { ItemCarrinho } from "@/components/pdv/ItemCarrinho";
 import { SelecionadorCliente } from "@/components/pdv/SelecionadorCliente";
 import { formatCurrency } from "@/lib/formatters";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
+import { ComNegrito } from "@/components/i18n/ComNegrito";
+import i18n from "@/lib/i18n/instancia";
 import { z } from "zod";
 import { useEventDispatcher } from "@/hooks/useEventDispatcher";
 import { Dispositivo } from "@/types/dispositivo";
@@ -68,6 +73,7 @@ import {
   FormaDevolucao,
   NOME_FORMA_TROCA_TOTAL,
   NOMES_FORMA_DEVOLUCAO,
+  MENSAGEM_TROCA_MAIOR_QUE_ITENS_SEM_PECA,
   calcularDevolucao,
   calcularTotaisComTroca,
   devolucaoPassaDaGaveta,
@@ -102,7 +108,8 @@ interface EntradaTrocaPendente {
   erro: string;
 }
 const CHAVE_ENTRADA_PENDENTE = "pdv_entrada_troca_pendente";
-const MENSAGEM_ENTRADA_FALHOU = "A venda foi registrada, mas o aparelho recebido na troca não foi cadastrado. Tente novamente.";
+// Toasts e mensagens: lidos na hora (podem sair depois de um await; ver convencoes.md, item 10).
+const tPDV = (chave: string, opcoes?: Record<string, unknown>) => i18n.t(chave, { ns: "pdv", ...opcoes });
 const lerEntradaPendente = (): EntradaTrocaPendente | null => {
   try {
     const salvo = localStorage.getItem(CHAVE_ENTRADA_PENDENTE);
@@ -144,6 +151,11 @@ const PDV = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  // Textos: namespace "pdv"; moeda: useFormatadores (conta).
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
+  const nomesForma = useNomesFormaPagamento();
+  const textoBloqueioTroca = (bloqueio: string) => (bloqueio === MENSAGEM_TROCA_MAIOR_QUE_ITENS_SEM_PECA ? t("pagina.troca.bloqueio") : bloqueio);
   const { clientes, refetch: carregarClientes, criarCliente } = useClientes({ modoSilencioso: true });
   const { lojaUserId, funcionarioId, isFuncionario } = useFuncionarioPermissoes();
   // Passa lojaUserId como override para garantir que busca os funcionários do dono,
@@ -248,7 +260,7 @@ const PDV = () => {
       if (state.entradaTrocaInicial && state.entradaTrocaInicial.valorEntrada > 0) {
         setEntradaTroca(state.entradaTrocaInicial);
       }
-      sonnerToast.success("Dispositivo adicionado ao carrinho!");
+      sonnerToast.success(tPDV("pagina.toast.dispositivoAdicionado"));
       
       // Limpar state
       navigate(location.pathname, { replace: true, state: {} });
@@ -272,8 +284,8 @@ const PDV = () => {
       // Validar estoque para dispositivos e produtos
       if (item.estoque !== undefined && novaQuantidade > item.estoque) {
         toast({
-          title: "Quantidade insuficiente",
-          description: `Estoque disponível: ${item.estoque}`,
+          title: tPDV("pagina.toast.quantidadeInsuficiente"),
+          description: tPDV("pagina.toast.estoqueDisponivel", { quantidade: item.estoque }),
           variant: "destructive",
         });
         return;
@@ -400,7 +412,7 @@ const PDV = () => {
   const handleConfirmarDispositivoEntrada = (dados: DadosEntradaTroca) => {
     setEntradaTroca(dados);
     setDialogDispositivoEntradaAberto(false);
-    sonnerToast.success(`Aparelho de entrada incluído: ${formatCurrency(dados.valorEntrada)}. Ele é cadastrado no estoque ao finalizar a venda.`);
+    sonnerToast.success(tPDV("pagina.toast.entradaIncluida", { valor: fmt.moeda(dados.valorEntrada) }));
   };
 
   /** Repete só o cadastro do aparelho da troca (a venda já foi gravada), reaproveitando o que já foi gravado. */
@@ -412,7 +424,7 @@ const PDV = () => {
     setRegistrandoEntrada(false);
     if (resultado.ok) {
       setEntradaPendente(null);
-      sonnerToast.success("Aparelho da troca cadastrado no estoque.");
+      sonnerToast.success(tPDV("pagina.toast.entradaCadastrada"));
       return;
     }
     console.error(`[PDV] etapa=entrada da troca (${resultado.etapa}) — nova tentativa`, { grupoVenda: entradaPendente.ctx.grupoVenda, erro: resultado.mensagem, progresso });
@@ -422,8 +434,8 @@ const PDV = () => {
   const validarVenda = () => {
     if (itensCarrinho.length === 0) {
       toast({
-        title: "Erro",
-        description: "Adicione pelo menos um item à venda",
+        title: tPDV("pagina.toast.erro"),
+        description: tPDV("pagina.toast.semItens"),
         variant: "destructive",
       });
       return false;
@@ -431,19 +443,19 @@ const PDV = () => {
 
     const totais = calcularTotaisVenda();
     if (totais.exigeFormaDevolucao && !formaDevolucao) {
-      toast({ title: "Devolução ao cliente", description: "Escolha como devolver a diferença ao cliente: Dinheiro ou Pix.", variant: "destructive" });
+      toast({ title: tPDV("pagina.toast.devolucaoTitulo"), description: tPDV("pagina.toast.devolucaoDescricao", { dinheiro: nomesForma.curto.dinheiro, pix: nomesForma.pixAvulsa }), variant: "destructive" });
       return false;
     }
     const bloqueioTroca = calcularPlanoTroca(totais)?.bloqueio;
     if (bloqueioTroca) {
-      toast({ title: "Troca maior que os itens", description: bloqueioTroca, variant: "destructive" });
+      toast({ title: tPDV("pagina.toast.trocaMaior"), description: textoBloqueioTroca(bloqueioTroca), variant: "destructive" });
       return false;
     }
     // Só uma entrada pendente por vez (o "Tentar novamente" guarda uma); vendas sem troca seguem livres.
     if (entradaPendente && totais.valorEntrada > 0) {
       toast({
-        title: "Aparelho de troca pendente",
-        description: "Antes de outra venda com troca, cadastre o aparelho da venda anterior em \"Tentar novamente\" no topo da tela.",
+        title: tPDV("pagina.toast.trocaPendenteTitulo"),
+        description: tPDV("pagina.toast.trocaPendenteDescricao"),
         variant: "destructive",
       });
       return false;
@@ -453,8 +465,8 @@ const PDV = () => {
 
     if (!formaPagamento) {
       toast({
-        title: "Erro",
-        description: "Selecione a forma de pagamento",
+        title: tPDV("pagina.toast.erro"),
+        description: tPDV("pagina.toast.selecioneForma"),
         variant: "destructive",
       });
       return false;
@@ -463,8 +475,8 @@ const PDV = () => {
     if (pagamentoDuploAtivo && segundaFormaPagamento === "a_receber") {
       if (tipoRecebimentoSegunda === "a_vista" && !dataPrevistaSegundaForma) {
         toast({
-          title: "Erro",
-          description: "Informe a data de recebimento da 2ª forma",
+          title: tPDV("pagina.toast.erro"),
+          description: tPDV("pagina.toast.dataSegundaForma"),
           variant: "destructive",
         });
         return false;
@@ -472,8 +484,8 @@ const PDV = () => {
       if (tipoRecebimentoSegunda === "parcelado") {
         if (datasParcelasSegunda.some(d => !d) || datasParcelasSegunda.length < numParcelasSegunda) {
           toast({
-            title: "Erro",
-            description: "Informe todas as datas das parcelas da 2ª forma",
+            title: tPDV("pagina.toast.erro"),
+            description: tPDV("pagina.toast.datasSegundaForma"),
             variant: "destructive",
           });
           return false;
@@ -484,8 +496,8 @@ const PDV = () => {
     if (formaPagamento === "a_receber") {
       if (tipoRecebimento === "a_vista" && !dataPrevistaRecebimento) {
         toast({
-          title: "Erro",
-          description: "Informe a data prevista de recebimento",
+          title: tPDV("pagina.toast.erro"),
+          description: tPDV("pagina.toast.dataPrevista"),
           variant: "destructive",
         });
         return false;
@@ -494,8 +506,8 @@ const PDV = () => {
         const datasVazias = datasParcelasReceber.some(d => !d);
         if (datasVazias || datasParcelasReceber.length < numParcelasReceber) {
           toast({
-            title: "Erro",
-            description: "Informe todas as datas de recebimento das parcelas",
+            title: tPDV("pagina.toast.erro"),
+            description: tPDV("pagina.toast.datasParcelas"),
             variant: "destructive",
           });
           return false;
@@ -924,12 +936,12 @@ const PDV = () => {
       }
 
       toast({
-        title: "Venda finalizada com sucesso!",
-        description: `Total: ${formatCurrency(calcularTotal())}`,
+        title: tPDV("pagina.toast.finalizada"),
+        description: tPDV("pagina.toast.finalizadaTotal", { valor: fmt.moeda(calcularTotal()) }),
         duration: 3000,
       });
       if (entradaFalhou) {
-        toast({ title: "Aparelho da troca não cadastrado", description: MENSAGEM_ENTRADA_FALHOU, variant: "destructive", duration: 10000 });
+        toast({ title: tPDV("pagina.entradaPendente.titulo"), description: tPDV("pagina.entradaPendente.mensagem"), variant: "destructive", duration: 10000 });
       }
 
       // Disparar evento de notificação automática
@@ -1009,7 +1021,7 @@ const PDV = () => {
     } catch (error: any) {
       console.error("Erro ao finalizar venda:", error);
       toast({
-        title: "Erro ao finalizar venda",
+        title: tPDV("pagina.toast.erroFinalizar"),
         description: error.message,
         variant: "destructive",
       });
@@ -1021,7 +1033,7 @@ const PDV = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        Carregando...
+        {t("pagina.carregando")}
       </div>
     );
   }
@@ -1040,14 +1052,18 @@ const PDV = () => {
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
         {entradaPendente && (
           <Alert variant="destructive" className="mb-6">
-            <AlertTitle>Aparelho da troca não cadastrado</AlertTitle>
+            <AlertTitle>{t("pagina.entradaPendente.titulo")}</AlertTitle>
             <AlertDescription className="space-y-2">
-              <p>{MENSAGEM_ENTRADA_FALHOU}</p>
+              <p>{t("pagina.entradaPendente.mensagem")}</p>
               <p className="text-xs">
-                {entradaPendente.dados.aparelho.marca} {entradaPendente.dados.aparelho.modelo} · {formatCurrency(entradaPendente.dados.valorEntrada)} · Motivo: {entradaPendente.erro}
+                {t("pagina.entradaPendente.detalhe", {
+                  aparelho: `${entradaPendente.dados.aparelho.marca} ${entradaPendente.dados.aparelho.modelo}`,
+                  valor: fmt.moeda(entradaPendente.dados.valorEntrada),
+                  erro: entradaPendente.erro,
+                })}
               </p>
               <Button size="sm" variant="outline" onClick={tentarNovamenteEntrada} disabled={registrandoEntrada}>
-                {registrandoEntrada ? "Cadastrando..." : "Tentar novamente"}
+                {registrandoEntrada ? t("pagina.entradaPendente.cadastrando") : t("pagina.entradaPendente.tentarNovamente")}
               </Button>
             </AlertDescription>
           </Alert>
@@ -1055,9 +1071,9 @@ const PDV = () => {
 
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-3xl font-semibold mb-1 leading-tight break-normal">
-            PDV - Frente de Caixa
+            {t("pagina.titulo")}
           </h1>
-          <p className="text-muted-foreground text-xs sm:text-base">Sistema de ponto de venda</p>
+          <p className="text-muted-foreground text-xs sm:text-base">{t("pagina.subtitulo")}</p>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-5 lg:flex lg:flex-row gap-2 sm:gap-3 mb-6 sm:mb-8">
@@ -1070,7 +1086,7 @@ const PDV = () => {
               <ShoppingBag className="h-5 w-5" />
             </span>
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
-              Venda Avulsa
+              {t("pagina.atalhos.vendaAvulsa")}
             </span>
           </button>
 
@@ -1084,7 +1100,7 @@ const PDV = () => {
                 <DollarSign className="h-5 w-5" />
               </span>
               <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
-                Abrir Caixa
+                {t("pagina.atalhos.abrirCaixa")}
               </span>
             </button>
           ) : (
@@ -1097,7 +1113,7 @@ const PDV = () => {
                 <XCircle className="h-5 w-5" />
               </span>
               <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
-                Fechar Caixa
+                {t("pagina.atalhos.fecharCaixa")}
               </span>
             </button>
           )}
@@ -1112,7 +1128,7 @@ const PDV = () => {
               <ArrowDownCircle className="h-5 w-5" />
             </span>
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
-              Sangria / Suprimento
+              {t("pagina.atalhos.sangria")}
             </span>
           </button>
 
@@ -1125,7 +1141,7 @@ const PDV = () => {
               <Info className="h-5 w-5" />
             </span>
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
-              Status do Caixa
+              {t("pagina.atalhos.statusCaixa")}
             </span>
           </button>
 
@@ -1138,7 +1154,7 @@ const PDV = () => {
               <History className="h-5 w-5" />
             </span>
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
-              Histórico
+              {t("pagina.atalhos.historico")}
             </span>
           </button>
 
@@ -1152,22 +1168,22 @@ const PDV = () => {
                   <Settings className="h-5 w-5" />
                 </span>
                 <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide leading-tight">
-                  Configurações
+                  {t("pagina.atalhos.configuracoes")}
                 </span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
               <DropdownMenuItem onClick={() => setDialogLayoutAberto(true)}>
                 <Layout className="h-4 w-4 mr-2" />
-                Layout de Impressão
+                {t("pagina.atalhos.layoutImpressao")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setDialogTaxasCartaoAberto(true)}>
                 <CreditCard className="h-4 w-4 mr-2" />
-                Taxas de Cartão
+                {t("pagina.atalhos.taxasCartao")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/configuracoes")}>
                 <Settings className="h-4 w-4 mr-2" />
-                Configurações Gerais
+                {t("pagina.atalhos.configuracoesGerais")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1181,7 +1197,7 @@ const PDV = () => {
                 <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
                   <UserRound className="h-4 w-4 sm:h-5 sm:w-5" />
                 </span>
-                <h2 className="text-lg sm:text-xl font-semibold">Dados do Cliente</h2>
+                <h2 className="text-lg sm:text-xl font-semibold">{t("pagina.dadosCliente")}</h2>
               </div>
 
               <SelecionadorCliente
@@ -1206,7 +1222,7 @@ const PDV = () => {
                   <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
                     <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
                   </span>
-                  <h2 className="text-lg sm:text-xl font-semibold">Itens da Venda</h2>
+                  <h2 className="text-lg sm:text-xl font-semibold">{t("pagina.itens.titulo")}</h2>
                 </div>
                 <Button
                   size="sm"
@@ -1214,16 +1230,16 @@ const PDV = () => {
                   data-walkthrough="pdv-adicionar-item"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  <span className="hidden xs:inline">Adicionar</span> Item
+                  <span className="hidden xs:inline">{t("pagina.itens.adicionar")}</span> {t("pagina.itens.item")}
                 </Button>
               </div>
 
               {itensCarrinho.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8 sm:py-12">
                   <ShoppingCart className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-sm sm:text-base">Nenhum item adicionado ainda</p>
+                  <p className="text-sm sm:text-base">{t("pagina.itens.vazio")}</p>
                   <p className="text-xs sm:text-sm mt-1">
-                    Clique em "Adicionar Item" para começar
+                    {t("pagina.itens.vazioDica")}
                   </p>
                 </div>
               ) : (
@@ -1249,25 +1265,25 @@ const PDV = () => {
                 <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
                   <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" />
                 </span>
-                <h2 className="text-lg sm:text-xl font-semibold">Resumo</h2>
+                <h2 className="text-lg sm:text-xl font-semibold">{t("pagina.resumo.titulo")}</h2>
               </div>
 
               <div className="space-y-3 mb-4 sm:mb-6">
                 <div className="flex justify-between text-sm items-center">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(subtotal)}</span>
+                  <span className="text-muted-foreground">{t("pagina.resumo.subtotal")}</span>
+                  <span className="font-medium">{fmt.moeda(subtotal)}</span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm items-center">
-                    <span className="text-muted-foreground whitespace-nowrap">Desconto</span>
+                    <span className="text-muted-foreground whitespace-nowrap">{t("pagina.resumo.desconto")}</span>
                     <div className="flex items-center gap-1">
                       <Select value={tipoDesconto} onValueChange={(v) => setTipoDesconto(v as "valor" | "porcentagem")}>
                         <SelectTrigger className="w-16 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="valor">R$</SelectItem>
-                          <SelectItem value="porcentagem">%</SelectItem>
+                          <SelectItem value="valor">{fmt.simboloMoeda}</SelectItem>
+                          <SelectItem value="porcentagem">{t("pagina.resumo.descontoPorcentagem")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Input
@@ -1286,40 +1302,40 @@ const PDV = () => {
                   </div>
                   {calcularDescontoReal() > 0 && (
                     <div className="text-xs text-muted-foreground text-right">
-                      Desconto: -{formatCurrency(calcularDescontoReal())}
+                      {t("pagina.resumo.descontoValor", { valor: fmt.moeda(calcularDescontoReal()) })}
                     </div>
                   )}
                 </div>
 
                 {valorDispositivoEntrada > 0 && (
                   <div className="flex justify-between text-sm text-amber-600">
-                    <span>Dispositivo de entrada:</span>
-                    <span>- {formatCurrency(valorDispositivoEntrada)}</span>
+                    <span>{t("pagina.resumo.entrada")}</span>
+                    <span>{t("pagina.resumo.entradaValor", { valor: fmt.moeda(valorDispositivoEntrada) })}</span>
                   </div>
                 )}
 
                 <div className="border-t pt-3 flex justify-between items-center">
-                  <span className="font-semibold">Total</span>
+                  <span className="font-semibold">{t("pagina.resumo.total")}</span>
                   <span className="text-xl sm:text-2xl font-bold">
-                    {formatCurrency(total)}
+                    {fmt.moeda(total)}
                   </span>
                 </div>
-                {bloqueioTroca && <p className="text-xs text-destructive">{bloqueioTroca}</p>}
+                {bloqueioTroca && <p className="text-xs text-destructive">{textoBloqueioTroca(bloqueioTroca)}</p>}
               </div>
 
               {/* Seletor de vendedor */}
               {funcionarios.length > 0 && (
                 <div className="mb-4 space-y-1">
-                  <Label>Vendedor</Label>
+                  <Label>{t("pagina.resumo.vendedor")}</Label>
                   <Select
                     value={funcionarioSelecionadoId ?? "nenhum"}
                     onValueChange={(v) => setFuncionarioSelecionadoId(v === "nenhum" ? null : v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o vendedor" />
+                      <SelectValue placeholder={t("pagina.resumo.selecioneVendedor")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="nenhum">— Nenhum —</SelectItem>
+                      <SelectItem value="nenhum">{t("pagina.resumo.nenhumVendedor")}</SelectItem>
                       {funcionarios.filter(f => f.ativo).map((f) => (
                         <SelectItem key={f.id} value={f.id}>
                           {f.nome}{f.cargo ? ` (${f.cargo})` : ""}
@@ -1340,16 +1356,16 @@ const PDV = () => {
                   >
                     <Smartphone className="h-3.5 w-3.5" />
                     {valorDispositivoEntrada > 0
-                      ? `✓ Entrada: ${formatCurrency(valorDispositivoEntrada)}`
-                      : "+ Dispositivo de Entrada (Troca)"}
+                      ? t("pagina.troca.entradaConfirmada", { valor: fmt.moeda(valorDispositivoEntrada) })
+                      : t("pagina.troca.adicionarEntrada")}
                   </Button>
                   {valorDispositivoEntrada > 0 && (
                     <>
                       <p className="text-xs text-muted-foreground text-center">
-                        Restante a receber em dinheiro/pix/cartão: <strong>{formatCurrency(Math.max(0, total))}</strong>
+                        <ComNegrito texto={t("pagina.troca.restante", { valor: fmt.moeda(Math.max(0, total)) })} />
                       </p>
                       <Button variant="link" size="sm" className="h-auto w-full p-0 text-xs" onClick={() => setEntradaTroca(null)}>
-                        Remover aparelho de entrada
+                        {t("pagina.troca.remover")}
                       </Button>
                     </>
                   )}
@@ -1360,7 +1376,7 @@ const PDV = () => {
               <div className="space-y-4 mb-6">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Forma de Pagamento *</Label>
+                    <Label>{t("pagina.pagamento.forma")}</Label>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1368,7 +1384,7 @@ const PDV = () => {
                       className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
                     >
                       <Settings2 className="h-3 w-3" />
-                      Configurar
+                      {t("pagina.pagamento.configurar")}
                     </Button>
                   </div>
                   <Select value={formaPagamento} onValueChange={(value) => {
@@ -1385,17 +1401,10 @@ const PDV = () => {
                     }
                   }}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder={t("pagina.pagamento.selecione")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {[
-                        { value: "dinheiro", label: "Dinheiro" },
-                        { value: "pix", label: "PIX" },
-                        { value: "debito", label: "Débito" },
-                        { value: "credito", label: "Crédito" },
-                        { value: "credito_parcelado", label: "Crédito Parcelado" },
-                        { value: "a_receber", label: "A Receber" },
-                      ].map(({ value, label }) => (
+                      {(["dinheiro", "pix", "debito", "credito", "credito_parcelado", "a_receber"] as const).map((value) => ({ value, label: nomesForma.curto[value] })).map(({ value, label }) => (
                         <SelectItem key={value} value={value}>
                           <div className="flex items-center gap-2">
                             {FormasPagamentoIcones[value]}
@@ -1406,7 +1415,7 @@ const PDV = () => {
                       {formasCustomizadas.length > 0 && (
                         <>
                           <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
-                            Personalizadas
+                            {t("pagina.pagamento.personalizadas")}
                           </div>
                           {formasCustomizadas.map((f) => (
                             <SelectItem key={f.id} value={`custom_${f.id}`}>
@@ -1421,7 +1430,7 @@ const PDV = () => {
 
                 {formaPagamento === "credito_parcelado" && (
                   <div className="space-y-2">
-                    <Label>Número de Parcelas *</Label>
+                    <Label>{t("pagina.pagamento.numeroParcelas")}</Label>
                     <Select value={String(numeroParcelas)} onValueChange={(v) => setNumeroParcelas(Number(v))}>
                       <SelectTrigger>
                         <SelectValue />
@@ -1429,7 +1438,7 @@ const PDV = () => {
                       <SelectContent>
                         {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
                           <SelectItem key={n} value={String(n)}>
-                            {n}x de {formatCurrency(calcularTotal() / n)}
+                            {t("pagina.pagamento.parcelas", { count: n, valor: fmt.moeda(calcularTotal() / n) })}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1476,7 +1485,7 @@ const PDV = () => {
                 {formaPagamento === "a_receber" && (
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label>Tipo de Recebimento *</Label>
+                      <Label>{t("pagina.pagamento.tipoRecebimento")}</Label>
                       <Select value={tipoRecebimento} onValueChange={(v) => {
                         setTipoRecebimento(v as "a_vista" | "parcelado");
                         if (v === "a_vista") {
@@ -1491,15 +1500,15 @@ const PDV = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="a_vista">1x (À Vista)</SelectItem>
-                          <SelectItem value="parcelado">Parcelado</SelectItem>
+                          <SelectItem value="a_vista">{t("pagina.pagamento.aVista")}</SelectItem>
+                          <SelectItem value="parcelado">{t("pagina.pagamento.parcelado")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     {tipoRecebimento === "a_vista" && (
                       <div className="space-y-2">
-                        <Label>Data Prevista de Recebimento *</Label>
+                        <Label>{t("pagina.pagamento.dataPrevista")}</Label>
                         <Input
                           type="date"
                           value={dataPrevistaRecebimento}
@@ -1512,7 +1521,7 @@ const PDV = () => {
                     {tipoRecebimento === "parcelado" && (
                       <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label>Número de Parcelas *</Label>
+                          <Label>{t("pagina.pagamento.numeroParcelas")}</Label>
                           <Select value={String(numParcelasReceber)} onValueChange={(v) => {
                             const num = Number(v);
                             setNumParcelasReceber(num);
@@ -1525,7 +1534,7 @@ const PDV = () => {
                             <SelectContent>
                               {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
                                 <SelectItem key={n} value={String(n)}>
-                                  {n}x de {formatCurrency(calcularTotal() / n)}
+                                  {t("pagina.pagamento.parcelas", { count: n, valor: fmt.moeda(calcularTotal() / n) })}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1533,12 +1542,12 @@ const PDV = () => {
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Datas de Recebimento *</Label>
+                          <Label>{t("pagina.pagamento.datasRecebimento")}</Label>
                           <div className="space-y-2 max-h-48 overflow-y-auto">
                             {Array.from({ length: numParcelasReceber }).map((_, idx) => (
                               <div key={idx} className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground w-16 shrink-0">
-                                  {idx + 1}ª parcela
+                                  {t("pagina.pagamento.parcelaN", { n: idx + 1 })}
                                 </span>
                                 <Input
                                   type="date"
@@ -1563,9 +1572,9 @@ const PDV = () => {
               ) : totaisVenda.exigeFormaDevolucao ? (
                 <div className="mb-6 space-y-2 rounded-lg border border-amber-500/40 p-3">
                   <p className="text-sm font-medium">
-                    Cliente paga: {formatCurrency(0)} · Devolver ao cliente: {formatCurrency(devolucaoTela)}
+                    {t("pagina.troca.clientePaga", { pago: fmt.moeda(0), devolver: fmt.moeda(devolucaoTela) })}
                   </p>
-                  <p className="text-xs text-muted-foreground">O aparelho recebido vale mais que a venda. Como a diferença será devolvida? *</p>
+                  <p className="text-xs text-muted-foreground">{t("pagina.troca.comoDevolver")}</p>
                   <div className="grid grid-cols-2 gap-2">
                     {(Object.keys(NOMES_FORMA_DEVOLUCAO) as FormaDevolucao[]).map((f) => (
                       <Button
@@ -1576,20 +1585,20 @@ const PDV = () => {
                         onClick={() => setFormaDevolucao(f)}
                         aria-pressed={formaDevolucao === f}
                       >
-                        {NOMES_FORMA_DEVOLUCAO[f]}
+                        {f === "pix" ? nomesForma.pixAvulsa : nomesForma.curto.dinheiro}
                       </Button>
                     ))}
                   </div>
                 </div>
               ) : (
                 <p className="mb-6 rounded-lg border p-3 text-xs text-muted-foreground">
-                  O aparelho recebido cobre o valor total da venda: não há pagamento a receber.
+                  {t("pagina.troca.cobreTudo")}
                 </p>
               )}
 
               {!caixaEstaAberto && (
                 <p className="text-xs text-center text-muted-foreground mb-2">
-                  Abra o caixa para finalizar vendas
+                  {t("pagina.abraCaixa")}
                 </p>
               )}
               <Button
@@ -1599,7 +1608,7 @@ const PDV = () => {
                 disabled={finalizando || itensCarrinho.length === 0 || !caixaEstaAberto || !totaisVenda.podeFinalizar || !!bloqueioTroca}
                 data-walkthrough="pdv-finalizar"
               >
-                {finalizando ? "Finalizando..." : "Finalizar Venda"}
+                {finalizando ? t("pagina.finalizando") : t("pagina.finalizar")}
               </Button>
             </Card>
           </div>
@@ -1610,9 +1619,9 @@ const PDV = () => {
             <ShieldCheck className="h-5 w-5" />
           </span>
           <div>
-            <p className="text-sm font-semibold">Sistema seguro e confiável</p>
+            <p className="text-sm font-semibold">{t("pagina.seguro.titulo")}</p>
             <p className="text-xs text-muted-foreground">
-              Todos os dados são protegidos e armazenados com segurança.
+              {t("pagina.seguro.texto")}
             </p>
           </div>
         </div>
@@ -1632,16 +1641,15 @@ const PDV = () => {
       <AlertDialog open={!!confirmacaoGaveta} onOpenChange={(aberto) => !aberto && setConfirmacaoGaveta(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Devolução maior que o dinheiro do caixa</AlertDialogTitle>
+            <AlertDialogTitle>{t("pagina.gaveta.titulo")}</AlertDialogTitle>
             <AlertDialogDescription>
-              A devolução em dinheiro ({formatCurrency(confirmacaoGaveta?.devolucao ?? 0)}) é maior que o dinheiro estimado na gaveta
-              ({formatCurrency(confirmacaoGaveta?.gaveta ?? 0)}). Confira o caixa antes de devolver. Deseja finalizar a venda mesmo assim?
+              {t("pagina.gaveta.descricao", { devolucao: fmt.moeda(confirmacaoGaveta?.devolucao ?? 0), gaveta: fmt.moeda(confirmacaoGaveta?.gaveta ?? 0) })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel>{t("pagina.gaveta.voltar")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setConfirmacaoGaveta(null); void finalizarVenda(true); }}>
-              Finalizar mesmo assim
+              {t("pagina.gaveta.confirmar")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

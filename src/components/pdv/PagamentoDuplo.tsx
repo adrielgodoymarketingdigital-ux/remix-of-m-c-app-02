@@ -9,18 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatCurrency } from "@/lib/formatters";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 
-const LABELS_FORMA: Record<string, string> = {
-  dinheiro: "Dinheiro",
-  pix: "PIX",
-  debito: "Débito",
-  credito: "Crédito",
-  credito_parcelado: "Crédito Parcelado",
-  a_receber: "A Receber",
-};
-
-const FORMAS_DISPONIVEIS = ["dinheiro", "pix", "debito", "credito", "credito_parcelado", "a_receber"];
+// Rótulos: comum.formaPagamento.curto (só destas seis formas).
+const FORMAS_DISPONIVEIS = ["dinheiro", "pix", "debito", "credito", "credito_parcelado", "a_receber"] as const;
 
 interface PagamentoDuploProps {
   valorTotal: number;
@@ -47,6 +41,11 @@ export function PagamentoDuplo({
   onPagamentoDuploChange,
 }: PagamentoDuploProps) {
   const [ativo, setAtivo] = useState(false);
+  // Textos: namespace "pdv"; moeda: useFormatadores (conta).
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
+  const { curto } = useNomesFormaPagamento();
+  const LABELS_FORMA: Partial<Record<string, string>> = Object.fromEntries(FORMAS_DISPONIVEIS.map((f) => [f, curto[f]]));
   const [valorPrimeiraStr, setValorPrimeiraStr] = useState<string>("");
   const [segundaForma, setSegundaForma] = useState("");
   const [dataPrevistaSegunda, setDataPrevistaSegunda] = useState("");
@@ -123,7 +122,7 @@ export function PagamentoDuplo({
     <div className="space-y-3 pt-2 border-t">
       <div className="flex items-center justify-between">
         <Label htmlFor="pagamento-duplo" className="text-sm font-medium">
-          Dividir em 2 formas de pagamento
+          {t("pagamentoDuplo.dividir")}
         </Label>
         <Switch
           id="pagamento-duplo"
@@ -136,12 +135,12 @@ export function PagamentoDuplo({
         <div className="space-y-3 pl-1">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">
-              1ª forma: <span className="font-medium text-foreground">{LABELS_FORMA[formaPagamento] ?? formaPagamento}</span>
-              {formaPagamento === "credito_parcelado" && numeroParcelas > 1 && ` (${numeroParcelas}x)`}
+              {t("pagamentoDuplo.primeiraForma")}<span className="font-medium text-foreground">{LABELS_FORMA[formaPagamento] ?? formaPagamento}</span>
+              {formaPagamento === "credito_parcelado" && numeroParcelas > 1 && t("pagamentoDuplo.parcelas", { count: numeroParcelas })}
             </p>
             <div className="flex items-center gap-2">
               <Label htmlFor="valor-primeira" className="text-xs text-muted-foreground whitespace-nowrap">
-                Valor na 1ª forma
+                {t("pagamentoDuplo.valorPrimeira")}
               </Label>
               <Input
                 id="valor-primeira"
@@ -170,13 +169,13 @@ export function PagamentoDuplo({
               />
             </div>
             <p className="text-xs text-muted-foreground text-right">
-              Restante: <span className="font-medium text-foreground">{formatCurrency(valorSegundaCalculado)}</span>
+              {t("pagamentoDuplo.restante")}<span className="font-medium text-foreground">{fmt.moeda(valorSegundaCalculado)}</span>
             </p>
           </div>
 
           <div className="space-y-1">
             <Label htmlFor="segunda-forma" className="text-xs text-muted-foreground">
-              2ª forma de pagamento
+              {t("pagamentoDuplo.segundaForma")}
             </Label>
             <Select
               value={segundaForma}
@@ -196,7 +195,7 @@ export function PagamentoDuplo({
               }}
             >
               <SelectTrigger id="segunda-forma" className="h-8">
-                <SelectValue placeholder="Selecione" />
+                <SelectValue placeholder={t("pagamentoDuplo.selecione")} />
               </SelectTrigger>
               <SelectContent>
                 {formasDisponiveis.map((f) => (
@@ -207,7 +206,7 @@ export function PagamentoDuplo({
                 {(formasCustomizadas || []).length > 0 && (
                   <>
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
-                      Personalizadas
+                      {t("pagamentoDuplo.personalizadas")}
                     </div>
                     {(formasCustomizadas || []).map((f) => (
                       <SelectItem key={f.id} value={`custom_${f.id}`}>
@@ -222,7 +221,7 @@ export function PagamentoDuplo({
 
           {segundaForma === "a_receber" && (
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Tipo de Recebimento</Label>
+              <Label className="text-xs text-muted-foreground">{t("pagamentoDuplo.tipoRecebimento")}</Label>
               <Select
                 value={tipoRecebimentoSegunda}
                 onValueChange={(v) => {
@@ -242,15 +241,15 @@ export function PagamentoDuplo({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="a_vista">1x (À Vista)</SelectItem>
-                  <SelectItem value="parcelado">Parcelado</SelectItem>
+                  <SelectItem value="a_vista">{t("pagamentoDuplo.aVista")}</SelectItem>
+                  <SelectItem value="parcelado">{t("pagamentoDuplo.parcelado")}</SelectItem>
                 </SelectContent>
               </Select>
 
               {tipoRecebimentoSegunda === "a_vista" && (
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">
-                    Data Prevista de Recebimento *
+                    {t("pagamentoDuplo.dataPrevista")}
                   </Label>
                   <Input
                     type="date"
@@ -267,7 +266,7 @@ export function PagamentoDuplo({
 
               {tipoRecebimentoSegunda === "parcelado" && (
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Número de Parcelas</Label>
+                  <Label className="text-xs text-muted-foreground">{t("pagamentoDuplo.numeroParcelas")}</Label>
                   <Select
                     value={String(numParcelasSegunda)}
                     onValueChange={(v) => {
@@ -284,7 +283,7 @@ export function PagamentoDuplo({
                     <SelectContent>
                       {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
                         <SelectItem key={n} value={String(n)}>
-                          {n}x de {formatCurrency(valorSegundaCalculado / n)}
+                          {t("pagamentoDuplo.parcelasValor", { count: n, valor: fmt.moeda(valorSegundaCalculado / n) })}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -294,7 +293,7 @@ export function PagamentoDuplo({
                     {Array.from({ length: numParcelasSegunda }).map((_, idx) => (
                       <div key={idx} className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-16 shrink-0">
-                          {idx + 1}ª parcela
+                          {t("pagamentoDuplo.parcelaN", { n: idx + 1 })}
                         </span>
                         <Input
                           type="date"
@@ -318,13 +317,13 @@ export function PagamentoDuplo({
 
           {segundaForma && (
             <p className="text-xs text-center bg-muted rounded px-2 py-1.5">
-              <span className="font-medium">{formatCurrency(valorPrimeiraNum)}</span>
-              {" em "}{LABELS_FORMA[formaPagamento] ?? formaPagamento}
-              {" + "}
-              <span className="font-medium">{formatCurrency(valorSegundaCalculado)}</span>
-              {" em "}{LABELS_FORMA[segundaForma]}
-              {" = "}
-              <span className="font-semibold">{formatCurrency(valorTotal)}</span>
+              <span className="font-medium">{fmt.moeda(valorPrimeiraNum)}</span>
+              {t("pagamentoDuplo.emForma", { forma: LABELS_FORMA[formaPagamento] ?? formaPagamento })}
+              {t("pagamentoDuplo.mais")}
+              <span className="font-medium">{fmt.moeda(valorSegundaCalculado)}</span>
+              {t("pagamentoDuplo.emForma", { forma: LABELS_FORMA[segundaForma] ?? "" })}
+              {t("pagamentoDuplo.igual")}
+              <span className="font-semibold">{fmt.moeda(valorTotal)}</span>
             </p>
           )}
         </div>

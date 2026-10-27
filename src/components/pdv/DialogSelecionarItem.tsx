@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useDispositivos } from "@/hooks/useDispositivos";
 import { useProdutos } from "@/hooks/useProdutos";
-import { formatCurrency } from "@/lib/formatters";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
 import { Smartphone, Package, Search } from "lucide-react";
 import { BotaoScanner } from "@/components/scanner/LeitorCodigoBarras";
 import {
@@ -67,6 +68,9 @@ export const DialogSelecionarItem = ({
   onAdicionarItem,
 }: DialogSelecionarItemProps) => {
   const { dispositivos, carregarDispositivos } = useDispositivos();
+  // Textos: namespace "pdv"; moeda: useFormatadores (conta).
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
   const { items: produtos, carregarTodos: carregarProdutos } = useProdutos();
   const { config: configLoja } = useConfiguracaoLoja();
   const [busca, setBusca] = useState("");
@@ -180,7 +184,7 @@ export const DialogSelecionarItem = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl" data-walkthrough="pdv-selecionar-item">
         <DialogHeader>
-          <DialogTitle>Adicionar Item à Venda</DialogTitle>
+          <DialogTitle>{t("selecionarItem.titulo")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -188,7 +192,7 @@ export const DialogSelecionarItem = ({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome, marca, modelo ou código..."
+                placeholder={t("selecionarItem.buscar")}
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 className="pl-10"
@@ -201,18 +205,18 @@ export const DialogSelecionarItem = ({
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="dispositivos">
                 <Smartphone className="h-4 w-4 mr-2" />
-                Dispositivos
+                {t("selecionarItem.dispositivos")}
               </TabsTrigger>
               <TabsTrigger value="produtos">
                 <Package className="h-4 w-4 mr-2" />
-                Produtos
+                {t("selecionarItem.produtos")}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dispositivos" className="space-y-2 mt-4">
               {filtrarDispositivos.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  Nenhum dispositivo disponível
+                  {t("selecionarItem.semDispositivos")}
                 </div>
               ) : (
                 filtrarDispositivos.map((dispositivo) => {
@@ -233,22 +237,22 @@ export const DialogSelecionarItem = ({
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="outline">{dispositivo.tipo}</Badge>
                           <span className="text-sm text-muted-foreground">
-                            Estoque: {dispositivo.quantidade}
+                            {t("selecionarItem.estoque", { quantidade: dispositivo.quantidade })}
                           </span>
                           {temImeis && (
                             <Badge variant="secondary" className="text-xs">
-                              {(dispositivo.imeis as string[]).length} IMEI{(dispositivo.imeis as string[]).length > 1 ? "s" : ""}
+                              {t("selecionarItem.imeis", { count: (dispositivo.imeis as string[]).length })}
                             </Badge>
                           )}
                         </div>
                         <div className="text-lg font-semibold mt-1">
-                          {formatCurrency(Number(dispositivo.preco || 0))}
+                          {fmt.moeda(Number(dispositivo.preco || 0))}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {!temImeis && (
                           <div className="space-y-2">
-                            <Label className="text-xs">Quantidade</Label>
+                            <Label className="text-xs">{t("selecionarItem.quantidade")}</Label>
                             <Input
                               type="number"
                               min="1"
@@ -266,7 +270,7 @@ export const DialogSelecionarItem = ({
                           className="self-end"
                           disabled={aguardandoImei && !imeiEscolhido}
                         >
-                          Adicionar
+                          {t("selecionarItem.adicionar")}
                         </Button>
                       </div>
                     </div>
@@ -274,7 +278,7 @@ export const DialogSelecionarItem = ({
                     {/* Seleção de IMEI — aparece após clicar Adicionar */}
                     {aguardandoImei && (
                       <div className="mt-3 pt-3 border-t space-y-2">
-                        <Label className="text-sm font-medium">Selecione o IMEI da unidade a vender</Label>
+                        <Label className="text-sm font-medium">{t("selecionarItem.selecioneImei")}</Label>
                         <div className="flex gap-2">
                           <Select
                             value={imeiEscolhido === "__pendente__" ? "" : (imeiEscolhido || "")}
@@ -283,7 +287,7 @@ export const DialogSelecionarItem = ({
                             }
                           >
                             <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Selecionar IMEI" />
+                              <SelectValue placeholder={t("selecionarItem.selecionarImei")} />
                             </SelectTrigger>
                             <SelectContent>
                               {(dispositivo.imeis as string[]).map((imei: string) => (
@@ -297,7 +301,7 @@ export const DialogSelecionarItem = ({
                             onClick={() => handleAdicionarDispositivo(dispositivo)}
                             disabled={!imeiEscolhido || imeiEscolhido === "__pendente__"}
                           >
-                            Confirmar
+                            {t("selecionarItem.confirmar")}
                           </Button>
                         </div>
                       </div>
@@ -307,17 +311,17 @@ export const DialogSelecionarItem = ({
                     {aguardandoGarantia && (
                       <div className="mt-3 pt-3 border-t space-y-3">
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Tempo de garantia para o recibo</Label>
+                          <Label className="text-sm font-medium">{t("selecionarItem.tempoGarantia")}</Label>
                           <SeletorTempoGarantia value={garantiaMeses} onChange={setGarantiaMeses} />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Modelo do termo</Label>
+                          <Label className="text-sm font-medium">{t("selecionarItem.modeloTermo")}</Label>
                           <Select value={modeloTermoId} onValueChange={setModeloTermoId}>
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value={MODELO_TERMO_GLOBAL}>Configuração global</SelectItem>
+                              <SelectItem value={MODELO_TERMO_GLOBAL}>{t("selecionarItem.configuracaoGlobal")}</SelectItem>
                               {modelosSalvos.map((m) => (
                                 <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
                               ))}
@@ -326,7 +330,7 @@ export const DialogSelecionarItem = ({
                         </div>
                         <div className="flex justify-end">
                           <Button onClick={() => handleAdicionarDispositivo(dispositivo)}>
-                            Confirmar
+                            {t("selecionarItem.confirmar")}
                           </Button>
                         </div>
                       </div>
@@ -340,7 +344,7 @@ export const DialogSelecionarItem = ({
             <TabsContent value="produtos" className="space-y-2 mt-4">
               {filtrarProdutos.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  Nenhum produto disponível
+                  {t("selecionarItem.semProdutos")}
                 </div>
               ) : (
                 filtrarProdutos.map((produto) => (
@@ -355,26 +359,26 @@ export const DialogSelecionarItem = ({
                           <Badge variant="outline">{produto.sku}</Badge>
                         )}
                         <span className="text-sm text-muted-foreground">
-                          Estoque: {produto.quantidade}
+                          {t("selecionarItem.estoque", { quantidade: produto.quantidade })}
                         </span>
                         {produto.quantidade === 0 && (
                           <Badge variant="outline" className="text-orange-500 border-orange-500">
-                            Sem estoque
+                            {t("selecionarItem.semEstoque")}
                           </Badge>
                         )}
                         {produto.quantidade < 0 && (
                           <Badge variant="destructive">
-                            Negativo
+                            {t("selecionarItem.negativo")}
                           </Badge>
                         )}
                       </div>
                       <div className="text-lg font-semibold mt-1">
-                        {formatCurrency(Number(produto.preco || 0))}
+                        {fmt.moeda(Number(produto.preco || 0))}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="space-y-2">
-                        <Label className="text-xs">Quantidade</Label>
+                        <Label className="text-xs">{t("selecionarItem.quantidade")}</Label>
                         <Input
                           type="number"
                           min="1"
@@ -389,7 +393,7 @@ export const DialogSelecionarItem = ({
                         onClick={() => handleAdicionarProduto(produto)}
                         className="self-end"
                       >
-                        Adicionar
+                        {t("selecionarItem.adicionar")}
                       </Button>
                     </div>
                   </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ export const SelecionadorCliente = ({
   onClienteChange,
   onCriarCliente,
 }: SelecionadorClienteProps) => {
+  // Textos: namespace "pdv".
+  const { t } = useTranslation("pdv");
   const [termoBusca, setTermoBusca] = useState("");
   const [criandoNovo, setCriandoNovo] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -147,10 +150,10 @@ export const SelecionadorCliente = ({
       {!clienteSelecionado && !criandoNovo && (
         <div className="relative">
           <div className="space-y-2">
-            <Label htmlFor="busca-cliente">Nome do Cliente *</Label>
+            <Label htmlFor="busca-cliente">{t("cliente.nome")}</Label>
             <Input
               id="busca-cliente"
-              placeholder="Digite para buscar ou criar cliente..."
+              placeholder={t("cliente.buscar")}
               value={termoBusca}
               onChange={(e) => handleBuscaChange(e.target.value)}
               onFocus={() => setMostrarSugestoes(termoBusca.length > 0)}
@@ -201,7 +204,7 @@ export const SelecionadorCliente = ({
                     >
                       <Plus className="h-4 w-4" />
                       <span className="text-sm font-medium">
-                        Criar cliente "{termoBusca}"
+                        {t("cliente.criar", { termo: termoBusca })}
                       </span>
                     </button>
                   </div>
@@ -209,7 +212,7 @@ export const SelecionadorCliente = ({
               ) : (
                 <div className="p-2">
                   <p className="text-sm text-muted-foreground mb-2">
-                    Nenhum cliente encontrado
+                    {t("cliente.nenhum")}
                   </p>
                   <button
                     type="button"
@@ -221,7 +224,7 @@ export const SelecionadorCliente = ({
                   >
                     <Plus className="h-4 w-4" />
                     <span className="text-sm font-medium">
-                      Criar cliente "{termoBusca}"
+                      {t("cliente.criar", { termo: termoBusca })}
                     </span>
                   </button>
                 </div>
@@ -237,7 +240,7 @@ export const SelecionadorCliente = ({
           <div className="flex items-center gap-2 mb-4">
             <Badge variant="secondary" className="bg-primary/10 text-primary">
               <Plus className="h-3 w-3 mr-1" />
-              Novo Cliente
+              {t("cliente.novo")}
             </Badge>
           </div>
           
@@ -245,11 +248,11 @@ export const SelecionadorCliente = ({
             <div className="space-y-2">
               <Label htmlFor="novo-nome" className="flex items-center gap-1">
                 <User className="h-3 w-3" />
-                Nome *
+                {t("cliente.nomeNovo")}
               </Label>
               <Input
                 id="novo-nome"
-                placeholder="Nome completo"
+                placeholder={t("cliente.nomePlaceholder")}
                 value={dadosNovoCliente.nome}
                 onChange={(e) =>
                   setDadosNovoCliente({ ...dadosNovoCliente, nome: e.target.value })
@@ -261,11 +264,11 @@ export const SelecionadorCliente = ({
             <div className="space-y-2">
               <Label htmlFor="novo-telefone" className="flex items-center gap-1">
                 <Phone className="h-3 w-3" />
-                Telefone
+                {t("cliente.telefone")}
               </Label>
               <Input
                 id="novo-telefone"
-                placeholder="(00) 00000-0000"
+                placeholder={t("cliente.telefonePlaceholder")}
                 value={dadosNovoCliente.telefone}
                 onChange={(e) =>
                   setDadosNovoCliente({ ...dadosNovoCliente, telefone: e.target.value })
@@ -277,11 +280,11 @@ export const SelecionadorCliente = ({
             <div className="space-y-2">
               <Label htmlFor="novo-cpf" className="flex items-center gap-1">
                 <FileText className="h-3 w-3" />
-                CPF
+                {t("cliente.documento")}
               </Label>
               <Input
                 id="novo-cpf"
-                placeholder="000.000.000-00"
+                placeholder={t("cliente.documentoPlaceholder")}
                 value={dadosNovoCliente.cpf}
                 onChange={(e) =>
                   setDadosNovoCliente({ ...dadosNovoCliente, cpf: e.target.value })
@@ -293,11 +296,11 @@ export const SelecionadorCliente = ({
             <div className="space-y-2">
               <Label htmlFor="novo-endereco" className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
-                Endereço
+                {t("cliente.endereco")}
               </Label>
               <Input
                 id="novo-endereco"
-                placeholder="Rua, número"
+                placeholder={t("cliente.enderecoPlaceholder")}
                 value={dadosNovoCliente.endereco}
                 onChange={(e) =>
                   setDadosNovoCliente({ ...dadosNovoCliente, endereco: e.target.value })
@@ -315,7 +318,7 @@ export const SelecionadorCliente = ({
               disabled={salvando}
             >
               <X className="h-4 w-4 mr-1" />
-              Cancelar
+              {t("cliente.cancelar")}
             </Button>
             <Button
               size="sm"
@@ -323,7 +326,7 @@ export const SelecionadorCliente = ({
               disabled={!dadosNovoCliente.nome.trim() || salvando}
             >
               <Check className="h-4 w-4 mr-1" />
-              {salvando ? "Salvando..." : "Salvar Cliente"}
+              {salvando ? t("cliente.salvando") : t("cliente.salvar")}
             </Button>
           </div>
         </Card>

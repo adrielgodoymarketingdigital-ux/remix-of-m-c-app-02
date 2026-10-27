@@ -122,6 +122,8 @@ function tabelasBase({ admin, idioma }) {
       { id: "p3", user_id: USUARIO.id, nome: "Carregador Turbo", sku: "CARR1", preco: 150, custo: 60, quantidade: 8, tipo: "produto", deleted_at: null, empresa_id: null, created_at: "2026-01-11T12:00:00Z" },
     ],
     clientes: [{ id: "cl1", user_id: USUARIO.id, nome: "Maria Teste", telefone: "11988887777", cpf: "123.456.789-00", deleted_at: null, empresa_id: null, created_at: "2026-02-01T12:00:00Z" }],
+    // Aparelho à venda (sem IMEI cadastrado) para o fluxo de troca no PDV.
+    dispositivos: [{ id: "d9", user_id: USUARIO.id, tipo: "celular", marca: "Samsung", modelo: "Galaxy A54", preco: 1800, custo: 1200, quantidade: 1, vendido: false, deleted_at: null, empresa_id: null, condicao: "seminovo", tempo_garantia: 3, created_at: "2026-09-01T12:00:00Z", fornecedores: null, dispositivo_imeis: [] }],
     caixas: [{ id: "cx1", user_id: USUARIO.id, status: "aberto", saldo_inicial: 100, data_abertura: "2026-10-26T11:00:00Z", data_fechamento: null, empresa_id: null, created_at: "2026-10-26T11:00:00Z" }],
     caixa_movimentacoes: [],
     taxas_cartao: [],
@@ -138,7 +140,32 @@ const R = {
   editarVenda: /^(Editar Venda|Editar venta)$/,
   alterarData: /^(Alterar data da venda|Cambiar fecha de la venta)$/,
   periodo: /^Período$/,
+  formaPagamento: /^(Forma de Pagamento|Forma de pago) \*$/,
+  numeroParcelas: /^(Número de Parcelas|Número de cuotas) \*$/,
+  dinheiro: /^(Dinheiro|Efectivo)$/,
+  pix: /^(PIX|Pix)$/,
+  creditoParcelado: /^(Crédito Parcelado|Crédito en cuotas)$/,
+  statusCaixa: /^(Status do Caixa|Estado de caja)$/,
+  historico: /^(Histórico|Historial)$/,
+  sangria: /^(Sangria \/ Suprimento|Retiro \/ Ingreso)$/,
+  fecharCaixa: /^(Fechar Caixa|Cerrar caja)$/,
+  vendaAvulsa: /^(Venda Avulsa|Venta rápida)$/,
 };
+
+// PDV: botão de atalho do topo (Venda Avulsa, Caixa, Histórico...) pelo texto.
+const atalho = (pg, rotulo) => pg.locator("main button", { has: pg.locator("span", { hasText: rotulo }) }).first().click();
+// PDV: combobox do campo cujo rótulo casa com `rotulo`.
+const combo = (pg, rotulo) => pg.locator("div.space-y-2", { has: pg.locator("label", { hasText: rotulo }) }).last().getByRole("combobox").first();
+async function escolherForma(pg, opcao) {
+  await combo(pg, R.formaPagamento).click();
+  await pg.getByRole("option", { name: opcao }).click();
+}
+// Primeiro produto da aba Produtos (aberta por padrão) e fecha o diálogo.
+async function adicionarPrimeiroProduto(pg) {
+  await pg.locator("[role=dialog] button", { hasText: /^(Adicionar|Agregar)$/ }).first().click();
+  await pg.waitForTimeout(300);
+  await pg.keyboard.press("Escape");
+}
 
 // Linha (computador) ou cartão (celular) da venda com este item.
 const linha = (pg, tela, item) => (tela === "computador" ? pg.locator("tr", { hasText: item }).first() : pg.locator("article", { hasText: item }).first());
@@ -160,6 +187,103 @@ const ultimoBotaoDoDialogo = (pg) => pg.locator("[role=dialog] button:visible, [
 
 // Fluxos: passos nomeados; o HTML do <body> é guardado ao fim de cada um.
 const FLUXOS = {
+  "pdv-inicial": { rota: "/pdv", passos: {} },
+  "pdv-dinheiro": {
+    rota: "/pdv",
+    passos: {
+      seletorItens: async (pg) => pg.locator('[data-walkthrough="pdv-adicionar-item"]').click(),
+      adicionarItem: adicionarPrimeiroProduto,
+      forma: async (pg) => escolherForma(pg, R.dinheiro),
+      finalizar: async (pg) => pg.locator('[data-walkthrough="pdv-finalizar"]').click(),
+    },
+  },
+  "pdv-credito-parcelado": {
+    rota: "/pdv",
+    passos: {
+      adicionarItem: async (pg) => { await pg.locator('[data-walkthrough="pdv-adicionar-item"]').click(); await pg.waitForTimeout(600); await adicionarPrimeiroProduto(pg); },
+      forma: async (pg) => escolherForma(pg, R.creditoParcelado),
+      parcelas: async (pg) => { await combo(pg, R.numeroParcelas).click(); await pg.getByRole("option", { name: /^3/ }).click(); },
+      finalizar: async (pg) => pg.locator('[data-walkthrough="pdv-finalizar"]').click(),
+    },
+  },
+  "pdv-desconto": {
+    rota: "/pdv",
+    passos: {
+      adicionarItem: async (pg) => { await pg.locator('[data-walkthrough="pdv-adicionar-item"]').click(); await pg.waitForTimeout(600); await adicionarPrimeiroProduto(pg); },
+      desconto: async (pg) => {
+        await pg.getByRole("combobox").filter({ hasText: /^(R\$|US\$)$/ }).click();
+        await pg.getByRole("option", { name: "%" }).click();
+        await pg.locator("input[type=number].w-20.h-8").fill("10");
+      },
+      forma: async (pg) => escolherForma(pg, R.pix),
+      finalizar: async (pg) => pg.locator('[data-walkthrough="pdv-finalizar"]').click(),
+    },
+  },
+  "pdv-pagamento-duplo": {
+    rota: "/pdv",
+    passos: {
+      adicionarItem: async (pg) => { await pg.locator('[data-walkthrough="pdv-adicionar-item"]').click(); await pg.waitForTimeout(600); await adicionarPrimeiroProduto(pg); },
+      forma: async (pg) => escolherForma(pg, R.dinheiro),
+      duplo: async (pg) => {
+        await pg.locator("#pagamento-duplo").click();
+        await pg.waitForTimeout(300);
+        await pg.locator("#valor-primeira").fill("50");
+        await pg.locator("#segunda-forma").click();
+        await pg.getByRole("option", { name: R.pix }).click();
+      },
+    },
+  },
+  "pdv-cliente-novo": {
+    rota: "/pdv",
+    passos: {
+      buscar: async (pg) => pg.locator("#busca-cliente").fill("Jo"),
+      criar: async (pg) => pg.getByRole("button", { name: /^(Criar cliente|Crear cliente) "Jo"$/ }).first().dispatchEvent("mousedown"),
+    },
+  },
+  "pdv-status-caixa": { rota: "/pdv", passos: { abrir: async (pg) => atalho(pg, R.statusCaixa) } },
+  "pdv-historico": { rota: "/pdv", passos: { abrir: async (pg) => atalho(pg, R.historico) } },
+  "pdv-sangria": {
+    rota: "/pdv",
+    passos: {
+      abrir: async (pg) => atalho(pg, R.sangria),
+      registrar: async (pg) => { await pg.locator("[role=dialog] input[type=number]").fill("20"); await ultimoBotaoDoDialogo(pg).click(); },
+    },
+  },
+  "pdv-fechar-caixa": {
+    rota: "/pdv",
+    passos: {
+      abrir: async (pg) => atalho(pg, R.fecharCaixa),
+      confirmar: async (pg) => { await pg.locator("#saldo-contado").fill("150"); await ultimoBotaoDoDialogo(pg).click(); },
+    },
+  },
+  "pdv-venda-avulsa": {
+    rota: "/pdv",
+    passos: {
+      abrir: async (pg) => atalho(pg, R.vendaAvulsa),
+      registrar: async (pg) => {
+        const d = pg.locator("[role=dialog]");
+        await d.locator("input").first().fill("Conserto de conector");
+        await d.locator("input[type=number]").fill("45");
+        await d.getByRole("combobox").click();
+        await pg.getByRole("option", { name: R.dinheiro }).click();
+        await d.getByRole("button", { name: /^(Registrar Venda|Registrar venta)$/ }).click();
+      },
+    },
+  },
+  "pdv-formas-config": { rota: "/pdv", passos: { abrir: async (pg) => pg.getByRole("button", { name: /^Configurar$/ }).click() } },
+  "pdv-troca": {
+    rota: "/pdv",
+    passos: {
+      adicionarAparelho: async (pg) => {
+        await pg.locator('[data-walkthrough="pdv-adicionar-item"]').click();
+        await pg.waitForTimeout(600);
+        await pg.getByRole("tab", { name: /^(Dispositivos|Equipos)$/ }).click();
+        await pg.locator("[role=dialog] button", { hasText: /^(Adicionar|Agregar)$/ }).first().click();
+      },
+      garantia: async (pg) => { await pg.locator("[role=dialog] button", { hasText: /^Confirmar$/ }).last().click(); await pg.waitForTimeout(300); await pg.keyboard.press("Escape"); },
+      dialogoTroca: async (pg) => pg.getByRole("button", { name: /^(\+ Dispositivo de Entrada \(Troca\)|\+ Equipo como parte de pago)$/ }).click(),
+    },
+  },
   "vendas-lista": { rota: "/vendas", passos: {} },
   "vendas-filtro-periodo": { rota: "/vendas", passos: { periodo: async (pg) => pg.getByRole("button", { name: R.periodo }).click() } },
   "vendas-cancelar": {

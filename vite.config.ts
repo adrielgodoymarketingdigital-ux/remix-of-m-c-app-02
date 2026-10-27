@@ -98,6 +98,10 @@ const LOCALE_DATE_FNS = /\/date-fns\/locale\/(es|en-US|it)(\.m?js$|\/)/;
 function manualChunks(id: string, meta: ManualChunkMeta): string | undefined {
   const traducao = id.match(TRADUCAO);
   if (traducao) return `idioma-${traducao[1]}-${traducao[2]}`;
+  // ComNegrito (negrito nas frases traduzidas, poucas linhas): fica com os
+  // utilitários, que toda página já carrega. Solto, ele entrava no chunk que
+  // PDV e Vendas compartilham e trocava o nome desse arquivo.
+  if (id.endsWith("/src/components/i18n/ComNegrito.tsx")) return "vendor-utils";
   const pacote = pacoteDoModulo(id);
   if (!pacote) return undefined;
   for (const [chunk, pacotes] of Object.entries(GRUPOS_VENDOR)) {

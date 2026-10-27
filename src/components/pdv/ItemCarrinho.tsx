@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/formatters";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
 import { Trash2, Smartphone, Package, Pencil } from "lucide-react";
 import { ItemVenda } from "./DialogSelecionarItem";
 
@@ -20,6 +21,8 @@ export const ItemCarrinho = ({
   onAtualizarPreco,
 }: ItemCarrinhoProps) => {
   const [editandoPreco, setEditandoPreco] = useState(false);
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
   const [precoInput, setPrecoInput] = useState(String(item.preco));
   const total = item.preco * item.quantidade;
   const precoFoiAlterado = item.precoOriginal !== undefined && item.preco !== item.precoOriginal;
@@ -50,9 +53,9 @@ export const ItemCarrinho = ({
   };
 
   const getItemLabel = () => {
-    if (item.tipo === "dispositivo") return "Dispositivo";
-    if (item.tipo === "peca") return "Peça";
-    return "Produto";
+    if (item.tipo === "dispositivo") return t("carrinho.tipos.dispositivo");
+    if (item.tipo === "peca") return t("carrinho.tipos.peca");
+    return t("carrinho.tipos.produto");
   };
 
   return (
@@ -93,15 +96,15 @@ export const ItemCarrinho = ({
                   setEditandoPreco(true);
                 }}
                 className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-                title="Editar preço unitário"
+                title={t("carrinho.editarPreco")}
               >
-                {formatCurrency(item.preco)} × {item.quantidade}
+                {t("carrinho.precoVezesQuantidade", { preco: fmt.moeda(item.preco), quantidade: item.quantidade })}
                 <Pencil className="h-3 w-3" />
               </button>
             )}
             {precoFoiAlterado && (
               <Badge variant="secondary" className="text-[10px]">
-                Preço alterado
+                {t("carrinho.precoAlterado")}
               </Badge>
             )}
           </div>
@@ -151,7 +154,7 @@ export const ItemCarrinho = ({
 
         {/* Total */}
         <div className="text-right flex-1 sm:flex-none sm:min-w-[80px]">
-          <div className="font-semibold text-sm sm:text-base">{formatCurrency(total)}</div>
+          <div className="font-semibold text-sm sm:text-base">{fmt.moeda(total)}</div>
         </div>
 
         {/* Botão remover */}

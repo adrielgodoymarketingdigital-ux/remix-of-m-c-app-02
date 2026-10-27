@@ -88,3 +88,12 @@ Deno.test("compostos de Vendas: montagem antiga = chave pt-BR", async () => {
   assertEquals(` · ${1} caixa(s) ajustado(s)`, preencher(v.alterarData.historicoCaixas_one, { count: 1 }));
   assertEquals(`${"26/10/2026"} às ${"10:00"}`, preencher((await import("../../src/locales/pt-BR/comum.ts")).default.dataHora, { data: "26/10/2026", hora: "10:00" }));
 });
+
+Deno.test("PDV: chaves pt-BR = constantes de trocaPDV.ts e nomes da devolução", async () => {
+  const { default: pdvPtBR } = await import("../../src/locales/pt-BR/pdv.ts");
+  const troca = await import("../../src/lib/vendas/trocaPDV.ts");
+  assertEquals(pdvPtBR.pagina.troca.bloqueio, troca.MENSAGEM_TROCA_MAIOR_QUE_ITENS_SEM_PECA);
+  // Botões da devolução (NOMES_FORMA_DEVOLUCAO) = Dinheiro (curto) e Pix (variante da venda avulsa).
+  assertEquals(troca.NOMES_FORMA_DEVOLUCAO, { dinheiro: comumPtBR.formaPagamento.curto.dinheiro, pix: comumPtBR.formaPagamento.pixAvulsa });
+});
+
