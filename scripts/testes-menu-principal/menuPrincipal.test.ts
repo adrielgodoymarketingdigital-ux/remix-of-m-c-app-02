@@ -105,7 +105,8 @@ Deno.test("barra lateral e menu do celular usam a MESMA lista e a MESMA regra (s
     assertEquals(fonte.includes("filtrarMenuVisivel(menuItems"), true, arq);
     assertEquals(fonte.includes("const menuItems = MENU_PRINCIPAL_COM_ICONE;"), true, arq);
     assertEquals(/url: "\/(extrato|financeiro|dashboard)"/.test(fonte), false, `${arq} ainda define itens próprios`);
-    assertEquals(fonte.includes("GRUPOS_MENU.map"), true, arq);
+    // Seções vêm de GRUPOS_MENU (o rótulo é do i18n desde a etapa 5A; o celular usa a lista direto).
+    assertEquals(/GRUPOS_MENU(\.map|;)/.test(fonte), true, arq);
   }
 });
 
