@@ -34,20 +34,23 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { FormatoMoedaProvider } from "@/components/ui/valor-monetario";
+import { useFormatadores } from "@/hooks/useFormatadores";
 import { cn } from "@/lib/utils";
 
-/** Abas da página (mesmos values de antes; só ganham ícone). */
-const ABAS: { value: string; label: string; icone: LucideIcon }[] = [
-  { value: "perfil", label: "Perfil", icone: User },
-  { value: "logo", label: "Logo", icone: ImageIcon },
-  { value: "aparencia", label: "Aparência", icone: Palette },
-  { value: "cores", label: "Cores", icone: Droplet },
-  { value: "numeracao", label: "Numeração", icone: Hash },
-  { value: "notificacoes", label: "Notificações", icone: Bell },
-  { value: "permissoes", label: "Permissões", icone: ShieldCheck },
-  { value: "preview", label: "Preview", icone: Eye },
-  { value: "exportacao", label: "Exportação", icone: Download },
+/** Abas da página (mesmos values de antes; só ganham ícone). Rótulo: abas.<value> no namespace "configuracoes". */
+const ABAS: { value: string; icone: LucideIcon }[] = [
+  { value: "perfil", icone: User },
+  { value: "logo", icone: ImageIcon },
+  { value: "aparencia", icone: Palette },
+  { value: "cores", icone: Droplet },
+  { value: "numeracao", icone: Hash },
+  { value: "notificacoes", icone: Bell },
+  { value: "permissoes", icone: ShieldCheck },
+  { value: "preview", icone: Eye },
+  { value: "exportacao", icone: Download },
 ];
 
 const BOTAO_CONTORNO =
@@ -59,6 +62,7 @@ const BOTAO_CONTORNO =
  * tela /catalogo, onde a loja é configurada.
  */
 function BotaoVerLoja({ config }: { config: ConfiguracaoLoja | null }) {
+  const { t } = useTranslation("configuracoes");
   const extra = config as (ConfiguracaoLoja & {
     catalogo_slug?: string | null;
     catalogo_ativo?: boolean | null;
@@ -69,7 +73,7 @@ function BotaoVerLoja({ config }: { config: ConfiguracaoLoja | null }) {
   const conteudo = (
     <>
       <Eye className="h-4 w-4" aria-hidden="true" />
-      Ver minha loja
+      {t("verMinhaLoja")}
     </>
   );
   return destino ? (
@@ -77,7 +81,7 @@ function BotaoVerLoja({ config }: { config: ConfiguracaoLoja | null }) {
       {conteudo}
     </a>
   ) : (
-    <Link to="/catalogo" className={BOTAO_CONTORNO} title="Ative o catálogo ou a landing page para publicar sua loja">
+    <Link to="/catalogo" className={BOTAO_CONTORNO} title={t("verMinhaLojaDica")}>
       {conteudo}
     </Link>
   );
@@ -93,6 +97,9 @@ export default function Configuracoes() {
   const { config, loading, atualizarConfiguracao, validarParaRecibos } =
     useConfiguracaoLoja(empresaIdConfig);
   const { toast } = useToast();
+  // Textos: namespace "configuracoes"; moeda: useFormatadores (conta).
+  const { t } = useTranslation("configuracoes");
+  const fmt = useFormatadores();
 
   const statusRecibos = validarParaRecibos();
 
@@ -106,13 +113,13 @@ export default function Configuracoes() {
     const sucesso = await atualizarConfiguracao({ logo_url: url });
     if (sucesso) {
       toast({
-        title: "Logo atualizada",
-        description: "A logo da loja foi atualizada com sucesso.",
+        title: t("logoAtualizada"),
+        description: t("logoAtualizadaDescricao"),
       });
     } else {
       toast({
-        title: "Erro ao atualizar logo",
-        description: "Não foi possível atualizar a logo da loja.",
+        title: t("erroAtualizarLogo"),
+        description: t("erroAtualizarLogoDescricao"),
         variant: "destructive",
       });
     }
@@ -123,7 +130,7 @@ export default function Configuracoes() {
       <AppLayout>
         <main className="flex-1 p-4 sm:p-6 overflow-auto">
           <div className="max-w-5xl lg:max-w-none mx-auto">
-            <p className="text-center text-muted-foreground">Carregando...</p>
+            <p className="text-center text-muted-foreground">{t("carregando")}</p>
           </div>
         </main>
       </AppLayout>
@@ -132,15 +139,16 @@ export default function Configuracoes() {
 
   return (
     <AppLayout>
+      <FormatoMoedaProvider value={fmt.moeda}>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
         <div className="max-w-5xl lg:max-w-none mx-auto space-y-5 sm:space-y-6">
           {/* Cabeçalho. lg:pt-6: o olho flutuante do layout (BotaoOcultarValores,
               fixed top-4 right-4, só no desktop) ficaria por cima de "Ver minha loja" */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:pt-6">
             <div className="min-w-0">
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-[28px]">Configurações</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-[28px]">{t("titulo")}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Gerencie as configurações e dados da sua loja.
+                {t("subtitulo")}
               </p>
             </div>
             <BotaoVerLoja config={config} />
@@ -151,7 +159,7 @@ export default function Configuracoes() {
               <CardContent className="pt-4 sm:pt-6">
                 <div className="flex items-center gap-2 mb-2">
                   <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium">Editando dados de</Label>
+                  <Label className="text-sm font-medium">{t("editandoDadosDe")}</Label>
                 </div>
                 <Select
                   value={empresaAtiva ?? "__matriz__"}
@@ -163,7 +171,7 @@ export default function Configuracoes() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__matriz__">{nomeMatriz} (matriz)</SelectItem>
+                    <SelectItem value="__matriz__">{t("matriz", { nome: nomeMatriz })}</SelectItem>
                     {empresas.map((empresa) => (
                       <SelectItem key={empresa.id} value={empresa.id}>
                         {empresa.nome}
@@ -172,8 +180,7 @@ export default function Configuracoes() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Cada filial pode ter seus próprios dados (endereço, CNPJ, logo, etc.) para
-                  que apareçam corretamente na impressão dos recibos dela.
+                  {t("filialDescricao")}
                 </p>
               </CardContent>
             </Card>
@@ -185,7 +192,7 @@ export default function Configuracoes() {
           <Tabs defaultValue="perfil" className="w-full">
             {/* Barra única de abas em pílula; rola na horizontal no celular/tablet */}
             <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-muted/70 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {ABAS.map(({ value, label, icone: Icone }) => (
+              {ABAS.map(({ value, icone: Icone }) => (
                 <TabsTrigger
                   key={value}
                   value={value}
@@ -196,7 +203,7 @@ export default function Configuracoes() {
                   )}
                 >
                   <Icone className="h-4 w-4" aria-hidden="true" />
-                  {label}
+                  {t(`abas.${value}`)}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -263,6 +270,7 @@ export default function Configuracoes() {
           </Tabs>
         </div>
       </main>
+      </FormatoMoedaProvider>
     </AppLayout>
   );
 }

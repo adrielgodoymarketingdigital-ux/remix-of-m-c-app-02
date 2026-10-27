@@ -9,6 +9,8 @@ import comumPtBR from "../../src/locales/pt-BR/comum.ts";
 import comumEs from "../../src/locales/es/comum.ts";
 import dashboardPtBR from "../../src/locales/pt-BR/dashboard.ts";
 import dashboardEs from "../../src/locales/es/dashboard.ts";
+import configuracoesPtBR from "../../src/locales/pt-BR/configuracoes.ts";
+import configuracoesEs from "../../src/locales/es/configuracoes.ts";
 import { ADMIN_MENU, GRUPOS_MENU, MENU_PRINCIPAL } from "../../src/lib/menu/menuPrincipal.ts";
 import { chaveDaRota } from "../../src/lib/i18n/chaves.ts";
 
@@ -54,6 +56,7 @@ const NAMESPACES: [string, Arvore, Arvore][] = [
   ["comum", comumPtBR as Arvore, comumEs as Arvore],
   ["menu", menuPtBR as Arvore, menuEs as Arvore],
   ["dashboard", dashboardPtBR as Arvore, dashboardEs as Arvore],
+  ["configuracoes", configuracoesPtBR as Arvore, configuracoesEs as Arvore],
 ];
 
 // Listas (frases do dia) viram folhas "frases.0", "frases.1"...
@@ -123,4 +126,10 @@ Deno.test("pt-BR da barra inferior e do cabeçalho do celular = textos de antes 
     "/compatibilidade-pelicula": "Compatibilidade de Película",
   };
   assertEquals(menuPtBR.cabecalho.titulos, Object.fromEntries(Object.entries(antes).map(([r, t]) => [chaveDaRota(r), t])));
+});
+
+Deno.test("configuracoes: chave = texto pt-BR nos mapas consultados por nome (campos e paletas)", () => {
+  for (const mapa of [configuracoesPtBR.campos, configuracoesPtBR.cores.paletas] as Record<string, string>[]) {
+    for (const [k, v] of Object.entries(mapa)) assertEquals(v, k);
+  }
 });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ export function ConfiguracaoPermissoes() {
   const { empresas } = useEmpresa();
   const { toast } = useToast();
   const [salvando, setSalvando] = useState(false);
+  const { t, i18n } = useTranslation("configuracoes");
 
   const mostrarOsFiliais = config?.permissoes_multiempresa?.mostrar_os_filiais_na_matriz ?? false;
 
@@ -27,15 +29,15 @@ export function ConfiguracaoPermissoes() {
     setSalvando(false);
     if (sucesso) {
       toast({
-        title: "Permissões atualizadas",
+        title: i18n.t("permissoes.atualizadas", { ns: "configuracoes" }),
         description: valor
-          ? "As OS das filiais agora aparecem na matriz."
-          : "As OS das filiais ficam separadas por empresa.",
+          ? i18n.t("permissoes.osNaMatriz", { ns: "configuracoes" })
+          : i18n.t("permissoes.osSeparadas", { ns: "configuracoes" }),
       });
     } else {
       toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível atualizar as permissões. Tente novamente.",
+        title: i18n.t("permissoes.erroSalvar", { ns: "configuracoes" }),
+        description: i18n.t("permissoes.erroSalvarDescricao", { ns: "configuracoes" }),
         variant: "destructive",
       });
     }
@@ -50,30 +52,29 @@ export function ConfiguracaoPermissoes() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Building2 className="h-5 w-5" />
-          Multi-Empresa
+          {t("permissoes.titulo")}
         </CardTitle>
         <CardDescription>
-          Controle como as Ordens de Serviço das filiais aparecem na conta da matriz.
+          {t("permissoes.descricao")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {!temFiliais && (
           <p className="text-sm text-muted-foreground">
-            Nenhuma filial cadastrada. Estas opções ficam disponíveis após criar pelo menos uma filial em Multi-Empresas.
+            {t("permissoes.semFiliais")}
           </p>
         )}
 
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <Label htmlFor="mostrar-os-filiais" className="text-sm font-medium">
-              Mostrar OS das filiais na matriz
+              {t("permissoes.mostrarOsFiliais")}
             </Label>
             <p className="text-xs text-muted-foreground max-w-sm">
-              Quando ativado, todas as Ordens de Serviço de todas as filiais aparecem juntas no menu de OS da matriz.
-              Uma coluna <strong>Loja</strong> e um filtro por filial serão exibidos na listagem.
+              <Trans t={t} i18nKey="permissoes.ajudaAtivado" components={{ negrito: <strong /> }} />
             </p>
             <p className="text-xs text-muted-foreground max-w-sm mt-1">
-              Quando desativado, use o seletor de empresas na barra lateral para alternar entre matriz e filiais individualmente.
+              {t("permissoes.ajudaDesativado")}
             </p>
           </div>
           <Switch

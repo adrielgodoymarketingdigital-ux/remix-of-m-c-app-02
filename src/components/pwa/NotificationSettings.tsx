@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Bell, BellOff, Loader2, AlertCircle, Smartphone, Share, Plus, Info, ShoppingCart, ClipboardList, PackageCheck, RefreshCw, CreditCard, BellRing, ChevronDown, Crown } from "lucide-react";
 import { useState, useMemo } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 const EVENT_ICONS: Record<EventType, React.ReactNode> = {
   SALE_CREATED: <ShoppingCart className="h-4 w-4" />,
@@ -43,6 +44,8 @@ export function NotificationSettings() {
 
   const { assinatura } = useAssinatura();
   const [osStatusOpen, setOsStatusOpen] = useState(false);
+  // Textos: namespace "configuracoes" (notificacoes.*). activationStep/activationError vêm do hook, em pt-BR.
+  const { t } = useTranslation("configuracoes");
 
   const temPlanoProfissional = useMemo(() => {
     if (!assinatura) return false;
@@ -65,35 +68,35 @@ export function NotificationSettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Smartphone className="h-5 w-5" />
-            Notificações Push no iPhone
+            {t("notificacoes.iphoneTitulo")}
           </CardTitle>
           <CardDescription>
-            Receba alertas importantes mesmo quando o app estiver fechado
+            {t("notificacoes.iphoneDescricao")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
             <Info className="h-4 w-4" />
-            <AlertTitle>Instalação necessária</AlertTitle>
+            <AlertTitle>{t("notificacoes.instalacaoNecessaria")}</AlertTitle>
             <AlertDescription className="mt-2">
               <p className="mb-3">
-                No iPhone, notificações push só funcionam se o app estiver instalado na tela inicial.
+                {t("notificacoes.iphoneSoInstalado")}
               </p>
               <div className="space-y-2 text-sm">
-                <p className="font-medium">Para instalar via Safari:</p>
+                <p className="font-medium">{t("notificacoes.paraInstalar")}</p>
                 <ol className="list-decimal pl-4 space-y-1">
                   <li className="flex items-center gap-1">
-                    Toque no botão <Share className="inline h-4 w-4 mx-1" /> <span className="font-medium">Compartilhar</span>
+                    <Trans t={t} i18nKey="notificacoes.passoCompartilhar" components={{ icone: <Share className="inline h-4 w-4 mx-1" />, destaque: <span className="font-medium" /> }} />
                   </li>
                   <li className="flex items-center gap-1">
-                    Role e toque em <Plus className="inline h-4 w-4 mx-1" /> <span className="font-medium">Adicionar à Tela Inicial</span>
+                    <Trans t={t} i18nKey="notificacoes.passoAdicionar" components={{ icone: <Plus className="inline h-4 w-4 mx-1" />, destaque: <span className="font-medium" /> }} />
                   </li>
-                  <li>Confirme tocando em <span className="font-medium">"Adicionar"</span></li>
-                  <li>Abra o app pela tela inicial e ative as notificações</li>
+                  <li><Trans t={t} i18nKey="notificacoes.passoConfirmar" components={{ destaque: <span className="font-medium" /> }} /></li>
+                  <li>{t("notificacoes.passoAbrir")}</li>
                 </ol>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                <strong>Importante:</strong> Use o Safari para adicionar. O Chrome no iPhone não suporta instalação de apps.
+                <Trans t={t} i18nKey="notificacoes.importante" components={{ negrito: <strong /> }} />
               </p>
             </AlertDescription>
           </Alert>
@@ -110,21 +113,21 @@ export function NotificationSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
-              Notificações Push
+              {t("notificacoes.pushTitulo")}
             </CardTitle>
             <CardDescription>
-              Receba alertas importantes do sistema
+              {t("notificacoes.pushDescricao")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Não suportado</AlertTitle>
+              <AlertTitle>{t("notificacoes.naoSuportado")}</AlertTitle>
               <AlertDescription>
                 {isIOS ? (
-                  <>No iPhone, abra o app instalado na tela inicial para ativar notificações.</>
+                  <>{t("notificacoes.naoSuportadoIphone")}</>
                 ) : (
-                  <>Seu navegador não suporta notificações push. Tente usar Chrome, Firefox ou Edge.</>
+                  <>{t("notificacoes.naoSuportadoNavegador")}</>
                 )}
               </AlertDescription>
             </Alert>
@@ -138,10 +141,10 @@ export function NotificationSettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
-            Notificações Push
+            {t("notificacoes.pushTitulo")}
           </CardTitle>
           <CardDescription>
-            Receba alertas importantes do sistema
+            {t("notificacoes.pushDescricao")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -152,7 +155,7 @@ export function NotificationSettings() {
               ) : (
                 <BellOff className="h-4 w-4 text-muted-foreground" />
               )}
-              Ativar notificações
+              {t("notificacoes.ativar")}
             </Label>
             <Switch
               id="push-notifications"
@@ -165,14 +168,14 @@ export function NotificationSettings() {
           {isLoading && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-3 w-3 animate-spin" />
-              {activationStep ?? "Finalizando ativação..."}
+              {activationStep ?? t("notificacoes.finalizando")}
             </div>
           )}
 
           {activationError && !isLoading && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Não foi possível ativar</AlertTitle>
+              <AlertTitle>{t("notificacoes.naoFoiPossivelAtivar")}</AlertTitle>
               <AlertDescription>{activationError}</AlertDescription>
             </Alert>
           )}
@@ -180,18 +183,18 @@ export function NotificationSettings() {
           {permission === "denied" && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Notificações bloqueadas</AlertTitle>
+              <AlertTitle>{t("notificacoes.bloqueadas")}</AlertTitle>
               <AlertDescription>
-                Você bloqueou as notificações. Para ativar, vá nas configurações do {isIOS ? "app" : "navegador"} e permita notificações para este site.
+                {isIOS ? t("notificacoes.bloqueadasApp") : t("notificacoes.bloqueadasNavegador")}
               </AlertDescription>
             </Alert>
           )}
 
           {isSubscribed && (
             <div className="rounded-lg bg-muted/50 p-3 text-sm">
-              <p className="font-medium text-primary mb-1">✓ Notificações ativas</p>
+              <p className="font-medium text-primary mb-1">{t("notificacoes.ativas")}</p>
               <p className="text-muted-foreground text-xs">
-                Escolha abaixo quais tipos de notificação deseja receber.
+                {t("notificacoes.escolhaAbaixo")}
               </p>
             </div>
           )}
@@ -211,20 +214,20 @@ export function NotificationSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <BellRing className="h-5 w-5" />
-              Notificações Automáticas
+              {t("notificacoes.automaticasTitulo")}
             </CardTitle>
             <CardDescription>
-              Receba alertas automáticos sobre vendas, OS e pagamentos
+              {t("notificacoes.automaticasDescricao")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Alert>
               <Crown className="h-4 w-4" />
-              <AlertTitle>Recurso do Plano Profissional</AlertTitle>
+              <AlertTitle>{t("notificacoes.recursoProfissional")}</AlertTitle>
               <AlertDescription className="space-y-2">
-                <p>As notificações automáticas estão disponíveis apenas no plano Profissional.</p>
+                <p>{t("notificacoes.soProfissional")}</p>
                 <Button variant="link" className="px-0 h-auto" onClick={() => window.location.href = "/plano"}>
-                  Fazer upgrade para o Profissional
+                  {t("notificacoes.upgrade")}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -235,10 +238,10 @@ export function NotificationSettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <BellRing className="h-5 w-5" />
-            Tipos de Notificação
+            {t("notificacoes.tiposTitulo")}
           </CardTitle>
           <CardDescription>
-            Escolha quais eventos devem gerar notificações push
+            {t("notificacoes.tiposDescricao")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -246,7 +249,7 @@ export function NotificationSettings() {
           <div className="flex items-center justify-between">
             <Label htmlFor="all-notifications" className="flex items-center gap-2 font-medium">
               <Bell className="h-4 w-4 text-primary" />
-              Todas as notificações
+              {t("notificacoes.todas")}
             </Label>
             {prefsLoading ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -270,7 +273,7 @@ export function NotificationSettings() {
                   className="flex items-center gap-2 text-sm font-normal"
                 >
                   <span className="text-muted-foreground">{EVENT_ICONS[eventType]}</span>
-                  {EVENT_TYPE_LABELS[eventType]}
+                  {t(`notificacoes.eventos.${eventType}`, { defaultValue: EVENT_TYPE_LABELS[eventType] })}
                 </Label>
                 {prefsLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -292,7 +295,7 @@ export function NotificationSettings() {
             <CollapsibleTrigger className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground"><RefreshCw className="h-4 w-4" /></span>
-                <span className="text-sm font-medium">Mudança de status da OS</span>
+                <span className="text-sm font-medium">{t("notificacoes.mudancaStatus")}</span>
               </div>
               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${osStatusOpen ? "rotate-180" : ""}`} />
             </CollapsibleTrigger>
@@ -304,7 +307,7 @@ export function NotificationSettings() {
                       htmlFor={`notif-os-${status}`}
                       className="text-sm font-normal text-muted-foreground"
                     >
-                      {OS_STATUS_LABELS[status]}
+                      {t(`notificacoes.status.${status}`, { defaultValue: OS_STATUS_LABELS[status] })}
                     </Label>
                     {prefsLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

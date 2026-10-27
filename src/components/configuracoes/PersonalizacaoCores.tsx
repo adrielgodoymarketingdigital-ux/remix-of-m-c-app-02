@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -6,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Palette, RotateCcw, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFormatadores } from "@/hooks/useFormatadores";
 
 interface CoresPersonalizadas {
   primary_from: string;
@@ -16,6 +18,7 @@ interface CoresPersonalizadas {
   card_faturamento_to: string;
 }
 
+// `nome` é a chave e o texto pt-BR; na tela vale cores.paletas.<nome> do namespace "configuracoes".
 const CORES_PREDEFINIDAS = [
   // Blues
   { nome: "Azul Escuro", from: "#1e40af", via: "#1d4ed8", to: "#0891b2" },
@@ -50,6 +53,11 @@ const DEFAULT_CORES: CoresPersonalizadas = {
 
 export function PersonalizacaoCores() {
   const { toast } = useToast();
+  const { t } = useTranslation("configuracoes");
+  const fmt = useFormatadores();
+  // Valor de exemplo do preview. No Brasil sem i18n continua o texto fixo de
+  // sempre (espaço comum; formatarMoeda poria o espaço não separável do Intl).
+  const valorExemplo = fmt.ctx.idioma === "pt-BR" && fmt.ctx.moeda === "BRL" ? "R$ 2.350,00" : fmt.moeda(2350);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [cores, setCores] = useState<CoresPersonalizadas>(DEFAULT_CORES);
@@ -131,14 +139,14 @@ export function PersonalizacaoCores() {
       aplicarCoresNoDOM(cores);
 
       toast({
-        title: "Cores salvas!",
-        description: "As cores do sistema foram personalizadas com sucesso.",
+        title: t("cores.salvas"),
+        description: t("cores.salvasDescricao"),
       });
     } catch (error) {
       console.error("Erro ao salvar cores:", error);
       toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível salvar as cores.",
+        title: t("cores.erroSalvar"),
+        description: t("cores.erroSalvarDescricao"),
         variant: "destructive",
       });
     } finally {
@@ -183,14 +191,14 @@ export function PersonalizacaoCores() {
       document.documentElement.style.removeProperty("--custom-primary-to");
 
       toast({
-        title: "Cores resetadas!",
-        description: "As cores voltaram ao padrão do sistema.",
+        title: t("cores.resetadas"),
+        description: t("cores.resetadasDescricao"),
       });
     } catch (error) {
       console.error("Erro ao resetar cores:", error);
       toast({
-        title: "Erro ao resetar",
-        description: "Não foi possível resetar as cores.",
+        title: t("cores.erroResetar"),
+        description: t("cores.erroResetarDescricao"),
         variant: "destructive",
       });
     } finally {
@@ -227,16 +235,16 @@ export function PersonalizacaoCores() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
-            Cores do Sistema
+            {t("cores.titulo")}
           </CardTitle>
           <CardDescription>
-            Personalize as cores dos botões e cards do seu sistema. As cores da barra lateral e menus não serão alteradas.
+            {t("cores.descricao")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Paleta de cores predefinidas */}
           <div className="space-y-3">
-            <Label>Escolha uma paleta de cores</Label>
+            <Label>{t("cores.escolhaPaleta")}</Label>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
               {CORES_PREDEFINIDAS.map((cor, index) => (
                 <button
@@ -251,7 +259,7 @@ export function PersonalizacaoCores() {
                   style={{
                     background: `linear-gradient(to right, ${cor.from}, ${cor.via}, ${cor.to})`,
                   }}
-                  title={cor.nome}
+                  title={t(`cores.paletas.${cor.nome}`)}
                 >
                   {corSelecionada === index && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
@@ -259,7 +267,7 @@ export function PersonalizacaoCores() {
                     </div>
                   )}
                   <span className="absolute bottom-1 left-1 right-1 text-[10px] text-white font-medium text-center truncate drop-shadow-lg">
-                    {cor.nome}
+                    {t(`cores.paletas.${cor.nome}`)}
                   </span>
                 </button>
               ))}
@@ -268,7 +276,7 @@ export function PersonalizacaoCores() {
 
           {/* Preview */}
           <div className="space-y-3">
-            <Label>Preview</Label>
+            <Label>{t("cores.preview")}</Label>
             <div className="p-4 rounded-lg border bg-muted/30 space-y-4">
               {/* Preview do Card de Faturamento */}
               <div
@@ -277,8 +285,8 @@ export function PersonalizacaoCores() {
                   background: `linear-gradient(to right, ${cores.card_faturamento_from}, ${cores.card_faturamento_via}, ${cores.card_faturamento_to})`,
                 }}
               >
-                <p className="text-sm opacity-90">Faturamento Total do Mês</p>
-                <p className="text-2xl font-bold">R$ 2.350,00</p>
+                <p className="text-sm opacity-90">{t("cores.previewFaturamento")}</p>
+                <p className="text-2xl font-bold">{valorExemplo}</p>
               </div>
 
               {/* Preview dos Botões */}
@@ -289,7 +297,7 @@ export function PersonalizacaoCores() {
                     background: `linear-gradient(to right, ${cores.primary_from}, ${cores.primary_via}, ${cores.primary_to})`,
                   }}
                 >
-                  Nova Ordem
+                  {t("cores.previewNovaOrdem")}
                 </button>
                 <button
                   className="px-4 py-2 rounded-md text-white font-medium shadow-md"
@@ -297,7 +305,7 @@ export function PersonalizacaoCores() {
                     background: `linear-gradient(to right, ${cores.primary_from}, ${cores.primary_via}, ${cores.primary_to})`,
                   }}
                 >
-                  Novo Produto
+                  {t("cores.previewNovoProduto")}
                 </button>
                 <button
                   className="px-4 py-2 rounded-md text-white font-medium shadow-md"
@@ -305,7 +313,7 @@ export function PersonalizacaoCores() {
                     background: `linear-gradient(to right, ${cores.primary_from}, ${cores.primary_via}, ${cores.primary_to})`,
                   }}
                 >
-                  Salvar
+                  {t("cores.previewSalvar")}
                 </button>
               </div>
             </div>
@@ -317,12 +325,12 @@ export function PersonalizacaoCores() {
               {salvando ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
+                  {t("cores.salvando")}
                 </>
               ) : (
                 <>
                   <Check className="mr-2 h-4 w-4" />
-                  Salvar Cores
+                  {t("cores.salvarCores")}
                 </>
               )}
             </Button>
@@ -332,7 +340,7 @@ export function PersonalizacaoCores() {
               disabled={salvando}
             >
               <RotateCcw className="mr-2 h-4 w-4" />
-              Resetar para Padrão
+              {t("cores.resetar")}
             </Button>
           </div>
         </CardContent>
@@ -340,12 +348,12 @@ export function PersonalizacaoCores() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Informações</CardTitle>
+          <CardTitle className="text-base">{t("cores.informacoes")}</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>• As cores personalizadas serão aplicadas nos botões principais e cards de destaque.</p>
-          <p>• A barra lateral (menu) e o header mantêm o tema padrão do sistema.</p>
-          <p>• As alterações são salvas automaticamente na sua conta e sincronizadas em todos os dispositivos.</p>
+          <p>{t("cores.info1")}</p>
+          <p>{t("cores.info2")}</p>
+          <p>{t("cores.info3")}</p>
         </CardContent>
       </Card>
     </div>

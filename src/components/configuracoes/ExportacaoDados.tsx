@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import { Download } from "lucide-react";
 
 export const ExportacaoDados = () => {
   const [exportando, setExportando] = useState(false);
+  // Textos da tela. Nomes das abas da planilha e das colunas ficam como estão (arquivo de dados).
+  const { t, i18n } = useTranslation("configuracoes");
 
   const exportarDados = async () => {
     setExportando(true);
@@ -104,10 +107,10 @@ export const ExportacaoDados = () => {
       // Gerar e baixar o arquivo
       const data = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `mecapp-dados-${data}.xlsx`);
-      toast.success('Exportação concluída!');
+      toast.success(i18n.t("exportacao.concluida", { ns: "configuracoes" }));
     } catch (error) {
       console.error('Erro ao exportar:', error);
-      toast.error('Erro ao exportar dados');
+      toast.error(i18n.t("exportacao.erro", { ns: "configuracoes" }));
     } finally {
       setExportando(false);
     }
@@ -118,16 +121,16 @@ export const ExportacaoDados = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Download className="h-5 w-5" />
-          Exportação de Dados
+          {t("exportacao.titulo")}
         </CardTitle>
         <CardDescription>
-          Exporte todos os dados da sua loja (clientes, ordens de serviço, dispositivos, vendas, produtos, peças e contas) em uma única planilha Excel.
+          {t("exportacao.descricao")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Button onClick={exportarDados} disabled={exportando}>
           <Download className="h-4 w-4 mr-2" />
-          {exportando ? "Exportando..." : "Exportar todos os dados"}
+          {exportando ? t("exportacao.exportando") : t("exportacao.exportar")}
         </Button>
       </CardContent>
     </Card>

@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import SignatureCanvas from "react-signature-canvas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,8 @@ export const AssinaturaDigital = ({
 }: AssinaturaDigitalProps) => {
   const sigCanvas = useRef<SignatureCanvas>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Textos do campo de assinatura: namespace "comum" (assinaturaDigital.*).
+  const { t } = useTranslation("comum");
   const [aceite, setAceite] = useState(false);
   const [assinado, setAssinado] = useState(!!assinaturaExistente);
   const [isEmpty, setIsEmpty] = useState(true);
@@ -200,7 +203,7 @@ export const AssinaturaDigital = ({
             </div>
 
             <p className="text-[11px] text-muted-foreground text-center">
-              Use o dedo ou mouse para assinar no campo acima
+              {t("assinaturaDigital.ajuda")}
             </p>
 
             <div className="flex gap-2">
@@ -213,7 +216,7 @@ export const AssinaturaDigital = ({
                 className="flex-1"
               >
                 <Eraser className="h-3.5 w-3.5 mr-1.5" />
-                Limpar
+                {t("assinaturaDigital.limpar")}
               </Button>
               <Button
                 type="button"
@@ -223,7 +226,7 @@ export const AssinaturaDigital = ({
                 className="flex-1"
               >
                 <Check className="h-3.5 w-3.5 mr-1.5" />
-                {assinado ? "Atualizar" : "Confirmar"}
+                {assinado ? t("assinaturaDigital.atualizar") : t("assinaturaDigital.confirmar")}
               </Button>
             </div>
 

@@ -6,6 +6,13 @@ const comum = {
     salvo: "Idioma atualizado",
     erroSalvar: "Não foi possível salvar o idioma",
   },
+  // AssinaturaDigital (Configurações › Logo e OS). Rótulo e termo continuam vindo de quem usa.
+  assinaturaDigital: {
+    ajuda: "Use o dedo ou mouse para assinar no campo acima",
+    limpar: "Limpar",
+    atualizar: "Atualizar",
+    confirmar: "Confirmar",
+  },
   // DialogDismissCard (cartões que o usuário pode esconder por um tempo).
   fecharCard: {
     titulo: "Fechar por quanto tempo?",

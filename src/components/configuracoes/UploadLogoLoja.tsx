@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,8 @@ export const UploadLogoLoja = ({
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
+  // Textos: namespace "configuracoes" (logo.*).
+  const { t } = useTranslation("configuracoes");
   const { uploadLogo, atualizarConfiguracao, removerLogo } = useConfiguracaoLoja();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,8 +33,8 @@ export const UploadLogoLoja = ({
     const tiposPermitidos = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml"];
     if (!tiposPermitidos.includes(file.type)) {
       toast({
-        title: "Formato inválido",
-        description: "Use apenas PNG, JPG ou SVG",
+        title: t("logo.formatoInvalido"),
+        description: t("logo.formatoInvalidoDescricao"),
         variant: "destructive",
       });
       return;
@@ -40,8 +43,8 @@ export const UploadLogoLoja = ({
     // Validar tamanho (2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast({
-        title: "Arquivo muito grande",
-        description: "O tamanho máximo é 2MB",
+        title: t("logo.muitoGrande"),
+        description: t("logo.muitoGrandeDescricao"),
         variant: "destructive",
       });
       return;
@@ -61,8 +64,8 @@ export const UploadLogoLoja = ({
   const handleSalvar = async () => {
     if (!arquivo) {
       toast({
-        title: "Nenhuma imagem selecionada",
-        description: "Selecione uma imagem para fazer upload",
+        title: t("logo.nenhumaImagem"),
+        description: t("logo.nenhumaImagemDescricao"),
         variant: "destructive",
       });
       return;
@@ -82,28 +85,28 @@ export const UploadLogoLoja = ({
           onUploadSuccess(url);
           setArquivo(null);
           toast({
-            title: "Logo salva com sucesso",
-            description: "A logo da loja foi atualizada.",
+            title: t("logo.salva"),
+            description: t("logo.salvaDescricao"),
           });
         } else {
           toast({
-            title: "Erro ao salvar",
-            description: "Não foi possível atualizar a logo.",
+            title: t("logo.erroSalvar"),
+            description: t("logo.erroSalvarDescricao"),
             variant: "destructive",
           });
         }
       } else {
         toast({
-          title: "Erro no upload",
-          description: "Não foi possível fazer upload da imagem.",
+          title: t("logo.erroUpload"),
+          description: t("logo.erroUploadDescricao"),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Erro ao salvar logo:", error);
       toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao salvar a logo.",
+        title: t("logo.erro"),
+        description: t("logo.erroDescricao"),
         variant: "destructive",
       });
     } finally {
@@ -117,8 +120,8 @@ export const UploadLogoLoja = ({
       const sucesso = await atualizarConfiguracao({ logo_url: null });
       if (!sucesso) {
         toast({
-          title: "Erro ao remover",
-          description: "Não foi possível remover a logo. Tente novamente.",
+          title: t("logo.erroRemover"),
+          description: t("logo.erroRemoverDescricao"),
           variant: "destructive",
         });
         return;
@@ -133,7 +136,7 @@ export const UploadLogoLoja = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Logo da Loja</CardTitle>
+        <CardTitle>{t("logo.titulo")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Preview */}
@@ -142,7 +145,7 @@ export const UploadLogoLoja = ({
             <div className="relative">
               <img
                 src={preview}
-                alt="Preview Logo"
+                alt={t("logo.previewAlt")}
                 className="max-h-40 max-w-full object-contain"
               />
               <Button
@@ -159,7 +162,7 @@ export const UploadLogoLoja = ({
             <div className="text-center space-y-2">
               <ImageIcon className="h-16 w-16 mx-auto text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                Nenhuma logo selecionada
+                {t("logo.nenhuma")}
               </p>
             </div>
           )}
@@ -167,7 +170,7 @@ export const UploadLogoLoja = ({
 
         {/* Upload */}
         <div className="space-y-2">
-          <Label htmlFor="logo-upload">Selecionar Imagem</Label>
+          <Label htmlFor="logo-upload">{t("logo.selecionar")}</Label>
           <div className="flex gap-2">
             <Input
               id="logo-upload"
@@ -178,7 +181,7 @@ export const UploadLogoLoja = ({
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Formatos aceitos: PNG, JPG, SVG. Tamanho máximo: 2MB
+            {t("logo.formatos")}
           </p>
         </div>
 
@@ -191,19 +194,19 @@ export const UploadLogoLoja = ({
           {uploading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Salvando...
+              {t("logo.salvando")}
             </>
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              Salvar Logo
+              {t("logo.salvar")}
             </>
           )}
         </Button>
 
         {temAlteracoes && (
           <p className="text-sm text-amber-600 text-center">
-            Você tem alterações não salvas. Clique em "Salvar Logo" para aplicar.
+            {t("logo.naoSalvas")}
           </p>
         )}
       </CardContent>

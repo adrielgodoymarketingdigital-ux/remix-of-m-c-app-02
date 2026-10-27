@@ -1,5 +1,6 @@
 import { CheckCircle2, Circle, AlertTriangle, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 /** Mesmo retorno de validarConfiguracaoParaRecibos (useConfiguracaoLoja). */
 export interface StatusPerfil {
@@ -12,10 +13,16 @@ export interface StatusPerfil {
  * validarConfiguracaoParaRecibos (pelos nomes de camposFaltando); nada é inventado.
  */
 const GRUPOS = [
-  { titulo: "Dados básicos", campos: ["Nome da loja", "Razão social"] },
-  { titulo: "Contato", campos: ["Telefone", "E-mail"] },
-  { titulo: "Endereço", campos: ["CEP", "Logradouro", "Número", "Bairro", "Cidade", "Estado"] },
-];
+  { titulo: "gruposDadosBasicos", campos: ["Nome da loja", "Razão social"] },
+  { titulo: "gruposContato", campos: ["Telefone", "E-mail"] },
+  { titulo: "gruposEndereco", campos: ["CEP", "Logradouro", "Número", "Bairro", "Cidade", "Estado"] },
+] as const;
+
+/** Nome do campo (pt-BR, de camposFaltando) no idioma da tela; desconhecido sai como veio. */
+function useNomeCampo() {
+  const { t } = useTranslation("configuracoes");
+  return (campo: string) => t(`campos.${campo}`, { defaultValue: campo });
+}
 
 export function ProgressoCircular({
   percentual,
@@ -25,10 +32,11 @@ export function ProgressoCircular({
   tamanho?: "md" | "lg";
 }) {
   const pct = Math.max(0, Math.min(100, percentual));
+  const { t } = useTranslation("configuracoes");
   return (
     <div
       role="img"
-      aria-label={`Perfil ${pct}% completo`}
+      aria-label={t("progresso.circuloAria", { percentual: pct })}
       className={cn(
         "grid shrink-0 place-items-center rounded-full",
         tamanho === "lg" ? "h-[140px] w-[140px]" : "h-20 w-20",
@@ -51,6 +59,8 @@ export function ProgressoCircular({
 function CaixaSituacao({ status }: { status: StatusPerfil }) {
   const completo = status.percentual === 100;
   const n = status.camposFaltando.length;
+  const { t } = useTranslation("configuracoes");
+  const nomeCampo = useNomeCampo();
   return (
     <div
       className={cn(
@@ -67,12 +77,12 @@ function CaixaSituacao({ status }: { status: StatusPerfil }) {
       )}
       <div className="min-w-0">
         <strong className="block text-sm font-bold">
-          {completo ? "Perfil completo!" : `Falta${n > 1 ? "m" : ""} ${n} campo${n > 1 ? "s" : ""} obrigatório${n > 1 ? "s" : ""}`}
+          {completo ? t("progresso.completoExclamacao") : t("progresso.faltamCampos", { count: n })}
         </strong>
         <span className="mt-1 block text-xs leading-relaxed opacity-90">
           {completo
-            ? "Sua loja está configurada e pronta para uso."
-            : status.camposFaltando.join(", ")}
+            ? t("progresso.lojaPronta")
+            : status.camposFaltando.map(nomeCampo).join(", ")}
         </span>
       </div>
     </div>
@@ -81,14 +91,15 @@ function CaixaSituacao({ status }: { status: StatusPerfil }) {
 
 /** Cartão "Status do Perfil" do topo da página. */
 export function CardStatusPerfil({ status }: { status: StatusPerfil }) {
+  const { t } = useTranslation("configuracoes");
   return (
     <section className="flex flex-col gap-5 rounded-2xl border bg-card px-5 py-5 shadow-sm sm:px-6 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-center gap-5 sm:gap-6">
         <ProgressoCircular percentual={status.percentual} />
         <div className="min-w-0">
-          <h2 className="text-base font-bold sm:text-[17px]">Status do Perfil</h2>
+          <h2 className="text-base font-bold sm:text-[17px]">{t("progresso.statusTitulo")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Complete todos os dados para gerar recibos profissionais.
+            {t("progresso.statusDescricao")}
           </p>
         </div>
       </div>
@@ -101,26 +112,28 @@ export function CardStatusPerfil({ status }: { status: StatusPerfil }) {
 export function CardProgressoPerfil({ status }: { status: StatusPerfil }) {
   const completo = status.percentual === 100;
   const faltando = new Set(status.camposFaltando);
+  const { t } = useTranslation("configuracoes");
+  const nomeCampo = useNomeCampo();
   return (
     <aside className="rounded-2xl border bg-card p-6 shadow-sm xl:sticky xl:top-6">
       <h2 className="flex items-center gap-2.5 text-[15px] font-bold">
         <LayoutDashboard className="h-5 w-5 text-primary" aria-hidden="true" />
-        Progresso do Perfil
+        {t("progresso.progressoTitulo")}
       </h2>
       <div className="mx-auto mb-4 mt-7 w-fit">
         <ProgressoCircular percentual={status.percentual} tamanho="lg" />
       </div>
       <div className="mb-6 text-center">
-        <strong className="text-sm font-bold">{completo ? "Perfil completo" : "Perfil incompleto"}</strong>
+        <strong className="text-sm font-bold">{completo ? t("progresso.completo") : t("progresso.incompleto")}</strong>
         <p className="mt-1.5 text-xs text-muted-foreground">
           {completo
-            ? "Todos os dados obrigatórios foram preenchidos."
-            : "Preencha os itens pendentes para gerar recibos profissionais."}
+            ? t("progresso.todosPreenchidos")
+            : t("progresso.preenchaPendentes")}
         </p>
       </div>
       <ul className="space-y-0.5">
         {GRUPOS.map((g) => {
-          const pendentes = g.campos.filter((c) => faltando.has(c));
+          const pendentes: string[] = g.campos.filter((c) => faltando.has(c));
           const ok = pendentes.length === 0;
           return (
             <li key={g.titulo} className="flex items-start gap-3 py-2.5 text-[13px]">
@@ -130,9 +143,9 @@ export function CardProgressoPerfil({ status }: { status: StatusPerfil }) {
                 <Circle className="mt-px h-[18px] w-[18px] shrink-0 text-amber-500" aria-hidden="true" />
               )}
               <span className="min-w-0">
-                <span className={cn("block", ok ? "text-foreground" : "font-medium text-foreground")}>{g.titulo}</span>
+                <span className={cn("block", ok ? "text-foreground" : "font-medium text-foreground")}>{t(`progresso.${g.titulo}`)}</span>
                 {!ok && (
-                  <span className="block text-xs text-muted-foreground">Falta: {pendentes.join(", ")}</span>
+                  <span className="block text-xs text-muted-foreground">{t("progresso.falta", { lista: pendentes.map(nomeCampo).join(", ") })}</span>
                 )}
               </span>
             </li>

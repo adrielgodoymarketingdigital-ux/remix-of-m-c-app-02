@@ -16,7 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
 import { useToast } from "@/hooks/use-toast";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   aplicarMascaraCNPJ,
   aplicarMascaraCEP,
@@ -58,29 +60,30 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-const formSchema = z.object({
-  nome_loja: z.string().min(1, "Nome da loja é obrigatório"),
-  razao_social: z.string().min(1, "Razão social é obrigatória"),
-  cnpj: z.string().min(14, "CNPJ inválido"),
-  cep: z.string().min(8, "CEP é obrigatório"),
-  logradouro: z.string().min(1, "Logradouro é obrigatório"),
-  numero: z.string().min(1, "Número é obrigatório"),
+// Mensagens de validação no idioma da tela (perfil.validacao.* do namespace "configuracoes").
+const criarFormSchema = (t: TFunction) => z.object({
+  nome_loja: z.string().min(1, t("perfil.validacao.nomeLoja")),
+  razao_social: z.string().min(1, t("perfil.validacao.razaoSocial")),
+  cnpj: z.string().min(14, t("perfil.validacao.cnpj")),
+  cep: z.string().min(8, t("perfil.validacao.cep")),
+  logradouro: z.string().min(1, t("perfil.validacao.logradouro")),
+  numero: z.string().min(1, t("perfil.validacao.numero")),
   complemento: z.string().optional(),
-  bairro: z.string().min(1, "Bairro é obrigatório"),
-  cidade: z.string().min(1, "Cidade é obrigatória"),
-  estado: z.string().length(2, "Estado deve ter 2 caracteres").toUpperCase(),
-  telefone: z.string().min(10, "Telefone é obrigatório"),
+  bairro: z.string().min(1, t("perfil.validacao.bairro")),
+  cidade: z.string().min(1, t("perfil.validacao.cidade")),
+  estado: z.string().length(2, t("perfil.validacao.estado")).toUpperCase(),
+  telefone: z.string().min(10, t("perfil.validacao.telefone")),
   whatsapp: z.string().optional(),
-  email: z.string().email("E-mail inválido"),
+  email: z.string().email(t("perfil.validacao.email")),
   inscricao_estadual: z.string().optional(),
   inscricao_municipal: z.string().optional(),
-  site: z.string().url("URL inválida").optional().or(z.literal("")),
+  site: z.string().url(t("perfil.validacao.site")).optional().or(z.literal("")),
   horario_funcionamento: z.string().optional(),
   instagram: z.string().optional(),
   facebook: z.string().optional(),
 });
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<ReturnType<typeof criarFormSchema>>;
 
 // ── Só visual (layout-configuracoes). Locais desta tela: Input/Card do shadcn intocados ──
 const CARTAO = "rounded-2xl shadow-sm";
@@ -122,6 +125,8 @@ export function FormularioPerfilLoja({
   onSalvar,
 }: FormularioPerfilLojaProps) {
   const { toast } = useToast();
+  const { t } = useTranslation("configuracoes");
+  const formSchema = useMemo(() => criarFormSchema(t), [t]);
   const [buscandoCEP, setBuscandoCEP] = useState(false);
   const [dadosOpcionaisAberto, setDadosOpcionaisAberto] = useState(false);
 
@@ -156,8 +161,8 @@ export function FormularioPerfilLoja({
 
     if (cepLimpo.length !== 8) {
       toast({
-        title: "CEP inválido",
-        description: "Digite um CEP válido com 8 dígitos",
+        title: t("perfil.cepInvalido"),
+        description: t("perfil.cepInvalidoDescricao"),
         variant: "destructive",
       });
       return;
@@ -173,13 +178,13 @@ export function FormularioPerfilLoja({
       form.setValue("cidade", dados.cidade);
       form.setValue("estado", dados.estado);
       toast({
-        title: "CEP encontrado",
-        description: "Endereço preenchido automaticamente",
+        title: t("perfil.cepEncontrado"),
+        description: t("perfil.cepEncontradoDescricao"),
       });
     } else {
       toast({
-        title: "CEP não encontrado",
-        description: "Verifique o CEP digitado e tente novamente",
+        title: t("perfil.cepNaoEncontrado"),
+        description: t("perfil.cepNaoEncontradoDescricao"),
         variant: "destructive",
       });
     }
@@ -198,13 +203,13 @@ export function FormularioPerfilLoja({
 
     if (sucesso) {
       toast({
-        title: "Dados salvos",
-        description: "As informações da loja foram atualizadas com sucesso.",
+        title: t("perfil.salvos"),
+        description: t("perfil.salvosDescricao"),
       });
     } else {
       toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível salvar as informações. Tente novamente.",
+        title: t("perfil.erroSalvar"),
+        description: t("perfil.erroSalvarDescricao"),
         variant: "destructive",
       });
     }
@@ -215,7 +220,7 @@ export function FormularioPerfilLoja({
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
         {/* Dados Básicos */}
         <Card className={CARTAO}>
-          <CabecalhoCartao icone={Contact} titulo="Dados Básicos" subtitulo="Informações principais da sua loja." />
+          <CabecalhoCartao icone={Contact} titulo={t("perfil.dadosBasicos")} subtitulo={t("perfil.dadosBasicosSub")} />
           <CardContent className="px-5 pb-6 pt-5 sm:px-6">
             <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2 2xl:grid-cols-3">
               <FormField
@@ -223,10 +228,10 @@ export function FormularioPerfilLoja({
                 name="nome_loja"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome da Loja *</FormLabel>
+                    <FormLabel>{t("perfil.nomeLoja")}</FormLabel>
                     <ComIcone icone={Store}>
                       <FormControl>
-                        <Input {...field} placeholder="Nome fantasia" className={CAMPO} />
+                        <Input {...field} placeholder={t("perfil.nomeLojaPlaceholder")} className={CAMPO} />
                       </FormControl>
                     </ComIcone>
                     <FormMessage />
@@ -239,10 +244,10 @@ export function FormularioPerfilLoja({
                 name="razao_social"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Razão Social *</FormLabel>
+                    <FormLabel>{t("perfil.razaoSocial")}</FormLabel>
                     <ComIcone icone={Building2}>
                       <FormControl>
-                        <Input {...field} placeholder="Razão social da empresa" className={CAMPO} />
+                        <Input {...field} placeholder={t("perfil.razaoSocialPlaceholder")} className={CAMPO} />
                       </FormControl>
                     </ComIcone>
                     <FormMessage />
@@ -255,7 +260,7 @@ export function FormularioPerfilLoja({
                 name="cnpj"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2 2xl:col-span-1">
-                    <FormLabel>CNPJ *</FormLabel>
+                    <FormLabel>{t("perfil.cnpj")}</FormLabel>
                     <ComIcone icone={IdCard}>
                       <FormControl>
                         <Input
@@ -278,7 +283,7 @@ export function FormularioPerfilLoja({
 
         {/* Endereço */}
         <Card className={CARTAO}>
-          <CabecalhoCartao icone={MapPin} titulo="Endereço" subtitulo="Informe o endereço da sua loja." />
+          <CabecalhoCartao icone={MapPin} titulo={t("perfil.endereco")} subtitulo={t("perfil.enderecoSub")} />
           <CardContent className="px-5 pb-6 pt-5 sm:px-6">
             <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-6">
               <div className="flex gap-2.5 md:col-span-6 2xl:col-span-2">
@@ -287,7 +292,7 @@ export function FormularioPerfilLoja({
                   name="cep"
                   render={({ field }) => (
                     <FormItem className="flex-1">
-                      <FormLabel>CEP *</FormLabel>
+                      <FormLabel>{t("perfil.cep")}</FormLabel>
                       <ComIcone icone={MapPinned}>
                         <FormControl>
                           <Input
@@ -317,7 +322,7 @@ export function FormularioPerfilLoja({
                     ) : (
                       <Search className="h-4 w-4" />
                     )}
-                    Buscar
+                    {t("perfil.buscar")}
                   </Button>
                 </div>
               </div>
@@ -327,10 +332,10 @@ export function FormularioPerfilLoja({
                 name="logradouro"
                 render={({ field }) => (
                   <FormItem className="md:col-span-4 2xl:col-span-3">
-                    <FormLabel>Logradouro *</FormLabel>
+                    <FormLabel>{t("perfil.logradouro")}</FormLabel>
                     <ComIcone icone={Signpost}>
                       <FormControl>
-                        <Input {...field} placeholder="Rua, Avenida..." className={CAMPO} />
+                        <Input {...field} placeholder={t("perfil.logradouroPlaceholder")} className={CAMPO} />
                       </FormControl>
                     </ComIcone>
                     <FormMessage />
@@ -343,7 +348,7 @@ export function FormularioPerfilLoja({
                 name="numero"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2 2xl:col-span-1">
-                    <FormLabel>Número *</FormLabel>
+                    <FormLabel>{t("perfil.numero")}</FormLabel>
                     <ComIcone icone={Hash}>
                       <FormControl>
                         <Input {...field} placeholder="123" className={CAMPO} />
@@ -359,10 +364,10 @@ export function FormularioPerfilLoja({
                 name="complemento"
                 render={({ field }) => (
                   <FormItem className="md:col-span-4 2xl:col-span-2">
-                    <FormLabel>Complemento</FormLabel>
+                    <FormLabel>{t("perfil.complemento")}</FormLabel>
                     <ComIcone icone={Home}>
                       <FormControl>
-                        <Input {...field} placeholder="Sala, Bloco, Andar..." className={CAMPO} />
+                        <Input {...field} placeholder={t("perfil.complementoPlaceholder")} className={CAMPO} />
                       </FormControl>
                     </ComIcone>
                     <FormMessage />
@@ -375,10 +380,10 @@ export function FormularioPerfilLoja({
                 name="bairro"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2 2xl:col-span-2">
-                    <FormLabel>Bairro *</FormLabel>
+                    <FormLabel>{t("perfil.bairro")}</FormLabel>
                     <ComIcone icone={MapPin}>
                       <FormControl>
-                        <Input {...field} placeholder="Centro" className={CAMPO} />
+                        <Input {...field} placeholder={t("perfil.bairroPlaceholder")} className={CAMPO} />
                       </FormControl>
                     </ComIcone>
                     <FormMessage />
@@ -391,10 +396,10 @@ export function FormularioPerfilLoja({
                 name="cidade"
                 render={({ field }) => (
                   <FormItem className="md:col-span-4 2xl:col-span-1">
-                    <FormLabel>Cidade *</FormLabel>
+                    <FormLabel>{t("perfil.cidade")}</FormLabel>
                     <ComIcone icone={Landmark}>
                       <FormControl>
-                        <Input {...field} placeholder="São Paulo" className={CAMPO} />
+                        <Input {...field} placeholder={t("perfil.cidadePlaceholder")} className={CAMPO} />
                       </FormControl>
                     </ComIcone>
                     <FormMessage />
@@ -407,7 +412,7 @@ export function FormularioPerfilLoja({
                 name="estado"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2 2xl:col-span-1">
-                    <FormLabel>Estado *</FormLabel>
+                    <FormLabel>{t("perfil.estado")}</FormLabel>
                     <ComIcone icone={MapIcon}>
                       <FormControl>
                         <Input
@@ -431,7 +436,7 @@ export function FormularioPerfilLoja({
 
         {/* Contatos */}
         <Card className={CARTAO}>
-          <CabecalhoCartao icone={Phone} titulo="Contatos" subtitulo="Como seus clientes falam com a loja." />
+          <CabecalhoCartao icone={Phone} titulo={t("perfil.contatos")} subtitulo={t("perfil.contatosSub")} />
           <CardContent className="px-5 pb-6 pt-5 sm:px-6">
             <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2 2xl:grid-cols-3">
               <FormField
@@ -439,7 +444,7 @@ export function FormularioPerfilLoja({
                 name="telefone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone *</FormLabel>
+                    <FormLabel>{t("perfil.telefone")}</FormLabel>
                     <ComIcone icone={Phone}>
                       <FormControl>
                         <Input
@@ -485,7 +490,7 @@ export function FormularioPerfilLoja({
                 name="email"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2 2xl:col-span-1">
-                    <FormLabel>E-mail *</FormLabel>
+                    <FormLabel>{t("perfil.email")}</FormLabel>
                     <ComIcone icone={Mail}>
                       <FormControl>
                         <Input {...field} type="email" placeholder="contato@loja.com" className={CAMPO} />
@@ -512,11 +517,11 @@ export function FormularioPerfilLoja({
               >
                 <CabecalhoCartao
                   icone={ListPlus}
-                  titulo="Dados Opcionais"
-                  subtitulo="Inscrições, site, horário de funcionamento e redes sociais."
+                  titulo={t("perfil.dadosOpcionais")}
+                  subtitulo={t("perfil.dadosOpcionaisSub")}
                 >
                   <span className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-                    {dadosOpcionaisAberto ? "Ocultar" : "Mostrar"}
+                    {dadosOpcionaisAberto ? t("perfil.ocultar") : t("perfil.mostrar")}
                     <ChevronDown
                       className={cn("h-4 w-4 transition-transform", dadosOpcionaisAberto && "rotate-180")}
                       aria-hidden="true"
@@ -533,7 +538,7 @@ export function FormularioPerfilLoja({
                     name="inscricao_estadual"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Inscrição Estadual</FormLabel>
+                        <FormLabel>{t("perfil.inscricaoEstadual")}</FormLabel>
                         <ComIcone icone={FileText}>
                           <FormControl>
                             <Input {...field} placeholder="000.000.000.000" className={CAMPO} />
@@ -549,7 +554,7 @@ export function FormularioPerfilLoja({
                     name="inscricao_municipal"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Inscrição Municipal</FormLabel>
+                        <FormLabel>{t("perfil.inscricaoMunicipal")}</FormLabel>
                         <ComIcone icone={FileText}>
                           <FormControl>
                             <Input {...field} placeholder="000000" className={CAMPO} />
@@ -565,7 +570,7 @@ export function FormularioPerfilLoja({
                     name="site"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2 2xl:col-span-1">
-                        <FormLabel>Site</FormLabel>
+                        <FormLabel>{t("perfil.site")}</FormLabel>
                         <ComIcone icone={Globe}>
                           <FormControl>
                             <Input {...field} placeholder="https://www.loja.com" className={CAMPO} />
@@ -581,17 +586,17 @@ export function FormularioPerfilLoja({
                     name="horario_funcionamento"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2 2xl:col-span-3">
-                        <FormLabel>Horário de Funcionamento</FormLabel>
+                        <FormLabel>{t("perfil.horario")}</FormLabel>
                         <FormControl>
                           <Textarea
                             {...field}
-                            placeholder="Seg a Sex: 9h às 18h&#10;Sábado: 9h às 13h"
+                            placeholder={t("perfil.horarioPlaceholder")}
                             rows={3}
                             className="rounded-lg focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0 focus-visible:border-primary"
                           />
                         </FormControl>
                         <FormDescription>
-                          Informe o horário de atendimento da loja
+                          {t("perfil.horarioAjuda")}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -642,7 +647,7 @@ export function FormularioPerfilLoja({
             className="h-11 gap-2 rounded-lg bg-[linear-gradient(110deg,#246BFF,#079FD0)] px-6 text-white shadow-[0_5px_15px_rgba(36,107,255,0.18)] hover:brightness-105"
           >
             <Save className="h-4 w-4" aria-hidden="true" />
-            Salvar alterações
+            {t("perfil.salvarAlteracoes")}
           </Button>
         </div>
       </form>

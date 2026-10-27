@@ -9,6 +9,12 @@ const comum: Traducao<typeof comumPtBR> = {
     salvo: "Idioma actualizado",
     erroSalvar: "No se pudo guardar el idioma",
   },
+  assinaturaDigital: {
+    ajuda: "Use el dedo o el mouse para firmar en el campo de arriba",
+    limpar: "Borrar",
+    atualizar: "Actualizar",
+    confirmar: "Confirmar",
+  },
   fecharCard: {
     titulo: "¿Cerrar por cuánto tiempo?",
     descricao: "Elija por cuánto tiempo quiere ocultar esta tarjeta.",

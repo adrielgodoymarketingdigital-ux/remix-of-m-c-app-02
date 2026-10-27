@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useComecarDoZeroVisivel } from "@/hooks/useComecarDoZeroVisivel";
 import { FluxoComecarDoZero } from "./FluxoComecarDoZero";
 
-const TITULO = "Começar do zero";
-const DESCRICAO = "Apague de vez os dados que você escolher (vendas, OS, clientes, financeiro, estoque ou orçamentos). Login, plano e configurações da loja ficam.";
 
 interface Props {
   /** id do card de exportação, para o atalho "Exportar meus dados antes". */
@@ -19,6 +18,9 @@ interface Props {
 /** Card "Começar do zero" de Configurações › Exportação. Não existe para quem não pode ver. */
 export function CardComecarDoZero({ idExportacao }: Props) {
   const visivel = useComecarDoZeroVisivel();
+  // Textos do card: namespace "configuracoes" (comecarDoZero.*). O fluxo (FluxoComecarDoZero) ainda não.
+  const { t } = useTranslation("configuracoes");
+  const TITULO = t("comecarDoZero.titulo");
   const isMobile = useIsMobile();
   const [aberto, setAberto] = useState(false);
   const [abertura, setAbertura] = useState(0);
@@ -53,12 +55,12 @@ export function CardComecarDoZero({ idExportacao }: Props) {
             <Trash2 className="h-5 w-5" aria-hidden="true" />
             {TITULO}
           </CardTitle>
-          <CardDescription>{DESCRICAO}</CardDescription>
+          <CardDescription>{t("comecarDoZero.descricao")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="destructive" onClick={abrir}>
             <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-            Começar do zero
+            {t("comecarDoZero.botao")}
           </Button>
         </CardContent>
       </Card>
@@ -68,7 +70,7 @@ export function CardComecarDoZero({ idExportacao }: Props) {
           <DrawerContent className="max-h-[92vh]">
             <DrawerHeader className="text-left">
               <DrawerTitle>{TITULO}</DrawerTitle>
-              <DrawerDescription>Apagar dados da sua loja</DrawerDescription>
+              <DrawerDescription>{t("comecarDoZero.subtitulo")}</DrawerDescription>
             </DrawerHeader>
             <div className="overflow-y-auto px-4 pb-6">{fluxo}</div>
           </DrawerContent>
@@ -78,7 +80,7 @@ export function CardComecarDoZero({ idExportacao }: Props) {
           <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>{TITULO}</DialogTitle>
-              <DialogDescription>Apagar dados da sua loja</DialogDescription>
+              <DialogDescription>{t("comecarDoZero.subtitulo")}</DialogDescription>
             </DialogHeader>
             {fluxo}
           </DialogContent>
