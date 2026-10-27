@@ -17,7 +17,7 @@ export function SeletorIdioma() {
   const { idioma, carregando } = useMercado();
   const salvar = useSalvarIdioma();
   const { toast } = useToast();
-  const { t } = useTranslation("comum");
+  const { t, i18n } = useTranslation("comum");
 
   if (!visivel) return null;
 
@@ -26,7 +26,8 @@ export function SeletorIdioma() {
     salvar.mutate(valor, {
       onSuccess: async (novo) => {
         await aplicarIdioma(novo);
-        toast({ title: t("idioma.salvo") });
+        // i18n.t, não t: o t desta renderização ainda é o do idioma anterior.
+        toast({ title: i18n.t("idioma.salvo", { ns: "comum" }) });
       },
       onError: (erro: Error) => {
         toast({ title: t("idioma.erroSalvar"), description: erro.message, variant: "destructive" });

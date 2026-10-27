@@ -52,13 +52,9 @@ async function carregarNamespace(idioma: Idioma, ns: Namespace): Promise<void> {
 }
 
 let ultimaTroca = 0;
+let trocaEmCurso: { idioma: Idioma; promessa: Promise<void> } | null = null;
 
-/**
- * Baixa (se ainda não baixou) os arquivos do idioma e troca. Duas trocas
- * seguidas: vale a última. Falha ao baixar: fica no idioma atual.
- */
-export async function aplicarIdioma(idioma: Idioma): Promise<void> {
-  const troca = ++ultimaTroca;
+async function trocar(idioma: Idioma, troca: number): Promise<void> {
   if (idioma !== IDIOMA_PADRAO) {
     try {
       await Promise.all(NAMESPACES.map((ns) => carregarNamespace(idioma, ns)));
@@ -71,6 +67,22 @@ export async function aplicarIdioma(idioma: Idioma): Promise<void> {
   if (i18n.language !== idioma) await i18n.changeLanguage(idioma);
   // index.html já nasce com lang="pt-BR": só mexe quando muda.
   if (document.documentElement.lang !== idioma) document.documentElement.lang = idioma;
+}
+
+/**
+ * Baixa (se ainda não baixou) os arquivos do idioma e troca. Duas trocas
+ * seguidas para idiomas diferentes: vale a última. Pedir de novo o idioma
+ * que já está sendo aplicado devolve a mesma promessa (o seletor e o
+ * SincronizarIdioma pedem juntos). Falha ao baixar: fica no idioma atual.
+ */
+export function aplicarIdioma(idioma: Idioma): Promise<void> {
+  if (trocaEmCurso?.idioma === idioma) return trocaEmCurso.promessa;
+  const troca = ++ultimaTroca;
+  const promessa = trocar(idioma, troca).finally(() => {
+    if (trocaEmCurso?.promessa === promessa) trocaEmCurso = null;
+  });
+  trocaEmCurso = { idioma, promessa };
+  return promessa;
 }
 
 export function idiomaAtual(): Idioma {
