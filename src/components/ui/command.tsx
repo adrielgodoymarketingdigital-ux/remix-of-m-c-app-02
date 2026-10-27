@@ -9,8 +9,11 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 // O teclado do celular (sugestão/autocorreção do Gboard e do iPhone) confirma a
 // palavra com um espaço no fim; o filtro do cmdk exige esse espaço no texto do
 // item e "sams " não achava "Samsung". Espaços nas pontas e repetidos não contam.
+// Acento também não: o celular digita "camera" (ou o Gboard corrige para
+// "câmera") e o item pode estar cadastrado de qualquer um dos jeitos.
+const semAcento = (texto: string) => texto.normalize("NFD").replace(/[̀-ͯ]/g, "");
 const filtroBusca = (value: string, search: string, keywords?: string[]) =>
-  defaultFilter(value, search.trim().replace(/\s+/g, " "), keywords);
+  defaultFilter(semAcento(value), semAcento(search.trim().replace(/\s+/g, " ")), keywords?.map(semAcento));
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
