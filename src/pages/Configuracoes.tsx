@@ -36,8 +36,6 @@ import {
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { FormatoMoedaProvider } from "@/components/ui/valor-monetario";
-import { useFormatadores } from "@/hooks/useFormatadores";
 import { cn } from "@/lib/utils";
 
 /** Abas da página (mesmos values de antes; só ganham ícone). Rótulo: abas.<value> no namespace "configuracoes". */
@@ -97,9 +95,8 @@ export default function Configuracoes() {
   const { config, loading, atualizarConfiguracao, validarParaRecibos } =
     useConfiguracaoLoja(empresaIdConfig);
   const { toast } = useToast();
-  // Textos: namespace "configuracoes"; moeda: useFormatadores (conta).
+  // Textos: namespace "configuracoes".
   const { t } = useTranslation("configuracoes");
-  const fmt = useFormatadores();
 
   const statusRecibos = validarParaRecibos();
 
@@ -139,7 +136,6 @@ export default function Configuracoes() {
 
   return (
     <AppLayout>
-      <FormatoMoedaProvider value={fmt.moeda}>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
         <div className="max-w-5xl lg:max-w-none mx-auto space-y-5 sm:space-y-6">
           {/* Cabeçalho. lg:pt-6: o olho flutuante do layout (BotaoOcultarValores,
@@ -270,7 +266,6 @@ export default function Configuracoes() {
           </Tabs>
         </div>
       </main>
-      </FormatoMoedaProvider>
     </AppLayout>
   );
 }
