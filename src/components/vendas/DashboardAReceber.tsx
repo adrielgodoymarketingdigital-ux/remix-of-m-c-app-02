@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Venda } from "@/types/venda";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
 import { cn } from "@/lib/utils";
 import { TextoAjustado } from "@/components/vendas/TextoAjustado";
 import { useMemo, type ReactNode } from "react";
@@ -23,6 +24,8 @@ export const DashboardAReceber = ({
   loading,
   onMarcarRecebido,
 }: DashboardAReceberProps) => {
+  const { t } = useTranslation("vendas");
+  const fmt = useFormatadores();
   // Venda com troca: o que falta receber é a conta a receber (sem a troca); sem troca, a conta de sempre.
   const aReceberComTroca = useMemo(() => aReceberComTrocaNaTela(vendas), [vendas]);
   const valorAReceber = (v: Venda) => aReceberComTroca.get(v.id)?.valor ?? getVendaReceitaLiquida(v);
@@ -81,16 +84,16 @@ export const DashboardAReceber = ({
         <CardReceber
           cor="azul"
           decoracao="curva"
-          rotulo="Total A Receber"
+          rotulo={t("aReceber.total")}
           Icone={DollarSign}
-          caracteres={formatCurrency(totalAReceber).length}
+          caracteres={fmt.moeda(totalAReceber).length}
           valor={<ValorMonetario valor={totalAReceber} />}
-          descricao={<>{vendasAReceber.length} venda{vendasAReceber.length !== 1 ? "s" : ""} pendente{vendasAReceber.length !== 1 ? "s" : ""}</>}
+          descricao={t("aReceber.pendentes", { count: vendasAReceber.length })}
         />
         <CardReceber
           cor="vermelho"
           decoracao="barras"
-          rotulo="Vencidas"
+          rotulo={t("aReceber.vencidas")}
           Icone={AlertTriangle}
           caracteres={String(vendasVencidas.length).length}
           valor={vendasVencidas.length}
@@ -99,7 +102,7 @@ export const DashboardAReceber = ({
         <CardReceber
           cor="laranja"
           decoracao="curva"
-          rotulo="Vencendo em 3 dias"
+          rotulo={t("aReceber.vencendo3Dias")}
           Icone={Clock}
           caracteres={String(vendasVencendo.length).length}
           valor={vendasVencendo.length}
@@ -108,11 +111,11 @@ export const DashboardAReceber = ({
         <CardReceber
           cor="roxo"
           decoracao="barras"
-          rotulo="Quantidade"
+          rotulo={t("aReceber.quantidade")}
           Icone={CheckCircle}
           caracteres={String(vendasAReceber.length).length}
           valor={vendasAReceber.length}
-          descricao="vendas a receber"
+          descricao={t("aReceber.quantidadeDescricao")}
         />
       </div>
 
@@ -120,7 +123,7 @@ export const DashboardAReceber = ({
       {vendasAReceber.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Vendas Pendentes de Recebimento</CardTitle>
+            <CardTitle className="text-base">{t("aReceber.listaTitulo")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -146,24 +149,26 @@ export const DashboardAReceber = ({
                         <span className="font-medium text-sm break-words">
                           {venda.tipo === "dispositivo" && venda.dispositivos
                             ? `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`
-                            : venda.produtos?.nome || "Venda"}
+                            : venda.produtos?.nome || t("aReceber.venda")}
                         </span>
                         {isVencida && (
                           <Badge variant="destructive" className="text-xs">
-                            Vencida
+                            {t("aReceber.vencida")}
                           </Badge>
                         )}
                         {isVencendo && !isVencida && (
                           <Badge className="bg-orange-500 text-xs">
-                            Vencendo
+                            {t("aReceber.vencendo")}
                           </Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {venda.clientes?.nome || "Cliente não informado"} •{" "}
-                        {venda.data_prevista_recebimento
-                          ? `Venc: ${formatDate(venda.data_prevista_recebimento)}`
-                          : "Sem data definida"}
+                        {t("aReceber.linhaCliente", {
+                          cliente: venda.clientes?.nome || t("aReceber.clienteNaoInformado"),
+                          vencimento: venda.data_prevista_recebimento
+                            ? t("aReceber.vencimento", { data: fmt.data(venda.data_prevista_recebimento) })
+                            : t("aReceber.semData"),
+                        })}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
@@ -171,7 +176,7 @@ export const DashboardAReceber = ({
                         <ValorMonetario valor={valorAReceber(venda)} tipo="preco" />
                         {aReceberComTroca.has(venda.id) && (
                           <span className="block text-right text-[10px] font-normal text-amber-600">
-                            troca −{formatCurrency(aReceberComTroca.get(venda.id)?.trocaVenda ?? 0)}
+                            {t("aReceber.troca", { valor: fmt.moeda(aReceberComTroca.get(venda.id)?.trocaVenda ?? 0) })}
                           </span>
                         )}
                       </span>
@@ -183,7 +188,7 @@ export const DashboardAReceber = ({
                           className="text-green-600 border-green-600 hover:bg-green-50"
                         >
                           <CheckCircle className="h-4 w-4 mr-1" />
-                          Recebido
+                          {t("aReceber.recebido")}
                         </Button>
                       )}
                     </div>

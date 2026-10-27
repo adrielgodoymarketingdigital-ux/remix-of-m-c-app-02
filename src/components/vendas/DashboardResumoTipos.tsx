@@ -3,8 +3,9 @@ import { Smartphone, Package, Wrench, Loader2, ShoppingBag, Tag, ChartNoAxesColu
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useMemo, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/formatters";
+import { useFormatadores } from "@/hooks/useFormatadores";
 import { TextoAjustado } from "@/components/vendas/TextoAjustado";
 import { distribuirCustoParcelasGrupo } from "@/lib/vendasFinanceiras";
 
@@ -15,6 +16,8 @@ interface DashboardResumoTiposProps {
 
 export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposProps) => {
   const { isFuncionario } = useFuncionarioPermissoes();
+  const { t } = useTranslation("vendas");
+  const fmt = useFormatadores();
 
   // Distribuir custo das parcelas e filtrar vendas ativas
   const vendasAtivas = useMemo(() => {
@@ -93,38 +96,38 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
   // Só apresentação: os números vêm dos resumos calculados acima, sem alteração
   const categorias: CategoriaResumo[] = [
     {
-      nome: "Dispositivos",
-      descricao: "Vendas de aparelhos e dispositivos",
+      nome: t("resumoTipos.dispositivo.nome"),
+      descricao: t("resumoTipos.dispositivo.descricao"),
       Icone: Smartphone,
       corIcone: "bg-primary/10 text-primary dark:bg-primary/15",
       resumo: resumoDispositivos,
-      rotuloResultado: "Lucro",
+      resultado: "lucro",
     },
     {
-      nome: "Produtos",
-      descricao: "Vendas de produtos em geral",
+      nome: t("resumoTipos.produto.nome"),
+      descricao: t("resumoTipos.produto.descricao"),
       Icone: Package,
       corIcone: "bg-orange-100 text-orange-500 dark:bg-orange-500/15 dark:text-orange-400",
       resumo: resumoProdutos,
-      rotuloResultado: "Lucro",
+      resultado: "lucro",
     },
     {
-      nome: "Serviços",
-      descricao: "Prestação de serviços",
+      nome: t("resumoTipos.servico.nome"),
+      descricao: t("resumoTipos.servico.descricao"),
       Icone: Wrench,
       corIcone: "bg-purple-100 text-purple-500 dark:bg-purple-500/15 dark:text-purple-400",
       resumo: resumoServicos,
-      rotuloResultado: "Lucro",
+      resultado: "lucro",
     },
     // Venda Avulsa: só aparece quando existe (como antes) e o 3º indicador é "Receita"
     ...(resumoAvulsas.quantidade > 0
       ? [{
-          nome: "Venda Avulsa",
-          descricao: "Vendas registradas sem item cadastrado",
+          nome: t("resumoTipos.avulsa.nome"),
+          descricao: t("resumoTipos.avulsa.descricao"),
           Icone: ShoppingBag,
           corIcone: "bg-violet-100 text-violet-500 dark:bg-violet-500/15 dark:text-violet-400",
           resumo: resumoAvulsas,
-          rotuloResultado: "Receita" as const,
+          resultado: "receita" as const,
         }]
       : []),
   ];
@@ -133,7 +136,7 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {categorias.map((cat, i) => {
-        const negativo = cat.rotuloResultado === "Lucro" && cat.resumo.lucro < 0;
+        const negativo = cat.resultado === "lucro" && cat.resumo.lucro < 0;
         return (
           <article
             key={cat.nome}
@@ -158,7 +161,7 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
 
             <dl className="grid grid-cols-3 gap-[7px]">
               <Indicador
-                rotulo="Quantidade"
+                rotulo={t("resumoTipos.quantidade")}
                 Icone={Package}
                 corIcone="bg-orange-100 text-orange-500 dark:bg-orange-500/15 dark:text-orange-400"
                 caracteres={String(cat.resumo.quantidade).length}
@@ -166,20 +169,20 @@ export const DashboardResumoTipos = ({ vendas, loading }: DashboardResumoTiposPr
                 {cat.resumo.quantidade}
               </Indicador>
               <Indicador
-                rotulo="Faturado"
+                rotulo={t("resumoTipos.faturado")}
                 Icone={Tag}
                 corIcone="bg-primary/10 text-primary dark:bg-primary/15"
-                caracteres={formatCurrency(cat.resumo.faturado).length}
+                caracteres={fmt.moeda(cat.resumo.faturado).length}
               >
                 <ValorMonetario valor={cat.resumo.faturado} />
               </Indicador>
               <Indicador
-                rotulo={cat.rotuloResultado}
+                rotulo={t(`resumoTipos.${cat.resultado}`)}
                 Icone={ChartNoAxesColumnIncreasing}
                 corIcone={negativo
                   ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400"
                   : "bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-400"}
-                caracteres={formatCurrency(cat.resumo.lucro).length}
+                caracteres={fmt.moeda(cat.resumo.lucro).length}
                 classeFundo={negativo ? "bg-red-50 dark:bg-red-500/10" : "bg-green-50 dark:bg-green-500/10"}
                 classeValor={negativo ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}
               >
@@ -199,7 +202,7 @@ interface CategoriaResumo {
   Icone: LucideIcon;
   corIcone: string;
   resumo: { quantidade: number; faturado: number; lucro: number };
-  rotuloResultado: "Lucro" | "Receita";
+  resultado: "lucro" | "receita";
 }
 
 interface IndicadorProps {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format, subDays } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,25 +27,14 @@ import { Filter, Calendar, CalendarRange, ChevronUp, CreditCard, Layout, Refresh
 import { cn } from "@/lib/utils";
 import { IlustracaoVendas } from "@/components/vendas/IlustracaoVendas";
 import { TextoAjustado } from "@/components/vendas/TextoAjustado";
-import { formatCurrency } from "@/lib/formatters";
+import { FormatoMoedaProvider } from "@/components/ui/valor-monetario";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DialogConfiguracaoLayoutVendas } from "@/components/vendas/DialogConfiguracaoLayoutVendas";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 
-const MESES = [
-  { value: "01", label: "Janeiro" },
-  { value: "02", label: "Fevereiro" },
-  { value: "03", label: "Março" },
-  { value: "04", label: "Abril" },
-  { value: "05", label: "Maio" },
-  { value: "06", label: "Junho" },
-  { value: "07", label: "Julho" },
-  { value: "08", label: "Agosto" },
-  { value: "09", label: "Setembro" },
-  { value: "10", label: "Outubro" },
-  { value: "11", label: "Novembro" },
-  { value: "12", label: "Dezembro" },
-];
+const VALORES_MESES = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"] as const;
 
 // Estilos da área de filtros (referência visual layout-vendas)
 const GRADIENTE_ATIVO = "bg-[linear-gradient(110deg,#1554F5,#079FD0)] text-white shadow-[0_5px_12px_rgba(36,107,255,0.17)]";
@@ -60,6 +50,12 @@ const BOTAO_ACAO = cn(
 export default function Vendas() {
   const { vendas, todasVendas, loading, carregarVendas, cancelarVenda, editarVenda, alterarDataVenda, marcarComoRecebido, marcarComoPendente, excluirVenda, cancelarContaAPrazoOS } = useVendas();
   const { podeVerTotalVendas } = useFuncionarioPermissoes();
+  // Textos: namespace "vendas"; moeda e datas: useFormatadores (conta).
+  const { t } = useTranslation("vendas");
+  const fmt = useFormatadores();
+  const nomesForma = useNomesFormaPagamento();
+  const nomesMeses = t("pagina.meses", { returnObjects: true }) as readonly string[];
+  const MESES = VALORES_MESES.map((value, i) => ({ value, label: nomesMeses[i] }));
   const [dialogLayoutAberto, setDialogLayoutAberto] = useState(false);
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
@@ -113,13 +109,13 @@ export default function Vendas() {
   const getPeriodoLabel = () => {
     if (tipoFiltroData === "mes" && mesSelecionado) {
       const mes = MESES.find(m => m.value === mesSelecionado)?.label ?? mesSelecionado;
-      return `${mes}/${anoSelecionado}`;
+      return t("pagina.periodoMes", { mes, ano: anoSelecionado });
     }
     if (tipoFiltroData === "periodo" && dataInicio && dataFim) {
-      if (dataInicio === dataFim) return dataInicio.split("-").reverse().join("/");
-      return `${dataInicio.split("-").reverse().join("/")} – ${dataFim.split("-").reverse().join("/")}`;
+      if (dataInicio === dataFim) return fmt.data(dataInicio);
+      return t("pagina.periodoIntervalo", { inicio: fmt.data(dataInicio), fim: fmt.data(dataFim) });
     }
-    return "todos os períodos";
+    return t("pagina.todosPeriodos");
   };
 
   const vendasFiltradas = vendas.filter((venda) => {
@@ -148,7 +144,7 @@ export default function Vendas() {
   });
 
   // Mesmo cálculo de antes, guardado para medir o tamanho do texto no card
-  const totalVendidoTexto = formatCurrency(
+  const totalVendidoTexto = fmt.moeda(
     vendasFiltradas
       .filter(v => !v.cancelada)
       .reduce((acc, v) => {
@@ -163,29 +159,30 @@ export default function Vendas() {
 
   return (
     <AppLayout>
+      <FormatoMoedaProvider value={fmt.moeda}>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
         <div className="max-w-7xl lg:max-w-none mx-auto space-y-4 sm:space-y-6">
           {/* Cabeçalho da página */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 pt-1">
-              <h1 className="text-[27px] min-[391px]:text-[30px] md:text-[35px] font-extrabold leading-[1.2] tracking-[-1px]">Vendas</h1>
+              <h1 className="text-[27px] min-[391px]:text-[30px] md:text-[35px] font-extrabold leading-[1.2] tracking-[-1px]">{t("pagina.titulo")}</h1>
               <p className="mt-2 max-w-[205px] min-[391px]:max-w-[245px] md:max-w-[500px] text-xs min-[391px]:text-[13px] leading-[1.6] text-muted-foreground">
-                Lista completa de todas as vendas realizadas
+                {t("pagina.subtitulo")}
               </p>
             </div>
             {/* md:mr-11: deixa livre o botão flutuante de privacidade (olho) do layout */}
             <div className="flex shrink-0 items-start gap-2 md:mr-11">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-9 gap-2 rounded-xl px-0 sm:w-auto sm:px-3" aria-label="Configurações">
+                  <Button variant="outline" size="sm" className="h-9 w-9 gap-2 rounded-xl px-0 sm:w-auto sm:px-3" aria-label={t("pagina.configuracoes")}>
                     <Settings className="h-4 w-4" />
-                    <span className="hidden sm:inline">Configurações</span>
+                    <span className="hidden sm:inline">{t("pagina.configuracoes")}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setDialogLayoutAberto(true)}>
                     <Layout className="h-4 w-4 mr-2" />
-                    Layout de Impressão
+                    {t("pagina.layoutImpressao")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -204,8 +201,8 @@ export default function Vendas() {
                   <Filter className="h-[23px] w-[23px]" />
                 </div>
                 <div className="min-w-0">
-                  <h2 id="filtros-vendas-titulo" className="text-[17px] font-extrabold leading-tight">Filtros</h2>
-                  <p className="mt-[5px] text-xs text-muted-foreground">Personalize a exibição das vendas</p>
+                  <h2 id="filtros-vendas-titulo" className="text-[17px] font-extrabold leading-tight">{t("pagina.filtros.titulo")}</h2>
+                  <p className="mt-[5px] text-xs text-muted-foreground">{t("pagina.filtros.subtitulo")}</p>
                 </div>
               </div>
               <button
@@ -213,7 +210,7 @@ export default function Vendas() {
                 onClick={() => setFiltrosAbertos((v) => !v)}
                 aria-expanded={filtrosAbertos}
                 aria-controls="filtros-vendas-conteudo"
-                aria-label={filtrosAbertos ? "Recolher filtros" : "Expandir filtros"}
+                aria-label={filtrosAbertos ? t("pagina.filtros.recolher") : t("pagina.filtros.expandir")}
                 className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-primary transition-colors hover:bg-muted",
                   FOCO,
@@ -229,7 +226,7 @@ export default function Vendas() {
                 {([
                   {
                     id: "hoje",
-                    label: "Hoje",
+                    label: t("pagina.filtros.hoje"),
                     onClick: () => {
                       const hoje = dataBrasiliaISO();
                       setTipoFiltroData("periodo");
@@ -240,7 +237,7 @@ export default function Vendas() {
                   },
                   {
                     id: "ontem",
-                    label: "Ontem",
+                    label: t("pagina.filtros.ontem"),
                     onClick: () => {
                       const ontem = dataBrasiliaISO(subDays(new Date(), 1));
                       setTipoFiltroData("periodo");
@@ -251,7 +248,7 @@ export default function Vendas() {
                   },
                   {
                     id: "7dias",
-                    label: "Últimos 7 dias",
+                    label: t("pagina.filtros.ultimos7Dias"),
                     onClick: () => {
                       const hoje = dataBrasiliaISO();
                       const seteDiasAtras = dataBrasiliaISO(subDays(new Date(), 7));
@@ -287,12 +284,12 @@ export default function Vendas() {
               {/* Mês / Período */}
               <p className="mb-[13px] mt-[23px] flex items-center gap-2.5 text-[13px] font-semibold">
                 <Calendar className="h-[19px] w-[19px]" />
-                Filtrar por:
+                {t("pagina.filtros.filtrarPor")}
               </p>
               <div className="grid grid-cols-2 gap-[5px] rounded-[13px] border border-border bg-background p-1 dark:bg-muted/40 md:max-w-md">
                 {([
-                  { valor: "mes", label: "Mês", Icone: Calendar },
-                  { valor: "periodo", label: "Período", Icone: CalendarRange },
+                  { valor: "mes", label: t("pagina.filtros.mes"), Icone: Calendar },
+                  { valor: "periodo", label: t("pagina.filtros.periodo"), Icone: CalendarRange },
                 ] as const).map(({ valor, label, Icone }) => {
                   const ativo = tipoFiltroData === valor;
                   return (
@@ -319,12 +316,12 @@ export default function Vendas() {
                 {tipoFiltroData === "mes" ? (
                   <>
                     <div>
-                      <Label htmlFor="mes" className={ROTULO}>Mês</Label>
+                      <Label htmlFor="mes" className={ROTULO}>{t("pagina.filtros.mes")}</Label>
                       <div className="relative">
                         <Calendar className={ICONE_CAMPO} aria-hidden="true" />
                         <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
                           <SelectTrigger id="mes" className={CAMPO}>
-                            <SelectValue placeholder="Selecione o mês" />
+                            <SelectValue placeholder={t("pagina.filtros.selecioneMes")} />
                           </SelectTrigger>
                           <SelectContent>
                             {MESES.map((mes) => (
@@ -337,7 +334,7 @@ export default function Vendas() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="ano" className={ROTULO}>Ano</Label>
+                      <Label htmlFor="ano" className={ROTULO}>{t("pagina.filtros.ano")}</Label>
                       <div className="relative">
                         <Calendar className={ICONE_CAMPO} aria-hidden="true" />
                         <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
@@ -358,7 +355,7 @@ export default function Vendas() {
                 ) : (
                   <>
                     <div>
-                      <Label htmlFor="dataInicio" className={ROTULO}>Data Início</Label>
+                      <Label htmlFor="dataInicio" className={ROTULO}>{t("pagina.filtros.dataInicio")}</Label>
                       <div className="relative">
                         <Calendar className={ICONE_CAMPO} aria-hidden="true" />
                         <Input
@@ -371,7 +368,7 @@ export default function Vendas() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="dataFim" className={ROTULO}>Data Fim</Label>
+                      <Label htmlFor="dataFim" className={ROTULO}>{t("pagina.filtros.dataFim")}</Label>
                       <div className="relative">
                         <Calendar className={ICONE_CAMPO} aria-hidden="true" />
                         <Input
@@ -386,7 +383,7 @@ export default function Vendas() {
                   </>
                 )}
                 <div>
-                  <Label htmlFor="tipo" className={ROTULO}>Tipo</Label>
+                  <Label htmlFor="tipo" className={ROTULO}>{t("pagina.filtros.tipo")}</Label>
                   <div className="relative">
                     <Tag className={ICONE_CAMPO} aria-hidden="true" />
                     <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
@@ -394,17 +391,17 @@ export default function Vendas() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">Todos</SelectItem>
-                        <SelectItem value="dispositivo">Dispositivos</SelectItem>
-                        <SelectItem value="produto">Produtos</SelectItem>
-                        <SelectItem value="servico">Serviços</SelectItem>
-                        <SelectItem value="avulsa">Venda Avulsa</SelectItem>
+                        <SelectItem value="todos">{t("pagina.filtros.todos")}</SelectItem>
+                        <SelectItem value="dispositivo">{t("pagina.tipos.dispositivo")}</SelectItem>
+                        <SelectItem value="produto">{t("pagina.tipos.produto")}</SelectItem>
+                        <SelectItem value="servico">{t("pagina.tipos.servico")}</SelectItem>
+                        <SelectItem value="avulsa">{t("pagina.tipos.avulsa")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="pagamento" className={ROTULO}>Pagamento</Label>
+                  <Label htmlFor="pagamento" className={ROTULO}>{t("pagina.filtros.pagamento")}</Label>
                   <div className="relative">
                     <CreditCard className={ICONE_CAMPO} aria-hidden="true" />
                     <Select value={pagamentoFiltro} onValueChange={setPagamentoFiltro}>
@@ -412,13 +409,10 @@ export default function Vendas() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">Todos</SelectItem>
-                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                        <SelectItem value="pix">PIX</SelectItem>
-                        <SelectItem value="debito">Débito</SelectItem>
-                        <SelectItem value="credito">Crédito</SelectItem>
-                        <SelectItem value="credito_parcelado">Crédito Parcelado</SelectItem>
-                        <SelectItem value="a_receber">A Receber</SelectItem>
+                        <SelectItem value="todos">{t("pagina.filtros.todos")}</SelectItem>
+                        {(["dinheiro", "pix", "debito", "credito", "credito_parcelado", "a_receber"] as const).map((forma) => (
+                          <SelectItem key={forma} value={forma}>{nomesForma.curto[forma]}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -434,7 +428,7 @@ export default function Vendas() {
                   className={cn(BOTAO_ACAO, GRADIENTE_ATIVO, "shadow-[0_6px_15px_rgba(36,107,255,0.17)] hover:brightness-105")}
                 >
                   <Filter className="h-[19px] w-[19px]" />
-                  Filtrar
+                  {t("pagina.filtros.filtrar")}
                 </button>
                 <button
                   type="button"
@@ -443,7 +437,7 @@ export default function Vendas() {
                   className={cn(BOTAO_ACAO, "border border-border bg-background text-foreground hover:bg-muted dark:bg-muted/40 dark:hover:bg-muted")}
                 >
                   <RefreshCw className="h-[19px] w-[19px]" />
-                  Limpar
+                  {t("pagina.filtros.limpar")}
                 </button>
               </div>
             </div>
@@ -452,7 +446,7 @@ export default function Vendas() {
           {/* Card Total Vendido no Período */}
           {podeVerTotalVendas && (
             <section
-              aria-label="Total vendido"
+              aria-label={t("pagina.totalVendido")}
               className={cn(
                 "relative min-h-[150px] overflow-hidden rounded-[20px] border p-4 min-[376px]:p-[22px] md:min-h-[175px]",
                 "border-[#D0E0FF] bg-[linear-gradient(120deg,#EDF4FF,#E4EDFF)]",
@@ -471,7 +465,7 @@ export default function Vendas() {
                   <TrendingUp className="h-[29px] w-[29px]" aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold min-[376px]:text-base">Total vendido</p>
+                  <p className="text-sm font-bold min-[376px]:text-base">{t("pagina.totalVendido")}</p>
                   <p className="mt-1.5 text-xs text-muted-foreground">{getPeriodoLabel()}</p>
                   {loading ? (
                     <div className="mt-[17px] h-9 w-40 animate-pulse rounded-lg bg-primary/10" />
@@ -495,9 +489,9 @@ export default function Vendas() {
           {/* Resumo por Tipo */}
           <div className="space-y-[19px]">
             <div>
-              <h2 className="text-[23px] font-extrabold leading-tight tracking-[-0.7px]">Resumo por Tipo</h2>
+              <h2 className="text-[23px] font-extrabold leading-tight tracking-[-0.7px]">{t("pagina.resumoPorTipo")}</h2>
               <p className="mt-2 text-[13px] text-muted-foreground">
-                Vendas separadas por categoria
+                {t("pagina.resumoPorTipoDescricao")}
               </p>
             </div>
             <DashboardResumoTipos vendas={vendasFiltradas} loading={loading} />
@@ -506,9 +500,9 @@ export default function Vendas() {
           {/* Dashboard A Receber */}
           <div className="space-y-[18px]">
             <div>
-              <h2 className="text-[23px] font-extrabold leading-tight tracking-[-0.7px]">Vendas a Receber</h2>
+              <h2 className="text-[23px] font-extrabold leading-tight tracking-[-0.7px]">{t("pagina.aReceber")}</h2>
               <p className="mt-[7px] text-[13px] text-muted-foreground">
-                Valores pendentes de recebimento
+                {t("pagina.aReceberDescricao")}
               </p>
             </div>
             <DashboardAReceber
@@ -524,12 +518,12 @@ export default function Vendas() {
             className="rounded-[19px] border border-border bg-card px-3.5 py-[17px] shadow-[0_5px_18px_rgba(16,24,40,0.035)] dark:shadow-none md:p-[22px]"
           >
             <div className="mb-[18px] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <h2 id="lista-vendas-titulo" className="text-xl font-extrabold tracking-[-0.5px]">Lista de Vendas</h2>
+              <h2 id="lista-vendas-titulo" className="text-xl font-extrabold tracking-[-0.5px]">{t("pagina.lista")}</h2>
               <div className="relative w-full sm:w-80">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
-                  placeholder="Buscar por nome, modelo, código..."
-                  aria-label="Buscar vendas"
+                  placeholder={t("pagina.buscarPlaceholder")}
+                  aria-label={t("pagina.buscarRotulo")}
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   className="h-[49px] rounded-xl border-border bg-background pl-[43px] text-[13px] placeholder:text-[#7A879A] focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/15 focus-visible:ring-offset-0 dark:bg-muted/40 dark:placeholder:text-muted-foreground sm:h-11"
@@ -552,6 +546,7 @@ export default function Vendas() {
           </section>
         </div>
       </main>
+      </FormatoMoedaProvider>
 
       <DialogConfiguracaoLayoutVendas
         open={dialogLayoutAberto}
