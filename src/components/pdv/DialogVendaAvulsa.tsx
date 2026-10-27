@@ -23,10 +23,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/formatters";
 import { Trash2 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n/instancia";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 
 interface VendaAvulsa {
   id: string;
@@ -37,13 +38,10 @@ interface VendaAvulsa {
   created_at: string;
 }
 
-const FORMAS_PAGAMENTO: Record<string, string> = {
-  dinheiro: "Dinheiro",
-  pix: "Pix",
-  credito: "Cartão de Crédito",
-  debito: "Cartão de Débito",
-  transferencia: "Transferência",
-};
+// Formas desta tela; os nomes vêm de comum.formaPagamento (variantes "Pix" e "Transferência").
+const FORMAS_PAGAMENTO = ["dinheiro", "pix", "credito", "debito", "transferencia"] as const;
+// Toasts lidos na hora (podem sair depois de um await; ver convencoes.md, item 10).
+const tAgora = (chave: string) => i18n.t(chave, { ns: "pdv" });
 
 interface Props {
   open: boolean;
@@ -55,6 +53,16 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
   const { lojaUserId } = useFuncionarioPermissoes();
   const { empresaAtiva } = useEmpresa();
   const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaAtiva);
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
+  const nomesForma = useNomesFormaPagamento();
+  const nomeForma: Record<(typeof FORMAS_PAGAMENTO)[number], string> = {
+    dinheiro: nomesForma.curto.dinheiro,
+    pix: nomesForma.pixAvulsa,
+    credito: nomesForma.longo.credito,
+    debito: nomesForma.longo.debito,
+    transferencia: nomesForma.transferencia,
+  };
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("");
@@ -103,15 +111,15 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
 
   async function salvarVendaAvulsa() {
     if (!descricao.trim()) {
-      toast.error("Informe a descrição da venda");
+      toast.error(tAgora("vendaAvulsa.toast.informeDescricao"));
       return;
     }
     if (!valor || parseFloat(valor.replace(",", ".")) <= 0) {
-      toast.error("Informe um valor válido");
+      toast.error(tAgora("vendaAvulsa.toast.valorInvalido"));
       return;
     }
     if (!formaPagamento) {
-      toast.error("Selecione a forma de pagamento");
+      toast.error(tAgora("vendaAvulsa.toast.selecioneForma"));
       return;
     }
 
@@ -133,10 +141,10 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
       });
 
     if (error) {
-      toast.error("Erro ao registrar venda");
+      toast.error(tAgora("vendaAvulsa.toast.erroRegistrar"));
       console.error(error);
     } else {
-      toast.success("Venda avulsa registrada!");
+      toast.success(tAgora("vendaAvulsa.toast.registrada"));
       limparFormulario();
       await carregarVendasHoje();
       onVendaSalva?.();
@@ -152,10 +160,10 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
       .eq("id", id);
 
     if (error) {
-      toast.error("Erro ao cancelar venda");
+      toast.error(tAgora("vendaAvulsa.toast.erroCancelar"));
       return;
     }
-    toast.success("Venda cancelada");
+    toast.success(tAgora("vendaAvulsa.toast.cancelada"));
     await carregarVendasHoje();
     onVendaSalva?.();
   }
@@ -163,7 +171,7 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
   const totalHoje = vendasHoje.reduce((acc, v) => acc + Number(v.valor), 0);
 
   function getLabelFormaPagamento(forma: string): string {
-    if (FORMAS_PAGAMENTO[forma]) return FORMAS_PAGAMENTO[forma];
+    if ((FORMAS_PAGAMENTO as readonly string[]).includes(forma)) return nomeForma[forma as (typeof FORMAS_PAGAMENTO)[number]];
     if (forma.startsWith("custom_")) {
       const id = forma.replace("custom_", "");
       return formasCustomizadas.find((f) => f.id === id)?.nome || forma;
@@ -175,17 +183,17 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Venda Avulsa</DialogTitle>
+          <DialogTitle>{t("vendaAvulsa.titulo")}</DialogTitle>
           <DialogDescription>
-            Registre uma venda rápida sem vincular produto ou cliente.
+            {t("vendaAvulsa.descricao")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label>Descrição *</Label>
+            <Label>{t("vendaAvulsa.descricaoCampo")}</Label>
             <Input
-              placeholder="Ex: Capinha iPhone 15, Película, Cabo USB..."
+              placeholder={t("vendaAvulsa.descricaoPlaceholder")}
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") salvarVendaAvulsa(); }}
@@ -193,33 +201,31 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
           </div>
 
           <div>
-            <Label>Valor *</Label>
+            <Label>{t("vendaAvulsa.valor")}</Label>
             <Input
               type="number"
               step="0.01"
               min="0"
-              placeholder="0,00"
+              placeholder={t("vendaAvulsa.valorPlaceholder")}
               value={valor}
               onChange={(e) => setValor(e.target.value)}
             />
           </div>
 
           <div>
-            <Label>Forma de pagamento *</Label>
+            <Label>{t("vendaAvulsa.forma")}</Label>
             <Select value={formaPagamento} onValueChange={setFormaPagamento}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecionar..." />
+                <SelectValue placeholder={t("vendaAvulsa.selecionar")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                <SelectItem value="pix">Pix</SelectItem>
-                <SelectItem value="credito">Cartão de Crédito</SelectItem>
-                <SelectItem value="debito">Cartão de Débito</SelectItem>
-                <SelectItem value="transferencia">Transferência</SelectItem>
+                {FORMAS_PAGAMENTO.map((forma) => (
+                  <SelectItem key={forma} value={forma}>{nomeForma[forma]}</SelectItem>
+                ))}
                 {formasCustomizadas.length > 0 && (
                   <>
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
-                      Personalizadas
+                      {t("vendaAvulsa.personalizadas")}
                     </div>
                     {formasCustomizadas.map((f) => (
                       <SelectItem key={f.id} value={`custom_${f.id}`}>
@@ -233,9 +239,9 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
           </div>
 
           <div>
-            <Label>Observação (opcional)</Label>
+            <Label>{t("vendaAvulsa.observacao")}</Label>
             <Textarea
-              placeholder="Alguma observação sobre essa venda..."
+              placeholder={t("vendaAvulsa.observacaoPlaceholder")}
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
               rows={2}
@@ -245,26 +251,26 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t("vendaAvulsa.cancelar")}
           </Button>
           <Button onClick={salvarVendaAvulsa} disabled={salvando}>
-            {salvando ? "Salvando..." : "Registrar Venda"}
+            {salvando ? t("vendaAvulsa.salvando") : t("vendaAvulsa.registrar")}
           </Button>
         </DialogFooter>
 
         {/* Histórico do dia */}
         <div className="mt-2 border-t pt-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-muted-foreground">Vendas avulsas hoje</p>
+            <p className="text-sm font-medium text-muted-foreground">{t("vendaAvulsa.hoje")}</p>
             {vendasHoje.length > 0 && (
-              <span className="text-sm font-semibold text-green-600">{formatCurrency(totalHoje)}</span>
+              <span className="text-sm font-semibold text-green-600">{fmt.moeda(totalHoje)}</span>
             )}
           </div>
 
           {carregandoVendas ? (
-            <p className="text-xs text-muted-foreground text-center py-3">Carregando...</p>
+            <p className="text-xs text-muted-foreground text-center py-3">{t("vendaAvulsa.carregando")}</p>
           ) : vendasHoje.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-3">Nenhuma venda avulsa hoje</p>
+            <p className="text-xs text-muted-foreground text-center py-3">{t("vendaAvulsa.nenhumaHoje")}</p>
           ) : (
             <div className="space-y-2">
               {vendasHoje.map((v) => (
@@ -275,17 +281,15 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">{v.descricao}</p>
                     <p className="text-xs text-muted-foreground">
-                      {getLabelFormaPagamento(v.forma_pagamento)}
-                      {" · "}
-                      {format(new Date(v.created_at), "HH:mm", { locale: ptBR })}
+                      {t("vendaAvulsa.formaHora", { forma: getLabelFormaPagamento(v.forma_pagamento), hora: fmt.hora(v.created_at) })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-semibold font-mono">{formatCurrency(Number(v.valor))}</span>
+                    <span className="font-semibold font-mono">{fmt.moeda(Number(v.valor))}</span>
                     <button
                       onClick={() => excluirVendaAvulsa(v.id)}
                       className="p-1 rounded text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      title="Cancelar venda"
+                      title={t("vendaAvulsa.cancelarVenda")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
