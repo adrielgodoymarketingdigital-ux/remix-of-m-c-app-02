@@ -1,0 +1,72 @@
+// Namespace "menu" em pt-BR: vai embutido no pacote principal. Os textos são
+// os de src/lib/menu/menuPrincipal.ts e do AppSidebar, letra por letra
+// (conferido em scripts/testes-i18n/recursos.test.ts). Chave de item = rota
+// sem a barra inicial, com "/" trocada por "_" (chaveDaRota).
+const menu = {
+  itens: {
+    dashboard: "Dashboard",
+    pdv: "PDV",
+    os: "Ordem de Serviço",
+    produtos: "Produtos e Peças",
+    "compatibilidade-pelicula": "Comp. Película/Vidro",
+    servicos: "Serviços",
+    dispositivos: "Dispositivos",
+    remessas: "Remessas Corporativas",
+    catalogo: "Catálogo",
+    "origem-dispositivos": "Origem de Dispositivos",
+    fornecedores: "Fornecedores",
+    clientes: "Clientes",
+    orcamentos: "Orçamentos",
+    pedidos: "Pedidos/Encomendas",
+    contas: "Contas",
+    vendas: "Vendas",
+    financeiro: "Financeiro",
+    equipe: "Equipe",
+    configuracoes: "Configurações",
+    configuracoes_fiscal: "Fiscal",
+    "configuracoes_fiscal_xml-compra": "Importar XML de compra",
+    suporte: "Suporte",
+    plano: "Plano",
+    tutoriais: "Tutoriais",
+    "baixar-app": "Baixar App",
+    "multi-empresas": "Multi Empresas",
+    precificador: "Precificador",
+  },
+  subitens: {
+    clientes: "👥 Clientes",
+    fidelidade: "🏆 Fidelidade",
+    financeiro: "💰 Contas a Pagar/Receber",
+    extrato: "📒 Extrato",
+    relatorios: "📊 Relatórios",
+  },
+  grupos: {
+    atendimento: "Atendimento",
+    estoque: "Estoque",
+    pessoas: "Pessoas",
+    administrativo: "Administrativo",
+    "conta-suporte": "Conta & Suporte",
+  },
+  admin: {
+    mostrarMenu: "Mostrar menu admin",
+    verComoUsuario: "Ver como usuário",
+    itens: {
+      admin_usuarios: "Usuários",
+      admin_financeiro: "Financeiro",
+      admin_marketing: "Marketing",
+      admin_cupons: "Cupons",
+      admin_novidades: "Novidades",
+      admin_onboarding: "Onboarding",
+      admin_push: "Push Notifications",
+      admin_feedbacks: "Feedbacks",
+      admin_chat: "Chat Suporte",
+      admin_avisos: "Avisos",
+      admin_notificacoes: "Notificações",
+      "admin_alteracoes-correcoes": "Alterações/Correções",
+      "admin_compatibilidade-pelicula": "Compatibilidade de Película e Vidro",
+    },
+  },
+  ajuda: "Ajuda",
+  sair: "Sair",
+} as const;
+
+export default menu;

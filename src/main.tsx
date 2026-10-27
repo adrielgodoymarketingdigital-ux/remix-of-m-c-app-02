@@ -1,4 +1,6 @@
 import { createRoot } from "react-dom/client";
+// i18next com o pt-BR embutido, iniciado antes da primeira renderização.
+import "./lib/i18n/instancia";
 import App from "./App.tsx";
 import "./fontes.css";
 import "./index.css";

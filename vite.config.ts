@@ -87,7 +87,14 @@ function calcularIconesSoDaLanding(meta: ManualChunkMeta) {
   return new Set([...daLanding].filter((id) => !daEntrada.has(id)));
 }
 
+// Traduções (src/locales/<idioma>/<namespace>.ts, menos o pt-BR, que vai no
+// pacote principal): um chunk por idioma e namespace, com nome próprio para
+// ficarem fora do precache do service worker (quem usa pt-BR nunca as baixa).
+const TRADUCAO = /\/src\/locales\/(es|en|it)\/([a-z-]+)\.ts$/;
+
 function manualChunks(id: string, meta: ManualChunkMeta): string | undefined {
+  const traducao = id.match(TRADUCAO);
+  if (traducao) return `idioma-${traducao[1]}-${traducao[2]}`;
   const pacote = pacoteDoModulo(id);
   if (!pacote) return undefined;
   for (const [chunk, pacotes] of Object.entries(GRUPOS_VENDOR)) {
@@ -195,6 +202,8 @@ export default defineConfig(({ mode }) => ({
           "assets/html2canvas*",
           "assets/templatePlanilha*",
           "assets/LeitorCodigoBarras*",
+          // Traduções: só quem troca de idioma baixa (ver TRADUCAO)
+          "assets/idioma-*",
         ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB por arquivo
       },

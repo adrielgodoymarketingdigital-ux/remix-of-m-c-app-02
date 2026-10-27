@@ -29,6 +29,8 @@ import AuthCallback from "@/components/AuthCallback";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import { OSStatusConfigProvider } from "@/contexts/OSStatusConfigContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { aplicarIdioma } from "@/lib/i18n/instancia";
+import { IDIOMA_PADRAO } from "@/lib/i18n/idiomas";
 
 // Lazy-loaded pages — split into per-route bundles so o app inicial fica leve no mobile
 const LandingLP1 = lazy(importarLandingLP1);
@@ -118,11 +120,15 @@ const queryClient = new QueryClient({
 // recarregar): limpa o cache, senão hooks com chave sem user_id seguem usando
 // o usuário anterior — ex.: o card "Primeiros passos" gravava com o id antigo,
 // a RLS recusava e o card não respondia. SIGNED_IN ao focar a aba é o mesmo
-// usuário, então não limpa.
+// usuário, então não limpa. O idioma volta ao pt-BR até o AppLayout aplicar o
+// da nova conta (já em pt-BR, não faz nada).
 let usuarioDoCache: string | null | undefined;
 supabase.auth.onAuthStateChange((_event, session) => {
   const id = session?.user?.id ?? null;
-  if (usuarioDoCache !== undefined && id !== usuarioDoCache) queryClient.clear();
+  if (usuarioDoCache !== undefined && id !== usuarioDoCache) {
+    queryClient.clear();
+    void aplicarIdioma(IDIOMA_PADRAO);
+  }
   usuarioDoCache = id;
 });
 
