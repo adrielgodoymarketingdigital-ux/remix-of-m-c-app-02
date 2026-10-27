@@ -1,21 +1,28 @@
 import * as React from "react";
 import { type DialogProps } from "@radix-ui/react-dialog";
-import { Command as CommandPrimitive } from "cmdk";
+import { Command as CommandPrimitive, defaultFilter } from "cmdk";
 import { Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
+// O teclado do celular (sugestão/autocorreção do Gboard e do iPhone) confirma a
+// palavra com um espaço no fim; o filtro do cmdk exige esse espaço no texto do
+// item e "sams " não achava "Samsung". Espaços nas pontas e repetidos não contam.
+const filtroBusca = (value: string, search: string, keywords?: string[]) =>
+  defaultFilter(value, search.trim().replace(/\s+/g, " "), keywords);
+
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive>
->(({ className, ...props }, ref) => (
+>(({ className, filter = filtroBusca, ...props }, ref) => (
   <CommandPrimitive
     ref={ref}
     className={cn(
       "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
       className,
     )}
+    filter={filter}
     {...props}
   />
 ));
