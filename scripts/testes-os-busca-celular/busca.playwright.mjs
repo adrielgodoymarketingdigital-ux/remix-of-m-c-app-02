@@ -73,12 +73,14 @@ function tabelas() {
       produto("prod-bat", "Bateria Samsung A10", 90),
       produto("prod-pel", "Película 3D Galaxy A12", 25),
       produto("prod-cabo", "Cabo USB-C", 30),
+      produto("prod-pelpriv", "Pelicula Privacidade iPhone 13", 35),
       ...Array.from({ length: 10 }, (_, i) => produto(`prod-${doisDig(i)}`, `Produto Teste ${doisDig(i)}`, 10 + i)),
     ],
     pecas: [
       peca("peca-cam", "Câmera Traseira iPhone 11", 150),
       peca("peca-con", "Conector de Carga Moto G8", 40),
       peca("peca-tela", "Tela Galaxy A10 Original", 220),
+      peca("peca-camfront", "Camera Frontal Moto G8", 60),
       ...Array.from({ length: 10 }, (_, i) => peca(`peca-${doisDig(i)}`, `Peça Teste ${doisDig(i)}`, 20 + i)),
     ],
     clientes: [
@@ -173,6 +175,8 @@ const CMDK = { lista: "[data-radix-popper-content-wrapper] [cmdk-list]", item: "
 const SUGESTAO_CLIENTE = { lista: "[role=dialog] div.absolute.z-50.overflow-y-auto", item: "button", campo: "[role=dialog] input[name^=clienteNome]" };
 
 const MODOS = ["teclado", "ime", "ime-aberta", "ime-sugestao"];
+// Termos com foto além do primeiro de cada lista: cadastro e digitação com e sem acento.
+const FOTOS = new Set(["camera", "pelicula", "película priv", "câmera frontal", "tecnica"]);
 
 async function compor(cdp, palavra) {
   for (let i = 1; i <= palavra.length; i++) {
@@ -233,9 +237,10 @@ async function testarBusca(pg, toque, nome, abrirLista, termos, saida, tipo = CM
       const m = await medir(pg, tipo);
       const eventos = [...new Set(await pg.evaluate(() => window.__eventosCampo))].sort().join(",");
       const achou = m.itens.some((t) => sem(t).includes(sem(esperado)));
-      r[modo][termo] = { valor: m.valor, aberta: m.aberta, n: m.itens.length, primeiro: m.itens[0] ?? null, achou };
+      r[modo][termo] = { valor: m.valor, aberta: m.aberta, n: m.itens.length, primeiro: m.itens[0] ?? null, top: m.itens.slice(0, 5), achou };
       console.log(`  ${nome.padEnd(16)} ${modo.padEnd(12)} ${JSON.stringify(termo).padEnd(14)} → ${achou ? "ACHOU " : "NÃO ACHOU"} n=${m.itens.length} campo=${JSON.stringify(m.valor)} aberta=${m.aberta} 1º=${JSON.stringify(m.itens[0] ?? null)} eventos=${eventos}`);
       if (termo === termos[0][0]) await pg.screenshot({ path: path.join(saida, `${nome}-${modo}.png`) });
+      else if (FOTOS.has(termo) && modo === "teclado") await pg.screenshot({ path: path.join(saida, `${nome}-${termo.replace(/\s+/g, "-")}.png`) });
     }
   }
   return r;
@@ -330,7 +335,7 @@ for (const aparelho of so) {
     await pg.waitForTimeout(300);
     const gatilhoProduto = dialogo.getByRole("combobox").filter({ hasText: "buscar produto" });
     const abrirProduto = () => tocar(gatilhoProduto);
-    const termosProduto = [["tela", "Tela iPhone 11"], ["TELA", "Tela"], ["tela ip", "Tela iPhone 11"], ["iphone 11", "iPhone 11"], ["película", "Película 3D"], ["pelicula", "Película 3D"], ["câmera", "Câmera Traseira"], ["camera", "Câmera Traseira"], ["a10", "A10"]];
+    const termosProduto = [["tela", "Tela iPhone 11"], ["TELA", "Tela"], ["tela ip", "Tela iPhone 11"], ["iphone 11", "iPhone 11"], ["película", "Película 3D"], ["pelicula", "Película 3D"], ["câmera", "Câmera Traseira"], ["camera", "Câmera Traseira"], ["a10", "A10"], ["película priv", "Pelicula Privacidade"], ["câmera frontal", "Camera Frontal"], ["camera frontal", "Camera Frontal"]];
     r.produto = await testarBusca(pg, toque, "produto", abrirProduto, termosProduto, pasta);
     await pg.keyboard.press("Escape");
     await pg.waitForTimeout(300);
