@@ -383,6 +383,17 @@ const pdv: Traducao<typeof pdvPtBR> = {
       fechadoEm: "Cerrada el: {{data}}",
     },
   },
+  avisos: {
+    nomeFormaObrigatorio: "El nombre de la forma de pago es obligatorio",
+    formaCriada: "¡Forma de pago creada!",
+    erroCriarForma: "Error al crear la forma de pago",
+    formaRemovida: "¡Forma de pago eliminada!",
+    erroRemoverForma: "Error al eliminar la forma de pago",
+    valorMaiorQueZero: "El monto debe ser mayor que cero",
+    sangriaRegistrada: "¡Retiro registrado!",
+    suprimentoRegistrado: "¡Ingreso registrado!",
+    erroMovimentacao: "Error al registrar el movimiento",
+  },
 };
 
 export default pdv;

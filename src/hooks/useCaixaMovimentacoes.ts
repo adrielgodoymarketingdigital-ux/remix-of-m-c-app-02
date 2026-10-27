@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import i18n from "@/lib/i18n/instancia";
+
+// Toasts lidos na hora (saem depois de um await; ver convencoes.md, item 10).
+const tAgora = (chave: string) => i18n.t(chave, { ns: "pdv" });
 
 export interface CaixaMovimentacao {
   id: string;
@@ -45,7 +49,7 @@ export function useCaixaMovimentacoes() {
       if (!user) return false;
 
       if (valor <= 0) {
-        toast.error("O valor deve ser maior que zero");
+        toast.error(tAgora("avisos.valorMaiorQueZero"));
         return false;
       }
 
@@ -61,12 +65,12 @@ export function useCaixaMovimentacoes() {
 
       if (error) throw error;
 
-      toast.success(tipo === "sangria" ? "Sangria registrada!" : "Suprimento registrado!");
+      toast.success(tipo === "sangria" ? tAgora("avisos.sangriaRegistrada") : tAgora("avisos.suprimentoRegistrado"));
       await carregarMovimentacoes(caixaId);
       return true;
     } catch (error) {
       console.error("Erro ao registrar movimentação:", error);
-      toast.error("Erro ao registrar movimentação");
+      toast.error(tAgora("avisos.erroMovimentacao"));
       return false;
     }
   };

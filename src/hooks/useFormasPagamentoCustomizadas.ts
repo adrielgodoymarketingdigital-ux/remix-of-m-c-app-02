@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import i18n from "@/lib/i18n/instancia";
+
+// Toasts lidos na hora (saem depois de um await; ver convencoes.md, item 10).
+const tAgora = (chave: string) => i18n.t(chave, { ns: "pdv" });
 
 export interface FormaPagamentoCustomizada {
   id: string;
@@ -43,7 +47,7 @@ export function useFormasPagamentoCustomizadas(empresaId?: string | null) {
 
       const nomeTrimmed = nome.trim();
       if (!nomeTrimmed) {
-        toast.error("Nome da forma de pagamento é obrigatório");
+        toast.error(tAgora("avisos.nomeFormaObrigatorio"));
         return false;
       }
 
@@ -57,12 +61,12 @@ export function useFormasPagamentoCustomizadas(empresaId?: string | null) {
         });
 
       if (error) throw error;
-      toast.success("Forma de pagamento criada!");
+      toast.success(tAgora("avisos.formaCriada"));
       await carregar();
       return true;
     } catch (error) {
       console.error("Erro ao criar forma de pagamento:", error);
-      toast.error("Erro ao criar forma de pagamento");
+      toast.error(tAgora("avisos.erroCriarForma"));
       return false;
     }
   };
@@ -75,12 +79,12 @@ export function useFormasPagamentoCustomizadas(empresaId?: string | null) {
         .eq("id", id);
 
       if (error) throw error;
-      toast.success("Forma de pagamento removida!");
+      toast.success(tAgora("avisos.formaRemovida"));
       await carregar();
       return true;
     } catch (error) {
       console.error("Erro ao excluir forma de pagamento:", error);
-      toast.error("Erro ao remover forma de pagamento");
+      toast.error(tAgora("avisos.erroRemoverForma"));
       return false;
     }
   };

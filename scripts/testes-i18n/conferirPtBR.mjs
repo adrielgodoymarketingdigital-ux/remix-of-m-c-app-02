@@ -27,6 +27,7 @@ const COMPOSTOS = new Set([
   "vendas:cancelar.estornarQuantidade_zero", "vendas:cancelar.estornarQuantidade_one", "vendas:cancelar.estornarQuantidade_other",
   "vendas:cancelar.aparelhoTrocaComNome", "vendas:cancelar.trocaInteiraItens", "vendas:cancelar.trocaInteiraVenda",
   "vendas:cancelar.avisoDevolucao", "vendas:alterarData.alteradoEm",
+  "vendas:avisos.umCaixaAjustado", "vendas:avisos.caixasAjustados",
 ]);
 
 let falhas = 0, total = 0, compostos = 0;

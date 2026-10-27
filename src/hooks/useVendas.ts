@@ -12,7 +12,8 @@ import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { cancelarSecundariasEmCascata, type ResultadoCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
-import { AcaoAparelhoTroca, bloqueioEditarVendaComTroca, decidirCancelamentoTroca } from "@/lib/vendas/trocaPDV";
+import { AcaoAparelhoTroca, bloqueioEditarVendaComTroca, decidirCancelamentoTroca, MENSAGEM_APARELHO_TROCA_VENDIDO, MENSAGEM_EDITAR_VENDA_COM_TROCA } from "@/lib/vendas/trocaPDV";
+import i18n from "@/lib/i18n/instancia";
 import { carregarTrocaDaVenda, marcarTrocaCancelada, tirarAparelhoDaTrocaDoEstoque } from "@/lib/vendas/cancelamentoTroca";
 
 /** Campos de uma linha de venda que o cancelamento usa (estorno de estoque e cascata). */
@@ -27,7 +28,7 @@ interface LinhaCancelamento {
   peca_id: string | null;
   quantidade: number;
 }
-import { reconhecerRecebimentoVendaVinculada, MENSAGEM_CUSTO_NAO_CONFIRMADO } from "@/lib/vendas/reconhecerSegundaForma";
+import { reconhecerRecebimentoVendaVinculada } from "@/lib/vendas/reconhecerSegundaForma";
 import { alterarDataVenda as alterarDataVendaNoBanco } from "@/lib/vendas/alterarDataVenda";
 import { SELECT_VENDA_COM_ITENS } from "@/lib/vendas/itensVenda";
 
@@ -59,6 +60,9 @@ async function anexarContasDaTroca(lista: Venda[], userId: string): Promise<Vend
   }
   return lista.map((v) => (valorPorVenda.has(v.id) ? { ...v, valor_conta_receber: valorPorVenda.get(v.id) } : v));
 }
+
+// Toasts e erros mostrados na tela: lidos na hora (saem depois de um await; ver convencoes.md, item 10).
+const tV = (chave: string, opcoes?: Record<string, unknown>) => i18n.t(chave, { ns: "vendas", ...opcoes });
 
 export const useVendas = () => {
   const [vendas, setVendas] = useState<Venda[]>([]);
@@ -478,8 +482,8 @@ export const useVendas = () => {
       if (!shouldSuppressToast(error)) {
         console.error("[useVendas.carregarVendas]", { error, timestamp: new Date().toISOString() });
         toast({
-          title: "Erro ao carregar vendas",
-          description: "Não foi possível carregar as vendas. Tente novamente.",
+          title: tV("avisos.erroCarregarTitulo"),
+          description: tV("avisos.erroCarregarDescricao"),
           variant: "destructive",
         });
       }
@@ -524,8 +528,8 @@ export const useVendas = () => {
       if (updateError) throw updateError;
 
       toast({
-        title: "Saldo a prazo cancelado",
-        description: "O lançamento foi cancelado e a OS foi marcada como saldo não recebido.",
+        title: tV("avisos.saldoCanceladoTitulo"),
+        description: tV("avisos.saldoCanceladoDescricao"),
       });
 
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
@@ -534,8 +538,8 @@ export const useVendas = () => {
     } catch (error) {
       console.error("Erro ao cancelar saldo a prazo:", error);
       toast({
-        title: "Erro ao cancelar",
-        description: "Não foi possível cancelar o saldo a prazo.",
+        title: tV("avisos.erroCancelarSaldoTitulo"),
+        description: tV("avisos.erroCancelarSaldoDescricao"),
         variant: "destructive",
       });
       return false;
@@ -553,14 +557,14 @@ export const useVendas = () => {
       // Buscar dados da venda
       const vendaOriginal = vendas.find((v) => v.id === vendaId);
       if (!vendaOriginal) {
-        throw new Error("Venda não encontrada");
+        throw new Error(tV("avisos.vendaNaoEncontrada"));
       }
 
       // Serviços não podem ser cancelados por aqui (são ordens de serviço)
       if (vendaOriginal.tipo === "servico") {
         toast({
-          title: "Não é possível cancelar serviços",
-          description: "Serviços devem ser cancelados através das Ordens de Serviço.",
+          title: tV("avisos.servicoCancelarTitulo"),
+          description: tV("avisos.servicoCancelarDescricao"),
           variant: "destructive",
         });
         return false;
@@ -573,7 +577,7 @@ export const useVendas = () => {
           .update({ deleted_at: new Date().toISOString() })
           .eq("id", vendaId);
         if (error) throw error;
-        toast({ title: "Venda avulsa cancelada com sucesso." });
+        toast({ title: tV("avisos.avulsaCancelada") });
         await carregarVendas();
         return true;
       }
@@ -582,7 +586,7 @@ export const useVendas = () => {
       const troca = await carregarTrocaDaVenda(vendaOriginal);
       const decisaoTroca = decidirCancelamentoTroca(troca, acaoAparelhoTroca);
       if (decisaoTroca.bloqueio) {
-        toast({ title: "Não foi possível cancelar", description: decisaoTroca.bloqueio, variant: "destructive" });
+        toast({ title: tV("avisos.naoFoiPossivelCancelar"), description: decisaoTroca.bloqueio === MENSAGEM_APARELHO_TROCA_VENDIDO ? tV("cancelar.aparelhoJaVendido") : decisaoTroca.bloqueio, variant: "destructive" });
         return false;
       }
 
@@ -676,8 +680,8 @@ export const useVendas = () => {
         } catch (erroTroca) {
           console.error("[cancelamento] etapa=desfazer troca", { trocaId: troca.trocaId, erro: erroTroca });
           toast({
-            title: "Venda cancelada, mas a troca não foi atualizada",
-            description: "Confira o aparelho recebido na troca em Dispositivos.",
+            title: tV("avisos.trocaNaoAtualizadaTitulo"),
+            description: tV("avisos.trocaNaoAtualizadaDescricao"),
             variant: "destructive",
             duration: 15000,
           });
@@ -686,45 +690,46 @@ export const useVendas = () => {
 
       const itensCancelados = linhasACancelar.filter((l) => l.estornar).length;
       toast({
-        title: "Venda cancelada",
+        title: tV("avisos.canceladaTitulo"),
         description: decisaoTroca.cancelarVendaInteira
-          ? `Venda com troca cancelada por inteiro (${itensCancelados} ${itensCancelados === 1 ? "item" : "itens"})${estornarEstoque ? " e estoque estornado." : "."}`
+          ? `${tV("avisos.canceladaTrocaInteira", { count: itensCancelados })}${estornarEstoque ? tV("avisos.eEstoqueEstornado") : tV("avisos.ponto")}`
           : estornarEstoque
-            ? "Venda cancelada e estoque estornado com sucesso."
-            : "Venda cancelada com sucesso.",
+            ? tV("avisos.canceladaEstornada")
+            : tV("avisos.canceladaSucesso"),
       });
 
       for (const cascata of cascatas) {
         if (cascata.status === "cancelado" && cascata.parcelasRecebidasParaRevisao === 0) {
           toast({
-            title: "Parcelas da 2ª forma canceladas",
-            description: `${cascata.secundariasCanceladas} linha(s) do pagamento duplo cancelada(s)${
-              cascata.contasExcluidas > 0
-                ? ` e ${cascata.contasExcluidas} conta(s) a receber pendente(s) removida(s)`
-                : ""
-            }.`,
+            title: tV("avisos.cascataTitulo"),
+            description: tV("avisos.cascataDescricao", {
+              linhas: cascata.secundariasCanceladas,
+              contas: cascata.contasExcluidas > 0 ? tV("avisos.cascataContas", { contas: cascata.contasExcluidas }) : "",
+            }),
           });
         } else if (cascata.status === "cancelado") {
           toast({
-            title: "Atenção: parcela(s) já recebida(s) ficaram de fora",
-            description: `${cascata.secundariasCanceladas} parcela(s) pendente(s) foram canceladas${
-              cascata.contasExcluidas > 0 ? ` (${cascata.contasExcluidas} conta(s) a receber removida(s))` : ""
-            }, mas ${cascata.parcelasRecebidasParaRevisao} parcela(s) da 2ª forma já recebida(s) NÃO foram canceladas — faça o estorno manualmente.`,
+            title: tV("avisos.cascataParcialTitulo"),
+            description: tV("avisos.cascataParcialDescricao", {
+              pendentes: cascata.secundariasCanceladas,
+              contas: cascata.contasExcluidas > 0 ? tV("avisos.cascataParcialContas", { contas: cascata.contasExcluidas }) : "",
+              recebidas: cascata.parcelasRecebidasParaRevisao,
+            }),
             variant: "destructive",
             duration: 15000,
           });
         } else if (cascata.status === "bloqueado_parcela_recebida") {
           toast({
-            title: "Atenção: parcelas já recebidas",
-            description: `Esta venda tinha ${cascata.parcelasRecebidas} parcela(s) da 2ª forma já recebida(s), e nenhuma foi cancelada automaticamente — faça o estorno manualmente.`,
+            title: tV("avisos.cascataBloqueadaTitulo"),
+            description: tV("avisos.cascataBloqueadaDescricao", { recebidas: cascata.parcelasRecebidas }),
             variant: "destructive",
             duration: 15000,
           });
         } else if (cascata.status === "erro") {
           console.error("❌ Erro na cascata do cancelamento:", cascata.mensagem);
           toast({
-            title: "Venda cancelada, mas as parcelas da 2ª forma não foram canceladas",
-            description: `Revise as parcelas/contas a receber dessa venda manualmente. (${cascata.mensagem})`,
+            title: tV("avisos.cascataErroTitulo"),
+            description: tV("avisos.cascataErroDescricao", { mensagem: cascata.mensagem }),
             variant: "destructive",
             duration: 15000,
           });
@@ -737,8 +742,8 @@ export const useVendas = () => {
     } catch (error: any) {
       console.error("❌ Erro ao cancelar venda:", error);
       toast({
-        title: "Erro ao cancelar venda",
-        description: error.message || "Não foi possível cancelar a venda.",
+        title: tV("avisos.erroCancelarTitulo"),
+        description: error.message || tV("avisos.erroCancelarDescricao"),
         variant: "destructive",
       });
       return false;
@@ -833,7 +838,7 @@ export const useVendas = () => {
   const marcarComoRecebido = async (vendaId: string): Promise<boolean> => {
     try {
       const vendaOriginal = vendas.find((v) => v.id === vendaId);
-      if (!vendaOriginal) throw new Error("Venda não encontrada");
+      if (!vendaOriginal) throw new Error(tV("avisos.vendaNaoEncontrada"));
 
       // Mesmo reconhecimento de todos os caminhos de baixa (custo proporcional
       // em parcelas de pagamento duplo, "custo não confirmado" etc.)
@@ -844,12 +849,12 @@ export const useVendas = () => {
       );
       if (reconhecimento.status === "erro") throw new Error(reconhecimento.mensagem);
       if (reconhecimento.status === "ignorado") {
-        throw new Error("Não foi possível confirmar o recebimento desta venda.");
+        throw new Error(tV("avisos.naoConfirmouRecebimento"));
       }
       if (reconhecimento.status === "custo_nao_confirmado") {
         toast({
-          title: "Custo não confirmado",
-          description: MENSAGEM_CUSTO_NAO_CONFIRMADO[reconhecimento.motivo],
+          title: tV("avisos.custoNaoConfirmado"),
+          description: tV(`avisos.custoMotivo.${reconhecimento.motivo}`),
           variant: "destructive",
           duration: 15000,
         });
@@ -886,8 +891,8 @@ export const useVendas = () => {
       }
 
       toast({
-        title: "Pagamento confirmado",
-        description: "A venda foi marcada como recebida.",
+        title: tV("avisos.pagamentoConfirmadoTitulo"),
+        description: tV("avisos.pagamentoConfirmadoDescricao"),
       });
 
       // Disparar evento de notificação automática
@@ -900,8 +905,8 @@ export const useVendas = () => {
     } catch (error: any) {
       console.error("❌ Erro ao marcar como recebido:", error);
       toast({
-        title: "Erro ao confirmar recebimento",
-        description: error.message || "Não foi possível confirmar o recebimento.",
+        title: tV("avisos.erroConfirmarTitulo"),
+        description: error.message || tV("avisos.erroConfirmarDescricao"),
         variant: "destructive",
       });
       return false;
@@ -917,12 +922,12 @@ export const useVendas = () => {
   }): Promise<boolean> => {
     try {
       const vendaOriginal = vendas.find((v) => v.id === vendaId);
-      if (!vendaOriginal) throw new Error("Venda não encontrada");
+      if (!vendaOriginal) throw new Error(tV("avisos.vendaNaoEncontrada"));
 
       if (vendaOriginal.tipo === "servico") {
         toast({
-          title: "Não é possível editar serviços",
-          description: "Serviços devem ser editados através das Ordens de Serviço.",
+          title: tV("avisos.servicoEditarTitulo"),
+          description: tV("avisos.servicoEditarDescricao"),
           variant: "destructive",
         });
         return false;
@@ -930,8 +935,8 @@ export const useVendas = () => {
 
       if (vendaOriginal.cancelada) {
         toast({
-          title: "Não é possível editar venda cancelada",
-          description: "Vendas canceladas não podem ter seus dados alterados.",
+          title: tV("avisos.canceladaEditarTitulo"),
+          description: tV("avisos.canceladaEditarDescricao"),
           variant: "destructive",
         });
         return false;
@@ -944,14 +949,14 @@ export const useVendas = () => {
         mudaForma: dados.forma_pagamento !== vendaOriginal.forma_pagamento,
       });
       if (bloqueioTroca) {
-        toast({ title: "Não foi possível editar", description: bloqueioTroca, variant: "destructive" });
+        toast({ title: tV("avisos.naoFoiPossivelEditar"), description: bloqueioTroca === MENSAGEM_EDITAR_VENDA_COM_TROCA ? tV("avisos.editarComTroca") : bloqueioTroca, variant: "destructive" });
         return false;
       }
 
       if (dados.total !== undefined && (!Number.isFinite(dados.total) || dados.total <= 0)) {
         toast({
-          title: "Valor inválido",
-          description: "O valor da venda deve ser maior que zero.",
+          title: tV("avisos.valorInvalidoTitulo"),
+          description: tV("avisos.valorInvalidoDescricao"),
           variant: "destructive",
         });
         return false;
@@ -975,8 +980,8 @@ export const useVendas = () => {
         if (erroAvulsa) throw erroAvulsa;
 
         toast({
-          title: "Venda atualizada",
-          description: "A venda avulsa foi atualizada com sucesso.",
+          title: tV("avisos.atualizadaTitulo"),
+          description: tV("avisos.avulsaAtualizada"),
         });
 
         setVendas(prev => prev.map(v =>
@@ -1164,16 +1169,16 @@ export const useVendas = () => {
       }
 
       toast({
-        title: "Venda atualizada",
+        title: tV("avisos.atualizadaTitulo"),
         description: totalMudou
-          ? "O valor e a forma de pagamento foram atualizados com sucesso."
-          : "A forma de pagamento foi alterada com sucesso.",
+          ? tV("avisos.valorFormaAtualizados")
+          : tV("avisos.formaAlterada"),
       });
 
       if (avisoFinanceiro) {
         toast({
-          title: "Verifique o financeiro",
-          description: "A venda foi atualizada, mas não foi possível sincronizar automaticamente a conta ou o caixa vinculado. Verifique manualmente.",
+          title: tV("avisos.verifiqueFinanceiroTitulo"),
+          description: tV("avisos.verifiqueFinanceiroDescricao"),
           variant: "destructive",
         });
       }
@@ -1197,8 +1202,8 @@ export const useVendas = () => {
     } catch (error: any) {
       console.error("❌ Erro ao editar venda:", error);
       toast({
-        title: "Erro ao editar venda",
-        description: error.message || "Não foi possível editar a venda.",
+        title: tV("avisos.erroEditarTitulo"),
+        description: error.message || tV("avisos.erroEditarDescricao"),
         variant: "destructive",
       });
       return false;
@@ -1210,7 +1215,7 @@ export const useVendas = () => {
   const alterarDataVenda = async (vendaId: string, novaDataISO: string): Promise<boolean> => {
     const venda = vendas.find((v) => v.id === vendaId);
     if (!venda?.user_id) {
-      toast({ title: "Venda não encontrada", variant: "destructive" });
+      toast({ title: tV("avisos.vendaNaoEncontrada"), variant: "destructive" });
       return false;
     }
     try {
@@ -1221,31 +1226,31 @@ export const useVendas = () => {
         novaDataISO,
       });
       if (!resultado.ok) {
-        toast({ title: "Não foi possível alterar a data", description: resultado.erro, variant: "destructive" });
+        toast({ title: tV("avisos.naoAlterouData"), description: resultado.erro, variant: "destructive" });
         return false;
       }
 
       const qtdLinhas = Object.keys(resultado.novasDatas).length;
       toast({
-        title: "Data da venda alterada",
+        title: tV("avisos.dataAlteradaTitulo"),
         description: [
-          qtdLinhas > 1 ? `${qtdLinhas} itens da venda foram movidos juntos.` : null,
+          qtdLinhas > 1 ? tV("avisos.itensMovidos", { quantidade: qtdLinhas }) : null,
           resultado.caixasAjustados > 0
-            ? `${resultado.caixasAjustados === 1 ? "1 caixa fechado foi ajustado" : "2 caixas fechados foram ajustados"}.`
+            ? (resultado.caixasAjustados === 1 ? tV("avisos.umCaixaAjustado") : tV("avisos.caixasAjustados"))
             : null,
         ].filter(Boolean).join(" ") || undefined,
       });
       if (resultado.avisoCaixa) {
         toast({
-          title: "Verifique o caixa",
-          description: "A data foi alterada, mas não foi possível ajustar automaticamente o caixa fechado. Verifique manualmente.",
+          title: tV("avisos.verifiqueCaixaTitulo"),
+          description: tV("avisos.verifiqueCaixaDescricao"),
           variant: "destructive",
         });
       }
       if (!resultado.historicoGravado) {
         toast({
-          title: "Histórico não registrado",
-          description: "A data foi alterada, mas não foi possível registrar a alteração no histórico da venda.",
+          title: tV("avisos.historicoTitulo"),
+          description: tV("avisos.historicoDescricao"),
           variant: "destructive",
         });
       }
@@ -1258,8 +1263,8 @@ export const useVendas = () => {
     } catch (error) {
       console.error("❌ Erro ao alterar data da venda:", error);
       toast({
-        title: "Erro ao alterar data",
-        description: error instanceof Error ? error.message : "Não foi possível alterar a data da venda.",
+        title: tV("avisos.erroAlterarDataTitulo"),
+        description: error instanceof Error ? error.message : tV("avisos.erroAlterarDataDescricao"),
         variant: "destructive",
       });
       return false;
@@ -1269,13 +1274,13 @@ export const useVendas = () => {
   const excluirVenda = async (vendaId: string): Promise<boolean> => {
     try {
       const vendaOriginal = vendas.find((v) => v.id === vendaId);
-      if (!vendaOriginal) throw new Error("Venda não encontrada");
+      if (!vendaOriginal) throw new Error(tV("avisos.vendaNaoEncontrada"));
 
       // Apenas vendas canceladas podem ser excluídas
       if (!vendaOriginal.cancelada) {
         toast({
-          title: "Não é possível excluir",
-          description: "Apenas vendas canceladas podem ser excluídas.",
+          title: tV("avisos.naoExcluirTitulo"),
+          description: tV("avisos.naoExcluirDescricao"),
           variant: "destructive",
         });
         return false;
@@ -1284,8 +1289,8 @@ export const useVendas = () => {
       // Serviços não podem ser excluídos por aqui
       if (vendaOriginal.tipo === "servico") {
         toast({
-          title: "Não é possível excluir serviços",
-          description: "Serviços devem ser gerenciados através das Ordens de Serviço.",
+          title: tV("avisos.servicoExcluirTitulo"),
+          description: tV("avisos.servicoExcluirDescricao"),
           variant: "destructive",
         });
         return false;
@@ -1300,8 +1305,8 @@ export const useVendas = () => {
       if (error) throw error;
 
       toast({
-        title: "Venda excluída",
-        description: "A venda cancelada foi removida do sistema.",
+        title: tV("avisos.excluidaTitulo"),
+        description: tV("avisos.excluidaDescricao"),
       });
 
       await carregarVendas();
@@ -1309,8 +1314,8 @@ export const useVendas = () => {
     } catch (error: any) {
       console.error("❌ Erro ao excluir venda:", error);
       toast({
-        title: "Erro ao excluir venda",
-        description: error.message || "Não foi possível excluir a venda.",
+        title: tV("avisos.erroExcluirTitulo"),
+        description: error.message || tV("avisos.erroExcluirDescricao"),
         variant: "destructive",
       });
       return false;
@@ -1320,7 +1325,7 @@ export const useVendas = () => {
   const marcarComoPendente = async (vendaId: string): Promise<boolean> => {
     try {
       const vendaOriginal = vendas.find((v) => v.id === vendaId);
-      if (!vendaOriginal) throw new Error("Venda não encontrada");
+      if (!vendaOriginal) throw new Error(tV("avisos.vendaNaoEncontrada"));
 
       const { error } = await supabase
         .from("vendas")
@@ -1344,8 +1349,8 @@ export const useVendas = () => {
         .eq("status", "recebido");
 
       toast({
-        title: "Status alterado",
-        description: "A venda voltou para pendente.",
+        title: tV("avisos.statusAlteradoTitulo"),
+        description: tV("avisos.statusAlteradoDescricao"),
       });
 
       await carregarVendas();
@@ -1353,8 +1358,8 @@ export const useVendas = () => {
     } catch (error: any) {
       console.error("❌ Erro ao marcar como pendente:", error);
       toast({
-        title: "Erro ao alterar status",
-        description: error.message || "Não foi possível alterar o status.",
+        title: tV("avisos.erroStatusTitulo"),
+        description: error.message || tV("avisos.erroStatusDescricao"),
         variant: "destructive",
       });
       return false;

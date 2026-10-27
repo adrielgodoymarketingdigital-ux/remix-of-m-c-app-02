@@ -97,3 +97,29 @@ Deno.test("PDV: chaves pt-BR = constantes de trocaPDV.ts e nomes da devolução"
   assertEquals(troca.NOMES_FORMA_DEVOLUCAO, { dinheiro: comumPtBR.formaPagamento.curto.dinheiro, pix: comumPtBR.formaPagamento.pixAvulsa });
 });
 
+Deno.test("useVendas: chaves pt-BR = constantes das libs", async () => {
+  const { default: v } = await import("../../src/locales/pt-BR/vendas.ts");
+  const { MENSAGEM_CUSTO_NAO_CONFIRMADO } = await import("../../src/lib/vendas/reconhecerSegundaForma.core.ts");
+  const { MENSAGEM_EDITAR_VENDA_COM_TROCA } = await import("../../src/lib/vendas/trocaPDV.ts");
+  assertEquals({ ...v.avisos.custoMotivo }, { ...MENSAGEM_CUSTO_NAO_CONFIRMADO });
+  assertEquals(v.avisos.editarComTroca, MENSAGEM_EDITAR_VENDA_COM_TROCA);
+});
+
+Deno.test("compostos dos toasts de useVendas: montagem antiga = chave pt-BR", async () => {
+  const { default: v } = await import("../../src/locales/pt-BR/vendas.ts");
+  const a = v.avisos;
+  for (const n of [1, 2]) {
+    assertEquals(`${n === 1 ? "1 caixa fechado foi ajustado" : "2 caixas fechados foram ajustados"}.`, n === 1 ? a.umCaixaAjustado : a.caixasAjustados);
+  }
+  for (const [itens, estornar] of [[1, true], [3, false]] as const) {
+    const antigo = `Venda com troca cancelada por inteiro (${itens} ${itens === 1 ? "item" : "itens"})${estornar ? " e estoque estornado." : "."}`;
+    const forma = itens === 1 ? a.canceladaTrocaInteira_one : a.canceladaTrocaInteira_other;
+    assertEquals(antigo, preencher(forma, { count: itens }) + (estornar ? a.eEstoqueEstornado : a.ponto));
+  }
+  for (const contas of [0, 2]) {
+    const antigo = `${3} linha(s) do pagamento duplo cancelada(s)${contas > 0 ? ` e ${contas} conta(s) a receber pendente(s) removida(s)` : ""}.`;
+    assertEquals(antigo, preencher(a.cascataDescricao, { linhas: 3, contas: contas > 0 ? preencher(a.cascataContas, { contas }) : "" }));
+    const antigo2 = `${3} parcela(s) pendente(s) foram canceladas${contas > 0 ? ` (${contas} conta(s) a receber removida(s))` : ""}, mas ${1} parcela(s) da 2ª forma já recebida(s) NÃO foram canceladas — faça o estorno manualmente.`;
+    assertEquals(antigo2, preencher(a.cascataParcialDescricao, { pendentes: 3, contas: contas > 0 ? preencher(a.cascataParcialContas, { contas }) : "", recebidas: 1 }));
+  }
+});

@@ -397,6 +397,18 @@ const pdv = {
       fechadoEm: "Fechado em: {{data}}",
     },
   },
+  // Toasts de hooks/useFormasPagamentoCustomizadas.ts e hooks/useCaixaMovimentacoes.ts
+  avisos: {
+    nomeFormaObrigatorio: "Nome da forma de pagamento é obrigatório",
+    formaCriada: "Forma de pagamento criada!",
+    erroCriarForma: "Erro ao criar forma de pagamento",
+    formaRemovida: "Forma de pagamento removida!",
+    erroRemoverForma: "Erro ao remover forma de pagamento",
+    valorMaiorQueZero: "O valor deve ser maior que zero",
+    sangriaRegistrada: "Sangria registrada!",
+    suprimentoRegistrado: "Suprimento registrado!",
+    erroMovimentacao: "Erro ao registrar movimentação",
+  },
 } as const;
 
 export default pdv;
