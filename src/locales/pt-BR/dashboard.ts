@@ -191,6 +191,13 @@ const dashboard = {
     semDadosProdutos: "Sem dados de produtos",
     quantidade: "Qtd: {{quantidade}}",
   },
+  feedback: {
+    titulo: "Sua opinião importa!",
+    descricao: "Ajude-nos a melhorar com suas sugestões ou ideias.",
+    sugestao: "Sugestão",
+    reclamacao: "Reclamação",
+    melhoria: "Melhoria",
+  },
   custoNaoConfirmado: {
     titulo_zero: "Custo não confirmado em {{count}} parcela(s) recebida(s)",
     titulo_one: "Custo não confirmado em {{count}} parcela(s) recebida(s)",

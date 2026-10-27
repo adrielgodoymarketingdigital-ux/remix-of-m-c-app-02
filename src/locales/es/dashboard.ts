@@ -185,6 +185,13 @@ const dashboard: Traducao<typeof dashboardPtBR> = {
     semDadosProdutos: "Sin datos de productos",
     quantidade: "Cant.: {{quantidade}}",
   },
+  feedback: {
+    titulo: "¡Su opinión importa!",
+    descricao: "Ayúdenos a mejorar con sus sugerencias o ideas.",
+    sugestao: "Sugerencia",
+    reclamacao: "Reclamo",
+    melhoria: "Mejora",
+  },
   custoNaoConfirmado: {
     titulo_zero: "Costo sin confirmar en {{count}} cuotas cobradas",
     titulo_one: "Costo sin confirmar en {{count}} cuota cobrada",

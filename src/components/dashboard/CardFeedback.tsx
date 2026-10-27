@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageSquarePlus, Lightbulb, AlertCircle, TrendingUp, X } from 'lucide-react';
@@ -14,6 +15,7 @@ export const CardFeedback = () => {
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoFeedback | null>(null);
   const [dismissDialogOpen, setDismissDialogOpen] = useState(false);
   const [hidden, setHidden] = useState(true);
+  const { t } = useTranslation('dashboard');
 
   useEffect(() => {
     setHidden(isDismissed(CARD_ID));
@@ -45,12 +47,12 @@ export const CardFeedback = () => {
         <CardHeader className="pb-2 pt-3 px-3 sm:px-6 sm:pt-4 pr-10">
           <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
             <MessageSquarePlus className="h-4 w-4 text-primary" />
-            Sua opinião importa!
+            {t('feedback.titulo')}
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3 sm:px-6 sm:pb-4">
           <p className="text-xs text-muted-foreground mb-2 sm:mb-3 hidden sm:block">
-            Ajude-nos a melhorar com suas sugestões ou ideias.
+            {t('feedback.descricao')}
           </p>
           <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             <Button
@@ -60,7 +62,7 @@ export const CardFeedback = () => {
               onClick={() => handleAbrirDialog('sugestao')}
             >
               <Lightbulb className="h-4 w-4 text-blue-500" />
-              <span className="text-[10px] sm:text-xs">Sugestão</span>
+              <span className="text-[10px] sm:text-xs">{t('feedback.sugestao')}</span>
             </Button>
             <Button
               variant="outline"
@@ -69,7 +71,7 @@ export const CardFeedback = () => {
               onClick={() => handleAbrirDialog('reclamacao')}
             >
               <AlertCircle className="h-4 w-4 text-red-500" />
-              <span className="text-[10px] sm:text-xs">Reclamação</span>
+              <span className="text-[10px] sm:text-xs">{t('feedback.reclamacao')}</span>
             </Button>
             <Button
               variant="outline"
@@ -78,7 +80,7 @@ export const CardFeedback = () => {
               onClick={() => handleAbrirDialog('melhoria')}
             >
               <TrendingUp className="h-4 w-4 text-green-500" />
-              <span className="text-[10px] sm:text-xs">Melhoria</span>
+              <span className="text-[10px] sm:text-xs">{t('feedback.melhoria')}</span>
             </Button>
           </div>
         </CardContent>
