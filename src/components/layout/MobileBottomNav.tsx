@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { MobileMenuDrawer } from "./MobileMenuDrawer";
 import { MobileNavCustomizer, allNavOptions, getSelectedNavItems } from "./MobileNavCustomizer";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
@@ -35,6 +36,8 @@ const NAV_ID_TO_MODULO: Record<string, keyof PermissoesModulos> = {
 
 export function MobileBottomNav() {
   const location = useLocation();
+  // Rótulos: barraInferior.itens.<id> no namespace "menu".
+  const { t } = useTranslation("menu");
   const [menuOpen, setMenuOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [selectedNavIds, setSelectedNavIds] = useState<string[]>(getSelectedNavItems);
@@ -132,7 +135,7 @@ export function MobileBottomNav() {
                   "text-[10px] font-medium",
                   active && "font-semibold"
                 )}>
-                  {item.label}
+                  {t(`barraInferior.itens.${item.id}`)}
                 </span>
               </NavLink>
             );
@@ -144,7 +147,7 @@ export function MobileBottomNav() {
             className="flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 active:scale-95 touch-manipulation text-background/60 hover:text-background"
           >
             <Menu className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Menu</span>
+            <span className="text-[10px] font-medium">{t("barraInferior.menu")}</span>
           </button>
         </div>
       </nav>

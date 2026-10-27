@@ -84,7 +84,7 @@ export function AppSidebar() {
   const { toast } = useToast();
   // Rótulos do menu: namespace "menu" (src/locales/<idioma>/menu.ts). Em pt-BR
   // são os mesmos textos de menuPrincipal.ts, letra por letra.
-  const { t } = useTranslation("menu");
+  const { t, i18n } = useTranslation("menu");
   const collapsed = state === "collapsed";
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
@@ -139,10 +139,13 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     clearSessionMeta();
+    // Textos lidos antes do signOut: a troca de usuário volta o idioma ao pt-BR.
+    const titulo = i18n.t("logout.titulo", { ns: "menu" });
+    const descricao = i18n.t("logout.descricao", { ns: "menu" });
     await supabase.auth.signOut();
     toast({
-      title: "Logout realizado",
-      description: "Até logo!",
+      title: titulo,
+      description: descricao,
     });
     navigate("/auth");
   };

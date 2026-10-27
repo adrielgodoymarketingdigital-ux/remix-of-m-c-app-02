@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -9,45 +10,21 @@ import { SeletorFilial } from "@/components/layout/SeletorFilial";
 import { useOcultarValores } from "@/contexts/OcultarValoresContext";
 import { DASHBOARD_HEADER_SLOT_ID } from "@/contexts/DashboardHeaderContext";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { chaveDaRota } from "@/lib/i18n/chaves";
 
-// Mapeamento de rotas para títulos
-const routeTitles: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/pdv": "PDV",
-  "/os": "Ordens de Serviço",
-  "/produtos": "Produtos e Peças",
-  "/servicos": "Serviços",
-  "/dispositivos": "Dispositivos",
-  "/catalogo": "Catálogo",
-  "/origem-dispositivos": "Origem",
-  "/fornecedores": "Fornecedores",
-  "/clientes": "Clientes",
-  "/orcamentos": "Orçamentos",
-  "/contas": "Contas",
-  "/vendas": "Vendas",
-  "/relatorios": "Relatórios",
-  "/financeiro": "Financeiro",
-  "/equipe": "Equipe",
-  "/configuracoes": "Configurações",
-  "/configuracoes/fiscal": "Fiscal",
-  "/configuracoes/fiscal/xml-compra": "Importar XML",
-  "/suporte": "Suporte",
-  "/plano": "Meu Plano",
-  "/novidades": "Novidades",
+// Rotas com título no cabeçalho. O texto é cabecalho.titulos.<chaveDaRota> no
+// namespace "menu" (pt-BR: src/locales/pt-BR/menu.ts).
+const ROTAS_COM_TITULO = new Set([
+  "/dashboard", "/pdv", "/os", "/produtos", "/servicos", "/dispositivos", "/catalogo",
+  "/origem-dispositivos", "/fornecedores", "/clientes", "/orcamentos", "/contas", "/vendas",
+  "/relatorios", "/financeiro", "/equipe", "/configuracoes", "/configuracoes/fiscal",
+  "/configuracoes/fiscal/xml-compra", "/suporte", "/plano", "/novidades",
   // Admin routes
-  "/admin/usuarios": "Usuários",
-  "/admin/financeiro": "Financeiro",
-  "/admin/novidades": "Novidades",
-  "/admin/onboarding": "Onboarding",
-  "/admin/push": "Push",
-  "/admin/feedbacks": "Feedbacks",
-  "/admin/chat": "Chat",
-  "/admin/avisos": "Avisos",
-  "/admin/notificacoes": "Notificações",
-  "/admin/compatibilidade-pelicula": "Compatibilidade de Película",
-  "/compatibilidade-pelicula": "Compatibilidade de Película",
-};
+  "/admin/usuarios", "/admin/financeiro", "/admin/novidades", "/admin/onboarding", "/admin/push",
+  "/admin/feedbacks", "/admin/chat", "/admin/avisos", "/admin/notificacoes",
+  "/admin/compatibilidade-pelicula", "/compatibilidade-pelicula",
+]);
 
 export function MobileHeader() {
   const location = useLocation();
@@ -56,6 +33,8 @@ export function MobileHeader() {
   const [userInitials, setUserInitials] = useState("?");
   const [userName, setUserName] = useState("");
   const isDashboard = location.pathname === "/dashboard";
+  const { t } = useTranslation("menu");
+  const { localeDateFns } = useFormatadores();
 
   useEffect(() => {
     const buscarUsuario = async () => {
@@ -81,22 +60,16 @@ export function MobileHeader() {
     buscarUsuario();
   }, []);
 
-  const pageTitle = useMemo(() => {
-    if (routeTitles[location.pathname]) {
-      return routeTitles[location.pathname];
-    }
-
+  const rotaDoTitulo = useMemo(() => {
     const pathParts = location.pathname.split("/");
     while (pathParts.length > 1) {
       const testPath = pathParts.join("/");
-      if (routeTitles[testPath]) {
-        return routeTitles[testPath];
-      }
+      if (ROTAS_COM_TITULO.has(testPath)) return testPath;
       pathParts.pop();
     }
-
-    return "Méc";
+    return null;
   }, [location.pathname]);
+  const pageTitle = rotaDoTitulo ? t(`cabecalho.titulos.${chaveDaRota(rotaDoTitulo)}`) : "Méc";
 
   return (
     <header
@@ -122,7 +95,7 @@ export function MobileHeader() {
               </h1>
               {(location.pathname === "/os" || isDashboard) && (
                 <p className={`text-sm capitalize leading-tight mt-0.5 ${isDashboard ? "text-white/60" : "text-white/70 dark:text-slate-500"}`}>
-                  {format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                  {format(new Date(), t("cabecalho.formatoData"), { locale: localeDateFns })}
                 </p>
               )}
             </div>
@@ -147,7 +120,7 @@ export function MobileHeader() {
                     : "h-8 w-8 shrink-0 text-white hover:bg-white/10 hover:text-white dark:text-slate-900 dark:hover:bg-slate-900/10 dark:hover:text-slate-900"
                 }
                 onClick={toggleValores}
-                title={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
+                title={valoresOcultos ? t("cabecalho.mostrarValores") : t("cabecalho.ocultarValores")}
               >
                 {valoresOcultos
                   ? <EyeOff className="h-4 w-4" />
@@ -171,7 +144,7 @@ export function MobileHeader() {
                     ? "flex items-center justify-center h-8 w-8 rounded-full overflow-hidden ring-2 ring-white/20 hover:ring-white/40 transition-all active:scale-95 shrink-0"
                     : "flex items-center justify-center h-8 w-8 rounded-full overflow-hidden ring-2 ring-white/20 hover:ring-white/40 dark:ring-slate-900/20 dark:hover:ring-slate-900/40 transition-all active:scale-95 shrink-0"
                 }
-                title={userName || "Perfil"}
+                title={userName || t("cabecalho.perfil")}
               >
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">

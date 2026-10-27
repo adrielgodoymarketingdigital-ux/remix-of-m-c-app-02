@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +36,9 @@ import type { PermissoesModulos } from "@/types/funcionario";
 import { lerItensMenuInferior } from "@/lib/menuInferior";
 
 const STORAGE_KEY = "mobile-nav-items";
+const MAXIMO_ITENS = 4;
 
+// `label` é o texto pt-BR (fonte); na tela vale barraInferior.itens.<id> do namespace "menu".
 export const allNavOptions = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", modulo: "dashboard" as keyof PermissoesModulos },
   { id: "pdv", icon: ShoppingCart, label: "PDV", path: "/pdv", modulo: "pdv" as keyof PermissoesModulos },
@@ -103,6 +106,7 @@ export function MobileNavCustomizer({
   onSave,
   currentIds,
 }: MobileNavCustomizerProps) {
+  const { t, i18n } = useTranslation("menu");
   const [selectedIds, setSelectedIds] = useState<string[]>(currentIds);
   const { temAcessoModulo, isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
 
@@ -137,8 +141,8 @@ export function MobileNavCustomizer({
 
   const handleSave = () => {
     if (!saveSelectedNavItems(selectedIds)) {
-      toast.warning("Não foi possível salvar a personalização neste aparelho", {
-        description: "O armazenamento do navegador está cheio ou bloqueado. A escolha vale até você fechar o app.",
+      toast.warning(i18n.t("personalizar.erroSalvar", { ns: "menu" }), {
+        description: i18n.t("personalizar.erroSalvarDescricao", { ns: "menu" }),
       });
     }
     onSave(selectedIds);
@@ -149,9 +153,9 @@ export function MobileNavCustomizer({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Personalizar Menu</DialogTitle>
+          <DialogTitle>{t("personalizar.titulo")}</DialogTitle>
           <DialogDescription>
-            Selecione até 4 itens para a barra de navegação inferior
+            {t("personalizar.descricao")}
           </DialogDescription>
         </DialogHeader>
 
@@ -202,7 +206,7 @@ export function MobileNavCustomizer({
                   </div>
                   <option.icon className="h-5 w-5 flex-shrink-0" />
                   <span className="flex-1 text-left text-sm font-medium">
-                    {option.label}
+                    {t(`barraInferior.itens.${option.id}`)}
                   </span>
                   {isSelected && (
                     <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
@@ -221,14 +225,14 @@ export function MobileNavCustomizer({
             className="flex-1"
             onClick={() => onOpenChange(false)}
           >
-            Cancelar
+            {t("personalizar.cancelar")}
           </Button>
           <Button
             className="flex-1"
             onClick={handleSave}
             disabled={selectedIds.length === 0}
           >
-            Salvar ({selectedIds.length}/4)
+            {t("personalizar.salvar", { selecionados: selectedIds.length, maximo: MAXIMO_ITENS })}
           </Button>
         </div>
       </DialogContent>
