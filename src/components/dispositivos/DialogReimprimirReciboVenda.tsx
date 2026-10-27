@@ -20,6 +20,8 @@ import {
   salvarUltimoFormatoPapel,
 } from "@/components/recibo/SeletorFormatoPapelDialog";
 import { detectarContextoImpressaoMobile, printViaIframe, printViaPrintRoot, urlParaBase64 } from "@/lib/printMobile";
+import { decidirCaminhoImpressaoRecibo, iosInstalado } from "@/lib/impressao/caminhoImpressaoRecibo";
+import { abrirDestinoImpressaoRecibo } from "@/lib/impressao/destinoImpressaoRecibo";
 import { gerarReciboVendaPDF } from "@/lib/gerarReciboVendaPDF";
 import { carregarTrocaRecibo } from "@/lib/vendas/carregarTrocaRecibo";
 import { DadosTrocaRecibo, htmlBlocoTrocaRecibo, montarBlocoTrocaRecibo, textoBlocoTrocaRecibo } from "@/lib/vendas/reciboTroca";
@@ -174,8 +176,9 @@ export function DialogReimprimirReciboVenda({
   const { config: configLoja, refetch } = useConfiguracaoLoja(venda?.empresa_id);
 
   // Recibo novo (A4, modo recibo), só para quem a regra libera; falhou → recibo antigo.
+  // No iOS instalado o recibo sai pelo PDF próprio: nem carrega (o A4 não espera).
   const reciboNovoVisivel = useReciboVendaNovoVisivel();
-  const reciboNovoAtivo = reciboNovoVisivel && open && modo === "recibo";
+  const reciboNovoAtivo = reciboNovoVisivel && open && modo === "recibo" && !iosInstalado(detectarContextoImpressaoMobile());
   const reciboNovoRef = useRef<HTMLDivElement>(null);
   const reciboNovo = useModeloReciboNovoReaberto({ ativo: reciboNovoAtivo, vendaId: venda?.id, grupoVenda: grupoVendaId, loja: configLoja });
   const [modeloQueFalhou, setModeloQueFalhou] = useState<ReciboVendaModelo | null>(null);
@@ -412,7 +415,9 @@ export function DialogReimprimirReciboVenda({
   const imprimirRecibo = async (formato: FormatoPapel) => {
     salvarUltimoFormatoPapel(formato);
 
-    const { isMobile, isStandalone, isIOS } = detectarContextoImpressaoMobile();
+    const contexto = detectarContextoImpressaoMobile();
+    const { isIOS } = contexto;
+    const caminho = decidirCaminhoImpressaoRecibo(contexto, "dispositivos");
 
     // iOS standalone (PWA instalada na tela inicial): window.print() é
     // bloqueado pela própria plataforma — confirmado em device real (Safari
@@ -422,7 +427,7 @@ export function DialogReimprimirReciboVenda({
     // desde o iOS 9 em web apps fullscreen). Caminho: gera PDF e usa a Web
     // Share API (navigator.share), mesmo padrão já comprovado em produção no
     // envio de OS por WhatsApp (DialogEnviarWhatsApp.tsx).
-    if (isIOS && isStandalone) {
+    if (caminho === "pdf-ios") {
       await imprimirViaPDFShare(formato);
       return;
     }
@@ -431,9 +436,9 @@ export function DialogReimprimirReciboVenda({
     // Safari (não-standalone, já descartado acima) vai por #print-root —
     // confirmado funcionando numa aba comum; Android continua no iframe
     // (window.print() no documento principal trava no Chrome Android).
-    const usarMecanismoMobile = isMobile || isStandalone;
-    const usarPrintRoot = usarMecanismoMobile && isIOS;
-    const usarIframe = usarMecanismoMobile && !isIOS;
+    const usarMecanismoMobile = caminho !== "janela";
+    const usarPrintRoot = caminho === "print-root";
+    const usarIframe = caminho === "iframe";
 
     // Recibo novo (A4): mesmos caminhos de impressão — #print-root no iOS,
     // iframe no Android, janela no computador. iOS instalado segue no PDF acima.
@@ -449,7 +454,7 @@ export function DialogReimprimirReciboVenda({
         printViaIframe(documento, isIOS);
         return;
       }
-      const janela = window.open("", "_blank");
+      const janela = abrirDestinoImpressaoRecibo("janela", { titulo: "Recibo de Venda", formato });
       if (!janela) return;
       janela.document.write(documento);
       janela.document.close();
@@ -461,7 +466,7 @@ export function DialogReimprimirReciboVenda({
     // como originado de gesto do usuário (bloqueio de popup). Só abrimos a
     // janela em branco agora; o conteúdo (htmlDoc) é escrito nela mais abaixo.
     // No caminho mobile pulamos isso inteiro.
-    const janelaImpressao = usarMecanismoMobile ? null : window.open("", "_blank");
+    const janelaImpressao = usarMecanismoMobile ? null : abrirDestinoImpressaoRecibo("janela", { titulo: "Recibo de Venda", formato });
     if (!usarMecanismoMobile && !janelaImpressao) return;
 
     // dispositivosGrupo (useEffect acima) e o logo em base64 (logoBase64,
