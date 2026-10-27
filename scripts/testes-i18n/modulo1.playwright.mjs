@@ -18,7 +18,7 @@ const [, , acao, ...args] = process.argv;
 
 if (acao === "comparar") {
   const [a, b] = args.slice(0, 2).map((f) => JSON.parse(readFileSync(f, "utf8")));
-  const casos = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((c) => !c.includes("-es-")).sort();
+  const casos = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((c) => !c.startsWith("admin-es-")).sort();
   let diferentes = 0;
   const sobra = (x, y) => { const r = [...y]; return x.filter((i) => { const k = r.indexOf(i); if (k < 0) return true; r.splice(k, 1); return false; }); };
   for (const caso of casos) {
