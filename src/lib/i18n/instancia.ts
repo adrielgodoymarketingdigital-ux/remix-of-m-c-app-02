@@ -3,6 +3,7 @@ import { initReactI18next } from "react-i18next";
 import comumPtBR from "@/locales/pt-BR/comum";
 import menuPtBR from "@/locales/pt-BR/menu";
 import { IDIOMA_PADRAO, IDIOMAS, type Idioma } from "@/lib/i18n/idiomas";
+import { carregarLocaleDateFns } from "@/lib/i18n/localeDateFns";
 
 /**
  * Instância única do i18next. O pt-BR vai EMBUTIDO no pacote principal e a
@@ -57,7 +58,8 @@ let trocaEmCurso: { idioma: Idioma; promessa: Promise<void> } | null = null;
 async function trocar(idioma: Idioma, troca: number): Promise<void> {
   if (idioma !== IDIOMA_PADRAO) {
     try {
-      await Promise.all(NAMESPACES.map((ns) => carregarNamespace(idioma, ns)));
+      // Textos e o locale do date-fns (nomes de mês/dia) chegam juntos, antes da troca.
+      await Promise.all([...NAMESPACES.map((ns) => carregarNamespace(idioma, ns)), carregarLocaleDateFns(idioma)]);
     } catch (erro) {
       console.error(`Erro ao carregar o idioma ${idioma}:`, erro);
       return;

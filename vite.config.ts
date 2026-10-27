@@ -91,6 +91,9 @@ function calcularIconesSoDaLanding(meta: ManualChunkMeta) {
 // pacote principal): um chunk por idioma e namespace, com nome próprio para
 // ficarem fora do precache do service worker (quem usa pt-BR nunca as baixa).
 const TRADUCAO = /\/src\/locales\/(es|en|it)\/([a-z-]+)\.ts$/;
+// Locale do date-fns dos outros idiomas (localeDateFns.ts), pelo mesmo motivo:
+// o chunk que só tem módulos deles ganha o prefixo idioma- (ver chunkFileNames).
+const LOCALE_DATE_FNS = /\/date-fns\/locale\/(es|en-US|it)(\.m?js$|\/)/;
 
 function manualChunks(id: string, meta: ManualChunkMeta): string | undefined {
   const traducao = id.match(TRADUCAO);
@@ -221,6 +224,10 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks,
+        chunkFileNames: (chunk) =>
+          chunk.moduleIds.length > 0 && chunk.moduleIds.every((id) => LOCALE_DATE_FNS.test(id))
+            ? "assets/idioma-datefns-[name]-[hash].js"
+            : "assets/[name]-[hash].js",
       },
     },
   },
