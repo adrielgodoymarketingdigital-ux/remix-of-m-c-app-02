@@ -1,6 +1,6 @@
 # Glossário pt-BR → espanhol neutro latino-americano (MecApp, mercado ES_LATAM)
 
-**Status:** proposta para validação do Adriel (etapa 4). Nada além do menu lateral foi traduzido ainda.
+**Status:** VALIDADO pelo Adriel em 2026-10-26 (decisões no fim). Em uso desde a etapa 5A (menu, Dashboard e Configurações).
 
 **Como ler:** a coluna **Recomendado** é o termo que vai para os arquivos `src/locales/es/*.ts`. **Alternativas regionais** existem para você decidir se algum país-chave pede outro termo. Regra geral: espanhol **latino-americano neutro**, com **"usted"** implícito (mensagens impessoais: "Guarde los cambios", nunca "Guarda" nem "vosotros"). Nada de termos da Espanha ("móvil", "ordenador", "vale", "coger").
 
@@ -57,7 +57,7 @@ Os nomes ficam gravados no banco por loja; só os **8 padrões** (pelo `slug`) s
 | Peça | **Repuesto** | Refacción (MX); Pieza; Parte | "Refacción" é forte no México; "repuesto" é entendido em toda a região. |
 | Produto | **Producto** | — | |
 | Acessório | **Accesorio** | — | |
-| Película | **Mica** ❓ | Protector de pantalla (neutro); Film/Lámina (AR, CL); Templado (AR) | "Mica" é o termo de MX/CA/CO. Se o foco for Cone Sul, "Protector de pantalla" é mais seguro. |
+| Película | **Protector de pantalla** (mica) | Mica (MX/CA/CO); Film/Lámina (AR, CL); Templado (AR) | Decidido: "Protector de pantalla"; "mica" só como apoio entre parênteses onde couber. |
 | Vidro (compatibilidade) | **Vidrio** ❓ | Vidrio templado; Cristal | Dúvida: "vidro" no MecApp é o vidro de reposição da tela ou a película de vidro? Se for película de vidro: "Vidrio templado". |
 | Seminovo | **Seminuevo** | Reacondicionado; Usado | |
 | Fornecedor | **Proveedor** | — | |
@@ -126,12 +126,12 @@ Os nomes ficam gravados no banco por loja; só os **8 padrões** (pelo `slug`) s
 | Tutoriais | **Tutoriales** | — | |
 | Baixar app | **Descargar app** | Bajar la app (AR) | |
 
-## Decisões que preciso de você
+## Decisões validadas (Adriel, 2026-10-26)
 
-1. **OS × OT**: manter "Orden de servicio (OS)" ou usar "Orden de trabajo (OT)"?
-2. **Orçamento**: "Presupuesto" ou "Cotización"?
-3. **Peça**: "Repuesto" (neutro) ou "Refacción" (México)?
-4. **Película**: "Mica" (MX/CA/CO) ou "Protector de pantalla" (neutro)? E o que é "vidro" na compatibilidade?
-5. **Equipe → "Personal"** (para não chocar com "Equipo" = aparelho): ok?
-6. **Hora em espanhol**: o Intl em `es-419` mostra 12 h ("06:55 p.m."). Manter o relógio do país ou forçar 24 h como no Brasil?
-7. **Moeda**: o Intl em `es-419` escreve "USD 1,234.50"; em `es-AR`/`es-CO`, "US$ 1.234,50". Quando o `pais` da conta estiver preenchido, cada país usa o seu formato. Prefere forçar "US$" em todos?
+1. **OS**: "Orden de servicio (OS)" (não OT).
+2. **Orçamento**: "Presupuesto".
+3. **Peça**: "Repuesto".
+4. **Película**: "Protector de pantalla (mica)". O significado de "vidro" na compatibilidade continua em aberto: por ora, "Vidrio".
+5. **Equipe**: "Personal".
+6. **Hora**: relógio de 24 h em todos os idiomas (`formatarHora` usa `hourCycle: "h23"`).
+7. **Dólar**: sempre "US$" em espanhol (`formatarMoeda` troca o símbolo do Intl). O separador de milhar segue o país da conta: "US$ 1,234.50" em es-419/es-MX e "US$ 1.234,50" em es-AR/es-CO.

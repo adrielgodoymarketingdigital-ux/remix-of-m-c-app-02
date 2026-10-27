@@ -7,7 +7,7 @@ Para quem for traduzir uma tela (etapa 5 em diante). A base está em `src/lib/i1
 - **Biblioteca:** i18next 26 + react-i18next 17.
 - **pt-BR é a fonte.** `src/locales/pt-BR/<namespace>.ts` vai **embutido** no pacote principal e o i18next inicia **síncrono** em `main.tsx`. A primeira tela já sai em pt-BR, sem requisição e sem piscar.
 - **Outros idiomas:** `src/locales/<es|en|it>/<namespace>.ts`. Cada arquivo vira um chunk `idioma-<idioma>-<namespace>` (ver `TRADUCAO` em `vite.config.ts`). Esse chunk é baixado **só** quando o idioma é aplicado e fica **fora do precache** do service worker.
-- **Tipagem:** cada tradução é `Traducao<typeof <pt-BR>>`, com as mesmas chaves do pt-BR, todas opcionais. Chave digitada errado é erro de `tsc`. Chave que falta cai no pt-BR (`fallbackLng`).
+- **Tipagem:** cada tradução é `Traducao<typeof <pt-BR>>`, com EXATAMENTE as chaves do pt-BR. Chave que falta, chave a mais ou digitada errado é erro de `tsc` (até a etapa 4 as chaves eram opcionais; desde a 5A são obrigatórias). Listas de textos têm de ter o mesmo tamanho. Em tempo de execução, se um texto faltar mesmo assim, cai no pt-BR (`fallbackLng`).
 - **Quem tem i18n:** a regra única fica em `src/lib/i18n/visibilidadeI18n.ts` (`I18N_PARA_TODOS`). Hoje vale só para admin. Para os demais, `useMercado()` devolve `MERCADO_BRASIL` sem consultar nada.
 - **Idioma aplicado:** `SincronizarIdioma` (no `AppLayout`) segue `useMercado().idioma`. A ordem de resolução: perfil → subdomínio configurado → `?lang=` → localStorage → navegador (fora do domínio principal) → pt-BR.
 - **Mercado e capacidades:** use `useMercado()`, que devolve `{ idioma, mercado, moeda, pais, fuso, capacidades }`. Esconda Pix/CEP/fiscal/CPF por `capacidades`, nunca por `mercado === "BR"` espalhado pelo código.
@@ -59,14 +59,15 @@ Ficam em `src/lib/i18n/formatadores.ts`, são puros e recebem o contexto da cont
 
 | Função | Brasil (byte a byte igual a) | Fora do Brasil |
 |---|---|---|
-| `formatarMoeda(v, ctx)` | `formatCurrency`, `formatCurrencyPDF`, `toLocaleString("pt-BR", {currency:"BRL"})`; `null` → `"R$ 0,00"` com espaço comum, como hoje | `USD 1,234.50` (es-419), `US$ 1.234,50` (es-AR) |
+| `formatarMoeda(v, ctx)` | `formatCurrency`, `formatCurrencyPDF`, `toLocaleString("pt-BR", {currency:"BRL"})`; `null` → `"R$ 0,00"` com espaço comum, como hoje | `US$ 1,234.50` (es-419, es-MX), `US$ 1.234,50` (es-AR) — sempre "US$" em espanhol |
 | `formatarNumero(v, opcoes, ctx)` | `toLocaleString("pt-BR", opcoes)`, `formatarNumeroParaInputBR` | `1,234.5` (es-419) |
 | `formatarData(v, ctx)` | `formatDate` (date-fns `dd/MM/yyyy`) com o navegador em SP; `formatarDataRecibo` em qualquer fuso | `26/10/2026` (es), `10/26/2026` (en-US) |
-| `formatarHora(v, ctx)` | `formatTime` (`HH:mm`) | relógio do país (`06:55 p.m.` em es-419) |
+| `formatarHora(v, ctx)` | `formatTime` (`HH:mm`) | 24 h em todos os idiomas (`18:55`) |
 | `formatarDataHora(v, ctx)` | `formatDateTime` (`dd/MM/yyyy HH:mm`); com `" às "` no lugar do espaço = `formatarDataHoraRecibo` | |
 
 - **"AAAA-MM-DD" (coluna date)** é dia de calendário e nunca muda de dia em fuso nenhum.
-- **Timestamp** é lido no **fuso da conta**, não no do navegador. No Brasil isso é igual ao de hoje para quem está em São Paulo. Quem abre o app com outro fuso no navegador passa a ver a hora de Brasília, como o recibo já faz. É uma mudança de comportamento intencional, que fica para decidir na etapa 5.
+- **Timestamp** é lido no fuso do contexto. Nas telas, use `useFormatadores()`: quem não tem i18n recebe `FORMATO_NAVEGADOR_BRASIL` (sem fuso = o do navegador, exatamente como o date-fns de hoje, inclusive em Manaus e Rio Branco); quem tem i18n recebe o fuso da conta.
+- **`ValorMonetario`** formata com `formatCurrency`, a menos que a tela envolva o conteúdo em `<FormatoMoedaProvider value={fmt.moeda}>` (as telas já traduzidas fazem isso).
 - `localeIntl`: `es` sem país (ou com o `BR` que a etapa 1 grava por padrão) vira `es-419`. O `es` puro é o da Espanha: `1234,50 US$`, sem separador de milhar abaixo de 10 000.
 - **date-fns:** `carregarLocaleDateFns(idioma)` em `src/lib/i18n/localeDateFns.ts`. O `ptBR` já está carregado; `es`/`en`/`it` vêm por `import()`. Ainda ninguém usa; entra na etapa 5 (`format(..., { locale })` e calendários).
 
@@ -85,7 +86,7 @@ Contagem aproximada de chamadas em `src/` (grep de 2026-10-26):
 
 | Formatador atual | Onde | Chamadas / arquivos | Plano |
 |---|---|---|---|
-| `formatCurrency` | `src/lib/formatters.ts` (+ cópias locais em `GraficosDashboard`, `CardStatusOS`, `gerarOrcamentoPDF`) | ~250 / 78 | Vira `formatarMoeda(v, FORMATO_BRASIL)` por dentro (mesma assinatura). As telas passam a usar `useFormatadores()` (hook a criar na etapa 5, ligado ao `useMercado`) em ondas por área. |
+| `formatCurrency` | `src/lib/formatters.ts` (+ cópias locais em `GraficosDashboard`, `CardStatusOS`, `gerarOrcamentoPDF`) | ~250 / 78 | Vira `formatarMoeda(v, FORMATO_BRASIL)` por dentro (mesma assinatura). As telas passam a usar `useFormatadores()` (`src/hooks/useFormatadores.ts`, desde a 5A) em ondas por área. |
 | `formatCurrencyPDF` | `src/lib/pdfHelpers.ts` | ~69 / 6 | Recebe `ctx` opcional; PDF usa o contexto **da loja**. |
 | `formatarMoeda` (locais) | `gerarOrdemServicoPDF`, `gerarReciboLegalPDF`, `AdminAnalytics`, `AdminUsuarios`, `CardSaldo*`, `Fidelidade`, `MultiEmpresas` | ~48 / 9 | Trocar pela central. As telas `/admin/*` ficam em BRL de propósito (faturamento do MecApp), com `FORMATO_BRASIL` fixo. |
 | `formatarMoedaRecibo` | `src/lib/vendas/reciboTroca.ts` | 6 / 2 | Adaptador: arredonda como hoje e chama `formatarMoeda`. |
