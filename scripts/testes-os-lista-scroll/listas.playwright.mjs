@@ -5,12 +5,17 @@
 //   npx vite build && npx vite preview --port 8331 --strictPort --host 127.0.0.1   (em cada árvore)
 //   PLAYWRIGHT_PATH=<.../node_modules/playwright> node scripts/testes-os-lista-scroll/listas.playwright.mjs \
 //     <rotulo> <base-url> <pasta-saida> [aparelhos-separados-por-vírgula]
-//   node scripts/testes-os-lista-scroll/listas.playwright.mjs comparar <a.json> <b.json>
+//   node scripts/testes-os-lista-scroll/listas.playwright.mjs comparar <a.json> <b.json> [listas-separadas-por-vírgula]
 //
 // Aparelhos: android (Pixel 5, toque), iphone (iPhone 13, toque), computador
-// (1366x900, roda do mouse). Para cada lista (Marca, Produto/Peça, Serviço):
-// abre, arrasta/rola, e anota se a LISTA rolou, se o FUNDO do Dialog rolou, se
-// a lista continuou aberta e se o toque/clique no item visível selecionou.
+// (1366x900, roda do mouse). Para cada lista (cliente, Marca, Modelo, Serviço,
+// Produto/Peça e uma lista fora de Dialog): abre, arrasta/rola, volta além do
+// topo, e anota se a LISTA rolou, se o FUNDO rolou, se a lista continuou
+// aberta e se o toque/clique no item visível selecionou.
+//
+// comparar: no toque o gesto sintético tem inércia e a distância varia alguns
+// px entre execuções da MESMA build (main x main: até 6 px), então no toque
+// compara-se só se rolou; no computador (roda e teclado) os px exatos.
 import { createRequire } from "node:module";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -19,12 +24,23 @@ const [, , acao, ...args] = process.argv;
 
 if (acao === "comparar") {
   const [a, b] = args.slice(0, 2).map((f) => JSON.parse(readFileSync(f, "utf8")));
+  const so = args[2]?.split(",");
+  const normalizar = (aparelho, v) => {
+    if (aparelho === "computador" || !v?.depois) return v;
+    const px = (m) => ({ ...m, listaTopo: m.listaTopo > 0 ? "rolou" : m.listaTopo });
+    return { ...v, depois: px(v.depois) };
+  };
   let diferentes = 0;
-  for (const caso of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
-    const [va, vb] = [JSON.stringify(a[caso]), JSON.stringify(b[caso])];
-    if (va === vb) console.log(`igual:     ${caso}`);
-    else { diferentes++; console.log(`DIFERENTE: ${caso}\n  a ${va}\n  b ${vb}`); }
+  for (const aparelho of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
+    for (const lista of [...new Set([...Object.keys(a[aparelho] ?? {}), ...Object.keys(b[aparelho] ?? {})])].sort()) {
+      if (so && !so.includes(lista)) continue;
+      const caso = `${aparelho}/${lista}`;
+      const [va, vb] = [a, b].map((x) => JSON.stringify(normalizar(aparelho, x[aparelho]?.[lista])));
+      if (va === vb) console.log(`igual:     ${caso}`);
+      else { diferentes++; console.log(`DIFERENTE: ${caso}\n  a ${va}\n  b ${vb}`); }
+    }
   }
+  console.log(`${diferentes} diferente(s)`);
   process.exit(diferentes ? 1 : 0);
 }
 
@@ -56,6 +72,11 @@ function tabelas() {
     user_onboarding: [{ user_id: USUARIO.id, completed: true, onboarding_completed: true, step: 99 }],
     produtos: Array.from({ length: 10 }, (_, i) => ({ ...comum, id: `prod-${doisDig(i)}`, nome: `Produto Teste ${doisDig(i)}`, preco: 10 + i, custo: 5, lucro: 5, quantidade: 3 })),
     pecas: Array.from({ length: 10 }, (_, i) => ({ ...comum, id: `peca-${doisDig(i)}`, nome: `Peça Teste ${doisDig(i)}`, preco: 20 + i, custo: 8, quantidade: 2 })),
+    // Lista cmdk FORA de Dialog (página Compatibilidade de Películas): já rolava e não pode mudar.
+    grupos_compatibilidade_pelicula: [{
+      id: "g1", nome: "Grupo Teste", tipo: "pelicula", criado_em: "2026-02-01T12:00:00Z",
+      modelos: Array.from({ length: 24 }, (_, i) => ({ id: `gm-${doisDig(i)}`, grupo_id: "g1", marca: `Marca Teste ${doisDig(i)}`, modelo: `Modelo ${doisDig(i)}` })),
+    }],
     clientes: Array.from({ length: 16 }, (_, i) => ({ ...comum, id: `cli-${doisDig(i)}`, nome: `Cliente Ficticio ${doisDig(i)}`, cpf: null, telefone: `1199999${doisDig(i)}00` })),
     servicos: Array.from({ length: 18 }, (_, i) => ({ ...comum, id: `serv-${doisDig(i)}`, nome: `Serviço Teste ${doisDig(i)}`, preco: 50 + i, custo: 10, peca_id: null, pecas: null })),
   };
@@ -96,7 +117,9 @@ async function abrir(navegador, aparelho, estado) {
     window.__eventos = [];
     for (const tipo of ["wheel", "touchmove"]) {
       window.addEventListener(tipo, (e) => {
-        if (e.target instanceof Element && e.target.closest("[cmdk-list]")) window.__eventos.push(`${tipo}:${e.defaultPrevented ? "cancelado" : "livre"}`);
+        const l = e.target instanceof Element && e.target.closest("[cmdk-list]");
+        if (l) window.__eventos.push(`${tipo}:${e.defaultPrevented ? "cancelado" : "livre"}`);
+        if (l && window.__detalhe) window.__detalhe.push(`${tipo} y=${Math.round(e.touches?.[0]?.clientY ?? 0)} topo=${Math.round(l.scrollTop)} cancelavel=${e.cancelable} cancelado=${e.defaultPrevented}`);
       }, { passive: false });
     }
   });
@@ -166,12 +189,13 @@ async function testarLista(pg, toque, nome, abrirLista, saida, tipo = CMDK) {
   const lista = pg.locator(tipo.lista).first();
   await lista.waitFor({ timeout: 10000 });
   await pg.waitForTimeout(400);
-  await pg.evaluate(() => { window.__eventos = []; });
+  await pg.evaluate(() => { window.__eventos = []; window.__detalhe = []; });
   const antes = await medir(pg, tipo);
   await pg.screenshot({ path: path.join(saida, `${nome}-1-aberta.png`) });
   await arrastar(pg, toque, lista);
   const depois = await medir(pg, tipo);
   const eventos = [...new Set(await pg.evaluate(() => window.__eventos))].sort();
+  if (process.env.DETALHE) console.log(`  ${nome}: ${(await pg.evaluate(() => window.__detalhe)).join(" | ")}`);
   await pg.screenshot({ path: path.join(saida, `${nome}-2-depois-de-rolar.png`) });
   // De volta e além do topo (borda): nada atrás da lista pode rolar.
   await arrastar(pg, toque, lista, -1);
@@ -287,6 +311,13 @@ for (const aparelho of so) {
       r.computadorOutrasFormas = { tecladoTopo: teclado, barraTopo: barra };
       console.log(`[${aparelho}] outras formas: ${JSON.stringify(r.computadorOutrasFormas)}`);
     }
+    // Fora de Dialog: página com a mesma CommandList (nenhum bloqueio de rolagem ativo).
+    await pg.goto(`${base}/compatibilidade-pelicula`);
+    await pg.waitForLoadState("networkidle");
+    const gatilhoPagina = pg.getByRole("combobox").first();
+    await gatilhoPagina.waitFor({ timeout: 20000 });
+    await pg.waitForTimeout(800);
+    registrar("paginaSemDialog", await testarLista(pg, toque, "pagina-sem-dialog", () => gatilhoPagina.click(), pasta));
     resultado[aparelho] = r;
   } catch (e) {
     falhar(`[${aparelho}] ${e.message.split("\n")[0]}`);
