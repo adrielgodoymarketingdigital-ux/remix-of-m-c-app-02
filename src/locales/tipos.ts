@@ -7,6 +7,9 @@ export type Traducao<T> = {
   [K in keyof T]: T[K] extends string
     ? string
     : T[K] extends readonly string[]
-      ? { readonly [I in keyof T[K]]: string }
+      ? TextosDaLista<T[K]>
       : Traducao<T[K]>;
 };
+
+/** Mesma quantidade de textos da lista do pt-BR (tupla readonly). */
+type TextosDaLista<L extends readonly string[]> = { readonly [I in keyof L]: string };

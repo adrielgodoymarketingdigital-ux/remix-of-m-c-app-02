@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Trans, useTranslation } from "react-i18next";
 import { useOcultarValores } from "@/contexts/OcultarValoresContext";
+import { useFormatadores } from "@/hooks/useFormatadores";
 
 interface MetricasSetor {
   faturamentoServicos: number;
@@ -26,14 +28,10 @@ interface GraficosDashboardProps {
 
 const COLORS = ['#22c55e', '#3b82f6', '#8b5cf6'];
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-};
+// Moeda sem centavos nos gráficos.
+const SEM_CENTAVOS = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
+
+type Setor = "servicos" | "produtos" | "dispositivos";
 
 export const GraficosDashboard = ({ 
   metricas, 
@@ -42,19 +40,22 @@ export const GraficosDashboard = ({
   isDemoMode 
 }: GraficosDashboardProps) => {
   const { valoresOcultos } = useOcultarValores();
-  // Abreviações para os nomes
+  // Textos: namespace "dashboard" (graficos.*).
+  const { t } = useTranslation("dashboard");
+  const fmt = useFormatadores();
+  const formatCurrency = (value: number) => fmt.moeda(value, SEM_CENTAVOS);
+  const nomeSetor = (setor: Setor) => t(`graficos.setores.${setor}`);
+  // Abreviações para os nomes (rótulo da fatia)
   const abreviar = (nome: string) => {
-    if (nome === 'Dispositivos') return 'Disp.';
-    if (nome === 'Serviços') return 'Serv.';
-    if (nome === 'Produtos') return 'Prod.';
-    return nome;
+    const setor = (["servicos", "produtos", "dispositivos"] as const).find((s) => nomeSetor(s) === nome);
+    return setor ? t(`graficos.setoresAbreviados.${setor}`) : nome;
   };
 
   // Dados para gráfico de faturamento por setor
   const dadosFaturamento = [
-    { name: 'Serviços', value: metricas.faturamentoServicos, color: COLORS[0] },
-    { name: 'Produtos', value: metricas.faturamentoProdutos, color: COLORS[1] },
-    { name: 'Dispositivos', value: metricas.faturamentoDispositivos, color: COLORS[2] },
+    { name: nomeSetor("servicos"), value: metricas.faturamentoServicos, color: COLORS[0] },
+    { name: nomeSetor("produtos"), value: metricas.faturamentoProdutos, color: COLORS[1] },
+    { name: nomeSetor("dispositivos"), value: metricas.faturamentoDispositivos, color: COLORS[2] },
   ].filter(d => d.value > 0);
 
   // Calcular lucro por setor
@@ -63,9 +64,9 @@ export const GraficosDashboard = ({
   const lucroDispositivos = metricas.faturamentoDispositivos - metricas.custoDispositivos;
 
   const dadosLucro = [
-    { name: 'Serviços', value: lucroServicos, color: COLORS[0] },
-    { name: 'Produtos', value: lucroProdutos, color: COLORS[1] },
-    { name: 'Dispositivos', value: lucroDispositivos, color: COLORS[2] },
+    { name: nomeSetor("servicos"), value: lucroServicos, color: COLORS[0] },
+    { name: nomeSetor("produtos"), value: lucroProdutos, color: COLORS[1] },
+    { name: nomeSetor("dispositivos"), value: lucroDispositivos, color: COLORS[2] },
   ].filter(d => d.value > 0);
 
   // Determinar setor campeão
@@ -95,7 +96,7 @@ export const GraficosDashboard = ({
         <div className="bg-background border rounded-lg p-2 shadow-lg">
           <p className="font-medium text-sm">{label}</p>
           <p className="text-sm text-muted-foreground">
-            Qtd: {payload[0].value}
+            {t("graficos.quantidade", { quantidade: payload[0].value })}
           </p>
         </div>
       );
@@ -107,10 +108,10 @@ export const GraficosDashboard = ({
     <div className="space-y-6">
       {/* Título da seção */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Análise de Vendas</h2>
+        <h2 className="text-xl font-semibold">{t("graficos.titulo")}</h2>
         {isDemoMode && (
           <span className="text-xs bg-muted px-2 py-1 rounded">
-            Dados fictícios
+            {t("graficos.dadosFicticios")}
           </span>
         )}
       </div>
@@ -120,10 +121,10 @@ export const GraficosDashboard = ({
         {/* Faturamento por Setor */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Faturamento por Setor</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("graficos.faturamentoPorSetor")}</CardTitle>
             {setorMaisVende.name && (
               <p className="text-xs text-muted-foreground">
-                Campeão: <span className="font-semibold text-green-600">{setorMaisVende.name}</span>
+                <Trans t={t} i18nKey="graficos.campeao" components={{ destaque: <span className="font-semibold text-green-600">{setorMaisVende.name}</span> }} />
               </p>
             )}
           </CardHeader>
@@ -155,7 +156,7 @@ export const GraficosDashboard = ({
               </ResponsiveContainer>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Sem dados de vendas
+                {t("graficos.semDadosVendas")}
               </div>
             )}
           </CardContent>
@@ -164,10 +165,10 @@ export const GraficosDashboard = ({
         {/* Lucro por Setor */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Lucro por Setor</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("graficos.lucroPorSetor")}</CardTitle>
             {setorMaisLucra.name && (
               <p className="text-xs text-muted-foreground">
-                Campeão: <span className="font-semibold text-green-600">{setorMaisLucra.name}</span>
+                <Trans t={t} i18nKey="graficos.campeao" components={{ destaque: <span className="font-semibold text-green-600">{setorMaisLucra.name}</span> }} />
               </p>
             )}
           </CardHeader>
@@ -199,7 +200,7 @@ export const GraficosDashboard = ({
               </ResponsiveContainer>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Sem dados de lucro
+                {t("graficos.semDadosLucro")}
               </div>
             )}
           </CardContent>
@@ -211,7 +212,7 @@ export const GraficosDashboard = ({
         {/* Produtos Mais Vendidos */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Top 5 Produtos Mais Vendidos</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("graficos.topMaisVendidos")}</CardTitle>
           </CardHeader>
           <CardContent>
             {produtosMaisVendidos.length > 0 ? (
@@ -231,7 +232,7 @@ export const GraficosDashboard = ({
               </ResponsiveContainer>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Sem vendas de produtos
+                {t("graficos.semVendasProdutos")}
               </div>
             )}
           </CardContent>
@@ -240,7 +241,7 @@ export const GraficosDashboard = ({
         {/* Produtos Menos Vendidos */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Top 5 Produtos Menos Vendidos</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("graficos.topMenosVendidos")}</CardTitle>
           </CardHeader>
           <CardContent>
             {produtosMenosVendidos.length > 0 ? (
@@ -260,7 +261,7 @@ export const GraficosDashboard = ({
               </ResponsiveContainer>
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Sem dados de produtos
+                {t("graficos.semDadosProdutos")}
               </div>
             )}
           </CardContent>

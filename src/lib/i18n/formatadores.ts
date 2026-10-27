@@ -79,12 +79,17 @@ const ehBrasil = (ctx: ContextoFormato) => ctx.idioma === "pt-BR" && ctx.moeda =
  * Dólar em espanhol sai sempre "US$" (decisão do glossário): o Intl escreve
  * "USD" em es-419/es-MX e "US$" em es-AR/es-CO.
  */
-export function formatarMoeda(valor: number | null | undefined, ctx: ContextoFormato = FORMATO_BRASIL): string {
+export function formatarMoeda(
+  valor: number | null | undefined,
+  ctx: ContextoFormato = FORMATO_BRASIL,
+  /** Casas decimais (ex.: gráfico sem centavos: { minimumFractionDigits: 0, maximumFractionDigits: 0 }). */
+  casas: Pick<Intl.NumberFormatOptions, "minimumFractionDigits" | "maximumFractionDigits"> = {},
+): string {
   if (valor === null || valor === undefined) {
-    if (ehBrasil(ctx)) return "R$ 0,00";
+    if (ehBrasil(ctx) && casas.maximumFractionDigits === undefined) return "R$ 0,00";
     valor = 0;
   }
-  const fmt = numeroFmt(localeIntl(ctx), { style: "currency", currency: ctx.moeda });
+  const fmt = numeroFmt(localeIntl(ctx), { style: "currency", currency: ctx.moeda, ...casas });
   if (ctx.idioma === "es" && ctx.moeda === "USD") {
     return fmt.formatToParts(valor).map((p) => (p.type === "currency" ? "US$" : p.value)).join("");
   }

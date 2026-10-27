@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { type ParcelaCustoNaoConfirmado, useCustoNaoConfirmado } from "@/hooks/useCustoNaoConfirmado";
 import { estornarParcelaSecundaria } from "@/lib/vendas/estornoParcelaSecundaria";
-import { formatCurrency } from "@/lib/formatters";
+import { useFormatadores } from "@/hooks/useFormatadores";
 
 const MAX_LISTADAS = 5;
 
@@ -32,6 +33,9 @@ export function AvisoCustoNaoConfirmado() {
   const queryClient = useQueryClient();
   const [confirmando, setConfirmando] = useState<ParcelaCustoNaoConfirmado | null>(null);
   const [estornando, setEstornando] = useState(false);
+  // Textos: namespace "dashboard" (custoNaoConfirmado.*); moeda da conta.
+  const { t } = useTranslation("dashboard");
+  const { moeda: formatCurrency } = useFormatadores();
 
   if (quantidade === 0) return null;
 
@@ -43,10 +47,13 @@ export function AvisoCustoNaoConfirmado() {
     const r = await estornarParcelaSecundaria(confirmando.id, userId);
     setEstornando(false);
     if (!r.ok) {
-      toast({ title: "Não foi possível estornar a parcela", description: r.erro, variant: "destructive" });
+      toast({ title: t("custoNaoConfirmado.erroEstornar"), description: r.erro, variant: "destructive" });
       return;
     }
-    toast({ title: "Parcela estornada", description: `${confirmando.descricao} — ${formatCurrency(confirmando.total)}` });
+    toast({
+      title: t("custoNaoConfirmado.estornada"),
+      description: t("custoNaoConfirmado.itemParcela", { descricao: confirmando.descricao, valor: formatCurrency(confirmando.total) }),
+    });
     setConfirmando(null);
     await queryClient.invalidateQueries({ queryKey: ["custo-nao-confirmado"] });
   };
@@ -54,30 +61,26 @@ export function AvisoCustoNaoConfirmado() {
   return (
     <Alert className="border-amber-500/50">
       <AlertTriangle className="h-4 w-4 text-amber-600" />
-      <AlertTitle>Custo não confirmado em {quantidade} parcela(s) recebida(s)</AlertTitle>
+      <AlertTitle>{t("custoNaoConfirmado.titulo", { count: quantidade })}</AlertTitle>
       <AlertDescription>
-        {quantidade === 1 ? "Essa parcela (" : "Essas parcelas ("}
-        {formatCurrency(total)}
-        {quantidade === 1 ? ") foi recebida" : ") foram recebidas"} sem o custo da venda confirmado
-        (venda principal cancelada, removida ou sem custo) e ficam FORA do lucro e do faturamento
-        até o custo ser confirmado.
+        {t("custoNaoConfirmado.descricao", { count: quantidade, total: formatCurrency(total) })}
         <ul className="mt-2 space-y-1">
           {listadas.map((p) => (
             <li key={p.id} className="flex items-center justify-between gap-2 text-xs">
               <span className="min-w-0 truncate text-muted-foreground">
-                {p.descricao} — {formatCurrency(p.total)}
+                {t("custoNaoConfirmado.itemParcela", { descricao: p.descricao, valor: formatCurrency(p.total) })}
               </span>
               {p.podeEstornar ? (
                 <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={() => setConfirmando(p)}>
-                  Estornar
+                  {t("custoNaoConfirmado.estornar")}
                 </Button>
               ) : (
-                <span className="shrink-0 text-[11px] text-muted-foreground">Confirme o custo na venda</span>
+                <span className="shrink-0 text-[11px] text-muted-foreground">{t("custoNaoConfirmado.confirmeCusto")}</span>
               )}
             </li>
           ))}
           {quantidade > listadas.length && (
-            <li className="text-xs text-muted-foreground">+{quantidade - listadas.length} parcela(s)</li>
+            <li className="text-xs text-muted-foreground">{t("custoNaoConfirmado.maisParcelas", { count: quantidade - listadas.length })}</li>
           )}
         </ul>
       </AlertDescription>
@@ -85,16 +88,15 @@ export function AvisoCustoNaoConfirmado() {
       <AlertDialog open={!!confirmando} onOpenChange={(aberto) => !aberto && !estornando && setConfirmando(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Estornar parcela?</AlertDialogTitle>
+            <AlertDialogTitle>{t("custoNaoConfirmado.confirmarTitulo")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmando && `${confirmando.descricao} — ${formatCurrency(confirmando.total)}. `}
-              A venda principal desta parcela foi cancelada ou removida. Estornar cancela a parcela:
-              ela sai deste aviso e dos relatórios de caixa. Use só se a venda foi desfeita e o
-              valor não ficou com a loja.
+              {confirmando
+                ? t("custoNaoConfirmado.confirmarDescricaoComItem", { descricao: confirmando.descricao, valor: formatCurrency(confirmando.total) })
+                : t("custoNaoConfirmado.confirmarDescricao")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={estornando}>Voltar</AlertDialogCancel>
+            <AlertDialogCancel disabled={estornando}>{t("custoNaoConfirmado.voltar")}</AlertDialogCancel>
             <AlertDialogAction
               disabled={estornando}
               onClick={(e) => {
@@ -103,7 +105,7 @@ export function AvisoCustoNaoConfirmado() {
               }}
             >
               {estornando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Estornar parcela
+              {t("custoNaoConfirmado.estornarParcela")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

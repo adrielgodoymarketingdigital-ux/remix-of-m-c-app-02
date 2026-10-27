@@ -7,6 +7,8 @@ import menuPtBR from "../../src/locales/pt-BR/menu.ts";
 import menuEs from "../../src/locales/es/menu.ts";
 import comumPtBR from "../../src/locales/pt-BR/comum.ts";
 import comumEs from "../../src/locales/es/comum.ts";
+import dashboardPtBR from "../../src/locales/pt-BR/dashboard.ts";
+import dashboardEs from "../../src/locales/es/dashboard.ts";
 import { ADMIN_MENU, GRUPOS_MENU, MENU_PRINCIPAL } from "../../src/lib/menu/menuPrincipal.ts";
 import { chaveDaRota } from "../../src/lib/i18n/chaves.ts";
 
@@ -48,17 +50,77 @@ Deno.test("pt-BR do menu = títulos de menuPrincipal.ts, letra por letra", () =>
   assertEquals([menuPtBR.ajuda, menuPtBR.sair, menuPtBR.admin.mostrarMenu, menuPtBR.admin.verComoUsuario], ["Ajuda", "Sair", "Mostrar menu admin", "Ver como usuário"]);
 });
 
-Deno.test("es cobre todas as chaves do menu e do comum, sem chave a mais e sem texto vazio", () => {
-  for (const [pt, es] of [[menuPtBR, menuEs], [comumPtBR, comumEs]] as [Arvore, Arvore][]) {
-    const fPt = folhas(pt);
-    const fEs = folhas(es);
-    assertEquals([...fEs.keys()].sort(), [...fPt.keys()].sort());
-    for (const [k, v] of fEs) assert(v.trim().length > 0, k);
+const NAMESPACES: [string, Arvore, Arvore][] = [
+  ["comum", comumPtBR as Arvore, comumEs as Arvore],
+  ["menu", menuPtBR as Arvore, menuEs as Arvore],
+  ["dashboard", dashboardPtBR as Arvore, dashboardEs as Arvore],
+];
+
+// Listas (frases do dia) viram folhas "frases.0", "frases.1"...
+function folhasComListas(o: Arvore | readonly string[], prefixo = ""): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const [k, v] of Object.entries(o)) {
+    if (typeof v === "string") m.set(prefixo + k, v);
+    else for (const [kk, vv] of folhasComListas(v as Arvore, `${prefixo}${k}.`)) m.set(kk, vv);
+  }
+  return m;
+}
+
+const variaveis = (t: string) => [...t.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort();
+const marcas = (t: string) => [...t.matchAll(/<\/?(\w+)\/?>/g)].map((m) => m[0]).sort();
+
+Deno.test("es cobre todas as chaves de cada namespace, sem chave a mais e sem texto vazio", () => {
+  for (const [ns, pt, es] of NAMESPACES) {
+    const fPt = folhasComListas(pt);
+    const fEs = folhasComListas(es);
+    assertEquals([...fEs.keys()].sort(), [...fPt.keys()].sort(), ns);
+    for (const [k, v] of fEs) assert(v.trim().length > 0, `${ns}:${k}`);
   }
 });
 
-Deno.test("nenhum texto concatena frase nem usa interpolação no menu (convenções)", () => {
-  for (const [k, v] of [...folhas(menuPtBR as Arvore), ...folhas(menuEs as Arvore)]) {
-    assert(!/\{\{|\$\{/.test(v), `${k}: ${v}`);
+Deno.test("es usa as mesmas {{variáveis}} e <marcas> do pt-BR; nada de ${} no texto", () => {
+  for (const [ns, pt, es] of NAMESPACES) {
+    const fPt = folhasComListas(pt);
+    for (const [k, v] of folhasComListas(es)) {
+      const base = k.replace(/_(zero|one|other)$/, "");
+      // a forma plural do es pode não ter {{count}} quando o pt também não tem
+      assertEquals(variaveis(v), variaveis(fPt.get(k) ?? fPt.get(`${base}_other`) ?? ""), `${ns}:${k}`);
+      assertEquals(marcas(v), marcas(fPt.get(k) ?? ""), `${ns}:${k}`);
+      assert(!v.includes("${"), `${ns}:${k}`);
+    }
   }
+});
+
+Deno.test("plural: toda chave com _one tem _zero e _other (texto próprio para zero)", () => {
+  for (const [ns, pt, es] of NAMESPACES) {
+    for (const f of [folhasComListas(pt), folhasComListas(es)]) {
+      for (const k of f.keys()) {
+        const m = k.match(/^(.*)_(zero|one|other)$/);
+        if (!m) continue;
+        for (const forma of ["zero", "one", "other"]) assert(f.has(`${m[1]}_${forma}`), `${ns}:${m[1]}_${forma}`);
+      }
+    }
+  }
+});
+
+Deno.test("pt-BR da barra inferior e do cabeçalho do celular = textos de antes da etapa 5A", () => {
+  assertEquals(menuPtBR.barraInferior.itens, {
+    dashboard: "Dashboard", pdv: "PDV", os: "OS", dispositivos: "Dispositivos", produtos: "Produtos", servicos: "Serviços",
+    clientes: "Clientes", vendas: "Vendas", financeiro: "Financeiro", catalogo: "Catálogo", origem: "Origem",
+    fornecedores: "Fornecedores", orcamentos: "Orçamentos", relatorios: "Relatórios", configuracoes: "Config", plano: "Plano",
+    novidades: "Novidades", suporte: "Suporte", tutoriais: "Tutoriais",
+  });
+  // routeTitles de MobileHeader.tsx (origin/main 02777f4), pela chaveDaRota.
+  const antes: Record<string, string> = {
+    "/dashboard": "Dashboard", "/pdv": "PDV", "/os": "Ordens de Serviço", "/produtos": "Produtos e Peças", "/servicos": "Serviços",
+    "/dispositivos": "Dispositivos", "/catalogo": "Catálogo", "/origem-dispositivos": "Origem", "/fornecedores": "Fornecedores",
+    "/clientes": "Clientes", "/orcamentos": "Orçamentos", "/contas": "Contas", "/vendas": "Vendas", "/relatorios": "Relatórios",
+    "/financeiro": "Financeiro", "/equipe": "Equipe", "/configuracoes": "Configurações", "/configuracoes/fiscal": "Fiscal",
+    "/configuracoes/fiscal/xml-compra": "Importar XML", "/suporte": "Suporte", "/plano": "Meu Plano", "/novidades": "Novidades",
+    "/admin/usuarios": "Usuários", "/admin/financeiro": "Financeiro", "/admin/novidades": "Novidades", "/admin/onboarding": "Onboarding",
+    "/admin/push": "Push", "/admin/feedbacks": "Feedbacks", "/admin/chat": "Chat", "/admin/avisos": "Avisos",
+    "/admin/notificacoes": "Notificações", "/admin/compatibilidade-pelicula": "Compatibilidade de Película",
+    "/compatibilidade-pelicula": "Compatibilidade de Película",
+  };
+  assertEquals(menuPtBR.cabecalho.titulos, Object.fromEntries(Object.entries(antes).map(([r, t]) => [chaveDaRota(r), t])));
 });

@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 import { Clock, Calendar, CalendarDays, Infinity } from "lucide-react";
 import { DismissDuration, DISMISS_OPTIONS } from "@/lib/card-dismiss";
 
@@ -27,8 +28,10 @@ export function DialogDismissCard({
   open, 
   onOpenChange, 
   onDismiss,
-  title = "Fechar por quanto tempo?"
+  title
 }: DialogDismissCardProps) {
+  // Textos: namespace "comum" (fecharCard.*).
+  const { t } = useTranslation("comum");
   const handleDismiss = (duration: DismissDuration) => {
     onDismiss(duration);
     onOpenChange(false);
@@ -38,9 +41,9 @@ export function DialogDismissCard({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[360px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{title ?? t("fecharCard.titulo")}</DialogTitle>
           <DialogDescription>
-            Escolha por quanto tempo deseja ocultar este card.
+            {t("fecharCard.descricao")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 pt-2">
@@ -52,7 +55,7 @@ export function DialogDismissCard({
               onClick={() => handleDismiss(option.value)}
             >
               {ICONS[option.value]}
-              <span className="ml-2">{option.label}</span>
+              <span className="ml-2">{t(`fecharCard.opcoes.${option.value}`)}</span>
             </Button>
           ))}
         </div>

@@ -147,6 +147,16 @@ Deno.test({
   },
 });
 
+// Cópia literal do formatCurrency local de src/components/dashboard/GraficosDashboard.tsx (sem centavos).
+const formatCurrencyGraficos = (value: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+Deno.test("formatarMoeda sem centavos (Brasil) = formatCurrency do GraficosDashboard", () => {
+  const semCentavos = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
+  for (const v of VALORES) assertEquals(formatarMoeda(v, FORMATO_NAVEGADOR_BRASIL, semCentavos), formatCurrencyGraficos(v), String(v));
+  assertEquals(formatarMoeda(1234.5, { idioma: "es", moeda: "USD", fuso: "UTC" }, semCentavos), "US$\u00a01,235");
+});
+
 Deno.test("data inválida → '' (date-fns lançaria RangeError)", () => {
   assertEquals(formatarData("lixo"), "");
   assertEquals(formatarDataHora(""), "");

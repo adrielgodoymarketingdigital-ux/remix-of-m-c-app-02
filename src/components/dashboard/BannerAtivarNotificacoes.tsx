@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useNotificacoes } from "@/hooks/useNotificacoes";
@@ -15,6 +16,7 @@ export function BannerAtivarNotificacoes() {
   const { isSupported, permission, isSubscribed, isLoading } = usePushNotifications();
   const { solicitarPermissao, notificacaoAtiva } = useNotificacoes();
   const { isIOS, isInstalled } = usePWA();
+  const { t } = useTranslation("dashboard");
 
   useEffect(() => {
     const checkSubscription = async () => {
@@ -47,21 +49,21 @@ export function BannerAtivarNotificacoes() {
       <Alert className="mb-4 border-primary/30 bg-primary/5">
         <Smartphone className="h-4 w-4" />
         <AlertTitle className="flex items-center justify-between">
-          <span>Ative as notificações no iPhone</span>
+          <span>{t("notificacoes.tituloIphone")}</span>
           <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2" onClick={handleDismiss}>
             <X className="h-3 w-3" />
           </Button>
         </AlertTitle>
         <AlertDescription className="text-xs space-y-1 mt-1">
-          <p>Para receber alertas, instale o app na tela inicial:</p>
+          <p>{t("notificacoes.instaleIphone")}</p>
           <ol className="list-decimal pl-4 space-y-0.5">
             <li className="flex items-center gap-1">
-              Toque em <Share className="inline h-3 w-3" /> <strong>Compartilhar</strong>
+              <Trans t={t} i18nKey="notificacoes.passoCompartilhar" components={{ icone: <Share className="inline h-3 w-3" />, negrito: <strong /> }} />
             </li>
             <li className="flex items-center gap-1">
-              Toque em <Plus className="inline h-3 w-3" /> <strong>Adicionar à Tela Inicial</strong>
+              <Trans t={t} i18nKey="notificacoes.passoAdicionar" components={{ icone: <Plus className="inline h-3 w-3" />, negrito: <strong /> }} />
             </li>
-            <li>Abra o app e ative as notificações</li>
+            <li>{t("notificacoes.passoAbrir")}</li>
           </ol>
         </AlertDescription>
       </Alert>
@@ -78,14 +80,14 @@ export function BannerAtivarNotificacoes() {
     <Alert className="mb-4 border-primary/30 bg-primary/5">
       <Bell className="h-4 w-4" />
       <AlertTitle className="flex items-center justify-between">
-        <span>Ative as notificações</span>
+        <span>{t("notificacoes.titulo")}</span>
         <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2" onClick={handleDismiss}>
           <X className="h-3 w-3" />
         </Button>
       </AlertTitle>
       <AlertDescription className="space-y-2 mt-1">
         <p className="text-xs">
-          Receba alertas de vendas, ordens de serviço e pagamentos em tempo real.
+          {t("notificacoes.descricao")}
         </p>
         <Button
           size="sm"
@@ -94,7 +96,7 @@ export function BannerAtivarNotificacoes() {
           onClick={() => solicitarPermissao()}
         >
           <Bell className="h-3 w-3 mr-1" />
-          {isLoading ? "Ativando..." : "Ativar Notificações"}
+          {isLoading ? t("notificacoes.ativando") : t("notificacoes.ativar")}
         </Button>
       </AlertDescription>
     </Alert>

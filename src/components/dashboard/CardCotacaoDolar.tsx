@@ -2,9 +2,11 @@ import { useCotacaoDolar } from "@/hooks/useCotacaoDolar";
 import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, RefreshCw, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export function CardCotacaoDolar() {
   const { cotacao, variacao, loading, atualizar } = useCotacaoDolar();
+  const { t } = useTranslation("dashboard");
 
   return (
     <Card className="relative overflow-hidden border border-border/60 bg-background/80 backdrop-blur-sm px-3 py-2 w-fit">
@@ -12,7 +14,7 @@ export function CardCotacaoDolar() {
       {/* Linha decorativa superior */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
 
-      <p className="text-[9px] text-muted-foreground/60 mb-1">Cotação do dólar em tempo real</p>
+      <p className="text-[9px] text-muted-foreground/60 mb-1">{t("cotacao.tempoReal")}</p>
 
       <div className="flex items-center gap-3">
 
@@ -67,7 +69,7 @@ export function CardCotacaoDolar() {
         <button
           onClick={atualizar}
           className="text-muted-foreground/50 hover:text-muted-foreground transition-colors ml-0.5"
-          title="Atualizar cotação"
+          title={t("cotacao.atualizar")}
         >
           <RefreshCw className={cn("h-2.5 w-2.5", loading ? "animate-spin" : "")} />
         </button>

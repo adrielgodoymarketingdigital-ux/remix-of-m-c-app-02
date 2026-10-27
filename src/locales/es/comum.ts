@@ -9,6 +9,16 @@ const comum: Traducao<typeof comumPtBR> = {
     salvo: "Idioma actualizado",
     erroSalvar: "No se pudo guardar el idioma",
   },
+  fecharCard: {
+    titulo: "¿Cerrar por cuánto tiempo?",
+    descricao: "Elija por cuánto tiempo quiere ocultar esta tarjeta.",
+    opcoes: {
+      forever: "Sin plazo",
+      month: "Por 1 mes",
+      week: "Por 1 semana",
+      hours: "Por 24 horas",
+    },
+  },
 };
 
 export default comum;

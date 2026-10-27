@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -9,15 +10,14 @@ import { Button } from "@/components/ui/button";
 import { DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard, Activity, Zap, ClipboardList, Users, AlertOctagon, ArrowUpRight, ArrowDownRight, ChevronRight, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TrialBanner } from "@/components/trial/TrialBanner";
 import { FreeTrialTimer } from "@/components/trial/FreeTrialTimer";
 import { BannerAtivarNotificacoes } from "@/components/dashboard/BannerAtivarNotificacoes";
-import { formatCurrency } from "@/lib/formatters";
-import { ValorMonetario } from "@/components/ui/valor-monetario";
+import { FormatoMoedaProvider, ValorMonetario } from "@/components/ui/valor-monetario";
+import { useFormatadores } from "@/hooks/useFormatadores";
 const GraficosDashboard = lazy(() => import("@/components/dashboard/GraficosDashboard").then(m => ({ default: m.GraficosDashboard })));
 import { CardAvisosSistema } from "@/components/dashboard/CardAvisosSistema";
 import { BannerNfeEmBreve } from "@/components/dashboard/BannerNfeEmBreve";
@@ -49,6 +49,9 @@ interface ProdutoVendido {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  // Textos: namespace "dashboard"; moeda e nomes de mês: useFormatadores (conta).
+  const { t } = useTranslation("dashboard");
+  const fmt = useFormatadores();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -149,7 +152,7 @@ const Dashboard = () => {
     for (let i = 0; i < 12; i++) {
       const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
       const valor = format(data, "yyyy-MM");
-      const label = format(data, "MMMM 'de' yyyy", { locale: ptBR });
+      const label = format(data, t("mes.formato"), { locale: fmt.localeDateFns });
       meses.push({ valor, label });
     }
     return meses;
@@ -778,33 +781,12 @@ const Dashboard = () => {
 
   const getSaudacao = () => {
     const hora = new Date().getHours();
-    if (hora >= 5 && hora < 12) return "Bom dia";
-    if (hora >= 12 && hora < 18) return "Boa tarde";
-    return "Boa noite";
+    if (hora >= 5 && hora < 12) return t("saudacao.bomDia");
+    if (hora >= 12 && hora < 18) return t("saudacao.boaTarde");
+    return t("saudacao.boaNoite");
   };
 
-  const FRASES = [
-    "Cada cliente atendido é uma oportunidade de fazer a diferença.",
-    "O sucesso é a soma de pequenos esforços repetidos dia após dia.",
-    "Qualidade no serviço é o melhor marketing que existe.",
-    "Cada desafio superado é uma vitória que nos torna mais fortes.",
-    "Um cliente satisfeito vale mais do que mil propagandas.",
-    "A persistência é o caminho do êxito.",
-    "Faça o que você faz tão bem que eles vão querer voltar.",
-    "O trabalho duro vence o talento quando o talento não trabalha duro.",
-    "Pequenos progressos ainda são progressos.",
-    "A excelência não é um destino, é uma jornada contínua.",
-    "Cada reparo bem feito constrói uma reputação sólida.",
-    "Confie no processo e nos resultados que virão.",
-    "A dedicação de hoje é o sucesso de amanhã.",
-    "Quem trabalha com amor nunca trabalha em vão.",
-    "O diferencial está nos detalhes que os outros ignoram.",
-    "Grandes resultados vêm de pequenas ações consistentes.",
-    "Seu trabalho importa mais do que você imagina.",
-    "Cada dia é uma nova chance de ser melhor do que ontem.",
-    "A confiança dos seus clientes é o seu maior ativo.",
-    "Trabalhe com propósito e os resultados virão naturalmente.",
-  ];
+  const FRASES = t("frases", { returnObjects: true }) as readonly string[];
 
   const getFraseDiaria = () => {
     const inicio = new Date(new Date().getFullYear(), 0, 0);
@@ -838,7 +820,7 @@ const Dashboard = () => {
   const dashboardHeaderPortal = dashboardHeaderSlot && createPortal(
     <div data-tutorial="dashboard-title">
       <h1 className="text-3xl font-bold mb-2 text-white">
-        {getSaudacao()}, <span className="text-blue-300">Bem Vindo</span>!
+        <Trans t={t} i18nKey="saudacao.bemVindo" values={{ saudacao: getSaudacao() }} components={{ destaque: <span className="text-blue-300" /> }} />
       </h1>
       <p className="text-white/60 text-base italic">
         {getFraseDiaria()}
@@ -850,7 +832,7 @@ const Dashboard = () => {
   if (loading || carregandoAssinatura) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Carregando...</div>
+        <div className="text-muted-foreground">{t("carregando")}</div>
       </div>
     );
   }
@@ -871,6 +853,7 @@ const Dashboard = () => {
 
   return (
     <AppLayout>
+      <FormatoMoedaProvider value={fmt.moeda}>
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
       <TutorialAutoStart />
       <CardPrimeirosPassos />
@@ -881,8 +864,8 @@ const Dashboard = () => {
         <div data-tutorial="dashboard-title">
           <h1 className="text-2xl sm:text-3xl font-semibold mb-1">
             {nomeUsuario
-              ? <>{getSaudacao()}, <span className="text-primary">{nomeUsuario}</span>!</>
-              : <>{getSaudacao()}, <span className="text-primary">Bem Vindo</span>!</>
+              ? <Trans t={t} i18nKey="saudacao.comNome" values={{ saudacao: getSaudacao() }} components={{ destaque: <span className="text-primary">{nomeUsuario}</span> }} />
+              : <Trans t={t} i18nKey="saudacao.bemVindo" values={{ saudacao: getSaudacao() }} components={{ destaque: <span className="text-primary" /> }} />
             }
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base italic">
@@ -892,7 +875,7 @@ const Dashboard = () => {
         <div className="flex flex-col items-stretch sm:items-end gap-2">
           <p className="text-muted-foreground text-sm font-medium sm:text-right">
             {mesSelecionado === "atual"
-              ? format(new Date(), "MMMM 'de' yyyy", { locale: ptBR }).replace(/^\w/, c => c.toUpperCase())
+              ? format(new Date(), t("mes.formato"), { locale: fmt.localeDateFns }).replace(/^\w/, c => c.toUpperCase())
               : (opçõesMeses.find(m => m.valor === mesSelecionado)?.label || "").replace(/^\w/, c => c.toUpperCase())}
           </p>
           <div className="flex items-center gap-3">
@@ -900,10 +883,10 @@ const Dashboard = () => {
             <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
               <SelectTrigger className="flex-1 sm:flex-none sm:w-[200px]">
                 <CalendarIcon className="h-4 w-4 mr-2 shrink-0" />
-                <SelectValue placeholder="Selecione o mês" />
+                <SelectValue placeholder={t("mes.selecione")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="atual">Mês atual</SelectItem>
+                <SelectItem value="atual">{t("mes.atual")}</SelectItem>
                 {opçõesMeses.map((mes) => (
                   <SelectItem key={mes.valor} value={mes.valor}>
                     {mes.label}
@@ -916,7 +899,7 @@ const Dashboard = () => {
                 variant="outline"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+                title={theme === "dark" ? t("tema.claro") : t("tema.escuro")}
                 data-tutorial="theme-toggle"
               >
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -967,22 +950,32 @@ const Dashboard = () => {
               {planoVencido ? (
                 // Já foi pagante e o plano venceu (continua com os recursos do free)
                 <>
-                  <p className="text-sm font-bold text-red-300 leading-tight">Plano vencido</p>
-                  <p className="text-[10px] text-slate-300 leading-tight font-semibold">Renovar agora</p>
+                  <p className="text-sm font-bold text-red-300 leading-tight">{t("plano.vencido")}</p>
+                  <p className="text-[10px] text-slate-300 leading-tight font-semibold">{t("plano.renovar")}</p>
                 </>
               ) : infoPlanoMobile ? (
                 <>
-                  <p className="text-sm font-bold text-white leading-tight">{infoPlanoMobile.nome}</p>
+                  <p className="text-sm font-bold text-white leading-tight">{t(`plano.nomes.${assinatura?.plano_tipo}`, { defaultValue: infoPlanoMobile.nome })}</p>
                   {infoPlanoMobile.diasRestantes !== null ? (
                     <p className="text-[10px] text-slate-400 leading-tight">
-                      Expira em <span className="text-indigo-400 font-semibold">{infoPlanoMobile.diasRestantes > 0 ? `${infoPlanoMobile.diasRestantes} dias` : "expirado"}</span>
+                      <Trans
+                        t={t}
+                        i18nKey="plano.expiraEm"
+                        components={{
+                          destaque: (
+                            <span className="text-indigo-400 font-semibold">
+                              {infoPlanoMobile.diasRestantes > 0 ? t("plano.diasRestantes", { count: infoPlanoMobile.diasRestantes }) : t("plano.expirado")}
+                            </span>
+                          ),
+                        }}
+                      />
                     </p>
                   ) : (
-                    <p className="text-[10px] text-slate-400 leading-tight">Plano ativo</p>
+                    <p className="text-[10px] text-slate-400 leading-tight">{t("plano.ativo")}</p>
                   )}
                 </>
               ) : (
-                <p className="text-sm font-bold text-white leading-tight">Ver plano</p>
+                <p className="text-sm font-bold text-white leading-tight">{t("plano.ver")}</p>
               )}
             </div>
             <ChevronRight className="h-4 w-4 text-slate-500 shrink-0" />
@@ -994,10 +987,10 @@ const Dashboard = () => {
           <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
             <SelectTrigger className="flex-1 rounded-xl">
               <CalendarIcon className="h-4 w-4 mr-2 shrink-0" />
-              <SelectValue placeholder="Selecione o mês" />
+              <SelectValue placeholder={t("mes.selecione")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="atual">Mês atual</SelectItem>
+              <SelectItem value="atual">{t("mes.atual")}</SelectItem>
               {opçõesMeses.map((mes) => (
                 <SelectItem key={mes.valor} value={mes.valor}>
                   {mes.label}
@@ -1011,7 +1004,7 @@ const Dashboard = () => {
               size="icon"
               className="rounded-xl"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+              title={theme === "dark" ? t("tema.claro") : t("tema.escuro")}
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -1031,9 +1024,9 @@ const Dashboard = () => {
       {dashboardBloqueado && (
         <Alert className="mb-6">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Acesso restrito</AlertTitle>
+          <AlertTitle>{t("acessoRestrito.titulo")}</AlertTitle>
           <AlertDescription>
-            O acesso aos dados do Dashboard está desabilitado para o seu perfil. Entre em contato com o dono da loja para mais informações.
+            {t("acessoRestrito.descricao")}
           </AlertDescription>
         </Alert>
       )}
@@ -1047,15 +1040,15 @@ const Dashboard = () => {
             <Alert className="mb-6 border-2 border-primary bg-gradient-to-r from-primary/10 via-primary/5 to-background">
               <Sparkles className="h-5 w-5 text-primary" />
               <AlertTitle className="text-lg font-bold flex items-center gap-2">
-                Trial Expirado
+                {t("trialExpirado.titulo")}
               </AlertTitle>
               <AlertDescription className="space-y-3">
                 <p className="text-sm">
-                  Seu período de teste expirou. Assine um plano para continuar usando o sistema!
+                  {t("trialExpirado.descricao")}
                 </p>
                 <Button onClick={() => navigate("/plano")} className="w-full sm:w-auto">
                   <Crown className="mr-2 h-4 w-4" />
-                  Ver Planos Disponíveis
+                  {t("trialExpirado.verPlanos")}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -1066,7 +1059,7 @@ const Dashboard = () => {
 
           {/* ============ CARD ÚNICO "RESUMO FINANCEIRO" (layout do PWA, usado também no desktop) ============ */}
           <div className="mb-6">
-            <h2 className="text-lg font-bold mb-3">Resumo Financeiro</h2>
+            <h2 className="text-lg font-bold mb-3">{t("resumo.titulo")}</h2>
 
             <div className="relative rounded-3xl overflow-hidden border border-blue-500/30 dark:border-blue-400/20 shadow-[0_0_60px_-15px_rgba(59,130,246,0.4)] dark:shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
               <div
@@ -1080,15 +1073,15 @@ const Dashboard = () => {
               <div className="relative z-10 p-5">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-blue-200/70">Faturamento Total</span>
+                    <span className="text-xs text-blue-200/70">{t("resumo.faturamentoTotal")}</span>
                     <Eye className="h-3.5 w-3.5 text-blue-200/50" />
                   </div>
                   <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
                     <SelectTrigger className="w-auto h-7 text-xs rounded-full border-white/20 bg-white/10 text-white px-3 gap-1">
-                      <SelectValue placeholder="Mês" />
+                      <SelectValue placeholder={t("mes.placeholderCurto")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="atual">Mês atual</SelectItem>
+                      <SelectItem value="atual">{t("mes.atual")}</SelectItem>
                       {opçõesMeses.map((mes) => (
                         <SelectItem key={mes.valor} value={mes.valor}>
                           {mes.label}
@@ -1109,30 +1102,30 @@ const Dashboard = () => {
                 </div>
                 <span className={`inline-flex items-center gap-0.5 text-xs font-semibold ${variacaoFaturamentoMes >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
                   {variacaoFaturamentoMes >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                  {Math.abs(variacaoFaturamentoMes).toFixed(0)}% vs. mês anterior
+                  {t("resumo.vsMesAnterior", { percentual: Math.abs(variacaoFaturamentoMes).toFixed(0) })}
                 </span>
 
                 {/* breakdown por categoria — 3 colunas */}
                 <div className="grid grid-cols-3 gap-2 mt-4">
                   <div className="rounded-2xl bg-black/20 p-3">
-                    <p className="text-[10px] text-blue-200/70 mb-1">Assistência</p>
+                    <p className="text-[10px] text-blue-200/70 mb-1">{t("resumo.assistencia")}</p>
                     <p className="text-sm font-bold text-white"><ValorMonetario valor={metrics.faturamentoServicos + metrics.faturamentoAvulsos} /></p>
                     {totalFaturamento > 0 && (
-                      <p className="text-[10px] text-emerald-300 mt-0.5">{(((metrics.faturamentoServicos + metrics.faturamentoAvulsos) / totalFaturamento) * 100).toFixed(0)}% do total</p>
+                      <p className="text-[10px] text-emerald-300 mt-0.5">{t("resumo.doTotal", { percentual: (((metrics.faturamentoServicos + metrics.faturamentoAvulsos) / totalFaturamento) * 100).toFixed(0) })}</p>
                     )}
                   </div>
                   <div className="rounded-2xl bg-black/20 p-3">
-                    <p className="text-[10px] text-blue-200/70 mb-1">Produtos</p>
+                    <p className="text-[10px] text-blue-200/70 mb-1">{t("resumo.produtos")}</p>
                     <p className="text-sm font-bold text-white"><ValorMonetario valor={metrics.faturamentoProdutos} /></p>
                     {totalFaturamento > 0 && (
-                      <p className="text-[10px] text-blue-300 mt-0.5">{((metrics.faturamentoProdutos / totalFaturamento) * 100).toFixed(0)}% do total</p>
+                      <p className="text-[10px] text-blue-300 mt-0.5">{t("resumo.doTotal", { percentual: ((metrics.faturamentoProdutos / totalFaturamento) * 100).toFixed(0) })}</p>
                     )}
                   </div>
                   <div className="rounded-2xl bg-black/20 p-3">
-                    <p className="text-[10px] text-blue-200/70 mb-1">Dispositivos</p>
+                    <p className="text-[10px] text-blue-200/70 mb-1">{t("resumo.dispositivos")}</p>
                     <p className="text-sm font-bold text-white"><ValorMonetario valor={metrics.faturamentoDispositivos} /></p>
                     {totalFaturamento > 0 && (
-                      <p className="text-[10px] text-cyan-300 mt-0.5">{((metrics.faturamentoDispositivos / totalFaturamento) * 100).toFixed(0)}% do total</p>
+                      <p className="text-[10px] text-cyan-300 mt-0.5">{t("resumo.doTotal", { percentual: ((metrics.faturamentoDispositivos / totalFaturamento) * 100).toFixed(0) })}</p>
                     )}
                   </div>
                 </div>
@@ -1143,7 +1136,7 @@ const Dashboard = () => {
                     <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
                       <TrendingUp className="h-4 w-4 text-emerald-300" />
                     </div>
-                    <span className="text-xs text-blue-100/80">Lucro Líquido</span>
+                    <span className="text-xs text-blue-100/80">{t("resumo.lucroLiquido")}</span>
                   </div>
                   <div className="text-right">
                     <p className={`text-base font-bold ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
@@ -1165,7 +1158,7 @@ const Dashboard = () => {
               <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center mb-2">
                 <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Faturamento Hoje</p>
+              <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{t("resumo.faturamentoHoje")}</p>
               {hojeData.carregando ? (
                 <div className="h-6 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
               ) : (
@@ -1173,7 +1166,7 @@ const Dashboard = () => {
               )}
               <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${variacaoFaturamentoHoje >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                 {variacaoFaturamentoHoje >= 0 ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
-                {Math.abs(variacaoFaturamentoHoje).toFixed(0)}% vs. ontem
+                {t("resumo.vsOntem", { percentual: Math.abs(variacaoFaturamentoHoje).toFixed(0) })}
               </span>
               {sparklineFaturamentoTotal.length > 0 && (
                 <div className="mt-2 -mx-4 -mb-4">
@@ -1186,7 +1179,7 @@ const Dashboard = () => {
               <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center mb-2">
                 <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Lucro Hoje</p>
+              <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{t("resumo.lucroHoje")}</p>
               {hojeData.carregando ? (
                 <div className="h-6 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
               ) : (
@@ -1194,7 +1187,7 @@ const Dashboard = () => {
               )}
               <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${variacaoLucroHoje >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                 {variacaoLucroHoje >= 0 ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
-                {Math.abs(variacaoLucroHoje).toFixed(0)}% vs. ontem
+                {t("resumo.vsOntem", { percentual: Math.abs(variacaoLucroHoje).toFixed(0) })}
               </span>
               {sparklineFaturamentoTotal.length > 0 && (
                 <div className="mt-2 -mx-4 -mb-4">
@@ -1214,8 +1207,8 @@ const Dashboard = () => {
                 <ClipboardList className="h-4 w-4 text-blue-400" />
               </div>
               <p className="text-base font-bold text-white leading-tight">{dashboardResumo.osAbertas}</p>
-              <p className="text-[10px] text-slate-300 leading-tight text-center">Ordens</p>
-              <p className="text-[9px] text-blue-400 leading-tight text-center">abertas</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">{t("atalhos.ordens")}</p>
+              <p className="text-[9px] text-blue-400 leading-tight text-center">{t("atalhos.abertas")}</p>
             </button>
 
             <button
@@ -1226,7 +1219,7 @@ const Dashboard = () => {
                 <Users className="h-4 w-4 text-violet-400" />
               </div>
               <p className="text-base font-bold text-white leading-tight">{dashboardResumo.totalClientes}</p>
-              <p className="text-[10px] text-slate-300 leading-tight text-center">Clientes</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">{t("atalhos.clientes")}</p>
             </button>
 
             <button
@@ -1237,7 +1230,7 @@ const Dashboard = () => {
                 <Package className="h-4 w-4 text-orange-400" />
               </div>
               <p className="text-base font-bold text-white leading-tight">{dashboardResumo.totalProdutos}</p>
-              <p className="text-[10px] text-slate-300 leading-tight text-center">Produtos</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">{t("atalhos.produtos")}</p>
             </button>
 
             <button
@@ -1248,8 +1241,8 @@ const Dashboard = () => {
                 <Wallet className="h-4 w-4 text-teal-400" />
               </div>
               <p className="text-base font-bold text-white leading-tight">{dashboardResumo.pagamentosPendentes}</p>
-              <p className="text-[10px] text-slate-300 leading-tight text-center">Pagamentos</p>
-              <p className="text-[9px] text-teal-400 leading-tight text-center">pendentes</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">{t("atalhos.pagamentos")}</p>
+              <p className="text-[9px] text-teal-400 leading-tight text-center">{t("atalhos.pendentes")}</p>
             </button>
 
             <button
@@ -1260,8 +1253,8 @@ const Dashboard = () => {
                 <AlertOctagon className="h-4 w-4 text-red-400" />
               </div>
               <p className="text-base font-bold text-white leading-tight">{dashboardResumo.alertasUrgentes}</p>
-              <p className="text-[10px] text-slate-300 leading-tight text-center">Alertas</p>
-              <p className="text-[9px] text-red-400 leading-tight text-center">urgentes</p>
+              <p className="text-[10px] text-slate-300 leading-tight text-center">{t("atalhos.alertas")}</p>
+              <p className="text-[9px] text-red-400 leading-tight text-center">{t("atalhos.urgentes")}</p>
             </button>
           </div>
 
@@ -1272,7 +1265,7 @@ const Dashboard = () => {
                 <Wrench className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold">Assistência</p>
+                <p className="text-xs font-semibold">{t("categorias.assistencia")}</p>
                 <p className="text-sm font-bold text-slate-800 dark:text-white">
                   {hojeData.carregando ? "—" : <ValorMonetario valor={hojeData.faturamentoAssistencia} />}
                 </p>
@@ -1283,7 +1276,7 @@ const Dashboard = () => {
                 </div>
               )}
               <button onClick={() => navigate("/os")} className="text-[10px] text-blue-600 dark:text-blue-400 font-medium shrink-0">
-                Ver detalhes
+                {t("categorias.verDetalhes")}
               </button>
             </div>
 
@@ -1292,7 +1285,7 @@ const Dashboard = () => {
                 <Package className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold">Produtos & Peças</p>
+                <p className="text-xs font-semibold">{t("categorias.produtosPecas")}</p>
                 <p className="text-sm font-bold text-slate-800 dark:text-white">
                   {hojeData.carregando ? "—" : <ValorMonetario valor={hojeData.faturamentoProdutosPecas} />}
                 </p>
@@ -1303,7 +1296,7 @@ const Dashboard = () => {
                 </div>
               )}
               <button onClick={() => navigate("/produtos")} className="text-[10px] text-violet-600 dark:text-violet-400 font-medium shrink-0">
-                Ver detalhes
+                {t("categorias.verDetalhes")}
               </button>
             </div>
 
@@ -1312,7 +1305,7 @@ const Dashboard = () => {
                 <Smartphone className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold">Dispositivos</p>
+                <p className="text-xs font-semibold">{t("categorias.dispositivos")}</p>
                 <p className="text-sm font-bold text-slate-800 dark:text-white">
                   {hojeData.carregando ? "—" : <ValorMonetario valor={hojeData.faturamentoDispositivos} />}
                 </p>
@@ -1323,7 +1316,7 @@ const Dashboard = () => {
                 </div>
               )}
               <button onClick={() => navigate("/dispositivos")} className="text-[10px] text-cyan-600 dark:text-cyan-400 font-medium shrink-0">
-                Ver detalhes
+                {t("categorias.verDetalhes")}
               </button>
             </div>
           </div>
@@ -1341,7 +1334,7 @@ const Dashboard = () => {
               <p className="text-lg font-bold text-blue-300 leading-tight">
                 <ValorMonetario valor={totalFaturamento} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Faturamento Total</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.faturamentoTotal")}</p>
             </div>
 
             {/* Lucro Bruto */}
@@ -1352,7 +1345,7 @@ const Dashboard = () => {
               <p className={`text-lg font-bold leading-tight ${financeiroData.lucroTotal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 <ValorMonetario valor={financeiroData.lucroTotal} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Lucro Bruto</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.lucroBruto")}</p>
             </div>
 
             {/* Lucro Líquido */}
@@ -1363,8 +1356,8 @@ const Dashboard = () => {
               <p className={`text-lg font-bold leading-tight ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 <ValorMonetario valor={financeiroData.lucroLiquido} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Lucro Líquido</p>
-              <p className="text-[9px] text-slate-500 leading-tight -mt-1">após despesas pagas</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.lucroLiquido")}</p>
+              <p className="text-[9px] text-slate-500 leading-tight -mt-1">{t("cards.aposDespesas")}</p>
             </div>
 
             {/* Margem de Lucro */}
@@ -1375,7 +1368,7 @@ const Dashboard = () => {
               <p className={`text-lg font-bold leading-tight ${financeiroData.margemLucro >= 0 ? 'text-blue-300' : 'text-red-400'}`}>
                 {financeiroData.margemLucro.toFixed(1)}%
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Margem de Lucro</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.margemLucro")}</p>
             </div>
 
             {/* Custo Total do Mês */}
@@ -1386,7 +1379,7 @@ const Dashboard = () => {
               <p className="text-lg font-bold text-orange-400 leading-tight">
                 <ValorMonetario valor={financeiroData.custoTotal + financeiroData.custoOperacional} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Custo Total do Mês</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.custoTotalMes")}</p>
             </div>
 
             {/* Despesas Operacionais */}
@@ -1397,7 +1390,7 @@ const Dashboard = () => {
               <p className="text-lg font-bold text-rose-400 leading-tight">
                 <ValorMonetario valor={financeiroData.custoOperacional} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Despesas Operacionais</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.despesasOperacionais")}</p>
             </div>
 
             {/* Contas a Pagar Hoje */}
@@ -1406,12 +1399,12 @@ const Dashboard = () => {
                 <div className="h-9 w-9 rounded-xl bg-red-500/20 flex items-center justify-center">
                   <AlertTriangle className="h-4 w-4 text-red-400" />
                 </div>
-                <span className="text-[10px] text-slate-400 shrink-0">{financeiroData.contasHojeQtd} contas</span>
+                <span className="text-[10px] text-slate-400 shrink-0">{t("cards.contasQtd", { count: financeiroData.contasHojeQtd })}</span>
               </div>
               <p className="text-lg font-bold text-red-400 leading-tight">
                 <ValorMonetario valor={financeiroData.contasHojeTotal} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Contas a Pagar Hoje</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.contasPagarHoje")}</p>
             </div>
 
             {/* Taxas de Cartão */}
@@ -1422,7 +1415,7 @@ const Dashboard = () => {
               <p className="text-lg font-bold text-purple-300 leading-tight">
                 <ValorMonetario valor={financeiroData.taxasCartao} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Taxas de Cartão</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.taxasCartao")}</p>
             </div>
 
             {/* Total a Receber Hoje — dinheiro entrando (verde), contraponto de "Contas a Pagar Hoje" */}
@@ -1431,12 +1424,12 @@ const Dashboard = () => {
                 <div className="h-9 w-9 rounded-xl bg-green-500/20 flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-green-400" />
                 </div>
-                <span className="text-[10px] text-slate-400 shrink-0">{financeiroData.receberHojeQtd} contas</span>
+                <span className="text-[10px] text-slate-400 shrink-0">{t("cards.contasQtd", { count: financeiroData.receberHojeQtd })}</span>
               </div>
               <p className="text-lg font-bold text-green-400 leading-tight">
                 <ValorMonetario valor={financeiroData.receberHojeTotal} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Total a Receber Hoje</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.receberHoje")}</p>
             </div>
 
             {/* Total a Receber do Mês — período (inicio/fim) já filtrado no Dashboard */}
@@ -1447,7 +1440,7 @@ const Dashboard = () => {
               <p className="text-lg font-bold text-green-400 leading-tight">
                 <ValorMonetario valor={financeiroData.receberMesTotal} />
               </p>
-              <p className="text-[11px] text-slate-400 leading-tight">Total a Receber do Mês</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{t("cards.receberMes")}</p>
             </div>
           </div>
 
@@ -1459,7 +1452,7 @@ const Dashboard = () => {
                   <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Faturamento Total</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.faturamentoTotal")}</p>
               <p className="text-lg sm:text-xl font-semibold text-primary">
                 <ValorMonetario valor={totalFaturamento} />
               </p>
@@ -1471,7 +1464,7 @@ const Dashboard = () => {
                   <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Lucro Bruto</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.lucroBruto")}</p>
               <p className={`text-lg sm:text-xl font-semibold ${financeiroData.lucroTotal >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 <ValorMonetario valor={financeiroData.lucroTotal} />
               </p>
@@ -1483,8 +1476,8 @@ const Dashboard = () => {
                   <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Lucro Líquido</p>
-              <p className="text-xs text-muted-foreground mb-1">após despesas pagas</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.lucroLiquido")}</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("cards.aposDespesas")}</p>
               <p className={`text-lg sm:text-xl font-semibold ${financeiroData.lucroLiquido >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                 <ValorMonetario valor={financeiroData.lucroLiquido} />
               </p>
@@ -1496,7 +1489,7 @@ const Dashboard = () => {
                   <Percent className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Margem de Lucro</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.margemLucro")}</p>
               <p className={`text-lg sm:text-xl font-semibold ${financeiroData.margemLucro >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                 {financeiroData.margemLucro.toFixed(1)}%
               </p>
@@ -1508,7 +1501,7 @@ const Dashboard = () => {
                   <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Custo Total do Mês</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.custoTotalMes")}</p>
               <p className="text-lg sm:text-xl font-semibold text-orange-600 dark:text-orange-400">
                 <ValorMonetario valor={financeiroData.custoTotal + financeiroData.custoOperacional} />
               </p>
@@ -1520,7 +1513,7 @@ const Dashboard = () => {
                   <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-rose-600 dark:text-rose-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Despesas Operacionais</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.despesasOperacionais")}</p>
               <p className="text-lg sm:text-xl font-semibold text-rose-600 dark:text-rose-400">
                 <ValorMonetario valor={financeiroData.custoOperacional} />
               </p>
@@ -1533,10 +1526,10 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-xl sm:text-2xl font-semibold">{financeiroData.contasHojeQtd}</p>
-                  <p className="text-xs text-muted-foreground">contas</p>
+                  <p className="text-xs text-muted-foreground">{t("cards.contasPalavra", { count: financeiroData.contasHojeQtd })}</p>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Contas a Pagar Hoje</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.contasPagarHoje")}</p>
               <p className="text-lg sm:text-xl font-semibold text-red-600 dark:text-red-400">
                 <ValorMonetario valor={financeiroData.contasHojeTotal} />
               </p>
@@ -1548,7 +1541,7 @@ const Dashboard = () => {
                   <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Taxas de Cartão</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.taxasCartao")}</p>
               <p className="text-lg sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
                 <ValorMonetario valor={financeiroData.taxasCartao} />
               </p>
@@ -1562,10 +1555,10 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-xl sm:text-2xl font-semibold">{financeiroData.receberHojeQtd}</p>
-                  <p className="text-xs text-muted-foreground">contas</p>
+                  <p className="text-xs text-muted-foreground">{t("cards.contasPalavra", { count: financeiroData.receberHojeQtd })}</p>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Total a Receber Hoje</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.receberHoje")}</p>
               <p className="text-lg sm:text-xl font-semibold text-green-600 dark:text-green-400">
                 <ValorMonetario valor={financeiroData.receberHojeTotal} />
               </p>
@@ -1578,7 +1571,7 @@ const Dashboard = () => {
                   <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-1">Total a Receber do Mês</p>
+              <p className="text-sm text-muted-foreground mb-1">{t("cards.receberMes")}</p>
               <p className="text-lg sm:text-xl font-semibold text-green-600 dark:text-green-400">
                 <ValorMonetario valor={financeiroData.receberMesTotal} />
               </p>
@@ -1595,27 +1588,27 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-semibold">{metrics.numServicos}</p>
-                  <p className="text-xs text-muted-foreground">serviços</p>
+                  <p className="text-xs text-muted-foreground">{t("metricas.servicosPalavra", { count: metrics.numServicos })}</p>
                 </div>
               </div>
               <div className="space-y-2">
                 <div>
-                  <p className="text-sm text-muted-foreground">Faturamento OS</p>
+                  <p className="text-sm text-muted-foreground">{t("metricas.faturamentoOS")}</p>
                   <p className="text-xl font-semibold"><ValorMonetario valor={metrics.faturamentoServicos} /></p>
                 </div>
                 {metrics.numAvulsos > 0 && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Serviços Avulsos ({metrics.numAvulsos})</p>
+                    <p className="text-sm text-muted-foreground">{t("metricas.servicosAvulsos", { quantidade: metrics.numAvulsos })}</p>
                     <p className="text-lg font-semibold text-violet-600 dark:text-violet-400"><ValorMonetario valor={metrics.faturamentoAvulsos} /></p>
                   </div>
                 )}
                 <div className="flex justify-between items-center pt-2 border-t">
                   <div>
-                    <p className="text-xs text-muted-foreground">Custo</p>
+                    <p className="text-xs text-muted-foreground">{t("metricas.custo")}</p>
                     <p className="text-sm font-medium text-orange-600 dark:text-orange-400"><ValorMonetario valor={metrics.custoServicos + metrics.custoAvulsos} /></p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Margem</p>
+                    <p className="text-xs text-muted-foreground">{t("metricas.margem")}</p>
                     <p className={`text-sm font-semibold ${metrics.margemServicos >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {metrics.margemServicos.toFixed(1)}%
                     </p>
@@ -1631,21 +1624,21 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-semibold">{metrics.numProdutos}</p>
-                  <p className="text-xs text-muted-foreground">produtos</p>
+                  <p className="text-xs text-muted-foreground">{t("metricas.produtosPalavra", { count: metrics.numProdutos })}</p>
                 </div>
               </div>
               <div className="space-y-2">
                 <div>
-                  <p className="text-sm text-muted-foreground">Faturamento</p>
+                  <p className="text-sm text-muted-foreground">{t("metricas.faturamento")}</p>
                   <p className="text-xl font-semibold"><ValorMonetario valor={metrics.faturamentoProdutos} /></p>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
                   <div>
-                    <p className="text-xs text-muted-foreground">Custo</p>
+                    <p className="text-xs text-muted-foreground">{t("metricas.custo")}</p>
                     <p className="text-sm font-medium text-orange-600 dark:text-orange-400"><ValorMonetario valor={metrics.custoProdutos} /></p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Margem</p>
+                    <p className="text-xs text-muted-foreground">{t("metricas.margem")}</p>
                     <p className={`text-sm font-semibold ${metrics.margemProdutos >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {metrics.margemProdutos.toFixed(1)}%
                     </p>
@@ -1661,21 +1654,21 @@ const Dashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-semibold">{metrics.numDispositivos}</p>
-                  <p className="text-xs text-muted-foreground">dispositivos</p>
+                  <p className="text-xs text-muted-foreground">{t("metricas.dispositivosPalavra", { count: metrics.numDispositivos })}</p>
                 </div>
               </div>
               <div className="space-y-2">
                 <div>
-                  <p className="text-sm text-muted-foreground">Faturamento</p>
+                  <p className="text-sm text-muted-foreground">{t("metricas.faturamento")}</p>
                   <p className="text-xl font-semibold"><ValorMonetario valor={metrics.faturamentoDispositivos} /></p>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t">
                   <div>
-                    <p className="text-xs text-muted-foreground">Custo</p>
+                    <p className="text-xs text-muted-foreground">{t("metricas.custo")}</p>
                     <p className="text-sm font-medium text-orange-600 dark:text-orange-400"><ValorMonetario valor={metrics.custoDispositivos} /></p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Margem</p>
+                    <p className="text-xs text-muted-foreground">{t("metricas.margem")}</p>
                     <p className={`text-sm font-semibold ${metrics.margemDispositivos >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {metrics.margemDispositivos.toFixed(1)}%
                     </p>
@@ -1713,7 +1706,7 @@ const Dashboard = () => {
             >
               <div className="flex flex-col items-center gap-1 sm:gap-2">
                 <Wrench className="h-5 w-5 sm:h-6 sm:w-6" />
-                <span className="text-xs sm:text-sm">Nova OS</span>
+                <span className="text-xs sm:text-sm">{t("acoes.novaOS")}</span>
               </div>
             </Button>
 
@@ -1725,7 +1718,7 @@ const Dashboard = () => {
             >
               <div className="flex flex-col items-center gap-1 sm:gap-2">
                 <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
-                <span className="text-xs sm:text-sm">PDV</span>
+                <span className="text-xs sm:text-sm">{t("acoes.pdv")}</span>
               </div>
             </Button>
 
@@ -1737,7 +1730,7 @@ const Dashboard = () => {
             >
               <div className="flex flex-col items-center gap-1 sm:gap-2">
                 <Package className="h-5 w-5 sm:h-6 sm:w-6" />
-                <span className="text-xs sm:text-sm">Estoque</span>
+                <span className="text-xs sm:text-sm">{t("acoes.estoque")}</span>
               </div>
             </Button>
           </div>
@@ -1750,6 +1743,7 @@ const Dashboard = () => {
       )}
       
     </main>
+      </FormatoMoedaProvider>
   </AppLayout>
   );
 };

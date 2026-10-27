@@ -18,7 +18,7 @@ import { localeDateFnsCarregado } from "@/lib/i18n/localeDateFns";
 
 export interface Formatadores {
   ctx: ContextoFormato;
-  moeda: (valor: number | null | undefined) => string;
+  moeda: (valor: number | null | undefined, casas?: Pick<Intl.NumberFormatOptions, "minimumFractionDigits" | "maximumFractionDigits">) => string;
   numero: (valor: number, opcoes?: Intl.NumberFormatOptions) => string;
   data: (valor: string | Date | number) => string;
   hora: (valor: string | Date | number) => string;
@@ -44,7 +44,7 @@ export function useFormatadores(): Formatadores {
     const ctx: ContextoFormato = visivel ? { idioma, moeda, pais, fuso } : FORMATO_NAVEGADOR_BRASIL;
     return {
       ctx,
-      moeda: (valor) => formatarMoeda(valor, ctx),
+      moeda: (valor, casas) => formatarMoeda(valor, ctx, casas),
       numero: (valor, opcoes) => formatarNumero(valor, opcoes, ctx),
       data: (valor) => formatarData(valor, ctx),
       hora: (valor) => formatarHora(valor, ctx),
