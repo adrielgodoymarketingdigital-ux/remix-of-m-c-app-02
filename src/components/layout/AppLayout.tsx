@@ -13,6 +13,7 @@ import { TrialBanner } from "@/components/trial/TrialBanner";
 import { FreeTrialTimer } from "@/components/trial/FreeTrialTimer";
 import { BannerVencimentoPlano } from "@/components/layout/BannerVencimentoPlano";
 import { BannerAtivarNotificacoes } from "@/components/layout/BannerAtivarNotificacoes";
+import { PWAUpdateBanner } from "@/components/pwa/PWAUpdateBanner";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { OcultarValoresProvider } from "@/contexts/OcultarValoresContext";
@@ -51,6 +52,8 @@ export function AppLayout({ children }: AppLayoutProps) {
               <AppSidebar />
               <div className="flex min-w-0 flex-1 flex-col min-h-screen overflow-x-hidden">
                 <MobileHeader />
+                {/* Nova versão do app, no celular (no computador é flutuante, no App) */}
+                <PWAUpdateBanner modo="faixa" />
                 {isDashboard && <BannerVencimentoPlano />}
                 <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
                   <div className="px-4 sm:px-6 pt-3">
