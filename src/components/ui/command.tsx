@@ -57,13 +57,58 @@ CommandInput.displayName = CommandPrimitive.Input.displayName;
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const listaRef = React.useRef<HTMLDivElement>(null);
+  React.useImperativeHandle(ref, () => listaRef.current as HTMLDivElement);
+
+  // Lista em Popover (portal no body) aberta dentro de um Dialog: o bloqueio de
+  // rolagem do Dialog (react-remove-scroll, ouvindo no document) só libera o
+  // conteúdo do próprio Dialog e cancela o touchmove/wheel da lista. Quando a
+  // lista ainda tem para onde rolar, o evento não sobe até o document; na borda
+  // ele sobe e o bloqueio segura o fundo, como antes. Sem bloqueio ativo
+  // (body sem data-scroll-locked) nada muda.
+  React.useEffect(() => {
+    const lista = listaRef.current;
+    if (!lista) return;
+    let ultimoY = 0;
+    const podeRolar = (deltaY: number) =>
+      deltaY > 0 ? lista.scrollTop + lista.clientHeight < lista.scrollHeight - 1 : deltaY < 0 && lista.scrollTop > 0;
+    const liberar = (e: Event, deltaY: number) => {
+      if (
+        document.body.hasAttribute("data-scroll-locked") &&
+        lista.closest("[data-radix-popper-content-wrapper]") &&
+        podeRolar(deltaY)
+      ) {
+        e.stopPropagation();
+      }
+    };
+    const aoTocar = (e: TouchEvent) => {
+      ultimoY = e.touches[0]?.clientY ?? 0;
+    };
+    const aoArrastar = (e: TouchEvent) => {
+      const y = e.touches[0]?.clientY ?? ultimoY;
+      liberar(e, ultimoY - y);
+      ultimoY = y;
+    };
+    const aoRolar = (e: WheelEvent) => liberar(e, e.deltaY);
+    lista.addEventListener("touchstart", aoTocar, { passive: true });
+    lista.addEventListener("touchmove", aoArrastar, { passive: true });
+    lista.addEventListener("wheel", aoRolar, { passive: true });
+    return () => {
+      lista.removeEventListener("touchstart", aoTocar);
+      lista.removeEventListener("touchmove", aoArrastar);
+      lista.removeEventListener("wheel", aoRolar);
+    };
+  }, []);
+
+  return (
+    <CommandPrimitive.List
+      ref={listaRef}
+      className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+      {...props}
+    />
+  );
+});
 
 CommandList.displayName = CommandPrimitive.List.displayName;
 
