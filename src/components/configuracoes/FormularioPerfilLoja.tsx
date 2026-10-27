@@ -493,7 +493,7 @@ export function FormularioPerfilLoja({
                     <FormLabel>{t("perfil.email")}</FormLabel>
                     <ComIcone icone={Mail}>
                       <FormControl>
-                        <Input {...field} type="email" placeholder="contato@loja.com" className={CAMPO} />
+                        <Input {...field} type="email" placeholder={t("perfil.emailPlaceholder")} className={CAMPO} />
                       </FormControl>
                     </ComIcone>
                     <FormMessage />
@@ -573,7 +573,7 @@ export function FormularioPerfilLoja({
                         <FormLabel>{t("perfil.site")}</FormLabel>
                         <ComIcone icone={Globe}>
                           <FormControl>
-                            <Input {...field} placeholder="https://www.loja.com" className={CAMPO} />
+                            <Input {...field} placeholder={t("perfil.sitePlaceholder")} className={CAMPO} />
                           </FormControl>
                         </ComIcone>
                         <FormMessage />
@@ -611,7 +611,7 @@ export function FormularioPerfilLoja({
                         <FormLabel>Instagram</FormLabel>
                         <ComIcone icone={Instagram}>
                           <FormControl>
-                            <Input {...field} placeholder="@suaLoja" className={CAMPO} />
+                            <Input {...field} placeholder={t("perfil.instagramPlaceholder")} className={CAMPO} />
                           </FormControl>
                         </ComIcone>
                         <FormMessage />
@@ -627,7 +627,7 @@ export function FormularioPerfilLoja({
                         <FormLabel>Facebook</FormLabel>
                         <ComIcone icone={Facebook}>
                           <FormControl>
-                            <Input {...field} placeholder="/suaLoja" className={CAMPO} />
+                            <Input {...field} placeholder={t("perfil.facebookPlaceholder")} className={CAMPO} />
                           </FormControl>
                         </ComIcone>
                         <FormMessage />
