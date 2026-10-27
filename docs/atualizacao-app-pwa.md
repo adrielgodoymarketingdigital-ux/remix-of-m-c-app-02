@@ -71,7 +71,9 @@ Efeito colateral (registrado como risco, **não** corrigido aqui porque é regra
    - `SKIP_WAITING` **só** quando o usuário toca em "Atualizar agora";
    - recarga **só** na página que pediu a atualização. Se a versão nova for ativada por outra aba, esta página não recarrega: mostra o mesmo aviso, e o botão apenas recarrega.
    - Na **próxima abertura do app do zero** (processo fechado), o navegador ativa a versão nova sozinho, porque não há página aberta: isso já é o comportamento padrão do service worker e não perde nada.
-2. **Aviso** (componente `PWAUpdateBanner`, reaproveitado): "Nova versão disponível" com "Atualizar agora" e "Depois" (adia por 1 hora). Some enquanto houver diálogo, gaveta, menu ou seleção aberta; não aparece nas landings nem nas páginas públicas (catálogo, acompanhamento da OS); não sai na impressão.
+2. **Aviso** (componente `PWAUpdateBanner`, reaproveitado): "Nova versão disponível" com "Atualizar agora" e "Depois" (adia por 1 hora). Não aparece nas landings nem nas páginas públicas (catálogo, acompanhamento da OS); não sai na impressão.
+   - **Celular:** faixa no fluxo da página, logo abaixo do cabeçalho (`AppLayout`). Empurra o conteúdo em vez de flutuar, então não cobre "+ Item", "Finalizar Venda" nem pagamento; diálogos e gavetas ficam por cima dela. (A primeira versão flutuava no canto e cobria o "+ Item" do PDV.) Telas do celular fora do `AppLayout` (login, onboarding) não mostram o aviso.
+   - **Computador:** flutuante no canto inferior direito, ao lado do chat; some enquanto houver diálogo, gaveta ou menu aberto.
 3. **Verificação periódica:** ao voltar ao app (como hoje) e a cada 1 hora com o app visível e on-line.
 4. **Arquivo apagado:** ao `vite:preloadError`, o app procura a versão nova na hora (`registration.update()`); se ela existe, o aviso aparece. A falha em si continua igual (a tela mostra o erro de hoje); não há recarga automática.
 5. **Versão:** gerada no build (`AAAA-MM-DD HH:mm · <commit curto>`, horário de Brasília; commit de `VERCEL_GIT_COMMIT_SHA` ou `git rev-parse`; sem git, `local`) e mostrada no rodapé de Configurações. O `APP_BUILD_ID` passa a ser esse valor (console e página Plano).
@@ -80,7 +82,8 @@ Efeito colateral (registrado como risco, **não** corrigido aqui porque é regra
 
 - **Quem ignora o aviso fica na versão antiga** até fechar o app de verdade. É o preço de nunca recarregar sozinho; o aviso volta depois de 1 hora.
 - **Transição:** quem está na versão de hoje recebe esta atualização pelo caminho antigo (recarga ao sair do app). Só a partir dela vale o comportamento novo.
-- **"Atualizar agora" no meio de um formulário perde o que não foi salvo**, como qualquer recarga. O aviso some com diálogos abertos, mas o assistente de OS e o PDV não são diálogos em todas as telas; a decisão é do usuário.
+- **"Atualizar agora" no meio de um formulário perde o que não foi salvo**, como qualquer recarga. O carrinho do PDV, por exemplo, não é diálogo; a decisão é do usuário.
+- **Faixa do celular aparece e empurra o conteúdo** uns 80 px: se surgir no instante de um toque, o toque pode cair em outro ponto da tela. Não recarrega nada.
 - **iOS instalado:** o Safari pode suspender a página em segundo plano e matar o processo; nesse caso a versão nova entra sozinha na próxima abertura (sem perda além da que o próprio iOS já causa).
 - **Arquivo apagado continua possível** para quem não atualizar, nos arquivos fora do precache; o aviso passa a aparecer, mas a falha não é evitada.
 - **Rodapé de versão** muda o hash do pacote principal a cada build (o valor muda sempre). Sem efeito para o usuário.
