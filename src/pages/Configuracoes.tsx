@@ -8,6 +8,7 @@ import { SeletorTema } from "@/components/configuracoes/SeletorTema";
 import { SeletorIdioma } from "@/components/configuracoes/SeletorIdioma";
 import { PersonalizacaoCores } from "@/components/configuracoes/PersonalizacaoCores";
 import { NotificationSettings } from "@/components/pwa/NotificationSettings";
+import { VersaoApp } from "@/components/pwa/VersaoApp";
 import { ConfiguracaoNumeracaoOS } from "@/components/configuracoes/ConfiguracaoNumeracaoOS";
 import { ConfiguracaoPermissoes } from "@/components/configuracoes/ConfiguracaoPermissoes";
 import { ExportacaoDados } from "@/components/configuracoes/ExportacaoDados";
@@ -264,6 +265,8 @@ export default function Configuracoes() {
               <CardProgressoPerfil status={statusRecibos} />
             </div>
           </Tabs>
+
+          <VersaoApp />
         </div>
       </main>
     </AppLayout>

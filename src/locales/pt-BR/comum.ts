@@ -58,6 +58,8 @@ const comum = {
   },
   // Data e hora por extenso ("26/10/2026 às 18:55"); data e hora já formatadas.
   dataHora: "{{data}} às {{hora}}",
+  // Rodapé de Configurações. {{versao}}: "AAAA-MM-DD HH:mm · <commit>", gerada no build.
+  versaoApp: "Versão {{versao}}",
 } as const;
 
 export default comum;

@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import type { ManualChunkMeta } from "rollup";
+import { execSync } from "node:child_process";
 
 // Pacotes de cada chunk de vendor. Como no formato objeto do manualChunks, o
 // Rollup também puxa para o chunk as dependências que só eles usam.
@@ -120,9 +121,30 @@ function manualChunks(id: string, meta: ManualChunkMeta): string | undefined {
   return iconesSoDaLanding.has(id) ? "icones-landing" : undefined;
 }
 
+// Versão mostrada em Configurações: data/hora do build (Brasília) e commit curto.
+// Na Vercel o commit vem de VERCEL_GIT_COMMIT_SHA; sem git, "local".
+function versaoDoBuild() {
+  let commit = process.env.VERCEL_GIT_COMMIT_SHA ?? "";
+  if (!commit) {
+    try {
+      commit = execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    } catch {
+      commit = "";
+    }
+  }
+  const data = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).format(new Date());
+  return `${data} · ${commit.slice(0, 7) || "local"}`;
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   assetsInclude: ["**/*.JPG"],
+  define: {
+    __VERSAO_APP__: JSON.stringify(versaoDoBuild()),
+  },
   server: {
     host: "::",
     port: 8080,

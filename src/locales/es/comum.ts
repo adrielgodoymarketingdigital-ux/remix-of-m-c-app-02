@@ -51,6 +51,7 @@ const comum: Traducao<typeof comumPtBR> = {
     naoInformada: "No informada",
   },
   dataHora: "{{data}} a las {{hora}}",
+  versaoApp: "Versión {{versao}}",
 };
 
 export default comum;
