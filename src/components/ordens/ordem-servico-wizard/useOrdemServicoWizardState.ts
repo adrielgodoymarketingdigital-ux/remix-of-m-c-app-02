@@ -164,7 +164,7 @@ export function useOrdemServicoWizardState({
     }
 
     if (campo === 'nome') {
-      query = query.ilike("nome", `%${termo}%`).order("nome").limit(8);
+      query = query.ilike("nome", `%${termo.trim()}%`).order("nome").limit(8);
     } else {
       const digitos = termo.replace(/\D/g, '');
       if (!digitos) {
