@@ -1,3 +1,5 @@
+import comumPtBR from "../locales/pt-BR/comum.ts";
+
 // Formas customizadas são salvas no banco como forma_pagamento="outro",
 // com o nome real embutido em observacoes como sufixo "[forma:NomeDaForma]" (ver PDV.tsx)
 const REGEX_FORMA_CUSTOMIZADA = /\[forma:(.+?)\]/;
@@ -26,21 +28,22 @@ export interface BreakdownFormaPagamento {
   cor: "dinheiro" | "pix" | "cartao" | "a_receber" | "customizada";
 }
 
-const NOMES_FORMA: Record<string, string> = {
-  dinheiro: "Dinheiro",
-  pix: "PIX",
-  debito: "Débito",
-  credito: "Crédito",
-  credito_parcelado: "Crédito Parcelado",
-  a_receber: "A Receber",
-  a_prazo: "A Receber",
-};
+/**
+ * Nomes em pt-BR (tabela única em locales/pt-BR/comum.ts). São os que vão para
+ * o banco e para o recibo; a tela traduz passando `nomes` (useNomesFormaPagamento).
+ */
+export const NOMES_FORMA: Readonly<Record<string, string>> = comumPtBR.formaPagamento.curto;
+const NAO_INFORMADA = comumPtBR.formaPagamento.naoInformada;
 
 /** Nome de exibição de uma forma de pagamento (resolve a forma customizada salva em observacoes). */
-export function nomeFormaPagamento(forma: string | null | undefined, observacoes?: string | null): string {
-  if (!forma) return "Não informada";
+export function nomeFormaPagamento(
+  forma: string | null | undefined,
+  observacoes?: string | null,
+  nomes: { curto: Readonly<Record<string, string>>; naoInformada: string } = { curto: NOMES_FORMA, naoInformada: NAO_INFORMADA },
+): string {
+  if (!forma) return nomes.naoInformada;
   const nomeCustomizado = forma === "outro" ? extrairNomeFormaCustomizada(observacoes) : null;
-  return nomeCustomizado ?? NOMES_FORMA[forma] ?? forma;
+  return nomeCustomizado ?? nomes.curto[forma] ?? forma;
 }
 
 const CORES_FORMA: Record<string, BreakdownFormaPagamento["cor"]> = {
@@ -62,11 +65,12 @@ function adicionar(
   mapa: Record<string, { nome: string; total: number; quantidade: number; cor: BreakdownFormaPagamento["cor"] }>,
   formaBanco: string,
   observacoes: string | null | undefined,
-  valor: number
+  valor: number,
+  nomes: Readonly<Record<string, string>>
 ) {
   const nomeCustomizado = formaBanco === "outro" ? extrairNomeFormaCustomizada(observacoes) : null;
   const chave = nomeCustomizado ? `custom:${nomeCustomizado}` : formaBanco;
-  const nome = nomeCustomizado ?? NOMES_FORMA[formaBanco] ?? formaBanco;
+  const nome = nomeCustomizado ?? nomes[formaBanco] ?? formaBanco;
   const cor = nomeCustomizado ? "customizada" : CORES_FORMA[formaBanco] ?? "customizada";
 
   if (!mapa[chave]) mapa[chave] = { nome, total: 0, quantidade: 0, cor };
@@ -74,7 +78,11 @@ function adicionar(
   mapa[chave].quantidade += 1;
 }
 
-export function agruparVendasPorFormaPagamento(vendas: VendaFormaPagamento[]): BreakdownFormaPagamento[] {
+/** `nomes`: nomes de exibição (padrão: pt-BR; a tela passa os do idioma aplicado). */
+export function agruparVendasPorFormaPagamento(
+  vendas: VendaFormaPagamento[],
+  nomes: Readonly<Record<string, string>> = NOMES_FORMA
+): BreakdownFormaPagamento[] {
   const mapa: Record<string, { nome: string; total: number; quantidade: number; cor: BreakdownFormaPagamento["cor"] }> = {};
 
   for (const venda of vendas) {
@@ -89,11 +97,11 @@ export function agruparVendasPorFormaPagamento(vendas: VendaFormaPagamento[]): B
     if (venda.segunda_forma_pagamento && valorSegunda > 0) {
       // Pagamento duplo: rateia entre a 1ª forma (restante) e a 2ª forma
       const formaBanco = venda.forma_pagamento ?? "outro";
-      adicionar(mapa, formaBanco, venda.observacoes, Math.max(0, totalVenda - valorSegunda));
-      adicionar(mapa, venda.segunda_forma_pagamento, null, valorSegunda);
+      adicionar(mapa, formaBanco, venda.observacoes, Math.max(0, totalVenda - valorSegunda), nomes);
+      adicionar(mapa, venda.segunda_forma_pagamento, null, valorSegunda, nomes);
     } else {
       const formaBanco = venda.forma_pagamento ?? "outro";
-      adicionar(mapa, formaBanco, venda.observacoes, totalVenda);
+      adicionar(mapa, formaBanco, venda.observacoes, totalVenda, nomes);
     }
   }
 

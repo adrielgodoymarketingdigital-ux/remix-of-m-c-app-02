@@ -25,6 +25,31 @@ const comum: Traducao<typeof comumPtBR> = {
       hours: "Por 24 horas",
     },
   },
+  // Un solo nombre por forma en todas las pantallas (en pt-BR hay variantes).
+  formaPagamento: {
+    curto: {
+      dinheiro: "Efectivo",
+      pix: "Pix",
+      debito: "Débito",
+      credito: "Crédito",
+      credito_parcelado: "Crédito en cuotas",
+      a_receber: "Por cobrar",
+      a_prazo: "Por cobrar",
+    },
+    longo: {
+      dinheiro: "Efectivo",
+      pix: "Pix",
+      debito: "Débito",
+      credito: "Crédito",
+      credito_parcelado: "Crédito en cuotas",
+      a_receber: "Por cobrar",
+      a_prazo: "Por cobrar",
+    },
+    aReceberAPrazo: "Por cobrar",
+    pixAvulsa: "Pix",
+    transferencia: "Transferencia",
+    naoInformada: "No informada",
+  },
 };
 
 export default comum;

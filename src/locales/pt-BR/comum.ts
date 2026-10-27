@@ -24,6 +24,38 @@ const comum = {
       hours: "Por 24 horas",
     },
   },
+  // Formas de pagamento: tabela ÚNICA. Cada tela usa hoje um nome um pouco
+  // diferente; as variantes ficam como chaves próprias para o pt-BR continuar
+  // letra por letra igual. O que vai para o banco e para o recibo continua em
+  // pt-BR fixo (lib/formaPagamento.ts lê este mesmo arquivo).
+  formaPagamento: {
+    // PDV, pagamento duplo, filtro de Vendas, formas padrão e Financeiro.
+    curto: {
+      dinheiro: "Dinheiro",
+      pix: "PIX",
+      debito: "Débito",
+      credito: "Crédito",
+      credito_parcelado: "Crédito Parcelado",
+      a_receber: "A Receber",
+      a_prazo: "A Receber",
+    },
+    // Lista de Vendas (TabelaVendas).
+    longo: {
+      dinheiro: "Dinheiro",
+      pix: "PIX",
+      debito: "Cartão de Débito",
+      credito: "Cartão de Crédito",
+      credito_parcelado: "Cartão Parcelado",
+      a_receber: "A Receber",
+      a_prazo: "A Prazo",
+    },
+    // Editar venda.
+    aReceberAPrazo: "A Receber (A Prazo)",
+    // Venda avulsa.
+    pixAvulsa: "Pix",
+    transferencia: "Transferência",
+    naoInformada: "Não informada",
+  },
 } as const;
 
 export default comum;
