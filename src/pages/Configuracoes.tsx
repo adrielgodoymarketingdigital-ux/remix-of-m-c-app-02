@@ -5,6 +5,7 @@ import { AssinaturaLojaConfig } from "@/components/configuracoes/AssinaturaLojaC
 import { CardProgressoPerfil, CardStatusPerfil } from "@/components/configuracoes/ProgressoPerfil";
 import { PreviewRecibo } from "@/components/configuracoes/PreviewRecibo";
 import { SeletorTema } from "@/components/configuracoes/SeletorTema";
+import { SeletorIdioma } from "@/components/configuracoes/SeletorIdioma";
 import { PersonalizacaoCores } from "@/components/configuracoes/PersonalizacaoCores";
 import { NotificationSettings } from "@/components/pwa/NotificationSettings";
 import { ConfiguracaoNumeracaoOS } from "@/components/configuracoes/ConfiguracaoNumeracaoOS";
@@ -224,6 +225,8 @@ export default function Configuracoes() {
 
                 <TabsContent value="aparencia" className="space-y-4 mt-0">
                   <SeletorTema />
+                  {/* Só existe para quem pode ver (useI18nVisivel: hoje, admin); para os demais, nada muda. */}
+                  <SeletorIdioma />
                 </TabsContent>
 
                 <TabsContent value="cores" className="space-y-4 mt-0">
