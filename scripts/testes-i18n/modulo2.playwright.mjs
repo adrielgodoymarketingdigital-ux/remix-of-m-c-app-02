@@ -87,7 +87,11 @@ function tabelasBase({ admin, idioma }) {
     user_roles: admin ? [{ user_id: USUARIO.id, role: "admin" }] : [],
     profiles: [{
       id: USUARIO.id, user_id: USUARIO.id, nome: "Ana Loja Teste", email: USUARIO.email, celular: "11999990000", created_at: "2026-01-10T12:00:00Z",
-      idioma, mercado: "BR", pais: "BR", moeda: "BRL", fuso_horario: "America/Sao_Paulo", preferencias_os: null,
+      // Perfil em espanhol = conta do mercado ES_LATAM (México, dólar, fuso da Cidade do México).
+      ...(idioma === "es"
+        ? { idioma, mercado: "ES_LATAM", pais: "MX", moeda: "USD", fuso_horario: "America/Mexico_City" }
+        : { idioma, mercado: "BR", pais: "BR", moeda: "BRL", fuso_horario: "America/Sao_Paulo" }),
+      preferencias_os: null,
     }],
     assinaturas: [{
       id: "a1", user_id: USUARIO.id, plano_tipo: "profissional_ultra_mensal", status: "active", data_inicio: "2026-01-10T12:00:00Z",
@@ -227,6 +231,8 @@ async function abrir(navegador, caso, estado) {
     localStorage.setItem("sb-qztuzcchknptrvkdmdph-auth-token", JSON.stringify(sessao));
     // Não abrir tutorial/onboarding automático (mesmo estado nas duas árvores).
     localStorage.setItem("mec_notif_banner_dismissed", "true");
+    // Aviso de instalação do PWA (iPhone) cobre a tela: dispensado (data fixa, igual nas duas árvores).
+    localStorage.setItem("pwa-install-declined", "2026-10-26T12:00:00.000Z");
     for (const [k, v] of Object.entries(extras)) localStorage.setItem(k, v);
   }, { sessao: SESSAO, extras: caso.localStorage ?? {} });
   await ctx.routeWebSocket(/supabase\.co/, () => {});

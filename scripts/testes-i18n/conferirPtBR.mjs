@@ -11,15 +11,22 @@ const [ref = "origin/main", ...nsArg] = process.argv.slice(2);
 const namespaces = nsArg.length ? nsArg : ["pdv", "vendas", "comum"];
 const git = (...a) => execFileSync("git", a, { encoding: "utf8", maxBuffer: 1 << 28 });
 const arquivos = git("ls-tree", "-r", "--name-only", ref, "src").split("\n").filter((f) => /\.(tsx?|ts)$/.test(f) && !f.startsWith("src/locales/"));
-const fonte = arquivos.map((f) => git("show", `${ref}:${f}`)).join("\n");
+// Espaços e quebras de linha juntados: no JSX, a quebra entre duas linhas de texto vira um espaço.
+const fonte = arquivos.map((f) => git("show", `${ref}:${f}`)).join("\n").replace(/\s+/g, " ");
 // Entidades e escapes que o JSX/JS aceitam para o mesmo texto.
 const variantes = (t) => [t, t.replace(/"/g, '\\"'), t.replace(/'/g, "\\'"), t.replace(/"/g, "&quot;")];
 
 // Textos que o componente montava em pedaços (plural com "s" condicional,
 // concatenação): não existem inteiros no código antigo. Quem prova que ficaram
 // iguais é o HTML do Playwright.
+// Os que nenhum fluxo do Playwright mostra têm a montagem antiga comparada em
+// pdvVendas.test.ts ("compostos ...").
 const COMPOSTOS = new Set([
   "vendas:aReceber.pendentes_zero", "vendas:aReceber.pendentes_one", "vendas:aReceber.pendentes_other",
+  "vendas:tabela.cancelarSaldo.comData", "vendas:tabela.cancelarSaldo.semData",
+  "vendas:cancelar.estornarQuantidade_zero", "vendas:cancelar.estornarQuantidade_one", "vendas:cancelar.estornarQuantidade_other",
+  "vendas:cancelar.aparelhoTrocaComNome", "vendas:cancelar.trocaInteiraItens", "vendas:cancelar.trocaInteiraVenda",
+  "vendas:cancelar.avisoDevolucao", "vendas:alterarData.alteradoEm",
 ]);
 
 let falhas = 0, total = 0, compostos = 0;
@@ -37,10 +44,11 @@ for (const ns of namespaces) {
     total++;
     if (COMPOSTOS.has(`${ns}:${k}`)) { compostos++; continue; }
     // Pedaços fixos entre variáveis; formatos do date-fns e textos só de 1 caractere ficam de fora.
-    const pedacos = v.split(/\{\{\w+\}\}/).map((p) => p).filter((p) => p.trim().length > 1);
+    // <b>…</b> (negrito) também separa: no código antigo era <strong>.
+    const pedacos = v.split(/\{\{\w+\}\}|<\/?b>/).filter((p) => p.trim().length > 1);
     const faltando = pedacos.filter((p) => !variantes(p).some((x) => fonte.includes(x)) && !variantes(p.trim()).some((x) => fonte.includes(x)));
     if (faltando.length) { falhas++; console.log(`NÃO ACHEI ${ns}:${k} → ${JSON.stringify(faltando)}`); }
   }
 }
-console.log(`${total} textos conferidos em ${ref} (${compostos} compostos, conferidos pelo HTML), ${falhas} sem correspondência`);
+console.log(`${total} textos conferidos em ${ref} (${compostos} compostos, conferidos pelo HTML ou pelo pdvVendas.test.ts), ${falhas} sem correspondência`);
 process.exit(falhas ? 1 : 0);

@@ -56,6 +56,8 @@ const comum = {
     transferencia: "Transferência",
     naoInformada: "Não informada",
   },
+  // Data e hora por extenso ("26/10/2026 às 18:55"); data e hora já formatadas.
+  dataHora: "{{data}} às {{hora}}",
 } as const;
 
 export default comum;

@@ -9,8 +9,8 @@ export const SELECT_VENDA_COM_ITENS = `
           pecas (nome)
         ` as const;
 
-/** Nome do item de uma linha de venda (dispositivo, produto, peça, OS ou avulsa). */
-export function getNomeItem(venda: Venda): string {
+/** Nome do item de uma linha de venda (dispositivo, produto, peça, OS ou avulsa). `rotuloAvulsa`: a tela traduz. */
+export function getNomeItem(venda: Venda, rotuloAvulsa = "Venda Avulsa"): string {
   if (venda.tipo === "dispositivo") {
     if (venda.dispositivos) {
       return `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`;
@@ -24,7 +24,7 @@ export function getNomeItem(venda: Venda): string {
     return `OS ${venda.ordens_servico.numero_os}`;
   }
   if (venda.tipo === "avulsa") {
-    return venda.produtos?.nome || "Venda Avulsa";
+    return venda.produtos?.nome || rotuloAvulsa;
   }
   if (venda.tipo === "produto") {
     if (venda.produtos?.nome) return venda.produtos.nome;

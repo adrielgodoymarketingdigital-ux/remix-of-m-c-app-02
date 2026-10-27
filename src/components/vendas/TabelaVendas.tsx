@@ -1,4 +1,7 @@
 import { Fragment, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { ComNegrito } from "@/components/i18n/ComNegrito";
+import type { TFunction } from "i18next";
 import {
   Table,
   TableBody,
@@ -13,12 +16,13 @@ import { Card } from "@/components/ui/card";
 import { Venda } from "@/types/venda";
 import { getNomeItem } from "@/lib/vendas/itensVenda";
 import { DialogEditarVenda } from "./DialogEditarVenda";
-import { formatDateTime, formatDate, formatDataVenda, extrairDataLocal } from "@/lib/formatters";
+import { extrairDataLocal } from "@/lib/formatters";
+import { useFormatadores, type Formatadores } from "@/hooks/useFormatadores";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Printer, Ban, CheckCircle, Clock, Trash2, Pencil, Undo2, ChevronDown, ChevronRight, ShoppingCart, CalendarClock, CalendarDays, MoreHorizontal, Smartphone, Package, Wrench, ShoppingBag, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/formatters";
 import { TextoAjustado } from "@/components/vendas/TextoAjustado";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -63,22 +67,7 @@ interface TabelaVendasProps {
   onAlterarDataVenda?: (vendaId: string, novaDataISO: string) => Promise<boolean>;
 }
 
-const tipoLabels: Record<string, string> = {
-  dispositivo: "Dispositivo",
-  produto: "Produto",
-  servico: "Serviço",
-  avulsa: "Venda Avulsa",
-};
-
-const formaPagamentoLabels: Record<string, string> = {
-  dinheiro: "Dinheiro",
-  credito: "Cartão de Crédito",
-  credito_parcelado: "Cartão Parcelado",
-  debito: "Cartão de Débito",
-  pix: "PIX",
-  a_receber: "A Receber",
-  a_prazo: "A Prazo",
-};
+// Rótulos de tipo: vendas:tabela.tipos; formas de pagamento: comum.formaPagamento.longo.
 
 const tipoColors: Record<string, string> = {
   dispositivo: "bg-[#246BFF] hover:bg-[#246BFF] text-white",
@@ -100,7 +89,8 @@ const iconeTipo: Record<string, LucideIcon> = {
 
 // Preço do card (celular): fonte ajustada para nunca estourar; riscado se cancelada.
 function PrecoVenda({ valor, cancelada }: { valor: number; cancelada?: boolean }) {
-  const caracteres = formatCurrency(valor).length;
+  const fmt = useFormatadores();
+  const caracteres = fmt.moeda(valor).length;
   return (
     // Largura = o que o valor precisa a 15px (≈9px por caractere), limitada a 44% do card
     <div
@@ -184,10 +174,17 @@ function agruparVendas(vendas: Venda[]): VendaOuGrupo[] {
   return allItems.map(i => i.item);
 }
 
-function getResumoGrupo(vendas: Venda[]): string {
-  const nomes = vendas.map(v => getNomeItem(v));
+function getResumoGrupo(vendas: Venda[], t: TFunction<"vendas">): string {
+  const nomes = vendas.map(v => getNomeItem(v, t("tabela.tipos.avulsa")));
   if (nomes.length <= 3) return nomes.join(", ");
-  return `${nomes.slice(0, 2).join(", ")} +${nomes.length - 2} itens`;
+  return t("tabela.resumoGrupo", { nomes: nomes.slice(0, 2).join(", "), count: nomes.length - 2 });
+}
+
+// "(R$50,00)" da 2ª forma: no Brasil continua o texto de antes (sem espaço);
+// em outro idioma/moeda, o formatador central.
+function valorSegundaForma(valor: number, fmt: Formatadores): string {
+  if (fmt.ctx.idioma === "pt-BR" && fmt.ctx.moeda === "BRL") return `R$${valor.toFixed(2).replace('.', ',')}`;
+  return fmt.moeda(valor);
 }
 
 // Texto de uma linha que corta com "…" e mostra o valor completo no tooltip (tabela desktop).
@@ -204,7 +201,8 @@ function TextoTruncado({ texto, tooltip, className = "" }: { texto: string; tool
 
 // Data em duas linhas (dia / hora) para caber numa coluna estreita.
 function DataVendaCompacta({ data, className = "" }: { data: string; className?: string }) {
-  const [dia, hora] = formatDataVenda(data).split(" ");
+  const fmt = useFormatadores();
+  const [dia, hora] = fmt.dataVenda(data).split(" ");
   return (
     <div className={`leading-tight ${className}`}>
       <div className="whitespace-nowrap">{dia}</div>
@@ -228,13 +226,19 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   const [gruposExpandidos, setGruposExpandidos] = useState<Set<string>>(new Set());
   const [alvoAlterarData, setAlvoAlterarData] = useState<{ venda: Venda; descricao: string; quantidadeItens: number } | null>(null);
   const isMobile = useIsMobile();
+  // Textos: namespace "vendas"; moeda e datas: useFormatadores (conta).
+  const { t } = useTranslation("vendas");
+  const fmt = useFormatadores();
+  const formas = useNomesFormaPagamento().longo as Readonly<Record<string, string>>;
+  const tipoLabels = t("tabela.tipos", { returnObjects: true }) as Readonly<Record<string, string>>;
+  const nomeItem = (venda: Venda) => getNomeItem(venda, tipoLabels.avulsa);
 
   const vendasAgrupadas = useMemo(() => agruparVendas(vendas), [vendas]);
   // Venda com troca parcelada: o que o cliente paga por parcela (sem troca, fora do mapa: valor de sempre).
   const parcelasComTroca = useMemo(() => parcelasComTrocaNaTela(vendas), [vendas]);
   const indicacaoTroca = (venda: Venda) => {
     const comTroca = parcelasComTroca.get(venda.id);
-    return comTroca ? <span className="block text-[10px] font-normal text-amber-600">troca −{formatCurrency(comTroca.trocaVenda)}</span> : null;
+    return comTroca ? <span className="block text-[10px] font-normal text-amber-600">{t("tabela.troca", { valor: fmt.moeda(comTroca.trocaVenda) })}</span> : null;
   };
 
   const toggleGrupo = (grupoId: string) => {
@@ -338,10 +342,10 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
 
   // Motivo exibido no tooltip do calendário desativado (mesmas mensagens de alterarDataVenda.ts).
   const motivoSemAlterarData = (venda: Venda): string => {
-    if (venda.cancelada) return "Vendas canceladas não podem ter a data alterada.";
-    if (venda.tipo === "servico") return "A data de serviço segue a entrega da OS — altere pela Ordem de Serviço.";
-    if (isVendaDeItemOS(venda.observacoes)) return "Este item foi usado em uma OS — a data acompanha a Ordem de Serviço.";
-    return "A data desta venda não pode ser alterada.";
+    if (venda.cancelada) return t("tabela.motivoSemAlterarData.cancelada");
+    if (venda.tipo === "servico") return t("tabela.motivoSemAlterarData.servico");
+    if (isVendaDeItemOS(venda.observacoes)) return t("tabela.motivoSemAlterarData.itemOS");
+    return t("tabela.motivoSemAlterarData.outro");
   };
 
   // Tabela desktop: calendário ativo ou, quando a regra não permite, desativado com o motivo no tooltip.
@@ -349,7 +353,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     if (!onAlterarDataVenda) return null;
     if (podeAlterarData(venda)) {
       return (
-        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(venda); }} className="h-7 w-7 p-0" title="Alterar data da venda">
+        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(venda); }} className="h-7 w-7 p-0" title={t("tabela.acoes.alterarData")}>
           <CalendarDays className="h-4 w-4" />
         </Button>
       );
@@ -372,7 +376,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     const doGrupo = venda.grupo_venda ? vendas.filter((v) => v.grupo_venda === venda.grupo_venda) : [venda];
     setAlvoAlterarData({
       venda,
-      descricao: doGrupo.length > 1 ? getResumoGrupo(doGrupo) : getNomeItem(venda),
+      descricao: doGrupo.length > 1 ? getResumoGrupo(doGrupo, t) : nomeItem(venda),
       quantidadeItens: doGrupo.length,
     });
   };
@@ -384,8 +388,8 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         size="sm"
         onClick={(e) => { e.stopPropagation(); handleAbrirAlterarData(venda); }}
         className="h-8 w-8 p-0"
-        title="Alterar data da venda"
-        aria-label="Alterar data da venda"
+        title={t("tabela.acoes.alterarData")}
+        aria-label={t("tabela.acoes.alterarData")}
       >
         <CalendarDays className="h-4 w-4" />
       </Button>
@@ -415,7 +419,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   if (vendas.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        Nenhuma venda encontrada
+        {t("tabela.nenhuma")}
       </div>
     );
   }
@@ -432,7 +436,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     const isVencida = dataVencimento && dataVencimento < hoje;
     const isVencendo = dataVencimento && dataVencimento >= hoje && dataVencimento <= em3Dias;
 
-    if (venda.cancelada) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FEECEC] text-[#D92D20] dark:bg-red-500/15 dark:text-red-400")}>Cancelada</Badge>;
+    if (venda.cancelada) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FEECEC] text-[#D92D20] dark:bg-red-500/15 dark:text-red-400")}>{t("tabela.status.cancelada")}</Badge>;
     if (compacto && venda.tipo === "servico" && (venda.contaAPrazoPendente || venda.saldoCancelado)) {
       const pendente = !!venda.contaAPrazoPendente;
       const valor = venda.contaAPrazoPendente?.valor ?? venda.saldoCancelado?.valor ?? 0;
@@ -446,11 +450,11 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                 : "bg-muted text-muted-foreground border-muted-foreground/30"}`}
             >
               {pendente ? <CalendarClock className="h-3 w-3 mr-1 shrink-0" /> : <Ban className="h-3 w-3 mr-1 shrink-0" />}
-              <span className="truncate">{pendente ? "Saldo a prazo" : "Saldo não receb."}</span>
+              <span className="truncate">{pendente ? t("tabela.status.saldoAPrazo") : t("tabela.status.saldoNaoRecebidoCurto")}</span>
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            {pendente ? "Saldo a prazo" : "Saldo não recebido"}: <ValorMonetario valor={valor} tipo="preco" />
+            {t("tabela.status.rotuloValor", { rotulo: pendente ? t("tabela.status.saldoAPrazo") : t("tabela.status.saldoNaoRecebido") })}<ValorMonetario valor={valor} tipo="preco" />
           </TooltipContent>
         </Tooltip>
       );
@@ -459,7 +463,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
       return (
         <Badge variant="outline" className={cn(SELO, "bg-orange-500/10 text-orange-600 border-orange-500/30 whitespace-nowrap")}>
           <CalendarClock className="h-3 w-3 mr-1" />
-          Saldo a prazo: <ValorMonetario valor={venda.contaAPrazoPendente.valor} tipo="preco" />
+          {t("tabela.status.saldoAPrazoValor")}<ValorMonetario valor={venda.contaAPrazoPendente.valor} tipo="preco" />
         </Badge>
       );
     }
@@ -467,17 +471,17 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
       return (
         <Badge variant="outline" className={cn(SELO, "bg-muted text-muted-foreground border-muted-foreground/30 whitespace-nowrap")}>
           <Ban className="h-3 w-3 mr-1" />
-          Saldo não recebido: <ValorMonetario valor={venda.saldoCancelado.valor} tipo="preco" />
+          {t("tabela.status.saldoNaoRecebidoValor")}<ValorMonetario valor={venda.saldoCancelado.valor} tipo="preco" />
         </Badge>
       );
     }
     if (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") {
-      if (venda.recebido) return <Badge className={cn(SELO, "bg-[#12B76A] text-white hover:bg-[#12B76A]")}>Recebido</Badge>;
-      if (isVencida) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FEECEC] text-[#D92D20] dark:bg-red-500/15 dark:text-red-400")}>{compacto ? "Vencida" : "A Receber - Vencida"}</Badge>;
-      if (isVencendo) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400")}>A Receber</Badge>;
-      return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FFF1DA] text-[#A66A00] dark:bg-amber-500/15 dark:text-amber-400")}>A Receber</Badge>;
+      if (venda.recebido) return <Badge className={cn(SELO, "bg-[#12B76A] text-white hover:bg-[#12B76A]")}>{t("tabela.status.recebido")}</Badge>;
+      if (isVencida) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FEECEC] text-[#D92D20] dark:bg-red-500/15 dark:text-red-400")}>{compacto ? t("tabela.status.vencida") : t("tabela.status.aReceberVencida")}</Badge>;
+      if (isVencendo) return <Badge variant="outline" className={cn(SELO, "border-transparent bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400")}>{t("tabela.status.aReceber")}</Badge>;
+      return <Badge variant="outline" className={cn(SELO, "border-transparent bg-[#FFF1DA] text-[#A66A00] dark:bg-amber-500/15 dark:text-amber-400")}>{t("tabela.status.aReceber")}</Badge>;
     }
-    return <Badge className={cn(SELO, "bg-[#12B76A] text-white hover:bg-[#12B76A]")}>Pago</Badge>;
+    return <Badge className={cn(SELO, "bg-[#12B76A] text-white hover:bg-[#12B76A]")}>{t("tabela.status.pago")}</Badge>;
   };
 
   // Ações do card (celular): mesmas condições, ordem e handlers de antes;
@@ -485,14 +489,14 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
   const renderAcoesVenda = (venda: Venda) => {
     const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
     const acoes: { chave: string; titulo: string; Icone: LucideIcon; onClick: () => void; cor?: string }[] = [];
-    if (isAReceber && onMarcarRecebido) acoes.push({ chave: "recebido", titulo: "Marcar como Recebido", Icone: CheckCircle, onClick: () => onMarcarRecebido(venda.id), cor: "text-green-600 hover:text-green-700 dark:text-green-400" });
-    if (!venda.cancelada && (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && venda.recebido && onMarcarPendente) acoes.push({ chave: "pendente", titulo: "Voltar para Pendente", Icone: Undo2, onClick: () => onMarcarPendente(venda.id), cor: "text-orange-600 hover:text-orange-700 dark:text-orange-400" });
-    if (!venda.cancelada && venda.tipo !== "servico" && onEditarVenda) acoes.push({ chave: "editar", titulo: "Editar Venda", Icone: Pencil, onClick: () => handleAbrirEditar(venda) });
-    if (podeAlterarData(venda)) acoes.push({ chave: "data", titulo: "Alterar data da venda", Icone: CalendarDays, onClick: () => handleAbrirAlterarData(venda) });
-    acoes.push({ chave: "imprimir", titulo: "Imprimir Recibo", Icone: Printer, onClick: () => handleImprimirRecibo(venda) });
-    if (venda.tipo === "servico" && venda.contaAPrazoPendente && onCancelarContaAPrazoOS) acoes.push({ chave: "saldo", titulo: "Cancelar Saldo a Prazo", Icone: CalendarClock, onClick: () => handleAbrirCancelarSaldo(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
-    if (!venda.cancelada && venda.tipo !== "servico" && onCancelarVenda) acoes.push({ chave: "cancelar", titulo: "Cancelar Venda", Icone: Ban, onClick: () => handleAbrirCancelar(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
-    if (venda.cancelada && onExcluirVenda && venda.tipo !== "servico") acoes.push({ chave: "excluir", titulo: "Excluir Venda", Icone: Trash2, onClick: () => handleAbrirExcluir(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
+    if (isAReceber && onMarcarRecebido) acoes.push({ chave: "recebido", titulo: t("tabela.acoes.marcarRecebido"), Icone: CheckCircle, onClick: () => onMarcarRecebido(venda.id), cor: "text-green-600 hover:text-green-700 dark:text-green-400" });
+    if (!venda.cancelada && (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && venda.recebido && onMarcarPendente) acoes.push({ chave: "pendente", titulo: t("tabela.acoes.voltarPendente"), Icone: Undo2, onClick: () => onMarcarPendente(venda.id), cor: "text-orange-600 hover:text-orange-700 dark:text-orange-400" });
+    if (!venda.cancelada && venda.tipo !== "servico" && onEditarVenda) acoes.push({ chave: "editar", titulo: t("tabela.acoes.editar"), Icone: Pencil, onClick: () => handleAbrirEditar(venda) });
+    if (podeAlterarData(venda)) acoes.push({ chave: "data", titulo: t("tabela.acoes.alterarData"), Icone: CalendarDays, onClick: () => handleAbrirAlterarData(venda) });
+    acoes.push({ chave: "imprimir", titulo: t("tabela.acoes.imprimir"), Icone: Printer, onClick: () => handleImprimirRecibo(venda) });
+    if (venda.tipo === "servico" && venda.contaAPrazoPendente && onCancelarContaAPrazoOS) acoes.push({ chave: "saldo", titulo: t("tabela.acoes.cancelarSaldo"), Icone: CalendarClock, onClick: () => handleAbrirCancelarSaldo(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
+    if (!venda.cancelada && venda.tipo !== "servico" && onCancelarVenda) acoes.push({ chave: "cancelar", titulo: t("tabela.acoes.cancelar"), Icone: Ban, onClick: () => handleAbrirCancelar(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
+    if (venda.cancelada && onExcluirVenda && venda.tipo !== "servico") acoes.push({ chave: "excluir", titulo: t("tabela.acoes.excluir"), Icone: Trash2, onClick: () => handleAbrirExcluir(venda), cor: "text-destructive hover:text-destructive dark:text-red-400" });
 
     return (
       <div className="mt-[18px] flex border-t border-border py-3">
@@ -516,21 +520,21 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
 
   // Tabela desktop: a antiga coluna "Quantidade" virou prefixo "N×" no item (só quando > 1).
   const renderItemCompacto = (venda: Venda) => {
-    const nome = getNomeItem(venda);
+    const nome = nomeItem(venda);
     const qtd = venda.quantidade > 1 ? `${venda.quantidade}× ` : "";
-    return <TextoTruncado texto={`${qtd}${nome}`} tooltip={qtd ? `${nome} — Qtd: ${venda.quantidade}` : nome} />;
+    return <TextoTruncado texto={`${qtd}${nome}`} tooltip={qtd ? t("tabela.itemQuantidade", { nome, quantidade: venda.quantidade }) : nome} />;
   };
 
   // Tabela desktop: status + forma de pagamento numa coluna só; detalhes (parcela,
   // segunda forma, previsão de recebimento) aparecem inteiros no tooltip.
   const renderPagamentoCompacto = (venda: Venda, comDetalhes = true) => {
     const isAReceber = (venda.forma_pagamento === "a_receber" || venda.forma_pagamento === "a_prazo") && !venda.recebido && !venda.cancelada;
-    const forma = venda.forma_pagamento ? (formaPagamentoLabels[venda.forma_pagamento] || venda.forma_pagamento) : "Não informado";
+    const forma = venda.forma_pagamento ? (formas[venda.forma_pagamento] || venda.forma_pagamento) : t("tabela.formaNaoInformada");
     const parcela = comDetalhes && venda.parcela_numero && venda.total_parcelas ? ` (${venda.parcela_numero}/${venda.total_parcelas})` : "";
     const segundaForma = comDetalhes && venda.segunda_forma_pagamento
-      ? `+ ${formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}${venda.valor_segunda_forma ? ` (R$${Number(venda.valor_segunda_forma).toFixed(2).replace('.', ',')})` : ""}`
+      ? `${t("tabela.segundaForma", { forma: formas[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento })}${venda.valor_segunda_forma ? ` (${valorSegundaForma(Number(venda.valor_segunda_forma), fmt)})` : ""}`
       : null;
-    const previsao = comDetalhes && isAReceber && venda.data_prevista_recebimento ? formatDate(venda.data_prevista_recebimento) : null;
+    const previsao = comDetalhes && isAReceber && venda.data_prevista_recebimento ? fmt.data(venda.data_prevista_recebimento) : null;
 
     return (
       <div className="flex flex-col items-start gap-1 min-w-0">
@@ -546,7 +550,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
             <div className="space-y-0.5 text-xs">
               <p>{forma}{parcela}</p>
               {segundaForma && <p>{segundaForma}</p>}
-              {previsao && <p>Previsão de recebimento: {previsao}</p>}
+              {previsao && <p>{t("tabela.previsao", { data: previsao })}</p>}
             </div>
           </TooltipContent>
         </Tooltip>
@@ -569,18 +573,18 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     return (
       <div className="flex items-center justify-center gap-1">
         {podeMarcarRecebido && (
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onMarcarRecebido?.(venda.id); }} className="h-7 w-7 p-0 text-green-600 hover:text-green-700" title="Marcar como Recebido">
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onMarcarRecebido?.(venda.id); }} className="h-7 w-7 p-0 text-green-600 hover:text-green-700" title={t("tabela.acoes.marcarRecebido")}>
             <CheckCircle className="h-4 w-4" />
           </Button>
         )}
         {botaoAlterarDataCompacto(venda)}
-        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(venda); }} className="h-7 w-7 p-0" title="Imprimir Recibo">
+        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(venda); }} className="h-7 w-7 p-0" title={t("tabela.acoes.imprimir")}>
           <Printer className="h-4 w-4" />
         </Button>
         {temMenu && (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-0" title="Mais ações">
+              <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-0" title={t("tabela.acoes.maisAcoes")}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -588,32 +592,32 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
               {podeVoltarPendente && (
                 <DropdownMenuItem onClick={() => onMarcarPendente?.(venda.id)} className="text-orange-600 focus:text-orange-700">
                   <Undo2 className="h-4 w-4 mr-2" />
-                  Voltar para Pendente
+                  {t("tabela.acoes.voltarPendente")}
                 </DropdownMenuItem>
               )}
               {podeEditar && (
                 <DropdownMenuItem onClick={() => handleAbrirEditar(venda)}>
                   <Pencil className="h-4 w-4 mr-2" />
-                  Editar Venda
+                  {t("tabela.acoes.editar")}
                 </DropdownMenuItem>
               )}
               {temDestrutiva && (podeVoltarPendente || podeEditar) && <DropdownMenuSeparator />}
               {podeCancelarSaldo && (
                 <DropdownMenuItem onClick={() => handleAbrirCancelarSaldo(venda)} className="text-destructive focus:text-destructive">
                   <CalendarClock className="h-4 w-4 mr-2" />
-                  Cancelar Saldo a Prazo
+                  {t("tabela.acoes.cancelarSaldo")}
                 </DropdownMenuItem>
               )}
               {podeCancelar && (
                 <DropdownMenuItem onClick={() => handleAbrirCancelar(venda)} className="text-destructive focus:text-destructive">
                   <Ban className="h-4 w-4 mr-2" />
-                  Cancelar Venda
+                  {t("tabela.acoes.cancelar")}
                 </DropdownMenuItem>
               )}
               {podeExcluir && (
                 <DropdownMenuItem onClick={() => handleAbrirExcluir(venda)} className="text-destructive focus:text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir Venda
+                  {t("tabela.acoes.excluir")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -627,31 +631,22 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
     <AlertDialog open={dialogCancelarSaldoAberto} onOpenChange={setDialogCancelarSaldoAberto}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Cancelar saldo a prazo</AlertDialogTitle>
+          <AlertDialogTitle>{t("tabela.cancelarSaldo.titulo")}</AlertDialogTitle>
           <AlertDialogDescription>
             {vendaSelecionada?.contaAPrazoPendente && (
-              <>
-                Tem certeza que deseja cancelar o saldo a prazo
-                {vendaSelecionada.contaAPrazoPendente.data_vencimento ? (
-                  <>
-                    {" "}de <strong>{formatDate(vendaSelecionada.contaAPrazoPendente.data_vencimento)}</strong>
-                  </>
-                ) : (
-                  <> (sem data de vencimento definida)</>
-                )}{" "}
-                no valor de{" "}
-                <strong>
-                  {vendaSelecionada.contaAPrazoPendente.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                </strong>
-                ? A OS será marcada como "saldo não recebido" e o lançamento pendente será removido.
-              </>
+              <ComNegrito
+                texto={t(vendaSelecionada.contaAPrazoPendente.data_vencimento ? "tabela.cancelarSaldo.comData" : "tabela.cancelarSaldo.semData", {
+                  data: vendaSelecionada.contaAPrazoPendente.data_vencimento ? fmt.data(vendaSelecionada.contaAPrazoPendente.data_vencimento) : "",
+                  valor: fmt.moeda(vendaSelecionada.contaAPrazoPendente.valor),
+                })}
+              />
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={cancelandoSaldo}>Voltar</AlertDialogCancel>
+          <AlertDialogCancel disabled={cancelandoSaldo}>{t("tabela.cancelarSaldo.voltar")}</AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirmarCancelamentoSaldo} disabled={cancelandoSaldo} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            {cancelandoSaldo ? "Cancelando..." : "Cancelar saldo"}
+            {cancelandoSaldo ? t("tabela.cancelarSaldo.cancelando") : t("tabela.cancelarSaldo.confirmar")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -678,10 +673,10 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="break-words text-[13px] font-bold leading-[1.4]">
-                            {getNomeItem(venda)}
+                            {nomeItem(venda)}
                             {venda.numero_venda && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">#{venda.numero_venda}</span>}
                           </p>
-                          <p className="mt-[5px] break-words text-[11px] leading-normal text-muted-foreground">{venda.clientes?.nome || "Cliente não informado"}</p>
+                          <p className="mt-[5px] break-words text-[11px] leading-normal text-muted-foreground">{venda.clientes?.nome || t("tabela.clienteNaoInformado")}</p>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-[5px]">
                           <Badge className={cn(SELO, tipoColors[venda.tipo])}>{tipoLabels[venda.tipo]}</Badge>
@@ -692,18 +687,18 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         <div className="min-w-0 space-y-1.5">
                           <p className="flex items-center gap-[5px] text-[11px] text-muted-foreground">
                             <CalendarDays className="h-[13px] w-[13px] shrink-0" aria-hidden="true" />
-                            {formatDataVenda(venda.data)}
+                            {fmt.dataVenda(venda.data)}
                           </p>
                           <div className="flex flex-wrap items-center gap-1">
-                            <span className="text-xs text-[#344054] dark:text-foreground/80">{formaPagamentoLabels[venda.forma_pagamento] || "-"}</span>
+                            <span className="text-xs text-[#344054] dark:text-foreground/80">{formas[venda.forma_pagamento] || "-"}</span>
                             {venda.parcela_numero && venda.total_parcelas && (
                               <span className="text-xs text-muted-foreground">({venda.parcela_numero}/{venda.total_parcelas})</span>
                             )}
                             {indicacaoTroca(venda)}
                             {venda.segunda_forma_pagamento && (
                               <span className="text-xs text-muted-foreground">
-                                + {formaPagamentoLabels[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento}
-                                {venda.valor_segunda_forma ? ` (R$${Number(venda.valor_segunda_forma).toFixed(2).replace('.', ',')})` : ""}
+                                {t("tabela.segundaForma", { forma: formas[venda.segunda_forma_pagamento] || venda.segunda_forma_pagamento })}
+                                {venda.valor_segunda_forma ? ` (${valorSegundaForma(Number(venda.valor_segunda_forma), fmt)})` : ""}
                               </span>
                             )}
                           </div>
@@ -738,30 +733,30 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <p className="font-medium text-sm">{getResumoGrupo(vendasDoGrupo)}</p>
+                            <p className="font-medium text-sm">{getResumoGrupo(vendasDoGrupo, t)}</p>
                             {primeiraVenda.numero_venda && <span className="text-xs text-muted-foreground">#{primeiraVenda.numero_venda}</span>}
                           </div>
-                          <p className="text-xs text-muted-foreground">{primeiraVenda.clientes?.nome || "Cliente não informado"}</p>
+                          <p className="text-xs text-muted-foreground">{primeiraVenda.clientes?.nome || t("tabela.clienteNaoInformado")}</p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <Badge variant="outline" className={cn(SELO, "border-primary text-primary")}>
-                          {vendasDoGrupo.length} itens
+                          {t("tabela.itens", { count: vendasDoGrupo.length })}
                         </Badge>
                         {renderStatusBadge(primeiraVenda)}
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">{formatDataVenda(primeiraVenda.data)}</p>
-                        <span className="text-xs">{formaPagamentoLabels[primeiraVenda.forma_pagamento] || "-"}</span>
+                        <p className="text-xs text-muted-foreground">{fmt.dataVenda(primeiraVenda.data)}</p>
+                        <span className="text-xs">{formas[primeiraVenda.forma_pagamento] || "-"}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`font-semibold ${todasCanceladas ? 'line-through text-muted-foreground' : ''}`}>
                           <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
                         </span>
                         {botaoAlterarData(primeiraVenda)}
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title="Imprimir Recibo" aria-label="Imprimir Recibo">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-8 w-8 p-0" title={t("tabela.acoes.imprimir")} aria-label={t("tabela.acoes.imprimir")}>
                           <Printer className="h-4 w-4" />
                         </Button>
                       </div>
@@ -774,12 +769,12 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                         <Card key={venda.id} className={cn(CARD_VENDA, "px-3 pt-3", venda.cancelada && "opacity-60 bg-muted/30")}>
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex-1">
-                              <p className="font-medium text-xs">{getNomeItem(venda)}</p>
+                              <p className="font-medium text-xs">{nomeItem(venda)}</p>
                             </div>
                             <Badge className={cn(SELO, tipoColors[venda.tipo])}>{tipoLabels[venda.tipo]}</Badge>
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-xs text-muted-foreground">Qtd: {venda.quantidade}</span>
+                            <span className="text-xs text-muted-foreground">{t("tabela.quantidade", { quantidade: venda.quantidade })}</span>
                             <span className={`font-medium text-sm ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
                               <ValorMonetario valor={parcelasComTroca.get(venda.id)?.valor ?? (Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0))} tipo="preco" />
                               {indicacaoTroca(venda)}
@@ -802,13 +797,13 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         <AlertDialog open={dialogExcluirAberto} onOpenChange={setDialogExcluirAberto}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir venda cancelada</AlertDialogTitle>
-              <AlertDialogDescription>Tem certeza que deseja excluir permanentemente esta venda cancelada? Esta ação não pode ser desfeita.</AlertDialogDescription>
+              <AlertDialogTitle>{t("tabela.excluir.titulo")}</AlertDialogTitle>
+              <AlertDialogDescription>{t("tabela.excluir.descricao")}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel disabled={excluindo}>{t("tabela.excluir.cancelar")}</AlertDialogCancel>
               <AlertDialogAction onClick={handleConfirmarExclusao} disabled={excluindo} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                {excluindo ? "Excluindo..." : "Excluir"}
+                {excluindo ? t("tabela.excluir.excluindo") : t("tabela.excluir.confirmar")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -829,14 +824,14 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
         <TableHeader>
           <TableRow>
             <TableHead className={`${TH} w-8`}></TableHead>
-            <TableHead className={`${TH} w-16`}>Nº</TableHead>
-            <TableHead className={`${TH} w-[92px]`}>Data</TableHead>
-            <TableHead className={`${TH} w-[120px]`}>Tipo</TableHead>
-            <TableHead className={TH}>Item</TableHead>
-            <TableHead className={TH}>Cliente</TableHead>
-            <TableHead className={`${TH} w-[112px] text-right`}>Valor</TableHead>
-            <TableHead className={`${TH} w-[136px]`}>Pagamento</TableHead>
-            <TableHead className={`${TH} w-[144px] text-center`}>Ações</TableHead>
+            <TableHead className={`${TH} w-16`}>{t("tabela.colunas.numero")}</TableHead>
+            <TableHead className={`${TH} w-[92px]`}>{t("tabela.colunas.data")}</TableHead>
+            <TableHead className={`${TH} w-[120px]`}>{t("tabela.colunas.tipo")}</TableHead>
+            <TableHead className={TH}>{t("tabela.colunas.item")}</TableHead>
+            <TableHead className={TH}>{t("tabela.colunas.cliente")}</TableHead>
+            <TableHead className={`${TH} w-[112px] text-right`}>{t("tabela.colunas.valor")}</TableHead>
+            <TableHead className={`${TH} w-[136px]`}>{t("tabela.colunas.pagamento")}</TableHead>
+            <TableHead className={`${TH} w-[144px] text-center`}>{t("tabela.colunas.acoes")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -857,7 +852,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                   </TableCell>
                   <TableCell className={TD}>{renderItemCompacto(venda)}</TableCell>
                   <TableCell className={TD}>
-                    <TextoTruncado texto={venda.clientes?.nome || "Cliente não informado"} />
+                    <TextoTruncado texto={venda.clientes?.nome || t("tabela.clienteNaoInformado")} />
                   </TableCell>
                   <TableCell className={`${TD} text-right font-medium whitespace-nowrap ${venda.cancelada ? 'line-through text-muted-foreground' : ''}`}>
                     <ValorMonetario valor={parcelasComTroca.get(venda.id)?.valor ?? (Number(venda.total) - Number(venda.valor_desconto_manual || 0) - Number(venda.valor_desconto_cupom || 0))} tipo="preco" />
@@ -876,7 +871,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
               const primeiraVenda = vendasDoGrupo[0];
               const todasCanceladas = vendasDoGrupo.every(v => v.cancelada);
               const totalQuantidade = vendasDoGrupo.reduce((acc, v) => acc + (v.quantidade || 1), 0);
-              const listaItens = vendasDoGrupo.map(v => `${v.quantidade > 1 ? `${v.quantidade}× ` : ""}${getNomeItem(v)}`).join(", ");
+              const listaItens = vendasDoGrupo.map(v => `${v.quantidade > 1 ? `${v.quantidade}× ` : ""}${nomeItem(v)}`).join(", ");
 
               return (
                 <Fragment key={grupoId}>
@@ -894,14 +889,14 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     <TableCell className={TD}>
                       <Badge variant="outline" className="border-primary text-primary max-w-full px-2">
                         <ShoppingCart className="h-3 w-3 mr-1 shrink-0" />
-                        <span className="truncate">{vendasDoGrupo.length} itens</span>
+                        <span className="truncate">{t("tabela.itens", { count: vendasDoGrupo.length })}</span>
                       </Badge>
                     </TableCell>
                     <TableCell className={`${TD} font-medium`}>
-                      <TextoTruncado texto={getResumoGrupo(vendasDoGrupo)} tooltip={`${listaItens} — ${totalQuantidade} un.`} />
+                      <TextoTruncado texto={getResumoGrupo(vendasDoGrupo, t)} tooltip={t("tabela.grupoQuantidade", { itens: listaItens, quantidade: totalQuantidade })} />
                     </TableCell>
                     <TableCell className={TD}>
-                      <TextoTruncado texto={primeiraVenda.clientes?.nome || "Cliente não informado"} />
+                      <TextoTruncado texto={primeiraVenda.clientes?.nome || t("tabela.clienteNaoInformado")} />
                     </TableCell>
                     <TableCell className={`${TD} text-right font-semibold whitespace-nowrap ${todasCanceladas ? 'line-through text-muted-foreground' : ''}`}>
                       <ValorMonetario valor={item.totalGrupo || 0} tipo="preco" />
@@ -910,7 +905,7 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
                     <TableCell className={TD}>
                       <div className="flex items-center justify-center gap-1">
                         {botaoAlterarDataCompacto(primeiraVenda)}
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-7 w-7 p-0" title="Imprimir Recibo">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleImprimirRecibo(primeiraVenda, vendasDoGrupo); }} className="h-7 w-7 p-0" title={t("tabela.acoes.imprimir")}>
                           <Printer className="h-4 w-4" />
                         </Button>
                       </div>
@@ -951,13 +946,13 @@ export const TabelaVendas = ({ vendas, loading, onCancelarVenda, onMarcarRecebid
       <AlertDialog open={dialogExcluirAberto} onOpenChange={setDialogExcluirAberto}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir venda cancelada</AlertDialogTitle>
-            <AlertDialogDescription>Tem certeza que deseja excluir permanentemente esta venda cancelada? Esta ação não pode ser desfeita.</AlertDialogDescription>
+            <AlertDialogTitle>{t("tabela.excluir.titulo")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("tabela.excluir.descricao")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={excluindo}>{t("tabela.excluir.cancelar")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmarExclusao} disabled={excluindo} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {excluindo ? "Excluindo..." : "Excluir"}
+              {excluindo ? t("tabela.excluir.excluindo") : t("tabela.excluir.confirmar")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

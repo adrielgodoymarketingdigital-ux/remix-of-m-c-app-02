@@ -13,14 +13,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Package, RotateCcw } from "lucide-react";
 import { Venda } from "@/types/venda";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useEffect, useState } from "react";
 import {
   AcaoAparelhoTroca,
-  MENSAGEM_APARELHO_TROCA_VENDIDO,
-  MENSAGEM_VENDA_COM_TROCA_INTEIRA,
   avisoDevolucaoNoCancelamento,
   decidirCancelamentoTroca,
   podeConfirmarCancelamento,
@@ -35,11 +35,6 @@ interface DialogCancelarVendaProps {
   cancelando: boolean;
 }
 
-const tipoLabels: Record<string, string> = {
-  dispositivo: "Dispositivo",
-  produto: "Produto",
-  servico: "Serviço",
-};
 
 export const DialogCancelarVenda = ({
   open,
@@ -50,6 +45,10 @@ export const DialogCancelarVenda = ({
 }: DialogCancelarVendaProps) => {
   const [estornarEstoque, setEstornarEstoque] = useState(true);
   const [motivo, setMotivo] = useState("");
+  // Textos: namespace "vendas"; moeda e datas: useFormatadores (conta).
+  const { t } = useTranslation("vendas");
+  const fmt = useFormatadores();
+  const formas = useNomesFormaPagamento();
   // Troca da venda (aparelho recebido do cliente): carregada ao abrir.
   const [troca, setTroca] = useState<TrocaDaVenda | null>(null);
   const [carregandoTroca, setCarregandoTroca] = useState(false);
@@ -103,13 +102,21 @@ export const DialogCancelarVenda = ({
   };
 
   if (!venda) return null;
+  const tipoLabels = t("cancelar.tipos", { returnObjects: true }) as Readonly<Record<string, string>>;
+  // Aviso de devolução: em pt-BR, a frase da lib (avisoDevolucaoNoCancelamento) como sempre.
+  const textoAvisoDevolucao = avisoDevolucao && troca && fmt.ctx.idioma !== "pt-BR"
+    ? t("cancelar.avisoDevolucao", {
+        valor: fmt.moeda(troca.valorDevolvido),
+        forma: troca.formaDevolucao === "pix" ? formas.curto.pix : formas.curto.dinheiro,
+      })
+    : avisoDevolucao;
 
   const nomeItem =
     venda.tipo === "dispositivo" && venda.dispositivos
       ? `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`
       : venda.tipo === "servico" && venda.ordens_servico
       ? `OS ${venda.ordens_servico.numero_os}`
-      : venda.produtos?.nome || "Item";
+      : venda.produtos?.nome || t("cancelar.itemPadrao");
 
   // Serviços não têm estoque para estornar
   const podeEstornar = venda.tipo !== "servico";
@@ -120,10 +127,10 @@ export const DialogCancelarVenda = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
-            Cancelar Venda
+            {t("cancelar.titulo")}
           </DialogTitle>
           <DialogDescription>
-            Esta ação não pode ser desfeita. A venda será marcada como cancelada.
+            {t("cancelar.descricao")}
           </DialogDescription>
         </DialogHeader>
 
@@ -131,24 +138,24 @@ export const DialogCancelarVenda = ({
           {/* Detalhes da venda */}
           <div className="bg-muted/50 rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Item:</span>
+              <span className="text-sm text-muted-foreground">{t("cancelar.item")}</span>
               <span className="font-medium text-sm">{nomeItem}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Tipo:</span>
+              <span className="text-sm text-muted-foreground">{t("cancelar.tipo")}</span>
               <Badge variant="outline">{tipoLabels[venda.tipo]}</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Valor:</span>
+              <span className="text-sm text-muted-foreground">{t("cancelar.valor")}</span>
               <ValorMonetario valor={venda.total} tipo="preco" className="font-semibold text-destructive" />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Data:</span>
-              <span className="text-sm">{formatDate(venda.data)}</span>
+              <span className="text-sm text-muted-foreground">{t("cancelar.data")}</span>
+              <span className="text-sm">{fmt.data(venda.data)}</span>
             </div>
             {venda.clientes?.nome && (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Cliente:</span>
+                <span className="text-sm text-muted-foreground">{t("cancelar.cliente")}</span>
                 <span className="text-sm">{venda.clientes.nome}</span>
               </div>
             )}
@@ -168,13 +175,12 @@ export const DialogCancelarVenda = ({
                   className="flex items-center gap-2 font-medium cursor-pointer"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  Estornar para estoque
+                  {t("cancelar.estornar")}
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   {vendaInteira
-                    ? "Devolver ao estoque os itens desta venda"
-                    : <>Devolver a quantidade vendida ({venda.quantidade}{" "}
-                      {venda.quantidade === 1 ? "unidade" : "unidades"}) ao estoque</>}
+                    ? t("cancelar.estornarVendaInteira")
+                    : t("cancelar.estornarQuantidade", { count: venda.quantidade })}
                 </p>
               </div>
             </div>
@@ -182,7 +188,7 @@ export const DialogCancelarVenda = ({
 
           {erroTroca && (
             <p className="text-sm text-destructive">
-              Não foi possível verificar se esta venda tem troca de aparelho. Feche e tente de novo.
+              {t("cancelar.erroTroca")}
             </p>
           )}
 
@@ -191,11 +197,15 @@ export const DialogCancelarVenda = ({
             <div className="space-y-2 p-3 border rounded-lg bg-background">
               <p className="text-sm font-medium flex items-center gap-2">
                 <Package className="h-4 w-4" />
-                Aparelho recebido na troca{troca.nomeAparelho ? `: ${troca.nomeAparelho}` : ""} ({formatCurrency(troca.valorEntrada)})
+                {troca.nomeAparelho
+                  ? t("cancelar.aparelhoTrocaComNome", { nome: troca.nomeAparelho, valor: fmt.moeda(troca.valorEntrada) })
+                  : t("cancelar.aparelhoTroca", { valor: fmt.moeda(troca.valorEntrada) })}
               </p>
               {vendaInteira && (
                 <p className="text-xs font-medium text-amber-700">
-                  {MENSAGEM_VENDA_COM_TROCA_INTEIRA}: {itensDaVenda > 1 ? `os ${itensDaVenda} itens desta venda serão cancelados juntos` : "a venda toda será cancelada"} e a troca será desfeita.
+                  {itensDaVenda > 1
+                    ? t("cancelar.trocaInteiraItens", { mensagem: t("cancelar.trocaInteira"), count: itensDaVenda })
+                    : t("cancelar.trocaInteiraVenda", { mensagem: t("cancelar.trocaInteira") })}
                 </p>
               )}
               {decisaoTroca?.perguntar ? (
@@ -203,21 +213,21 @@ export const DialogCancelarVenda = ({
                   <div className="flex items-start gap-2">
                     <RadioGroupItem value="manter" id="troca-manter" className="mt-0.5" />
                     <Label htmlFor="troca-manter" className="font-normal cursor-pointer leading-snug">
-                      Manter no estoque (o cliente não levou o aparelho de volta)
+                      {t("cancelar.manterEstoque")}
                     </Label>
                   </div>
                   <div className="flex items-start gap-2">
                     <RadioGroupItem value="remover" id="troca-remover" className="mt-0.5" disabled={!decisaoTroca.podeRemover} />
                     <Label htmlFor="troca-remover" className={`font-normal leading-snug ${decisaoTroca.podeRemover ? "cursor-pointer" : "text-muted-foreground"}`}>
-                      Tirar do estoque (o cliente levou o aparelho de volta) — vai para a lixeira de dispositivos
+                      {t("cancelar.tirarEstoque")}
                     </Label>
                   </div>
                   {!decisaoTroca.podeRemover && (
-                    <p className="text-xs text-amber-600">{MENSAGEM_APARELHO_TROCA_VENDIDO}</p>
+                    <p className="text-xs text-amber-600">{t("cancelar.aparelhoJaVendido")}</p>
                   )}
                 </RadioGroup>
               ) : (
-                <p className="text-xs text-muted-foreground">O aparelho já não está no estoque; a troca será marcada como cancelada.</p>
+                <p className="text-xs text-muted-foreground">{t("cancelar.aparelhoForaEstoque")}</p>
               )}
             </div>
           )}
@@ -227,7 +237,7 @@ export const DialogCancelarVenda = ({
             <div className="space-y-2 p-3 border border-amber-500 rounded-lg bg-amber-50 dark:bg-amber-950/30">
               <p className="text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                {avisoDevolucao}
+                {textoAvisoDevolucao}
               </p>
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -236,7 +246,7 @@ export const DialogCancelarVenda = ({
                   onCheckedChange={(checked) => setCienteDevolucao(checked === true)}
                 />
                 <Label htmlFor="ciente-devolucao" className="font-medium cursor-pointer">
-                  Estou ciente
+                  {t("cancelar.ciente")}
                 </Label>
               </div>
             </div>
@@ -244,10 +254,10 @@ export const DialogCancelarVenda = ({
 
           {/* Motivo do cancelamento */}
           <div className="space-y-2">
-            <Label htmlFor="motivo">Motivo do cancelamento (opcional)</Label>
+            <Label htmlFor="motivo">{t("cancelar.motivo")}</Label>
             <Textarea
               id="motivo"
-              placeholder="Informe o motivo do cancelamento..."
+              placeholder={t("cancelar.motivoPlaceholder")}
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               className="resize-none"
@@ -258,7 +268,7 @@ export const DialogCancelarVenda = ({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={handleClose} disabled={cancelando}>
-            Voltar
+            {t("cancelar.voltar")}
           </Button>
           <Button
             variant="destructive"
@@ -266,11 +276,11 @@ export const DialogCancelarVenda = ({
             disabled={cancelando || !podeConfirmar}
           >
             {cancelando ? (
-              "Cancelando..."
+              t("cancelar.cancelando")
             ) : (
               <>
                 <AlertTriangle className="h-4 w-4 mr-2" />
-                Confirmar Cancelamento
+                {t("cancelar.confirmar")}
               </>
             )}
           </Button>

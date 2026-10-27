@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 import {
   Dialog,
   DialogContent,
@@ -35,14 +37,8 @@ interface DialogEditarVendaProps {
   salvando?: boolean;
 }
 
-const FORMAS_PAGAMENTO = [
-  { value: "dinheiro", label: "Dinheiro" },
-  { value: "pix", label: "PIX" },
-  { value: "debito", label: "Cartão de Débito" },
-  { value: "credito", label: "Cartão de Crédito" },
-  { value: "credito_parcelado", label: "Cartão Parcelado" },
-  { value: "a_receber", label: "A Receber (A Prazo)" },
-];
+// Rótulos: comum.formaPagamento (longo; "A Receber (A Prazo)" é a variante desta tela).
+const FORMAS_PAGAMENTO = ["dinheiro", "pix", "debito", "credito", "credito_parcelado", "a_receber"] as const;
 
 // Valor sintético para representar, no Select, uma forma customizada já salva na venda
 // (tanto vendas normais, gravadas como "outro" + nome no sufixo de observacoes, quanto
@@ -58,6 +54,9 @@ export const DialogEditarVenda = ({
 }: DialogEditarVendaProps) => {
   const { empresaAtiva } = useEmpresa();
   const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaAtiva);
+  const { t } = useTranslation("vendas");
+  const nomesForma = useNomesFormaPagamento();
+  const rotuloForma = (forma: (typeof FORMAS_PAGAMENTO)[number]) => (forma === "a_receber" ? nomesForma.aReceberAPrazo : nomesForma.longo[forma]);
   const [formaPagamento, setFormaPagamento] = useState<string>("dinheiro");
   const [dataPrevista, setDataPrevista] = useState<string>("");
   const [parcelaNumero, setParcelaNumero] = useState<string>("");
@@ -69,7 +68,7 @@ export const DialogEditarVenda = ({
       ? formasCustomizadas.find((f) => `custom_${f.id}` === venda.forma_pagamento)?.nome
         ?? venda.forma_pagamento.replace("custom_", "")
       : venda.forma_pagamento === "outro"
-        ? extrairNomeFormaCustomizada(venda.observacoes) ?? "Personalizada"
+        ? extrairNomeFormaCustomizada(venda.observacoes) ?? t("editar.personalizada")
         : null
     : null;
 
@@ -130,13 +129,13 @@ export const DialogEditarVenda = ({
   const itemNome =
     venda.tipo === "dispositivo" && venda.dispositivos
       ? `${venda.dispositivos.marca} ${venda.dispositivos.modelo}`
-      : venda.produtos?.nome || venda.pecas?.nome || "Item";
+      : venda.produtos?.nome || venda.pecas?.nome || t("editar.itemPadrao");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Editar Venda</DialogTitle>
+          <DialogTitle>{t("editar.titulo")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -144,13 +143,13 @@ export const DialogEditarVenda = ({
           <div className="rounded-lg border p-3 bg-muted/50 space-y-1">
             <p className="text-sm font-medium">{itemNome}</p>
             <p className="text-sm text-muted-foreground">
-              Cliente: {venda.clientes?.nome || "Não informado"}
+              {t("editar.cliente", { nome: venda.clientes?.nome || t("editar.naoInformado") })}
             </p>
           </div>
 
           {/* Valor da venda */}
           <div className="space-y-2">
-            <Label htmlFor="valorTotal">Valor da Venda</Label>
+            <Label htmlFor="valorTotal">{t("editar.valor")}</Label>
             <Input
               id="valorTotal"
               type="number"
@@ -160,21 +159,21 @@ export const DialogEditarVenda = ({
               onChange={(e) => setValorTotal(e.target.value)}
             />
             {!valorTotalValido && (
-              <p className="text-sm text-destructive">O valor deve ser maior que zero.</p>
+              <p className="text-sm text-destructive">{t("editar.valorInvalido")}</p>
             )}
           </div>
 
           {/* Forma de pagamento */}
           <div className="space-y-2">
-            <Label>Forma de Pagamento</Label>
+            <Label>{t("editar.forma")}</Label>
             <Select value={formaPagamento} onValueChange={setFormaPagamento}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione" />
+                <SelectValue placeholder={t("editar.selecione")} />
               </SelectTrigger>
               <SelectContent>
-                {FORMAS_PAGAMENTO.map((fp) => (
-                  <SelectItem key={fp.value} value={fp.value}>
-                    {fp.label}
+                {FORMAS_PAGAMENTO.map((forma) => (
+                  <SelectItem key={forma} value={forma}>
+                    {rotuloForma(forma)}
                   </SelectItem>
                 ))}
                 {nomeFormaCustomizadaAtual && (
@@ -185,7 +184,7 @@ export const DialogEditarVenda = ({
                 {formasCustomizadas.filter((f) => `custom_${f.id}` !== venda?.forma_pagamento).length > 0 && (
                   <>
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-2">
-                      Personalizadas
+                      {t("editar.personalizadas")}
                     </div>
                     {formasCustomizadas
                       .filter((f) => `custom_${f.id}` !== venda?.forma_pagamento)
@@ -204,11 +203,11 @@ export const DialogEditarVenda = ({
           {isAPrazo && (
             <div className="space-y-4 rounded-lg border p-3 bg-muted/30">
               <p className="text-sm font-medium text-muted-foreground">
-                Configuração do Pagamento a Prazo
+                {t("editar.aPrazoTitulo")}
               </p>
 
               <div className="space-y-2">
-                <Label htmlFor="dataPrevista">Data Prevista de Recebimento</Label>
+                <Label htmlFor="dataPrevista">{t("editar.dataPrevista")}</Label>
                 <Input
                   id="dataPrevista"
                   type="date"
@@ -219,23 +218,23 @@ export const DialogEditarVenda = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="parcelaNumero">Parcela Nº</Label>
+                  <Label htmlFor="parcelaNumero">{t("editar.parcelaNumero")}</Label>
                   <Input
                     id="parcelaNumero"
                     type="number"
                     min="1"
-                    placeholder="Ex: 1"
+                    placeholder={t("editar.parcelaNumeroExemplo")}
                     value={parcelaNumero}
                     onChange={(e) => setParcelaNumero(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="totalParcelas">Total de Parcelas</Label>
+                  <Label htmlFor="totalParcelas">{t("editar.totalParcelas")}</Label>
                   <Input
                     id="totalParcelas"
                     type="number"
                     min="1"
-                    placeholder="Ex: 3"
+                    placeholder={t("editar.totalParcelasExemplo")}
                     value={totalParcelas}
                     onChange={(e) => setTotalParcelas(e.target.value)}
                   />
@@ -247,10 +246,10 @@ export const DialogEditarVenda = ({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={salvando}>
-            Cancelar
+            {t("editar.cancelar")}
           </Button>
           <Button onClick={handleSalvar} disabled={salvando || !valorTotalValido}>
-            {salvando ? "Salvando..." : "Salvar"}
+            {salvando ? t("editar.salvando") : t("editar.salvar")}
           </Button>
         </DialogFooter>
       </DialogContent>
