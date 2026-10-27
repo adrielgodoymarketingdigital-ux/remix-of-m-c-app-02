@@ -1,4 +1,4 @@
--- CONFERÊNCIA de supabase/migrations/20261030120000_acompanhamento_dispositivos_adicionais.sql
+-- CONFERÊNCIA de supabase/migrations/20261031120000_acompanhamento_dispositivos_adicionais.sql
 -- Rodar DEPOIS da migration, inteiro, no SQL Editor: um único resultado (UNION ALL),
 -- 23 linhas, sem nenhum dado de cliente (só metadados e contagens).
 -- Esperado: ok = true em TODAS as linhas.

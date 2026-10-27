@@ -1,4 +1,4 @@
--- REVERSÃO de supabase/migrations/20261030120000_acompanhamento_dispositivos_adicionais.sql
+-- REVERSÃO de supabase/migrations/20261031120000_acompanhamento_dispositivos_adicionais.sql
 --
 -- Recria get_os_tracking e get_cliente_tracking EXATAMENTE como estavam em produção
 -- antes da migration (texto de pg_get_functiondef lido em 2026-10-26: com a coluna
