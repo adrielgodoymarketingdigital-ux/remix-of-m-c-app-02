@@ -1,5 +1,8 @@
 import { Caixa } from "@/types/caixa";
-import { formatCurrency } from "@/lib/formatters";
+import { useTranslation } from "react-i18next";
+import { useFormatadores, type Formatadores } from "@/hooks/useFormatadores";
+import type { TFunction } from "i18next";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 import {
   Dialog,
   DialogContent,
@@ -32,18 +35,20 @@ interface DialogStatusCaixaProps {
   onFecharCaixa: () => void;
 }
 
-function calcularTempoAberto(dataAbertura: string): string {
+function calcularTempoAberto(dataAbertura: string, t: TFunction): string {
   const abertura = new Date(dataAbertura);
   const agora = new Date();
   const diffMs = agora.getTime() - abertura.getTime();
   const totalMinutos = Math.floor(diffMs / 60000);
   const horas = Math.floor(totalMinutos / 60);
   const minutos = totalMinutos % 60;
-  if (horas === 0) return `${minutos}min`;
-  return `${horas}h ${minutos}min`;
+  if (horas === 0) return t("caixa.status.minutos", { minutos });
+  return t("caixa.status.horasMinutos", { horas, minutos });
 }
 
-function formatarDataHora(iso: string): string {
+// Brasil: o toLocaleString de sempre ("26/10/2026, 08:00", com vírgula); outros idiomas/moedas: formatador central.
+function formatarDataHora(iso: string, fmt: Formatadores): string {
+  if (fmt.ctx.idioma !== "pt-BR" || fmt.ctx.moeda !== "BRL") return fmt.dataHora(iso);
   return new Date(iso).toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -61,6 +66,9 @@ export function DialogStatusCaixa({
   onAbrirCaixa,
   onFecharCaixa,
 }: DialogStatusCaixaProps) {
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
+  const { curto } = useNomesFormaPagamento();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -69,13 +77,13 @@ export function DialogStatusCaixa({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CircleDot className="h-5 w-5 text-green-500 animate-pulse" />
-                Status do Caixa
+                {t("caixa.status.titulo")}
               </DialogTitle>
             </DialogHeader>
 
             <div className="flex justify-center py-2">
               <Badge className="bg-green-100 text-green-700 border-green-300 text-sm px-4 py-1.5">
-                ● Caixa Aberto
+                {t("caixa.status.aberto")}
               </Badge>
             </div>
 
@@ -84,23 +92,23 @@ export function DialogStatusCaixa({
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    Aberto em:
+                    {t("caixa.status.abertoEm")}
                   </span>
-                  <span className="font-medium">{formatarDataHora(caixaAtual.data_abertura)}</span>
+                  <span className="font-medium">{formatarDataHora(caixaAtual.data_abertura, fmt)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Banknote className="h-4 w-4" />
-                    Saldo Inicial:
+                    {t("caixa.status.saldoInicial")}
                   </span>
-                  <span className="font-medium">{formatCurrency(caixaAtual.saldo_inicial)}</span>
+                  <span className="font-medium">{fmt.moeda(caixaAtual.saldo_inicial)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    Tempo aberto:
+                    {t("caixa.status.tempoAberto")}
                   </span>
-                  <span className="font-medium">{calcularTempoAberto(caixaAtual.data_abertura)}</span>
+                  <span className="font-medium">{calcularTempoAberto(caixaAtual.data_abertura, t)}</span>
                 </div>
               </div>
             )}
@@ -108,7 +116,7 @@ export function DialogStatusCaixa({
             <Separator />
 
             <p className="text-xs text-muted-foreground text-center">
-              As vendas realizadas estão sendo registradas neste caixa.
+              {t("caixa.status.registrando")}
             </p>
 
             <div className="flex gap-2 pt-1">
@@ -121,14 +129,14 @@ export function DialogStatusCaixa({
                 }}
               >
                 <XCircle className="h-4 w-4" />
-                Fechar Caixa
+                {t("caixa.status.fecharCaixa")}
               </Button>
               <Button
                 variant="outline"
                 className="flex-1"
                 onClick={() => onOpenChange(false)}
               >
-                Fechar
+                {t("caixa.status.fechar")}
               </Button>
             </div>
           </>
@@ -137,13 +145,13 @@ export function DialogStatusCaixa({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <XCircle className="h-5 w-5 text-red-500" />
-                Status do Caixa
+                {t("caixa.status.titulo")}
               </DialogTitle>
             </DialogHeader>
 
             <div className="flex justify-center py-2">
               <Badge className="bg-red-100 text-red-700 border-red-300 text-sm px-4 py-1.5">
-                Caixa Fechado
+                {t("caixa.status.fechado")}
               </Badge>
             </div>
 
@@ -152,44 +160,44 @@ export function DialogStatusCaixa({
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    Fechado em:
+                    {t("caixa.status.fechadoEm")}
                   </span>
                   <span className="font-medium">
                     {caixaAtual.data_fechamento
-                      ? formatarDataHora(caixaAtual.data_fechamento)
+                      ? formatarDataHora(caixaAtual.data_fechamento, fmt)
                       : "—"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Banknote className="h-4 w-4" />
-                    Saldo Final:
+                    {t("caixa.status.saldoFinal")}
                   </span>
                   <span className="font-bold text-green-600">
-                    {formatCurrency(caixaAtual.saldo_final ?? 0)}
+                    {fmt.moeda(caixaAtual.saldo_final ?? 0)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <TrendingUp className="h-4 w-4" />
-                    Total de Vendas:
+                    {t("caixa.status.totalVendas")}
                   </span>
-                  <span className="font-medium">{formatCurrency(caixaAtual.total_vendas)}</span>
+                  <span className="font-medium">{fmt.moeda(caixaAtual.total_vendas)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Wrench className="h-4 w-4" />
-                    Serviços (OS):
+                    {t("caixa.status.servicos")}
                   </span>
-                  <span className="font-medium">{formatCurrency(caixaAtual.total_servicos ?? 0)}</span>
+                  <span className="font-medium">{fmt.moeda(caixaAtual.total_servicos ?? 0)}</span>
                 </div>
                 {Number(caixaAtual.total_devolucoes_troca) > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 text-muted-foreground">
                       <Repeat className="h-4 w-4" />
-                      Devoluções de troca (dinheiro):
+                      {t("caixa.status.devolucoes")}
                     </span>
-                    <span className="font-medium text-red-600">- {formatCurrency(Number(caixaAtual.total_devolucoes_troca))}</span>
+                    <span className="font-medium text-red-600">{t("caixa.status.menosValor", { valor: fmt.moeda(Number(caixaAtual.total_devolucoes_troca)) })}</span>
                   </div>
                 )}
 
@@ -197,30 +205,30 @@ export function DialogStatusCaixa({
                   <div className="rounded-md border p-2 text-xs space-y-0.5">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Banknote className="h-3 w-3" />
-                      Dinheiro
+                      {curto.dinheiro}
                     </div>
-                    <div className="font-medium">{formatCurrency(caixaAtual.total_dinheiro)}</div>
+                    <div className="font-medium">{fmt.moeda(caixaAtual.total_dinheiro)}</div>
                   </div>
                   <div className="rounded-md border p-2 text-xs space-y-0.5">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <QrCode className="h-3 w-3" />
-                      PIX
+                      {curto.pix}
                     </div>
-                    <div className="font-medium">{formatCurrency(caixaAtual.total_pix)}</div>
+                    <div className="font-medium">{fmt.moeda(caixaAtual.total_pix)}</div>
                   </div>
                   <div className="rounded-md border p-2 text-xs space-y-0.5">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <CreditCard className="h-3 w-3" />
-                      Cartão
+                      {t("caixa.status.cartao")}
                     </div>
-                    <div className="font-medium">{formatCurrency(caixaAtual.total_cartao)}</div>
+                    <div className="font-medium">{fmt.moeda(caixaAtual.total_cartao)}</div>
                   </div>
                   <div className="rounded-md border p-2 text-xs space-y-0.5">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      A Receber
+                      {curto.a_receber}
                     </div>
-                    <div className="font-medium">{formatCurrency(caixaAtual.total_a_receber)}</div>
+                    <div className="font-medium">{fmt.moeda(caixaAtual.total_a_receber)}</div>
                   </div>
                 </div>
               </div>
@@ -229,7 +237,7 @@ export function DialogStatusCaixa({
             <Separator />
 
             <p className="text-xs text-muted-foreground text-center">
-              Abra o caixa para começar a registrar vendas.
+              {t("caixa.status.abraCaixa")}
             </p>
 
             <div className="flex gap-2 pt-1">
@@ -241,14 +249,14 @@ export function DialogStatusCaixa({
                 }}
               >
                 <DollarSign className="h-4 w-4" />
-                Abrir Caixa
+                {t("caixa.status.abrirCaixa")}
               </Button>
               <Button
                 variant="outline"
                 className="flex-1"
                 onClick={() => onOpenChange(false)}
               >
-                Fechar
+                {t("caixa.status.fechar")}
               </Button>
             </div>
           </>

@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
-import { formatCurrency } from "@/lib/formatters";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 import { Badge } from "@/components/ui/badge";
 
 interface DialogHistoricoCaixasProps {
@@ -14,6 +14,11 @@ interface DialogHistoricoCaixasProps {
 
 export function DialogHistoricoCaixas({ open, onOpenChange }: DialogHistoricoCaixasProps) {
   const [caixas, setCaixas] = useState<Caixa[]>([]);
+  // Textos: namespace "pdv"; moeda e datas: useFormatadores (conta).
+  const { t } = useTranslation("pdv");
+  const formatadores = useFormatadores();
+  const formatCurrency = formatadores.moeda;
+  const { curto } = useNomesFormaPagamento();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -39,20 +44,19 @@ export function DialogHistoricoCaixas({ open, onOpenChange }: DialogHistoricoCai
     }
   };
 
-  const fmt = (iso: string) =>
-    format(new Date(iso), "dd/MM/yyyy HH:mm", { locale: ptBR });
+  const fmt = (iso: string) => formatadores.dataHora(iso);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Histórico de Caixas</DialogTitle>
+          <DialogTitle>{t("caixa.historico.titulo")}</DialogTitle>
         </DialogHeader>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Carregando...</p>
+          <p className="text-sm text-muted-foreground text-center py-8">{t("caixa.historico.carregando")}</p>
         ) : caixas.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Nenhum caixa registrado.</p>
+          <p className="text-sm text-muted-foreground text-center py-8">{t("caixa.historico.nenhum")}</p>
         ) : (
           <div className="space-y-3">
             {caixas.map((c) => (
@@ -60,25 +64,25 @@ export function DialogHistoricoCaixas({ open, onOpenChange }: DialogHistoricoCai
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{fmt(c.data_abertura)}</span>
                   <Badge variant={c.status === "aberto" ? "default" : "secondary"}>
-                    {c.status === "aberto" ? "Aberto" : "Fechado"}
+                    {c.status === "aberto" ? t("caixa.historico.aberto") : t("caixa.historico.fechado")}
                   </Badge>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-muted-foreground">
                   <div>
-                    <p>Saldo inicial</p>
+                    <p>{t("caixa.historico.saldoInicial")}</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.saldo_inicial)}</p>
                   </div>
                   <div>
-                    <p>Total vendas</p>
+                    <p>{t("caixa.historico.totalVendas")}</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.total_vendas)}</p>
                   </div>
                   <div>
-                    <p>Dinheiro</p>
+                    <p>{curto.dinheiro}</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.total_dinheiro)}</p>
                   </div>
                   <div>
-                    <p>Saldo final</p>
+                    <p>{t("caixa.historico.saldoFinal")}</p>
                     <p className="font-medium text-foreground">
                       {c.saldo_final != null ? formatCurrency(c.saldo_final) : "—"}
                     </p>
@@ -87,32 +91,32 @@ export function DialogHistoricoCaixas({ open, onOpenChange }: DialogHistoricoCai
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-muted-foreground">
                   <div>
-                    <p>PIX</p>
+                    <p>{curto.pix}</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.total_pix)}</p>
                   </div>
                   <div>
-                    <p>Cartão</p>
+                    <p>{t("caixa.historico.cartao")}</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.total_cartao)}</p>
                   </div>
                   <div>
-                    <p>A receber</p>
+                    <p>{t("caixa.historico.aReceber")}</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.total_a_receber)}</p>
                   </div>
                   <div>
-                    <p>Serviços (OS)</p>
+                    <p>{t("caixa.historico.servicos")}</p>
                     <p className="font-medium text-foreground">{formatCurrency(c.total_servicos ?? 0)}</p>
                   </div>
                 </div>
 
                 {Number(c.total_devolucoes_troca) > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Devoluções de troca em dinheiro (abatidas do saldo):{" "}
-                    <span className="font-medium text-red-600">- {formatCurrency(Number(c.total_devolucoes_troca))}</span>
+                    {t("caixa.historico.devolucoes")}{" "}
+                    <span className="font-medium text-red-600">{t("caixa.historico.menosValor", { valor: formatCurrency(Number(c.total_devolucoes_troca)) })}</span>
                   </p>
                 )}
                 {c.data_fechamento && (
                   <p className="text-xs text-muted-foreground">
-                    Fechado em: {fmt(c.data_fechamento)}
+                    {t("caixa.historico.fechadoEm", { data: fmt(c.data_fechamento) })}
                   </p>
                 )}
                 {c.observacoes && (

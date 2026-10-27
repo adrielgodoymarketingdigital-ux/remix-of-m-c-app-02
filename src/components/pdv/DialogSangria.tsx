@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowDownCircle, ArrowUpCircle, Loader2 } from "lucide-react";
 import { useCaixaMovimentacoes } from "@/hooks/useCaixaMovimentacoes";
-import { formatCurrency } from "@/lib/formatters";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { ComNegrito } from "@/components/i18n/ComNegrito";
 
 interface DialogSangriaProps {
   open: boolean;
@@ -17,6 +19,8 @@ interface DialogSangriaProps {
 
 export function DialogSangria({ open, onOpenChange, caixaId, onSucesso }: DialogSangriaProps) {
   const [tipo, setTipo] = useState<"sangria" | "suprimento">("sangria");
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
   const [valor, setValor] = useState("");
   const [motivo, setMotivo] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -50,25 +54,25 @@ export function DialogSangria({ open, onOpenChange, caixaId, onSucesso }: Dialog
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Sangria / Suprimento</DialogTitle>
+          <DialogTitle>{t("caixa.sangria.titulo")}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={tipo} onValueChange={(v) => setTipo(v as "sangria" | "suprimento")}>
           <TabsList className="grid grid-cols-2 w-full">
             <TabsTrigger value="sangria" className="gap-2">
               <ArrowDownCircle className="h-4 w-4 text-red-500" />
-              Sangria
+              {t("caixa.sangria.sangria")}
             </TabsTrigger>
             <TabsTrigger value="suprimento" className="gap-2">
               <ArrowUpCircle className="h-4 w-4 text-green-500" />
-              Suprimento
+              {t("caixa.sangria.suprimento")}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="sangria" className="space-y-4 mt-4">
             <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20 p-3">
               <p className="text-xs text-red-600 dark:text-red-400">
-                <strong>Sangria:</strong> Retirada de dinheiro do caixa. O valor será descontado do saldo final no fechamento.
+                <ComNegrito texto={t("caixa.sangria.explicacaoSangria")} />
               </p>
             </div>
           </TabsContent>
@@ -76,7 +80,7 @@ export function DialogSangria({ open, onOpenChange, caixaId, onSucesso }: Dialog
           <TabsContent value="suprimento" className="space-y-4 mt-4">
             <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20 p-3">
               <p className="text-xs text-green-600 dark:text-green-400">
-                <strong>Suprimento:</strong> Adição de dinheiro ao caixa. O valor será somado ao saldo no fechamento.
+                <ComNegrito texto={t("caixa.sangria.explicacaoSuprimento")} />
               </p>
             </div>
           </TabsContent>
@@ -84,21 +88,21 @@ export function DialogSangria({ open, onOpenChange, caixaId, onSucesso }: Dialog
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Valor (R$) *</Label>
+            <Label>{t("caixa.sangria.valor", { simbolo: fmt.simboloMoeda })}</Label>
             <Input
               type="number"
               step="0.01"
               min="0"
-              placeholder="0,00"
+              placeholder={t("caixa.sangria.valorPlaceholder")}
               value={valor}
               onChange={(e) => setValor(e.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Motivo</Label>
+            <Label>{t("caixa.sangria.motivo")}</Label>
             <Input
-              placeholder={tipo === "sangria" ? "Ex: Pagamento de fornecedor" : "Ex: Troco inicial"}
+              placeholder={tipo === "sangria" ? t("caixa.sangria.motivoSangria") : t("caixa.sangria.motivoSuprimento")}
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
             />
@@ -106,21 +110,21 @@ export function DialogSangria({ open, onOpenChange, caixaId, onSucesso }: Dialog
 
           {(totalSangrias > 0 || totalSuprimentos > 0) && (
             <div className="rounded-lg border border-border/40 bg-muted/30 p-3 space-y-1.5">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Movimentações do caixa</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("caixa.sangria.movimentacoes")}</p>
               {totalSangrias > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-red-600 flex items-center gap-1">
-                    <ArrowDownCircle className="h-3.5 w-3.5" /> Sangrias
+                    <ArrowDownCircle className="h-3.5 w-3.5" /> {t("caixa.sangria.sangrias")}
                   </span>
-                  <span className="text-red-600 font-mono">- {formatCurrency(totalSangrias)}</span>
+                  <span className="text-red-600 font-mono">{t("caixa.sangria.menosValor", { valor: fmt.moeda(totalSangrias) })}</span>
                 </div>
               )}
               {totalSuprimentos > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-green-600 flex items-center gap-1">
-                    <ArrowUpCircle className="h-3.5 w-3.5" /> Suprimentos
+                    <ArrowUpCircle className="h-3.5 w-3.5" /> {t("caixa.sangria.suprimentos")}
                   </span>
-                  <span className="text-green-600 font-mono">+ {formatCurrency(totalSuprimentos)}</span>
+                  <span className="text-green-600 font-mono">{t("caixa.sangria.maisValor", { valor: fmt.moeda(totalSuprimentos) })}</span>
                 </div>
               )}
             </div>
@@ -128,7 +132,7 @@ export function DialogSangria({ open, onOpenChange, caixaId, onSucesso }: Dialog
 
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => handleOpenChange(false)}>
-              Cancelar
+              {t("caixa.sangria.cancelar")}
             </Button>
             <Button
               className="flex-1"
@@ -136,7 +140,7 @@ export function DialogSangria({ open, onOpenChange, caixaId, onSucesso }: Dialog
               disabled={!valor || parseFloat(valor) <= 0 || salvando}
               variant={tipo === "sangria" ? "destructive" : "default"}
             >
-              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : tipo === "sangria" ? "Registrar Sangria" : "Registrar Suprimento"}
+              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : tipo === "sangria" ? t("caixa.sangria.registrarSangria") : t("caixa.sangria.registrarSuprimento")}
             </Button>
           </div>
         </div>

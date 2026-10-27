@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Caixa } from "@/types/caixa";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import i18n from "@/lib/i18n/instancia";
 
 interface DialogAberturaCaixaProps {
   open: boolean;
@@ -15,6 +18,10 @@ interface DialogAberturaCaixaProps {
 
 export function DialogAberturaCaixa({ open, onOpenChange, onCaixaAberto, abrirCaixa }: DialogAberturaCaixaProps) {
   const { toast } = useToast();
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
+  // Toasts depois do await: lidos na hora (convencoes.md, item 10).
+  const tAgora = (chave: string) => i18n.t(chave, { ns: "pdv" });
   const [saldoInicial, setSaldoInicial] = useState(0);
   const [observacoes, setObservacoes] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -23,15 +30,15 @@ export function DialogAberturaCaixa({ open, onOpenChange, onCaixaAberto, abrirCa
     setSalvando(true);
     try {
       const caixa = await abrirCaixa(saldoInicial, observacoes || undefined);
-      if (!caixa) throw new Error("Falha ao abrir caixa");
-      toast({ title: "Caixa aberto com sucesso!" });
+      if (!caixa) throw new Error(tAgora("caixa.abertura.falha"));
+      toast({ title: tAgora("caixa.abertura.sucesso") });
       onCaixaAberto(caixa);
       setSaldoInicial(0);
       setObservacoes("");
     } catch (err: unknown) {
       toast({
-        title: "Erro ao abrir caixa",
-        description: err instanceof Error ? err.message : "Erro desconhecido",
+        title: tAgora("caixa.abertura.erro"),
+        description: err instanceof Error ? err.message : tAgora("caixa.erroDesconhecido"),
         variant: "destructive",
       });
     } finally {
@@ -43,11 +50,11 @@ export function DialogAberturaCaixa({ open, onOpenChange, onCaixaAberto, abrirCa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Abrir Caixa</DialogTitle>
+          <DialogTitle>{t("caixa.abertura.titulo")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
-            <Label htmlFor="saldo-inicial">Saldo Inicial (R$)</Label>
+            <Label htmlFor="saldo-inicial">{t("caixa.abertura.saldoInicial", { simbolo: fmt.simboloMoeda })}</Label>
             <Input
               id="saldo-inicial"
               type="number"
@@ -58,16 +65,16 @@ export function DialogAberturaCaixa({ open, onOpenChange, onCaixaAberto, abrirCa
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="obs-abertura">Observações (opcional)</Label>
+            <Label htmlFor="obs-abertura">{t("caixa.abertura.observacoes")}</Label>
             <Input
               id="obs-abertura"
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Ex: Caixa do turno da manhã"
+              placeholder={t("caixa.abertura.observacoesPlaceholder")}
             />
           </div>
           <Button className="w-full" onClick={handleAbrir} disabled={salvando}>
-            {salvando ? "Abrindo..." : "Abrir Caixa"}
+            {salvando ? t("caixa.abertura.abrindo") : t("caixa.abertura.abrir")}
           </Button>
         </div>
       </DialogContent>

@@ -8,7 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Caixa } from "@/types/caixa";
-import { formatCurrency } from "@/lib/formatters";
+import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n/instancia";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 import { Users, ArrowDownCircle, ArrowUpCircle, Wallet, Wrench, Repeat } from "lucide-react";
 import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento, calcularDinheiroEsperado } from "@/lib/formaPagamento";
 import {
@@ -47,6 +50,12 @@ interface DialogFechamentoCaixaProps {
 
 export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechado, fecharCaixa }: DialogFechamentoCaixaProps) {
   const { toast } = useToast();
+  // Textos: namespace "pdv"; moeda: useFormatadores (conta). Toasts e nomes
+  // montados depois de um await: lidos na hora (convencoes.md, item 10).
+  const { t } = useTranslation("pdv");
+  const fmt = useFormatadores();
+  const nomesForma = useNomesFormaPagamento();
+  const tAgora = (chave: string, opcoes?: Record<string, unknown>) => i18n.t(chave, { ns: "pdv", ...opcoes });
   const { lojaUserId } = useFuncionarioPermissoes();
   const [observacoes, setObservacoes] = useState("");
   const [fechando, setFechando] = useState(false);
@@ -142,7 +151,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         forma_pagamento: v.forma_pagamento,
         total: Number(v.valor || 0),
       }));
-      const breakdownCompleto = agruparVendasPorFormaPagamento([...(vendas ?? []), ...vendasAvulsasComoVenda]);
+      const breakdownCompleto = agruparVendasPorFormaPagamento([...(vendas ?? []), ...vendasAvulsasComoVenda], nomesForma.curto);
       const total_vendido = breakdownCompleto.reduce((acc, item) => acc + item.total, 0);
 
       // Agregar por funcionário (ignora o registro auxiliar do split de pagamento,
@@ -175,7 +184,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const breakdownFunc: VendaFuncionario[] = Object.entries(mapaFunc)
         .map(([fid, dados]) => ({
           funcionario_id: fid === "__sem_funcionario__" ? null : fid,
-          nome: fid === "__sem_funcionario__" ? "Sem vendedor" : (nomesMap[fid] || "Desconhecido"),
+          nome: fid === "__sem_funcionario__" ? tAgora("caixa.fechamento.semVendedor") : (nomesMap[fid] || tAgora("caixa.fechamento.desconhecido")),
           total: dados.total,
           quantidade: dados.quantidade,
         }))
@@ -243,7 +252,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
 
       setServicosEntregues(
         servicosAgg.linhas.map((l) => ({
-          numero_os: l.parte === "entrada" ? `${l.numeroOs} (sinal)` : l.numeroOs,
+          numero_os: l.parte === "entrada" ? tAgora("caixa.fechamento.sinal", { numero: l.numeroOs }) : l.numeroOs,
           cliente_nome: l.clienteNome,
           forma_pagamento: l.forma,
           total: l.valor,
@@ -275,8 +284,8 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       } catch (erro) {
         console.error("[caixa] etapa=devoluções de troca do caixa", erro);
         toast({
-          title: "Não foi possível ler as devoluções de troca deste caixa",
-          description: "O dinheiro esperado abaixo não as inclui. Tente abrir o fechamento de novo.",
+          title: tAgora("caixa.fechamento.erroDevolucoesTitulo"),
+          description: tAgora("caixa.fechamento.erroDevolucoesDescricao"),
           variant: "destructive",
         });
       }
@@ -296,16 +305,16 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
     setFechando(true);
     try {
       const ok = await fecharCaixa(caixa.id, observacoes || undefined, saldoFinalContado);
-      if (!ok) throw new Error("Falha ao fechar caixa");
-      toast({ title: "Caixa fechado com sucesso!" });
+      if (!ok) throw new Error(tAgora("caixa.fechamento.falha"));
+      toast({ title: tAgora("caixa.fechamento.sucesso") });
       onCaixaFechado();
       setObservacoes("");
       setResumo(null);
       setSaldoFinalContado(0);
     } catch (err: unknown) {
       toast({
-        title: "Erro ao fechar caixa",
-        description: err instanceof Error ? err.message : "Erro desconhecido",
+        title: tAgora("caixa.fechamento.erro"),
+        description: err instanceof Error ? err.message : tAgora("caixa.erroDesconhecido"),
         variant: "destructive",
       });
     } finally {
@@ -315,11 +324,11 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
 
   const linhasResumo = resumo
     ? [
-        { label: "Saldo Inicial", valor: caixa.saldo_inicial },
-        { label: "Total em Dinheiro", valor: resumo.total_dinheiro },
-        { label: "Total em PIX", valor: resumo.total_pix },
-        { label: "Total em Cartão", valor: resumo.total_cartao },
-        { label: "Total A Receber", valor: resumo.total_a_receber },
+        { label: t("caixa.fechamento.saldoInicial"), valor: caixa.saldo_inicial },
+        { label: t("caixa.fechamento.totalDinheiro"), valor: resumo.total_dinheiro },
+        { label: t("caixa.fechamento.totalPix"), valor: resumo.total_pix },
+        { label: t("caixa.fechamento.totalCartao"), valor: resumo.total_cartao },
+        { label: t("caixa.fechamento.totalAReceber"), valor: resumo.total_a_receber },
       ]
     : [];
 
@@ -329,11 +338,11 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Fechar Caixa</DialogTitle>
+          <DialogTitle>{t("caixa.fechamento.titulo")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           {carregandoResumo ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Calculando resumo...</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("caixa.fechamento.calculando")}</p>
           ) : (
             <>
               <Card className="p-4 space-y-3">
@@ -341,15 +350,15 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                   {linhasResumo.map(({ label, valor }) => (
                     <div key={label} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{label}</span>
-                      <span className="font-medium">{formatCurrency(valor)}</span>
+                      <span className="font-medium">{fmt.moeda(valor)}</span>
                     </div>
                   ))}
                 </div>
 
                 {resumo && (
                   <div className="flex justify-between items-center pt-2 border-t">
-                    <span className="text-sm font-semibold">Total Vendido</span>
-                    <span className="text-base font-bold">{formatCurrency(resumo.total_vendido)}</span>
+                    <span className="text-sm font-semibold">{t("caixa.fechamento.totalVendido")}</span>
+                    <span className="text-base font-bold">{fmt.moeda(resumo.total_vendido)}</span>
                   </div>
                 )}
 
@@ -357,17 +366,17 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                   <div className="space-y-2 pt-2 border-t">
                     <div className="flex items-center gap-2 mb-1">
                       <Wallet className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-semibold">Vendas por Forma de Pagamento</span>
+                      <span className="text-sm font-semibold">{t("caixa.fechamento.porForma")}</span>
                     </div>
                     {vendasPorForma.map((vf) => (
                       <div key={vf.chave} className="flex justify-between items-center text-sm">
                         <span className={CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}>
                           {vf.nome}
                           <span className="ml-1 text-xs text-muted-foreground">
-                            ({vf.quantidade} venda{vf.quantidade !== 1 ? "s" : ""})
+                            {t("caixa.fechamento.vendas", { count: vf.quantidade })}
                           </span>
                         </span>
-                        <span className={`font-medium ${CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}`}>{formatCurrency(vf.total)}</span>
+                        <span className={`font-medium ${CORES_BADGE_FORMA_PAGAMENTO[vf.cor]}`}>{fmt.moeda(vf.total)}</span>
                       </div>
                     ))}
                   </div>
@@ -377,76 +386,76 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold flex items-center gap-2">
                       <Wrench className="h-4 w-4" />
-                      Serviços Entregues ({servicosEntregues.length})
+                      {t("caixa.fechamento.servicosEntregues", { quantidade: servicosEntregues.length })}
                     </h4>
                     <div className="space-y-1">
                       {servicosEntregues.map((os) => (
                         <div key={os.numero_os} className="flex justify-between items-center text-sm py-1 border-b border-border/50 last:border-0">
                           <div className="flex flex-col">
                             <span className="font-medium">{os.numero_os}</span>
-                            <span className="text-xs text-muted-foreground">{os.cliente_nome} • {os.forma_pagamento}</span>
+                            <span className="text-xs text-muted-foreground">{t("caixa.fechamento.clienteForma", { cliente: os.cliente_nome, forma: os.forma_pagamento })}</span>
                           </div>
-                          <span className="font-medium text-green-600">{formatCurrency(os.total)}</span>
+                          <span className="font-medium text-green-600">{fmt.moeda(os.total)}</span>
                         </div>
                       ))}
                     </div>
                     <div className="flex justify-between font-semibold text-sm pt-1 border-t">
-                      <span>Total Serviços</span>
-                      <span className="text-green-600">{formatCurrency(totalServicos)}</span>
+                      <span>{t("caixa.fechamento.totalServicos")}</span>
+                      <span className="text-green-600">{fmt.moeda(totalServicos)}</span>
                     </div>
                   </div>
                 )}
 
                 {resumo && servicosEntregues.length > 0 && (
                   <div className="flex justify-between items-center pt-2 border-t">
-                    <span className="text-sm font-bold">Total Vendas + Serviços</span>
-                    <span className="text-base font-bold">{formatCurrency(resumo.total_vendido + totalServicos)}</span>
+                    <span className="text-sm font-bold">{t("caixa.fechamento.totalVendasServicos")}</span>
+                    <span className="text-base font-bold">{fmt.moeda(resumo.total_vendido + totalServicos)}</span>
                   </div>
                 )}
               </Card>
 
               {temMovimentacoes && (
                 <Card className="p-4 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Movimentações</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("caixa.fechamento.movimentacoes")}</p>
                   {totalSangrias > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-red-600 flex items-center gap-1">
-                        <ArrowDownCircle className="h-3.5 w-3.5" /> Sangrias
+                        <ArrowDownCircle className="h-3.5 w-3.5" /> {t("caixa.sangria.sangrias")}
                       </span>
-                      <span className="text-red-600 font-medium">- {formatCurrency(totalSangrias)}</span>
+                      <span className="text-red-600 font-medium">{t("caixa.sangria.menosValor", { valor: fmt.moeda(totalSangrias) })}</span>
                     </div>
                   )}
                   {totalSuprimentos > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-green-600 flex items-center gap-1">
-                        <ArrowUpCircle className="h-3.5 w-3.5" /> Suprimentos
+                        <ArrowUpCircle className="h-3.5 w-3.5" /> {t("caixa.sangria.suprimentos")}
                       </span>
-                      <span className="text-green-600 font-medium">+ {formatCurrency(totalSuprimentos)}</span>
+                      <span className="text-green-600 font-medium">{t("caixa.sangria.maisValor", { valor: fmt.moeda(totalSuprimentos) })}</span>
                     </div>
                   )}
                   {devolucoes.dinheiro > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-red-600 flex items-center gap-1">
-                        <Repeat className="h-3.5 w-3.5" /> Devoluções de troca em Dinheiro ({devolucoes.quantidadeDinheiro})
+                        <Repeat className="h-3.5 w-3.5" /> {t("caixa.fechamento.devolucoesDinheiro", { quantidade: devolucoes.quantidadeDinheiro })}
                       </span>
-                      <span className="text-red-600 font-medium">- {formatCurrency(devolucoes.dinheiro)}</span>
+                      <span className="text-red-600 font-medium">{t("caixa.sangria.menosValor", { valor: fmt.moeda(devolucoes.dinheiro) })}</span>
                     </div>
                   )}
                   {devolucoes.pix > 0 && (
                     <div className="space-y-0.5">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground flex items-center gap-1">
-                          <Repeat className="h-3.5 w-3.5" /> Devoluções em Pix ({devolucoes.quantidadePix})
+                          <Repeat className="h-3.5 w-3.5" /> {t("caixa.fechamento.devolucoesPix", { quantidade: devolucoes.quantidadePix })}
                         </span>
-                        <span className="text-muted-foreground font-medium">{formatCurrency(devolucoes.pix)}</span>
+                        <span className="text-muted-foreground font-medium">{fmt.moeda(devolucoes.pix)}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground">Não saem da gaveta: não mudam o dinheiro esperado.</p>
+                      <p className="text-xs text-muted-foreground">{t("caixa.fechamento.naoSaemGaveta")}</p>
                     </div>
                   )}
                   {devolucoes.dinheiro > 0 && resumo && (
                     <div className="flex justify-between text-sm pt-2 border-t font-semibold">
-                      <span>Dinheiro esperado na gaveta</span>
-                      <span>{formatCurrency(resumo.saldo_final)}</span>
+                      <span>{t("caixa.fechamento.dinheiroEsperado")}</span>
+                      <span>{fmt.moeda(resumo.saldo_final)}</span>
                     </div>
                   )}
                 </Card>
@@ -456,15 +465,15 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
                 <Card className="p-4 space-y-2">
                   <div className="flex items-center gap-2 mb-1">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-semibold">Vendas por Vendedor</span>
+                    <span className="text-sm font-semibold">{t("caixa.fechamento.porVendedor")}</span>
                   </div>
                   {vendaFuncionarios.map((vf) => (
                     <div key={vf.funcionario_id ?? "sem"} className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">
                         {vf.nome}
-                        <span className="ml-1 text-xs">({vf.quantidade} venda{vf.quantidade !== 1 ? "s" : ""})</span>
+                        <span className="ml-1 text-xs">{t("caixa.fechamento.vendas", { count: vf.quantidade })}</span>
                       </span>
-                      <span className="font-medium">{formatCurrency(vf.total)}</span>
+                      <span className="font-medium">{fmt.moeda(vf.total)}</span>
                     </div>
                   ))}
                 </Card>
@@ -473,7 +482,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
           )}
 
           <div className="space-y-1">
-            <Label htmlFor="saldo-contado">Saldo Final Contado (R$)</Label>
+            <Label htmlFor="saldo-contado">{t("caixa.fechamento.saldoContado", { simbolo: fmt.simboloMoeda })}</Label>
             <Input
               id="saldo-contado"
               type="number"
@@ -484,26 +493,26 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
               disabled={carregandoResumo}
             />
             <p className="text-xs text-muted-foreground">
-              Informe o valor real que está no caixa físico agora
+              {t("caixa.fechamento.saldoContadoAjuda")}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="obs-fechamento">Observações de fechamento (opcional)</Label>
+            <Label htmlFor="obs-fechamento">{t("caixa.fechamento.observacoes")}</Label>
             <Input
               id="obs-fechamento"
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Ex: Sangria de R$200 realizada"
+              placeholder={t("caixa.fechamento.observacoesPlaceholder")}
             />
           </div>
 
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={fechando}>
-              Cancelar
+              {t("caixa.fechamento.cancelar")}
             </Button>
             <Button className="flex-1" onClick={handleFechar} disabled={fechando || carregandoResumo}>
-              {fechando ? "Fechando..." : "Confirmar Fechamento"}
+              {fechando ? t("caixa.fechamento.fechando") : t("caixa.fechamento.confirmar")}
             </Button>
           </div>
         </div>
