@@ -1,6 +1,7 @@
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { clearSessionMeta, SIDEBAR_GRUPOS_EXPANDIDOS_KEY } from "@/lib/sessionStorage";
 import logoMec from "@/assets/logo-mec-icone.png";
@@ -46,6 +47,7 @@ import { SeletorFilial } from "@/components/layout/SeletorFilial";
 import { ADMIN_MENU_COM_ICONE, MENU_PRINCIPAL_COM_ICONE } from "@/components/layout/iconesMenu";
 import { GRUPOS_MENU, filtrarMenuVisivel } from "@/lib/menu/menuPrincipal";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { chaveDaRota } from "@/lib/i18n/chaves";
 
 // Menu de Ajuda: sempre visível para todos os usuários logados, sem restrição de permissão/plano
 const ajudaItem = { title: "Ajuda", url: "/ajuda", icon: HelpCircle };
@@ -54,17 +56,18 @@ const ajudaItem = { title: "Ajuda", url: "/ajuda", icon: HelpCircle };
 // do menu do celular/PWA, MobileMenuDrawer). Ícones: ./iconesMenu.
 const menuItems = MENU_PRINCIPAL_COM_ICONE;
 
-// Rótulo e ícone de cada seção do Menu Principal (só exibição; a ordem dos itens
-// dentro de cada seção vem de GRUPOS_MENU). `icon` reaproveita, quando possível, o
-// ícone de um item da própria seção (Package = "Produtos e Peças", Users =
-// "Clientes"/"Equipe", Receipt = "Contas", HelpCircle = "Suporte"). Wrench
-// (Atendimento) segue o sentido do emoji 🛠️ original.
-const ROTULOS_GRUPOS: Record<string, { label: string; icon: LucideIcon }> = {
-  atendimento: { label: "Atendimento", icon: Wrench },
-  estoque: { label: "Estoque", icon: Package },
-  pessoas: { label: "Pessoas", icon: Users },
-  administrativo: { label: "Administrativo", icon: Receipt },
-  "conta-suporte": { label: "Conta & Suporte", icon: HelpCircle },
+// Ícone de cada seção do Menu Principal (só exibição; a ordem dos itens dentro
+// de cada seção vem de GRUPOS_MENU; o rótulo, de grupos.<key> no namespace
+// "menu"). `icon` reaproveita, quando possível, o ícone de um item da própria
+// seção (Package = "Produtos e Peças", Users = "Clientes"/"Equipe", Receipt =
+// "Contas", HelpCircle = "Suporte"). Wrench (Atendimento) segue o sentido do
+// emoji 🛠️ original.
+const ROTULOS_GRUPOS: Record<string, { icon: LucideIcon }> = {
+  atendimento: { icon: Wrench },
+  estoque: { icon: Package },
+  pessoas: { icon: Users },
+  administrativo: { icon: Receipt },
+  "conta-suporte": { icon: HelpCircle },
 };
 const GRUPOS_MENU_SIDEBAR = GRUPOS_MENU.map((g) => ({ ...g, ...ROTULOS_GRUPOS[g.key] }));
 // Sem label visível — Configurações é renderizada solta, sem cabeçalho de seção.
@@ -79,6 +82,9 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  // Rótulos do menu: namespace "menu" (src/locales/<idioma>/menu.ts). Em pt-BR
+  // são os mesmos textos de menuPrincipal.ts, letra por letra.
+  const { t } = useTranslation("menu");
   const collapsed = state === "collapsed";
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
@@ -188,7 +194,7 @@ export function AppSidebar() {
               <item.icon className="h-5 w-5 shrink-0" />
               {!collapsed && (
                 <>
-                  <span className="flex-1 text-left">{item.title}</span>
+                  <span className="flex-1 text-left">{t(`itens.${chaveDaRota(item.url)}`)}</span>
                   <ChevronRight className={`h-4 w-4 transition-transform ${expandido ? "rotate-90" : ""}`} />
                 </>
               )}
@@ -196,7 +202,7 @@ export function AppSidebar() {
           ) : (
             <>
               <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.title}</span>}
+              {!collapsed && <span>{t(`itens.${chaveDaRota(item.url)}`)}</span>}
             </>
           )}
         </SidebarMenuButton>
@@ -208,7 +214,7 @@ export function AppSidebar() {
               className="text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover transition-all pl-8 text-sm"
               activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-sidebar-primary"
             >
-              <span>{sub.title}</span>
+              <span>{t(`subitens.${chaveDaRota(sub.url)}`)}</span>
             </NavLink>
           </SidebarMenuButton>
         ))}
@@ -280,7 +286,7 @@ export function AppSidebar() {
                         <>
                           <span className="flex items-center gap-1.5 min-w-0">
                             <grupo.icon className="h-3.5 w-3.5 shrink-0 text-sidebar-muted" />
-                            <span className="truncate text-[11px] font-bold uppercase tracking-[0.15em] text-sidebar-muted">{grupo.label}</span>
+                            <span className="truncate text-[11px] font-bold uppercase tracking-[0.15em] text-sidebar-muted">{t(`grupos.${grupo.key}`)}</span>
                           </span>
                           <ChevronRight className={`h-3 w-3 shrink-0 text-sidebar-subtle transition-transform ${grupoColapsado ? "" : "rotate-90"}`} />
                         </>
@@ -328,14 +334,14 @@ export function AppSidebar() {
                   <button
                     type="button"
                     onClick={alternarMenuAdmin}
-                    aria-label={menuAdminOculto ? "Mostrar menu admin" : "Ver como usuário"}
+                    aria-label={menuAdminOculto ? t("admin.mostrarMenu") : t("admin.verComoUsuario")}
                     aria-pressed={menuAdminOculto}
                     className="flex h-6 w-6 items-center justify-center rounded-md text-sidebar-muted hover:text-sidebar-hover-foreground hover:bg-sidebar-hover"
                   >
                     {menuAdminOculto ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">{menuAdminOculto ? "Mostrar menu admin" : "Ver como usuário"}</TooltipContent>
+                <TooltipContent side="right">{menuAdminOculto ? t("admin.mostrarMenu") : t("admin.verComoUsuario")}</TooltipContent>
               </Tooltip>
             </SidebarGroupLabel>
             {!menuAdminOculto && <SidebarGroupContent>
@@ -364,7 +370,7 @@ export function AppSidebar() {
                           </div>
                           {!collapsed && (
                             <span className="flex items-center gap-2">
-                              {item.title}
+                              {t(`admin.itens.${chaveDaRota(item.url)}`)}
                               {badgeCount > 0 && (
                                 <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
                                   {badgeCount}
@@ -389,7 +395,7 @@ export function AppSidebar() {
             onClick={() => navigate(ajudaItem.url)}
           >
             <ajudaItem.icon className="h-5 w-5" />
-            {!collapsed && <span className="ml-2">{ajudaItem.title}</span>}
+            {!collapsed && <span className="ml-2">{t("ajuda")}</span>}
           </Button>
           <Button
             variant="ghost"
@@ -397,7 +403,7 @@ export function AppSidebar() {
             onClick={handleLogout}
           >
             <LogOut className="h-5 w-5" />
-            {!collapsed && <span className="ml-2">Sair</span>}
+            {!collapsed && <span className="ml-2">{t("sair")}</span>}
           </Button>
         </div>
       </SidebarContent>
