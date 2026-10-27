@@ -14,13 +14,20 @@ export interface ContextoFormato {
   idioma: Idioma;
   /** ISO 4217 */
   moeda: string;
-  /** IANA */
-  fuso: string;
+  /**
+   * IANA. undefined = o fuso do navegador, que é o que o date-fns faz hoje:
+   * é o contexto de quem não tem i18n (FORMATO_NAVEGADOR_BRASIL), para nada
+   * mudar para a loja de Manaus ou de Rio Branco.
+   */
+  fuso?: string;
   /** ISO 3166-1 alfa-2: escolhe a variante regional (es-MX, es-AR...). */
   pais?: string;
 }
 
 export const FORMATO_BRASIL: ContextoFormato = { idioma: "pt-BR", moeda: "BRL", fuso: "America/Sao_Paulo", pais: "BR" };
+
+/** O app de sempre para quem não tem i18n: pt-BR, BRL e a hora no fuso do navegador (como o date-fns). */
+export const FORMATO_NAVEGADOR_BRASIL: ContextoFormato = { idioma: "pt-BR", moeda: "BRL", pais: "BR" };
 
 /**
  * Etiqueta do Intl. Espanhol sem país (ou com o padrão BR, que a etapa 1 põe
@@ -68,13 +75,20 @@ const ehBrasil = (ctx: ContextoFormato) => ctx.idioma === "pt-BR" && ctx.moeda =
  * undefined: no Brasil, "R$ 0,00" com espaço COMUM — é o que formatCurrency
  * devolve hoje para null (texto fixo) e a etapa 5 não pode mudar isso; nos
  * outros mercados, o zero formatado.
+ *
+ * Dólar em espanhol sai sempre "US$" (decisão do glossário): o Intl escreve
+ * "USD" em es-419/es-MX e "US$" em es-AR/es-CO.
  */
 export function formatarMoeda(valor: number | null | undefined, ctx: ContextoFormato = FORMATO_BRASIL): string {
   if (valor === null || valor === undefined) {
     if (ehBrasil(ctx)) return "R$ 0,00";
     valor = 0;
   }
-  return numeroFmt(localeIntl(ctx), { style: "currency", currency: ctx.moeda }).format(valor);
+  const fmt = numeroFmt(localeIntl(ctx), { style: "currency", currency: ctx.moeda });
+  if (ctx.idioma === "es" && ctx.moeda === "USD") {
+    return fmt.formatToParts(valor).map((p) => (p.type === "currency" ? "US$" : p.value)).join("");
+  }
+  return fmt.format(valor);
 }
 
 /** Número no padrão do idioma: 1500 → "1.500" (pt-BR) / "1,500" (es-419). Opções do Intl.NumberFormat. */
@@ -94,7 +108,7 @@ export const SO_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
  * fuso (como o parseDate de hoje, que a lê como meia-noite local).
  * Timestamp/Date/número: lido no fuso da conta.
  */
-function instante(valor: string | Date | number, ctx: ContextoFormato): { d: Date; fuso: string } | null {
+function instante(valor: string | Date | number, ctx: ContextoFormato): { d: Date; fuso: string | undefined } | null {
   if (typeof valor === "string") {
     const m = SO_DATA.exec(valor);
     if (m) return { d: new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))), fuso: "UTC" };
@@ -110,11 +124,11 @@ export function formatarData(valor: string | Date | number, ctx: ContextoFormato
   return dataFmt(localeIntl(ctx), { day: "2-digit", month: "2-digit", year: "numeric", timeZone: i.fuso }).format(i.d);
 }
 
-/** "18:55" (pt-BR); nos outros idiomas, o relógio do idioma (es-419: "06:55 p.m."). Data inválida → "". */
+/** "18:55" — relógio de 24 h em todos os idiomas (decisão do glossário). Data inválida → "". */
 export function formatarHora(valor: string | Date | number, ctx: ContextoFormato = FORMATO_BRASIL): string {
   const i = instante(valor, ctx);
   if (!i) return "";
-  return dataFmt(localeIntl(ctx), { hour: "2-digit", minute: "2-digit", timeZone: i.fuso }).format(i.d);
+  return dataFmt(localeIntl(ctx), { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: i.fuso }).format(i.d);
 }
 
 /**

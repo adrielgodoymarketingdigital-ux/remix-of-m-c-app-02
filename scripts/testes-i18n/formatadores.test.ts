@@ -6,6 +6,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   FORMATO_BRASIL,
+  FORMATO_NAVEGADOR_BRASIL,
   formatarData,
   formatarDataHora,
   formatarHora,
@@ -131,6 +132,21 @@ Deno.test({
   },
 });
 
+Deno.test({
+  name: "FORMATO_NAVEGADOR_BRASIL = formatDate/formatDateTime/formatTime (date-fns) em QUALQUER fuso do navegador",
+  fn() {
+    for (const v of [...INSTANTES, ...DATAS_PURAS]) {
+      assertEquals(formatarData(v, FORMATO_NAVEGADOR_BRASIL), formatDate(v), v);
+      if (!MEIA_NOITE_INEXISTENTE.has(v)) {
+        assertEquals(formatarDataHora(v, FORMATO_NAVEGADOR_BRASIL), formatDateTime(v), v);
+        assertEquals(formatarHora(v, FORMATO_NAVEGADOR_BRASIL), formatTime(v), v);
+      }
+    }
+    for (const v of VALORES) assertEquals(formatarMoeda(v, FORMATO_NAVEGADOR_BRASIL), formatCurrency(v));
+    assertEquals(formatarMoeda(null, FORMATO_NAVEGADOR_BRASIL), formatCurrency(null));
+  },
+});
+
 Deno.test("data inválida → '' (date-fns lançaria RangeError)", () => {
   assertEquals(formatarData("lixo"), "");
   assertEquals(formatarDataHora(""), "");
@@ -150,15 +166,17 @@ Deno.test("locale do Intl: es sem país (ou BR, padrão da etapa 1) = es-419", (
 Deno.test("fora do Brasil: moeda, número, data e hora da conta", () => {
   const latam: ContextoFormato = { idioma: "es", moeda: "USD", fuso: "America/Mexico_City", pais: "BR" };
   const iso = "2026-10-26T21:55:00Z"; // 15:55 na Cidade do México
-  assertEquals(formatarMoeda(1234.5, latam), "USD 1,234.50");
-  assertEquals(formatarMoeda(null, latam), "USD 0.00");
+  assertEquals(formatarMoeda(1234.5, latam), "US$\u00a01,234.50");
+  assertEquals(formatarMoeda(-1234.5, latam), "-US$\u00a01,234.50");
+  assertEquals(formatarMoeda(1234.5, { ...latam, pais: "MX" }), "US$\u00a01,234.50");
+  assertEquals(formatarMoeda(null, latam), "US$\u00a00.00");
   assertEquals(formatarNumero(1234567.891, {}, latam), "1,234,567.891");
   assertEquals(formatarData(iso, latam), "26/10/2026");
-  assertEquals(formatarHora(iso, latam).replace(/\s/g, " "), "03:55 p.m.");
+  assertEquals(formatarHora(iso, latam), "15:55");
   const argentina: ContextoFormato = { idioma: "es", moeda: "USD", fuso: "America/Argentina/Buenos_Aires", pais: "AR" };
   assertEquals(formatarMoeda(1234.5, argentina), "US$ 1.234,50");
   assertEquals(formatarData(iso, argentina), "26/10/2026");
   const eua: ContextoFormato = { idioma: "en", moeda: "USD", fuso: "America/New_York" };
   assertEquals(formatarMoeda(-1234.5, eua), "-$1,234.50");
-  assertEquals(formatarDataHora(iso, eua).replace(/\s/g, " "), "10/26/2026 05:55 PM");
+  assertEquals(formatarDataHora(iso, eua), "10/26/2026 17:55");
 });
