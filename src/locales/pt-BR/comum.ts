@@ -60,6 +60,12 @@ const comum = {
   dataHora: "{{data}} às {{hora}}",
   // Rodapé de Configurações. {{versao}}: "AAAA-MM-DD HH:mm · <commit>", gerada no build.
   versaoApp: "Versão {{versao}}",
+  // Aviso de versão nova do app (PWAUpdateBanner).
+  novaVersao: {
+    titulo: "Nova versão disponível",
+    atualizar: "Atualizar agora",
+    depois: "Depois",
+  },
 } as const;
 
 export default comum;
