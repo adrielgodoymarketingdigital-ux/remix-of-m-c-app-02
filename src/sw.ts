@@ -13,9 +13,8 @@ declare const self: ServiceWorkerGlobalScope & {
   }>;
 };
 
-// O SW responde a skipWaiting() enviado pelo cliente (main.tsx via updateSW(true)).
-// Isso só é chamado quando o app está em background (visibilityState === 'hidden'),
-// nunca enquanto o usuário está preenchendo formulários.
+// O SW responde a skipWaiting() enviado pelo cliente (src/lib/pwa/atualizacaoApp.ts).
+// Isso só é chamado quando o usuário toca em "Atualizar agora" (PWAUpdateBanner).
 self.addEventListener('install', (event) => {
   console.log('[SW] Nova versão instalada - aguardando sinal do cliente para ativar');
   // Não chama skipWaiting() automaticamente — espera o cliente decidir o momento certo

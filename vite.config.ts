@@ -154,6 +154,8 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "prompt",
+      // O registro é nosso (src/lib/pwa/atualizacaoApp.ts): o plugin não injeta outro.
+      injectRegister: false,
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
