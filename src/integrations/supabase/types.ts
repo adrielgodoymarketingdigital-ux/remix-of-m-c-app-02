@@ -4140,10 +4140,15 @@ export type Database = {
           fbclid: string | null
           fbp: string | null
           first_os_created_at: string | null
+          fuso_horario: string
           id: string
+          idioma: string
           last_login_at: string | null
           login_count: number | null
+          mercado: string
+          moeda: string
           nome: string
+          pais: string
           preferencias_os: Json | null
           purchase_event_id: string | null
           registration_tracked: boolean | null
@@ -4171,10 +4176,15 @@ export type Database = {
           fbclid?: string | null
           fbp?: string | null
           first_os_created_at?: string | null
+          fuso_horario?: string
           id?: string
+          idioma?: string
           last_login_at?: string | null
           login_count?: number | null
+          mercado?: string
+          moeda?: string
           nome: string
+          pais?: string
           preferencias_os?: Json | null
           purchase_event_id?: string | null
           registration_tracked?: boolean | null
@@ -4202,10 +4212,15 @@ export type Database = {
           fbclid?: string | null
           fbp?: string | null
           first_os_created_at?: string | null
+          fuso_horario?: string
           id?: string
+          idioma?: string
           last_login_at?: string | null
           login_count?: number | null
+          mercado?: string
+          moeda?: string
           nome?: string
+          pais?: string
           preferencias_os?: Json | null
           purchase_event_id?: string | null
           registration_tracked?: boolean | null

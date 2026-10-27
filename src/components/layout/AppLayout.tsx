@@ -18,6 +18,7 @@ import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { OcultarValoresProvider } from "@/contexts/OcultarValoresContext";
 import { BotaoOcultarValores } from "@/components/layout/BotaoOcultarValores";
 import { useUserPresence } from "@/hooks/useUserPresence";
+import { SincronizarIdioma } from "@/components/i18n/SincronizarIdioma";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -71,6 +72,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             <TutorialOverlay />
             {/* Walkthroughs curtos do onboarding (?walkthrough=<key>) */}
             <OnboardingWalkthroughHost />
+            {/* Idioma da conta (hoje só admin; não desenha nada) */}
+            <SincronizarIdioma />
           </div>
         </SidebarProvider>
       </TutorialProvider>
