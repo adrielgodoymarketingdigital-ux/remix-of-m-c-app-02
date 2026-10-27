@@ -46,6 +46,7 @@ export const useProdutos = () => {
             .eq('user_id', userId)
             .is('deleted_at', null)
             .order('nome')
+            .order('id')
             .range(pagina * tamanhoPagina, pagina * tamanhoPagina + tamanhoPagina - 1);
           if (empresaFiltro) {
             q = isFilial
