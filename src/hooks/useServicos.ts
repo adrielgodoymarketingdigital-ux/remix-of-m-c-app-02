@@ -5,6 +5,11 @@ import { Servico } from "@/types/servico";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
 import { useEmpresaFiltro } from "./useResolvedUserId";
+import i18n from "@/lib/i18n/instancia";
+import { textoNumerosOs } from "@/lib/servicos/numerosOsBloqueio";
+
+// Toasts lidos na hora (saem depois de um await; ver docs/i18n/convencoes.md, item 10).
+const tS = (chave: string, opcoes?: Record<string, unknown>) => i18n.t(chave, { ns: "servicos", ...opcoes });
 
 export const useServicos = () => {
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -205,32 +210,33 @@ export const useServicos = () => {
       // ON DELETE SET NULL, mas o snapshot em avarias.servicos_realizados
       // mantém o id antigo e o wizard tenta regravá-lo, violando a FK.
       // Bloqueamos a exclusão enquanto houver uso, na coluna servico_id OU
-      // dentro do JSON avarias.servicos_realizados.
+      // dentro do JSON avarias.servicos_realizados. OS excluída (deleted_at)
+      // não conta: não aparece em lugar nenhum nem pode ser reaberta. OS
+      // cancelada continua contando (segue visível e editável).
       const [porColuna, porJson] = await Promise.all([
         supabase
           .from("ordens_servico")
-          .select("id")
+          .select("id, numero_os")
           .eq("user_id", userId)
-          .eq("servico_id", id),
+          .eq("servico_id", id)
+          .is("deleted_at", null),
         supabase
           .from("ordens_servico")
-          .select("id")
+          .select("id, numero_os")
           .eq("user_id", userId)
-          .contains("avarias", { servicos_realizados: [{ id }] }),
+          .contains("avarias", { servicos_realizados: [{ id }] })
+          .is("deleted_at", null),
       ]);
 
       if (porColuna.error) throw porColuna.error;
       if (porJson.error) throw porJson.error;
 
-      const osComUso = new Set<string>([
-        ...(porColuna.data || []).map((o: { id: string }) => o.id),
-        ...(porJson.data || []).map((o: { id: string }) => o.id),
-      ]);
+      const osComUso = new Map<string, string>();
+      for (const o of [...(porColuna.data || []), ...(porJson.data || [])]) osComUso.set(o.id, o.numero_os);
 
       if (osComUso.size > 0) {
-        const qtd = osComUso.size;
-        toast.error("Não é possível excluir este serviço", {
-          description: `Este serviço está sendo usado em ${qtd} ${qtd === 1 ? "ordem de serviço" : "ordens de serviço"} e não pode ser excluído. Remova-o dessas OS ou mantenha-o no catálogo.`,
+        toast.error(tS("exclusao.servicoTitulo"), {
+          description: tS("exclusao.servicoEmUso", { count: osComUso.size, numeros: textoNumerosOs([...osComUso.values()], tS) }),
         });
         return;
       }
