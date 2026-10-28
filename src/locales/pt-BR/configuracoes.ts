@@ -17,6 +17,7 @@ const configuracoes = {
     aparencia: "Aparência",
     cores: "Cores",
     numeracao: "Numeração",
+    estoque: "Estoque",
     notificacoes: "Notificações",
     permissoes: "Permissões",
     preview: "Preview",
@@ -364,6 +365,25 @@ const configuracoes = {
     descricao: "Apague de vez os dados que você escolher (vendas, OS, clientes, financeiro, estoque ou orçamentos). Login, plano e configurações da loja ficam.",
     botao: "Começar do zero",
     subtitulo: "Apagar dados da sua loja",
+  },
+  // Estoque baixo (aba "Estoque", só o dono). limiteBaixo: <campo/> é o campo do número.
+  estoque: {
+    titulo: "Estoque baixo",
+    descricao: "Escolha quando um produto ou peça aparece como \"Baixo\" na lista de Produtos, no PDF \"Menor estoque\" e no relatório de produtos vendidos.",
+    limiteBaixo: "Avisar estoque baixo quando restar <campo/> ou menos",
+    campoRotulo: "Quantidade para avisar estoque baixo",
+    limiteBaixoDica: "Deixe em branco para usar o padrão do app. Zerado e negativo sempre aparecem, com qualquer limite.",
+    naoAvisar: "Não avisar estoque baixo",
+    naoAvisarDica: "Nenhum item aparece como \"Baixo\". Zerado e negativo continuam aparecendo.",
+    atualPadrao: "Hoje: padrão do app (\"Baixo\" de 1 a 4 na lista, de 1 a 3 no PDF e menos de 5 no relatório).",
+    atualLimite: "Hoje: avisa quando restar {{limite}} ou menos.",
+    atualDesligado: "Hoje: não avisa estoque baixo.",
+    carregando: "Carregando...",
+    salvar: "Salvar",
+    salvando: "Salvando...",
+    salvo: "Limite de estoque baixo salvo",
+    erroSalvar: "Não foi possível salvar o limite. Tente de novo.",
+    erroValor: "Digite um número inteiro de 0 a {{maximo}}, ou deixe em branco.",
   },
 } as const;
 
