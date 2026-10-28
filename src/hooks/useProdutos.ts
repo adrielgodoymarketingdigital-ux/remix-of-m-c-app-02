@@ -286,12 +286,15 @@ export const useProdutos = () => {
 
       const userId = resolvedUserId ?? user.id;
 
-      // Verificar se o item tem vendas ou serviços associados antes de excluir
+      // Verificar se o item tem vendas ou serviços associados antes de excluir.
+      // Venda excluída (deleted_at) não conta: some de todas as telas e não
+      // volta. Venda cancelada (cancelada = true) continua contando.
       if (tipo === 'produto') {
         const { data: vendasAssociadas, error: erroVendas } = await supabase
           .from('vendas')
           .select('id')
           .eq('produto_id', id)
+          .is('deleted_at', null)
           .limit(1);
 
         if (erroVendas) throw erroVendas;
@@ -387,7 +390,8 @@ export const useProdutos = () => {
             .from('vendas')
             .select('produto_id')
             .eq('user_id', userId)
-            .in('produto_id', idsChunk);
+            .in('produto_id', idsChunk)
+            .is('deleted_at', null);
 
           if (error) throw error;
           (vendasAssociadas || []).forEach(v => {
