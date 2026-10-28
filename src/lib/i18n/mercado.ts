@@ -6,6 +6,7 @@ import {
   type CodigoMercado,
   type Idioma,
 } from "./idiomas";
+import { ehFusoValido, fusoPadraoDoPais } from "./regiao";
 
 /**
  * O que existe em cada mercado. Brasil = tudo ligado (é o app de sempre).
@@ -79,29 +80,22 @@ export const MERCADO_BRASIL: InfoMercado = {
 const ehMoeda = (v: string | null): v is string => !!v && /^[A-Z]{3}$/.test(v);
 const ehPais = (v: string | null): v is string => !!v && /^[A-Z]{2}$/.test(v);
 
-function ehFuso(v: string | null): v is string {
-  if (!v) return false;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: v });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Perfil → mercado. Sem perfil, ou coluna vazia/inválida, cai no padrão
- * Brasil daquela coluna (as mesmas DEFAULTs do banco).
+ * Brasil daquela coluna (as mesmas DEFAULTs do banco). O fuso inválido cai no
+ * padrão do PAÍS (loja chilena num iPhone que não conhece America/Coyhaique
+ * fica em Santiago, não em São Paulo); no Brasil, America/Sao_Paulo.
  */
 export function infoMercadoDoPerfil(perfil: PerfilRegional | null | undefined): InfoMercado {
   if (!perfil) return MERCADO_BRASIL;
   const mercado = ehMercado(perfil.mercado) ? perfil.mercado : MERCADO_BRASIL.mercado;
+  const pais = ehPais(perfil.pais) ? perfil.pais : MERCADO_BRASIL.pais;
   return {
     idioma: ehIdioma(perfil.idioma) ? perfil.idioma : MERCADO_BRASIL.idioma,
     mercado,
     moeda: ehMoeda(perfil.moeda) ? perfil.moeda : MERCADO_BRASIL.moeda,
-    pais: ehPais(perfil.pais) ? perfil.pais : MERCADO_BRASIL.pais,
-    fuso: ehFuso(perfil.fuso_horario) ? perfil.fuso_horario : MERCADO_BRASIL.fuso,
+    pais,
+    fuso: ehFusoValido(perfil.fuso_horario) ? perfil.fuso_horario : fusoPadraoDoPais(pais),
     capacidades: capacidadesDoMercado(mercado),
   };
 }
