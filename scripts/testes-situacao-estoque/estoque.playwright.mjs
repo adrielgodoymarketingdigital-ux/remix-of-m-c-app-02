@@ -10,8 +10,11 @@
 //            ausente     tabela ainda não existe (PostgREST responde PGRST205)
 //            configurado linha do dono com limite_baixo = <limite>
 //   papel    dono | funcionario | gerente (gerente de filial; dados com empresa_id da filial)
-//   telas    lista separada por vírgula; padrão: as 4 telas de estoque. "configuracoes" testa a aba
-//            Estoque (só existe na fase 2; grava pelo simulador e confere o que foi enviado).
+//   telas    lista separada por vírgula; padrão: as 4 telas de estoque. Extras:
+//            configuracoes            Configurações do menu lateral não tem mais aba Estoque
+//            produtos-config(-celular) Produtos e Peças > Configurações > aba Estoque (só o dono):
+//                                     grava 7, 0 e vazio pelo simulador; lista, PDF e relatório
+//                                     mudam sem recarregar; 2000 é recusado sem enviar
 //
 // Toda rodada confere as etiquetas contra o limite esperado (contado aqui, à parte do app).
 // Para cada tela guarda texto, captura (PNG) e etiquetas; o PDF é guardado inteiro.
@@ -295,85 +298,159 @@ const TELAS = {
     await tabela.screenshot({ path: path.join(SAIDA, "relatorio-vendidos-tabela.png"), animations: "disabled" });
     return { texto, html };
   },
-  // Aba Estoque em Configurações (fase 2).
-  async configuracoes(pg, estado) {
+  // Configurações do menu lateral: a aba Estoque saiu de lá (agora fica em Produtos e Peças).
+  async configuracoes(pg) {
     await pg.goto(`${base}/configuracoes`);
     await esperarRede(pg);
     await pg.getByRole("tab", { name: "Perfil" }).waitFor({ timeout: 30000 });
     await pg.waitForTimeout(1500);
-    const aba = pg.getByRole("tab", { name: "Estoque" });
-    const temAba = (await aba.count()) > 0;
-    const deveTer = papel === "dono" && cenario !== "ausente";
-    conferir(temAba === deveTer, `[configuracoes] aba Estoque ${temAba ? "aparece" : "não aparece"} (esperado: ${deveTer ? "aparece" : "não aparece"})`);
+    const abas = (await pg.locator("[role=tablist]").first().innerText()).trim();
+    conferir((await pg.getByRole("tab", { name: "Estoque" }).count()) === 0, `[configuracoes] ainda tem aba Estoque: ${abas}`);
     conferir((await toastsAbertos(pg)) === 0, "[configuracoes] apareceu toast ao abrir");
-    if (!temAba) return { texto: await pg.locator("[role=tablist]").first().innerText(), html: "" };
-
-    await aba.click();
-    const situacao = pg.getByTestId("estoque-situacao-atual");
-    const textoSituacao = async (esperado) => {
-      await pg.waitForFunction(([sel, alvo]) => document.querySelector(sel)?.textContent?.includes(alvo),
-        ["[data-testid=estoque-situacao-atual]", esperado], { timeout: 10000 }).catch(() => {});
-      return (await situacao.innerText()).trim();
-    };
-    const inicial = LIMITE === null ? "Hoje: padrão do app" : LIMITE === 0 ? "Hoje: não avisa estoque baixo." : `Hoje: avisa quando restar ${LIMITE} ou menos.`;
-    const t0 = await textoSituacao(inicial);
-    conferir(t0.startsWith(inicial), `[configuracoes] situação inicial '${t0}', esperado '${inicial}'`);
-    await pg.mouse.move(0, 0);
-    await pg.waitForTimeout(400);
-    await pg.locator("main").first().screenshot({ path: path.join(SAIDA, "configuracoes-estoque.png"), animations: "disabled" });
-
-    const campo = pg.getByLabel("Quantidade para avisar estoque baixo");
-    const chave = pg.locator("#naoAvisarEstoqueBaixo");
-    const botao = pg.getByRole("button", { name: /^(Salvar|Salvando\.\.\.)$/ });
-    const salvarEsperar = async (toast) => {
-      await botao.click();
-      await pg.getByText(toast).first().waitFor({ timeout: 10000 });
-      await pg.waitForTimeout(800);
-    };
-    const ultima = () => JSON.stringify(estado.gravacoes.at(-1) ?? null);
-
-    if ((await chave.getAttribute("data-state")) === "checked") await chave.click();
-    await campo.fill("7");
-    await salvarEsperar("Limite de estoque baixo salvo");
-    conferir(ultima() === JSON.stringify({ user_id: DONO, limite_baixo: 7 }), `[configuracoes] gravou ${ultima()} (esperado limite 7)`);
-    const t1 = await textoSituacao("restar 7 ou menos");
-    conferir(t1 === "Hoje: avisa quando restar 7 ou menos.", `[configuracoes] depois de salvar 7: '${t1}'`);
-
-    await chave.click();
-    await salvarEsperar("Limite de estoque baixo salvo");
-    conferir(ultima() === JSON.stringify({ user_id: DONO, limite_baixo: 0 }), `[configuracoes] 'não avisar' gravou ${ultima()}`);
-    const t2 = await textoSituacao("não avisa");
-    conferir(t2 === "Hoje: não avisa estoque baixo.", `[configuracoes] depois de 'não avisar': '${t2}'`);
-
-    await chave.click();
-    await campo.fill("");
-    await salvarEsperar("Limite de estoque baixo salvo");
-    conferir(ultima() === JSON.stringify({ user_id: DONO, limite_baixo: null }), `[configuracoes] campo vazio gravou ${ultima()}`);
-    const t3 = await textoSituacao("padrão do app");
-    conferir(t3.startsWith("Hoje: padrão do app"), `[configuracoes] depois de limpar: '${t3}'`);
-
-    const antes = estado.gravacoes.length;
-    await campo.fill("2000");
-    await botao.click();
-    await pg.getByText("Digite um número inteiro de 0 a 1000, ou deixe em branco.").first().waitFor({ timeout: 10000 });
-    await pg.waitForTimeout(500);
-    conferir(estado.gravacoes.length === antes, "[configuracoes] valor 2000 chegou a ser enviado");
-    return { texto: "", html: "" };
+    return { texto: abas, html: "" };
   },
+  // Produtos e Peças > Configurações > aba Estoque (só o dono), no computador e no celular.
+  async "produtos-config"(pg, estado) { return configEmProdutos(pg, estado, "computador"); },
+  async "produtos-config-celular"(pg, estado) { return configEmProdutos(pg, estado, "celular"); },
 };
+
+// Conta "Baixo" na lista (com o diálogo fechado) e compara com o limite esperado.
+async function conferirLista(pg, L, quando) {
+  await pg.waitForTimeout(800);
+  const html = await etiquetas(pg, "main span, main div.inline-flex");
+  const esperado = TODAS.filter((q) => q >= 1 && q <= L).length;
+  const achado = contar(html, "Baixo");
+  conferir(achado === esperado, `[produtos-config] ${quando}: ${achado} "Baixo" na lista, esperado ${esperado}`);
+}
+
+async function configEmProdutos(pg, estado, tela) {
+  const rotuloTela = `produtos-config-${tela}`;
+  await abrirProdutos(pg);
+  await pg.evaluate(() => { window.__semRecarga = "sim"; });
+  const abrirDialogo = async () => {
+    await pg.locator("main").getByRole("button", { name: "Configurações" }).first().click();
+    await pg.getByRole("dialog").waitFor({ timeout: 10000 });
+    await pg.waitForTimeout(600);
+  };
+  const fecharDialogo = async () => {
+    await pg.keyboard.press("Escape");
+    await pg.getByRole("dialog").waitFor({ state: "hidden", timeout: 10000 });
+  };
+  await abrirDialogo();
+  const dialogo = pg.getByRole("dialog");
+  const aba = dialogo.getByRole("tab", { name: "Estoque" });
+  const temAba = (await aba.count()) > 0;
+  const deveTer = papel === "dono" && cenario !== "ausente";
+  conferir(temAba === deveTer, `[${rotuloTela}] aba Estoque ${temAba ? "aparece" : "não aparece"} (esperado: ${deveTer ? "aparece" : "não aparece"})`);
+  conferir((await dialogo.getByRole("tab").count()) === (deveTer ? 4 : 3), `[${rotuloTela}] número de abas do diálogo`);
+  conferir((await toastsAbertos(pg)) === 0, `[${rotuloTela}] apareceu toast ao abrir`);
+  if (!temAba) {
+    await dialogo.screenshot({ path: path.join(SAIDA, `${rotuloTela}-sem-aba.png`), animations: "disabled" });
+    return { texto: (await dialogo.getByRole("tablist").innerText()).trim(), html: "" };
+  }
+
+  const situacao = pg.getByTestId("estoque-situacao-atual");
+  const textoSituacao = async (esperado) => {
+    await pg.waitForFunction(([sel, alvo]) => document.querySelector(sel)?.textContent?.includes(alvo),
+      ["[data-testid=estoque-situacao-atual]", esperado], { timeout: 10000 }).catch(() => {});
+    return (await situacao.innerText()).trim();
+  };
+  const irParaAba = async () => { await dialogo.getByRole("tab", { name: "Estoque" }).click(); await pg.waitForTimeout(400); };
+  await irParaAba();
+  const inicial = LIMITE === null ? "Hoje: padrão do app" : LIMITE === 0 ? "Hoje: não avisa estoque baixo." : `Hoje: avisa quando restar ${LIMITE} ou menos.`;
+  const t0 = await textoSituacao(inicial);
+  conferir(t0.startsWith(inicial), `[${rotuloTela}] situação inicial '${t0}', esperado '${inicial}'`);
+  await pg.mouse.move(0, 0);
+  await pg.waitForTimeout(400);
+  await pg.screenshot({ path: path.join(SAIDA, `${rotuloTela}-aba-estoque.png`), animations: "disabled" });
+
+  const campo = () => pg.getByLabel("Quantidade para avisar estoque baixo");
+  const chave = () => pg.locator("#naoAvisarEstoqueBaixo");
+  const salvar = async (toast) => {
+    await pg.getByRole("dialog").getByRole("button", { name: /^(Salvar|Salvando\.\.\.)$/ }).click();
+    await pg.getByText(toast).first().waitFor({ timeout: 10000 });
+    await pg.waitForTimeout(800);
+  };
+  const ultima = () => JSON.stringify(estado.gravacoes.at(-1) ?? null);
+
+  // 1) Salva 7: lista, PDF e relatório mudam sem recarregar a página.
+  if ((await chave().getAttribute("data-state")) === "checked") await chave().click();
+  await campo().fill("7");
+  await salvar("Limite de estoque baixo salvo");
+  conferir(ultima() === JSON.stringify({ user_id: DONO, limite_baixo: 7 }), `[${rotuloTela}] gravou ${ultima()} (esperado limite 7)`);
+  const t1 = await textoSituacao("restar 7 ou menos");
+  conferir(t1 === "Hoje: avisa quando restar 7 ou menos.", `[${rotuloTela}] depois de salvar 7: '${t1}'`);
+  await fecharDialogo();
+  await conferirLista(pg, 7, "depois de salvar 7");
+  if (tela === "computador") {
+    await pg.getByRole("button", { name: /Exportar PDF/ }).click();
+    const [download] = await Promise.all([
+      pg.waitForEvent("download", { timeout: 30000 }),
+      pg.getByRole("menuitem", { name: "Menor estoque" }).click(),
+    ]);
+    const destino = path.join(SAIDA, "pdf-depois-de-salvar-7.pdf");
+    await download.saveAs(destino);
+    conferir(readFileSync(destino).toString("latin1").includes("(quantidade 1 a 7) Tj"), `[${rotuloTela}] PDF não mostra 'quantidade 1 a 7' depois de salvar`);
+    // Relatório pela navegação do próprio app (sem recarregar).
+    await pg.evaluate(() => { window.history.pushState({}, "", "/relatorios"); window.dispatchEvent(new PopStateEvent("popstate")); });
+    await pg.getByRole("tab", { name: "Produtos" }).click({ timeout: 30000 });
+    await pg.getByText("Produto Teste 00").first().waitFor({ timeout: 30000 });
+    await pg.waitForTimeout(800);
+    const vermelhos = await pg.locator("table", { hasText: "Estoque Atual" }).first().locator("tbody tr td:nth-child(4) .bg-destructive").count();
+    const esperado = QTD_PRODUTOS.map((q) => q ?? 0).filter((q) => q <= 7).length;
+    conferir(vermelhos === esperado, `[${rotuloTela}] relatório depois de salvar 7: ${vermelhos} vermelhos, esperado ${esperado}`);
+    await pg.evaluate(() => { window.history.pushState({}, "", "/produtos"); window.dispatchEvent(new PopStateEvent("popstate")); });
+    await pg.getByText("Produto Teste 00").first().waitFor({ timeout: 30000 });
+    await pg.waitForTimeout(800);
+  }
+
+  // 2) "Não avisar" (0): nenhum "Baixo" na lista.
+  await abrirDialogo();
+  await irParaAba();
+  await chave().click();
+  await salvar("Limite de estoque baixo salvo");
+  conferir(ultima() === JSON.stringify({ user_id: DONO, limite_baixo: 0 }), `[${rotuloTela}] 'não avisar' gravou ${ultima()}`);
+  const t2 = await textoSituacao("não avisa");
+  conferir(t2 === "Hoje: não avisa estoque baixo.", `[${rotuloTela}] depois de 'não avisar': '${t2}'`);
+  await fecharDialogo();
+  await conferirLista(pg, 0, "depois de 'não avisar'");
+
+  // 3) Vazio: volta ao padrão da lista (1 a 4).
+  await abrirDialogo();
+  await irParaAba();
+  await chave().click();
+  await campo().fill("");
+  await salvar("Limite de estoque baixo salvo");
+  conferir(ultima() === JSON.stringify({ user_id: DONO, limite_baixo: null }), `[${rotuloTela}] campo vazio gravou ${ultima()}`);
+  const t3 = await textoSituacao("padrão do app");
+  conferir(t3.startsWith("Hoje: padrão do app"), `[${rotuloTela}] depois de limpar: '${t3}'`);
+
+  // 4) 2000 é recusado sem enviar nada.
+  const antes = estado.gravacoes.length;
+  await campo().fill("2000");
+  await pg.getByRole("dialog").getByRole("button", { name: "Salvar" }).click();
+  await pg.getByText("Digite um número inteiro de 0 a 1000, ou deixe em branco.").first().waitFor({ timeout: 10000 });
+  await pg.waitForTimeout(500);
+  conferir(estado.gravacoes.length === antes, `[${rotuloTela}] valor 2000 chegou a ser enviado`);
+  await fecharDialogo();
+  await conferirLista(pg, 4, "depois de voltar ao padrão");
+
+  conferir((await pg.evaluate(() => window.__semRecarga)) === "sim", `[${rotuloTela}] a página recarregou`);
+  return { texto: "", html: "" };
+}
 
 const telas = telasArg ? telasArg.split(",") : ["lista-computador", "lista-celular", "pdf-menor-estoque", "relatorio-vendidos"];
 const resumoConsultas = [];
 for (const nomeTela of telas) {
   const estado = { tabelas: tabelas(), gravacoes: [], consultasConfig: [] };
-  const ctx = await abrir(navegador, nomeTela === "lista-celular" ? CELULAR : DESKTOP, estado);
+  const ctx = await abrir(navegador, nomeTela.endsWith("celular") ? CELULAR : DESKTOP, estado);
   try {
     const pg = await ctx.newPage();
     pg.on("pageerror", (e) => falhar(`[${nomeTela}] erro na página: ${e.message}`));
     const { texto, html } = await TELAS[nomeTela](pg, estado);
     if (texto) writeFileSync(path.join(SAIDA, `${nomeTela}.txt`), texto);
     if (html) writeFileSync(path.join(SAIDA, `${nomeTela}.etiquetas.txt`), html);
-    if (nomeTela !== "pdf-menor-estoque" && nomeTela !== "configuracoes") {
+    if (["lista-computador", "lista-celular", "relatorio-vendidos"].includes(nomeTela)) {
       // Mouse longe da tabela: o destaque de linha tem transição e muda a captura.
       await pg.mouse.move(0, 0);
       await pg.waitForTimeout(600);
