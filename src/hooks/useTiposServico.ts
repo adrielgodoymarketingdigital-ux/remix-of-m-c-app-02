@@ -4,6 +4,11 @@ import { toast } from "sonner";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useEmpresaFiltro } from "./useResolvedUserId";
 import { normalizarNomeParaComparacao } from "@/lib/ordemServico/comissaoPorTipoServico";
+import i18n from "@/lib/i18n/instancia";
+import { textoNumerosOs } from "@/lib/servicos/numerosOsBloqueio";
+
+// Toasts lidos na hora (saem depois de um await; ver docs/i18n/convencoes.md, item 10).
+const tS = (chave: string, opcoes?: Record<string, unknown>) => i18n.t(chave, { ns: "servicos", ...opcoes });
 
 export interface TipoServico {
   id: string;
@@ -17,6 +22,8 @@ export interface TipoServico {
 export interface UsoTipoServico {
   servicos: number;
   ordensServico: number;
+  /** numero_os das OS que usam o Tipo (para o aviso dizer quais são) */
+  numerosOs: string[];
   emUso: boolean;
 }
 
@@ -123,17 +130,19 @@ export function useTiposServico() {
   /**
    * Uso de um Tipo de Serviço: quantos serviços de catálogo o referenciam
    * (servicos.tipo_servico_id) e quantas OS o usam (ordens_servico.tipo_servico_id).
+   * OS excluída (deleted_at) não conta; OS cancelada conta.
    * Enquanto houver uso, a exclusão física é bloqueada — o vínculo tem que ser
    * transferido (mesclagem) ou removido antes.
    */
   const verificarUso = useCallback(async (id: string): Promise<UsoTipoServico> => {
-    const [{ count: servicosCount }, { count: osCount }] = await Promise.all([
+    const [{ count: servicosCount }, { data: osData, count: osCount }] = await Promise.all([
       supabase.from("servicos").select("id", { count: "exact", head: true }).eq("tipo_servico_id", id),
-      supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("tipo_servico_id", id),
+      supabase.from("ordens_servico").select("numero_os", { count: "exact" }).eq("tipo_servico_id", id).is("deleted_at", null),
     ]);
     const servicos = servicosCount || 0;
     const ordensServico = osCount || 0;
-    return { servicos, ordensServico, emUso: servicos > 0 || ordensServico > 0 };
+    const numerosOs = (osData || []).map((o) => o.numero_os);
+    return { servicos, ordensServico, numerosOs, emUso: servicos > 0 || ordensServico > 0 };
   }, []);
 
   const excluir = async (id: string) => {
@@ -143,12 +152,9 @@ export function useTiposServico() {
       // transferir os vínculos antes.
       const uso = await verificarUso(id);
       if (uso.emUso) {
-        const partes: string[] = [];
-        if (uso.servicos > 0) partes.push(`${uso.servicos} serviço(s) do catálogo`);
-        if (uso.ordensServico > 0) partes.push(`${uso.ordensServico} ordem(ns) de serviço`);
-        toast.error("Não é possível excluir este tipo de serviço", {
-          description: `Está vinculado a ${partes.join(" e ")}. Use "Mesclar tipos duplicados" para transferir os vínculos ou desvincule antes.`,
-        });
+        const valores = { servicos: uso.servicos, os: uso.ordensServico, numeros: textoNumerosOs(uso.numerosOs, tS) };
+        const chave = uso.ordensServico === 0 ? "tipoSoServicos" : uso.servicos === 0 ? "tipoSoOs" : "tipoServicosEOs";
+        toast.error(tS("exclusao.tipoTitulo"), { description: tS(`exclusao.${chave}`, valores) });
         return;
       }
 
