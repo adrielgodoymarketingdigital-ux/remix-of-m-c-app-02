@@ -70,7 +70,7 @@ export function ConfiguracaoEstoqueBaixo() {
       </Alert>
 
       <div className="space-y-2">
-        <Label htmlFor="limiteEstoqueBaixo" className="flex flex-wrap items-center gap-2 text-sm font-medium leading-10">
+        <Label htmlFor="limiteEstoqueBaixo" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium leading-normal">
           <Trans
             t={t}
             i18nKey="estoque.limiteBaixo"
@@ -85,7 +85,7 @@ export function ConfiguracaoEstoqueBaixo() {
                   value={naoAvisar ? "" : texto}
                   onChange={(e) => setTexto(e.target.value.replace(/\D/g, ""))}
                   disabled={naoAvisar || carregando}
-                  className="inline-flex h-10 w-20 text-center"
+                  className="inline-flex h-9 w-16 px-2 text-center"
                 />
               ),
             }}
