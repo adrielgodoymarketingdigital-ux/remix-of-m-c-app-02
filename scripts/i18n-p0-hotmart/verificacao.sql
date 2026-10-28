@@ -2,7 +2,7 @@
 -- Conferência da migration 20261101120000 (rodar DEPOIS de aplicá-la).
 -- Um único resultado (UNION ALL), uma linha por checagem, só estrutura e
 -- contagens: nenhum dado de cliente. Toda linha deve ter ok = true.
--- Só lê. Antes da migration as linhas 1, 2, 3 e 5 dão ok = false.
+-- Só lê. Antes da migration as linhas 1, 2, 3, 5 e 6 dão ok = false.
 -- =====================================================================
 SELECT 1 AS n, 'coluna hotmart_transaction_id text, nula, sem default' AS checagem,
        EXISTS (SELECT 1 FROM information_schema.columns
@@ -46,4 +46,20 @@ SELECT 5, 'nenhuma transação Hotmart repetida',
                || ' com transação; ' || count(*) FILTER (WHERE payment_provider = 'hotmart')::text
                || ' com payment_provider = hotmart'
           FROM public.assinaturas a)
+UNION ALL
+SELECT 6, 'CHECK de admin_notifications.tipo com os 5 de antes + os 2 da Hotmart',
+       COALESCE((SELECT pg_get_constraintdef(c.oid) =
+                   'CHECK ((tipo = ANY (ARRAY[''novo_trial''::text, ''nova_assinatura''::text, ''cancelamento''::text, ''pagamento_falhou''::text, ''push_enviado''::text, ''hotmart_oferta_nao_mapeada''::text, ''hotmart_config_invalida''::text])))'
+                   AND c.convalidated
+                   FROM pg_constraint c
+                  WHERE c.conrelid = 'public.admin_notifications'::regclass
+                    AND c.conname = 'admin_notifications_tipo_check'), false),
+       (SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c
+         WHERE c.conrelid = 'public.admin_notifications'::regclass
+           AND c.conname = 'admin_notifications_tipo_check')
+UNION ALL
+SELECT 7, 'RLS de admin_notifications continua ligado',
+       (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.admin_notifications'::regclass),
+       (SELECT count(*)::text || ' policies' FROM pg_policies
+         WHERE schemaname = 'public' AND tablename = 'admin_notifications')
 ORDER BY 1;

@@ -1,5 +1,11 @@
 -- =====================================================================
 -- Hotmart (i18n, etapa P0, item 1): coluna assinaturas.hotmart_transaction_id
+-- e os dois tipos de aviso novos do hotmart-webhook
+--
+-- APLICAR À MÃO NO SQL EDITOR. NUNCA usar `supabase db push`: o histórico
+-- supabase_migrations.schema_migrations da produção para em 20260606000001
+-- (as migrations seguintes foram aplicadas à mão), então o db push tentaria
+-- reaplicar tudo o que veio depois.
 --
 -- O hotmart-webhook grava essa coluna na compra aprovada e a lê no
 -- cancelamento, mas ela não existe na produção: a migration
@@ -12,9 +18,14 @@
 --   2) Índice único parcial (payment_provider, hotmart_transaction_id) onde a
 --      transação não é nula: a mesma transação da Hotmart não ativa duas
 --      contas. Nasce vazio (a coluna é nova), então o lock é curto.
+--   3) admin_notifications_tipo_check: a lista de hoje (5 tipos) mais
+--      hotmart_oferta_nao_mapeada e hotmart_config_invalida. Só aceita
+--      começar se a lista atual for exatamente a de hoje (ou já a nova, numa
+--      reexecução). Nenhuma linha muda; a lista só cresce.
 --
--- NÃO toca em RLS, policies, gatilhos, funções nem em outras colunas; a
--- autoverificação confere isso contra uma foto tirada antes do ALTER.
+-- NÃO toca em RLS, policies, gatilhos, funções nem em outras colunas ou
+-- restrições; a autoverificação confere isso, nas duas tabelas, contra uma
+-- foto tirada antes do primeiro ALTER.
 -- Idempotente, numa transação só. Reversão em
 -- scripts/i18n-p0-hotmart/rollback.sql; conferência em
 -- scripts/i18n-p0-hotmart/verificacao.sql.
@@ -23,8 +34,13 @@
 BEGIN;
 
 -- assinaturas é lida em toda troca de tela (plano/limites): se algo segurar
--- a tabela, desiste em vez de enfileirar o app atrás do ALTER.
+-- uma das tabelas, desiste em vez de enfileirar o app atrás do ALTER.
 SET LOCAL lock_timeout = '5s';
+
+-- As duas tabelas travadas desde já (o ALTER pegaria o mesmo lock logo
+-- adiante): sem isso, um cadastro ou aviso gravado entre a foto e o ALTER
+-- mudaria a contagem de linhas e a autoverificação abortaria à toa.
+LOCK TABLE public.assinaturas, public.admin_notifications IN ACCESS EXCLUSIVE MODE;
 
 
 -- ---------------------------------------------------------------------
@@ -32,8 +48,9 @@ SET LOCAL lock_timeout = '5s';
 -- ---------------------------------------------------------------------
 DO $$
 DECLARE
-  v_tipo text;
-  v_def  text;
+  v_tipo  text;
+  v_def   text;
+  v_tipos text[];
 BEGIN
   IF to_regclass('public.assinaturas') IS NULL THEN
     RAISE EXCEPTION 'HOT001: tabela public.assinaturas não existe';
@@ -63,41 +80,72 @@ BEGIN
      'CREATE UNIQUE INDEX assinaturas_hotmart_transaction_id_key ON public.assinaturas USING btree (payment_provider, hotmart_transaction_id) WHERE (hotmart_transaction_id IS NOT NULL)' THEN
     RAISE EXCEPTION 'HOT004: já existe assinaturas_hotmart_transaction_id_key com outra definição: %', v_def;
   END IF;
+
+  -- CHECK de admin_notifications.tipo: lista de hoje ou, numa reexecução,
+  -- a nova. Qualquer outra (alguém já mexeu na produção) aborta, para não
+  -- apagar um tipo que esteja em uso.
+  IF to_regclass('public.admin_notifications') IS NULL THEN
+    RAISE EXCEPTION 'HOT006: tabela public.admin_notifications não existe';
+  END IF;
+  SELECT pg_get_constraintdef(c.oid) INTO v_def
+    FROM pg_constraint c
+   WHERE c.conrelid = 'public.admin_notifications'::regclass
+     AND c.conname = 'admin_notifications_tipo_check' AND c.contype = 'c';
+  IF v_def IS NULL THEN
+    RAISE EXCEPTION 'HOT007: admin_notifications_tipo_check não existe';
+  END IF;
+  SELECT array_agg(m[1] ORDER BY m[1]) INTO v_tipos
+    FROM regexp_matches(v_def, '''([^'']*)''', 'g') m;
+  IF v_def NOT LIKE 'CHECK ((tipo = ANY (ARRAY[%])))'
+     OR (v_tipos IS DISTINCT FROM ARRAY['cancelamento', 'nova_assinatura', 'novo_trial',
+                                        'pagamento_falhou', 'push_enviado']
+         AND v_tipos IS DISTINCT FROM ARRAY['cancelamento', 'hotmart_config_invalida',
+                                            'hotmart_oferta_nao_mapeada', 'nova_assinatura',
+                                            'novo_trial', 'pagamento_falhou', 'push_enviado']) THEN
+    RAISE EXCEPTION 'HOT008: admin_notifications_tipo_check diferente do esperado: %', v_def;
+  END IF;
 END;
 $$;
 
 -- Tudo o que não pode mudar, numa view temporária: a foto (antes) e a
--- conferência (depois) usam a mesma consulta. Colunas entram sem a nova.
+-- conferência (depois) usam a mesma consulta. Ficam de fora só a coluna e o
+-- índice novos de assinaturas e o CHECK de tipo de admin_notifications.
 CREATE TEMP VIEW _hot_estrutura AS
-  SELECT 'coluna' AS tipo, column_name::text || '|' || data_type || '|' || is_nullable
+  WITH tabelas(tabela) AS (VALUES ('assinaturas'::text), ('admin_notifications'))
+  SELECT t.tabela, 'coluna' AS tipo, column_name::text || '|' || data_type || '|' || is_nullable
          || '|' || COALESCE(column_default, '') AS def
-    FROM information_schema.columns
-   WHERE table_schema = 'public' AND table_name = 'assinaturas'
-     AND column_name <> 'hotmart_transaction_id'
+    FROM tabelas t JOIN information_schema.columns c
+      ON c.table_schema = 'public' AND c.table_name = t.tabela
+   WHERE column_name <> 'hotmart_transaction_id'
   UNION ALL
-  SELECT 'policy', policyname::text || '|' || cmd || '|' || roles::text || '|'
+  SELECT t.tabela, 'policy', policyname::text || '|' || cmd || '|' || roles::text || '|'
          || COALESCE(qual, '') || '|' || COALESCE(with_check, '')
-    FROM pg_policies WHERE schemaname = 'public' AND tablename = 'assinaturas'
+    FROM tabelas t JOIN pg_policies p ON p.schemaname = 'public' AND p.tablename = t.tabela
   UNION ALL
-  SELECT 'rls', c.relrowsecurity::text || '|' || c.relforcerowsecurity::text
-    FROM pg_class c WHERE c.oid = 'public.assinaturas'::regclass
+  SELECT t.tabela, 'rls', c.relrowsecurity::text || '|' || c.relforcerowsecurity::text
+    FROM tabelas t JOIN pg_class c ON c.oid = ('public.' || t.tabela)::regclass
   UNION ALL
-  SELECT 'gatilho', t.tgname::text || '|' || t.tgenabled::text || '|' || pg_get_triggerdef(t.oid)
-    FROM pg_trigger t WHERE t.tgrelid = 'public.assinaturas'::regclass AND NOT t.tgisinternal
+  SELECT t.tabela, 'gatilho', g.tgname::text || '|' || g.tgenabled::text || '|' || pg_get_triggerdef(g.oid)
+    FROM tabelas t JOIN pg_trigger g ON g.tgrelid = ('public.' || t.tabela)::regclass
+   WHERE NOT g.tgisinternal
   UNION ALL
-  SELECT 'restricao', conname::text || '|' || pg_get_constraintdef(oid)
-    FROM pg_constraint WHERE conrelid = 'public.assinaturas'::regclass
+  SELECT t.tabela, 'restricao', k.conname::text || '|' || pg_get_constraintdef(k.oid)
+    FROM tabelas t JOIN pg_constraint k ON k.conrelid = ('public.' || t.tabela)::regclass
+   WHERE k.conname <> 'admin_notifications_tipo_check'
   UNION ALL
-  SELECT 'indice', indexname::text || '|' || indexdef
-    FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'assinaturas'
-     AND indexname <> 'assinaturas_hotmart_transaction_id_key'
+  SELECT t.tabela, 'indice', i.indexname::text || '|' || i.indexdef
+    FROM tabelas t JOIN pg_indexes i ON i.schemaname = 'public' AND i.tablename = t.tabela
+   WHERE i.indexname <> 'assinaturas_hotmart_transaction_id_key'
   UNION ALL
-  SELECT 'grant', grantee || '|' || privilege_type
-    FROM information_schema.role_table_grants
-   WHERE table_schema = 'public' AND table_name = 'assinaturas'
+  SELECT t.tabela, 'grant', g.grantee || '|' || g.privilege_type
+    FROM tabelas t JOIN information_schema.role_table_grants g
+      ON g.table_schema = 'public' AND g.table_name = t.tabela
   UNION ALL
-  SELECT 'linhas', count(*)::text || '|' || count(*) FILTER (WHERE payment_provider = 'hotmart')::text
-    FROM public.assinaturas;
+  SELECT 'assinaturas', 'linhas',
+         count(*)::text || '|' || count(*) FILTER (WHERE payment_provider = 'hotmart')::text
+    FROM public.assinaturas
+  UNION ALL
+  SELECT 'admin_notifications', 'linhas', count(*)::text FROM public.admin_notifications;
 
 CREATE TEMP TABLE _hot_antes ON COMMIT DROP AS SELECT * FROM _hot_estrutura;
 
@@ -139,7 +187,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS assinaturas_hotmart_transaction_id_key
 
 
 -- ---------------------------------------------------------------------
--- 3) Autoverificação: qualquer divergência desfaz a transação inteira.
+-- 3) Tipos de aviso do hotmart-webhook: lista de hoje + os dois novos
+--    (a ordem é a de hoje, com os novos no fim)
+-- ---------------------------------------------------------------------
+ALTER TABLE public.admin_notifications DROP CONSTRAINT IF EXISTS admin_notifications_tipo_check;
+ALTER TABLE public.admin_notifications ADD CONSTRAINT admin_notifications_tipo_check
+  CHECK (tipo = ANY (ARRAY['novo_trial', 'nova_assinatura', 'cancelamento', 'pagamento_falhou',
+                           'push_enviado', 'hotmart_oferta_nao_mapeada', 'hotmart_config_invalida']));
+
+
+-- ---------------------------------------------------------------------
+-- 4) Autoverificação: qualquer divergência desfaz a transação inteira.
 -- ---------------------------------------------------------------------
 DO $$
 DECLARE
@@ -162,20 +220,30 @@ BEGIN
     RAISE EXCEPTION 'HOT011: índice assinaturas_hotmart_transaction_id_key ausente, inválido ou com outra definição';
   END IF;
 
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint c
+                  WHERE c.conrelid = 'public.admin_notifications'::regclass
+                    AND c.conname = 'admin_notifications_tipo_check' AND c.contype = 'c'
+                    AND c.convalidated
+                    AND pg_get_constraintdef(c.oid) =
+                      'CHECK ((tipo = ANY (ARRAY[''novo_trial''::text, ''nova_assinatura''::text, ''cancelamento''::text, ''pagamento_falhou''::text, ''push_enviado''::text, ''hotmart_oferta_nao_mapeada''::text, ''hotmart_config_invalida''::text])))') THEN
+    RAISE EXCEPTION 'HOT016: admin_notifications_tipo_check ausente, não validado ou com outra lista';
+  END IF;
+
   -- colunas antigas, RLS, policies, gatilhos, restrições, outros índices,
-  -- grants e quantidade de linhas: iguais à foto, nos dois sentidos
-  SELECT string_agg(tipo || ': ' || def, ' ; ') INTO v_falta FROM (
-    (SELECT 'sumiu/mudou ' || tipo AS tipo, def FROM
+  -- grants e quantidade de linhas das duas tabelas: iguais à foto, nos dois
+  -- sentidos
+  SELECT string_agg(tabela || ' ' || tipo || ': ' || def, ' ; ') INTO v_falta FROM (
+    (SELECT tabela, 'sumiu/mudou ' || tipo AS tipo, def FROM
        (SELECT * FROM _hot_antes EXCEPT ALL SELECT * FROM _hot_estrutura) x)
     UNION ALL
-    (SELECT 'apareceu ' || tipo, def FROM
+    (SELECT tabela, 'apareceu ' || tipo, def FROM
        (SELECT * FROM _hot_estrutura EXCEPT ALL SELECT * FROM _hot_antes) y)
   ) d;
   IF v_falta IS NOT NULL THEN
-    RAISE EXCEPTION 'HOT012: assinaturas mudou além da coluna e do índice novos: %', v_falta;
+    RAISE EXCEPTION 'HOT012: mudou além da coluna, do índice e do CHECK novos: %', v_falta;
   END IF;
 
-  RAISE NOTICE 'HOT OK: hotmart_transaction_id aplicada e conferida';
+  RAISE NOTICE 'HOT OK: hotmart_transaction_id e tipos de aviso aplicados e conferidos';
 END;
 $$;
 
