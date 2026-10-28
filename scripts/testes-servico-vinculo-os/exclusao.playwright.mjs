@@ -1,27 +1,110 @@
-// Reprodução: "não deixa excluir o serviço porque está vinculado a uma OS,
-// mas a OS já foi excluída". APP DE VERDADE (build de produção) e Supabase
-// simulado; dados 100% fictícios; nada sai da máquina. Só registra o
-// comportamento atual (não falha por isso): para cada caso mostra o aviso
-// exibido e se o DELETE chegou ao banco.
+// Exclusão de serviço / tipo de serviço / produto / peça bloqueada por OS ou
+// venda JÁ EXCLUÍDA (deleted_at). APP DE VERDADE (build de produção) e
+// Supabase simulado; dados 100% fictícios; nada sai da máquina.
 //
 //   npx vite build && npx vite preview --port 8341 --strictPort --host 127.0.0.1
 //   PLAYWRIGHT_PATH=<.../node_modules/playwright> node scripts/testes-servico-vinculo-os/exclusao.playwright.mjs \
-//     [base-url] [pasta-saida]
+//     coletar <rotulo> <base-url> <pasta-saida>
+//   node scripts/testes-servico-vinculo-os/exclusao.playwright.mjs conferir <branch.json>
+//   node scripts/testes-servico-vinculo-os/exclusao.playwright.mjs comparar <main.json> <branch.json>
 //
-// Casos (serviço "Troca de Tela" / tipo "Tela"):
-//   ativa         OS em andamento usando o serviço (coluna e JSON)
-//   lixeira       a mesma OS "excluída" pela tela de OS (deleted_at preenchido)
-//   lixeira-json  OS excluída que usa o serviço só em avarias.servicos_realizados
-//   definitiva    a linha da OS não existe mais (Zerar meus dados / DELETE físico)
-//   cancelada     OS com status cancelada, não excluída
-//   tipo-lixeira  Tipo de Serviço usado só por OS excluída
+// coletar: para cada caso, clica em excluir e guarda os avisos (toasts), as
+// escritas que chegaram ao banco (DELETE/PATCH) e uma captura.
+// conferir: o que a correção promete (OS/venda excluída libera; OS cancelada,
+// OS ativa e venda cancelada continuam bloqueando; aviso lista os números).
+// comparar: casos marcados `igual` têm de sair idênticos na main e na branch.
 import { createRequire } from "node:module";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+
+const [, , acao, ...args] = process.argv;
+
+const SERVICO = "serv-0001";
+const TIPO = "tipo-0001";
+const PRODUTO = "prod-0001";
+const PECA = "peca-0001";
+const EXCLUIDA = "2026-10-20T10:00:00Z";
+
+function os(extra) {
+  return {
+    id: "os-0001", numero_os: "101", status: "em_andamento",
+    servico_id: SERVICO, tipo_servico_id: null, deleted_at: null, created_at: "2026-10-01T12:00:00Z",
+    avarias: { servicos_realizados: [{ id: SERVICO, nome: "Troca de Tela", preco: 300 }] },
+    ...extra,
+  };
+}
+function venda(extra) {
+  return { id: "v-0001", tipo: "produto", produto_id: null, peca_id: null, quantidade: 1, total: 50, cancelada: false, deleted_at: null, data: "2026-10-10T12:00:00Z", ...extra };
+}
+
+// 12 OS em andamento + 1 cancelada + 1 excluída: o aviso conta 13 e lista as 10 menores.
+const VARIAS = [
+  ...Array.from({ length: 12 }, (_, i) => os({ id: `os-v${i}`, numero_os: String(120 - i) })),
+  os({ id: "os-vc", numero_os: "200", status: "cancelada" }),
+  os({ id: "os-vx", numero_os: "5", deleted_at: EXCLUIDA }),
+];
+
+// igual: o resultado não pode mudar entre main e branch.
+// espera: { apaga, aviso (regex) } conferido na branch.
+const CASOS = {
+  "servico-os-ativa": { alvo: "servico", ordens: [os({})], espera: { apaga: false, aviso: /usado em 1 ordem de serviço \(OS 101\)/ } },
+  "servico-os-excluida": { alvo: "servico", ordens: [os({ deleted_at: EXCLUIDA })], espera: { apaga: true, aviso: /Serviço excluído com sucesso/ } },
+  "servico-os-excluida-so-json": { alvo: "servico", ordens: [os({ servico_id: null, deleted_at: EXCLUIDA })], espera: { apaga: true, aviso: /Serviço excluído com sucesso/ } },
+  "servico-os-cancelada": { alvo: "servico", ordens: [os({ status: "cancelada" })], espera: { apaga: false, aviso: /usado em 1 ordem de serviço \(OS 101\)/ } },
+  "servico-os-apagada": { alvo: "servico", ordens: [], igual: true, espera: { apaga: true, aviso: /Serviço excluído com sucesso/ } },
+  "servico-varias-os": { alvo: "servico", ordens: VARIAS, espera: { apaga: false, aviso: /usado em 13 ordens de serviço \(OS 109, 110, 111, 112, 113, 114, 115, 116, 117, 118 e mais 3\)/ } },
+  "servico-es": { alvo: "servico", ordens: [os({})], idioma: "es", espera: { apaga: false, aviso: /No es posible eliminar este servicio.*se usa en 1 orden de servicio \(OS 101\)/ } },
+  "tipo-os-excluida": { alvo: "tipo", ordens: [os({ servico_id: null, tipo_servico_id: TIPO, avarias: null, deleted_at: EXCLUIDA })], espera: { apaga: true, aviso: /Tipo de serviço excluído/ } },
+  "tipo-os-ativa": { alvo: "tipo", ordens: [os({ servico_id: null, tipo_servico_id: TIPO, avarias: null })], espera: { apaga: false, aviso: /Está vinculado a 1 ordem\(ns\) de serviço \(OS 101\)/ } },
+  "tipo-os-cancelada": { alvo: "tipo", ordens: [os({ servico_id: null, tipo_servico_id: TIPO, avarias: null, status: "cancelada" })], espera: { apaga: false, aviso: /Está vinculado a 1 ordem\(ns\) de serviço \(OS 101\)/ } },
+  "tipo-so-servicos": { alvo: "tipo", ordens: [], servicoDoTipo: true, igual: true, espera: { apaga: false, aviso: /Está vinculado a 1 serviço\(s\) do catálogo\. Use/ } },
+  "produto-venda-ativa": { alvo: "produto", vendas: [venda({ produto_id: PRODUTO })], igual: true, espera: { apaga: false, aviso: /possui vendas registradas/ } },
+  "produto-venda-cancelada": { alvo: "produto", vendas: [venda({ produto_id: PRODUTO, cancelada: true })], igual: true, espera: { apaga: false, aviso: /possui vendas registradas/ } },
+  "produto-venda-excluida": { alvo: "produto", vendas: [venda({ produto_id: PRODUTO, deleted_at: EXCLUIDA })], espera: { apaga: true, aviso: /Produto excluído com sucesso/ } },
+  "produto-sem-venda": { alvo: "produto", vendas: [], igual: true, espera: { apaga: true, aviso: /Produto excluído com sucesso/ } },
+  "peca-venda-ativa": { alvo: "peca", vendas: [venda({ tipo: "peca", peca_id: PECA })], igual: true, espera: { apaga: false, aviso: /possui vendas ou serviços vinculados/ } },
+  "peca-venda-excluida": { alvo: "peca", vendas: [venda({ tipo: "peca", peca_id: PECA, deleted_at: EXCLUIDA })], espera: { apaga: true, aviso: /Peça excluído com sucesso/ } },
+  "peca-ligada-a-servico": { alvo: "peca", vendas: [venda({ tipo: "peca", peca_id: PECA, deleted_at: EXCLUIDA })], servicoDaPeca: true, igual: true, espera: { apaga: false, aviso: /possui vendas ou serviços vinculados/ } },
+  "peca-sem-vinculo": { alvo: "peca", vendas: [], igual: true, espera: { apaga: true, aviso: /Peça excluído com sucesso/ } },
+  // em massa: produto com venda ativa, produto com venda excluída, peça com venda excluída
+  "massa": {
+    alvo: "massa",
+    vendas: [venda({ produto_id: PRODUTO }), venda({ id: "v-2", produto_id: "prod-0002", deleted_at: EXCLUIDA }), venda({ id: "v-3", tipo: "peca", peca_id: PECA, deleted_at: EXCLUIDA })],
+    espera: { apaga: true, aviso: /^(?=.*2 itens excluídos com sucesso)(?=.*1 item não pôde ser excluído)/ },
+  },
+};
+
+if (acao === "conferir") {
+  const r = JSON.parse(readFileSync(args[0], "utf8"));
+  let falhas = 0;
+  for (const [nome, caso] of Object.entries(CASOS)) {
+    const x = r[nome];
+    const ok = x && x.apagou === caso.espera.apaga && caso.espera.aviso.test(x.avisos.join(" | "));
+    if (!ok) falhas++;
+    console.log(`${ok ? "ok    " : "FALHA "} ${nome.padEnd(28)} ${x ? `${x.apagou ? "apagou   " : "bloqueou "}| ${x.avisos.join(" | ")}` : "(sem resultado)"}`);
+  }
+  console.log(`${Object.keys(CASOS).length} casos, ${falhas} falha(s)`);
+  process.exit(falhas ? 1 : 0);
+}
+
+if (acao === "comparar") {
+  const [a, b] = args.slice(0, 2).map((f) => JSON.parse(readFileSync(f, "utf8")));
+  let diferentes = 0;
+  for (const [nome, caso] of Object.entries(CASOS)) {
+    if (!caso.igual) continue;
+    for (const campo of ["avisos", "escritas", "telaAntes"]) {
+      const [va, vb] = [a, b].map((x) => JSON.stringify(x[nome]?.[campo]));
+      if (va === vb) console.log(`igual:     ${nome}.${campo}`);
+      else { diferentes++; console.log(`DIFERENTE: ${nome}.${campo}\n  main:   ${va?.slice(0, 300)}\n  branch: ${vb?.slice(0, 300)}`); }
+    }
+  }
+  console.log(`${diferentes} diferente(s)`);
+  process.exit(diferentes ? 1 : 0);
+}
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_PATH ?? "playwright");
-const [, , base = "http://127.0.0.1:8341", saidaArg = "coleta-servico-vinculo-os"] = process.argv;
+const [rotulo = "x", base = "http://127.0.0.1:8341", saidaArg = "coleta-servico-vinculo-os"] = args;
 const SAIDA = path.resolve(saidaArg);
 mkdirSync(SAIDA, { recursive: true });
 
@@ -32,33 +115,24 @@ const exp = Math.floor(AGORA.getTime() / 1000) + 3600 * 24 * 365;
 const JWT = `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub: USUARIO.id, email: USUARIO.email, role: "authenticated", aud: "authenticated", exp })}.assinatura-ficticia`;
 const SESSAO = { access_token: JWT, token_type: "bearer", expires_in: 86400 * 365, expires_at: exp, refresh_token: "refresh-ficticio", user: { id: USUARIO.id, email: USUARIO.email, aud: "authenticated", role: "authenticated", created_at: "2026-01-10T12:00:00Z" } };
 
-const SERVICO = "serv-0001";
-const TIPO = "tipo-0001";
-const EXCLUIDA = "2026-10-20T10:00:00Z";
-
-function os(extra) {
-  return {
-    id: "os-0001", numero_os: 101, user_id: USUARIO.id, empresa_id: null, cliente_id: null, status: "em_andamento",
-    servico_id: SERVICO, tipo_servico_id: null, deleted_at: null, created_at: "2026-10-01T12:00:00Z",
-    avarias: { servicos_realizados: [{ id: SERVICO, nome: "Troca de Tela", preco: 300 }] },
-    ...extra,
-  };
-}
-
-const CASOS = {
-  ativa: { alvo: "servico", ordens: [os({})] },
-  lixeira: { alvo: "servico", ordens: [os({ deleted_at: EXCLUIDA })] },
-  "lixeira-json": { alvo: "servico", ordens: [os({ servico_id: null, deleted_at: EXCLUIDA })] },
-  definitiva: { alvo: "servico", ordens: [] },
-  cancelada: { alvo: "servico", ordens: [os({ status: "cancelada" })] },
-  "tipo-lixeira": { alvo: "tipo", ordens: [os({ servico_id: null, tipo_servico_id: TIPO, avarias: null, deleted_at: EXCLUIDA })] },
-};
-
 function tabelas(caso) {
   const comum = { user_id: USUARIO.id, empresa_id: null, created_at: "2026-02-01T12:00:00Z" };
+  const item = { ...comum, deleted_at: null, preco: 50, custo: 20, lucro: 30, quantidade: 7, fotos: [] };
+  const servicos = [];
+  if (caso.alvo === "servico") servicos.push({ ...comum, id: SERVICO, nome: "Troca de Tela", preco: 300, custo: 120, lucro: 180, quantidade: 0, peca_id: null, tipo_servico_id: null });
+  if (caso.servicoDoTipo) servicos.push({ ...comum, id: "serv-0002", nome: "Tela iPhone", preco: 300, custo: 120, lucro: 180, quantidade: 0, peca_id: null, tipo_servico_id: TIPO });
+  if (caso.servicoDaPeca) servicos.push({ ...comum, id: "serv-0003", nome: "Troca de Bateria", preco: 200, custo: 80, lucro: 120, quantidade: 0, peca_id: PECA, tipo_servico_id: null });
+  const produtos = ["produto", "massa"].includes(caso.alvo)
+    ? [{ ...item, id: PRODUTO, nome: "Capa Silicone" }, ...(caso.alvo === "massa" ? [{ ...item, id: "prod-0002", nome: "Película 3D" }] : [])]
+    : [];
+  const pecas = ["peca", "massa"].includes(caso.alvo) ? [{ ...item, id: PECA, nome: "Bateria A10" }] : [];
+  const es = caso.idioma === "es";
   return {
-    user_roles: [],
-    profiles: [{ id: "p1", user_id: USUARIO.id, nome: "Loja Teste", email: USUARIO.email, celular: "11999990000", created_at: "2026-01-10T12:00:00Z", idioma: "pt-BR", mercado: "BR", pais: "BR", moeda: "BRL", fuso_horario: "America/Sao_Paulo", preferencias_os: null }],
+    user_roles: es ? [{ user_id: USUARIO.id, role: "admin" }] : [],
+    profiles: [{
+      id: "p1", user_id: USUARIO.id, nome: "Loja Teste", email: USUARIO.email, celular: "11999990000", created_at: "2026-01-10T12:00:00Z", preferencias_os: null,
+      ...(es ? { idioma: "es", mercado: "ES_LATAM", pais: "MX", moeda: "USD", fuso_horario: "America/Mexico_City" } : { idioma: "pt-BR", mercado: "BR", pais: "BR", moeda: "BRL", fuso_horario: "America/Sao_Paulo" }),
+    }],
     assinaturas: [{
       id: "a1", user_id: USUARIO.id, plano_tipo: "profissional_ultra_mensal", status: "active", data_inicio: "2026-01-10T12:00:00Z",
       data_fim: "2026-12-10T12:00:00Z", data_proxima_cobranca: "2026-11-10T12:00:00Z", trial_with_card: false, payment_provider: "pagarme",
@@ -66,11 +140,12 @@ function tabelas(caso) {
     }],
     configuracoes_loja: [{ id: "c1", user_id: USUARIO.id, nome_loja: "Loja Teste", cnpj: "00.000.000/0001-00", telefone: "11999990000", endereco: "Rua A, 1", logo_url: null, empresa_id: null }],
     user_onboarding: [{ user_id: USUARIO.id, completed: true, onboarding_completed: true, step: 99 }],
-    servicos: caso.alvo === "servico"
-      ? [{ ...comum, id: SERVICO, nome: "Troca de Tela", preco: 300, custo: 120, lucro: 180, quantidade: 0, peca_id: null, tipo_servico_id: null }]
-      : [],
+    servicos,
     tipos_servico: caso.alvo === "tipo" ? [{ ...comum, id: TIPO, nome: "Tela" }] : [],
-    ordens_servico: caso.ordens,
+    ordens_servico: (caso.ordens ?? []).map((o) => ({ ...comum, ...o })),
+    vendas: (caso.vendas ?? []).map((v) => ({ ...comum, ...v })),
+    produtos,
+    pecas,
   };
 }
 
@@ -94,7 +169,7 @@ function filtrar(linhas, params) {
     }));
 }
 
-async function abrir(navegador, estado, registro) {
+async function abrir(navegador, estado, escritas) {
   const ctx = await navegador.newContext({ viewport: { width: 1366, height: 900 }, timezoneId: "America/Sao_Paulo", locale: "pt-BR", serviceWorkers: "block" });
   await ctx.clock.setFixedTime(AGORA);
   await ctx.addInitScript(({ sessao }) => {
@@ -115,17 +190,20 @@ async function abrir(navegador, estado, registro) {
       const m = url.pathname.match(/\/rest\/v1\/([a-z_0-9]+)/);
       if (m) {
         const tabela = estado.tabelas[m[1]] ?? [];
+        const alvo = new Set(filtrar(tabela, url.searchParams));
         if (req.method() === "DELETE") {
-          const apagar = new Set(filtrar(tabela, url.searchParams));
-          registro.push({ metodo: "DELETE", tabela: m[1], linhas: apagar.size });
-          estado.tabelas[m[1]] = tabela.filter((l) => !apagar.has(l));
+          escritas.push({ metodo: "DELETE", tabela: m[1], ids: [...alvo].map((l) => l.id).sort() });
+          estado.tabelas[m[1]] = tabela.filter((l) => !alvo.has(l));
+          return r.fulfill({ status: 204, body: "" });
+        }
+        if (req.method() === "PATCH" && ["produtos", "pecas", "servicos", "tipos_servico"].includes(m[1])) {
+          const corpo = req.postDataJSON() ?? {};
+          escritas.push({ metodo: "PATCH", tabela: m[1], ids: [...alvo].map((l) => l.id).sort(), campos: Object.keys(corpo).sort() });
+          for (const l of alvo) Object.assign(l, corpo);
           return r.fulfill({ status: 204, body: "" });
         }
         if (req.method() !== "GET" && req.method() !== "HEAD") return r.fulfill({ status: 201, json: [] });
-        const linhas = filtrar(tabela, url.searchParams);
-        if (m[1] === "ordens_servico" || m[1] === "servicos" || m[1] === "tipos_servico") {
-          registro.push({ metodo: req.method(), tabela: m[1], consulta: url.search, linhas: linhas.length });
-        }
+        const linhas = [...alvo];
         // count: "exact" lê o total do content-range; sem o expose o navegador esconde o cabeçalho (CORS)
         const faixa = {
           "content-range": linhas.length ? `0-${linhas.length - 1}/${linhas.length}` : `*/0`,
@@ -145,40 +223,67 @@ async function abrir(navegador, estado, registro) {
   return ctx;
 }
 
+const confirmar = (pg, nome) => pg.getByRole("alertdialog").getByRole("button", { name: nome }).click();
+
+const ACOES = {
+  async servico(pg) {
+    await pg.goto(`${base}/servicos`);
+    const linha = pg.getByRole("row").filter({ hasText: "Troca de Tela" }).first();
+    await linha.waitFor({ timeout: 30000 });
+    return { linha, excluir: async () => { await linha.getByRole("button").last().click(); await confirmar(pg, /^(Excluir|Eliminar)$/); } };
+  },
+  async tipo(pg) {
+    await pg.goto(`${base}/servicos`);
+    // só dentro do cartão "Tipos de Serviço": o nome do tipo também aparece na tabela de serviços
+    const cartao = pg.getByText("Tipos de Serviço", { exact: true }).locator("xpath=ancestor::div[contains(@class,'bg-card')][1]");
+    const item = cartao.getByText("Tela", { exact: true }).first();
+    await item.waitFor({ timeout: 30000 });
+    const linha = item.locator("xpath=ancestor::div[.//button][2]");
+    return { linha, excluir: async () => { await linha.getByRole("button").last().click(); await confirmar(pg, "Excluir"); } };
+  },
+  async produto(pg, nome = "Capa Silicone") {
+    await pg.goto(`${base}/produtos`);
+    const linha = pg.getByRole("row").filter({ hasText: nome }).first();
+    await linha.waitFor({ timeout: 30000 });
+    return { linha, excluir: async () => { await linha.getByTitle("Excluir").click(); await confirmar(pg, "Excluir"); } };
+  },
+  async peca(pg) { return ACOES.produto(pg, "Bateria A10"); },
+  async massa(pg) {
+    await pg.goto(`${base}/produtos`);
+    const tabela = pg.locator("table").filter({ hasText: "Capa Silicone" }).first();
+    await tabela.getByText("Bateria A10").waitFor({ timeout: 30000 });
+    return {
+      linha: tabela,
+      excluir: async () => {
+        await tabela.locator("thead").getByRole("checkbox").click();
+        await pg.getByRole("button", { name: /^Excluir \(3\)$/ }).click();
+        await confirmar(pg, /^Excluir 3 itens$/);
+      },
+    };
+  },
+};
+
 const navegador = await chromium.launch();
 const resultado = {};
 
 for (const [nome, caso] of Object.entries(CASOS)) {
   const estado = { tabelas: tabelas(caso) };
-  const registro = [];
-  const ctx = await abrir(navegador, estado, registro);
+  const escritas = [];
+  const ctx = await abrir(navegador, estado, escritas);
   const pg = await ctx.newPage();
-  await pg.goto(`${base}/servicos`);
+  const { linha, excluir } = await ACOES[caso.alvo](pg);
   await pg.waitForLoadState("networkidle");
-
-  if (caso.alvo === "servico") {
-    const linha = pg.getByRole("row").filter({ hasText: "Troca de Tela" }).first();
-    await linha.waitFor({ timeout: 30000 });
-    await linha.getByRole("button").last().click();
-    await pg.getByRole("alertdialog").getByRole("button", { name: "Excluir" }).click();
-  } else {
-    const item = pg.getByText("Tela", { exact: true }).first();
-    await item.waitFor({ timeout: 30000 });
-    // lixeira do item: último botão da linha do tipo
-    await item.locator("xpath=ancestor::div[.//button][2]").getByRole("button").last().click();
-    await pg.getByRole("alertdialog").getByRole("button", { name: "Excluir" }).click();
-  }
-
-  const toast = pg.locator("[data-sonner-toast]").first();
-  await toast.waitFor({ timeout: 10000 });
-  await pg.waitForTimeout(500);
-  const aviso = (await toast.innerText()).replace(/\s+/g, " ").trim();
-  const apagou = registro.some((x) => x.metodo === "DELETE");
-  await pg.screenshot({ path: path.join(SAIDA, `${nome}.png`) });
-  resultado[nome] = { aviso, apagou, consultas: registro.filter((x) => x.metodo !== "DELETE" && x.tabela === "ordens_servico") };
-  console.log(`${nome.padEnd(13)} ${apagou ? "EXCLUIU  " : "BLOQUEOU "} | ${aviso}`);
+  if (caso.idioma === "es") await pg.waitForFunction(() => document.documentElement.lang === "es", null, { timeout: 15000 });
+  const telaAntes = (await linha.innerText()).replace(/\s+/g, " ").trim();
+  await excluir();
+  await pg.locator("[data-sonner-toast]").first().waitFor({ timeout: 10000 });
+  await pg.waitForTimeout(1200);
+  const avisos = (await pg.locator("[data-sonner-toast]").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim()).sort();
+  await pg.screenshot({ path: path.join(SAIDA, `${rotulo}-${nome}.png`) });
+  resultado[nome] = { apagou: escritas.length > 0, avisos, escritas, telaAntes };
+  console.log(`${nome.padEnd(28)} ${escritas.length ? "apagou   " : "bloqueou "}| ${avisos.join(" | ")}`);
   await ctx.close();
 }
 
 await navegador.close();
-writeFileSync(path.join(SAIDA, "resultado.json"), JSON.stringify(resultado, null, 2));
+writeFileSync(path.join(SAIDA, `${rotulo}.json`), JSON.stringify(resultado, null, 2));
