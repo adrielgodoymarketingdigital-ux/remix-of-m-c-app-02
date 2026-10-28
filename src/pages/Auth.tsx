@@ -180,6 +180,10 @@ const Auth = () => {
               utm_campaign: tracking.utm_campaign,
               utm_content: tracking.utm_content,
               utm_term: tracking.utm_term,
+              // handle_new_user grava mercado/idioma no perfil. Sem ?intl=1
+              // nada é acrescentado: o cadastro BR manda o mesmo de sempre.
+              // País e moeda continuam pelo DEFAULT (escolha do país: etapa P5).
+              ...(isIntl ? { mercado: 'ES_LATAM', idioma: 'es' } : {}),
             },
             emailRedirectTo: `${window.location.origin}/dashboard`,
           },
