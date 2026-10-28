@@ -29,6 +29,8 @@ const tipoIcone: Record<string, typeof Bell> = {
   falha_cartao_ignorada: AlertTriangle,
   cancelamento_cartao_falhou: XCircle,
   cancelamento_pagarme_falhou: XCircle,
+  hotmart_oferta_nao_mapeada: AlertTriangle,
+  hotmart_config_invalida: AlertTriangle,
 };
 
 const tipoCor: Record<string, string> = {
@@ -45,6 +47,8 @@ const tipoCor: Record<string, string> = {
   falha_cartao_ignorada: 'text-amber-600',
   cancelamento_cartao_falhou: 'text-red-500',
   cancelamento_pagarme_falhou: 'text-red-500',
+  hotmart_oferta_nao_mapeada: 'text-amber-600',
+  hotmart_config_invalida: 'text-red-500',
 };
 
 function NotificationItem({

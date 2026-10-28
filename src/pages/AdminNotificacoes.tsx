@@ -35,6 +35,8 @@ const tipoIcone: Record<string, typeof Bell> = {
   falha_cartao_ignorada: AlertTriangle,
   cancelamento_cartao_falhou: XCircle,
   cancelamento_pagarme_falhou: XCircle,
+  hotmart_oferta_nao_mapeada: AlertTriangle,
+  hotmart_config_invalida: AlertTriangle,
 };
 
 const tipoCor: Record<string, string> = {
@@ -45,6 +47,8 @@ const tipoCor: Record<string, string> = {
   falha_cartao_ignorada: 'text-amber-600 bg-amber-50',
   cancelamento_cartao_falhou: 'text-red-500 bg-red-50',
   cancelamento_pagarme_falhou: 'text-red-500 bg-red-50',
+  hotmart_oferta_nao_mapeada: 'text-amber-600 bg-amber-50',
+  hotmart_config_invalida: 'text-red-500 bg-red-50',
 };
 
 const tipoLabel: Record<string, string> = {
@@ -55,6 +59,8 @@ const tipoLabel: Record<string, string> = {
   falha_cartao_ignorada: 'Cobrança de cartão antiga falhou (período pago por PIX)',
   cancelamento_cartao_falhou: 'Falha ao cancelar cartão antigo',
   cancelamento_pagarme_falhou: 'Falha ao cancelar assinatura na Pagar.me',
+  hotmart_oferta_nao_mapeada: 'Hotmart: oferta não mapeada',
+  hotmart_config_invalida: 'Hotmart: mapa de ofertas inválido',
 };
 
 function NotificationCard({
@@ -326,6 +332,8 @@ export default function AdminNotificacoes() {
                       <SelectItem value="falha_cartao_ignorada">Cobrança de cartão antiga falhou (período pago por PIX)</SelectItem>
                       <SelectItem value="cancelamento_cartao_falhou">Falha ao cancelar cartão antigo</SelectItem>
                       <SelectItem value="cancelamento_pagarme_falhou">Falha ao cancelar assinatura na Pagar.me</SelectItem>
+                      <SelectItem value="hotmart_oferta_nao_mapeada">Hotmart: oferta não mapeada</SelectItem>
+                      <SelectItem value="hotmart_config_invalida">Hotmart: mapa de ofertas inválido</SelectItem>
                     </SelectContent>
                   </Select>
 
