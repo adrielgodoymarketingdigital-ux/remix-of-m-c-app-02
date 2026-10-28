@@ -14,7 +14,9 @@ const USER_ID = "11111111-1111-1111-1111-111111111111";
 type Chamada = { metodo: string; caminho: string; corpo: unknown };
 
 // Supabase falso: profiles acha o usuário, assinaturas não existe ainda.
-function subirSupabaseFalso(chamadas: Chamada[]) {
+// avisoRecusado: admin_notifications responde como o CHECK de tipo da
+// produção antes da P0 (400, 23514).
+function subirSupabaseFalso(chamadas: Chamada[], avisoRecusado: boolean) {
   return Deno.serve({ port: PORTA_FALSO, hostname: "127.0.0.1", onListen() {} }, async (req) => {
     const url = new URL(req.url);
     const texto = await req.text();
@@ -24,6 +26,13 @@ function subirSupabaseFalso(chamadas: Chamada[]) {
     if (req.method === "GET" && url.pathname === "/rest/v1/profiles") return json({ user_id: USER_ID, nome: "Teste" });
     if (req.method === "GET" && url.pathname === "/rest/v1/assinaturas") return json(null, 200);
     if (url.pathname.startsWith("/functions/v1/")) return json({ ok: true });
+    if (avisoRecusado && url.pathname === "/rest/v1/admin_notifications") {
+      return json({
+        code: "23514",
+        message: 'new row for relation "admin_notifications" violates check constraint "admin_notifications_tipo_check"',
+        details: "Failing row contains (comprador@exemplo.com).",
+      }, 400);
+    }
     return json(null, 201);
   });
 }
@@ -31,9 +40,10 @@ function subirSupabaseFalso(chamadas: Chamada[]) {
 async function comWebhook(
   mapa: string | null,
   testar: (chamadas: Chamada[]) => Promise<void>,
+  avisoRecusado = false,
 ): Promise<string> {
   const chamadas: Chamada[] = [];
-  const falso = subirSupabaseFalso(chamadas);
+  const falso = subirSupabaseFalso(chamadas, avisoRecusado);
   const env: Record<string, string> = {
     PATH: Deno.env.get("PATH") ?? "",
     HOME: Deno.env.get("HOME") ?? "",
@@ -169,4 +179,50 @@ Deno.test("token errado: 401 antes de olhar o mapa (nenhuma notificação)", asy
     assertEquals(r.status, 401);
     assertEquals(c, []);
   });
+});
+
+// Aviso recusado pelo banco: mesma resposta HTTP e mesmo fluxo, erro no log
+// com tipo e motivo e sem dado pessoal.
+const linhasDeAvisoNaoGravado = (log: string) =>
+  log.split("\n").filter((l) => l.includes("Aviso ao admin não gravado"));
+
+Deno.test("aviso recusado, mapa inválido: continua 500 e nada em assinaturas", async () => {
+  const log = await comWebhook(null, async (c) => {
+    const r = await post(evento("oferta_teste_anual"));
+    assertEquals(r.status, 500);
+    assertEquals(r.json, { error: "Mapa de ofertas da Hotmart inválido" });
+    assertEquals(escritasEmAssinaturas(c), []);
+  }, true);
+  const linhas = linhasDeAvisoNaoGravado(log);
+  assertEquals(linhas.length, 1);
+  assertStringIncludes(linhas[0], "hotmart_config_invalida");
+  assertStringIncludes(linhas[0], "admin_notifications_tipo_check");
+  assertEquals(linhas[0].includes("comprador@exemplo.com"), false);
+});
+
+Deno.test("aviso recusado, oferta não mapeada: continua 200 sem processar", async () => {
+  const log = await comWebhook(MAPA_OK, async (c) => {
+    const r = await post(evento("outra_oferta"));
+    assertEquals(r.status, 200);
+    assertEquals(r.json, { received: true, processed: false, error: "Oferta não mapeada" });
+    assertEquals(escritasEmAssinaturas(c), []);
+  }, true);
+  const linhas = linhasDeAvisoNaoGravado(log);
+  assertEquals(linhas.length, 1);
+  assertStringIncludes(linhas[0], "hotmart_oferta_nao_mapeada");
+  assertEquals(linhas[0].includes("comprador@exemplo.com"), false);
+});
+
+Deno.test("aviso recusado, oferta mapeada: assinatura ativada igual e resposta 200 processada", async () => {
+  const log = await comWebhook(MAPA_OK, async (c) => {
+    const r = await post(evento("oferta_teste_anual"));
+    assertEquals(r.status, 200);
+    assertEquals(r.json, { received: true, processed: true, event: "PURCHASE_APPROVED" });
+    const corpo = escritasEmAssinaturas(c)[0].corpo as Record<string, unknown>;
+    assertEquals(corpo.plano_tipo, "basico_anual");
+    assertEquals(corpo.hotmart_transaction_id, "HP-TESTE-1");
+    assertEquals(c.some((x) => x.caminho === "/functions/v1/dispatch-event"), true);
+  }, true);
+  assertStringIncludes(log, "Compra aprovada processada");
+  assertStringIncludes(linhasDeAvisoNaoGravado(log)[0], "nova_assinatura_hotmart");
 });

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getPlanoFromOfferCode, lerMapaOfertas, PLANO_NOMES } from "../_shared/hotmart-config.ts";
+import { registrarAviso } from "./avisos.ts";
 
 // Clone de ticto-webhook/index.ts adaptado para a Hotmart. Duas diferenças
 // reais de protocolo (não são escolha de estilo, são como a Hotmart manda
@@ -82,7 +83,7 @@ serve(async (req) => {
 
     if (!mapaOfertas.ok) {
       log("❌ Mapa de ofertas inválido: evento NÃO processado", { erro: mapaOfertas.erro, ...dadosEvento });
-      await supabaseAdmin.from("admin_notifications").insert({
+      await registrarAviso(supabaseAdmin, {
         tipo: "hotmart_config_invalida",
         titulo: "Hotmart: mapa de ofertas inválido",
         mensagem: `${mapaOfertas.erro}. Evento ${event} de ${customerEmail} NÃO foi processado; a Hotmart vai reenviar.`,
@@ -99,7 +100,7 @@ serve(async (req) => {
 
     if (!planoTipo) {
       log("❌ offer_code não mapeado: evento NÃO processado", dadosEvento);
-      await supabaseAdmin.from("admin_notifications").insert({
+      await registrarAviso(supabaseAdmin, {
         tipo: "hotmart_oferta_nao_mapeada",
         titulo: "Hotmart: oferta não mapeada",
         mensagem: `Evento ${event} de ${customerEmail} com a oferta ${offerCode ?? "(sem código)"} NÃO foi processado. Cadastre a oferta no secret HOTMART_OFFER_MAP e reenvie o evento pelo painel da Hotmart.`,
@@ -194,7 +195,7 @@ async function processarCompraAprovada(
 
   if (!usuario) {
     log("⚠️ Usuário não encontrado, salvando notificação admin", { email: customerEmail });
-    await supabaseAdmin.from("admin_notifications").insert({
+    await registrarAviso(supabaseAdmin, {
       tipo: "hotmart_usuario_nao_encontrado",
       titulo: "Pagamento Hotmart: usuário não encontrado",
       mensagem: `Pagamento aprovado para ${customerEmail} (${planoTipo}) mas não existe conta no sistema.`,
@@ -293,7 +294,7 @@ async function processarCompraAprovada(
   const planoAnteriorNome = planoAnterior ? (PLANO_NOMES[planoAnterior as keyof typeof PLANO_NOMES] || planoAnterior) : null;
 
   if (eraMudancaPlano) {
-    await supabaseAdmin.from("admin_notifications").insert({
+    await registrarAviso(supabaseAdmin, {
       tipo: "mudanca_plano",
       titulo: "Mudança de plano!",
       mensagem: `${customerName || customerEmail} mudou de ${planoAnteriorNome} para ${planoNome}. Cancele o plano anterior na Hotmart.`,
@@ -307,7 +308,7 @@ async function processarCompraAprovada(
       },
     });
   } else {
-    await supabaseAdmin.from("admin_notifications").insert({
+    await registrarAviso(supabaseAdmin, {
       tipo: "nova_assinatura_hotmart",
       titulo: "Nova assinatura via Hotmart!",
       mensagem: `${customerName || customerEmail} assinou ${planoNome} via ${metodo}`,
@@ -386,7 +387,7 @@ async function processarCancelamento(
       hotmartTransactionIdAtual: assinaturaAtual.hotmart_transaction_id,
       planoAtual: assinaturaAtual.plano_tipo,
     });
-    await supabaseAdmin.from("admin_notifications").insert({
+    await registrarAviso(supabaseAdmin, {
       tipo: "cancelamento_hotmart_ignorado",
       titulo: "Cancelamento Hotmart ignorado (renovação detectada)",
       mensagem: `Cancelamento de ${customerEmail} (${planoTipo}) ignorado — usuário já renovou (transação ${assinaturaAtual.hotmart_transaction_id})`,
@@ -412,7 +413,7 @@ async function processarCancelamento(
     log("✅ Cancelamento processado → free", { userId: usuario.user_id });
   }
 
-  await supabaseAdmin.from("admin_notifications").insert({
+  await registrarAviso(supabaseAdmin, {
     tipo: "cancelamento_hotmart",
     titulo: "Assinatura cancelada (Hotmart)",
     mensagem: `${customerEmail} cancelou o plano ${planoTipo}`,
@@ -472,7 +473,7 @@ async function processarReembolso(
     log("✅ Reembolso processado → demonstracao/canceled", { userId: usuario.user_id });
   }
 
-  await supabaseAdmin.from("admin_notifications").insert({
+  await registrarAviso(supabaseAdmin, {
     tipo: "reembolso_hotmart",
     titulo: "Reembolso/Chargeback (Hotmart)",
     mensagem: `${customerEmail} teve reembolso do plano ${planoTipo}`,
