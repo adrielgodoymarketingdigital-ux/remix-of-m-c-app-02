@@ -3,8 +3,9 @@
 // O limite é "avisar quando restar X ou menos": com limite 4, de 1 a 4 é baixo.
 // Limite 0 = nunca avisar baixo. Zero e negativo são fixos e não dependem do limite.
 //
-// Cada tela tem o seu padrão histórico (abaixo). Enquanto a loja não configurar
-// nada, a tela passa `limite` vazio e o resultado é o mesmo de antes.
+// Cada tela tem o seu padrão histórico (abaixo). O limite da loja (fase 2, tabela
+// configuracao_estoque) entra como `limite`; sem configuração ele vem vazio e o
+// resultado é o mesmo de antes.
 // A quantidade em produtos/pecas é INTEGER no banco; por isso "1 a 4" e "4 ou menos"
 // dão o mesmo resultado.
 
@@ -22,6 +23,19 @@ function limiteValido(limite: number | null | undefined): limite is number {
   return typeof limite === "number" && Number.isInteger(limite) && limite >= 0;
 }
 
+/** Limite que vale na tela: o configurado, se válido; senão o padrão da tela. */
+export function limiteEfetivo(limite: number | null | undefined, limitePadrao: number): number {
+  return limiteValido(limite) ? limite : limitePadrao;
+}
+
+/** Subtítulo do cartão "Estoque Baixo" do PDF "Menor estoque" (sem configuração: "quantidade 1 a 3"). */
+export function descricaoFaixaBaixoPDF(limite: number | null | undefined): string {
+  const efetivo = limiteEfetivo(limite, LIMITE_PADRAO_PDF_MENOR_ESTOQUE);
+  if (efetivo === 0) return "aviso desligado";
+  if (efetivo === 1) return "quantidade 1";
+  return `quantidade 1 a ${efetivo}`;
+}
+
 /**
  * @param quantidade quantidade em estoque; vazio ou inválido conta como 0.
  * @param limite limite configurado (item ou loja, nas próximas fases); vazio = padrão da tela.
@@ -35,6 +49,5 @@ export function situacaoEstoque(
   const qtd = typeof quantidade === "number" && Number.isFinite(quantidade) ? quantidade : 0;
   if (qtd < 0) return "negativo";
   if (qtd === 0) return "sem_estoque";
-  const efetivo = limiteValido(limite) ? limite : limitePadrao;
-  return qtd <= efetivo ? "baixo" : "ok";
+  return qtd <= limiteEfetivo(limite, limitePadrao) ? "baixo" : "ok";
 }

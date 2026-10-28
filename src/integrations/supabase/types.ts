@@ -960,6 +960,27 @@ export type Database = {
           },
         ]
       }
+      configuracao_estoque: {
+        Row: {
+          created_at: string
+          limite_baixo: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          limite_baixo?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          limite_baixo?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       configuracoes_loja: {
         Row: {
           bairro: string | null

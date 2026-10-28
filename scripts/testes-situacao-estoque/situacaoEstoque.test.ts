@@ -2,9 +2,11 @@
 // Roda a função real de src/lib/estoque/situacaoEstoque.ts.
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  descricaoFaixaBaixoPDF,
   LIMITE_PADRAO_LISTA_PRODUTOS,
   LIMITE_PADRAO_PDF_MENOR_ESTOQUE,
   LIMITE_PADRAO_RELATORIO_VENDIDOS,
+  limiteEfetivo,
   situacaoEstoque,
 } from "../../src/lib/estoque/situacaoEstoque.ts";
 
@@ -85,5 +87,31 @@ Deno.test("sem configuração: idêntico às contas antigas de cada tela (-20 a 
 
     const rel = situacaoEstoque(q, undefined, LIMITE_PADRAO_RELATORIO_VENDIDOS);
     assertEquals(rel !== "ok", antigoRelatorioVermelho(q), `relatório q=${q}`);
+  }
+});
+
+Deno.test("limite efetivo: configurado válido vence o padrão da tela", () => {
+  assertEquals(limiteEfetivo(undefined, 4), 4);
+  assertEquals(limiteEfetivo(null, 3), 3);
+  assertEquals(limiteEfetivo(0, 4), 0);
+  assertEquals(limiteEfetivo(10, 3), 10);
+  assertEquals(limiteEfetivo(-1, 3), 3);
+});
+
+Deno.test("subtítulo do cartão do PDF", () => {
+  assertEquals(descricaoFaixaBaixoPDF(undefined), "quantidade 1 a 3"); // igual a antes
+  assertEquals(descricaoFaixaBaixoPDF(null), "quantidade 1 a 3");
+  assertEquals(descricaoFaixaBaixoPDF(0), "aviso desligado");
+  assertEquals(descricaoFaixaBaixoPDF(1), "quantidade 1");
+  assertEquals(descricaoFaixaBaixoPDF(7), "quantidade 1 a 7");
+});
+
+Deno.test("limite da loja vale igual nas três telas", () => {
+  for (const padrao of [LIMITE_PADRAO_LISTA_PRODUTOS, LIMITE_PADRAO_PDF_MENOR_ESTOQUE, LIMITE_PADRAO_RELATORIO_VENDIDOS]) {
+    assertEquals(situacaoEstoque(7, 7, padrao), "baixo");
+    assertEquals(situacaoEstoque(8, 7, padrao), "ok");
+    assertEquals(situacaoEstoque(1, 0, padrao), "ok");
+    assertEquals(situacaoEstoque(0, 0, padrao), "sem_estoque");
+    assertEquals(situacaoEstoque(-1, 0, padrao), "negativo");
   }
 });
