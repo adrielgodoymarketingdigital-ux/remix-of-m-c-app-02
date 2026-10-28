@@ -309,7 +309,7 @@ export const useProdutos = () => {
 
       if (tipo === 'peca') {
         const [{ data: vendasPeca }, { data: servicosPeca }] = await Promise.all([
-          supabase.from('vendas').select('id').eq('peca_id', id).limit(1),
+          supabase.from('vendas').select('id').eq('peca_id', id).is('deleted_at', null).limit(1),
           supabase.from('servicos').select('id').eq('peca_id', id).limit(1),
         ]);
 
@@ -424,7 +424,8 @@ export const useProdutos = () => {
               .from('vendas')
               .select('peca_id')
               .eq('user_id', userId)
-              .in('peca_id', idsChunk),
+              .in('peca_id', idsChunk)
+              .is('deleted_at', null),
             supabase
               .from('servicos')
               .select('peca_id')
