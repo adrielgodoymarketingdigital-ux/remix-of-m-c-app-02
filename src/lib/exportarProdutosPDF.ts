@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { ItemEstoque } from "@/types/produto";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
-import { LIMITE_PADRAO_PDF_MENOR_ESTOQUE, situacaoEstoque } from "@/lib/estoque/situacaoEstoque";
+import { descricaoFaixaBaixoPDF, LIMITE_PADRAO_PDF_MENOR_ESTOQUE, situacaoEstoque } from "@/lib/estoque/situacaoEstoque";
 import {
   formatCurrencyPDF,
   adicionarCabecalhoPDF,
@@ -56,7 +56,9 @@ function agruparPorCategoria(items: ItemEstoque[]): CategoriaAgrupada[] {
 
 export const exportarMenosEstoquePDF = async (
   items: ItemEstoque[],
-  config?: ConfiguracaoLoja | null
+  config?: ConfiguracaoLoja | null,
+  /** Limite da loja (null/omitido = padrão do PDF: baixo de 1 a 3). */
+  limiteBaixo?: number | null
 ) => {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const margin = 15;
@@ -64,7 +66,7 @@ export const exportarMenosEstoquePDF = async (
 
   const ordenados = [...items].sort((a, b) => a.quantidade - b.quantidade);
   const situacaoPdf = (quantidade: number) =>
-    situacaoEstoque(quantidade, undefined, LIMITE_PADRAO_PDF_MENOR_ESTOQUE);
+    situacaoEstoque(quantidade, limiteBaixo, LIMITE_PADRAO_PDF_MENOR_ESTOQUE);
   const semEstoque = ordenados.filter((i) => situacaoPdf(i.quantidade) === "sem_estoque").length;
   const estoquebaixo = ordenados.filter((i) => situacaoPdf(i.quantidade) === "baixo").length;
 
@@ -78,7 +80,7 @@ export const exportarMenosEstoquePDF = async (
   y = adicionarCardsPDF(doc, y, [
     { label: "Total de Itens", value: ordenados.length.toString(), sub: "analisados", color: [50, 50, 50] },
     { label: "Sem Estoque", value: semEstoque.toString(), sub: "quantidade = 0", color: [200, 50, 50] },
-    { label: "Estoque Baixo", value: estoquebaixo.toString(), sub: "quantidade 1 a 3", color: [210, 120, 30] },
+    { label: "Estoque Baixo", value: estoquebaixo.toString(), sub: descricaoFaixaBaixoPDF(limiteBaixo), color: [210, 120, 30] },
     {
       label: "Qtd Média",
       value: ordenados.length > 0 ? (ordenados.reduce((s, i) => s + i.quantidade, 0) / ordenados.length).toFixed(1) : "0",

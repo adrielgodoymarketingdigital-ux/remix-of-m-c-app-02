@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { RelatorioProduto } from "@/types/relatorio-vendas";
 import { formatCurrency } from "@/lib/formatters";
 import { LIMITE_PADRAO_RELATORIO_VENDIDOS, situacaoEstoque } from "@/lib/estoque/situacaoEstoque";
+import { useConfiguracaoEstoque } from "@/hooks/useConfiguracaoEstoque";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Package, TrendingUp, AlertCircle } from "lucide-react";
 
@@ -23,6 +24,8 @@ export const RelatorioProdutosComponent = ({
   produtos,
   loading,
 }: RelatorioProdutosProps) => {
+  // Limite da loja (null = padrão do relatório: vermelho abaixo de 5).
+  const { limiteBaixo } = useConfiguracaoEstoque();
   const totalVendido = produtos.reduce((acc, p) => acc + p.quantidadeVendida, 0);
   const receitaTotal = produtos.reduce((acc, p) => acc + p.receitaTotal, 0);
   const ticketMedio = totalVendido > 0 ? receitaTotal / totalVendido : 0;
@@ -121,7 +124,7 @@ export const RelatorioProdutosComponent = ({
                     <TableCell className="text-right">
                       <Badge
                         variant={
-                          situacaoEstoque(produto.estoqueAtual, undefined, LIMITE_PADRAO_RELATORIO_VENDIDOS) === "ok"
+                          situacaoEstoque(produto.estoqueAtual, limiteBaixo, LIMITE_PADRAO_RELATORIO_VENDIDOS) === "ok"
                             ? "secondary"
                             : "destructive"
                         }

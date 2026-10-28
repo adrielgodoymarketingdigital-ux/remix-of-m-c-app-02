@@ -29,6 +29,7 @@ import { LIMITE_PADRAO_LISTA_PRODUTOS, situacaoEstoque } from '@/lib/estoque/sit
 import { ValorMonetario } from '@/components/ui/valor-monetario';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
+import { useConfiguracaoEstoque } from '@/hooks/useConfiguracaoEstoque';
 import { DialogAlterarPrecoEmMassa } from './DialogAlterarPrecoEmMassa';
 import { DialogAdicionarFotoEmMassa } from './DialogAdicionarFotoEmMassa';
 import { DialogGerarEtiquetas } from './DialogGerarEtiquetas';
@@ -92,6 +93,8 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
   const [dialogEtiquetasAberto, setDialogEtiquetasAberto] = useState(false);
   const isMobile = useIsMobile();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
+  // Limite da loja (null = padrão da lista: baixo de 1 a 4).
+  const { limiteBaixo } = useConfiguracaoEstoque();
   // Paginação — só afeta o layout desktop (a lista mobile continua renderizando tudo).
   const [pagina, setPagina] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(20);
@@ -460,7 +463,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         <div className="space-y-3">
           {items.map((item) => {
             const lucro = item.tipo === 'produto' ? item.lucro : item.preco - item.custo;
-            const situacao = situacaoEstoque(item.quantidade, undefined, LIMITE_PADRAO_LISTA_PRODUTOS);
+            const situacao = situacaoEstoque(item.quantidade, limiteBaixo, LIMITE_PADRAO_LISTA_PRODUTOS);
             const semEstoque = situacao === 'sem_estoque';
             const estoqueNegativo = situacao === 'negativo';
             const estoqueBaixo = situacao === 'baixo';
@@ -736,7 +739,7 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           <TableBody>
             {itemsPagina.map((item) => {
               const lucro = item.tipo === 'produto' ? item.lucro : item.preco - item.custo;
-              const situacao = situacaoEstoque(item.quantidade, undefined, LIMITE_PADRAO_LISTA_PRODUTOS);
+              const situacao = situacaoEstoque(item.quantidade, limiteBaixo, LIMITE_PADRAO_LISTA_PRODUTOS);
               const semEstoque = situacao === 'sem_estoque';
               const estoqueNegativo = situacao === 'negativo';
               const estoqueBaixo = situacao === 'baixo';

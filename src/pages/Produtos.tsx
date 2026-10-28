@@ -32,6 +32,7 @@ import { TabelaTrocasGarantia } from '@/components/produtos/TabelaTrocasGarantia
 import { RankingProdutosDefeito } from '@/components/produtos/RankingProdutosDefeito';
 import { DialogNovaTrocaGarantia } from '@/components/produtos/DialogNovaTrocaGarantia';
 import { useTrocasGarantia } from '@/hooks/useTrocasGarantia';
+import { useConfiguracaoEstoque } from '@/hooks/useConfiguracaoEstoque';
 
 const Produtos = () => {
   const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, adicionarFotoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque, renomearVariacao, adicionarVariacaoAoGrupo, removerDoGrupo } = useProdutos();
@@ -39,6 +40,7 @@ const Produtos = () => {
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
   const { obterContagemProdutosMes, assinatura, planoVencido, planoAnterior } = useAssinatura();
   const { config: configLoja } = useConfiguracaoLoja();
+  const { limiteBaixo } = useConfiguracaoEstoque();
   const { trocas, criar: criarTroca, excluir: excluirTroca } = useTrocasGarantia();
   const { colunasVisiveis, toggleColuna, resetarColunas } = useColunasVisiveis();
   const [abaAtiva, setAbaAtiva] = useState<'estoque' | 'trocas'>('estoque');
@@ -265,7 +267,7 @@ const Produtos = () => {
                   <DropdownMenuItem
                     onClick={async () => {
                       if (items.length === 0) { toast.error('Nenhum item para exportar'); return; }
-                      await exportarMenosEstoquePDF(items, configLoja);
+                      await exportarMenosEstoquePDF(items, configLoja, limiteBaixo);
                       toast.success('PDF de menor estoque exportado!');
                     }}
                   >
