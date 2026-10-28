@@ -10,13 +10,11 @@ import { PersonalizacaoCores } from "@/components/configuracoes/PersonalizacaoCo
 import { NotificationSettings } from "@/components/pwa/NotificationSettings";
 import { VersaoApp } from "@/components/pwa/VersaoApp";
 import { ConfiguracaoNumeracaoOS } from "@/components/configuracoes/ConfiguracaoNumeracaoOS";
-import { ConfiguracaoEstoqueBaixo } from "@/components/configuracoes/ConfiguracaoEstoqueBaixo";
 import { ConfiguracaoPermissoes } from "@/components/configuracoes/ConfiguracaoPermissoes";
 import { ExportacaoDados } from "@/components/configuracoes/ExportacaoDados";
 import { CardComecarDoZero } from "@/components/configuracoes/comecar-do-zero/CardComecarDoZero";
 
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { useConfiguracaoEstoque } from "@/hooks/useConfiguracaoEstoque";
 import { useToast } from "@/hooks/use-toast";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
@@ -31,7 +29,6 @@ import {
   Eye,
   Hash,
   Image as ImageIcon,
-  PackageSearch,
   Palette,
   ShieldCheck,
   User,
@@ -49,8 +46,6 @@ const ABAS: { value: string; icone: LucideIcon }[] = [
   { value: "aparencia", icone: Palette },
   { value: "cores", icone: Droplet },
   { value: "numeracao", icone: Hash },
-  // Só para o dono e só depois da migration da tabela configuracao_estoque.
-  { value: "estoque", icone: PackageSearch },
   { value: "notificacoes", icone: Bell },
   { value: "permissoes", icone: ShieldCheck },
   { value: "preview", icone: Eye },
@@ -101,10 +96,6 @@ export default function Configuracoes() {
   const { config, loading, atualizarConfiguracao, validarParaRecibos } =
     useConfiguracaoLoja(empresaIdConfig);
   const { toast } = useToast();
-  // Aba "Estoque": só o dono, e só se a tabela já existe (front pode ir antes da migration).
-  const estoqueConfig = useConfiguracaoEstoque();
-  const mostrarAbaEstoque = estoqueConfig.ehDono && !estoqueConfig.carregando && estoqueConfig.tabelaDisponivel;
-  const abasVisiveis = ABAS.filter((aba) => aba.value !== "estoque" || mostrarAbaEstoque);
   // Textos: namespace "configuracoes".
   const { t } = useTranslation("configuracoes");
 
@@ -198,7 +189,7 @@ export default function Configuracoes() {
           <Tabs defaultValue="perfil" className="w-full">
             {/* Barra única de abas em pílula; rola na horizontal no celular/tablet */}
             <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-muted/70 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {abasVisiveis.map(({ value, icone: Icone }) => (
+              {ABAS.map(({ value, icone: Icone }) => (
                 <TabsTrigger
                   key={value}
                   value={value}
@@ -249,12 +240,6 @@ export default function Configuracoes() {
                 <TabsContent value="numeracao" className="space-y-4 mt-0">
                   <ConfiguracaoNumeracaoOS />
                 </TabsContent>
-
-                {mostrarAbaEstoque && (
-                  <TabsContent value="estoque" className="space-y-4 mt-0">
-                    <ConfiguracaoEstoqueBaixo />
-                  </TabsContent>
-                )}
 
                 <TabsContent value="notificacoes" className="space-y-4 mt-0">
                   <NotificationSettings />

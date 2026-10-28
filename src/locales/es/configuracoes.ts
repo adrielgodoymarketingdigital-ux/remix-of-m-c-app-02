@@ -18,7 +18,6 @@ const configuracoes: Traducao<typeof configuracoesPtBR> = {
     aparencia: "Apariencia",
     cores: "Colores",
     numeracao: "Numeración",
-    estoque: "Inventario",
     notificacoes: "Notificaciones",
     permissoes: "Permisos",
     preview: "Vista previa",
@@ -365,6 +364,7 @@ const configuracoes: Traducao<typeof configuracoesPtBR> = {
     subtitulo: "Borrar datos de su tienda",
   },
   estoque: {
+    aba: "Inventario",
     titulo: "Inventario bajo",
     descricao: "Elija cuándo un producto o repuesto aparece como \"Bajo\" en la lista de Productos, en el PDF \"Menor inventario\" y en el informe de productos vendidos.",
     limiteBaixo: "Avisar inventario bajo cuando queden <campo/> o menos",

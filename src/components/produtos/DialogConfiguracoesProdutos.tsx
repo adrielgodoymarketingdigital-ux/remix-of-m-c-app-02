@@ -27,6 +27,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { GerenciadorPadroesEtiqueta } from './GerenciadorPadroesEtiqueta';
+import { ConfiguracaoEstoqueBaixo } from './ConfiguracaoEstoqueBaixo';
+import { useConfiguracaoEstoque } from '@/hooks/useConfiguracaoEstoque';
+import { useTranslation } from 'react-i18next';
 
 interface DialogConfiguracoesProdutosProps {
   open: boolean;
@@ -42,7 +45,7 @@ interface DialogConfiguracoesProdutosProps {
   abaInicial?: AbaConfiguracoesProdutos;
 }
 
-export type AbaConfiguracoesProdutos = 'categorias' | 'colunas' | 'etiquetas';
+export type AbaConfiguracoesProdutos = 'categorias' | 'colunas' | 'etiquetas' | 'estoque';
 
 const CORES_PREDEFINIDAS = [
   // Vermelhos
@@ -83,6 +86,13 @@ export const DialogConfiguracoesProdutos = ({
   useEffect(() => {
     if (open) setAba(abaInicial);
   }, [open, abaInicial]);
+  // Aba "Estoque" (limite de estoque baixo): só o dono, e só se a tabela já existe
+  // (o front pode ir antes da migration). Funcionário e gerente não veem.
+  const { t } = useTranslation('configuracoes');
+  const estoque = useConfiguracaoEstoque();
+  const mostrarAbaEstoque = estoque.ehDono && !estoque.carregando && estoque.tabelaDisponivel;
+  const abaAtual: AbaConfiguracoesProdutos = aba === 'estoque' && !mostrarAbaEstoque ? 'categorias' : aba;
+  const classeAba = mostrarAbaEstoque ? 'px-1 text-xs sm:text-sm' : undefined;
   const [nome, setNome] = useState('');
   const [cor, setCor] = useState('#3b82f6');
   const [categoriaPaiId, setCategoriaPaiId] = useState<string | null>(null);
@@ -138,11 +148,14 @@ export const DialogConfiguracoesProdutos = ({
             <DialogTitle>Configurações</DialogTitle>
           </DialogHeader>
 
-          <Tabs value={aba} onValueChange={(v) => setAba(v as AbaConfiguracoesProdutos)}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="categorias">Categorias</TabsTrigger>
-              <TabsTrigger value="colunas">Colunas</TabsTrigger>
-              <TabsTrigger value="etiquetas">Etiquetas</TabsTrigger>
+          <Tabs value={abaAtual} onValueChange={(v) => setAba(v as AbaConfiguracoesProdutos)}>
+            <TabsList className={`grid w-full ${mostrarAbaEstoque ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <TabsTrigger value="categorias" className={classeAba}>Categorias</TabsTrigger>
+              <TabsTrigger value="colunas" className={classeAba}>Colunas</TabsTrigger>
+              <TabsTrigger value="etiquetas" className={classeAba}>Etiquetas</TabsTrigger>
+              {mostrarAbaEstoque && (
+                <TabsTrigger value="estoque" className={classeAba}>{t('estoque.aba')}</TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="categorias" className="space-y-4 mt-4">
@@ -300,6 +313,12 @@ export const DialogConfiguracoesProdutos = ({
             <TabsContent value="etiquetas" className="mt-4">
               <GerenciadorPadroesEtiqueta />
             </TabsContent>
+
+            {mostrarAbaEstoque && (
+              <TabsContent value="estoque" className="mt-4">
+                <ConfiguracaoEstoqueBaixo />
+              </TabsContent>
+            )}
           </Tabs>
         </DialogContent>
       </Dialog>

@@ -17,7 +17,6 @@ const configuracoes = {
     aparencia: "Aparência",
     cores: "Cores",
     numeracao: "Numeração",
-    estoque: "Estoque",
     notificacoes: "Notificações",
     permissoes: "Permissões",
     preview: "Preview",
@@ -366,8 +365,10 @@ const configuracoes = {
     botao: "Começar do zero",
     subtitulo: "Apagar dados da sua loja",
   },
-  // Estoque baixo (aba "Estoque", só o dono). limiteBaixo: <campo/> é o campo do número.
+  // Estoque baixo: aba "Estoque" do diálogo Configurações da tela Produtos e Peças (só o dono).
+  // limiteBaixo: <campo/> é o campo do número.
   estoque: {
+    aba: "Estoque",
     titulo: "Estoque baixo",
     descricao: "Escolha quando um produto ou peça aparece como \"Baixo\" na lista de Produtos, no PDF \"Menor estoque\" e no relatório de produtos vendidos.",
     limiteBaixo: "Avisar estoque baixo quando restar <campo/> ou menos",
