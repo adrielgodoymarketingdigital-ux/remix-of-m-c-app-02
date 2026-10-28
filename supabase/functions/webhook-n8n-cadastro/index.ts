@@ -1,5 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { formatarTelefoneN8n } from "./telefone.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -43,10 +44,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Garantir formato internacional: 55 + DDD + número (só dígitos)
-    const telefoneFormatado = telefone.replace(/\D/g, "").startsWith("55")
-      ? telefone.replace(/\D/g, "")
-      : "55" + telefone.replace(/\D/g, "");
+    // Garantir formato internacional: 55 + DDD + número (só dígitos) no
+    // Brasil; fora dele, o número como veio (ver telefone.ts). Sem perfil
+    // legível, segue a regra BR de sempre.
+    const { data: regiao } = await supabaseClient
+      .from("profiles")
+      .select("mercado, pais")
+      .eq("user_id", authenticatedUserId)
+      .maybeSingle();
+    const telefoneFormatado = formatarTelefoneN8n(telefone, regiao);
 
     const webhookUrl = "https://n8n.appmec.in/webhook/webhookn8n";
 
