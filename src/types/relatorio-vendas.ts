@@ -16,6 +16,8 @@ export interface RelatorioProduto {
   sku: string | null;
   quantidadeVendida: number;
   estoqueAtual: number;
+  /** Estoque mínimo do produto (fase 3); ausente = limite da loja. */
+  estoqueMinimo?: number | null;
   receitaTotal: number;
   custoTotal: number;
   lucroTotal: number;

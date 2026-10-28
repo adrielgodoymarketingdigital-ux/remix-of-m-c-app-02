@@ -3886,6 +3886,7 @@ export type Database = {
           custo: number | null
           deleted_at: string | null
           empresa_id: string | null
+          estoque_minimo: number | null
           exibir_no_catalogo: boolean | null
           fornecedor_id: string | null
           fotos: Json | null
@@ -3909,6 +3910,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          estoque_minimo?: number | null
           exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           fotos?: Json | null
@@ -3932,6 +3934,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          estoque_minimo?: number | null
           exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           fotos?: Json | null
@@ -4039,6 +4042,7 @@ export type Database = {
           custo: number | null
           deleted_at: string | null
           empresa_id: string | null
+          estoque_minimo: number | null
           exibir_no_catalogo: boolean | null
           fornecedor_id: string | null
           fotos: Json | null
@@ -4064,6 +4068,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          estoque_minimo?: number | null
           exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           fotos?: Json | null
@@ -4089,6 +4094,7 @@ export type Database = {
           custo?: number | null
           deleted_at?: string | null
           empresa_id?: string | null
+          estoque_minimo?: number | null
           exibir_no_catalogo?: boolean | null
           fornecedor_id?: string | null
           fotos?: Json | null

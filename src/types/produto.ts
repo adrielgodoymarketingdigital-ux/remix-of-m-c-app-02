@@ -27,6 +27,8 @@ export interface Produto {
   cest?: string | null;
   unidade?: string | null;
   perfil_tributario_id?: string | null;
+  /** Estoque mínimo do item (fase 3). Nulo/ausente = limite da loja; 0 = não avisar. */
+  estoque_minimo?: number | null;
 }
 
 export interface Peca {
@@ -52,6 +54,8 @@ export interface Peca {
   cest?: string | null;
   unidade?: string | null;
   perfil_tributario_id?: string | null;
+  /** Estoque mínimo do item (fase 3). Nulo/ausente = limite da loja; 0 = não avisar. */
+  estoque_minimo?: number | null;
 }
 
 export type ItemEstoque = Produto | Peca;
@@ -75,6 +79,8 @@ export interface FormularioProduto {
   categoria_id?: string;
   /** Só vem preenchido quando useFiscalVisivel; ausente = payload igual ao de antes. */
   fiscal?: ColunasFiscaisItem;
+  /** Só vem quando a coluna existe e o valor mudou; ausente = payload igual ao de antes. */
+  estoque_minimo?: number | null;
 }
 
 // Uma linha de variação na tela de cadastro em lote (ex: "iPhone 11")
