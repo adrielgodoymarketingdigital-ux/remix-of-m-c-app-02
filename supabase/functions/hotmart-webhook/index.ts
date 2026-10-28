@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { getPlanoFromOfferCode, PLANO_NOMES } from "../_shared/hotmart-config.ts";
+import { getPlanoFromOfferCode, lerMapaOfertas, PLANO_NOMES } from "../_shared/hotmart-config.ts";
 
 // Clone de ticto-webhook/index.ts adaptado para a Hotmart. Duas diferenças
 // reais de protocolo (não são escolha de estilo, são como a Hotmart manda
@@ -69,12 +69,44 @@ serve(async (req) => {
     });
 
     // ── 2. Identificar o plano pelo offer_code ───────────────────────
-    const planoTipo = offerCode ? getPlanoFromOfferCode(offerCode) : null;
+    // Mapa vem do secret HOTMART_OFFER_MAP. Sem mapa válido ou sem a oferta
+    // nele, nada é gravado em assinaturas: melhor não ativar do que ativar
+    // com o plano errado. O admin é avisado nos dois casos.
+    const mapaOfertas = lerMapaOfertas(Deno.env.get("HOTMART_OFFER_MAP"));
+    const dadosEvento = {
+      event,
+      email: customerEmail,
+      offer_code: offerCode,
+      transaction_id: transactionId,
+    };
+
+    if (!mapaOfertas.ok) {
+      log("❌ Mapa de ofertas inválido: evento NÃO processado", { erro: mapaOfertas.erro, ...dadosEvento });
+      await supabaseAdmin.from("admin_notifications").insert({
+        tipo: "hotmart_config_invalida",
+        titulo: "Hotmart: mapa de ofertas inválido",
+        mensagem: `${mapaOfertas.erro}. Evento ${event} de ${customerEmail} NÃO foi processado; a Hotmart vai reenviar.`,
+        dados: { erro: mapaOfertas.erro, ...dadosEvento },
+      });
+      // 500: a Hotmart reenvia, e o reenvio passa depois que o secret for corrigido.
+      return new Response(
+        JSON.stringify({ error: "Mapa de ofertas da Hotmart inválido" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const planoTipo = offerCode ? getPlanoFromOfferCode(offerCode, mapaOfertas.mapa) : null;
 
     if (!planoTipo) {
-      log("⚠️ offer_code não mapeado", { offerCode });
+      log("❌ offer_code não mapeado: evento NÃO processado", dadosEvento);
+      await supabaseAdmin.from("admin_notifications").insert({
+        tipo: "hotmart_oferta_nao_mapeada",
+        titulo: "Hotmart: oferta não mapeada",
+        mensagem: `Evento ${event} de ${customerEmail} com a oferta ${offerCode ?? "(sem código)"} NÃO foi processado. Cadastre a oferta no secret HOTMART_OFFER_MAP e reenvie o evento pelo painel da Hotmart.`,
+        dados: dadosEvento,
+      });
       return new Response(
-        JSON.stringify({ received: true, warning: "Produto não mapeado" }),
+        JSON.stringify({ received: true, processed: false, error: "Oferta não mapeada" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
