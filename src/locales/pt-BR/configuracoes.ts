@@ -385,6 +385,14 @@ const configuracoes = {
     salvo: "Limite de estoque baixo salvo",
     erroSalvar: "Não foi possível salvar o limite. Tente de novo.",
     erroValor: "Digite um número inteiro de 0 a {{maximo}}, ou deixe em branco.",
+    // Campo "Estoque mínimo" no cadastro de produto/peça (fase 3). O cadastro ainda não
+    // tem namespace próprio; fica aqui, junto do limite da loja.
+    minimoItem: {
+      rotulo: "Estoque mínimo",
+      placeholder: "Usar o da loja",
+      naoAvisar: "Não avisar",
+      dica: "Avisa \"Baixo\" quando restar este número ou menos. Em branco = usa o limite da loja.",
+    },
   },
 } as const;
 

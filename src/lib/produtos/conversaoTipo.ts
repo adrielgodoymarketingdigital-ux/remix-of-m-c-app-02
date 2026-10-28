@@ -210,6 +210,9 @@ export async function executarConversaoTipo(
     categoria_id: item.categoria_id || null,
     exibir_no_catalogo: item.exibir_no_catalogo ?? true,
     variacao_label: item.variacao_label || null,
+    // Estoque mínimo acompanha o item (é o mesmo item, só muda de tabela). Só vai
+    // se a coluna existe na origem (select '*'); as duas tabelas ganham juntas.
+    ...('estoque_minimo' in item ? { estoque_minimo: item.estoque_minimo ?? null } : {}),
     [colunaPaiDestino]: null,
     ...(novoTipo === 'produto'
       ? {

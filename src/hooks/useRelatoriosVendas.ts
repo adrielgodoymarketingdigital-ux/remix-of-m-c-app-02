@@ -11,6 +11,22 @@ import { useToast } from "@/hooks/use-toast";
 import { useIdentidade } from "./useResolvedUserId";
 import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 
+/** Lê produtos.estoque_minimo dos produtos do relatório, em lotes; qualquer erro = deixa sem. */
+async function preencherEstoqueMinimo(produtosMap: Map<string, RelatorioProduto>): Promise<void> {
+  const ids = Array.from(produtosMap.keys()).filter(Boolean);
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase
+      .from("produtos")
+      .select("id, estoque_minimo")
+      .in("id", ids.slice(i, i + 200));
+    if (error || !data) return;
+    for (const linha of data) {
+      const item = produtosMap.get(linha.id);
+      if (item) item.estoqueMinimo = linha.estoque_minimo;
+    }
+  }
+}
+
 export const useRelatoriosVendas = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -180,6 +196,11 @@ export const useRelatoriosVendas = () => {
         }
         item.receitaTotal += receita;
       });
+
+      // Estoque mínimo de cada produto (fase 3), numa leitura à parte e tolerante:
+      // antes da migration a coluna não existe, a consulta falha e o relatório
+      // segue igual (cada produto usa o limite da loja).
+      await preencherEstoqueMinimo(produtosMap);
 
       const produtos = Array.from(produtosMap.values()).map((item) => ({
         ...item,

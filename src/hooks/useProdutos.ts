@@ -165,6 +165,8 @@ export const useProdutos = () => {
           categoria_id: dados.categoria_id || null,
           // Colunas fiscais só quando o formulário mostrou o bloco (useFiscalVisivel).
           ...(dados.fiscal ?? {}),
+          // Estoque mínimo só quando a coluna existe e o valor mudou (o formulário decide).
+          ...(dados.estoque_minimo !== undefined ? { estoque_minimo: dados.estoque_minimo } : {}),
         } as any);
 
         if (error) throw error;
@@ -184,6 +186,8 @@ export const useProdutos = () => {
           categoria_id: dados.categoria_id || null,
           // Colunas fiscais só quando o formulário mostrou o bloco (useFiscalVisivel).
           ...(dados.fiscal ?? {}),
+          // Estoque mínimo só quando a coluna existe e o valor mudou (o formulário decide).
+          ...(dados.estoque_minimo !== undefined ? { estoque_minimo: dados.estoque_minimo } : {}),
         } as any);
 
         if (error) throw error;
@@ -246,6 +250,8 @@ export const useProdutos = () => {
           categoria_id: dados.categoria_id || null,
           // Colunas fiscais só quando o formulário mostrou o bloco (useFiscalVisivel).
           ...(dados.fiscal ?? {}),
+          // Estoque mínimo só quando a coluna existe e o valor mudou (o formulário decide).
+          ...(dados.estoque_minimo !== undefined ? { estoque_minimo: dados.estoque_minimo } : {}),
         } as any).eq('id', id).eq('user_id', userId);
 
         if (error) throw error;
@@ -263,6 +269,8 @@ export const useProdutos = () => {
           categoria_id: dados.categoria_id || null,
           // Colunas fiscais só quando o formulário mostrou o bloco (useFiscalVisivel).
           ...(dados.fiscal ?? {}),
+          // Estoque mínimo só quando a coluna existe e o valor mudou (o formulário decide).
+          ...(dados.estoque_minimo !== undefined ? { estoque_minimo: dados.estoque_minimo } : {}),
         } as any).eq('id', id).eq('user_id', userId);
 
         if (error) throw error;

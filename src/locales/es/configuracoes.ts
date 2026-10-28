@@ -381,6 +381,12 @@ const configuracoes: Traducao<typeof configuracoesPtBR> = {
     salvo: "Límite de inventario bajo guardado",
     erroSalvar: "No se pudo guardar el límite. Inténtelo de nuevo.",
     erroValor: "Escriba un número entero de 0 a {{maximo}}, o deje en blanco.",
+    minimoItem: {
+      rotulo: "Inventario mínimo",
+      placeholder: "Usar el de la tienda",
+      naoAvisar: "No avisar",
+      dica: "Avisa \"Bajo\" cuando queden este número o menos. En blanco = usa el límite de la tienda.",
+    },
   },
 };
 

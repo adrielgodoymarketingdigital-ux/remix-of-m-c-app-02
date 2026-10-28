@@ -43,6 +43,10 @@ import { toast } from 'sonner';
 import { SecaoVariacoesGrupo } from './SecaoVariacoesGrupo';
 import { useFiscalVisivel } from '@/hooks/useFiscalVisivel';
 import { CamposFiscaisItem } from '@/components/fiscal/CamposFiscais';
+import { useTranslation } from 'react-i18next';
+import { useColunaEstoqueMinimo } from '@/hooks/useColunaEstoqueMinimo';
+import { campoInicialEstoqueMinimo, estoqueMinimoParaEnviar } from '@/lib/estoque/estoqueMinimoItem';
+import { LIMITE_BAIXO_MAXIMO } from '@/lib/estoque/configuracaoEstoque';
 import {
   CAMPOS_FISCAIS_ITEM_VAZIOS,
   camposFiscaisItemDaLinha,
@@ -116,6 +120,12 @@ export const DialogCadastroProduto = ({
   const [enviando, setEnviando] = useState(false);
   const fiscalVisivel = useFiscalVisivel();
   const [fiscal, setFiscal] = useState<ValoresFiscaisItem>(CAMPOS_FISCAIS_ITEM_VAZIOS);
+  // Estoque mínimo do item (fase 3): o campo só aparece se a coluna existe no banco.
+  // Textos: namespace "configuracoes" (estoque.minimoItem.*).
+  const { t: tEstoque, i18n: i18nEstoque } = useTranslation('configuracoes');
+  const { existe: colunaEstoqueMinimo } = useColunaEstoqueMinimo();
+  const [estoqueMinimoTexto, setEstoqueMinimoTexto] = useState('');
+  const [naoAvisarMinimo, setNaoAvisarMinimo] = useState(false);
 
   // Grupo de variações do item em edição: se ele tem pai (é uma variação) ou
   // é raiz de um grupo (outros itens apontam pra ele), grupoVariacoes traz
@@ -179,6 +189,9 @@ export const DialogCadastroProduto = ({
       });
       setFotos(itemParaEditar.fotos || []);
       setFiscal(camposFiscaisItemDaLinha(itemParaEditar));
+      const minimoInicial = campoInicialEstoqueMinimo(itemParaEditar.estoque_minimo);
+      setEstoqueMinimoTexto(minimoInicial.texto);
+      setNaoAvisarMinimo(minimoInicial.naoAvisar);
       setTemVariacoes(false);
       setVariacoes([]);
     } else {
@@ -196,6 +209,8 @@ export const DialogCadastroProduto = ({
       });
       setFotos([]);
       setFiscal(CAMPOS_FISCAIS_ITEM_VAZIOS);
+      setEstoqueMinimoTexto('');
+      setNaoAvisarMinimo(false);
       setTemVariacoes(false);
       setVariacoes([]);
     }
@@ -230,8 +245,20 @@ export const DialogCadastroProduto = ({
       return;
     }
 
+    // Estoque mínimo: a chave só vai quando a coluna existe e o valor mudou.
+    const envioMinimo = estoqueMinimoParaEnviar({
+      colunaExiste: colunaEstoqueMinimo,
+      original: itemParaEditar ? (itemParaEditar.estoque_minimo ?? null) : undefined,
+      texto: estoqueMinimoTexto,
+      naoAvisar: naoAvisarMinimo,
+    });
+    if (!envioMinimo.ok) {
+      toast.error(i18nEstoque.t('estoque.erroValor', { ns: 'configuracoes', maximo: LIMITE_BAIXO_MAXIMO }));
+      return;
+    }
+
     // Sem o bloco fiscal na tela, a chave nem vai: nada existente é sobrescrito.
-    const sucesso = await onSubmit({ ...dados, fotos, ...(fiscalVisivel ? { fiscal: colunasFiscaisItem(fiscal) } : {}) });
+    const sucesso = await onSubmit({ ...dados, fotos, ...(fiscalVisivel ? { fiscal: colunasFiscaisItem(fiscal) } : {}), ...envioMinimo.campos });
     if (sucesso) {
       onOpenChange(false);
     }
@@ -638,6 +665,37 @@ export const DialogCadastroProduto = ({
                   </FormItem>
                 )}
               />
+
+              {colunaEstoqueMinimo && !temVariacoes && (
+                <div className="space-y-2">
+                  <Label htmlFor="estoqueMinimoItem">{tEstoque('estoque.minimoItem.rotulo')}</Label>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <Input
+                      id="estoqueMinimoItem"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="w-36"
+                      placeholder={tEstoque('estoque.minimoItem.placeholder')}
+                      value={naoAvisarMinimo ? '' : estoqueMinimoTexto}
+                      onChange={(e) => setEstoqueMinimoTexto(e.target.value.replace(/\D/g, ''))}
+                      disabled={naoAvisarMinimo || (isFuncionario && !podeEditarProdutos)}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="naoAvisarMinimoItem"
+                        checked={naoAvisarMinimo}
+                        onCheckedChange={(v) => setNaoAvisarMinimo(v === true)}
+                        disabled={isFuncionario && !podeEditarProdutos}
+                      />
+                      <Label htmlFor="naoAvisarMinimoItem" className="text-sm font-normal cursor-pointer">
+                        {tEstoque('estoque.minimoItem.naoAvisar')}
+                      </Label>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{tEstoque('estoque.minimoItem.dica')}</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {podeVerCustos ? (

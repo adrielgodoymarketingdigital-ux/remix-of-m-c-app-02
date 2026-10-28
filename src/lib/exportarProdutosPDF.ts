@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import { ItemEstoque } from "@/types/produto";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
 import { descricaoFaixaBaixoPDF, LIMITE_PADRAO_PDF_MENOR_ESTOQUE, situacaoEstoque } from "@/lib/estoque/situacaoEstoque";
+import { algumItemComMinimo, limiteDoItem } from "@/lib/estoque/estoqueMinimoItem";
 import {
   formatCurrencyPDF,
   adicionarCabecalhoPDF,
@@ -65,10 +66,13 @@ export const exportarMenosEstoquePDF = async (
   const dataGerado = new Date().toLocaleDateString("pt-BR");
 
   const ordenados = [...items].sort((a, b) => a.quantidade - b.quantidade);
-  const situacaoPdf = (quantidade: number) =>
-    situacaoEstoque(quantidade, limiteBaixo, LIMITE_PADRAO_PDF_MENOR_ESTOQUE);
-  const semEstoque = ordenados.filter((i) => situacaoPdf(i.quantidade) === "sem_estoque").length;
-  const estoquebaixo = ordenados.filter((i) => situacaoPdf(i.quantidade) === "baixo").length;
+  // Limite de cada linha: mínimo do item > limite da loja > padrão do PDF (1 a 3).
+  const situacaoPdf = (quantidade: number, item?: ItemEstoque) =>
+    situacaoEstoque(quantidade, limiteDoItem(item?.estoque_minimo, limiteBaixo), LIMITE_PADRAO_PDF_MENOR_ESTOQUE);
+  const semEstoque = ordenados.filter((i) => situacaoPdf(i.quantidade, i) === "sem_estoque").length;
+  const estoquebaixo = ordenados.filter((i) => situacaoPdf(i.quantidade, i) === "baixo").length;
+  // Com mínimo por item, a faixa muda de item para item.
+  const subtituloBaixo = algumItemComMinimo(ordenados) ? "pelo mínimo de cada item" : descricaoFaixaBaixoPDF(limiteBaixo);
 
   let y = await adicionarCabecalhoPDF(
     doc,
@@ -80,7 +84,7 @@ export const exportarMenosEstoquePDF = async (
   y = adicionarCardsPDF(doc, y, [
     { label: "Total de Itens", value: ordenados.length.toString(), sub: "analisados", color: [50, 50, 50] },
     { label: "Sem Estoque", value: semEstoque.toString(), sub: "quantidade = 0", color: [200, 50, 50] },
-    { label: "Estoque Baixo", value: estoquebaixo.toString(), sub: descricaoFaixaBaixoPDF(limiteBaixo), color: [210, 120, 30] },
+    { label: "Estoque Baixo", value: estoquebaixo.toString(), sub: subtituloBaixo, color: [210, 120, 30] },
     {
       label: "Qtd Média",
       value: ordenados.length > 0 ? (ordenados.reduce((s, i) => s + i.quantidade, 0) / ordenados.length).toFixed(1) : "0",
@@ -113,7 +117,7 @@ export const exportarMenosEstoquePDF = async (
       if (data.section === "body" && data.column.index === 4) {
         const qtd = parseInt(data.cell.text[0] ?? "0", 10);
         if (Number.isNaN(qtd)) return;
-        const situacao = situacaoPdf(qtd);
+        const situacao = situacaoPdf(qtd, ordenados[data.row.index]);
         // Negativo sai em laranja, como "baixo" (igual a antes da regra única).
         if (situacao === "sem_estoque") data.cell.styles.textColor = [200, 30, 30];
         else if (situacao === "baixo" || situacao === "negativo") data.cell.styles.textColor = [180, 100, 0];
