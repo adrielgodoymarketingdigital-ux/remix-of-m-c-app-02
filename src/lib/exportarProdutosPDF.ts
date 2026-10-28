@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { ItemEstoque } from "@/types/produto";
 import { ConfiguracaoLoja } from "@/types/configuracao-loja";
+import { LIMITE_PADRAO_PDF_MENOR_ESTOQUE, situacaoEstoque } from "@/lib/estoque/situacaoEstoque";
 import {
   formatCurrencyPDF,
   adicionarCabecalhoPDF,
@@ -62,8 +63,10 @@ export const exportarMenosEstoquePDF = async (
   const dataGerado = new Date().toLocaleDateString("pt-BR");
 
   const ordenados = [...items].sort((a, b) => a.quantidade - b.quantidade);
-  const semEstoque = ordenados.filter((i) => i.quantidade === 0).length;
-  const estoquebaixo = ordenados.filter((i) => i.quantidade > 0 && i.quantidade <= 3).length;
+  const situacaoPdf = (quantidade: number) =>
+    situacaoEstoque(quantidade, undefined, LIMITE_PADRAO_PDF_MENOR_ESTOQUE);
+  const semEstoque = ordenados.filter((i) => situacaoPdf(i.quantidade) === "sem_estoque").length;
+  const estoquebaixo = ordenados.filter((i) => situacaoPdf(i.quantidade) === "baixo").length;
 
   let y = await adicionarCabecalhoPDF(
     doc,
@@ -107,8 +110,11 @@ export const exportarMenosEstoquePDF = async (
     didParseCell(data) {
       if (data.section === "body" && data.column.index === 4) {
         const qtd = parseInt(data.cell.text[0] ?? "0", 10);
-        if (qtd === 0) data.cell.styles.textColor = [200, 30, 30];
-        else if (qtd <= 3) data.cell.styles.textColor = [180, 100, 0];
+        if (Number.isNaN(qtd)) return;
+        const situacao = situacaoPdf(qtd);
+        // Negativo sai em laranja, como "baixo" (igual a antes da regra única).
+        if (situacao === "sem_estoque") data.cell.styles.textColor = [200, 30, 30];
+        else if (situacao === "baixo" || situacao === "negativo") data.cell.styles.textColor = [180, 100, 0];
       }
     },
     columnStyles: {

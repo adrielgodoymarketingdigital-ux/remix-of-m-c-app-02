@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { RelatorioProduto } from "@/types/relatorio-vendas";
 import { formatCurrency } from "@/lib/formatters";
+import { LIMITE_PADRAO_RELATORIO_VENDIDOS, situacaoEstoque } from "@/lib/estoque/situacaoEstoque";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { Package, TrendingUp, AlertCircle } from "lucide-react";
 
@@ -119,7 +120,11 @@ export const RelatorioProdutosComponent = ({
                     </TableCell>
                     <TableCell className="text-right">
                       <Badge
-                        variant={produto.estoqueAtual < 5 ? "destructive" : "secondary"}
+                        variant={
+                          situacaoEstoque(produto.estoqueAtual, undefined, LIMITE_PADRAO_RELATORIO_VENDIDOS) === "ok"
+                            ? "secondary"
+                            : "destructive"
+                        }
                       >
                         {produto.estoqueAtual}
                       </Badge>

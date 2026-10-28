@@ -60,6 +60,8 @@ const antigoLista = (q: number) => ({
 });
 const antigoPdf = (q: number) => ({ semEstoque: q === 0, baixo: q > 0 && q <= 3 });
 const antigoRelatorioVermelho = (q: number) => q < 5;
+// Cor da coluna "Qtd" em cada linha do PDF (didParseCell).
+const antigoPdfCor = (q: number) => (q === 0 ? "vermelho" : q <= 3 ? "laranja" : "nenhuma");
 
 Deno.test("sem configuração: idêntico às contas antigas de cada tela (-20 a 100)", () => {
   for (let q = -20; q <= 100; q++) {
@@ -77,6 +79,9 @@ Deno.test("sem configuração: idêntico às contas antigas de cada tela (-20 a 
 
     const pdf = situacaoEstoque(q, undefined, LIMITE_PADRAO_PDF_MENOR_ESTOQUE);
     assertEquals({ semEstoque: pdf === "sem_estoque", baixo: pdf === "baixo" }, antigoPdf(q), `pdf q=${q}`);
+
+    const corNova = pdf === "sem_estoque" ? "vermelho" : pdf === "baixo" || pdf === "negativo" ? "laranja" : "nenhuma";
+    assertEquals(corNova, antigoPdfCor(q), `cor da linha do pdf q=${q}`);
 
     const rel = situacaoEstoque(q, undefined, LIMITE_PADRAO_RELATORIO_VENDIDOS);
     assertEquals(rel !== "ok", antigoRelatorioVermelho(q), `relatório q=${q}`);

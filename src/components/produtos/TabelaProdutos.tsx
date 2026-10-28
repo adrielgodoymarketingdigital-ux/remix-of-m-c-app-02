@@ -25,6 +25,7 @@ import {
 import { Pencil, Trash2, Package, Wrench, ImageOff, ImagePlus, Truck, Calendar, Lock, Tag, Tags, X, PackagePlus, ArrowRightLeft, DollarSign, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ItemEstoque } from '@/types/produto';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { LIMITE_PADRAO_LISTA_PRODUTOS, situacaoEstoque } from '@/lib/estoque/situacaoEstoque';
 import { ValorMonetario } from '@/components/ui/valor-monetario';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
@@ -459,9 +460,10 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
         <div className="space-y-3">
           {items.map((item) => {
             const lucro = item.tipo === 'produto' ? item.lucro : item.preco - item.custo;
-            const semEstoque = item.quantidade === 0;
-            const estoqueNegativo = item.quantidade < 0;
-            const estoqueBaixo = item.quantidade > 0 && item.quantidade < 5;
+            const situacao = situacaoEstoque(item.quantidade, undefined, LIMITE_PADRAO_LISTA_PRODUTOS);
+            const semEstoque = situacao === 'sem_estoque';
+            const estoqueNegativo = situacao === 'negativo';
+            const estoqueBaixo = situacao === 'baixo';
             const isChecked = selecionados.has(item.id);
 
             return (
@@ -734,10 +736,11 @@ export const TabelaProdutos = ({ items, todosItems, categorias, onEdit, onDelete
           <TableBody>
             {itemsPagina.map((item) => {
               const lucro = item.tipo === 'produto' ? item.lucro : item.preco - item.custo;
-              const semEstoque = item.quantidade === 0;
-              const estoqueNegativo = item.quantidade < 0;
-              const estoqueBaixo = item.quantidade > 0 && item.quantidade < 5;
-              const estoqueSaudavel = item.quantidade >= 5;
+              const situacao = situacaoEstoque(item.quantidade, undefined, LIMITE_PADRAO_LISTA_PRODUTOS);
+              const semEstoque = situacao === 'sem_estoque';
+              const estoqueNegativo = situacao === 'negativo';
+              const estoqueBaixo = situacao === 'baixo';
+              const estoqueSaudavel = situacao === 'ok';
               const isChecked = selecionados.has(item.id);
 
               return (
