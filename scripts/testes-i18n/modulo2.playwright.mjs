@@ -337,12 +337,20 @@ function filtrar(linhas, params) {
     }));
 }
 
-// Corpo da requisição, com UUIDs e instantes "agora" normalizados (gerados na hora).
+// UUIDs gerados na hora (grupo_venda etc.) viram "<uuid>", na URL e no corpo.
+const semUuid = (t) => t.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<uuid>");
 const corpo = (req) => {
   const c = req.postData();
-  if (!c) return "";
-  return ` ${c.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<uuid>")}`;
+  return c ? ` ${semUuid(c)}` : "";
 };
+// HTML do <body> sem o que depende só do momento: animação do Radix e o
+// atributo value dos inputs (o React não o atualiza no <input type="number">
+// com foco). O atributo passa a ser o valor real do campo.
+const htmlDoBody = (pg) =>
+  pg.evaluate(() => {
+    for (const i of document.querySelectorAll("input")) i.setAttribute("value", i.value);
+    return document.body.innerHTML;
+  }).then((h) => h.replace(/ style="animation-duration: 0s;"| style=""/g, ""));
 
 const semHash = (p) => p.replace(/-[A-Za-z0-9_-]{8}(\.(js|css))$/, "$1");
 
@@ -377,7 +385,7 @@ async function abrir(navegador, caso, estado) {
       if (rpc) { estado.consultas.push(`${req.method()} rpc:${rpc[1]}${corpo(req)}`); return r.fulfill({ status: 200, json: null }); }
       const m = url.pathname.match(/\/rest\/v1\/([a-z_0-9]+)/);
       if (m) {
-        const params = [...url.searchParams.entries()].sort().map(([k, v]) => `${k}=${v}`).join("&");
+        const params = semUuid([...url.searchParams.entries()].sort().map(([k, v]) => `${k}=${v}`).join("&"));
         estado.consultas.push(`${req.method()} ${m[1]}?${params}${corpo(req)}`);
         const umObjeto = (req.headers()["accept"] ?? "").includes("vnd.pgrst.object");
         if (req.method() === "PATCH") {
@@ -388,7 +396,8 @@ async function abrir(navegador, caso, estado) {
         if (req.method() === "POST") {
           // Eco do que foi inserido (com id), como o PostgREST faz com return=representation.
           const json = req.postDataJSON();
-          const linhas = (Array.isArray(json) ? json : [json]).map((l, i) => ({ id: `novo-${m[1]}-${estado.consultas.length}-${i}`, ...l }));
+          // created_at e o id vêm do banco (default da coluna), como no PostgREST.
+          const linhas = (Array.isArray(json) ? json : [json]).map((l, i) => ({ id: `novo-${m[1]}-${estado.consultas.length}-${i}`, created_at: AGORA.toISOString(), ...l }));
           (estado.tabelas[m[1]] ??= []).push(...linhas);
           return r.fulfill({ status: 201, json: umObjeto ? linhas[0] : linhas });
         }
@@ -419,6 +428,9 @@ async function assentar(pg) {
   await pg.waitForTimeout(1500);
   await pg.waitForLoadState("networkidle");
   await pg.waitForTimeout(500);
+  // Diálogos que preenchem campos depois de calcular (fechamento do caixa): mais uma volta.
+  await pg.waitForLoadState("networkidle");
+  await pg.waitForTimeout(1000);
 }
 
 // Textos visíveis com cara de português (só para os casos em espanhol).
@@ -481,15 +493,15 @@ for (const caso of casos()) {
       await pg.goto(`${BASE}${caso.rota}${caso.query ?? ""}`);
       await assentar(pg);
       if (!new URL(pg.url()).pathname.startsWith(caso.rota)) erros.push(`redirecionou para ${pg.url()}`);
-      const passos = { abrir: await pg.evaluate(() => document.body.innerHTML) };
+      const passos = { abrir: await htmlDoBody(pg) };
       for (const [nomePasso, passo] of Object.entries(caso.passos)) {
         await passo(pg, caso);
         await assentar(pg);
-        passos[nomePasso] = await pg.evaluate(() => document.body.innerHTML);
+        passos[nomePasso] = await htmlDoBody(pg);
         if (caso.idioma === "es" && caso.admin) await pg.screenshot({ path: path.join(SAIDA, `${rotulo}-${caso.nome}-${nomePasso}.png`), fullPage: true });
       }
       const foto = {
-        html: await pg.evaluate(() => document.body.innerHTML),
+        html: await htmlDoBody(pg),
         passos,
         lang: await pg.evaluate(() => document.documentElement.lang),
         localStorage: await pg.evaluate(() => localStorage.getItem("mecapp_idioma")),
