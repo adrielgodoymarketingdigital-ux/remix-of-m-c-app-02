@@ -1,0 +1,605 @@
+{
+ "_leia": "Sinal de negativo em espanhol: sempre na frente (decisão do dono, 2026-10-28). 'valor' é texto para guardar o -0. esperado=null: pt-BR, conferido contra Intl.NumberFormat('pt-BR', BRL) puro.",
+ "casos": [
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "MXN",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "0",
+   "esperado": "$0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "MXN",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-0",
+   "esperado": "-$0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "MXN",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-0.004",
+   "esperado": "-$0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "MXN",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-0.5",
+   "esperado": "-$0.50"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "MXN",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-5",
+   "esperado": "-$5.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "MXN",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-$1,234,567.89"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "0",
+   "esperado": "US$ 0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-0",
+   "esperado": "-US$ 0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-0.004",
+   "esperado": "-US$ 0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-0.5",
+   "esperado": "-US$ 0.50"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-5",
+   "esperado": "-US$ 5.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "MX",
+    "fuso": "America/Mexico_City"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-US$ 1,234,567.89"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "COP",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "0",
+   "esperado": "$ 0"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "COP",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-0",
+   "esperado": "-$ 0"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "COP",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-0.004",
+   "esperado": "-$ 0"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "COP",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-0.5",
+   "esperado": "-$ 1"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "COP",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-5",
+   "esperado": "-$ 5"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "COP",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-$ 1.234.568"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "0",
+   "esperado": "US$ 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-0",
+   "esperado": "-US$ 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-0.004",
+   "esperado": "-US$ 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-0.5",
+   "esperado": "-US$ 0,50"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-5",
+   "esperado": "-US$ 5,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CO",
+    "fuso": "America/Bogota"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-US$ 1.234.567,89"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "CLP",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "0",
+   "esperado": "$0"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "CLP",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-0",
+   "esperado": "-$0"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "CLP",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-0.004",
+   "esperado": "-$0"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "CLP",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-0.5",
+   "esperado": "-$1"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "CLP",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-5",
+   "esperado": "-$5"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "CLP",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-$1.234.568"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "0",
+   "esperado": "US$0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-0",
+   "esperado": "-US$0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-0.004",
+   "esperado": "-US$0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-0.5",
+   "esperado": "-US$0,50"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-5",
+   "esperado": "-US$5,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "CL",
+    "fuso": "America/Santiago"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-US$1.234.567,89"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "BOB",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "0",
+   "esperado": "Bs 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "BOB",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-0",
+   "esperado": "-Bs 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "BOB",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-0.004",
+   "esperado": "-Bs 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "BOB",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-0.5",
+   "esperado": "-Bs 0,50"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "BOB",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-5",
+   "esperado": "-Bs 5,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "BOB",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-Bs 1.234.567,89"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "0",
+   "esperado": "US$ 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-0",
+   "esperado": "-US$ 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-0.004",
+   "esperado": "-US$ 0,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-0.5",
+   "esperado": "-US$ 0,50"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-5",
+   "esperado": "-US$ 5,00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "BO",
+    "fuso": "America/La_Paz"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-US$ 1.234.567,89"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "ZZ",
+    "fuso": "UTC"
+   },
+   "valor": "0",
+   "esperado": "US$ 0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "ZZ",
+    "fuso": "UTC"
+   },
+   "valor": "-0",
+   "esperado": "-US$ 0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "ZZ",
+    "fuso": "UTC"
+   },
+   "valor": "-0.004",
+   "esperado": "-US$ 0.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "ZZ",
+    "fuso": "UTC"
+   },
+   "valor": "-0.5",
+   "esperado": "-US$ 0.50"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "ZZ",
+    "fuso": "UTC"
+   },
+   "valor": "-5",
+   "esperado": "-US$ 5.00"
+  },
+  {
+   "ctx": {
+    "idioma": "es",
+    "moeda": "USD",
+    "pais": "ZZ",
+    "fuso": "UTC"
+   },
+   "valor": "-1234567.891",
+   "esperado": "-US$ 1,234,567.89"
+  },
+  {
+   "ctx": {
+    "idioma": "pt-BR",
+    "moeda": "BRL",
+    "pais": "BR",
+    "fuso": "America/Sao_Paulo"
+   },
+   "valor": "0",
+   "esperado": null
+  },
+  {
+   "ctx": {
+    "idioma": "pt-BR",
+    "moeda": "BRL",
+    "pais": "BR",
+    "fuso": "America/Sao_Paulo"
+   },
+   "valor": "-0",
+   "esperado": null
+  },
+  {
+   "ctx": {
+    "idioma": "pt-BR",
+    "moeda": "BRL",
+    "pais": "BR",
+    "fuso": "America/Sao_Paulo"
+   },
+   "valor": "-0.004",
+   "esperado": null
+  },
+  {
+   "ctx": {
+    "idioma": "pt-BR",
+    "moeda": "BRL",
+    "pais": "BR",
+    "fuso": "America/Sao_Paulo"
+   },
+   "valor": "-0.5",
+   "esperado": null
+  },
+  {
+   "ctx": {
+    "idioma": "pt-BR",
+    "moeda": "BRL",
+    "pais": "BR",
+    "fuso": "America/Sao_Paulo"
+   },
+   "valor": "-5",
+   "esperado": null
+  },
+  {
+   "ctx": {
+    "idioma": "pt-BR",
+    "moeda": "BRL",
+    "pais": "BR",
+    "fuso": "America/Sao_Paulo"
+   },
+   "valor": "-1234567.891",
+   "esperado": null
+  }
+ ]
+}

@@ -30,8 +30,8 @@ const TABELA_1_5: [string, ContextoFormato, string, string, string, string, stri
   ["México × USD", es("MX", "USD", "America/Mexico_City"), `US$${N}1,234,567.89`, `US$${N}29.90`, `-US$${N}0.50`, `US$${N}0.00`, "1,234,567.5", "26/10/2026", "26/10/2026 20:30"],
   ["Colômbia × COP", es("CO", "COP", "America/Bogota"), `$${N}1.234.568`, `$${N}30`, `-$${N}1`, `$${N}0`, "1.234.567,5", "26/10/2026", "26/10/2026 21:30"],
   ["Colômbia × USD", es("CO", "USD", "America/Bogota"), `US$${N}1.234.567,89`, `US$${N}29,90`, `-US$${N}0,50`, `US$${N}0,00`, "1.234.567,5", "26/10/2026", "26/10/2026 21:30"],
-  ["Chile × CLP", es("CL", "CLP", "America/Santiago"), "$1.234.568", "$30", "$-1", "$0", "1.234.567,5", "26/10/2026", "26/10/2026 23:30"],
-  ["Chile × USD", es("CL", "USD", "America/Santiago"), "US$1.234.567,89", "US$29,90", "US$-0,50", "US$0,00", "1.234.567,5", "26/10/2026", "26/10/2026 23:30"],
+  ["Chile × CLP", es("CL", "CLP", "America/Santiago"), "$1.234.568", "$30", "-$1", "$0", "1.234.567,5", "26/10/2026", "26/10/2026 23:30"],
+  ["Chile × USD", es("CL", "USD", "America/Santiago"), "US$1.234.567,89", "US$29,90", "-US$0,50", "US$0,00", "1.234.567,5", "26/10/2026", "26/10/2026 23:30"],
   ["Bolívia × BOB", es("BO", "BOB", "America/La_Paz"), `Bs${N}1.234.567,89`, `Bs${N}29,90`, `-Bs${N}0,50`, `Bs${N}0,00`, "1.234.567,5", "26/10/2026", "26/10/2026 22:30"],
   ["Bolívia × USD", es("BO", "USD", "America/La_Paz"), `US$${N}1.234.567,89`, `US$${N}29,90`, `-US$${N}0,50`, `US$${N}0,00`, "1.234.567,5", "26/10/2026", "26/10/2026 22:30"],
   ["Otro país × USD", es("ZZ", "USD", "America/New_York"), `US$${N}1,234,567.89`, `US$${N}29.90`, `-US$${N}0.50`, `US$${N}0.00`, "1,234,567.5", "26/10/2026", "26/10/2026 22:30"],
@@ -175,5 +175,30 @@ Deno.test("símbolo antigo (regex) × novo: só muda onde a regex cortava pontua
   }
   for (const [, ctx] of TABELA_1_5.map((l) => [l[0], l[1]] as const)) {
     assertEquals(simboloMoeda(ctx), regexAntigaSimbolo(formatarMoeda(0, ctx)), `${ctx.pais} ${ctx.moeda}`);
+  }
+});
+
+// --- Sinal de negativo (decisão do dono, 2026-10-28) ----------------------------
+// Os mesmos casos rodam no Chromium e no WebKit em formatadoresNavegador.playwright.mjs.
+interface CasoSinal { ctx: ContextoFormato; valor: string; esperado: string | null }
+const CASOS_SINAL: CasoSinal[] = JSON.parse(await Deno.readTextFile(new URL("./sinalNegativo.casos.json", import.meta.url))).casos;
+
+Deno.test("sinal de negativo sempre na frente em espanhol (zero, -0, pequeno, grande; MXN, COP, CLP, BOB, USD, ZZ)", () => {
+  for (const { ctx, valor, esperado } of CASOS_SINAL) {
+    if (esperado === null) continue;
+    assertEquals(formatarMoeda(Number(valor), ctx), esperado, `${ctx.pais} ${ctx.moeda} ${valor}`);
+  }
+  // o es-CL do Intl escreve "$-1"; o da Espanha põe o símbolo depois: os dois saem "-símbolo"
+  assertEquals(formatarMoeda(-1, es("CL", "CLP", "America/Santiago")), "-$1");
+  assertEquals(formatarMoeda(-1234.5, es("PY", "PYG", "America/Asuncion")), `-Gs.${N}1.235`);
+  assertEquals(formatarMoeda(-1234.5, es("ES", "EUR", "Europe/Madrid")), `-€${N}1234,50`);
+});
+
+Deno.test("pt-BR: sinal de negativo exatamente como hoje (Intl puro e formatCurrency)", () => {
+  const intlBR = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  for (const { ctx, valor, esperado } of CASOS_SINAL) {
+    if (esperado !== null) continue;
+    assertEquals(formatarMoeda(Number(valor), ctx), intlBR.format(Number(valor)), valor);
+    assertEquals(formatarMoeda(Number(valor), ctx), formatCurrency(Number(valor)), valor);
   }
 });

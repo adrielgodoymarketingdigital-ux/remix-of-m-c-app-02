@@ -105,16 +105,23 @@ export function simboloMoeda(ctx: ContextoFormato = FORMATO_BRASIL): string {
   return partes.find((p) => p.type === "currency")?.value ?? ctx.moeda;
 }
 
-/** Troca o símbolo e garante o símbolo na frente do número (o es da Espanha o põe depois). */
+/**
+ * Troca o símbolo e fixa a ordem em espanhol: sinal, símbolo, número
+ * ("-$1", "-Bs 0,50", "-US$ 5"). O Intl põe o sinal depois do símbolo em
+ * es-CL ("$-1") e o WebKit também em es-BO ("Bs -0,50"); o es da Espanha põe
+ * o símbolo depois do número. Se o sinal aparece continua sendo decisão do
+ * Intl (-0 sai com "-", como no pt-BR); só a posição é fixa.
+ */
 function montarEmEspanhol(partes: Intl.NumberFormatPart[], simbolo: string): string {
-  const iMoeda = partes.findIndex((p) => p.type === "currency");
-  const iNumero = partes.findIndex((p) => p.type === "integer" || p.type === "nan" || p.type === "infinity");
-  if (iMoeda < 0 || iMoeda < iNumero) {
-    return partes.map((p) => (p.type === "currency" ? simbolo : p.value)).join("");
-  }
   const sinal = partes.some((p) => p.type === "minusSign") ? "-" : "";
-  const numero = partes
-    .filter((p) => p.type !== "currency" && p.type !== "minusSign" && p.type !== "plusSign")
+  const semSinal = partes.filter((p) => p.type !== "minusSign" && p.type !== "plusSign");
+  const iMoeda = semSinal.findIndex((p) => p.type === "currency");
+  const iNumero = semSinal.findIndex((p) => p.type === "integer" || p.type === "nan" || p.type === "infinity");
+  if (iMoeda < 0 || iMoeda < iNumero) {
+    return sinal + semSinal.map((p) => (p.type === "currency" ? simbolo : p.value)).join("");
+  }
+  const numero = semSinal
+    .filter((p) => p.type !== "currency")
     .map((p) => p.value)
     .join("")
     .trim();
