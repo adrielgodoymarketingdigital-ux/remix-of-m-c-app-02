@@ -11,6 +11,7 @@ import {
   formatarHora,
   formatarMoeda,
   formatarNumero,
+  simboloMoeda,
   SO_DATA,
   type ContextoFormato,
 } from "@/lib/i18n/formatadores";
@@ -26,7 +27,7 @@ export interface Formatadores {
   dataHora: (valor: string | Date | number) => string;
   /** Como formatDataVenda: só a data se for "AAAA-MM-DD"; senão data e hora. */
   dataVenda: (valor: string | Date) => string;
-  /** Símbolo da moeda nos rótulos ("R$" no Brasil, "US$" em espanhol). */
+  /** Símbolo da moeda nos rótulos ("R$" no Brasil; "US$" ou "$" para o dólar em espanhol; "Gs.", "S/"...). */
   simboloMoeda: string;
   /** Para format(..., { locale }) do date-fns (nomes de mês e dia). */
   localeDateFns: Locale;
@@ -55,7 +56,7 @@ export function useFormatadores(): Formatadores {
       hora: (valor) => formatarHora(valor, ctx),
       dataHora: (valor) => formatarDataHora(valor, ctx),
       dataVenda: (valor) => (typeof valor === "string" && SO_DATA.test(valor) ? formatarData(valor, ctx) : formatarDataHora(valor, ctx)),
-      simboloMoeda: formatarMoeda(0, ctx).replace(/[\d.,\s-]/g, ""),
+      simboloMoeda: simboloMoeda(ctx),
       localeDateFns: localeDateFnsCarregado(ctx.idioma) ?? ptBR,
     };
   }, [visivel, idioma, moeda, pais, fuso]);
