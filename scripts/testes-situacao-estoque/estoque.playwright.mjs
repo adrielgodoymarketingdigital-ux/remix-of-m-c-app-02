@@ -16,6 +16,12 @@
 //                                     grava 7, 0 e vazio pelo simulador; lista, PDF e relatório
 //                                     mudam sem recarregar; 2000 é recusado sem enviar
 //
+//   COLUNA_MINIMO=sem|com (variável de ambiente; padrão "sem"): produtos/pecas.estoque_minimo (fase 3)
+//            sem  o simulador responde como o banco antes da migration: select com a coluna dá 42703
+//                 e insert/update com a chave dá PGRST204 (e o teste falha se o app mandar a chave)
+//            com  a coluna existe; MINIMOS="prod-06:3,prod-04:0" dá o mínimo de cada item (resto nulo)
+//            telas extras: cadastro e cadastro-celular (campo "Estoque mínimo" e o que vai no envio)
+//
 // Toda rodada confere as etiquetas contra o limite esperado (contado aqui, à parte do app).
 // Para cada tela guarda texto, captura (PNG) e etiquetas; o PDF é guardado inteiro.
 import { createRequire } from "node:module";
@@ -54,6 +60,12 @@ const [
 ] = [acao, ...args];
 const LIMITE = cenario === "configurado" ? Number(limiteArg) : null;
 if (cenario === "configurado" && !Number.isInteger(LIMITE)) throw new Error("cenario configurado precisa de <limite>");
+const COLUNA = process.env.COLUNA_MINIMO === "com" ? "com" : "sem";
+const MINIMOS = Object.fromEntries((process.env.MINIMOS ?? "").split(",").filter(Boolean).map((par) => {
+  const [id, v] = par.split(":");
+  return [id, Number(v)];
+}));
+if (COLUNA === "sem" && Object.keys(MINIMOS).length) throw new Error("MINIMOS exige COLUNA_MINIMO=com");
 const SAIDA = path.resolve(saidaArg, rotulo);
 mkdirSync(SAIDA, { recursive: true });
 
@@ -86,8 +98,9 @@ const esperarRede = (pg) => pg.waitForLoadState("networkidle", { timeout: 8000 }
 
 function tabelas() {
   const comum = { user_id: DONO, deleted_at: null, empresa_id: papel === "gerente" ? FILIAL : null, created_at: "2026-02-01T12:00:00Z" };
-  const produtos = QTD_PRODUTOS.map((q, i) => ({ ...comum, id: `prod-${doisDig(i)}`, nome: `Produto Teste ${doisDig(i)}`, sku: `SKU${doisDig(i)}`, preco: 10, custo: 5, lucro: 5, quantidade: q }));
-  const pecas = QTD_PECAS.map((q, i) => ({ ...comum, id: `peca-${doisDig(i)}`, nome: `Peça Teste ${doisDig(i)}`, preco: 20, custo: 8, quantidade: q }));
+  const minimo = (id) => (COLUNA === "com" ? { estoque_minimo: MINIMOS[id] ?? null } : {});
+  const produtos = QTD_PRODUTOS.map((q, i) => ({ ...comum, id: `prod-${doisDig(i)}`, nome: `Produto Teste ${doisDig(i)}`, sku: `SKU${doisDig(i)}`, preco: 10, custo: 5, lucro: 5, quantidade: q, ...minimo(`prod-${doisDig(i)}`) }));
+  const pecas = QTD_PECAS.map((q, i) => ({ ...comum, id: `peca-${doisDig(i)}`, nome: `Peça Teste ${doisDig(i)}`, preco: 20, custo: 8, quantidade: q, ...minimo(`peca-${doisDig(i)}`) }));
   const vendas = produtos.map((p, i) => ({
     ...comum, id: `venda-${doisDig(i)}`, tipo: "produto", produto_id: p.id, quantidade: 1, total: 10, data: "2026-10-20T15:00:00Z",
     parcela_numero: null, forma_pagamento: "dinheiro", recebido: true,
@@ -185,6 +198,28 @@ async function abrir(navegador, viewport, estado) {
             return r.fulfill({ status: 201, json: [] });
           }
         }
+        if (tabela === "produtos" || tabela === "pecas") {
+          const pedeColuna = (url.searchParams.get("select") ?? "").includes("estoque_minimo");
+          if (req.method() === "GET" && pedeColuna && COLUNA === "sem") {
+            return r.fulfill({ status: 400, json: { code: "42703", details: null, hint: null, message: `column ${tabela}.estoque_minimo does not exist` } });
+          }
+          if (req.method() === "POST" || req.method() === "PATCH") {
+            const corpo = JSON.parse(req.postData() ?? "{}");
+            const linhas = Array.isArray(corpo) ? corpo : [corpo];
+            estado.gravacoesItens.push({ metodo: req.method(), tabela, corpo });
+            if (COLUNA === "sem" && linhas.some((l) => "estoque_minimo" in l)) {
+              return r.fulfill({ status: 400, json: { code: "PGRST204", details: null, hint: null, message: `Could not find the 'estoque_minimo' column of '${tabela}' in the schema cache` } });
+            }
+            if (req.method() === "PATCH") {
+              const alvo = url.searchParams.get("id")?.replace(/^eq\./, "");
+              const i = estado.tabelas[tabela].findIndex((l) => l.id === alvo);
+              if (i >= 0) estado.tabelas[tabela][i] = { ...estado.tabelas[tabela][i], ...linhas[0] };
+              return r.fulfill({ status: 204, body: "" });
+            }
+            for (const l of linhas) estado.tabelas[tabela].push({ id: `novo-${estado.tabelas[tabela].length}`, user_id: DONO, deleted_at: null, empresa_id: null, created_at: "2026-10-28T12:00:00Z", ...(COLUNA === "com" ? { estoque_minimo: null } : {}), ...l });
+            return r.fulfill({ status: 201, json: [] });
+          }
+        }
         if (req.method() !== "GET" && req.method() !== "HEAD") return r.fulfill({ status: 201, json: [] });
         const linhas = filtrar(estado.tabelas[tabela] ?? [], url.searchParams);
         if ((req.headers()["accept"] ?? "").includes("vnd.pgrst.object")) {
@@ -210,18 +245,22 @@ const etiquetas = (pg, seletor) => pg.evaluate((sel) =>
 const contar = (html, rotuloEtiqueta) => html.split("\n").filter((l) => l.startsWith(`${rotuloEtiqueta} |`)).length;
 const toastsAbertos = (pg) => pg.locator("[data-sonner-toast], li[role=status][data-state=open]").count();
 
-// Contas esperadas, feitas aqui à parte do app.
-const TODAS = [...QTD_PRODUTOS, ...QTD_PECAS].map((q) => q ?? 0);
-const limiteDaTela = (padrao) => (LIMITE === null ? padrao : LIMITE);
-const esperadoLista = () => {
-  const L = limiteDaTela(4);
-  return {
-    baixo: TODAS.filter((q) => q >= 1 && q <= L).length,
-    emEstoque: TODAS.filter((q) => q > L).length,
-    semEstoque: TODAS.filter((q) => q === 0).length,
-    negativo: TODAS.filter((q) => q < 0).length,
-  };
-};
+// Contas esperadas, feitas aqui à parte do app. Limite de cada item:
+// mínimo do item (0 a 1000) > limite da loja > padrão da tela.
+const ITENS = [
+  ...QTD_PRODUTOS.map((q, i) => ({ id: `prod-${doisDig(i)}`, tipo: "produto", q: q ?? 0 })),
+  ...QTD_PECAS.map((q, i) => ({ id: `peca-${doisDig(i)}`, tipo: "peca", q: q ?? 0 })),
+];
+const TODAS = ITENS.map((it) => it.q);
+const minimoValido = (v) => (Number.isInteger(v) && v >= 0 && v <= 1000 ? v : null);
+const limiteDaTela = (padrao, loja = LIMITE) => (loja === null ? padrao : loja);
+const limiteItem = (it, padrao, loja = LIMITE) => minimoValido(MINIMOS[it.id]) ?? limiteDaTela(padrao, loja);
+const esperadoLista = (loja = LIMITE) => ({
+  baixo: ITENS.filter((it) => it.q >= 1 && it.q <= limiteItem(it, 4, loja)).length,
+  emEstoque: ITENS.filter((it) => it.q > limiteItem(it, 4, loja)).length,
+  semEstoque: ITENS.filter((it) => it.q === 0).length,
+  negativo: ITENS.filter((it) => it.q < 0).length,
+});
 
 async function abrirProdutos(pg) {
   await pg.goto(`${base}/produtos`);
@@ -266,12 +305,14 @@ const TELAS = {
     await download.saveAs(destino);
     const conteudo = readFileSync(destino).toString("latin1");
     const L = limiteDaTela(3);
-    const sub = L === 0 ? "aviso desligado" : L === 1 ? "quantidade 1" : `quantidade 1 a ${L}`;
+    const sub = Object.values(MINIMOS).some((v) => minimoValido(v) !== null)
+      ? "pelo mínimo de cada item"
+      : L === 0 ? "aviso desligado" : L === 1 ? "quantidade 1" : `quantidade 1 a ${L}`;
     conferir(conteudo.includes("(ESTOQUE BAIXO) Tj"), "[pdf] cartão 'Estoque Baixo' não encontrado");
     conferir(conteudo.includes(`(${sub}) Tj`), `[pdf] subtítulo '${sub}' não encontrado`);
     // Linhas em laranja (180, 100, 0): baixo e negativos.
     const laranjas = (conteudo.match(/0\.706 0\.392 0\. rg/g) ?? []).length;
-    const esperado = TODAS.filter((q) => q < 0 || (q >= 1 && q <= L)).length;
+    const esperado = ITENS.filter((it) => it.q < 0 || (it.q >= 1 && it.q <= limiteItem(it, 3))).length;
     conferir(laranjas === esperado, `[pdf] ${laranjas} linhas em laranja, esperado ${esperado}`);
     await pg.waitForTimeout(500);
     return { texto: "", html: "" };
@@ -290,8 +331,7 @@ const TELAS = {
       return `${celulas[0]?.textContent.trim()} | ${badge?.textContent.trim()} | ${badge?.className}`;
     }).join("\n"));
     const vermelhos = html.split("\n").filter((l) => l.includes("bg-destructive")).length;
-    const L = limiteDaTela(4);
-    const esperado = QTD_PRODUTOS.map((q) => q ?? 0).filter((q) => q <= L).length;
+    const esperado = ITENS.filter((it) => it.tipo === "produto" && it.q <= limiteItem(it, 4)).length;
     conferir(vermelhos === esperado, `[relatório] ${vermelhos} vermelhos, esperado ${esperado}`);
     await pg.mouse.move(0, 0);
     await pg.waitForTimeout(600);
@@ -312,13 +352,107 @@ const TELAS = {
   // Produtos e Peças > Configurações > aba Estoque (só o dono), no computador e no celular.
   async "produtos-config"(pg, estado) { return configEmProdutos(pg, estado, "computador"); },
   async "produtos-config-celular"(pg, estado) { return configEmProdutos(pg, estado, "celular"); },
+  // Cadastro e edição de produto: campo "Estoque mínimo" (fase 3) e o que vai no envio.
+  async cadastro(pg, estado) { return fluxoCadastro(pg, estado, "computador"); },
+  async "cadastro-celular"(pg, estado) { return fluxoCadastro(pg, estado, "celular"); },
 };
+
+async function fluxoCadastro(pg, estado, tela) {
+  const rotuloTela = `cadastro-${tela}`;
+  await abrirProdutos(pg);
+  const dialogo = pg.getByRole("dialog");
+  const campoMinimo = () => dialogo.getByLabel("Estoque mínimo");
+  const salvarItem = async (toast) => {
+    await dialogo.locator("[data-walkthrough=produto-btn-salvar]").click();
+    await pg.getByText(toast).first().waitFor({ timeout: 15000 });
+    await dialogo.waitFor({ state: "hidden", timeout: 10000 });
+    await pg.waitForTimeout(800);
+  };
+  const ultimaGravacao = (metodo) => estado.gravacoesItens.filter((g) => g.metodo === metodo).at(-1);
+  const temChave = (g) => (Array.isArray(g?.corpo) ? g.corpo : [g?.corpo ?? {}]).some((l) => "estoque_minimo" in l);
+  const valorChave = (g) => (Array.isArray(g.corpo) ? g.corpo[0] : g.corpo).estoque_minimo;
+  const editar = async (nome) => {
+    const achou = await pg.evaluate((alvo) => {
+      const el = [...document.querySelectorAll("main *")].find((e) => e.childElementCount === 0 && e.textContent.trim() === alvo);
+      for (let p = el; p; p = p.parentElement) {
+        const botao = p.querySelector("button svg.lucide-pencil")?.closest("button");
+        if (botao) { botao.click(); return true; }
+      }
+      return false;
+    }, nome);
+    if (!achou) throw new Error(`botão Editar de ${nome} não encontrado`);
+    await dialogo.waitFor({ timeout: 10000 });
+    await pg.waitForTimeout(800);
+  };
+
+  // 1) Novo item
+  await pg.locator("[data-walkthrough=produtos-novo-item]").first().click();
+  await dialogo.waitFor({ timeout: 10000 });
+  await pg.waitForTimeout(1000);
+  const temCampo = (await campoMinimo().count()) > 0;
+  conferir(temCampo === (COLUNA === "com"), `[${rotuloTela}] campo Estoque mínimo ${temCampo ? "aparece" : "não aparece"} (coluna ${COLUNA})`);
+  await pg.mouse.move(0, 0);
+  if (temCampo) await campoMinimo().scrollIntoViewIfNeeded();
+  await pg.waitForTimeout(300);
+  await pg.screenshot({ path: path.join(SAIDA, `${rotuloTela}-novo.png`), animations: "disabled" });
+  await dialogo.getByPlaceholder("Nome do item").fill("Item Novo Teste");
+  await dialogo.getByLabel("Quantidade em Estoque").fill("2");
+  await dialogo.getByLabel("Preço de Venda").fill("10");
+  if (temCampo) await campoMinimo().fill("5");
+  await salvarItem("cadastrado com sucesso");
+  const novo = ultimaGravacao("POST");
+  conferir(novo?.tabela === "produtos", `[${rotuloTela}] cadastro não chegou em produtos`);
+  if (COLUNA === "com") conferir(temChave(novo) && valorChave(novo) === 5, `[${rotuloTela}] cadastro mandou ${JSON.stringify(novo?.corpo)} (esperado estoque_minimo 5)`);
+  else conferir(!temChave(novo), `[${rotuloTela}] cadastro sem coluna mandou estoque_minimo`);
+
+  // 2) Edição sem mexer no mínimo: a chave não vai
+  const alvo = "Produto Teste 06";
+  await editar(alvo);
+  if (COLUNA === "com") {
+    const inicial = await campoMinimo().inputValue();
+    const esperado = MINIMOS["prod-06"] && MINIMOS["prod-06"] > 0 ? String(MINIMOS["prod-06"]) : "";
+    conferir(inicial === esperado, `[${rotuloTela}] edição abriu com mínimo '${inicial}', esperado '${esperado}'`);
+  } else {
+    conferir((await campoMinimo().count()) === 0, `[${rotuloTela}] edição sem coluna mostrou o campo`);
+  }
+  await salvarItem("atualizado com sucesso");
+  conferir(!temChave(ultimaGravacao("PATCH")), `[${rotuloTela}] edição sem mudança mandou estoque_minimo: ${JSON.stringify(ultimaGravacao("PATCH")?.corpo)}`);
+  if (COLUNA === "sem") return { texto: "", html: "" };
+
+  // 3) Edição limpando o campo: vai nulo (volta a usar o limite da loja)
+  await editar(alvo);
+  await campoMinimo().fill("");
+  await salvarItem("atualizado com sucesso");
+  const limpo = ultimaGravacao("PATCH");
+  const tinhaValor = minimoValido(MINIMOS["prod-06"]) !== null;
+  conferir(tinhaValor ? temChave(limpo) && valorChave(limpo) === null : !temChave(limpo),
+    `[${rotuloTela}] limpar o campo mandou ${JSON.stringify(limpo?.corpo)}`);
+
+  // 4) "Não avisar": vai 0
+  await editar(alvo);
+  await dialogo.locator("#naoAvisarMinimoItem").click();
+  await salvarItem("atualizado com sucesso");
+  const zero = ultimaGravacao("PATCH");
+  conferir(temChave(zero) && valorChave(zero) === 0, `[${rotuloTela}] 'Não avisar' mandou ${JSON.stringify(zero?.corpo)}`);
+
+  // 5) Valor fora da faixa: recusado sem enviar
+  await editar(alvo);
+  await dialogo.locator("#naoAvisarMinimoItem").click();
+  await campoMinimo().fill("2000");
+  const antes = estado.gravacoesItens.length;
+  await dialogo.locator("[data-walkthrough=produto-btn-salvar]").click();
+  await pg.getByText("Digite um número inteiro de 0 a 1000, ou deixe em branco.").first().waitFor({ timeout: 10000 });
+  await pg.waitForTimeout(500);
+  conferir(estado.gravacoesItens.length === antes, `[${rotuloTela}] valor 2000 chegou a ser enviado`);
+  await pg.keyboard.press("Escape");
+  return { texto: "", html: "" };
+}
 
 // Conta "Baixo" na lista (com o diálogo fechado) e compara com o limite esperado.
 async function conferirLista(pg, L, quando) {
   await pg.waitForTimeout(800);
   const html = await etiquetas(pg, "main span, main div.inline-flex");
-  const esperado = TODAS.filter((q) => q >= 1 && q <= L).length;
+  const esperado = esperadoLista(L).baixo;
   const achado = contar(html, "Baixo");
   conferir(achado === esperado, `[produtos-config] ${quando}: ${achado} "Baixo" na lista, esperado ${esperado}`);
 }
@@ -442,7 +576,7 @@ async function configEmProdutos(pg, estado, tela) {
 const telas = telasArg ? telasArg.split(",") : ["lista-computador", "lista-celular", "pdf-menor-estoque", "relatorio-vendidos"];
 const resumoConsultas = [];
 for (const nomeTela of telas) {
-  const estado = { tabelas: tabelas(), gravacoes: [], consultasConfig: [] };
+  const estado = { tabelas: tabelas(), gravacoes: [], consultasConfig: [], gravacoesItens: [] };
   const ctx = await abrir(navegador, nomeTela.endsWith("celular") ? CELULAR : DESKTOP, estado);
   try {
     const pg = await ctx.newPage();
@@ -457,6 +591,9 @@ for (const nomeTela of telas) {
       await pg.screenshot({ path: path.join(SAIDA, `${nomeTela}.png`), fullPage: true, animations: "disabled" });
       conferir((await toastsAbertos(pg)) === 0, `[${nomeTela}] apareceu toast`);
     }
+    // Sem a coluna, o app nunca pode mandar estoque_minimo (o banco recusaria).
+    const comChave = estado.gravacoesItens.filter((g) => (Array.isArray(g.corpo) ? g.corpo : [g.corpo]).some((l) => "estoque_minimo" in l));
+    conferir(COLUNA === "com" || comChave.length === 0, `[${nomeTela}] mandou estoque_minimo sem a coluna existir`);
     // A leitura do limite tem de ser sempre pelo id do DONO (funcionário e gerente herdam).
     const outrosIds = estado.consultasConfig.filter((c) => c.metodo === "GET" && c.user_id !== `eq.${DONO}`);
     conferir(outrosIds.length === 0, `[${nomeTela}] limite lido por outro id: ${JSON.stringify(outrosIds)}`);
