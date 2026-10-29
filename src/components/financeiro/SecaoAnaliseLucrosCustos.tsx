@@ -3,6 +3,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CardFinanceiroClicavel } from "./CardFinanceiroClicavel";
+import { ESTILO_TOM, MOLDURA_CARD_FINANCEIRO } from "./estiloCardFinanceiro";
+import { cn } from "@/lib/utils";
 import { FiltroPeriodoAvancado, FiltrosPeriodo } from "./FiltroPeriodoAvancado";
 import { GraficoEvolucao } from "./GraficoEvolucao";
 import { GraficoRanking } from "./GraficoRanking";
@@ -24,6 +26,7 @@ import {
   Lock,
   ChevronDown,
   ChevronRight,
+  type LucideIcon,
 } from "lucide-react";
 import {
   LucroPorItem,
@@ -160,6 +163,7 @@ export function SecaoAnaliseLucrosCustos({
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
         <CardFinanceiroClicavel
           titulo="Total Faturado"
+          tom="verde"
           valor={resumo.receitaTotal}
           subtitulo="Receita total"
           icon={DollarSign}
@@ -170,6 +174,7 @@ export function SecaoAnaliseLucrosCustos({
         {podeVerCustos ? (
           <CardFinanceiroClicavel
             titulo="Custo Total"
+            tom="vermelho"
             valor={resumo.custoTotal}
             subtitulo="Custo dos produtos"
             icon={TrendingDown}
@@ -183,6 +188,7 @@ export function SecaoAnaliseLucrosCustos({
         {podeVerCustos ? (
           <CardFinanceiroClicavel
             titulo="Custo Operacional"
+            tom="laranja"
             valor={resumo.custoOperacional}
             subtitulo="Contas pagas no período"
             icon={Receipt}
@@ -197,6 +203,7 @@ export function SecaoAnaliseLucrosCustos({
         {podeVerLucros ? (
           <CardFinanceiroClicavel
             titulo="Lucro Bruto"
+            tom="azul"
             valor={resumo.lucroTotal}
             subtitulo="Receita - custo"
             icon={TrendingUp}
@@ -209,6 +216,7 @@ export function SecaoAnaliseLucrosCustos({
         {podeVerLucros ? (
           <CardFinanceiroClicavel
             titulo="Lucro Líquido"
+            tom={resumo.lucroLiquido >= 0 ? "verde" : "vermelho"}
             valor={resumo.lucroLiquido}
             subtitulo="Bruto - despesas"
             icon={Wallet}
@@ -222,6 +230,7 @@ export function SecaoAnaliseLucrosCustos({
         {podeVerLucros ? (
           <CardFinanceiroClicavel
             titulo="Margem de Lucro"
+            tom="azul"
             valor={resumo.margemLucroMedia}
             subtitulo="Média do período"
             icon={Percent}
@@ -235,6 +244,7 @@ export function SecaoAnaliseLucrosCustos({
         {podeVerCustos ? (
           <CardFinanceiroClicavel
             titulo="Taxas de Cartão"
+            tom="roxo"
             valor={resumo.taxasCartao}
             subtitulo="Taxas de máquinas"
             icon={CreditCard}
@@ -313,20 +323,25 @@ export function SecaoAnaliseLucrosCustos({
   );
 }
 
-// Card com ícone de bloqueio
-function CardComLock({ titulo, icon: Icon }: { titulo: string; icon: any }) {
+// Card com ícone de bloqueio (sem permissão: continua sem ação nenhuma)
+function CardComLock({ titulo, icon: Icon }: { titulo: string; icon: LucideIcon }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{titulo}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Lock className="h-5 w-5" />
-          <span className="text-sm">Sem permissão</span>
+    <Card className={cn(MOLDURA_CARD_FINANCEIRO, "bg-muted/30")}>
+      <div className="flex items-start gap-2.5">
+        <div
+          aria-hidden="true"
+          className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl sm:h-10 sm:w-10", ESTILO_TOM.neutro.caixa)}
+        >
+          <Icon className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
         </div>
-      </CardContent>
+        <h3 className="min-w-0 flex-1 pt-0.5 text-xs sm:text-[13px] font-medium leading-snug text-foreground line-clamp-2">
+          {titulo}
+        </h3>
+      </div>
+      <div className="mt-2.5 flex items-center gap-2 text-muted-foreground">
+        <Lock className="h-4 w-4 shrink-0" />
+        <span className="text-sm">Sem permissão</span>
+      </div>
     </Card>
   );
 }

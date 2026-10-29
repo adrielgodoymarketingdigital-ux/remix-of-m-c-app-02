@@ -15,7 +15,7 @@ import { Conta, FormularioConta, PagamentoConta } from "@/types/conta";
 import {
   TrendingDown,
   TrendingUp,
-  DollarSign,
+  Coins,
   CheckCircle,
   AlertCircle,
   CreditCard,
@@ -262,6 +262,8 @@ export function SecaoContasPagarReceber({
       <div className={`grid gap-3 ${isMobile ? "grid-cols-2" : "grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"}`}>
         <CardFinanceiroClicavel
           titulo="Total a Pagar"
+          tom="vermelho"
+          degrade
           valor={totalAPagar}
           subtitulo="Contas pendentes"
           icon={TrendingDown}
@@ -272,6 +274,8 @@ export function SecaoContasPagarReceber({
         />
         <CardFinanceiroClicavel
           titulo="Total a Receber"
+          tom="azul"
+          degrade
           valor={totalAReceber}
           subtitulo="Contas pendentes"
           icon={TrendingUp}
@@ -282,22 +286,25 @@ export function SecaoContasPagarReceber({
         />
         <CardFinanceiroClicavel
           titulo="Total Pago"
+          tom="verde"
           valor={totalPago}
           subtitulo="No período"
-          icon={DollarSign}
+          icon={Coins}
           ativo={cardAtivo === "pago"}
           onClick={() => toggleCard("pago")}
         />
         <CardFinanceiroClicavel
           titulo="Total Recebido"
+          tom="roxo"
           valor={totalRecebido}
           subtitulo="No período"
-          icon={DollarSign}
+          icon={Coins}
           ativo={cardAtivo === "recebido"}
           onClick={() => toggleCard("recebido")}
         />
         <CardFinanceiroClicavel
           titulo="Contas Pagas e Contas Recebidas"
+          tom="verde"
           quantidade={contasPagas.length}
           subtitulo="Pagas/recebidas"
           icon={CheckCircle}
@@ -309,6 +316,7 @@ export function SecaoContasPagarReceber({
         />
         <CardFinanceiroClicavel
           titulo="Contas Vencidas"
+          tom="vermelho"
           quantidade={contasVencidas.length}
           subtitulo="Ver inadimplentes"
           icon={AlertCircle}
@@ -320,6 +328,7 @@ export function SecaoContasPagarReceber({
         />
         <CardFinanceiroClicavel
           titulo="Despesas Cartões"
+          tom="roxo"
           valor={despesasCartoes}
           subtitulo="Taxa de cartão"
           icon={CreditCard}
