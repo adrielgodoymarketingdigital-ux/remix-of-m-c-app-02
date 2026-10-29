@@ -19,14 +19,12 @@ export function modeloReciboA4(layout: { modelo_recibo_a4?: unknown } | null | u
  * caminho, tire-o daqui e da condição de usaReciboPersonalizado — a tela de
  * configuração lista o que estiver aqui.
  */
-export const CAMINHOS_SO_PADRAO = ["cupom80mm", "duasOsPorFolha", "pdfIphoneInstalado", "pdfWhatsapp"] as const;
+export const CAMINHOS_SO_PADRAO = ["cupom80mm", "duasOsPorFolha", "pdfWhatsapp"] as const;
 export type CaminhoSoPadrao = (typeof CAMINHOS_SO_PADRAO)[number];
 
 export interface ContextoImpressaoA4 {
   formato: "a4" | "80mm";
   duasOsPorFolha: boolean;
-  /** iPhone com o app instalado: a impressão vira PDF (jsPDF), que ainda é só o padrão. */
-  pdfIphoneInstalado: boolean;
 }
 
 /** true = a impressão desta OS usa o recibo personalizado. */
@@ -37,6 +35,6 @@ export function usaReciboPersonalizado(
   if (modeloReciboA4(layout) !== "personalizado") return false;
   if (ctx.formato !== "a4") return false;
   if (ctx.duasOsPorFolha) return false;
-  if (ctx.pdfIphoneInstalado) return false;
+  // iPhone com o app instalado: sai em PDF gerado do próprio recibo (pdfReciboPersonalizado).
   return true;
 }

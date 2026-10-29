@@ -31,7 +31,6 @@ const servicos: Traducao<typeof servicosPtBR> = {
     soPadrao: {
       cupom80mm: "Recibo térmico de 80 mm",
       duasOsPorFolha: "2 OS por hoja A4",
-      pdfIphoneInstalado: "Impresión desde la app instalada en iPhone (sale en PDF)",
       pdfWhatsapp: "PDF enviado por WhatsApp",
     },
     versaoTitulo: "Versión del diseño A4",

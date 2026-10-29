@@ -424,7 +424,6 @@ export const ImpressaoOrdemServico = ({
   const reciboPersonalizado = usaReciboPersonalizado(layoutConfig, {
     formato: formatoEscolhido,
     duasOsPorFolha: duasOsPorFolha,
-    pdfIphoneInstalado: isIOS && isStandalone,
   });
 
   // ── PDF do recibo personalizado no iPhone com o app instalado ──

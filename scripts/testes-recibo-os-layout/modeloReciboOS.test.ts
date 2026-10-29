@@ -3,7 +3,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { CAMINHOS_SO_PADRAO, modeloReciboA4, usaReciboPersonalizado } from "../../src/lib/ordemServico/modeloReciboOS.ts";
 
-const a4 = { formato: "a4" as const, duasOsPorFolha: false, pdfIphoneInstalado: false };
+const a4 = { formato: "a4" as const, duasOsPorFolha: false };
 
 Deno.test("modelo: ausente, nulo, padrao ou desconhecido = padrao", () => {
   assertEquals(modeloReciboA4(undefined), "padrao");
@@ -23,14 +23,13 @@ Deno.test("quem não escolheu nunca recebe o personalizado", () => {
   }
 });
 
-Deno.test("personalizado só no A4 de uma OS por folha, fora do PDF do iPhone instalado", () => {
+Deno.test("personalizado só no A4 de uma OS por folha (inclusive iPhone instalado)", () => {
   const p = { modelo_recibo_a4: "personalizado" };
   assertEquals(usaReciboPersonalizado(p, a4), true);
   assertEquals(usaReciboPersonalizado(p, { ...a4, formato: "80mm" }), false);
   assertEquals(usaReciboPersonalizado(p, { ...a4, duasOsPorFolha: true }), false);
-  assertEquals(usaReciboPersonalizado(p, { ...a4, pdfIphoneInstalado: true }), false);
 });
 
 Deno.test("lista do que fica no padrão (mostrada na tela)", () => {
-  assertEquals([...CAMINHOS_SO_PADRAO], ["cupom80mm", "duasOsPorFolha", "pdfIphoneInstalado", "pdfWhatsapp"]);
+  assertEquals([...CAMINHOS_SO_PADRAO], ["cupom80mm", "duasOsPorFolha", "pdfWhatsapp"]);
 });

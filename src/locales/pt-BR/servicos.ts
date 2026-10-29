@@ -36,7 +36,6 @@ const servicos = {
     soPadrao: {
       cupom80mm: "Cupom 80 mm",
       duasOsPorFolha: "2 OS por folha A4",
-      pdfIphoneInstalado: "Impressão pelo app instalado no iPhone (sai em PDF)",
       pdfWhatsapp: "PDF enviado pelo WhatsApp",
     },
     versaoTitulo: "Versão do Layout A4",
