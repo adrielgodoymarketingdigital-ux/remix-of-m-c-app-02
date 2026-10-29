@@ -33,6 +33,7 @@ import {
   montarDadosReciboOSPersonalizado,
   type ChecklistRecibo,
 } from "@/lib/ordemServico/reciboOSPersonalizadoModelo";
+import { primeiraMaiuscula } from "@/lib/ordemServico/paginasReciboPersonalizado";
 import servicosPtBR from "@/locales/pt-BR/servicos";
 import { SilhuetaComAvarias } from "../SilhuetaComAvarias";
 import { PatternLockVisualizacao } from "../PatternLockVisualizacao";
@@ -53,6 +54,8 @@ interface Props {
   fotosImpressao?: FotoImpressao[];
   fotosExcedentes?: number;
   adicionais?: DispositivoAdicionalOS[];
+  /** Cópia escondida para o PDF do iPhone instalado (html2canvas): só ajustes de captura. */
+  paraCaptura?: boolean;
 }
 
 const SEM_ADICIONAIS: DispositivoAdicionalOS[] = [];
@@ -66,6 +69,7 @@ export function ImpressaoA4Personalizado({
   fotosImpressao,
   fotosExcedentes,
   adicionais = SEM_ADICIONAIS,
+  paraCaptura = false,
 }: Props) {
   const [logoFalhou, setLogoFalhou] = useState(false);
   const temAdicionais = adicionais.length > 0;
@@ -164,7 +168,7 @@ export function ImpressaoA4Personalizado({
         {dados.checklistSemTeste && (
           <p className="osr-aviso">⚠️ Sem teste: Não foi possível realizar os testes porque o aparelho chegou desligado.</p>
         )}
-        {dados.checklistEntrada && <ListaChecklist checklist={dados.checklistEntrada} />}
+        {dados.checklistEntrada && <ListaChecklist checklist={dados.checklistEntrada} paraCaptura={paraCaptura} />}
       </div>
     </div>
   );
@@ -176,7 +180,7 @@ export function ImpressaoA4Personalizado({
         <h2 className="osr-card-titulo">{doDispositivo1("Checklist de Saída")}</h2>
       </div>
       <div className="osr-card-body">
-        <ListaChecklist checklist={dados.checklistSaida} />
+        <ListaChecklist checklist={dados.checklistSaida} paraCaptura={paraCaptura} />
       </div>
     </div>
   );
@@ -219,7 +223,7 @@ export function ImpressaoA4Personalizado({
   );
 
   return (
-    <div className="impressao-ordem-container os-recibo-personalizado">
+    <div className={`impressao-ordem-container os-recibo-personalizado${paraCaptura ? " osr-captura" : ""}`}>
       <style>{CSS_RECIBO_PERSONALIZADO}</style>
 
       {/* Cabeçalho */}
@@ -476,7 +480,7 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-function ListaChecklist({ checklist }: { checklist: ChecklistRecibo }) {
+function ListaChecklist({ checklist, paraCaptura }: { checklist: ChecklistRecibo; paraCaptura: boolean }) {
   return (
     <div className="osr-checklist">
       {checklist.itens.map((item) => {
@@ -485,7 +489,7 @@ function ListaChecklist({ checklist }: { checklist: ChecklistRecibo }) {
           <div key={item.chave}>
             <div className="osr-check-item">
               <Icone className="osr-check-icone" />
-              <span className="osr-check-rotulo">{item.rotulo}</span>
+              <span className="osr-check-rotulo">{paraCaptura ? primeiraMaiuscula(item.rotulo) : item.rotulo}</span>
               <span className={`osr-marca ${item.ok ? "osr-marca-ok" : "osr-marca-erro"}`}>
                 {item.ok ? <Check /> : <X />}
               </span>

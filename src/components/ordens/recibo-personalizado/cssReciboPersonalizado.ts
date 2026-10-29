@@ -166,6 +166,18 @@ ${R} .impressao-dispositivos-adicionais .impressao-checklist-icon { width: 3.5mm
 ${R} .impressao-dispositivos-adicionais .impressao-check-ok { width: 3.8mm; height: 3.8mm; color: ${VERDE}; }
 ${R} .impressao-dispositivos-adicionais .impressao-check-erro { width: 3.8mm; height: 3.8mm; color: ${VERMELHO}; }
 
+/* Modo captura (PDF do iPhone com o app instalado, via html2canvas): só vale
+   com .osr-captura, que existe apenas na cópia escondida usada para o PDF —
+   a impressão do navegador não muda. Mesmas medidas da impressão (194 mm, sem
+   altura mínima) e sem ::first-letter (o html2canvas desenha errado; o texto
+   já vem com a primeira letra maiúscula). */
+${R}.osr-captura {
+  width: 194mm; max-width: 194mm; min-height: 0; height: auto; max-height: none;
+  overflow: visible; padding: 0; margin: 0;
+}
+${R}.osr-captura .osr-assinaturas { margin-top: 0; }
+${R}.osr-captura .osr-check-rotulo::first-letter { text-transform: none; }
+
 @media print {
   ${R} {
     width: 194mm; max-width: 194mm; min-height: 0; height: auto;
