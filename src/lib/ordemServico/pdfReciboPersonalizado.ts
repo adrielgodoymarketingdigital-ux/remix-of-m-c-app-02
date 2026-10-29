@@ -99,8 +99,12 @@ export async function gerarPDFReciboPersonalizado(recibo: HTMLElement): Promise<
   const paginas = quebrasDePagina(alturaMm, cortes, ALTURA_UTIL_MM);
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
-  const x = caixa.left + window.scrollX;
-  const y0 = caixa.top + window.scrollY;
+  // Recorte na posição da cópia NA TELA, sem somar a rolagem: o html2canvas mede
+  // a cópia com rolagem zero (scrollX/scrollY: 0 abaixo) e ela é fixa no topo.
+  // Somar window.scrollY jogava o recorte para fora do recibo quando a lista de
+  // OS estava rolada — o PDF saía em branco.
+  const x = caixa.left;
+  const y0 = caixa.top;
 
   const ajusteTexto = document.createElement("style");
   ajusteTexto.textContent = CSS_MEDIDA_TEXTO;
