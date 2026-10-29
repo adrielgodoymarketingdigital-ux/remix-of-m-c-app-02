@@ -87,6 +87,11 @@ export interface LayoutOSConfig {
   tamanho_fonte?: 'pequeno' | 'normal' | 'grande';
   formato_papel?: 'a4' | '80mm';
   versao_layout_a4?: 'padrao' | 'tech';
+  /**
+   * Modelo do recibo A4 da OS. Ausente, nulo ou 'padrao' = o recibo de sempre
+   * (com a versao_layout_a4 acima). Regra em src/lib/ordemServico/modeloReciboOS.ts.
+   */
+  modelo_recibo_a4?: 'padrao' | 'personalizado' | null;
   duas_os_por_folha?: boolean;
   duas_os_orientacao?: 'horizontal' | 'vertical';
   config_80mm?: Layout80mmConfig;
