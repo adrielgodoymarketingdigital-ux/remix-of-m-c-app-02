@@ -25,6 +25,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { FiltrosPeriodo } from "@/components/financeiro/FiltroPeriodoAvancado";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { AvisoCustoNaoConfirmado } from "@/components/financeiro/AvisoCustoNaoConfirmado";
+import { BannerFinanceiro } from "@/components/financeiro/BannerFinanceiro";
 
 export default function Financeiro() {
   const { toast } = useToast();
@@ -145,25 +146,24 @@ export default function Financeiro() {
 
   return (
     <AppLayout>
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="max-w-7xl lg:max-w-none mx-auto space-y-8">
+      <main className="flex-1 p-4 sm:p-6 overflow-auto">
+        <div className="max-w-7xl lg:max-w-none mx-auto space-y-6 sm:space-y-8">
           <AvisoCustoNaoConfirmado />
           {/* Header. lg:pt-6: o olho flutuante do layout (BotaoOcultarValores,
               fixed top-4 right-4, só no desktop) ficava por cima de "Exportar PDF" */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 lg:pt-6">
-            <div>
-              <h1 className="text-3xl font-bold">Financeiro</h1>
-              <p className="text-muted-foreground">
-                Gestão completa de contas, lucros e custos
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
+          <div className="space-y-4 lg:pt-6">
+            <BannerFinanceiro />
+            <div className="flex items-center gap-3">
               <ConfiguracoesFinanceiro />
 
               {/* PDF Export with date filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="default" disabled={loading || identidadeCarregando}>
+                  <Button
+                    variant="default"
+                    className="h-11 flex-1 sm:flex-none sm:min-w-[200px] rounded-xl px-6 text-[15px] font-semibold"
+                    disabled={loading || identidadeCarregando}
+                  >
                     <FileDown className="h-4 w-4 mr-2" />
                     Exportar PDF
                   </Button>
