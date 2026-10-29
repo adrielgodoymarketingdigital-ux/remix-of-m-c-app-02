@@ -19,6 +19,15 @@ import {
   quebrasDePagina,
 } from "./paginasReciboPersonalizado";
 
+/**
+ * O html2canvas mede a linha de base do texto com uma imagem 1×1 (esta) no
+ * documento principal; a regra geral do Tailwind (img { display: block }) a
+ * tira da linha e o texto sai desenhado mais baixo que os ícones. Durante a
+ * captura, e só nela, essa imagem volta a ficar na linha. Nada mais é afetado.
+ */
+const IMAGEM_MEDIDA_HTML2CANVAS = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+const CSS_MEDIDA_TEXTO = `img[src="${IMAGEM_MEDIDA_HTML2CANVAS}"] { display: inline !important; }`;
+
 export interface ResultadoPDFPersonalizado {
   arquivo: Blob;
   paginas: number;
@@ -93,34 +102,41 @@ export async function gerarPDFReciboPersonalizado(recibo: HTMLElement): Promise<
   const x = caixa.left + window.scrollX;
   const y0 = caixa.top + window.scrollY;
 
-  for (let i = 0; i < paginas.length; i++) {
-    const [a, z] = paginas[i];
-    const alturaPx = Math.max(1, Math.round((z - a) * pxPorMm));
-    const canvas = await html2canvas(recibo, {
-      scale: escalaDaCaptura(caixa.width, alturaPx),
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: "#ffffff",
-      logging: false,
-      imageTimeout: TEMPO_MAXIMO_IMAGEM_MS,
-      x,
-      y: y0 + Math.round(a * pxPorMm),
-      width: Math.ceil(caixa.width),
-      height: alturaPx,
-      windowWidth: Math.max(document.documentElement.clientWidth, Math.ceil(caixa.width)),
-      windowHeight: Math.max(document.documentElement.clientHeight, Math.ceil(caixa.height)),
-      scrollX: 0,
-      scrollY: 0,
-    });
-    try {
-      const jpeg = canvas.toDataURL("image/jpeg", QUALIDADE_JPEG_RECIBO);
-      if (i > 0) pdf.addPage();
-      pdf.addImage(jpeg, "JPEG", PAGINA_A4_MM.margem, PAGINA_A4_MM.margem, LARGURA_UTIL_MM, z - a, undefined, "FAST");
-    } finally {
-      // Libera a memória do canvas já (o Safari do iPhone segura muito).
-      canvas.width = 0;
-      canvas.height = 0;
+  const ajusteTexto = document.createElement("style");
+  ajusteTexto.textContent = CSS_MEDIDA_TEXTO;
+  document.head.appendChild(ajusteTexto);
+  try {
+    for (let i = 0; i < paginas.length; i++) {
+      const [a, z] = paginas[i];
+      const alturaPx = Math.max(1, Math.round((z - a) * pxPorMm));
+      const canvas = await html2canvas(recibo, {
+        scale: escalaDaCaptura(caixa.width, alturaPx),
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: "#ffffff",
+        logging: false,
+        imageTimeout: TEMPO_MAXIMO_IMAGEM_MS,
+        x,
+        y: y0 + Math.round(a * pxPorMm),
+        width: Math.ceil(caixa.width),
+        height: alturaPx,
+        windowWidth: Math.max(document.documentElement.clientWidth, Math.ceil(caixa.width)),
+        windowHeight: Math.max(document.documentElement.clientHeight, Math.ceil(caixa.height)),
+        scrollX: 0,
+        scrollY: 0,
+      });
+      try {
+        const jpeg = canvas.toDataURL("image/jpeg", QUALIDADE_JPEG_RECIBO);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(jpeg, "JPEG", PAGINA_A4_MM.margem, PAGINA_A4_MM.margem, LARGURA_UTIL_MM, z - a, undefined, "FAST");
+      } finally {
+        // Libera a memória do canvas já (o Safari do iPhone segura muito).
+        canvas.width = 0;
+        canvas.height = 0;
+      }
     }
+  } finally {
+    ajusteTexto.remove();
   }
 
   return { arquivo: pdf.output("blob"), paginas: paginas.length, ms: Math.round(performance.now() - inicio) };
