@@ -7,6 +7,8 @@ import { obterTermoGarantia, LAYOUT_PADRAO } from "@/lib/termo-garantia-utils";
 import { ImpressaoCupom80mm } from "./ImpressaoCupom80mm";
 import { ImpressaoA4Padrao } from "./ImpressaoA4Padrao";
 import { ImpressaoA4Tech } from "./ImpressaoA4Tech";
+import { ImpressaoA4Personalizado } from "./recibo-personalizado/ImpressaoA4Personalizado";
+import { usaReciboPersonalizado } from "@/lib/ordemServico/modeloReciboOS";
 import {
   getCupom80mmOSBaseCSS,
   getCupom80mmOSPrintDocCSS,
@@ -875,7 +877,27 @@ export const ImpressaoOrdemServico = ({
   const duasOsPorFolha = !is80mm && (layoutConfig.duas_os_por_folha ?? false);
   const duasOsOrientacao = layoutConfig.duas_os_orientacao ?? 'horizontal';
 
+  // Recibo personalizado: só quando a loja escolheu (layout_os_config.modelo_recibo_a4),
+  // no A4 de uma OS por folha e fora do PDF do iPhone instalado. Senão, o de sempre.
+  const reciboPersonalizado = usaReciboPersonalizado(layoutConfig, {
+    formato: formatoEscolhido,
+    duasOsPorFolha: duasOsPorFolha,
+    pdfIphoneInstalado: isIOS && isStandalone,
+  });
+
   const renderA4 = () => {
+    if (reciboPersonalizado) {
+      return (
+        <ImpressaoA4Personalizado
+          ordem={ordem}
+          configuracaoLoja={configuracaoLoja}
+          layoutConfig={layoutConfig}
+          termoGarantia={termoGarantia}
+          {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
+          adicionais={adicionais}
+        />
+      );
+    }
     if (layoutConfig.versao_layout_a4 === 'tech') {
       return (
         <ImpressaoA4Tech
