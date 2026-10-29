@@ -64,3 +64,32 @@ export function escalaDaCaptura(
 export function primeiraMaiuscula(texto: string): string {
   return texto ? texto.charAt(0).toLocaleUpperCase("pt-BR") + texto.slice(1) : texto;
 }
+
+/**
+ * Conferência de cada página capturada (em branco nunca vale como sucesso).
+ * A amostra é o canvas reduzido (LARGURA_AMOSTRA px); pixel "com conteúdo" é
+ * opaco e com algum canal abaixo do limiar. Página sem nenhum = falha.
+ */
+export const LARGURA_AMOSTRA_PX = 240;
+export const LIMIAR_PIXEL_CONTEUDO = 225;
+export const FRACAO_MINIMA_CONTEUDO = 0.001;
+/** data URL de JPEG menor que isto é vazio/quebrado ("data:," etc.). */
+export const TAMANHO_MINIMO_JPEG = 3000;
+
+export function amostraTemConteudo(
+  rgba: ArrayLike<number>,
+  limiar: number = LIMIAR_PIXEL_CONTEUDO,
+  fracaoMinima: number = FRACAO_MINIMA_CONTEUDO,
+): boolean {
+  let total = 0;
+  let comConteudo = 0;
+  for (let i = 0; i + 3 < rgba.length; i += 4) {
+    total++;
+    if (rgba[i + 3] > 0 && (rgba[i] < limiar || rgba[i + 1] < limiar || rgba[i + 2] < limiar)) comConteudo++;
+  }
+  return total > 0 && comConteudo / total >= fracaoMinima;
+}
+
+export function jpegValido(dataUrl: string | null | undefined): boolean {
+  return !!dataUrl && dataUrl.startsWith("data:image/jpeg") && dataUrl.length >= TAMANHO_MINIMO_JPEG;
+}

@@ -58,3 +58,34 @@ Deno.test("primeira letra maiúscula (sem ::first-letter na captura)", () => {
   assertEquals(primeiraMaiuscula("ícone"), "Ícone");
   assertEquals(primeiraMaiuscula(""), "");
 });
+
+import { amostraTemConteudo, jpegValido } from "../../src/lib/ordemServico/paginasReciboPersonalizado.ts";
+
+const pixels = (n: number, rgba: [number, number, number, number]) => {
+  const d = new Uint8ClampedArray(n * 4);
+  for (let i = 0; i < n; i++) d.set(rgba, i * 4);
+  return d;
+};
+
+Deno.test("página em branco, transparente ou vazia: sem conteúdo", () => {
+  assertEquals(amostraTemConteudo(pixels(10000, [255, 255, 255, 255])), false);
+  assertEquals(amostraTemConteudo(pixels(10000, [0, 0, 0, 0])), false); // transparente
+  assertEquals(amostraTemConteudo(pixels(10000, [240, 240, 240, 255])), false); // quase branco
+  assertEquals(amostraTemConteudo(new Uint8ClampedArray(0)), false);
+});
+
+Deno.test("página com texto/cartões: com conteúdo", () => {
+  const d = pixels(10000, [255, 255, 255, 255]);
+  for (let i = 0; i < 30; i++) d.set([30, 41, 59, 255], i * 4 * 7); // 0,3% escuro (texto)
+  assertEquals(amostraTemConteudo(d), true);
+  assertEquals(amostraTemConteudo(pixels(100, [10, 26, 63, 255])), true); // cabeçalho azul
+});
+
+Deno.test("JPEG vazio ou quebrado não vale", () => {
+  assertEquals(jpegValido("data:,"), false);
+  assertEquals(jpegValido(""), false);
+  assertEquals(jpegValido(null), false);
+  assertEquals(jpegValido("data:image/png;base64," + "A".repeat(5000)), false);
+  assertEquals(jpegValido("data:image/jpeg;base64," + "A".repeat(100)), false);
+  assertEquals(jpegValido("data:image/jpeg;base64," + "A".repeat(5000)), true);
+});

@@ -14,8 +14,11 @@ import {
   LARGURA_UTIL_MM,
   PAGINA_A4_MM,
   QUALIDADE_JPEG_RECIBO,
+  LARGURA_AMOSTRA_PX,
   TEMPO_MAXIMO_IMAGEM_MS,
+  amostraTemConteudo,
   escalaDaCaptura,
+  jpegValido,
   quebrasDePagina,
 } from "./paginasReciboPersonalizado";
 
@@ -27,6 +30,23 @@ import {
  */
 const IMAGEM_MEDIDA_HTML2CANVAS = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 const CSS_MEDIDA_TEXTO = `img[src="${IMAGEM_MEDIDA_HTML2CANVAS}"] { display: inline !important; }`;
+
+/** A página capturada tem conteúdo? Confere numa cópia reduzida (pouca memória). */
+function canvasTemConteudo(canvas: HTMLCanvasElement): boolean {
+  if (canvas.width <= 0 || canvas.height <= 0) return false;
+  const amostra = document.createElement("canvas");
+  amostra.width = Math.min(LARGURA_AMOSTRA_PX, canvas.width);
+  amostra.height = Math.max(1, Math.round((canvas.height * amostra.width) / canvas.width));
+  try {
+    const ctx = amostra.getContext("2d");
+    if (!ctx) return false;
+    ctx.drawImage(canvas, 0, 0, amostra.width, amostra.height);
+    return amostraTemConteudo(ctx.getImageData(0, 0, amostra.width, amostra.height).data);
+  } finally {
+    amostra.width = 0;
+    amostra.height = 0;
+  }
+}
 
 export interface ResultadoPDFPersonalizado {
   arquivo: Blob;
@@ -130,7 +150,11 @@ export async function gerarPDFReciboPersonalizado(recibo: HTMLElement): Promise<
         scrollY: 0,
       });
       try {
+        // Página em branco ou imagem quebrada nunca vale como sucesso: vira erro e
+        // quem chama entrega o PDF padrão com aviso.
+        if (!canvasTemConteudo(canvas)) throw new Error(`página ${i + 1} do PDF personalizado saiu em branco`);
         const jpeg = canvas.toDataURL("image/jpeg", QUALIDADE_JPEG_RECIBO);
+        if (!jpegValido(jpeg)) throw new Error(`página ${i + 1} do PDF personalizado sem imagem válida`);
         if (i > 0) pdf.addPage();
         pdf.addImage(jpeg, "JPEG", PAGINA_A4_MM.margem, PAGINA_A4_MM.margem, LARGURA_UTIL_MM, z - a, undefined, "FAST");
       } finally {
