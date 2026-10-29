@@ -20,6 +20,9 @@ const servicos = {
   reciboOS: {
     dadosCliente: "Dados do Cliente",
     dadosAparelho: "Dados do Aparelho",
+    // Impressão no iPhone com o app instalado (PDF do recibo personalizado).
+    preparandoPdf: "Preparando PDF…",
+    avisoFalhaPersonalizado: "Não foi possível gerar o layout personalizado; foi gerado o padrão.",
   },
   // Tela "Layout da OS" (DialogConfiguracaoLayoutOS): escolha do modelo do recibo A4.
   layoutOS: {

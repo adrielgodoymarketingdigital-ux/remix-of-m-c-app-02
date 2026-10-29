@@ -18,6 +18,8 @@ const servicos: Traducao<typeof servicosPtBR> = {
   reciboOS: {
     dadosCliente: "Datos del cliente",
     dadosAparelho: "Datos del equipo",
+    preparandoPdf: "Preparando PDF…",
+    avisoFalhaPersonalizado: "No fue posible generar el diseño personalizado; se generó el estándar.",
   },
   layoutOS: {
     modeloTitulo: "Modelo del recibo A4",

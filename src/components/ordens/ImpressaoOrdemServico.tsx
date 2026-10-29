@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { OrdemServico } from "@/hooks/useOrdensServico";
 import { AvariasOS } from "@/types/ordem-servico";
@@ -9,6 +10,9 @@ import { ImpressaoA4Padrao } from "./ImpressaoA4Padrao";
 import { ImpressaoA4Tech } from "./ImpressaoA4Tech";
 import { ImpressaoA4Personalizado } from "./recibo-personalizado/ImpressaoA4Personalizado";
 import { usaReciboPersonalizado } from "@/lib/ordemServico/modeloReciboOS";
+import { gerarPDFReciboPersonalizado, imagemComoDataUrl, type ResultadoPDFPersonalizado } from "@/lib/ordemServico/pdfReciboPersonalizado";
+import { TEMPO_MAXIMO_PDF_PERSONALIZADO_MS } from "@/lib/ordemServico/paginasReciboPersonalizado";
+import { comTempoMaximo } from "@/lib/tempoMaximo";
 import {
   getCupom80mmOSBaseCSS,
   getCupom80mmOSPrintDocCSS,
@@ -413,6 +417,73 @@ export const ImpressaoOrdemServico = ({
   const falhasFotos = fotosMontadas?.falhas ?? 0;
   const fotosAguardando = decisaoFotos.incluir && (carregandoFotos || !fotosMontadas);
   const aguardandoImpressao = fotosAguardando || carregandoAdicionais;
+
+  // Recibo personalizado: só quando a loja escolheu (layout_os_config.modelo_recibo_a4),
+  // no A4 de uma OS por folha (regra em lib/ordemServico/modeloReciboOS). Senão, o de sempre.
+  const duasOsPorFolha = !is80mm && (layoutConfig.duas_os_por_folha ?? false);
+  const reciboPersonalizado = usaReciboPersonalizado(layoutConfig, {
+    formato: formatoEscolhido,
+    duasOsPorFolha: duasOsPorFolha,
+    pdfIphoneInstalado: isIOS && isStandalone,
+  });
+
+  // ── PDF do recibo personalizado no iPhone com o app instalado ──
+  // Gerado AO ABRIR (html2canvas + jsPDF, a partir de uma cópia escondida do recibo
+  // em modo captura), para o toque em "Imprimir Agora" ainda valer como gesto no
+  // compartilhar do iOS. Se falhar ou passar do tempo, vale o PDF padrão de sempre,
+  // com aviso. Nos outros aparelhos nada disto existe.
+  const { t } = useTranslation("servicos");
+  const pdfPersonalizadoIphone = reciboPersonalizado && isIOS && isStandalone;
+  const capturaRef = useRef<HTMLDivElement>(null);
+  // Logo como data URL (canvas sem "taint"); null = sem logo no PDF (mostra o nome da loja).
+  const [logoCaptura, setLogoCaptura] = useState<string | null | undefined>(undefined);
+  const urlLogoCaptura = layoutConfig.mostrar_logo_impressao ? configuracaoLoja?.logo_url ?? null : null;
+  useEffect(() => {
+    if (!pdfPersonalizadoIphone) return;
+    let ativo = true;
+    setLogoCaptura(undefined);
+    imagemComoDataUrl(urlLogoCaptura).then((dataUrl) => { if (ativo) setLogoCaptura(dataUrl); });
+    return () => { ativo = false; };
+  }, [pdfPersonalizadoIphone, urlLogoCaptura]);
+  const [pdfPersonalizado, setPdfPersonalizado] = useState<{ chave: string; estado: "gerando" | "pronto" | "falhou"; arquivo?: Blob } | null>(null);
+  const chavePdfPersonalizado = pdfPersonalizadoIphone && !aguardandoImpressao && logoCaptura !== undefined
+    ? `${fotosMontadas?.fotos.map((f) => f.legenda).join(",") ?? "-"}|${logoCaptura ? "logo" : "nome"}`
+    : null;
+  useEffect(() => {
+    if (!chavePdfPersonalizado) return;
+    const chave = chavePdfPersonalizado;
+    let ativo = true;
+    setPdfPersonalizado({ chave, estado: "gerando" });
+    // Dois quadros: a cópia escondida já está montada e pintada.
+    const quadro = requestAnimationFrame(() => requestAnimationFrame(() => {
+      const recibo = capturaRef.current?.querySelector<HTMLElement>(".osr-captura");
+      const geracao: Promise<ResultadoPDFPersonalizado | null> = recibo
+        ? gerarPDFReciboPersonalizado(recibo)
+        : Promise.reject(new Error("cópia do recibo para o PDF não encontrada"));
+      comTempoMaximo(geracao, TEMPO_MAXIMO_PDF_PERSONALIZADO_MS, () => null)
+        .then((resultado) => {
+          if (!ativo) return;
+          if (resultado) {
+            setPdfPersonalizado({ chave, estado: "pronto", arquivo: resultado.arquivo });
+          } else {
+            console.error("[ImpressaoOrdemServico] PDF personalizado: tempo esgotado — vale o PDF padrão.");
+            setPdfPersonalizado({ chave, estado: "falhou" });
+          }
+        })
+        .catch((erro) => {
+          console.error("[ImpressaoOrdemServico] PDF personalizado falhou — vale o PDF padrão.", erro);
+          if (ativo) setPdfPersonalizado({ chave, estado: "falhou" });
+        });
+    }));
+    return () => {
+      ativo = false;
+      cancelAnimationFrame(quadro);
+    };
+  }, [chavePdfPersonalizado]);
+  const pdfPersonalizadoPronto = pdfPersonalizado?.chave === chavePdfPersonalizado && pdfPersonalizado?.estado === "pronto" ? pdfPersonalizado.arquivo ?? null : null;
+  const preparandoPdfPersonalizado = pdfPersonalizadoIphone && !aguardandoImpressao
+    && (logoCaptura === undefined || pdfPersonalizado?.chave !== chavePdfPersonalizado || pdfPersonalizado?.estado === "gerando");
+  const aguardandoBotao = aguardandoImpressao || preparandoPdfPersonalizado;
   const escolherIncluirFotos = (incluir: boolean) => {
     setEscolhaFotos(incluir);
     salvarEscolhaFotos(incluir);
@@ -776,7 +847,15 @@ export const ImpressaoOrdemServico = ({
   // WhatsApp) — o botão de imprimir não distingue parte1/termo aqui.
   const gerarPDFECompartilhar = async (formato80mm: boolean) => {
     try {
-      const pdfBlob = formato80mm
+      // Personalizado no iPhone instalado: o PDF já gerado ao abrir. Se não deu,
+      // o PDF padrão de sempre (abaixo), com aviso — nunca fica sem PDF.
+      const usarPersonalizado = !formato80mm && pdfPersonalizadoIphone && !!pdfPersonalizadoPronto;
+      if (!formato80mm && pdfPersonalizadoIphone && !pdfPersonalizadoPronto) {
+        toast.warning(t("reciboOS.avisoFalhaPersonalizado"));
+      }
+      const pdfBlob = usarPersonalizado && pdfPersonalizadoPronto
+        ? pdfPersonalizadoPronto
+        : formato80mm
         ? await gerarOrdemServicoCupom80mmPDF(ordem, configuracaoLoja, adicionais)
         : await gerarOrdemServicoPDF(
             ordem,
@@ -874,16 +953,7 @@ export const ImpressaoOrdemServico = ({
 
   if (!portalEl) return null;
 
-  const duasOsPorFolha = !is80mm && (layoutConfig.duas_os_por_folha ?? false);
   const duasOsOrientacao = layoutConfig.duas_os_orientacao ?? 'horizontal';
-
-  // Recibo personalizado: só quando a loja escolheu (layout_os_config.modelo_recibo_a4),
-  // no A4 de uma OS por folha e fora do PDF do iPhone instalado. Senão, o de sempre.
-  const reciboPersonalizado = usaReciboPersonalizado(layoutConfig, {
-    formato: formatoEscolhido,
-    duasOsPorFolha: duasOsPorFolha,
-    pdfIphoneInstalado: isIOS && isStandalone,
-  });
 
   const renderA4 = () => {
     if (reciboPersonalizado) {
@@ -979,11 +1049,11 @@ export const ImpressaoOrdemServico = ({
                 }
                 handlePrint();
               }}
-              disabled={aguardandoImpressao}
+              disabled={aguardandoBotao}
               className="print-trigger-button"
-              style={{ flex: 1, opacity: aguardandoImpressao ? 0.6 : 1 }}
+              style={{ flex: 1, opacity: aguardandoBotao ? 0.6 : 1 }}
             >
-              {fotosAguardando ? "Carregando fotos…" : carregandoAdicionais ? "Carregando…" : confirmandoFalhas && falhasFotos > 0 ? textoBotaoSemFotos(falhasFotos) : "Imprimir Agora"}
+              {fotosAguardando ? "Carregando fotos…" : carregandoAdicionais ? "Carregando…" : preparandoPdfPersonalizado ? t("reciboOS.preparandoPdf") : confirmandoFalhas && falhasFotos > 0 ? textoBotaoSemFotos(falhasFotos) : "Imprimir Agora"}
             </button>
             <button onClick={onFecharImpressao} className="print-close-button">
               {isStandalone ? "Voltar" : "Cancelar"}
@@ -1022,6 +1092,25 @@ export const ImpressaoOrdemServico = ({
         </div>
       ) : (
         renderA4()
+      )}
+
+      {/* Cópia ESCONDIDA do recibo personalizado, só para o PDF do iPhone instalado. */}
+      {pdfPersonalizadoIphone && logoCaptura !== undefined && (
+        <div
+          ref={capturaRef}
+          aria-hidden="true"
+          style={{ position: "fixed", left: 0, top: 0, width: 0, height: 0, overflow: "hidden", pointerEvents: "none", zIndex: -1 }}
+        >
+          <ImpressaoA4Personalizado
+            ordem={ordem}
+            configuracaoLoja={configuracaoLoja ? { ...configuracaoLoja, logo_url: logoCaptura ?? undefined } : undefined}
+            layoutConfig={layoutConfig}
+            termoGarantia={termoGarantia}
+            {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
+            adicionais={adicionais}
+            paraCaptura
+          />
+        </div>
       )}
     </>,
     portalEl
