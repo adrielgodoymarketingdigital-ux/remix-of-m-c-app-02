@@ -142,7 +142,7 @@ export function SecaoAnaliseLucrosCustos({
   return (
     <div className="border-t pt-6 space-y-4">
       <div>
-        <h2 className="text-2xl font-bold">Análise de Lucros e Custos</h2>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Análise de Lucros e Custos</h2>
         <p className="text-muted-foreground text-sm">
           Métricas de desempenho financeiro da empresa
         </p>

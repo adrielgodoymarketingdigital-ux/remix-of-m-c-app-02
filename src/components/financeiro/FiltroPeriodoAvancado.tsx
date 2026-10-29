@@ -134,14 +134,17 @@ export function FiltroPeriodoAvancado({
   ];
 
   return (
-    <div className="bg-muted/30 rounded-lg p-3 space-y-3">
-      <div className="flex flex-wrap gap-1.5">
+    <div className="rounded-2xl border bg-card p-2 sm:p-3 space-y-3 shadow-sm">
+      {/* Celular: uma linha só, rolando para o lado. sm+: quebra linha como antes.
+          p-1/-m-1 dão espaço para o anel de foco não ser cortado pela rolagem. */}
+      <div className="-m-1 flex gap-1.5 overflow-x-auto scrollbar-hide p-1 sm:flex-wrap sm:overflow-visible">
         {presets.map((p) => (
           <Button
             key={p.value}
             variant={preset === p.value ? "default" : "outline"}
             size="sm"
-            className="h-7 text-xs px-2.5"
+            aria-pressed={preset === p.value}
+            className="h-11 shrink-0 rounded-xl px-4 text-[13px] sm:h-8 sm:px-3 sm:text-xs"
             onClick={() => handlePreset(p.value)}
           >
             {p.label}
@@ -156,7 +159,7 @@ export function FiltroPeriodoAvancado({
               <div className="space-y-1">
                 <Label className="text-xs">Mês</Label>
                 <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-                  <SelectTrigger className="h-8 text-xs w-[120px]">
+                  <SelectTrigger className="h-11 sm:h-8 text-xs w-[120px]">
                     <SelectValue placeholder="Mês" />
                   </SelectTrigger>
                   <SelectContent>
@@ -171,7 +174,7 @@ export function FiltroPeriodoAvancado({
               <div className="space-y-1">
                 <Label className="text-xs">Ano</Label>
                 <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
-                  <SelectTrigger className="h-8 text-xs w-[90px]">
+                  <SelectTrigger className="h-11 sm:h-8 text-xs w-[90px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -194,7 +197,7 @@ export function FiltroPeriodoAvancado({
                   type="date"
                   value={dataInicio}
                   onChange={(e) => setDataInicio(e.target.value)}
-                  className="h-8 text-xs w-[150px]"
+                  className="h-11 sm:h-8 text-xs w-[150px]"
                 />
               </div>
               <div className="space-y-1">
@@ -203,7 +206,7 @@ export function FiltroPeriodoAvancado({
                   type="date"
                   value={dataFim}
                   onChange={(e) => setDataFim(e.target.value)}
-                  className="h-8 text-xs w-[150px]"
+                  className="h-11 sm:h-8 text-xs w-[150px]"
                 />
               </div>
             </>
@@ -216,7 +219,7 @@ export function FiltroPeriodoAvancado({
                 value={tipoFiltro || "todos"}
                 onValueChange={(v) => onTipoFiltroChange?.(v)}
               >
-                <SelectTrigger className="h-8 text-xs w-[110px]">
+                <SelectTrigger className="h-11 sm:h-8 text-xs w-[110px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -233,7 +236,7 @@ export function FiltroPeriodoAvancado({
               onClick={handleFiltrar}
               disabled={loading}
               size="sm"
-              className="h-8 text-xs"
+              className="h-11 sm:h-8 text-xs"
             >
               <Filter className="h-3 w-3 mr-1" />
               Filtrar
@@ -245,7 +248,7 @@ export function FiltroPeriodoAvancado({
             onClick={handleLimpar}
             disabled={loading}
             size="sm"
-            className="h-8 text-xs"
+            className="h-11 sm:h-8 text-xs"
           >
             Limpar
           </Button>

@@ -220,17 +220,18 @@ export function SecaoContasPagarReceber({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-bold">Contas a Pagar e a Receber</h2>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Contas a Pagar e a Receber</h2>
           <p className="text-muted-foreground text-sm">
             Resumo de todas as contas do período
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <Button
             variant="outline"
             size="sm"
+            className="h-11 rounded-xl px-4 font-semibold shadow-sm"
             onClick={() => {
               setTipoLancamento("pagar");
               setContaEditando(null);
@@ -241,8 +242,9 @@ export function SecaoContasPagarReceber({
             Lançar Despesa
           </Button>
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
+            className="h-11 rounded-xl px-4 font-semibold"
             onClick={() => {
               setTipoLancamento("receber");
               setContaEditando(null);
