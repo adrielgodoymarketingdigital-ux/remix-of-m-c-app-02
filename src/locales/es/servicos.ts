@@ -19,6 +19,23 @@ const servicos: Traducao<typeof servicosPtBR> = {
     dadosCliente: "Datos del cliente",
     dadosAparelho: "Datos del equipo",
   },
+  layoutOS: {
+    modeloTitulo: "Modelo del recibo A4",
+    modeloPadrao: "Estándar",
+    modeloPadraoDescricao: "El recibo de siempre, en la versión elegida abajo.",
+    modeloPersonalizado: "Personalizado",
+    modeloPersonalizadoDescricao: "Nuevo diseño: encabezado azul marino, información en tarjetas y checklist en dos columnas.",
+    soPadraoTitulo: "Siempre quedan en Estándar:",
+    soPadrao: {
+      cupom80mm: "Recibo térmico de 80 mm",
+      duasOsPorFolha: "2 OS por hoja A4",
+      pdfIphoneInstalado: "Impresión desde la app instalada en iPhone (sale en PDF)",
+      pdfWhatsapp: "PDF enviado por WhatsApp",
+    },
+    versaoTitulo: "Versión del diseño A4",
+    versaoDescricao: "Se usa en el modelo Estándar y donde el Personalizado no aplica.",
+    versaoTech: "Tech",
+  },
 };
 
 export default servicos;

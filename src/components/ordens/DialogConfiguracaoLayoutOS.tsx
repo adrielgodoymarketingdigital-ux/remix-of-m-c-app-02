@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Layout, Save, Image, Eye, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,8 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { LayoutOSConfig, Layout80mmConfig } from "@/types/configuracao-loja";
 import { Preview80mm } from "./Preview80mm";
 import { PreviewA4 } from "./PreviewA4";
+import { MiniaturaModeloRecibo } from "./recibo-personalizado/MiniaturaModeloRecibo";
+import { CAMINHOS_SO_PADRAO, modeloReciboA4, type ModeloReciboA4 } from "@/lib/ordemServico/modeloReciboOS";
 
 interface DialogConfiguracaoLayoutOSProps {
   open: boolean;
@@ -77,6 +80,10 @@ export function DialogConfiguracaoLayoutOS({
   const config80mm: Layout80mmConfig = layout.config_80mm || CONFIG_80MM_PADRAO;
   const is80mm = layout.formato_papel === "80mm";
   const versaoAtual = layout.versao_layout_a4 || "padrao";
+  const { t } = useTranslation("servicos");
+  // Ausente/nulo = Padrão. A chave só vai para o banco se já existia ou se a loja clicar num cartão.
+  const modeloAtual = modeloReciboA4(layout);
+  const escolherModelo = (modelo: ModeloReciboA4) => setLayout((prev) => ({ ...prev, modelo_recibo_a4: modelo }));
 
   useEffect(() => {
     if (config?.layout_os_config) {
@@ -95,6 +102,9 @@ export function DialogConfiguracaoLayoutOS({
         versao_layout_a4: config.layout_os_config.versao_layout_a4 || "padrao",
         duas_os_por_folha: config.layout_os_config.duas_os_por_folha ?? false,
         duas_os_orientacao: config.layout_os_config.duas_os_orientacao ?? 'horizontal',
+        ...(config.layout_os_config.modelo_recibo_a4 != null
+          ? { modelo_recibo_a4: config.layout_os_config.modelo_recibo_a4 }
+          : {}),
         config_80mm: {
           ...CONFIG_80MM_PADRAO,
           ...(config.layout_os_config as any).config_80mm,
@@ -174,11 +184,59 @@ export function DialogConfiguracaoLayoutOS({
         </DialogHeader>
 
         <div className="flex flex-col gap-6">
+          {/* Modelo do recibo A4 (Padrão / Personalizado) — só aparece quando A4 está selecionado */}
+          {!is80mm && (
+            <>
+              <div className="space-y-3">
+                <div className="text-sm font-medium">{t("layoutOS.modeloTitulo")}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  {(["padrao", "personalizado"] as const).map((modelo) => {
+                    const ativo = modeloAtual === modelo;
+                    return (
+                      <button
+                        key={modelo}
+                        type="button"
+                        aria-pressed={ativo}
+                        onClick={() => escolherModelo(modelo)}
+                        className={`relative rounded-lg border-2 p-2 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          ativo ? "border-primary shadow-sm" : "border-border hover:border-muted-foreground/40"
+                        }`}
+                      >
+                        {ativo && <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-primary" />}
+                        <div className="mb-2 text-xs font-semibold text-foreground">
+                          {modelo === "padrao" ? t("layoutOS.modeloPadrao") : t("layoutOS.modeloPersonalizado")}
+                        </div>
+                        <MiniaturaModeloRecibo modelo={modelo} />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {modelo === "padrao" ? t("layoutOS.modeloPadraoDescricao") : t("layoutOS.modeloPersonalizadoDescricao")}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+                {modeloAtual === "personalizado" && (
+                  <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                    <div className="font-medium text-foreground">{t("layoutOS.soPadraoTitulo")}</div>
+                    <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                      {CAMINHOS_SO_PADRAO.map((caminho) => (
+                        <li key={caminho}>{t(`layoutOS.soPadrao.${caminho}`)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <Separator />
+            </>
+          )}
+
           {/* Seletor de versão A4 — só aparece quando A4 está selecionado */}
           {!is80mm && (
             <>
               <div className="space-y-3">
-                <div className="text-sm font-medium">Versão do Layout A4</div>
+                <div className="space-y-0.5">
+                  <div className="text-sm font-medium">{t("layoutOS.versaoTitulo")}</div>
+                  <p className="text-xs text-muted-foreground">{t("layoutOS.versaoDescricao")}</p>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   {/* Opção Padrão */}
                   <button
@@ -216,7 +274,7 @@ export function DialogConfiguracaoLayoutOS({
                     {versaoAtual === "tech" && (
                       <CheckCircle2 className="absolute top-2 right-2 h-4 w-4 text-primary" />
                     )}
-                    <div className="mb-2 text-xs font-semibold text-foreground">Personalizado</div>
+                    <div className="mb-2 text-xs font-semibold text-foreground">{t("layoutOS.versaoTech")}</div>
                     <div className="overflow-hidden rounded shadow-sm border border-border bg-white">
                       <PreviewA4
                         config={{ ...layout, versao_layout_a4: "tech" }}

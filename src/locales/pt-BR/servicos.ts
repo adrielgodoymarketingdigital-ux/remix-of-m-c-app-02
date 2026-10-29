@@ -21,6 +21,25 @@ const servicos = {
     dadosCliente: "Dados do Cliente",
     dadosAparelho: "Dados do Aparelho",
   },
+  // Tela "Layout da OS" (DialogConfiguracaoLayoutOS): escolha do modelo do recibo A4.
+  layoutOS: {
+    modeloTitulo: "Modelo do recibo A4",
+    modeloPadrao: "Padrão",
+    modeloPadraoDescricao: "O recibo de sempre, na versão escolhida abaixo.",
+    modeloPersonalizado: "Personalizado",
+    modeloPersonalizadoDescricao: "Novo visual: cabeçalho azul-marinho, informações em cartões e checklist em duas colunas.",
+    soPadraoTitulo: "Continuam sempre no Padrão:",
+    // Uma chave por item de CAMINHOS_SO_PADRAO (src/lib/ordemServico/modeloReciboOS.ts).
+    soPadrao: {
+      cupom80mm: "Cupom 80 mm",
+      duasOsPorFolha: "2 OS por folha A4",
+      pdfIphoneInstalado: "Impressão pelo app instalado no iPhone (sai em PDF)",
+      pdfWhatsapp: "PDF enviado pelo WhatsApp",
+    },
+    versaoTitulo: "Versão do Layout A4",
+    versaoDescricao: "Usada no modelo Padrão e onde o Personalizado não se aplica.",
+    versaoTech: "Tech",
+  },
 } as const;
 
 export default servicos;
