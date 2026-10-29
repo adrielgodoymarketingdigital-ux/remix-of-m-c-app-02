@@ -80,11 +80,19 @@ export function CardFinanceiroClicavel({
         >
           <Icon className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
         </div>
-        <h3 className="min-w-0 flex-1 pt-0.5 text-xs sm:text-[13px] font-medium leading-snug text-foreground line-clamp-2">
+        <h3
+          className={cn(
+            "min-w-0 flex-1 pt-0.5 text-xs sm:text-[13px] font-medium leading-snug text-foreground line-clamp-3",
+            onClick && "pr-3",
+          )}
+        >
           {titulo}
         </h3>
         {onClick && (
-          <ChevronRight aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronRight
+            aria-hidden="true"
+            className="absolute right-2 top-3 h-4 w-4 text-muted-foreground sm:right-3 sm:top-4"
+          />
         )}
       </div>
 

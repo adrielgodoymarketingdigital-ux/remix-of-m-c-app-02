@@ -48,9 +48,9 @@ export const GraficoEvolucao = ({ dados }: GraficoEvolucaoProps) => {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle>Evolução de Receita e Custos</CardTitle>
+          <CardTitle className="text-lg sm:text-2xl">Evolução de Receita e Custos</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -79,9 +79,9 @@ export const GraficoEvolucao = ({ dados }: GraficoEvolucaoProps) => {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle>Evolução de Lucro</CardTitle>
+          <CardTitle className="text-lg sm:text-2xl">Evolução de Lucro</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>

@@ -57,7 +57,7 @@ export function GraficoRanking({ itens }: GraficoRankingProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle className="text-base">Top Lucro por Item</CardTitle>
         </CardHeader>
@@ -91,7 +91,7 @@ export function GraficoRanking({ itens }: GraficoRankingProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle className="text-base">Mais Vendidos (Quantidade)</CardTitle>
         </CardHeader>

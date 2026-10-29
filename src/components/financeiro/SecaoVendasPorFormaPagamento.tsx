@@ -71,7 +71,7 @@ export function SecaoVendasPorFormaPagamento({ filtros }: SecaoVendasPorFormaPag
   if (!loading && vendasPorForma.length === 0) return null;
 
   return (
-    <Card>
+    <Card className="rounded-2xl">
       <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
         <Wallet className="h-4 w-4 text-muted-foreground" />
         <CardTitle className="text-base">Vendas por Forma de Pagamento</CardTitle>

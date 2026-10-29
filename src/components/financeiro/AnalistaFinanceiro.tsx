@@ -85,7 +85,7 @@ export function AnalistaFinanceiro({ resumo, lucros, evolucao }: AnalistaFinance
   };
 
   return (
-    <Card>
+    <Card className="rounded-2xl">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

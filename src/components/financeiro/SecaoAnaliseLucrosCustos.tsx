@@ -273,7 +273,7 @@ export function SecaoAnaliseLucrosCustos({
 
       {/* Análise de Lucro por Item */}
       <Collapsible open={secaoLucroItem} onOpenChange={setSecaoLucroItem}>
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CollapsibleTrigger asChild>
               <button className="flex items-center gap-2 w-full text-left">
@@ -282,7 +282,7 @@ export function SecaoAnaliseLucrosCustos({
                 ) : (
                   <ChevronRight className="h-4 w-4" />
                 )}
-                <CardTitle>Análise de Lucro por Item</CardTitle>
+                <CardTitle className="text-lg sm:text-2xl">Análise de Lucro por Item</CardTitle>
               </button>
             </CollapsibleTrigger>
           </CardHeader>
@@ -296,7 +296,7 @@ export function SecaoAnaliseLucrosCustos({
 
       {/* Vendas do período agrupadas por venda (múltiplos produtos em uma só linha, expansível) */}
       <Collapsible open={secaoVendasDetalhadas} onOpenChange={setSecaoVendasDetalhadas}>
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
             <CollapsibleTrigger asChild>
               <button className="flex items-center gap-2 w-full text-left">
@@ -305,7 +305,7 @@ export function SecaoAnaliseLucrosCustos({
                 ) : (
                   <ChevronRight className="h-4 w-4" />
                 )}
-                <CardTitle>Vendas Detalhadas do Período</CardTitle>
+                <CardTitle className="text-lg sm:text-2xl">Vendas Detalhadas do Período</CardTitle>
               </button>
             </CollapsibleTrigger>
           </CardHeader>
