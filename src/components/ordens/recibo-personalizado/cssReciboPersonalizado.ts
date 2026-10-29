@@ -38,8 +38,10 @@ ${R} {
   print-color-adjust: exact;
 }
 ${R} * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+${R} > * { flex-shrink: 0; }
 ${R} svg { display: inline-block; vertical-align: middle; }
-${R} h1, ${R} h2, ${R} p, ${R} figure { margin: 0; }
+${R} h1, ${R} h2, ${R} p, ${R} figure { margin: 0; padding: 0; }
+${R} h1, ${R} h2 { line-height: 1.2; }
 
 ${R} .osr-header {
   display: flex; align-items: stretch; gap: 5mm;
@@ -80,7 +82,7 @@ ${R} .osr-linha-senha { display: grid; grid-template-columns: 1fr 2fr; gap: 3mm;
 ${R} .osr-card { border: 0.3mm solid ${BORDA}; border-radius: 2.5mm; background: #fff; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
 ${R} .osr-card-header { display: flex; align-items: center; gap: 2.5mm; padding: 2mm 4mm; background: ${FUNDO_TITULO}; }
 ${R} .osr-card-header svg { width: 5mm; height: 5mm; flex-shrink: 0; color: ${AZUL}; }
-${R} .osr-card-titulo { font-size: 9pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; color: ${TEXTO}; }
+${R} .osr-card-titulo { font-size: 9pt; line-height: 1.25; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; color: ${TEXTO}; }
 ${R} .osr-card-body { padding: 2.5mm 4mm; }
 ${R} .osr-campo { display: grid; grid-template-columns: 26mm 1fr; gap: 2mm; padding: 1.1mm 0; border-bottom: 0.2mm solid #eef2f7; }
 ${R} .osr-campo:last-child { border-bottom: 0; }
