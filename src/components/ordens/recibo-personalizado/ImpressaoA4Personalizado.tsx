@@ -85,6 +85,39 @@ export function ImpressaoA4Personalizado({
   const temItens = dados.servicos.length > 0 || dados.produtos.length > 0;
   const fotos = fotosImpressao ?? [];
 
+  const cardCustos = dados.custos.length > 0 && (
+    <div className="osr-card">
+      <div className="osr-card-header">
+        <Package />
+        <h2 className="osr-card-titulo">Custos Adicionais</h2>
+      </div>
+      <div className="osr-card-body">
+        {dados.custos.map((custo) => (
+          <div key={custo.id} className="osr-item">
+            <span className="osr-item-nome">
+              • {custo.tipo === "frete" ? "Frete" : custo.tipo === "brinde" ? "Brinde" : custo.descricao}
+              {custo.descricao && custo.tipo !== "outro" ? ` - ${custo.descricao}` : ""}
+              <span className="osr-item-obs">({custo.repassar_cliente ? "Cliente paga" : "Loja assume"})</span>
+            </span>
+            <span className="osr-item-valor">{formatCurrency(custo.valor)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const cardPagamento = !!formaPagamento && (
+    <div className="osr-card">
+      <div className="osr-card-header">
+        <CreditCard />
+        <h2 className="osr-card-titulo">Forma de Pagamento</h2>
+      </div>
+      <div className="osr-card-body">
+        <p>{formaPagamento}</p>
+      </div>
+    </div>
+  );
+
   const cardSenha = mostrarSenha && senha && (
     <div className="osr-card osr-card-senha">
       <div className="osr-card-header">
@@ -316,39 +349,14 @@ export function ImpressaoA4Personalizado({
         </div>
       )}
 
-      {/* Custos Adicionais */}
-      {dados.custos.length > 0 && (
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <Package />
-            <h2 className="osr-card-titulo">Custos Adicionais</h2>
-          </div>
-          <div className="osr-card-body">
-            {dados.custos.map((custo) => (
-              <div key={custo.id} className="osr-item">
-                <span className="osr-item-nome">
-                  • {custo.tipo === "frete" ? "Frete" : custo.tipo === "brinde" ? "Brinde" : custo.descricao}
-                  {custo.descricao && custo.tipo !== "outro" ? ` - ${custo.descricao}` : ""}
-                  <span className="osr-item-obs">({custo.repassar_cliente ? "Cliente paga" : "Loja assume"})</span>
-                </span>
-                <span className="osr-item-valor">{formatCurrency(custo.valor)}</span>
-              </div>
-            ))}
-          </div>
+      {/* Custos Adicionais + Forma de Pagamento (lado a lado quando há os dois) */}
+      {cardCustos && cardPagamento ? (
+        <div className="osr-linha-2">
+          {cardCustos}
+          {cardPagamento}
         </div>
-      )}
-
-      {/* Forma de Pagamento */}
-      {formaPagamento && (
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <CreditCard />
-            <h2 className="osr-card-titulo">Forma de Pagamento</h2>
-          </div>
-          <div className="osr-card-body">
-            <p>{formaPagamento}</p>
-          </div>
-        </div>
+      ) : (
+        cardCustos || cardPagamento
       )}
 
       {/* Senha + Checklist de entrada */}

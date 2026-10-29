@@ -25,13 +25,13 @@ const VERMELHO = "#dc2626";
 const CSS_BASE = `
 ${R} {
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 9pt;
+  font-size: 8.5pt;
   font-weight: 400;
-  line-height: 1.35;
+  line-height: 1.3;
   color: ${TEXTO};
   background: #fff;
   padding: 3mm;
-  gap: 3mm;
+  gap: 2.5mm;
   display: flex;
   flex-direction: column;
   -webkit-print-color-adjust: exact;
@@ -45,16 +45,16 @@ ${R} h1, ${R} h2 { line-height: 1.2; }
 
 ${R} .osr-header {
   display: flex; align-items: stretch; gap: 5mm;
-  padding: 4mm 5mm; border-radius: 2.5mm;
+  padding: 3mm 5mm; border-radius: 2.5mm;
   background: linear-gradient(135deg, ${AZUL_ESCURO} 0%, ${AZUL_ESCURO_2} 100%);
   color: #fff;
 }
 ${R} .osr-logo-box {
-  width: 34mm; min-height: 22mm; flex-shrink: 0; padding: 2mm;
+  width: 34mm; min-height: 19mm; flex-shrink: 0; padding: 2mm;
   border: 0.3mm solid rgba(255,255,255,0.28); border-radius: 2mm; background: rgba(255,255,255,0.06);
   display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-${R} .osr-logo-box img { max-width: 100%; max-height: 20mm; object-fit: contain; display: block; }
+${R} .osr-logo-box img { max-width: 100%; max-height: 17mm; object-fit: contain; display: block; }
 ${R} .osr-logo-nome { font-size: 11pt; font-weight: 800; text-align: center; line-height: 1.15; color: #fff; overflow-wrap: anywhere; }
 ${R} .osr-titulo-area { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1mm; }
 ${R} .osr-titulo { font-size: 17pt; font-weight: 800; letter-spacing: 0.3px; line-height: 1.1; color: #fff; }
@@ -75,16 +75,16 @@ ${R} .osr-loja-nome { font-size: 9.5pt; font-weight: 800; color: #fff; overflow-
 ${R} .osr-loja-linha { display: flex; align-items: flex-start; gap: 2mm; overflow-wrap: anywhere; }
 ${R} .osr-loja-linha svg { width: 3.5mm; height: 3.5mm; flex-shrink: 0; margin-top: 0.2mm; color: #fff; }
 
-${R} .osr-linha-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
-${R} .osr-linha-defeito { display: grid; grid-template-columns: 7fr 3fr; gap: 3mm; }
-${R} .osr-linha-senha { display: grid; grid-template-columns: 1fr 2fr; gap: 3mm; }
+${R} .osr-linha-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; }
+${R} .osr-linha-defeito { display: grid; grid-template-columns: 7fr 3fr; gap: 2.5mm; }
+${R} .osr-linha-senha { display: grid; grid-template-columns: 1fr 2fr; gap: 2.5mm; }
 
 ${R} .osr-card { border: 0.3mm solid ${BORDA}; border-radius: 2.5mm; background: #fff; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
-${R} .osr-card-header { display: flex; align-items: center; gap: 2.5mm; padding: 2mm 4mm; background: ${FUNDO_TITULO}; }
-${R} .osr-card-header svg { width: 5mm; height: 5mm; flex-shrink: 0; color: ${AZUL}; }
+${R} .osr-card-header { display: flex; align-items: center; gap: 2.5mm; padding: 1.4mm 4mm; background: ${FUNDO_TITULO}; }
+${R} .osr-card-header svg { width: 4.5mm; height: 4.5mm; flex-shrink: 0; color: ${AZUL}; }
 ${R} .osr-card-titulo { font-size: 9pt; line-height: 1.25; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; color: ${TEXTO}; }
-${R} .osr-card-body { padding: 2.5mm 4mm; }
-${R} .osr-campo { display: grid; grid-template-columns: 26mm 1fr; gap: 2mm; padding: 1.1mm 0; border-bottom: 0.2mm solid #eef2f7; }
+${R} .osr-card-body { padding: 1.8mm 4mm; }
+${R} .osr-campo { display: grid; grid-template-columns: 26mm 1fr; gap: 2mm; padding: 0.7mm 0; border-bottom: 0.2mm solid #eef2f7; }
 ${R} .osr-campo:last-child { border-bottom: 0; }
 ${R} .osr-campo-cheio { grid-template-columns: 1fr; }
 ${R} .osr-rotulo { color: ${TEXTO_SUAVE}; }
@@ -93,17 +93,17 @@ ${R} .osr-texto { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 ${R} .osr-card-valor .osr-card-header { background: #e9f8ef; }
 ${R} .osr-card-valor .osr-card-header svg { color: ${VERDE}; }
-${R} .osr-valor-body { display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-height: 14mm; }
-${R} .osr-valor-total { font-size: 18pt; font-weight: 800; color: ${VERDE}; text-align: center; overflow-wrap: anywhere; }
+${R} .osr-valor-body { display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-height: 12mm; }
+${R} .osr-valor-total { font-size: 16pt; font-weight: 800; color: ${VERDE}; text-align: center; overflow-wrap: anywhere; }
 ${R} .osr-valor-linha { display: flex; justify-content: space-between; gap: 2mm; font-size: 8pt; color: ${TEXTO_SUAVE}; }
 ${R} .osr-valor-linha-desconto { color: ${VERMELHO}; margin-bottom: 1mm; }
 
 ${R} .osr-card-senha .osr-card-header { background: #f3effe; }
 ${R} .osr-card-senha .osr-card-header svg { color: #7c3aed; }
-${R} .osr-senha-valor { font-size: 14pt; font-weight: 800; letter-spacing: 0.5px; overflow-wrap: anywhere; }
+${R} .osr-senha-valor { font-size: 13pt; font-weight: 800; letter-spacing: 0.5px; overflow-wrap: anywhere; }
 
 ${R} .osr-checklist { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6mm; }
-${R} .osr-check-item { display: flex; align-items: center; gap: 2mm; padding: 0.9mm 0; }
+${R} .osr-check-item { display: flex; align-items: center; gap: 2mm; padding: 0.45mm 0; }
 ${R} .osr-check-icone { width: 4mm; height: 4mm; flex-shrink: 0; color: #334155; }
 ${R} .osr-check-rotulo { flex: 1; min-width: 0; }
 ${R} .osr-check-rotulo::first-letter { text-transform: uppercase; }
@@ -116,7 +116,7 @@ ${R} .osr-aviso { font-style: italic; margin-bottom: 1.5mm; }
 
 ${R} .osr-itens-titulo { font-size: 8pt; font-weight: 700; text-transform: uppercase; color: ${TEXTO_SUAVE}; margin-bottom: 0.8mm; }
 ${R} .osr-itens + .osr-itens { margin-top: 2mm; }
-${R} .osr-item { display: flex; justify-content: space-between; gap: 3mm; padding: 0.9mm 0; border-bottom: 0.2mm dotted #cbd5e1; }
+${R} .osr-item { display: flex; justify-content: space-between; gap: 3mm; padding: 0.6mm 0; border-bottom: 0.2mm dotted #cbd5e1; }
 ${R} .osr-item:last-child { border-bottom: 0; }
 ${R} .osr-item-nome { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 ${R} .osr-item-valor { font-weight: 700; white-space: nowrap; }
@@ -136,12 +136,12 @@ ${R} .osr-termo { font-size: 8pt; color: #334155; white-space: pre-line; overflo
 
 ${R} .osr-assinaturas {
   display: flex; align-items: stretch; margin-top: auto;
-  padding: 5mm 2mm 3mm; border-radius: 2.5mm; background: #f1f5f9;
+  padding: 3mm 2mm 2.5mm; border-radius: 2.5mm; background: #f1f5f9;
   break-inside: avoid; page-break-inside: avoid;
 }
 ${R} .osr-assinatura { flex: 1; min-width: 0; padding: 0 4mm; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; text-align: center; }
 ${R} .osr-assinatura + .osr-assinatura { border-left: 0.3mm solid #cbd5e1; }
-${R} .osr-assinatura-linha { width: 85%; height: 12mm; border-bottom: 0.3mm solid #334155; margin-bottom: 1.5mm; }
+${R} .osr-assinatura-linha { width: 85%; height: 10mm; border-bottom: 0.3mm solid #334155; margin-bottom: 1.5mm; }
 ${R} .osr-assinatura-imagem { max-width: 40mm; max-height: 14mm; margin-bottom: 1mm; display: block; }
 ${R} .osr-assinatura-rotulo { font-size: 8.5pt; color: #334155; }
 ${R} .osr-assinatura-data { font-size: 8pt; color: #64748b; margin-top: 1mm; }
