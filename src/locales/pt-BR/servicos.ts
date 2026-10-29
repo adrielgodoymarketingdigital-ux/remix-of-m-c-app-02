@@ -14,6 +14,13 @@ const servicos = {
     // lista de números longa: os 10 primeiros e quantos faltam
     numerosComMais: "{{lista}} e mais {{restantes}}",
   },
+  // Recibo A4 PERSONALIZADO da OS (ImpressaoA4Personalizado). Títulos novos do
+  // desenho; o recibo inteiro ainda é impresso em pt-BR (lido daqui direto),
+  // até a impressão da OS ser traduzida por completo.
+  reciboOS: {
+    dadosCliente: "Dados do Cliente",
+    dadosAparelho: "Dados do Aparelho",
+  },
 } as const;
 
 export default servicos;

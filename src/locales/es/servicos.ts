@@ -15,6 +15,10 @@ const servicos: Traducao<typeof servicosPtBR> = {
     tipoServicosEOs: "Está vinculado a {{servicos}} servicio(s) del catálogo y {{os}} orden(es) de servicio (OS {{numeros}}). Use \"Mesclar tipos duplicados\" para transferir los vínculos o desvincúlelo antes.",
     numerosComMais: "{{lista}} y {{restantes}} más",
   },
+  reciboOS: {
+    dadosCliente: "Datos del cliente",
+    dadosAparelho: "Datos del equipo",
+  },
 };
 
 export default servicos;
