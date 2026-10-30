@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Play } from "lucide-react";
-import logoMec from "@/assets/logo-mec-auth.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 
 export default function VideoBoasVindas() {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export default function VideoBoasVindas() {
 
         {/* Header */}
         <div className="flex flex-col items-center space-y-3 text-center">
-          <img src={logoMec} alt="Méc" className="h-16" />
+          <MarcaMecApp tamanho="lg" />
           <div className="flex items-center gap-2">
             <Play className="h-5 w-5 text-blue-400" />
             <h1 className="text-lg font-semibold text-white">Bem-vindo ao Méc! 🎉</h1>

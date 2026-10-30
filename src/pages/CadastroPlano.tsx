@@ -16,7 +16,7 @@ import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
 import { CartaoCheckoutDialog } from "@/components/planos/CartaoCheckoutDialog";
 import { PixCheckoutDialog } from "@/components/planos/PixCheckoutDialog";
 import { Badge } from "@/components/ui/badge";
-import logoMec from "@/assets/logo-mec-auth.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 import { TurnstileWidget, TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 export default function CadastroPlano() {
@@ -245,7 +245,7 @@ export default function CadastroPlano() {
             <div className="absolute -inset-0.5 bg-gradient-to-b from-blue-500/20 via-transparent to-violet-500/10 rounded-lg blur-sm -z-10" />
             
             <div className="flex flex-col items-center space-y-2 mb-8">
-              <img src={logoMec} alt="Méc" className="h-32" />
+              <MarcaMecApp tamanho="xl" />
               <h1 className="text-2xl font-bold text-white">
                 {isLogin ? "Bem-vindo de volta!" : "Crie sua conta agora"}
               </h1>

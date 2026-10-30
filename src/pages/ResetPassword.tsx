@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import logoMec from "@/assets/logo-mec-auth.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
@@ -159,7 +159,7 @@ const ResetPassword = () => {
       <Card className="relative w-full max-w-md p-8 space-y-6 bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-[0_0_60px_-15px_rgba(59,130,246,0.3)]">
         <div className="absolute -inset-0.5 bg-gradient-to-b from-blue-500/20 via-transparent to-violet-500/10 rounded-lg blur-sm -z-10" />
         <div className="flex flex-col items-center space-y-2">
-          <img src={logoMec} alt="Méc" className="h-32" />
+          <MarcaMecApp tamanho="xl" />
           <p className="text-sm text-slate-400">Defina sua nova senha</p>
         </div>
 

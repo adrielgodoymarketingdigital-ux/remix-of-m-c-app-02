@@ -8,7 +8,7 @@ import { Loader2, CheckCircle2, AlertCircle, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
-import logoMec from "@/assets/logo-mec-novo.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 import { TurnstileWidget, TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 
 export default function CompletarCadastro() {
@@ -136,7 +136,7 @@ export default function CompletarCadastro() {
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
       <div className="mb-8">
-        <img src={logoMec} alt="Méc Logo" className="h-16 w-auto" />
+        <MarcaMecApp tamanho="lg" />
       </div>
 
       <Card className="w-full max-w-md bg-gray-900 border-gray-800">

@@ -11,7 +11,7 @@ import {
   RefreshCw,
   Shield,
 } from "lucide-react";
-import logoMec from "@/assets/logo-mec-auth.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 
 type ObrigadoStatus = "verificando" | "ativado" | "processando";
 
@@ -82,7 +82,7 @@ export function ObrigadoStatusCard({
           <div className="absolute -inset-0.5 -z-10 rounded-lg bg-gradient-to-b from-blue-500/20 via-transparent to-violet-500/10 blur-sm" />
 
           <div className="mb-8 flex flex-col items-center space-y-3 text-center">
-            <img src={logoMec} alt="Méc" className="h-32 w-auto" />
+            <MarcaMecApp tamanho="xl" />
 
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/12">
               {icon}

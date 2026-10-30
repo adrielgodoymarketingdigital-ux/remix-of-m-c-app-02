@@ -19,7 +19,7 @@ import {
   Search,
   AlertCircle,
 } from "lucide-react";
-import logoMec from "@/assets/logo-mec-auth.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 
 // Planos pagos ordenados por hierarquia
 const HIERARQUIA_PLANOS: PlanoTipo[] = [
@@ -308,7 +308,7 @@ export default function RenovacaoAssinatura() {
 
       {/* Logo */}
       <div className="mb-8 flex-shrink-0">
-        <img src={logoMec} alt="Méc" className="h-10" />
+        <MarcaMecApp tamanho="sm" />
       </div>
 
       {/* ── ETAPA 1: Email ─────────────────────────────────────────────────── */}

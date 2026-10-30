@@ -2,7 +2,6 @@
 // Os originais (PNG/JPG) continuam em src/assets e não são mais usados pela landing.
 import adriel320 from "@/assets/adriel-fundador-320.webp";
 import adriel640 from "@/assets/adriel-fundador-640.webp";
-import logoMec from "@/assets/logo-mec-new.webp";
 import depoimentoWhatsapp1 from "@/assets/depoimento-whatsapp-1-900.webp";
 import depoimentoWhatsapp2 from "@/assets/depoimento-whatsapp-2-885.webp";
 import depoimentoWhatsapp3 from "@/assets/screenshots/depoimento-whatsapp-3-900.webp";
@@ -84,9 +83,6 @@ export const imgFundador = duas(adriel320, 320, adriel640, 640, 482);
 // Celular da seção de notificações: 208 / 248 px.
 export const SIZES_NOTIFICACAO = "(min-width: 768px) 248px, 208px";
 export const imgNotifVendas = duas(notifVendas520, 520, notifVendas780, 780, 1129);
-
-// Logo do topo e do rodapé: exibido com 120x40.
-export const imgLogo: ImagemLanding = { src: logoMec, width: 120, height: 40 };
 
 // Depoimentos de WhatsApp (carrossel): um arquivo só, largura até ~900 px.
 export const imgDepoimentoWhatsapp1: ImagemLanding = { src: depoimentoWhatsapp1, width: 900, height: 429 };

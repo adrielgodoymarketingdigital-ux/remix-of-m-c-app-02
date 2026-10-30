@@ -11,7 +11,7 @@ import {
   Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logoMec from "@/assets/logo-mec-auth.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -155,7 +155,7 @@ export default function InstalarApp() {
 
         {/* Header */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <img src={logoMec} alt="Méc" className="h-14" />
+          <MarcaMecApp tamanho="md" />
           <div>
             <h1 className="text-xl font-bold text-white leading-tight">
               Instale o app para começar

@@ -32,7 +32,7 @@ import {
   CreditCard,
   QrCode,
 } from "lucide-react";
-import logoMec from "@/assets/logo-mec-auth.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 import fotoDispositivo1 from "@/assets/IMG_4811.JPG";
 import fotoDispositivo2 from "@/assets/IMG_4812.JPG";
 
@@ -225,7 +225,7 @@ function TeamOnboardingInner() {
 
       {/* Logo */}
       <div className="mb-6 flex-shrink-0">
-        <img src={logoMec} alt="Méc" className="h-10" />
+        <MarcaMecApp tamanho="sm" />
       </div>
 
       {/* ── ETAPA 1: OS Fictícia Demo ─────────────────────────────────────── */}
