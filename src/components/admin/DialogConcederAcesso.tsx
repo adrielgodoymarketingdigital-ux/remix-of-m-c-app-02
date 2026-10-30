@@ -22,7 +22,9 @@ export type PlanoAcesso =
   | "intermediario_mensal"
   | "intermediario_anual"
   | "profissional_mensal"
-  | "profissional_anual";
+  | "profissional_anual"
+  | "profissional_ultra_mensal"
+  | "profissional_ultra_anual";
 
 export type UnidadeTempo = "horas" | "dias";
 
@@ -48,6 +50,8 @@ const OPCOES_PLANOS: { value: PlanoAcesso; label: string; dias_padrao: number }[
   { value: "intermediario_anual", label: "Intermediário Anual (R$31,90/mês)", dias_padrao: 365 },
   { value: "profissional_mensal", label: "Profissional Mensal (R$79,90)", dias_padrao: 30 },
   { value: "profissional_anual", label: "Profissional Anual (R$74,90/mês)", dias_padrao: 365 },
+  { value: "profissional_ultra_mensal", label: "Ultra Mensal (R$129,90)", dias_padrao: 30 },
+  { value: "profissional_ultra_anual", label: "Ultra Anual (R$109,90/mês)", dias_padrao: 365 },
 ];
 
 export function DialogConcederAcesso({
@@ -113,6 +117,8 @@ export function DialogConcederAcesso({
       intermediario_anual: "Intermediário Anual",
       profissional_mensal: "Profissional Mensal",
       profissional_anual: "Profissional Anual",
+      profissional_ultra_mensal: "Ultra Mensal",
+      profissional_ultra_anual: "Ultra Anual",
       admin: "Admin",
     };
     return planos[plano || ""] || plano || "Nenhum";

@@ -11,7 +11,9 @@ export type PlanoAcesso =
   | "intermediario_mensal"
   | "intermediario_anual"
   | "profissional_mensal"
-  | "profissional_anual";
+  | "profissional_anual"
+  | "profissional_ultra_mensal"
+  | "profissional_ultra_anual";
 
 export type UnidadeTempo = "horas" | "dias";
 

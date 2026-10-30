@@ -84,6 +84,8 @@ serve(async (req) => {
       "intermediario_anual",
       "profissional_mensal",
       "profissional_anual",
+      "profissional_ultra_mensal",
+      "profissional_ultra_anual",
     ];
 
     if (!planosValidos.includes(plano_tipo)) {
