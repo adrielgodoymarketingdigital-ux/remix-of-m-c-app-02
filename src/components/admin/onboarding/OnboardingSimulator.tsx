@@ -29,7 +29,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useOnboardingFlow } from '@/hooks/useOnboardingFlow';
 import type { FlowNode, FlowEdge, BotaoAcao } from '@/components/admin/flow/types';
-import logoMec from '@/assets/logo-mec-novo.png';
+import { MarcaMecApp } from '@/components/marca/MarcaMecApp';
 
 interface PerfilInfo {
   id: string;
@@ -239,7 +239,7 @@ export function OnboardingSimulator({ perfil, onReiniciar }: OnboardingSimulator
     return (
       <div className="w-full max-w-lg mx-auto">
         <div className="text-center mb-8">
-          <img src={logoMec} alt="MEC App" className="h-12 mx-auto mb-4" />
+          <MarcaMecApp tamanho="md" corTexto="text-foreground" className="justify-center mb-4" />
           <h1 className="text-2xl font-bold mb-2">Bem-vindo ao MEC App!</h1>
           <p className="text-muted-foreground">Como você gostaria de começar?</p>
         </div>
@@ -401,7 +401,7 @@ export function OnboardingSimulator({ perfil, onReiniciar }: OnboardingSimulator
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <img src={logoMec} alt="MEC App" className="h-8" />
+          <MarcaMecApp tamanho="sm" corTexto="text-foreground" />
           <Badge variant="outline" className="text-xs">
             {tipoNegocio === 'assistencia' ? 'Assistência' : 'Vendas'}
           </Badge>

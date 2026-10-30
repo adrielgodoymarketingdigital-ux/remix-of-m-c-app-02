@@ -23,7 +23,7 @@ import {
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logoMec from "@/assets/logo-mec-novo.png";
+import { MarcaMecApp } from "@/components/marca/MarcaMecApp";
 
 interface OnboardingStep {
   id: number;
@@ -148,7 +148,7 @@ export function OnboardingModal() {
         <div className="bg-card border-b px-4 py-4 sm:p-6 flex-shrink-0">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-center justify-center gap-3">
-              <img src={logoMec} alt="MEC App" className="h-10 sm:h-12 flex-shrink-0" />
+              <MarcaMecApp tamanho="md" corTexto="text-foreground" className="flex-shrink-0" />
             </div>
           </div>
         </div>
@@ -237,8 +237,8 @@ export function OnboardingModal() {
         <div className="bg-card border-b px-4 py-4 sm:p-6 flex-shrink-0">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={logoMec} alt="MEC App" className="h-8 sm:h-10 flex-shrink-0" />
+              <div className="flex items-center gap-3 min-w-0">
+                <MarcaMecApp tamanho="sm" corTexto="text-foreground" textoSoNoDesktop className="flex-shrink-0" />
                 <div className="min-w-0">
                   <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">Bem-vindo ao MEC App!</h1>
                   <p className="text-xs sm:text-sm text-muted-foreground truncate">Vamos personalizar sua experiência</p>
@@ -524,8 +524,8 @@ export function OnboardingModal() {
         <div className="max-w-3xl mx-auto">
           {/* Mobile: Stack logo and title vertically */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <img src={logoMec} alt="MEC App" className="h-8 sm:h-10 flex-shrink-0" />
+            <div className="flex items-center gap-3 min-w-0">
+              <MarcaMecApp tamanho="sm" corTexto="text-foreground" textoSoNoDesktop className="flex-shrink-0" />
               <div className="min-w-0">
                 <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">Bem-vindo ao MEC App!</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">

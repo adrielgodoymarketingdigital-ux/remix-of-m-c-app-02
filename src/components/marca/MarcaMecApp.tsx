@@ -12,11 +12,16 @@ const TAMANHOS = {
 interface MarcaMecAppProps {
   tamanho: keyof typeof TAMANHOS;
   lazy?: boolean;
+  /** Fundo escuro (páginas públicas) usa o branco; telas que seguem o tema do app, "text-foreground". */
+  corTexto?: string;
+  /** Só o ícone no celular (o texto fica para leitores de tela), para cabeçalhos que já têm um título com o nome. */
+  textoSoNoDesktop?: boolean;
   className?: string;
 }
 
-export function MarcaMecApp({ tamanho, lazy = false, className = "" }: MarcaMecAppProps) {
+export function MarcaMecApp({ tamanho, lazy = false, corTexto = "text-white", textoSoNoDesktop = false, className = "" }: MarcaMecAppProps) {
   const t = TAMANHOS[tamanho];
+  const visibilidade = textoSoNoDesktop ? "sr-only sm:not-sr-only" : "";
   return (
     <div className={`flex items-center ${t.gap} ${className}`}>
       <img
@@ -28,7 +33,7 @@ export function MarcaMecApp({ tamanho, lazy = false, className = "" }: MarcaMecA
         decoding="async"
         className={`${t.icone} shrink-0`}
       />
-      <span className={`font-display font-bold tracking-tight leading-none text-white ${t.texto}`}>MécApp</span>
+      <span className={`font-display font-bold tracking-tight leading-none ${corTexto} ${t.texto} ${visibilidade}`}>MécApp</span>
     </div>
   );
 }
