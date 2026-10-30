@@ -1,4 +1,4 @@
-// Marca do MécApp fora da landing V4: o mesmo ícone do Menu/Rodape da V4 (/img/mecapp-icone.webp,
+// Marca do MécApp fora da landing V4: o mesmo ícone do Menu/Rodape da V4 (/img/mecapp-icone-v2.webp,
 // 384x384 transparente) com o nome em texto HTML ao lado. O texto mantém a proporção da V4
 // (ícone de 32 px com texto de 18 px) em todos os tamanhos.
 
@@ -25,7 +25,7 @@ export function MarcaMecApp({ tamanho, lazy = false, corTexto = "text-white", te
   return (
     <div className={`flex items-center ${t.gap} ${className}`}>
       <img
-        src="/img/mecapp-icone.webp"
+        src="/img/mecapp-icone-v2.webp"
         alt=""
         width={t.px}
         height={t.px}

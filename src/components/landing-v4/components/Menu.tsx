@@ -12,7 +12,7 @@ const itens = [
 export function Marca({ claro = false, href = "#topo" }: { claro?: boolean; href?: string }) {
   return (
     <a href={href} className="-my-1.5 flex items-center gap-2.5 py-1.5" aria-label="MécApp, voltar ao início">
-      <img src="/img/mecapp-icone.webp" alt="" width={32} height={32} className="h-8 w-8 rounded-[0.5rem]" />
+      <img src="/img/mecapp-icone-v2.webp" alt="" width={32} height={32} className="h-8 w-8 rounded-[0.5rem]" />
       <span className={`font-display text-lg font-bold tracking-tight transition-colors duration-300 ${claro ? "text-white" : "text-slate-950"}`}>
         MécApp
       </span>
