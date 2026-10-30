@@ -50,7 +50,7 @@ export function LandingFooter() {
             <a href="#" className="text-slate-500 hover:text-blue-400 transition-colors">
               <Facebook className="h-4 w-4" />
             </a>
-            <a href="https://www.instagram.com/mecappoficial/" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-400 transition-colors">
+            <a href="https://www.instagram.com/appmecoficial/" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-blue-400 transition-colors">
               <Instagram className="h-4 w-4" />
             </a>
             <a href="#" className="text-slate-500 hover:text-blue-400 transition-colors">

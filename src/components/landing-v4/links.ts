@@ -9,7 +9,7 @@ export const LINKS = {
   comoFunciona: "#como-funciona",
   // Planos pagos: mesmo destino da landing atual (PricingCard.tsx)
   plano: (chave: string) => `/cadastro-plano?plan=${chave}`,
-  instagram: "https://www.instagram.com/mecappoficial/",
+  instagram: "https://www.instagram.com/appmecoficial/",
   // WhatsApp oficial do suporte (o mesmo do app: src/components/suporte/BotaoWhatsAppSuporte.tsx do MecApp)
   whatsappSuporte: "https://wa.me/5519971454829",
   // Páginas legais (no MécApp: /termos e /privacidade)
