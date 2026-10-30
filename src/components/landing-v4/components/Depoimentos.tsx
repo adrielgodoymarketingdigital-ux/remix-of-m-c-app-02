@@ -1,6 +1,6 @@
 import { LINKS } from "../links";
 import { Botao } from "./Botao";
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 // Depoimentos REAIS em mural (grade em colunas, estilo Pinterest): todos aparecem de uma vez, cada print no tamanho dele.
 // No celular aparecem os 3 primeiros e um botão mostra o resto. Nomes, logos e telefones foram borrados.
@@ -32,12 +32,34 @@ function IconeWhatsApp({ className = "" }: { className?: string }) {
 function Video({ aoTocar }: { aoTocar: (tocando: boolean) => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [tocando, setTocando] = useState(false);
+  // A capa só é baixada quando a seção chega perto da tela (o tamanho do vídeo já é fixo pela proporção,
+  // então nada pula quando ela aparece). O vídeo em si continua só baixando ao clicar (preload="none").
+  const [perto, setPerto] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setPerto(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setPerto(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: "800px 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
   return (
     <div className="relative bg-slate-900">
       <video
         ref={ref}
         src="/video/depoimento.mp4"
-        poster="/img/depo-video-capa.webp"
+        poster={perto ? "/img/depo-video-capa.webp" : undefined}
         preload="none"
         playsInline
         controls={tocando}
