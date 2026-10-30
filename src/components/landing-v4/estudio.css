@@ -21,6 +21,15 @@
   --border: 220 13% 91%; /* cinza-200 do Tailwind, a cor de borda padrão do estúdio */
 }
 
+/* O MécApp põe overflow-x: hidden no html e no body (index.css), o que desliga o position: sticky
+   (ex.: sumário lateral das páginas de Termos e Privacidade). Só enquanto a landing está na tela,
+   troca por "clip": continua sem rolagem para os lados, mas o sticky volta a funcionar.
+   Navegador sem suporte a "clip" ignora a linha e fica como antes. */
+html:has(.v3),
+html:has(.v3) body {
+  overflow-x: clip;
+}
+
 /* Rolagem suave nas âncoras só enquanto a landing está na tela (o MécApp só tem no celular) */
 @media (prefers-reduced-motion: no-preference) {
   html:has(.v3) {
