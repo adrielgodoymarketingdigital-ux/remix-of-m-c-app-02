@@ -1,0 +1,433 @@
+/* Estilo "tecnológico" da VERSÃO 3. Só é carregado em /v3/ (as versões 1 e 2 não mudam).
+   Regras do estúdio: animação só com transform e opacity, 300-700 ms nas interações,
+   e tudo desligado com prefers-reduced-motion. */
+
+/* CORES DE TEMA. A versão 3 usa o tema escuro (body.v3) e a versão 4 o claro (body.v3.claro).
+   Os componentes usam as classes t-* abaixo em vez de cores fixas, então o mesmo layout serve aos dois temas. */
+body.v3 {
+  --t-fundo: #05070d;
+  --t-fundo-2: #070b14;
+  --t-sup: #0b1120;
+  --t-sup-2: rgb(255 255 255 / 0.03);
+  --t-borda: rgb(255 255 255 / 0.1);
+  --t-txt: #ffffff;
+  --t-txt-forte: #e2e8f0;
+  --t-txt-2: #cbd5e1;
+  --t-txt-3: #94a3b8;
+  --t-txt-4: #64748b;
+  --t-acento: #67e8f9;
+  --t-acento-bg: rgb(34 211 238 / 0.1);
+  --t-acento-borda: rgb(34 211 238 / 0.3);
+  --t-ok: #6ee7b7;
+  --t-erro: #fda4af;
+  --t-erro-2: rgb(254 205 211 / 0.8);
+  --t-erro-bg: rgb(244 63 94 / 0.07);
+  --t-erro-bg-2: rgb(244 63 94 / 0.2);
+  --t-neon-1: #67e8f9;
+  --t-neon-2: #60a5fa;
+  --t-neon-3: #818cf8;
+  --t-placa-ponto: rgb(125 211 252 / 0.22);
+  --t-placa-linha: rgb(148 163 184 / 0.07);
+  --t-hud: rgb(34 211 238 / 0.8);
+  background: var(--t-fundo);
+  color: var(--t-txt-forte);
+}
+body.v3.claro {
+  --t-fundo: #f8fafc;
+  --t-fundo-2: #ffffff;
+  --t-sup: #ffffff;
+  --t-sup-2: #ffffff;
+  --t-borda: #e2e8f0;
+  --t-txt: #020617;
+  --t-txt-forte: #1e293b;
+  --t-txt-2: #475569;
+  --t-txt-3: #64748b;
+  --t-txt-4: #64748b;
+  --t-acento: #0e7490;
+  --t-acento-bg: #ecfeff;
+  --t-acento-borda: #67e8f9;
+  --t-ok: #047857;
+  --t-erro: #be123c;
+  --t-erro-2: #9f1239;
+  --t-erro-bg: #fff1f2;
+  --t-erro-bg-2: #ffe4e6;
+  --t-neon-1: #0891b2;
+  --t-neon-2: #2563eb;
+  --t-neon-3: #4f46e5;
+  --t-placa-ponto: rgb(8 145 178 / 0.2);
+  --t-placa-linha: rgb(15 23 42 / 0.06);
+  --t-hud: #06b6d4;
+}
+
+.t-fundo-2 { background-color: var(--t-fundo-2); }
+.t-sup { background-color: var(--t-sup); }
+.t-sup-2 { background-color: var(--t-sup-2); }
+.t-borda { border-color: var(--t-borda); }
+.t-divide > * + * { border-color: var(--t-borda); }
+.t-ring { --tw-ring-color: var(--t-borda); }
+.t-ring-acento { --tw-ring-color: var(--t-acento-borda); }
+.t-txt { color: var(--t-txt); }
+.t-txt-forte { color: var(--t-txt-forte); }
+.t-txt-2 { color: var(--t-txt-2); }
+.t-txt-3 { color: var(--t-txt-3); }
+.t-txt-4 { color: var(--t-txt-4); }
+.t-hover-txt:hover { color: var(--t-txt); }
+.t-acento { color: var(--t-acento); }
+.t-acento-bg { background-color: var(--t-acento-bg); }
+.t-acento-borda { border-color: var(--t-acento-borda); }
+.t-ok { color: var(--t-ok); }
+.t-erro { color: var(--t-erro); }
+.t-erro-2 { color: var(--t-erro-2); }
+.t-erro-bg { background-color: var(--t-erro-bg); }
+.t-erro-bg-2 { background-color: var(--t-erro-bg-2); }
+/* no claro, cartões e painéis ganham sombra suave para não "sumirem" no fundo */
+body.v3.claro .t-sup,
+body.v3.claro .t-sup-2 {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 32px -18px rgb(15 23 42 / 0.18);
+}
+
+/* Fundo de "placa": grade fina + pontos nos cruzamentos, apagando nas bordas */
+.fundo-placa {
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--t-placa-ponto) 1px, transparent 1.5px),
+    linear-gradient(to right, var(--t-placa-linha) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--t-placa-linha) 1px, transparent 1px);
+  background-size:
+    40px 40px,
+    40px 40px,
+    40px 40px;
+  mask-image: radial-gradient(ellipse at 50% 30%, #000 25%, transparent 75%);
+}
+
+/* Moldura de painel: cantos marcados (estilo HUD) */
+.hud {
+  position: relative;
+}
+.hud::before,
+.hud::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: var(--t-hud);
+  pointer-events: none;
+}
+.hud::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+  border-top-left-radius: 6px;
+}
+.hud::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 2px solid;
+  border-bottom: 2px solid;
+  border-bottom-right-radius: 6px;
+}
+
+/* Texto em degradê ciano -> azul */
+.texto-neon {
+  background: linear-gradient(90deg, var(--t-neon-1), var(--t-neon-2) 55%, var(--t-neon-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Linha de "varredura" que desce pelo print (só transform) */
+@keyframes varrer {
+  from {
+    transform: translate3d(0, -100%, 0);
+  }
+  to {
+    transform: translate3d(0, 900%, 0);
+  }
+}
+.anim-varrer {
+  animation: varrer 4.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Luz que pulsa (só opacity) */
+@keyframes pulso {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.anim-pulso {
+  animation: pulso 2.4s ease-in-out infinite;
+}
+
+/* Ponto de dado correndo por uma linha: o "trilho" tem a largura da linha e anda 100% dela */
+@keyframes correr {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+    opacity: 0;
+  }
+}
+.anim-correr {
+  animation: correr 2.8s linear infinite;
+  animation-delay: var(--d, 0ms);
+}
+/* versão vertical (celular) */
+@keyframes correr-baixo {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(0, 100%, 0);
+    opacity: 0;
+  }
+}
+.anim-correr-baixo {
+  animation: correr-baixo 2.8s linear infinite;
+  animation-delay: var(--d, 0ms);
+}
+
+/* Cursor piscando dos rótulos em código */
+@keyframes piscar {
+  50% {
+    opacity: 0;
+  }
+}
+.cursor-piscando {
+  animation: piscar 1s steps(1) infinite;
+}
+
+/* Cartão com borda que acende no hover (a luz é uma camada que só muda de opacity) */
+.cartao-tech {
+  position: relative;
+  isolation: isolate;
+}
+.cartao-tech::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgb(34 211 238 / 0.9), rgb(59 130 246 / 0.2) 40%, rgb(129 140 248 / 0.8));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 400ms ease;
+  z-index: -1;
+  pointer-events: none;
+}
+.cartao-tech:hover::before,
+.cartao-tech:focus-within::before,
+.cartao-tech.aceso::before,
+.cartao-tech[data-aceso="true"]::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-varrer,
+  .anim-pulso,
+  .anim-correr,
+  .anim-correr-baixo,
+  .cursor-piscando {
+    animation: none;
+  }
+  .anim-correr,
+  .anim-correr-baixo {
+    opacity: 0;
+  }
+}
+
+/* Seções reaproveitadas das versões 1 e 2 (depoimentos, fundador, FAQ, rodapé) ficam escuras SÓ aqui,
+   trocando as cores claras pelas do tema tech. Os componentes originais não mudam. */
+.escuro-auto .bg-white {
+  background-color: #0b1120;
+}
+.escuro-auto .bg-slate-50 {
+  background-color: #070b14;
+}
+.escuro-auto .bg-slate-300 {
+  background-color: rgb(255 255 255 / 0.25);
+}
+.escuro-auto .text-slate-950 {
+  color: #fff;
+}
+.escuro-auto .text-slate-700 {
+  color: #cbd5e1;
+}
+.escuro-auto .text-slate-600,
+.escuro-auto .text-slate-500 {
+  color: #94a3b8;
+}
+.escuro-auto .text-brand-600 {
+  color: #67e8f9;
+}
+.escuro-auto .border-slate-200,
+.escuro-auto .divide-slate-200 > * + *,
+.escuro-auto .border-slate-300 {
+  border-color: rgb(255 255 255 / 0.12);
+}
+.escuro-auto .hover\:text-slate-950:hover {
+  color: #fff;
+}
+.escuro-auto .hover\:text-brand-700:hover {
+  color: #67e8f9;
+}
+.escuro-auto .hover\:border-slate-400:hover {
+  border-color: rgb(103 232 249 / 0.5);
+}
+
+/* Cena do topo (CenaHero): camadas com profundidade, inclinação 3D e entrada em sequência.
+   Só transform e opacidade. --mx/--my (-1..1) vêm do mouse; --prof é o deslocamento máximo da camada. */
+.cena-camada {
+  transform: translate3d(calc(var(--mx, 0) * var(--prof, 0px)), calc(var(--my, 0) * var(--prof, 0px)), 0);
+  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: transform;
+}
+.cena-inclinar-painel {
+  transform: perspective(2400px) rotateY(-11deg) rotateX(7deg) rotateZ(-1.5deg);
+  transform-origin: 60% 50%;
+}
+.cena-inclinar-celular {
+  transform: perspective(1400px) rotateY(24deg) rotateX(6deg) rotateZ(-8deg);
+  transform-origin: 50% 50%;
+}
+@keyframes cena-subir {
+  from { transform: translate3d(0, 70px, 0) scale(0.96); }
+  to { transform: none; }
+}
+@keyframes cena-entrar-esq {
+  from { opacity: 0; transform: translate3d(-80px, 30px, 0) rotate(-4deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cena-entrar-dir {
+  from { opacity: 0; transform: translate3d(70px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cena-cair {
+  from { opacity: 0; transform: translate3d(0, -40px, 0) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cena-seta {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-4px, 7px, 0); }
+}
+.cena-subir { animation: cena-subir 1000ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+.cena-entrar-esq { animation: cena-entrar-esq 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+.cena-entrar-dir { animation: cena-entrar-dir 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+.cena-cair { animation: cena-cair 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+.cena-seta { animation: cena-seta 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cena-subir, .cena-entrar-esq, .cena-entrar-dir, .cena-cair, .cena-seta { animation: none; }
+  .cena-camada { transition: none; transform: none; }
+}
+
+/* ===== Animações extras das seções (v3/v4) ===== 
+   Só transform e opacity. Tudo some com prefers-reduced-motion (o useReveal nem liga o html.reveal-on). */
+
+/* Variações de entrada do [data-reveal]: "zoom" cresce, "esq"/"dir" chegam pelos lados */
+html.reveal-on [data-reveal="zoom"] { transform: translate3d(0, 24px, 0) scale(0.94); }
+html.reveal-on [data-reveal="esq"] { transform: translate3d(-40px, 0, 0); }
+html.reveal-on [data-reveal="dir"] { transform: translate3d(40px, 0, 0); }
+html.reveal-on [data-reveal="zoom"].is-in,
+html.reveal-on [data-reveal="esq"].is-in,
+html.reveal-on [data-reveal="dir"].is-in { transform: none; }
+
+/* Detalhes que acontecem DEPOIS que o card entrou (atraso em --d) */
+html.reveal-on [data-reveal] .anima-pop {
+  opacity: 0;
+  transform: scale(0.3);
+  transition:
+    opacity 400ms ease,
+    transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition-delay: calc(var(--i, 0) * 90ms + var(--d, 350ms));
+}
+html.reveal-on [data-reveal] .anima-risco {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 90ms + var(--d, 250ms));
+}
+html.reveal-on [data-reveal] .anima-risco-v {
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 90ms + var(--d, 250ms));
+}
+html.reveal-on [data-reveal] .anima-sobe {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition:
+    opacity 500ms ease,
+    transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 90ms + var(--d, 450ms));
+}
+html.reveal-on [data-reveal].is-in .anima-pop,
+html.reveal-on [data-reveal].is-in .anima-sobe { opacity: 1; transform: none; }
+html.reveal-on [data-reveal].is-in .anima-risco { transform: scaleX(1); }
+html.reveal-on [data-reveal].is-in .anima-risco-v { transform: scaleY(1); }
+
+/* Brilhos do fundo flutuando devagar (aurora) */
+@keyframes aurora {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6%, -5%, 0) scale(1.12); }
+  100% { transform: translate3d(-5%, 4%, 0) scale(0.95); }
+}
+.aurora {
+  animation: aurora 16s ease-in-out infinite alternate;
+  animation-delay: var(--d, 0s);
+  will-change: transform;
+}
+
+/* Reflexo de luz que atravessa o card de tempos em tempos */
+@keyframes reflexo-passa {
+  0%, 70% { transform: translate3d(-120%, 0, 0) skewX(-20deg); }
+  100% { transform: translate3d(320%, 0, 0) skewX(-20deg); }
+}
+.reflexo-auto {
+  animation: reflexo-passa 6s ease-in-out infinite;
+  animation-delay: var(--d, 1.5s);
+}
+
+/* Flutuação bem leve (cards de destaque) */
+@keyframes flutua-leve {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -8px, 0); }
+}
+.flutua-leve { animation: flutua-leve 6s ease-in-out infinite; }
+
+/* Pulso em anel (ícones e pontos "vivos") */
+@keyframes anel {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.anel { animation: anel 2.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+/* Preço que "pula" quando o plano indicado muda */
+@keyframes preco-pula {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.preco-pula { animation: preco-pula 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both; transform-origin: left bottom; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora, .reflexo-auto, .flutua-leve, .anel, .preco-pula { animation: none; }
+  .reflexo-auto, .anel { opacity: 0; }
+}
