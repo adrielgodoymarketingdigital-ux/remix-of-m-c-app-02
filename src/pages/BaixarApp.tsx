@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { AppLayout } from "@/components/layout/AppLayout";
 import {
   Smartphone,
   Share,
@@ -208,7 +209,7 @@ function CelularesIlustrados() {
               ))}
               <div>
                 <img
-                  src="/apple-touch-icon-180x180.png"
+                  src="/apple-touch-icon-180x180-v2.png"
                   alt=""
                   className="mx-auto h-[35px] w-[35px] rounded-[10px] shadow"
                 />
@@ -256,127 +257,129 @@ export default function BaixarApp() {
   const guia = guias[so];
 
   return (
-    <div className="mx-auto w-full max-w-[1420px] overflow-x-hidden p-4 sm:p-6 min-[760px]:px-8">
-      {/* Breadcrumb */}
-      <nav
-        aria-label="Navegação"
-        className="mb-6 flex items-center gap-3 text-[13px] text-muted-foreground min-[760px]:mb-9"
-      >
-        <Link to="/dashboard" aria-label="Início" className="transition-colors hover:text-foreground">
-          <House className="h-4 w-4" />
-        </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <Link to="/tutoriais" className="transition-colors hover:text-foreground">
-          Tutoriais
-        </Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-semibold text-foreground">Baixar App</span>
-      </nav>
-
-      {/* Header */}
-      <header className="mb-7 flex items-center gap-3 min-[760px]:gap-5">
-        <div className="grid h-[54px] w-[54px] shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 text-white shadow-lg shadow-blue-500/20 min-[760px]:h-[68px] min-[760px]:w-[68px]">
-          <Smartphone className="h-7 w-7 min-[760px]:h-8 min-[760px]:w-8" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="mb-1 text-[25px] font-bold tracking-tight text-foreground min-[760px]:mb-2 min-[760px]:text-[34px]">
-            Baixar App
-          </h1>
-          <p className="text-xs text-muted-foreground min-[760px]:text-[15px]">
-            Instale o Méc como aplicativo no seu celular ou computador — sem precisar de loja de apps.
-          </p>
-        </div>
-      </header>
-
-      {/* Abas de SO */}
-      <div className="mb-5 flex flex-wrap gap-2 min-[760px]:gap-3">
-        {abas.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setSo(id)}
-            aria-pressed={so === id}
-            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border px-1.5 py-3 text-xs font-semibold transition-all min-[760px]:gap-3 min-[760px]:rounded-2xl lg:flex-none lg:px-7 min-[760px]:py-3.5 min-[760px]:text-base ${
-              so === id
-                ? "border-transparent bg-gradient-to-r from-blue-700 to-blue-500 text-white shadow-lg shadow-blue-500/20"
-                : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <Icon className="h-4 w-4 shrink-0 min-[760px]:h-5 min-[760px]:w-5" />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Duas colunas só a partir de 1440px: a sidebar do app ocupa 16rem da janela. */}
-      <div className="grid items-center gap-6 min-[1440px]:grid-cols-[minmax(0,1.2fr)_minmax(330px,0.75fr)]">
-        {/* Card de passos */}
-        <section className="min-w-0 rounded-[22px] border border-border bg-card p-4 shadow-sm min-[760px]:p-7">
-          <span className="inline-flex rounded-full bg-blue-500/10 px-3 py-1.5 text-[11px] font-extrabold text-blue-600 dark:text-blue-400">
-            PASSO A PASSO
-          </span>
-          <h2 className="mb-2 mt-3.5 text-xl font-bold tracking-tight text-foreground min-[760px]:text-[25px]">
-            {guia.titulo}
-          </h2>
-          <p className="mb-5 text-sm leading-relaxed text-muted-foreground">{guia.descricao}</p>
-
-          <div className="space-y-3">
-            {guia.passos.map((passo, index) => {
-              const Icon = passo.icon;
-              return (
-                <div
-                  key={index}
-                  className="grid grid-cols-[32px_42px_minmax(0,1fr)] items-center gap-2.5 rounded-2xl border border-border p-3 lg:grid-cols-[42px_58px_minmax(0,1fr)_180px] min-[760px]:gap-4 min-[760px]:p-4"
-                >
-                  <span className="grid h-[30px] w-[30px] place-items-center rounded-full bg-blue-500/15 text-[15px] font-extrabold text-blue-600 dark:text-blue-400 min-[760px]:h-[38px] min-[760px]:w-[38px] min-[760px]:text-xl">
-                    {index + 1}
-                  </span>
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 min-[760px]:h-[55px] min-[760px]:w-[55px] min-[760px]:rounded-2xl">
-                    <Icon className="h-5 w-5 min-[760px]:h-7 min-[760px]:w-7" />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="mb-1 text-sm font-semibold text-foreground">{passo.titulo}</h3>
-                    <p className="text-xs leading-relaxed text-muted-foreground">{passo.descricao}</p>
-                  </div>
-                  <div className="col-span-full flex min-h-[65px] items-center justify-center rounded-xl bg-muted p-3 lg:col-span-1">
-                    {previews[index]}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Dica da plataforma */}
-          <div className="mt-5 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-            <TriangleAlert className="h-5 w-5 shrink-0 text-amber-500" />
-            <p>{guia.dica}</p>
-          </div>
-        </section>
-
-        <CelularesIlustrados />
-      </div>
-
-      {/* Suporte */}
-      <div className="mt-5 flex flex-wrap items-center gap-4 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50 px-5 py-4 dark:border-blue-500/20 dark:from-blue-500/10 dark:to-sky-500/5 lg:flex-nowrap">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-green-500/15 text-green-600 dark:text-green-400">
-          <MessageCircle className="h-7 w-7" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground">Precisando de ajuda?</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Chame nosso time no WhatsApp e te ajudamos a instalar.
-          </p>
-        </div>
-        <a
-          href="https://wa.me/5519971454829"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-green-600 to-teal-600 px-5 py-3 text-sm font-bold text-white shadow-md transition-colors hover:from-green-500 hover:to-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:ml-auto lg:w-auto"
+    <AppLayout>
+      <div className="mx-auto w-full max-w-[1420px] overflow-x-hidden p-4 sm:p-6 min-[760px]:px-8">
+        {/* Breadcrumb */}
+        <nav
+          aria-label="Navegação"
+          className="mb-6 flex items-center gap-3 text-[13px] text-muted-foreground min-[760px]:mb-9"
         >
-          <MessageCircle className="h-4 w-4" />
-          Falar no WhatsApp
-          <ChevronRight className="h-4 w-4" />
-        </a>
+          <Link to="/dashboard" aria-label="Início" className="transition-colors hover:text-foreground">
+            <House className="h-4 w-4" />
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to="/tutoriais" className="transition-colors hover:text-foreground">
+            Tutoriais
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="font-semibold text-foreground">Baixar App</span>
+        </nav>
+
+        {/* Header */}
+        <header className="mb-7 flex items-center gap-3 min-[760px]:gap-5">
+          <div className="grid h-[54px] w-[54px] shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 text-white shadow-lg shadow-blue-500/20 min-[760px]:h-[68px] min-[760px]:w-[68px]">
+            <Smartphone className="h-7 w-7 min-[760px]:h-8 min-[760px]:w-8" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="mb-1 text-[25px] font-bold tracking-tight text-foreground min-[760px]:mb-2 min-[760px]:text-[34px]">
+              Baixar App
+            </h1>
+            <p className="text-xs text-muted-foreground min-[760px]:text-[15px]">
+              Instale o Méc como aplicativo no seu celular ou computador — sem precisar de loja de apps.
+            </p>
+          </div>
+        </header>
+
+        {/* Abas de SO */}
+        <div className="mb-5 flex flex-wrap gap-2 min-[760px]:gap-3">
+          {abas.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setSo(id)}
+              aria-pressed={so === id}
+              className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border px-1.5 py-3 text-xs font-semibold transition-all min-[760px]:gap-3 min-[760px]:rounded-2xl lg:flex-none lg:px-7 min-[760px]:py-3.5 min-[760px]:text-base ${
+                so === id
+                  ? "border-transparent bg-gradient-to-r from-blue-700 to-blue-500 text-white shadow-lg shadow-blue-500/20"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0 min-[760px]:h-5 min-[760px]:w-5" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Duas colunas só a partir de 1440px: a sidebar do app ocupa 16rem da janela. */}
+        <div className="grid items-center gap-6 min-[1440px]:grid-cols-[minmax(0,1.2fr)_minmax(330px,0.75fr)]">
+          {/* Card de passos */}
+          <section className="min-w-0 rounded-[22px] border border-border bg-card p-4 shadow-sm min-[760px]:p-7">
+            <span className="inline-flex rounded-full bg-blue-500/10 px-3 py-1.5 text-[11px] font-extrabold text-blue-600 dark:text-blue-400">
+              PASSO A PASSO
+            </span>
+            <h2 className="mb-2 mt-3.5 text-xl font-bold tracking-tight text-foreground min-[760px]:text-[25px]">
+              {guia.titulo}
+            </h2>
+            <p className="mb-5 text-sm leading-relaxed text-muted-foreground">{guia.descricao}</p>
+
+            <div className="space-y-3">
+              {guia.passos.map((passo, index) => {
+                const Icon = passo.icon;
+                return (
+                  <div
+                    key={index}
+                    className="grid grid-cols-[32px_42px_minmax(0,1fr)] items-center gap-2.5 rounded-2xl border border-border p-3 lg:grid-cols-[42px_58px_minmax(0,1fr)_180px] min-[760px]:gap-4 min-[760px]:p-4"
+                  >
+                    <span className="grid h-[30px] w-[30px] place-items-center rounded-full bg-blue-500/15 text-[15px] font-extrabold text-blue-600 dark:text-blue-400 min-[760px]:h-[38px] min-[760px]:w-[38px] min-[760px]:text-xl">
+                      {index + 1}
+                    </span>
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 min-[760px]:h-[55px] min-[760px]:w-[55px] min-[760px]:rounded-2xl">
+                      <Icon className="h-5 w-5 min-[760px]:h-7 min-[760px]:w-7" />
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="mb-1 text-sm font-semibold text-foreground">{passo.titulo}</h3>
+                      <p className="text-xs leading-relaxed text-muted-foreground">{passo.descricao}</p>
+                    </div>
+                    <div className="col-span-full flex min-h-[65px] items-center justify-center rounded-xl bg-muted p-3 lg:col-span-1">
+                      {previews[index]}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Dica da plataforma */}
+            <div className="mt-5 flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+              <TriangleAlert className="h-5 w-5 shrink-0 text-amber-500" />
+              <p>{guia.dica}</p>
+            </div>
+          </section>
+
+          <CelularesIlustrados />
+        </div>
+
+        {/* Suporte */}
+        <div className="mt-5 flex flex-wrap items-center gap-4 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50 px-5 py-4 dark:border-blue-500/20 dark:from-blue-500/10 dark:to-sky-500/5 lg:flex-nowrap">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-green-500/15 text-green-600 dark:text-green-400">
+            <MessageCircle className="h-7 w-7" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">Precisando de ajuda?</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Chame nosso time no WhatsApp e te ajudamos a instalar.
+            </p>
+          </div>
+          <a
+            href="https://wa.me/5519971454829"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-green-600 to-teal-600 px-5 py-3 text-sm font-bold text-white shadow-md transition-colors hover:from-green-500 hover:to-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:ml-auto lg:w-auto"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Falar no WhatsApp
+            <ChevronRight className="h-4 w-4" />
+          </a>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
