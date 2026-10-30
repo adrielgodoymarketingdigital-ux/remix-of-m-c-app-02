@@ -1,0 +1,224 @@
+/* Animações e classes da landing V4 (vindas do index.css do estúdio de landings).
+   TUDO preso em .v3 (:where(.v3) não aumenta a especificidade, então as classes se comportam
+   como no estúdio) e keyframes com prefixo v3-, para não vazar para o resto do MécApp.
+   Não trazemos @tailwind nem o @layer base do estúdio: o MécApp já tem os dele. */
+
+/* Regras úteis do @layer base do estúdio, só dentro da landing */
+:where(.v3) section[id] {
+  scroll-margin-top: 5rem;
+}
+:where(.v3 :focus-visible) {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+/* O MécApp põe tracking-tight em todo título (h1..h6) e borda com a cor do tema do app (que muda no modo escuro).
+   Dentro da landing volta ao padrão do estúdio; as classes do Tailwind continuam valendo por cima. */
+:where(.v3) :is(h1, h2, h3, h4, h5, h6) {
+  letter-spacing: normal;
+}
+.v3 {
+  --border: 220 13% 91%; /* cinza-200 do Tailwind, a cor de borda padrão do estúdio */
+}
+
+/* Rolagem suave nas âncoras só enquanto a landing está na tela (o MécApp só tem no celular) */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.v3) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Fundo do primeiro bloco: grade fina e clara */
+:where(.v3) .fundo-grade {
+  background-image:
+    linear-gradient(to right, rgb(15 23 42 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(15 23 42 / 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 70% 30%, #000 30%, transparent 75%);
+}
+
+/* (1) Entrada ao rolar: sobe + aparece, escalonada por --i. Só transform e opacity.
+   A classe reveal-on é posta pelo hook useReveal; sem JS ou com movimento reduzido, tudo aparece normal. */
+html.reveal-on :where(.v3) [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition:
+    opacity 600ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+html.reveal-on :where(.v3) [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+/* imagem dentro do cartão sobe um pouco depois do cartão */
+html.reveal-on :where(.v3) [data-reveal] .sobe-depois {
+  transform: translate3d(0, 40px, 0);
+  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1) 200ms;
+}
+html.reveal-on :where(.v3) [data-reveal].is-in .sobe-depois {
+  transform: none;
+}
+
+/* Entrada no carregamento (só elementos de apoio do primeiro bloco; título e botão já aparecem prontos) */
+@keyframes v3-entrar {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes v3-entrar-lado {
+  from {
+    transform: translate3d(48px, 0, 0);
+  }
+  to {
+    transform: none;
+  }
+}
+:where(.v3) .anim-entrar {
+  animation: v3-entrar 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+/* o notebook só desliza (sem opacidade) para não atrasar a maior imagem da tela */
+:where(.v3) .anim-entrar-lado {
+  animation: v3-entrar-lado 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* (2) Flutuação sutil do notebook e do celular */
+@keyframes v3-flutuar {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+:where(.v3) .anim-flutuar {
+  animation: v3-flutuar 7s ease-in-out infinite;
+}
+:where(.v3) .anim-flutuar-2 {
+  animation: v3-flutuar 6s ease-in-out -2.5s infinite;
+}
+:where(.v3) .anim-flutuar-3 {
+  animation: v3-flutuar 5s ease-in-out -1s infinite;
+}
+
+/* Faixa de módulos andando (letreiro). Pausa ao passar o mouse. */
+@keyframes v3-letreiro {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+:where(.v3) .anim-letreiro {
+  animation: v3-letreiro 45s linear infinite;
+}
+:where(.v3) .letreiro:hover .anim-letreiro {
+  animation-play-state: paused;
+}
+
+/* Brilho que atravessa o botão principal no hover */
+:where(.v3) .brilho {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+:where(.v3) .brilho::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.28), transparent);
+  transform: translate3d(-120%, 0, 0) skewX(-20deg);
+  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  z-index: -1;
+}
+:where(.v3) .brilho:hover::after {
+  transform: translate3d(320%, 0, 0) skewX(-20deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.v3) .anim-flutuar,
+  :where(.v3) .anim-flutuar-2,
+  :where(.v3) .anim-flutuar-3,
+  :where(.v3) .anim-entrar,
+  :where(.v3) .anim-entrar-lado,
+  :where(.v3) .anim-letreiro {
+    animation: none;
+  }
+  :where(.v3) *,
+  :where(.v3) *::before,
+  :where(.v3) *::after {
+    transition-duration: 1ms !important;
+  }
+}
+
+/* Barra de progresso da rolagem e parallax leve (variáveis vindas do useRolagemCSS) */
+:where(.v3) .barra-progresso {
+  transform: scaleX(var(--progresso, 0));
+  transform-origin: left;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :where(.v3) .parallax-lento {
+    transform: translate3d(0, calc(var(--rolagem, 0) * -0.06px), 0);
+  }
+  :where(.v3) .parallax-rapido {
+    transform: translate3d(0, calc(var(--rolagem, 0) * -0.14px), 0);
+  }
+}
+
+/* Linha do "Como funciona" que se desenha da esquerda para a direita ao entrar */
+html.reveal-on :where(.v3) .linha-desenha[data-reveal] {
+  opacity: 1;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1) 150ms;
+}
+html.reveal-on :where(.v3) .linha-desenha[data-reveal].is-in {
+  transform: scaleX(1);
+}
+
+/* Grade fina do bloco escuro da chamada final */
+:where(.v3) .fundo-grade-escuro {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 80% 20%, #000 20%, transparent 70%);
+}
+
+/* Resposta do FAQ aparece subindo (só transform e opacity) */
+@media (prefers-reduced-motion: no-preference) {
+  :where(.v3) details[open] .faq-resposta {
+    animation: v3-entrar 400ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+/* Borda neon girando no plano em destaque (só transform) */
+@keyframes v3-neon-girar {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+:where(.v3) .neon-giro {
+  transform: translate(-50%, -50%);
+  animation: v3-neon-girar 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(.v3) .neon-giro {
+    animation: none;
+  }
+}
+
+/* Reflexo que atravessa a borda dos cards premium ao passar o mouse (só transform) */
+:where(.v3) .reflexo {
+  transform: translate3d(0, 0, 0) skewX(-20deg);
+  transition: transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+:where(.v3) .group:hover .reflexo {
+  transform: translate3d(400%, 0, 0) skewX(-20deg);
+}

@@ -1,10 +1,12 @@
-/* Estilo "tecnológico" da VERSÃO 3. Só é carregado em /v3/ (as versões 1 e 2 não mudam).
+/* Adaptado para o MécApp: body.v3 virou .v3 (o tema fica num <div className="v3 claro">),
+   tudo preso em .v3 e keyframes com prefixo v3-.
+   Estilo "tecnológico" da VERSÃO 3. Só é carregado em /v3/ (as versões 1 e 2 não mudam).
    Regras do estúdio: animação só com transform e opacity, 300-700 ms nas interações,
    e tudo desligado com prefers-reduced-motion. */
 
 /* CORES DE TEMA. A versão 3 usa o tema escuro (body.v3) e a versão 4 o claro (body.v3.claro).
    Os componentes usam as classes t-* abaixo em vez de cores fixas, então o mesmo layout serve aos dois temas. */
-body.v3 {
+.v3 {
   --t-fundo: #05070d;
   --t-fundo-2: #070b14;
   --t-sup: #0b1120;
@@ -32,7 +34,7 @@ body.v3 {
   background: var(--t-fundo);
   color: var(--t-txt-forte);
 }
-body.v3.claro {
+.v3.claro {
   --t-fundo: #f8fafc;
   --t-fundo-2: #ffffff;
   --t-sup: #ffffff;
@@ -59,35 +61,35 @@ body.v3.claro {
   --t-hud: #06b6d4;
 }
 
-.t-fundo-2 { background-color: var(--t-fundo-2); }
-.t-sup { background-color: var(--t-sup); }
-.t-sup-2 { background-color: var(--t-sup-2); }
-.t-borda { border-color: var(--t-borda); }
-.t-divide > * + * { border-color: var(--t-borda); }
-.t-ring { --tw-ring-color: var(--t-borda); }
-.t-ring-acento { --tw-ring-color: var(--t-acento-borda); }
-.t-txt { color: var(--t-txt); }
-.t-txt-forte { color: var(--t-txt-forte); }
-.t-txt-2 { color: var(--t-txt-2); }
-.t-txt-3 { color: var(--t-txt-3); }
-.t-txt-4 { color: var(--t-txt-4); }
-.t-hover-txt:hover { color: var(--t-txt); }
-.t-acento { color: var(--t-acento); }
-.t-acento-bg { background-color: var(--t-acento-bg); }
-.t-acento-borda { border-color: var(--t-acento-borda); }
-.t-ok { color: var(--t-ok); }
-.t-erro { color: var(--t-erro); }
-.t-erro-2 { color: var(--t-erro-2); }
-.t-erro-bg { background-color: var(--t-erro-bg); }
-.t-erro-bg-2 { background-color: var(--t-erro-bg-2); }
+:where(.v3) .t-fundo-2 { background-color: var(--t-fundo-2); }
+:where(.v3) .t-sup { background-color: var(--t-sup); }
+:where(.v3) .t-sup-2 { background-color: var(--t-sup-2); }
+:where(.v3) .t-borda { border-color: var(--t-borda); }
+:where(.v3) .t-divide > * + * { border-color: var(--t-borda); }
+:where(.v3) .t-ring { --tw-ring-color: var(--t-borda); }
+:where(.v3) .t-ring-acento { --tw-ring-color: var(--t-acento-borda); }
+:where(.v3) .t-txt { color: var(--t-txt); }
+:where(.v3) .t-txt-forte { color: var(--t-txt-forte); }
+:where(.v3) .t-txt-2 { color: var(--t-txt-2); }
+:where(.v3) .t-txt-3 { color: var(--t-txt-3); }
+:where(.v3) .t-txt-4 { color: var(--t-txt-4); }
+:where(.v3) .t-hover-txt:hover { color: var(--t-txt); }
+:where(.v3) .t-acento { color: var(--t-acento); }
+:where(.v3) .t-acento-bg { background-color: var(--t-acento-bg); }
+:where(.v3) .t-acento-borda { border-color: var(--t-acento-borda); }
+:where(.v3) .t-ok { color: var(--t-ok); }
+:where(.v3) .t-erro { color: var(--t-erro); }
+:where(.v3) .t-erro-2 { color: var(--t-erro-2); }
+:where(.v3) .t-erro-bg { background-color: var(--t-erro-bg); }
+:where(.v3) .t-erro-bg-2 { background-color: var(--t-erro-bg-2); }
 /* no claro, cartões e painéis ganham sombra suave para não "sumirem" no fundo */
-body.v3.claro .t-sup,
-body.v3.claro .t-sup-2 {
+.v3.claro .t-sup,
+.v3.claro .t-sup-2 {
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 32px -18px rgb(15 23 42 / 0.18);
 }
 
 /* Fundo de "placa": grade fina + pontos nos cruzamentos, apagando nas bordas */
-.fundo-placa {
+:where(.v3) .fundo-placa {
   background-image:
     radial-gradient(circle at 1px 1px, var(--t-placa-ponto) 1px, transparent 1.5px),
     linear-gradient(to right, var(--t-placa-linha) 1px, transparent 1px),
@@ -100,11 +102,11 @@ body.v3.claro .t-sup-2 {
 }
 
 /* Moldura de painel: cantos marcados (estilo HUD) */
-.hud {
+:where(.v3) .hud {
   position: relative;
 }
-.hud::before,
-.hud::after {
+:where(.v3) .hud::before,
+:where(.v3) .hud::after {
   content: "";
   position: absolute;
   width: 18px;
@@ -112,14 +114,14 @@ body.v3.claro .t-sup-2 {
   border-color: var(--t-hud);
   pointer-events: none;
 }
-.hud::before {
+:where(.v3) .hud::before {
   top: -1px;
   left: -1px;
   border-top: 2px solid;
   border-left: 2px solid;
   border-top-left-radius: 6px;
 }
-.hud::after {
+:where(.v3) .hud::after {
   right: -1px;
   bottom: -1px;
   border-right: 2px solid;
@@ -128,7 +130,7 @@ body.v3.claro .t-sup-2 {
 }
 
 /* Texto em degradê ciano -> azul */
-.texto-neon {
+:where(.v3) .texto-neon {
   background: linear-gradient(90deg, var(--t-neon-1), var(--t-neon-2) 55%, var(--t-neon-3));
   -webkit-background-clip: text;
   background-clip: text;
@@ -136,7 +138,7 @@ body.v3.claro .t-sup-2 {
 }
 
 /* Linha de "varredura" que desce pelo print (só transform) */
-@keyframes varrer {
+@keyframes v3-varrer {
   from {
     transform: translate3d(0, -100%, 0);
   }
@@ -144,12 +146,12 @@ body.v3.claro .t-sup-2 {
     transform: translate3d(0, 900%, 0);
   }
 }
-.anim-varrer {
-  animation: varrer 4.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+:where(.v3) .anim-varrer {
+  animation: v3-varrer 4.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 /* Luz que pulsa (só opacity) */
-@keyframes pulso {
+@keyframes v3-pulso {
   0%,
   100% {
     opacity: 0.35;
@@ -158,12 +160,12 @@ body.v3.claro .t-sup-2 {
     opacity: 1;
   }
 }
-.anim-pulso {
-  animation: pulso 2.4s ease-in-out infinite;
+:where(.v3) .anim-pulso {
+  animation: v3-pulso 2.4s ease-in-out infinite;
 }
 
 /* Ponto de dado correndo por uma linha: o "trilho" tem a largura da linha e anda 100% dela */
-@keyframes correr {
+@keyframes v3-correr {
   from {
     transform: translate3d(0, 0, 0);
     opacity: 0;
@@ -177,12 +179,12 @@ body.v3.claro .t-sup-2 {
     opacity: 0;
   }
 }
-.anim-correr {
-  animation: correr 2.8s linear infinite;
+:where(.v3) .anim-correr {
+  animation: v3-correr 2.8s linear infinite;
   animation-delay: var(--d, 0ms);
 }
 /* versão vertical (celular) */
-@keyframes correr-baixo {
+@keyframes v3-correr-baixo {
   from {
     transform: translate3d(0, 0, 0);
     opacity: 0;
@@ -196,27 +198,27 @@ body.v3.claro .t-sup-2 {
     opacity: 0;
   }
 }
-.anim-correr-baixo {
-  animation: correr-baixo 2.8s linear infinite;
+:where(.v3) .anim-correr-baixo {
+  animation: v3-correr-baixo 2.8s linear infinite;
   animation-delay: var(--d, 0ms);
 }
 
 /* Cursor piscando dos rótulos em código */
-@keyframes piscar {
+@keyframes v3-piscar {
   50% {
     opacity: 0;
   }
 }
-.cursor-piscando {
-  animation: piscar 1s steps(1) infinite;
+:where(.v3) .cursor-piscando {
+  animation: v3-piscar 1s steps(1) infinite;
 }
 
 /* Cartão com borda que acende no hover (a luz é uma camada que só muda de opacity) */
-.cartao-tech {
+:where(.v3) .cartao-tech {
   position: relative;
   isolation: isolate;
 }
-.cartao-tech::before {
+:where(.v3) .cartao-tech::before {
   content: "";
   position: absolute;
   inset: -1px;
@@ -233,124 +235,124 @@ body.v3.claro .t-sup-2 {
   z-index: -1;
   pointer-events: none;
 }
-.cartao-tech:hover::before,
-.cartao-tech:focus-within::before,
-.cartao-tech.aceso::before,
-.cartao-tech[data-aceso="true"]::before {
+:where(.v3) .cartao-tech:hover::before,
+:where(.v3) .cartao-tech:focus-within::before,
+:where(.v3) .cartao-tech.aceso::before,
+:where(.v3) .cartao-tech[data-aceso="true"]::before {
   opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-varrer,
-  .anim-pulso,
-  .anim-correr,
-  .anim-correr-baixo,
-  .cursor-piscando {
+  :where(.v3) .anim-varrer,
+  :where(.v3) .anim-pulso,
+  :where(.v3) .anim-correr,
+  :where(.v3) .anim-correr-baixo,
+  :where(.v3) .cursor-piscando {
     animation: none;
   }
-  .anim-correr,
-  .anim-correr-baixo {
+  :where(.v3) .anim-correr,
+  :where(.v3) .anim-correr-baixo {
     opacity: 0;
   }
 }
 
 /* Seções reaproveitadas das versões 1 e 2 (depoimentos, fundador, FAQ, rodapé) ficam escuras SÓ aqui,
    trocando as cores claras pelas do tema tech. Os componentes originais não mudam. */
-.escuro-auto .bg-white {
+:where(.v3) .escuro-auto .bg-white {
   background-color: #0b1120;
 }
-.escuro-auto .bg-slate-50 {
+:where(.v3) .escuro-auto .bg-slate-50 {
   background-color: #070b14;
 }
-.escuro-auto .bg-slate-300 {
+:where(.v3) .escuro-auto .bg-slate-300 {
   background-color: rgb(255 255 255 / 0.25);
 }
-.escuro-auto .text-slate-950 {
+:where(.v3) .escuro-auto .text-slate-950 {
   color: #fff;
 }
-.escuro-auto .text-slate-700 {
+:where(.v3) .escuro-auto .text-slate-700 {
   color: #cbd5e1;
 }
-.escuro-auto .text-slate-600,
-.escuro-auto .text-slate-500 {
+:where(.v3) .escuro-auto .text-slate-600,
+:where(.v3) .escuro-auto .text-slate-500 {
   color: #94a3b8;
 }
-.escuro-auto .text-brand-600 {
+:where(.v3) .escuro-auto .text-brand-600 {
   color: #67e8f9;
 }
-.escuro-auto .border-slate-200,
-.escuro-auto .divide-slate-200 > * + *,
-.escuro-auto .border-slate-300 {
+:where(.v3) .escuro-auto .border-slate-200,
+:where(.v3) .escuro-auto .divide-slate-200 > * + *,
+:where(.v3) .escuro-auto .border-slate-300 {
   border-color: rgb(255 255 255 / 0.12);
 }
-.escuro-auto .hover\:text-slate-950:hover {
+:where(.v3) .escuro-auto .hover\:text-slate-950:hover {
   color: #fff;
 }
-.escuro-auto .hover\:text-brand-700:hover {
+:where(.v3) .escuro-auto .hover\:text-brand-700:hover {
   color: #67e8f9;
 }
-.escuro-auto .hover\:border-slate-400:hover {
+:where(.v3) .escuro-auto .hover\:border-slate-400:hover {
   border-color: rgb(103 232 249 / 0.5);
 }
 
 /* Cena do topo (CenaHero): camadas com profundidade, inclinação 3D e entrada em sequência.
    Só transform e opacidade. --mx/--my (-1..1) vêm do mouse; --prof é o deslocamento máximo da camada. */
-.cena-camada {
+:where(.v3) .cena-camada {
   transform: translate3d(calc(var(--mx, 0) * var(--prof, 0px)), calc(var(--my, 0) * var(--prof, 0px)), 0);
   transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
   will-change: transform;
 }
-.cena-inclinar-painel {
+:where(.v3) .cena-inclinar-painel {
   transform: perspective(2400px) rotateY(-11deg) rotateX(7deg) rotateZ(-1.5deg);
   transform-origin: 60% 50%;
 }
-.cena-inclinar-celular {
+:where(.v3) .cena-inclinar-celular {
   transform: perspective(1400px) rotateY(24deg) rotateX(6deg) rotateZ(-8deg);
   transform-origin: 50% 50%;
 }
-@keyframes cena-subir {
+@keyframes v3-cena-subir {
   from { transform: translate3d(0, 70px, 0) scale(0.96); }
   to { transform: none; }
 }
-@keyframes cena-entrar-esq {
+@keyframes v3-cena-entrar-esq {
   from { opacity: 0; transform: translate3d(-80px, 30px, 0) rotate(-4deg); }
   to { opacity: 1; transform: none; }
 }
-@keyframes cena-entrar-dir {
+@keyframes v3-cena-entrar-dir {
   from { opacity: 0; transform: translate3d(70px, 0, 0); }
   to { opacity: 1; transform: none; }
 }
-@keyframes cena-cair {
+@keyframes v3-cena-cair {
   from { opacity: 0; transform: translate3d(0, -40px, 0) scale(0.92); }
   to { opacity: 1; transform: none; }
 }
-@keyframes cena-seta {
+@keyframes v3-cena-seta {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(-4px, 7px, 0); }
 }
-.cena-subir { animation: cena-subir 1000ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
-.cena-entrar-esq { animation: cena-entrar-esq 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
-.cena-entrar-dir { animation: cena-entrar-dir 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
-.cena-cair { animation: cena-cair 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
-.cena-seta { animation: cena-seta 2.4s ease-in-out infinite; }
+:where(.v3) .cena-subir { animation: v3-cena-subir 1000ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+:where(.v3) .cena-entrar-esq { animation: v3-cena-entrar-esq 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+:where(.v3) .cena-entrar-dir { animation: v3-cena-entrar-dir 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+:where(.v3) .cena-cair { animation: v3-cena-cair 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--d, 0ms); }
+:where(.v3) .cena-seta { animation: v3-cena-seta 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .cena-subir, .cena-entrar-esq, .cena-entrar-dir, .cena-cair, .cena-seta { animation: none; }
-  .cena-camada { transition: none; transform: none; }
+  :where(.v3) .cena-subir, :where(.v3) .cena-entrar-esq, :where(.v3) .cena-entrar-dir, :where(.v3) .cena-cair, :where(.v3) .cena-seta { animation: none; }
+  :where(.v3) .cena-camada { transition: none; transform: none; }
 }
 
 /* ===== Animações extras das seções (v3/v4) ===== 
    Só transform e opacity. Tudo some com prefers-reduced-motion (o useReveal nem liga o html.reveal-on). */
 
 /* Variações de entrada do [data-reveal]: "zoom" cresce, "esq"/"dir" chegam pelos lados */
-html.reveal-on [data-reveal="zoom"] { transform: translate3d(0, 24px, 0) scale(0.94); }
-html.reveal-on [data-reveal="esq"] { transform: translate3d(-40px, 0, 0); }
-html.reveal-on [data-reveal="dir"] { transform: translate3d(40px, 0, 0); }
-html.reveal-on [data-reveal="zoom"].is-in,
-html.reveal-on [data-reveal="esq"].is-in,
-html.reveal-on [data-reveal="dir"].is-in { transform: none; }
+html.reveal-on :where(.v3) [data-reveal="zoom"] { transform: translate3d(0, 24px, 0) scale(0.94); }
+html.reveal-on :where(.v3) [data-reveal="esq"] { transform: translate3d(-40px, 0, 0); }
+html.reveal-on :where(.v3) [data-reveal="dir"] { transform: translate3d(40px, 0, 0); }
+html.reveal-on :where(.v3) [data-reveal="zoom"].is-in,
+html.reveal-on :where(.v3) [data-reveal="esq"].is-in,
+html.reveal-on :where(.v3) [data-reveal="dir"].is-in { transform: none; }
 
 /* Detalhes que acontecem DEPOIS que o card entrou (atraso em --d) */
-html.reveal-on [data-reveal] .anima-pop {
+html.reveal-on :where(.v3) [data-reveal] .anima-pop {
   opacity: 0;
   transform: scale(0.3);
   transition:
@@ -358,19 +360,19 @@ html.reveal-on [data-reveal] .anima-pop {
     transform 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
   transition-delay: calc(var(--i, 0) * 90ms + var(--d, 350ms));
 }
-html.reveal-on [data-reveal] .anima-risco {
+html.reveal-on :where(.v3) [data-reveal] .anima-risco {
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1);
   transition-delay: calc(var(--i, 0) * 90ms + var(--d, 250ms));
 }
-html.reveal-on [data-reveal] .anima-risco-v {
+html.reveal-on :where(.v3) [data-reveal] .anima-risco-v {
   transform: scaleY(0);
   transform-origin: top;
   transition: transform 800ms cubic-bezier(0.2, 0.7, 0.2, 1);
   transition-delay: calc(var(--i, 0) * 90ms + var(--d, 250ms));
 }
-html.reveal-on [data-reveal] .anima-sobe {
+html.reveal-on :where(.v3) [data-reveal] .anima-sobe {
   opacity: 0;
   transform: translate3d(0, 14px, 0);
   transition:
@@ -378,56 +380,56 @@ html.reveal-on [data-reveal] .anima-sobe {
     transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
   transition-delay: calc(var(--i, 0) * 90ms + var(--d, 450ms));
 }
-html.reveal-on [data-reveal].is-in .anima-pop,
-html.reveal-on [data-reveal].is-in .anima-sobe { opacity: 1; transform: none; }
-html.reveal-on [data-reveal].is-in .anima-risco { transform: scaleX(1); }
-html.reveal-on [data-reveal].is-in .anima-risco-v { transform: scaleY(1); }
+html.reveal-on :where(.v3) [data-reveal].is-in .anima-pop,
+html.reveal-on :where(.v3) [data-reveal].is-in .anima-sobe { opacity: 1; transform: none; }
+html.reveal-on :where(.v3) [data-reveal].is-in .anima-risco { transform: scaleX(1); }
+html.reveal-on :where(.v3) [data-reveal].is-in .anima-risco-v { transform: scaleY(1); }
 
 /* Brilhos do fundo flutuando devagar (aurora) */
-@keyframes aurora {
+@keyframes v3-aurora {
   0% { transform: translate3d(0, 0, 0) scale(1); }
   50% { transform: translate3d(6%, -5%, 0) scale(1.12); }
   100% { transform: translate3d(-5%, 4%, 0) scale(0.95); }
 }
-.aurora {
-  animation: aurora 16s ease-in-out infinite alternate;
+:where(.v3) .aurora {
+  animation: v3-aurora 16s ease-in-out infinite alternate;
   animation-delay: var(--d, 0s);
   will-change: transform;
 }
 
 /* Reflexo de luz que atravessa o card de tempos em tempos */
-@keyframes reflexo-passa {
+@keyframes v3-reflexo-passa {
   0%, 70% { transform: translate3d(-120%, 0, 0) skewX(-20deg); }
   100% { transform: translate3d(320%, 0, 0) skewX(-20deg); }
 }
-.reflexo-auto {
-  animation: reflexo-passa 6s ease-in-out infinite;
+:where(.v3) .reflexo-auto {
+  animation: v3-reflexo-passa 6s ease-in-out infinite;
   animation-delay: var(--d, 1.5s);
 }
 
 /* Flutuação bem leve (cards de destaque) */
-@keyframes flutua-leve {
+@keyframes v3-flutua-leve {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(0, -8px, 0); }
 }
-.flutua-leve { animation: flutua-leve 6s ease-in-out infinite; }
+:where(.v3) .flutua-leve { animation: v3-flutua-leve 6s ease-in-out infinite; }
 
 /* Pulso em anel (ícones e pontos "vivos") */
-@keyframes anel {
+@keyframes v3-anel {
   0% { transform: scale(1); opacity: 0.6; }
   100% { transform: scale(2.4); opacity: 0; }
 }
-.anel { animation: anel 2.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+:where(.v3) .anel { animation: v3-anel 2.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
 
 /* Preço que "pula" quando o plano indicado muda */
-@keyframes preco-pula {
+@keyframes v3-preco-pula {
   0% { transform: scale(0.85); opacity: 0; }
   60% { transform: scale(1.06); opacity: 1; }
   100% { transform: scale(1); }
 }
-.preco-pula { animation: preco-pula 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both; transform-origin: left bottom; }
+:where(.v3) .preco-pula { animation: v3-preco-pula 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both; transform-origin: left bottom; }
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora, .reflexo-auto, .flutua-leve, .anel, .preco-pula { animation: none; }
-  .reflexo-auto, .anel { opacity: 0; }
+  :where(.v3) .aurora, :where(.v3) .reflexo-auto, :where(.v3) .flutua-leve, :where(.v3) .anel, :where(.v3) .preco-pula { animation: none; }
+  :where(.v3) .reflexo-auto, :where(.v3) .anel { opacity: 0; }
 }
