@@ -37,7 +37,7 @@ export function Rodape({ prefixo = "" }: { prefixo?: string }) {
       <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-12 lg:px-8">
         <div className="lg:col-span-4">
           <a href={prefixo ? prefixo : "#topo"} className="flex items-center gap-2.5" aria-label="MécApp, voltar ao início">
-            <img src="/img/mecapp-icone.webp" alt="" width={32} height={32} loading="lazy" className="h-8 w-8 rounded-lg" />
+            <img src="/img/mecapp-icone.webp" alt="" width={32} height={32} loading="lazy" className="h-8 w-8 rounded-[0.5rem]" />
             <span className="font-display text-lg font-bold tracking-tight text-slate-950">MécApp</span>
           </a>
           <p className="mt-4 max-w-xs text-sm text-slate-600">Sistema para lojas de celular e assistências técnicas.</p>

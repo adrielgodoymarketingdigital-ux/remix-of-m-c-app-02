@@ -14,12 +14,12 @@ export function LogoWhatsApp({ className = "h-5 w-5" }: { className?: string }) 
 
 export function MensagemWhatsApp({ compacta = false }: { compacta?: boolean }) {
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 ${compacta ? "w-48 p-2.5" : "w-64 p-3.5"}`}>
+    <div className={`rounded-2xl border border-slate-200 bg-white shadow-[0_20px_25px_-5px_rgb(0_0_0/0.1),0_8px_10px_-6px_rgb(0_0_0/0.1)] shadow-slate-900/10 ${compacta ? "w-48 p-2.5" : "w-64 p-3.5"}`}>
       <div className="flex items-center gap-2">
         <LogoWhatsApp className={compacta ? "h-5 w-5" : "h-6 w-6"} />
         <p className={`font-display font-semibold text-slate-950 ${compacta ? "text-xs" : "text-sm"}`}>Enviado pelo WhatsApp</p>
       </div>
-      <div className={`mt-2 rounded-xl rounded-tl-sm bg-[#E7FCE3] text-slate-800 ${compacta ? "p-2 text-xs leading-snug" : "p-3 text-[13px] leading-snug"}`}>
+      <div className={`mt-2 rounded-xl rounded-tl-[0.125rem] bg-[#E7FCE3] text-slate-800 ${compacta ? "p-2 text-xs leading-snug" : "p-3 text-[13px] leading-snug"}`}>
         Olá! Acompanhe sua OS em tempo real:
         <span className="mt-1 block font-medium text-brand-700 underline decoration-brand-300 underline-offset-2">
           link de acompanhamento

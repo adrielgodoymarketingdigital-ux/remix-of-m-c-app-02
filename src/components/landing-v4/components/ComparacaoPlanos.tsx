@@ -201,7 +201,7 @@ export function ComparacaoPlanos({ planos, anual }: { planos: PlanoComparado[]; 
         >
           {tudo ? "Mostrar só o que muda entre os planos" : "Mostrar também o que todos os planos têm"}
         </button>
-        <p className="text-center text-sm text-slate-400">Todo cadastro ganha 24h de acesso Premium para testar tudo.</p>
+        <p className="text-center text-sm text-slate-400">Todo cadastro ganha 24h de acesso para testar os principais recursos.</p>
       </div>
 
       {/* Celular: botões de assinar embaixo (no cabeçalho não cabem) */}

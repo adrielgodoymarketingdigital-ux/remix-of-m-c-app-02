@@ -59,7 +59,7 @@ export function Fundador() {
           <div
             data-reveal
             style={{ "--i": 2 } as CSSProperties}
-            className="absolute -bottom-6 right-0 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-xl shadow-slate-900/10 sm:right-6 lg:-right-8"
+            className="absolute -bottom-6 right-0 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-[0_20px_25px_-5px_rgb(0_0_0/0.1),0_8px_10px_-6px_rgb(0_0_0/0.1)] shadow-slate-900/10 sm:right-6 lg:-right-8"
           >
             <p className="font-display text-4xl font-bold text-slate-950">
               +<Contador ate={6} /> anos

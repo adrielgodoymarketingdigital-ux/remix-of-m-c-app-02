@@ -219,7 +219,7 @@ export function Planos() {
               <span className="bg-gradient-to-r from-brand-400 to-sky-300 bg-clip-text text-transparent">Escolha o plano depois.</span>
             </h2>
             <p data-reveal style={{ "--i": 1 } as CSSProperties} className="mt-5 max-w-xl text-lg text-slate-300">
-              Todo cadastro ganha 24h de acesso Premium para testar tudo. Cancele a qualquer momento.
+              Todo cadastro ganha 24h de acesso para testar os principais recursos. Cancele a qualquer momento.
             </p>
           </div>
 
@@ -227,7 +227,7 @@ export function Planos() {
             <div role="group" aria-label="Período de cobrança" className="relative inline-grid grid-cols-2 rounded-xl border border-white/10 bg-white/5 p-1">
               <span
                 aria-hidden="true"
-                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-gradient-to-r from-brand-600 to-sky-500 shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-transform duration-500 ease-[cubic-bezier(0.2,0.7,0.2,1)] ${
+                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-[0.5rem] bg-gradient-to-r from-brand-600 to-sky-500 shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-transform duration-500 [transition-timing-function:cubic-bezier(0.2,0.7,0.2,1)] ${
                   anual ? "translate-x-full" : "translate-x-0"
                 }`}
               />
@@ -240,7 +240,7 @@ export function Planos() {
                   type="button"
                   aria-pressed={anual === o.v}
                   onClick={() => setAnual(o.v)}
-                  className={`relative rounded-lg px-6 py-2.5 font-display text-sm font-semibold transition-colors duration-300 ${
+                  className={`relative rounded-[0.5rem] px-6 py-2.5 font-display text-sm font-semibold transition-colors duration-300 ${
                     anual === o.v ? "text-white" : "text-slate-400 hover:text-white"
                   }`}
                 >

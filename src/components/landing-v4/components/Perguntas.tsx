@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 const perguntas = [
   {
     p: "Como funciona o teste grátis?",
-    r: "Você cria a conta e ganha 24h de acesso Premium para testar todos os recursos. Depois, escolhe o plano que faz sentido para a sua loja.",
+    r: "Você cria a conta e ganha 24h de acesso para testar os principais recursos. Depois, escolhe o plano que faz sentido para a sua loja.",
   },
   {
     p: "Posso cancelar quando quiser?",

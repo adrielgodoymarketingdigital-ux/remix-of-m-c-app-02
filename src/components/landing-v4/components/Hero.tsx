@@ -105,7 +105,7 @@ export const Hero = forwardRef<HTMLAnchorElement>(function Hero(_, ctaRef) {
           </div>
 
           <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
-            {["24h de acesso Premium grátis", "Cancele a qualquer momento"].map((t, n) => (
+            {["24h de acesso para testar os principais recursos", "Cancele a qualquer momento"].map((t, n) => (
               <li key={t} className="anim-entrar flex items-center gap-2" style={{ "--d": `${300 + n * 120}ms` } as CSSProperties}>
                 <IconeCheck className="h-4 w-4 text-emerald-600" />
                 {t}
@@ -129,7 +129,7 @@ export const Hero = forwardRef<HTMLAnchorElement>(function Hero(_, ctaRef) {
                     alt="Tela de estoque de dispositivos do MécApp com resumo do estoque (16 itens, custo total, venda total e lucro potencial) e aparelhos com custo, preço de venda e lucro"
                     fetchPriority="high"
                     decoding="async"
-                    className="block h-auto w-full rounded-md"
+                    className="block h-auto w-full rounded-[0.375rem]"
                   />
                 </div>
                 <div className="mx-auto h-3 w-[112%] -translate-x-[5.4%] rounded-b-2xl bg-gradient-to-b from-slate-300 to-slate-400" />

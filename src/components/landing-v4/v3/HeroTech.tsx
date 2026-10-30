@@ -10,7 +10,7 @@ import { CenaHero, DestaquesHero } from "./CenaHero";
 // Painel de dados só com números verdadeiros (brief.md e src/types/plano.ts).
 const dados = [
   { valor: "+6 anos", rotulo: "de assistência técnica do fundador" },
-  { valor: "24h", rotulo: "de acesso Premium grátis" },
+  { valor: "24h", rotulo: "de acesso para testar os principais recursos" },
   { valor: "R$ 19,90", rotulo: "por mês no plano Básico" },
   { valor: "3 filiais", rotulo: "no mesmo painel, no plano Ultra" },
 ];
@@ -65,7 +65,7 @@ export const HeroTech = forwardRef<HTMLAnchorElement>(function HeroTech(_, ctaRe
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <p
-            className="anim-entrar inline-flex items-center gap-2 rounded-md border t-acento-borda t-acento-bg px-3 py-1.5 font-mono text-xs t-acento sm:text-sm"
+            className="anim-entrar inline-flex items-center gap-2 rounded-[0.375rem] border t-acento-borda t-acento-bg px-3 py-1.5 font-mono text-xs t-acento sm:text-sm"
             style={{ "--d": "60ms" } as CSSProperties}
           >
             <span className="anim-pulso h-2 w-2 rounded-full bg-cyan-400" aria-hidden="true" />
@@ -116,7 +116,7 @@ export const HeroTech = forwardRef<HTMLAnchorElement>(function HeroTech(_, ctaRe
           </div>
 
           <ul className="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm t-txt-3">
-            {["24h de acesso Premium grátis", "Cancele a qualquer momento", "Sem instalar nada"].map((t) => (
+            {["24h de acesso para testar os principais recursos", "Cancele a qualquer momento", "Sem instalar nada"].map((t) => (
               <li key={t} className="flex items-center gap-2">
                 <IconeCheck className="h-4 w-4 t-acento" />
                 {t}

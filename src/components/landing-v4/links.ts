@@ -13,6 +13,6 @@ export const LINKS = {
   // WhatsApp oficial do suporte (o mesmo do app: src/components/suporte/BotaoWhatsAppSuporte.tsx do MecApp)
   whatsappSuporte: "https://wa.me/5519971454829",
   // Páginas legais (no MécApp: /termos e /privacidade)
-  termos: "/termos/",
-  privacidade: "/privacidade/",
+  termos: "/termos",
+  privacidade: "/privacidade",
 } as const;

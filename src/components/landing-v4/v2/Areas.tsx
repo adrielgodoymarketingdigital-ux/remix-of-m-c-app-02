@@ -347,7 +347,7 @@ export function Areas({ tech = false }: { tech?: boolean }) {
           {/* Link para a página com todas as funcionalidades (só nas versões tech: /v3/ e /v4/) */}
           {tech && (
             <a
-              href="funcionalidades/"
+              href="/funcionalidades"
               className="group inline-flex shrink-0 items-center gap-2 rounded-xl border border-dashed t-acento-borda px-5 py-3 font-display text-sm font-semibold t-acento transition-[transform,background-color] duration-300 hover:-translate-y-0.5 hover:bg-cyan-400/10 sm:text-base"
             >
               Mais funcionalidades
@@ -419,7 +419,7 @@ export function Areas({ tech = false }: { tech?: boolean }) {
               }`}
             >
               {area.imagens.map((img) => (
-                <div key={img.src} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg shadow-slate-900/5">
+                <div key={img.src} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_10px_15px_-3px_rgb(0_0_0/0.1),0_4px_6px_-4px_rgb(0_0_0/0.1)] shadow-slate-900/5">
                   <img
                     src={img.src}
                     width={img.w}

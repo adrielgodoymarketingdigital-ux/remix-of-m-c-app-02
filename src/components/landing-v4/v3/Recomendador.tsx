@@ -132,7 +132,7 @@ export function Recomendador() {
               <fieldset key={p.id} style={{ "--d": `${200 + i * 120}ms` } as CSSProperties} className="anima-sobe flex flex-1 flex-col justify-center gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 lg:px-7">
                 <legend className="sr-only">{p.texto}</legend>
                 <div aria-hidden="true" className="flex items-start gap-3 sm:max-w-[17rem]">
-                  <span style={{ "--d": `${350 + i * 120}ms` } as CSSProperties} className="anima-pop flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-500 font-mono text-xs font-bold text-white shadow-[0_6px_16px_-6px_rgba(59,130,246,0.8)]">
+                  <span style={{ "--d": `${350 + i * 120}ms` } as CSSProperties} className="anima-pop flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.5rem] bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-500 font-mono text-xs font-bold text-white shadow-[0_6px_16px_-6px_rgba(59,130,246,0.8)]">
                     0{i + 1}
                   </span>
                   <p className="pt-1 font-display text-base font-semibold leading-snug t-txt">{p.texto}</p>

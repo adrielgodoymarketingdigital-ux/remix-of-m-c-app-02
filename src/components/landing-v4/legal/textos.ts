@@ -59,7 +59,7 @@ export const termos: Documento = {
       id: "teste",
       titulo: "3. Teste grátis",
       blocos: [
-        `Todo cadastro novo ganha 24 horas de acesso Premium para testar os recursos. As condições do teste aparecem na tela de cadastro antes de você confirmar.`,
+        `Todo cadastro novo ganha 24h de acesso para testar os principais recursos. As condições do teste aparecem na tela de cadastro antes de você confirmar.`,
       ],
     },
     {

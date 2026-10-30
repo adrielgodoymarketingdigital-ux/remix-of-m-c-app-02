@@ -177,7 +177,7 @@ export function ErrosTech() {
           <Botao href={LINKS.testeGratis} seta className="w-full sm:w-auto">
             Resolver na minha loja
           </Botao>
-          <p className="text-sm text-slate-400">24h de acesso Premium grátis · Cancele a qualquer momento</p>
+          <p className="text-sm text-slate-400">24h de acesso para testar os principais recursos · Cancele a qualquer momento</p>
         </div>
       </div>
     </section>

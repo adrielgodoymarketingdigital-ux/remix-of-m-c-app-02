@@ -12,7 +12,7 @@ const itens = [
 export function Marca({ claro = false, href = "#topo" }: { claro?: boolean; href?: string }) {
   return (
     <a href={href} className="-my-1.5 flex items-center gap-2.5 py-1.5" aria-label="MécApp, voltar ao início">
-      <img src="/img/mecapp-icone.webp" alt="" width={32} height={32} className="h-8 w-8 rounded-lg" />
+      <img src="/img/mecapp-icone.webp" alt="" width={32} height={32} className="h-8 w-8 rounded-[0.5rem]" />
       <span className={`font-display text-lg font-bold tracking-tight transition-colors duration-300 ${claro ? "text-white" : "text-slate-950"}`}>
         MécApp
       </span>
@@ -98,7 +98,7 @@ export function Menu({
 
         <button
           type="button"
-          className={`-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-lg md:hidden ${claro ? "text-white" : "text-slate-950"}`}
+          className={`-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-[0.5rem] md:hidden ${claro ? "text-white" : "text-slate-950"}`}
           aria-expanded={aberto}
           aria-controls="menu-celular"
           aria-label={aberto ? "Fechar menu" : "Abrir menu"}
@@ -109,7 +109,7 @@ export function Menu({
       </div>
 
       {aberto && (
-        <div id="menu-celular" className="border-t border-slate-200 bg-white px-4 pb-6 pt-2 shadow-xl shadow-slate-900/5 md:hidden">
+        <div id="menu-celular" className="border-t border-slate-200 bg-white px-4 pb-6 pt-2 shadow-[0_20px_25px_-5px_rgb(0_0_0/0.1),0_8px_10px_-6px_rgb(0_0_0/0.1)] shadow-slate-900/5 md:hidden">
           <nav aria-label="Principal no celular" className="flex flex-col">
             {links.map((i) => (
               <a

@@ -16,7 +16,7 @@ type Depo = {
 function Print({ src, w, h, alt }: { src: string; w: number; h: number; alt: string }) {
   return (
     <div className="bg-[#EFEAE2] p-3 sm:p-4">
-      <img src={src} width={w} height={h} alt={alt} loading="lazy" decoding="async" className="block h-auto w-full rounded-lg" />
+      <img src={src} width={w} height={h} alt={alt} loading="lazy" decoding="async" className="block h-auto w-full rounded-[0.5rem]" />
     </div>
   );
 }
@@ -59,7 +59,7 @@ function Video({ aoTocar }: { aoTocar: (tocando: boolean) => void }) {
           className="group absolute inset-0 flex items-end justify-start bg-gradient-to-t from-slate-950/60 via-transparent p-4"
           aria-label="Assistir ao depoimento em vídeo"
         >
-          <span className="flex items-center gap-3 rounded-full bg-white py-2 pl-2 pr-5 font-display text-sm font-semibold text-slate-950 shadow-lg transition-transform duration-300 group-hover:scale-105">
+          <span className="flex items-center gap-3 rounded-full bg-white py-2 pl-2 pr-5 font-display text-sm font-semibold text-slate-950 shadow-[0_10px_15px_-3px_rgb(0_0_0/0.1),0_4px_6px_-4px_rgb(0_0_0/0.1)] transition-transform duration-300 group-hover:scale-105">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-white">
               <svg viewBox="0 0 20 20" className="ml-0.5 h-4 w-4" fill="currentColor" aria-hidden="true">
                 <path d="M6 4.5v11l9-5.5-9-5.5Z" />
@@ -204,7 +204,7 @@ export function Depoimentos({ cta = false }: { cta?: boolean }) {
                     <span className="reflexo-auto absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
                   </span>
                   <p className="relative font-display text-2xl font-bold leading-tight">Seja o próximo lojista a mandar uma mensagem dessas.</p>
-                  <p className="relative mt-2 text-sm text-blue-100">24h de acesso Premium grátis · Cancele a qualquer momento</p>
+                  <p className="relative mt-2 text-sm text-blue-100">24h de acesso para testar os principais recursos · Cancele a qualquer momento</p>
                   <Botao href={LINKS.testeGratis} variante="branco" seta className="relative mt-6 w-full !bg-white">
                     Quero isso na minha loja
                   </Botao>

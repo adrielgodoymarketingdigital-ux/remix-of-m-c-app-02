@@ -3,9 +3,9 @@ import { LINKS } from "../links";
 import { Botao } from "../components/Botao";
 import { IconeCheck } from "../components/Icones";
 
-// VERSÃO 3 - chamada final: um pedido de ação com as garantias reais (24h Premium grátis e cancelar quando quiser).
+// VERSÃO 3 - chamada final: um pedido de ação com as garantias reais (24h de acesso para testar e cancelar quando quiser).
 const garantias = [
-  { titulo: "24h de acesso Premium", texto: "Teste todos os recursos antes de escolher o plano." },
+  { titulo: "24h de acesso para testar os principais recursos", texto: "Antes de escolher o plano." },
   { titulo: "Cancele quando quiser", texto: "Sem multa, pelo próprio sistema. Seus dados continuam guardados." },
   { titulo: "Sem instalar nada", texto: "Funciona no navegador do computador, do tablet e do celular." },
 ];
@@ -63,7 +63,7 @@ export function ChamadaTech() {
                   style={{ "--i": i + 2 } as CSSProperties}
                   className="cartao-tech flex gap-4 rounded-2xl border t-borda t-sup-2 p-5"
                 >
-                  <span className="anima-pop flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-400/10 ring-1 ring-emerald-400/30">
+                  <span className="anima-pop flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.5rem] bg-emerald-400/10 ring-1 ring-emerald-400/30">
                     <IconeCheck className="h-4 w-4 t-ok" />
                   </span>
                   <div>

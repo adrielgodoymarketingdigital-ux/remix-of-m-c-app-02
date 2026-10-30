@@ -47,8 +47,8 @@ function Blocos({ blocos }: { blocos: Bloco[] }) {
 export function PaginaLegal({
   doc,
   outro,
-  inicio = "/v4/",
-  funcionalidades = "/v4/funcionalidades/",
+  inicio = "/",
+  funcionalidades = "/funcionalidades",
 }: {
   doc: Documento;
   outro: { titulo: string; href: string };
@@ -106,7 +106,7 @@ export function PaginaLegal({
                     <li key={s.id}>
                       <a
                         href={`#${s.id}`}
-                        className="block rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-blue-700"
+                        className="block rounded-[0.5rem] px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-blue-700"
                       >
                         {s.titulo}
                       </a>

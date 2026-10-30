@@ -17,9 +17,27 @@ import { grupos, type Funcionalidade, type Img } from "./dados";
 // Endereço com #id (ex.: #fidelidade) abre direto a funcionalidade.
 
 const total = grupos.reduce((n, g) => n + g.itens.length, 0);
-const planos = "../#planos";
+const planos = "/#planos";
 
-function MolduraCelular({ img, altura }: { img: Img; altura: string }) {
+// Mesmo ponto de quebra do "md:" do Tailwind (768px): acima dele aparece a tela do computador, abaixo a do celular.
+const TELA_GRANDE = "(min-width: 768px)";
+
+// Só a tela que está visível carrega na hora (sem lazy); a que fica escondida (display: none) usa
+// loading="lazy" e o navegador nem baixa. As duas têm width/height, então não há pulo de layout.
+function useTelaGrande() {
+  const [grande, setGrande] = useState(() => typeof window !== "undefined" && window.matchMedia(TELA_GRANDE).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(TELA_GRANDE);
+    const mudar = () => setGrande(mq.matches);
+    mq.addEventListener("change", mudar);
+    return () => mq.removeEventListener("change", mudar);
+  }, []);
+  return grande;
+}
+
+type Carregamento = "eager" | "lazy";
+
+function MolduraCelular({ img, altura, carregamento }: { img: Img; altura: string; carregamento: Carregamento }) {
   // largura calculada pela altura máxima, para a tela caber sem rolar
   return (
     <div
@@ -27,13 +45,13 @@ function MolduraCelular({ img, altura }: { img: Img; altura: string }) {
       style={{ borderRadius: "22% / 10.4%", width: `min(100%, calc(${altura} * ${img.w / img.h}))` }}
     >
       <div className="overflow-hidden bg-white" style={{ borderRadius: "20.5% / 9.6%" }}>
-        <img src={img.src} width={img.w} height={img.h} alt={img.alt} decoding="async" className="block h-auto w-full" />
+        <img src={img.src} width={img.w} height={img.h} alt={img.alt} loading={carregamento} decoding="async" className="block h-auto w-full" />
       </div>
     </div>
   );
 }
 
-function MolduraComputador({ img, altura }: { img: Img; altura: string }) {
+function MolduraComputador({ img, altura, carregamento }: { img: Img; altura: string; carregamento: Carregamento }) {
   return (
     <div
       className="mx-auto overflow-hidden rounded-xl border t-borda t-sup shadow-[0_20px_40px_-24px_rgba(15,23,42,0.45)]"
@@ -44,12 +62,26 @@ function MolduraComputador({ img, altura }: { img: Img; altura: string }) {
         <span className="h-2 w-2 rounded-full bg-amber-300/70" />
         <span className="h-2 w-2 rounded-full bg-emerald-400/70" />
       </div>
-      <img src={img.src} width={img.w} height={img.h} alt={img.alt} decoding="async" className="block h-auto w-full bg-white" />
+      <img src={img.src} width={img.w} height={img.h} alt={img.alt} loading={carregamento} decoding="async" className="block h-auto w-full bg-white" />
     </div>
   );
 }
 
-function Tela({ f, img, altura, abrir, className = "" }: { f: Funcionalidade; img: Img; altura: string; abrir: (i: Img) => void; className?: string }) {
+function Tela({
+  f,
+  img,
+  altura,
+  abrir,
+  carregamento,
+  className = "",
+}: {
+  f: Funcionalidade;
+  img: Img;
+  altura: string;
+  abrir: (i: Img) => void;
+  carregamento: Carregamento;
+  className?: string;
+}) {
   return (
     <button
       type="button"
@@ -58,7 +90,11 @@ function Tela({ f, img, altura, abrir, className = "" }: { f: Funcionalidade; im
       aria-label={`Ampliar: ${img.alt}`}
       className={`anim-entrar w-full cursor-zoom-in ${className}`}
     >
-      {img === f.cel ? <MolduraCelular img={img} altura={altura} /> : <MolduraComputador img={img} altura={altura} />}
+      {img === f.cel ? (
+        <MolduraCelular img={img} altura={altura} carregamento={carregamento} />
+      ) : (
+        <MolduraComputador img={img} altura={altura} carregamento={carregamento} />
+      )}
     </button>
   );
 }
@@ -88,6 +124,7 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
   const grupo = grupos.find((g) => g.id === grupoId) ?? grupos[0];
   const f = grupo.itens.find((i) => i.id === escolhida[grupo.id]) ?? grupo.itens[0];
   const imgPc = f.pc ?? f.cel;
+  const telaGrande = useTelaGrande();
   const imgCel = f.cel ?? f.pc;
   const pos = grupo.itens.indexOf(f);
 
@@ -142,11 +179,11 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
     <TemaClaro.Provider value={claro}>
       <a
         href="#conteudo"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-cyan-300 focus:px-4 focus:py-2 focus:text-slate-950"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-[0.5rem] focus:bg-cyan-300 focus:px-4 focus:py-2 focus:text-slate-950"
       >
         Pular para o conteúdo
       </a>
-      <Menu tech={escuro} prefixo="../" funcionalidades="./" />
+      <Menu tech={escuro} prefixo="/" funcionalidades="/funcionalidades" />
       <main id="conteudo">
         <section ref={painel} id="painel" aria-labelledby="func-titulo" className="relative overflow-hidden pb-14 pt-24 md:pb-16 md:pt-24">
           <div aria-hidden="true" className="fundo-placa pointer-events-none absolute inset-0" />
@@ -158,7 +195,7 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
             {/* Título em uma linha de leitura */}
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
-                <a href="../" className="inline-flex items-center gap-2 py-1 text-sm font-semibold t-acento hover:underline">
+                <a href="/" className="inline-flex items-center gap-2 py-1 text-sm font-semibold t-acento hover:underline">
                   <span aria-hidden="true">←</span> Página inicial
                 </a>
                 <h1 id="func-titulo" className="mt-2 font-display text-3xl font-bold leading-tight tracking-tight t-txt sm:text-4xl">
@@ -277,8 +314,8 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
                     if (Math.abs(dx) > 50) passo(dx < 0 ? 1 : -1);
                   }}
                 >
-                  {imgCel ? <Tela f={f} img={imgCel} altura="min(22rem, 46vh)" abrir={abrir} className="block md:hidden" /> : <SemTela f={f} className="flex min-h-[12rem] md:hidden" />}
-                  {imgPc ? <Tela f={f} img={imgPc} altura="min(24rem, 46vh)" abrir={abrir} className="hidden md:block" /> : <SemTela f={f} className="hidden min-h-[20rem] md:flex" />}
+                  {imgCel ? <Tela f={f} img={imgCel} altura="min(22rem, 46vh)" abrir={abrir} carregamento={telaGrande ? "lazy" : "eager"} className="block md:hidden" /> : <SemTela f={f} className="flex min-h-[12rem] md:hidden" />}
+                  {imgPc ? <Tela f={f} img={imgPc} altura="min(24rem, 46vh)" abrir={abrir} carregamento={telaGrande ? "eager" : "lazy"} className="hidden md:block" /> : <SemTela f={f} className="hidden min-h-[20rem] md:flex" />}
                   {/* anterior / próxima */}
                   <div className="absolute inset-x-1 top-1/2 flex -translate-y-1/2 justify-between sm:inset-x-2">
                     {[
@@ -290,7 +327,7 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
                         type="button"
                         onClick={() => passo(d as number)}
                         aria-label={rotulo as string}
-                        className="flex h-10 w-10 items-center justify-center rounded-full border t-borda t-sup text-xl t-txt-2 shadow-sm transition-transform duration-300 hover:scale-105"
+                        className="flex h-10 w-10 items-center justify-center rounded-full border t-borda t-sup text-xl t-txt-2 shadow-[0_1px_2px_0_rgb(0_0_0/0.05)] transition-transform duration-300 hover:scale-105"
                       >
                         {seta}
                       </button>
@@ -304,7 +341,7 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
                       <h2 className="font-display text-xl font-semibold t-txt">{f.nome}</h2>
                       {f.plano && <SeloPlano nivel={f.plano} escuro={escuro} />}
                       {f.emBreve && (
-                        <span className="rounded-md border t-borda px-2 py-0.5 text-xs font-bold uppercase tracking-wider t-txt-2">Em breve</span>
+                        <span className="rounded-[0.375rem] border t-borda px-2 py-0.5 text-xs font-bold uppercase tracking-wider t-txt-2">Em breve</span>
                       )}
                     </div>
                     <p className="mt-2 text-sm leading-relaxed t-txt-2 sm:text-base">{f.texto}</p>
@@ -316,7 +353,7 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
                     </Botao>
                     <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs t-txt-3 lg:justify-start">
                       <span className="inline-flex items-center gap-1">
-                        <IconeCheck className="h-3.5 w-3.5 t-acento" /> 24h Premium grátis
+                        <IconeCheck className="h-3.5 w-3.5 t-acento" /> 24h de acesso para testar os principais recursos
                       </span>
                       <a href={planos} className="font-semibold t-acento hover:underline">
                         Ver planos →
@@ -330,7 +367,7 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
         </section>
 
         <div className={claro ? "" : "escuro-auto"}>
-          <Rodape prefixo="../" />
+          <Rodape prefixo="/" />
         </div>
       </main>
 

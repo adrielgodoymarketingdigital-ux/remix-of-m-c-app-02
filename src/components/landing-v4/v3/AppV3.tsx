@@ -33,11 +33,11 @@ export default function AppV3({ claro = false }: { claro?: boolean }) {
     <TemaClaro.Provider value={claro}>
       <a
         href="#conteudo"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-cyan-300 focus:px-4 focus:py-2 focus:text-slate-950"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-[0.5rem] focus:bg-cyan-300 focus:px-4 focus:py-2 focus:text-slate-950"
       >
         Pular para o conteúdo
       </a>
-      <Menu tech={!claro} funcionalidades="funcionalidades/" />
+      <Menu tech={!claro} funcionalidades="/funcionalidades" />
       <main id="conteudo" className="pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-0">
         <HeroTech ref={ctaHero} />
         {/* Ordem de página de vendas: promessa → problema → prova → como funciona → o produto →

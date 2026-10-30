@@ -152,7 +152,7 @@ export function CenaHero({
                     online
                   </span>
                 </div>
-                <div className="relative overflow-hidden rounded-lg">
+                <div className="relative overflow-hidden rounded-[0.5rem]">
                   <Rodizio
                     telas={telasComputador}
                     prioridade
@@ -173,7 +173,7 @@ export function CenaHero({
         {/* Ícone de gráfico flutuando */}
         <Camada prof={22} style={pos(A.icone)}>
           <div className="cena-entrar-esq" style={{ "--d": "500ms" } as CSSProperties}>
-            <div className="anim-flutuar-3 flex h-[72px] w-[72px] items-center justify-center rounded-2xl border border-slate-200/70 bg-white shadow-xl shadow-slate-900/10">
+            <div className="anim-flutuar-3 flex h-[72px] w-[72px] items-center justify-center rounded-2xl border border-slate-200/70 bg-white shadow-[0_20px_25px_-5px_rgb(0_0_0/0.1),0_8px_10px_-6px_rgb(0_0_0/0.1)] shadow-slate-900/10">
               <IconeGrafico />
             </div>
           </div>

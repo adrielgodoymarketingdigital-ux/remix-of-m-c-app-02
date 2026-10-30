@@ -18,7 +18,7 @@ export function StatusOS({ compacta = false }: { compacta?: boolean }) {
   }, []);
 
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 ${compacta ? "w-44 p-2.5" : "w-56 p-3.5"}`}>
+    <div className={`rounded-2xl border border-slate-200 bg-white shadow-[0_20px_25px_-5px_rgb(0_0_0/0.1),0_8px_10px_-6px_rgb(0_0_0/0.1)] shadow-slate-900/10 ${compacta ? "w-44 p-2.5" : "w-56 p-3.5"}`}>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status da OS</p>
       {/* lista empilhada: só a etapa atual fica visível; troca com sobe + aparece (500 ms) */}
       <div className="relative mt-2 h-6" aria-live="polite">

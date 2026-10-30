@@ -65,7 +65,7 @@ export function SuporteTech() {
               <Botao href={LINKS.testeGratis} seta className="w-full sm:w-auto">
                 Começar teste grátis
               </Botao>
-              <p className="text-sm t-txt-3">24h de acesso Premium grátis · Cancele a qualquer momento</p>
+              <p className="text-sm t-txt-3">24h de acesso para testar os principais recursos · Cancele a qualquer momento</p>
             </div>
           </div>
 
