@@ -36,6 +36,9 @@ import { IDIOMA_PADRAO } from "@/lib/i18n/idiomas";
 const LandingLP1 = lazy(importarLandingLP1);
 const LandingLP2 = lazy(importarLandingLP2);
 const LandingES = lazy(importarLandingES);
+const Funcionalidades = lazy(() => import("./pages/Funcionalidades"));
+const Termos = lazy(() => import("./pages/Termos"));
+const Privacidade = lazy(() => import("./pages/Privacidade"));
 const VideoBoasVindas = lazy(() => import("./pages/VideoBoasVindas"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Obrigado = lazy(() => import("./pages/Obrigado"));
@@ -144,6 +147,9 @@ const PUBLIC_ROUTES_NO_WAIT = [
   "/completar-cadastro",
   "/cadastro-plano",
   "/es",
+  "/funcionalidades",
+  "/termos",
+  "/privacidade",
 ];
 
 // Landings do funil (anúncios). O pedaço da página aberta já começa a baixar
@@ -215,6 +221,9 @@ function AppRoutes() {
       <Routes>
           {/* Rotas públicas */}
           <Route path="/" element={<Landing />} />
+          <Route path="/funcionalidades" element={<Funcionalidades />} />
+          <Route path="/termos" element={<Termos />} />
+          <Route path="/privacidade" element={<Privacidade />} />
           <Route path="/lp1" element={<LandingLP1 />} />
           <Route path="/lp2" element={<LandingLP2 />} />
           <Route path="/es" element={<LandingES />} />

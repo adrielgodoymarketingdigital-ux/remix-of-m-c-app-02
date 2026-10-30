@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ehAppInstalado } from "@/components/landing/appInstalado";
-import { LandingNav } from "@/components/landing/LandingNav";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { PaginaComSecoesAdiadas } from "@/components/landing/SecoesAdiadas";
-import { SecoesDaLanding, criarSecoesDaLanding } from "@/components/landing/SecoesDaLanding";
+import AppV3 from "@/components/landing-v4/v3/AppV3";
+import "@/components/landing-v4/estudio.css";
+import "@/components/landing-v4/v3/tech.css";
 
-// Seções abaixo do topo: um arquivo só, baixado sob demanda (ver SecoesAdiadas.tsx).
-const carregarSecoes = () => import("@/components/landing/secoesAbaixoDaDobra");
-const SECOES = criarSecoesDaLanding(carregarSecoes);
-
+// Landing principal: versão 4 (tema claro) feita no estúdio de landings (src/components/landing-v4).
+// As cores do tema vêm da classe "v3 claro" neste div (no estúdio ficavam no <body>).
 export default function Landing() {
   const navigate = useNavigate();
   // Checagem síncrona (matchMedia): o visitante vê o conteúdo já na primeira
@@ -25,10 +22,8 @@ export default function Landing() {
   }
 
   return (
-    <PaginaComSecoesAdiadas carregar={carregarSecoes} className="min-h-screen bg-slate-50">
-      <LandingNav />
-      <HeroSection />
-      <SecoesDaLanding secoes={SECOES} />
-    </PaginaComSecoesAdiadas>
+    <div className="v3 claro min-h-screen">
+      <AppV3 claro />
+    </div>
   );
 }

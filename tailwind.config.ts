@@ -18,6 +18,16 @@ export default {
         display: ['Sora', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
+        // Azul da marca usado pela landing V4 (src/components/landing-v4)
+        brand: {
+          50: "#EFF6FF",
+          100: "#DBEAFE",
+          300: "#93C5FD",
+          400: "#60A5FA",
+          500: "#3B82F6",
+          600: "#2563EB",
+          700: "#1D4ED8",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
