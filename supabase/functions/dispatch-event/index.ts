@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
       }
       userId = userData.user.id;
 
-      // Verificar plano do usuário - notificações automáticas apenas para Profissional, Admin ou Trial
+      // Verificar plano do usuário - notificações automáticas apenas para Profissional, Ultra, Admin ou Trial
       const { data: assinatura } = await supabaseAdmin
         .from("assinaturas")
         .select("plano_tipo, status")
@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      const planosPermitidos = ["profissional_mensal", "profissional_anual", "admin", "trial"];
+      const planosPermitidos = ["profissional_mensal", "profissional_anual", "profissional_ultra_mensal", "profissional_ultra_anual", "admin", "trial"];
       if (!assinatura || !planosPermitidos.includes(assinatura.plano_tipo)) {
         console.log(`[DISPATCH-EVENT] ⏭️ Plano "${assinatura?.plano_tipo || 'nenhum'}" não tem acesso a notificações automáticas`);
         return new Response(JSON.stringify({ skipped: true, reason: "plan_not_eligible" }), {
