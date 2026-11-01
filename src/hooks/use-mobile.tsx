@@ -52,6 +52,23 @@ export function useIsMobileOrTablet() {
   return !!isMobileOrTablet;
 }
 
+/** true a partir de 1024px (lg). Já lê a mídia no primeiro render, para não piscar o layout errado. */
+export function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = React.useState(
+    () => window.matchMedia(`(min-width: ${TABLET_BREAKPOINT}px)`).matches
+  );
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${TABLET_BREAKPOINT}px)`);
+    const onChange = () => setIsDesktop(mql.matches);
+    mql.addEventListener("change", onChange);
+    onChange();
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return isDesktop;
+}
+
 /** true quando o app roda instalado (PWA standalone) em uma tela mobile. */
 export function useIsPwaMobile() {
   const [isPwaMobile, setIsPwaMobile] = React.useState(false);
