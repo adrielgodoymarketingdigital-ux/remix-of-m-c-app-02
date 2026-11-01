@@ -2,6 +2,8 @@
 // 384x384 transparente) com o nome em texto HTML ao lado. O texto mantém a proporção da V4
 // (ícone de 32 px com texto de 18 px) em todos os tamanhos.
 
+export const ICONE_MECAPP = "/img/mecapp-icone-v2.webp";
+
 const TAMANHOS = {
   sm: { px: 32, icone: "h-8 w-8", texto: "text-lg", gap: "gap-2.5" },
   md: { px: 40, icone: "h-10 w-10", texto: "text-[1.375rem]", gap: "gap-3" },
@@ -25,7 +27,7 @@ export function MarcaMecApp({ tamanho, lazy = false, corTexto = "text-white", te
   return (
     <div className={`flex items-center ${t.gap} ${className}`}>
       <img
-        src="/img/mecapp-icone-v2.webp"
+        src={ICONE_MECAPP}
         alt=""
         width={t.px}
         height={t.px}
