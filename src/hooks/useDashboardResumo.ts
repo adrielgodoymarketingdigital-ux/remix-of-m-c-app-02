@@ -67,7 +67,8 @@ export const useDashboardResumo = (inicioMes: Date, fimMes: Date) => {
       let qProdutos = supabase
         .from("produtos")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .is("deleted_at", null);
       if (empresaId) qProdutos = qProdutos.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
 
       let qVendasPendentes = supabase
