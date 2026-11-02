@@ -13,6 +13,7 @@ import { trackPageView } from "@/lib/pixel";
 import { trackTiktokPageView } from "@/lib/trackingTiktok";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
+import { mensagemErroLogin } from "@/lib/erroLoginCadastroPlano";
 import { CartaoCheckoutDialog } from "@/components/planos/CartaoCheckoutDialog";
 import { PixCheckoutDialog } from "@/components/planos/PixCheckoutDialog";
 import { Badge } from "@/components/ui/badge";
@@ -66,22 +67,21 @@ export default function CadastroPlano() {
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const celularNumeros = removerMascara(celular);
+    if (celularNumeros.length < 10 || celularNumeros.length > 11) {
+      toast.error("Informe um celular válido com DDD para concluir o cadastro.");
+      return;
+    }
+
+    if (!captchaToken) {
+      toast.error("Complete a verificação de segurança para continuar.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const celularNumeros = removerMascara(celular);
-      if (celularNumeros.length < 10 || celularNumeros.length > 11) {
-        toast.error("Informe um celular válido com DDD para concluir o cadastro.");
-        setLoading(false);
-        return;
-      }
-
-      if (!captchaToken) {
-        toast.error("Complete a verificação de segurança para continuar.");
-        setLoading(false);
-        return;
-      }
-
       // Capturar tracking antes do signUp para incluir no raw_user_meta_data
       // O trigger handle_new_user (SECURITY DEFINER) lê esses campos e grava no profile
       const tracking = getTrackingParams();
@@ -109,10 +109,6 @@ export default function CadastroPlano() {
 
       if (error) {
         if (error.message.includes("already registered")) {
-          // Token de uso único: reseta pra uma nova tentativa não cair em
-          // captcha_failed sem precisar recarregar a página.
-          turnstileRef.current?.reset();
-          setCaptchaToken(null);
           toast.error("Este email já está cadastrado. Faça login para continuar.");
           return;
         }
@@ -121,20 +117,11 @@ export default function CadastroPlano() {
 
       if (data.user) {
         // Se signUp não criou sessão (confirmação de email habilitada no Supabase),
-        // aguarda 1s para evitar rate limit e faz login com as credenciais informadas
+        // o login precisa de um captcha novo: leva pro modo login com os dados preenchidos.
         if (!data.session) {
-          await new Promise((r) => setTimeout(r, 1000));
-          const { error: loginError } = await supabase.auth.signInWithPassword({
-            email,
-            password: senha,
-          });
-          if (loginError) {
-            console.warn('[CadastroPlano] Login automático falhou:', loginError.message);
-            toast.error("Conta criada! Faça login para continuar.");
-            setStep("cadastro");
-            setIsLogin(true);
-            return;
-          }
+          toast.error("Conta criada! Faça login para continuar.");
+          setIsLogin(true);
+          return;
         }
 
         // Aguardar profile ser criado pelo trigger e disparar CompleteRegistration
@@ -157,37 +144,49 @@ export default function CadastroPlano() {
       }
     } catch (error: any) {
       console.error("Erro ao criar conta:", error);
-      // Mesmo motivo acima: reseta o token de Turnstile após erro de
-      // cadastro pra já deixar um token novo pronto pra próxima tentativa.
-      turnstileRef.current?.reset();
-      setCaptchaToken(null);
       toast.error(error.message || "Erro ao criar conta. Tente novamente.");
     } finally {
+      // Token de uso único: a tentativa já consumiu este, com sucesso ou não. Reseta
+      // pra uma nova tentativa não cair em captcha_failed sem recarregar a página.
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
       setLoading(false);
     }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!captchaToken) {
+      toast.error("Complete a verificação de segurança para continuar.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
-        password: senha
+        password: senha,
+        options: {
+          captchaToken,
+        },
       });
 
       if (error) throw error;
 
       // Registrar evento de login (atualiza last_login_at e login_count)
       await trackLogin();
-      
+
       toast.success("Login realizado com sucesso!");
       setStep("checkout");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao fazer login:", error);
-      toast.error(error.message || "Email ou senha incorretos.");
+      toast.error(mensagemErroLogin(error));
     } finally {
+      // Token de uso único: reseta após a tentativa, com sucesso ou falha.
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
       setLoading(false);
     }
   };
@@ -323,18 +322,16 @@ export default function CadastroPlano() {
                 />
               </div>
 
-              {!isLogin && (
-                <TurnstileWidget
-                  ref={turnstileRef}
-                  onVerify={setCaptchaToken}
-                  onExpire={() => setCaptchaToken(null)}
-                />
-              )}
+              <TurnstileWidget
+                ref={turnstileRef}
+                onVerify={setCaptchaToken}
+                onExpire={() => setCaptchaToken(null)}
+              />
 
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)] hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.7)] transition-all duration-300"
-                disabled={loading || (!isLogin && !captchaToken)}
+                disabled={loading || !captchaToken}
               >
                 {loading ? (
                   <>
