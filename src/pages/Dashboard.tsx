@@ -197,16 +197,19 @@ const Dashboard = () => {
     checkAuth();
   }, []);
 
-  // Carregar dados de hoje separadamente, sem depender de dashboardBloqueado
+  // Carregar dados de hoje separadamente, sem depender de dashboardBloqueado.
+  // Todas as cargas esperam a identidade: antes dela, funcionário consultaria o
+  // próprio id em vez do da loja, e os números ficariam zerados.
   useEffect(() => {
+    if (carregandoIdentidade) return;
     loadHojeData();
     loadComparacaoOntem();
     loadSerieHistorica();
-  }, [empresaFiltro]);
+  }, [empresaFiltro, carregandoIdentidade]);
 
   // Recarregar dados quando o mês selecionado mudar (pular se dashboard bloqueado para funcionário)
   useEffect(() => {
-    if (dashboardBloqueado) return;
+    if (dashboardBloqueado || carregandoIdentidade) return;
     const datas = getDatasMesSelecionado(mesSelecionado);
     // Só a resposta da última troca de mês/empresa encerra o carregamento.
     const requisicao = ++requisicaoMesRef.current;
@@ -216,22 +219,22 @@ const Dashboard = () => {
     });
     loadProdutosVendidos(datas.inicio, datas.fim);
     loadHojeData();
-  }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
+  }, [mesSelecionado, dashboardBloqueado, empresaFiltro, carregandoIdentidade]);
 
   useEffect(() => {
-    if (dashboardBloqueado) return;
+    if (dashboardBloqueado || carregandoIdentidade) return;
     const requisicao = ++requisicaoComparacaoRef.current;
     setCarregandoComparacao(true);
     loadComparacaoMesAnterior(getDatasMesSelecionado(mesSelecionado).inicio).finally(() => {
       if (requisicao === requisicaoComparacaoRef.current) setCarregandoComparacao(false);
     });
-  }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
+  }, [mesSelecionado, dashboardBloqueado, empresaFiltro, carregandoIdentidade]);
 
   useEffect(() => {
-    if (dashboardBloqueado || !isDesktop) return;
+    if (dashboardBloqueado || !isDesktop || carregandoIdentidade) return;
     const datas = getDatasMesSelecionado(mesSelecionado);
     loadSerieDoMes(datas.inicio, datas.fim);
-  }, [mesSelecionado, dashboardBloqueado, empresaFiltro, isDesktop]);
+  }, [mesSelecionado, dashboardBloqueado, empresaFiltro, isDesktop, carregandoIdentidade]);
 
   // Recarregar quando uma OS for criada ou editada
   useEffect(() => {
