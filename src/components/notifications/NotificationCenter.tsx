@@ -8,7 +8,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useNavigate } from "react-router-dom";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { useFormatadores } from "@/hooks/useFormatadores";
@@ -56,7 +55,8 @@ export function NotificationCenter({ className }: { className?: string }) {
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-80">
+        {/* div simples: a ScrollArea não rola só com max-h (a área interna cresce com a lista) */}
+        <div className="max-h-80 overflow-y-auto">
           {notifications.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
               {t("notificacoes.vazio")}
@@ -97,7 +97,7 @@ export function NotificationCenter({ className }: { className?: string }) {
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
