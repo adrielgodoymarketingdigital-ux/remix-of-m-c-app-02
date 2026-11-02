@@ -224,7 +224,7 @@ function SuporteContent() {
             titulo="Chat de Suporte"
             descricao="Converse com nossa equipe em tempo real."
             selo="Dentro do sistema"
-            itens={["Tire suas dúvidas rapidamente", "Fale com nossa equipe", "Atendimento dentro do sistema"]}
+            itens={["Tire suas dúvidas rapidamente", "Fale com nossa equipe", "Resposta de um atendente real"]}
             destacado={chatAberto}
           >
             <button
