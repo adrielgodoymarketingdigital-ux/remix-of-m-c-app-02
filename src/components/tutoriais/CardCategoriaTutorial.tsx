@@ -99,28 +99,28 @@ function clarear(hex: string, quanto: number): string {
   return `#${canal(1)}${canal(3)}${canal(5)}`;
 }
 
-/**
- * Variáveis CSS do acento: cor cheia (mais clara no escuro) e fundos translúcidos (12% claro, 18% escuro).
- * Sem cor mapeada, usa o primary do tema.
- */
+/** Variáveis CSS do acento a partir de uma cor fixa: cor cheia (mais clara no escuro) e fundos translúcidos (12% claro, 18% escuro). */
+export function getEstiloDaCor(cor: string): React.CSSProperties {
+  return {
+    "--acento": cor,
+    "--acento-escuro": clarear(cor, 0.35),
+    "--acento-suave": `${cor}1f`,
+    "--acento-suave-escuro": `${cor}2e`,
+    "--acento-borda": `${cor}66`,
+  } as React.CSSProperties;
+}
+
+/** Acento da categoria. Sem cor mapeada, usa o primary do tema. */
 export function getEstiloAcento(categoria: string): React.CSSProperties {
   const cor = categoriaCorMap[categoria.toLowerCase().trim()];
-  const vars = cor
-    ? {
-        "--acento": cor,
-        "--acento-escuro": clarear(cor, 0.35),
-        "--acento-suave": `${cor}1f`,
-        "--acento-suave-escuro": `${cor}2e`,
-        "--acento-borda": `${cor}66`,
-      }
-    : {
-        "--acento": "hsl(var(--primary))",
-        "--acento-escuro": "hsl(var(--primary))",
-        "--acento-suave": "hsl(var(--primary) / 0.12)",
-        "--acento-suave-escuro": "hsl(var(--primary) / 0.18)",
-        "--acento-borda": "hsl(var(--primary) / 0.4)",
-      };
-  return vars as React.CSSProperties;
+  if (cor) return getEstiloDaCor(cor);
+  return {
+    "--acento": "hsl(var(--primary))",
+    "--acento-escuro": "hsl(var(--primary))",
+    "--acento-suave": "hsl(var(--primary) / 0.12)",
+    "--acento-suave-escuro": "hsl(var(--primary) / 0.18)",
+    "--acento-borda": "hsl(var(--primary) / 0.4)",
+  } as React.CSSProperties;
 }
 
 interface CardCategoriaTutorialProps {

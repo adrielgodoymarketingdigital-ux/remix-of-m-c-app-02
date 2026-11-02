@@ -46,7 +46,7 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
     // Trial expirado: permitir apenas a tela de plano; qualquer outra rota redireciona
     // EXCETO funcionários - eles NUNCA vão para /plano (é responsabilidade do dono)
     if (status === "trial_expirado" && !isFuncionario) {
-      const allowedWhenExpired = ["/plano", "/cadastro-plano", "/auth", "/reset-password", "/suporte"];
+      const allowedWhenExpired = ["/plano", "/cadastro-plano", "/auth", "/reset-password", "/suporte", "/ajuda"];
       const isAllowed = allowedWhenExpired.some((p) => location.pathname.startsWith(p));
 
       if (!isAllowed) {
@@ -208,7 +208,7 @@ export function ProtectedAppRoute({ children }: ProtectedAppRouteProps) {
 
   // Trial expirado em rota permitida - renderizar conteúdo
   if (status === "trial_expirado") {
-    const allowedWhenExpired = ["/plano", "/cadastro-plano", "/auth", "/reset-password", "/suporte"];
+    const allowedWhenExpired = ["/plano", "/cadastro-plano", "/auth", "/reset-password", "/suporte", "/ajuda"];
     const isAllowed = allowedWhenExpired.some((p) => location.pathname.startsWith(p));
 
     if (isAllowed) {
