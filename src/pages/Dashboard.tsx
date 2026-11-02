@@ -656,6 +656,7 @@ const Dashboard = () => {
       .select("total, custo_unitario, quantidade, valor_desconto_manual, valor_desconto_cupom, parcela_numero, total_parcelas, forma_pagamento, recebido, data, data_recebimento, observacoes, peca_id, tipo, segunda_forma_pagamento, valor_segunda_forma")
       .eq("user_id", userId)
       .eq("cancelada", false)
+      .is("deleted_at", null)
       .or(`and(data.gte.${inicioDiaISO},data.lte.${fimDiaISO}),and(data_recebimento.not.is.null,data_recebimento.gte.${inicioDiaISO},data_recebimento.lte.${fimDiaISO})`);
     if (ef) qVendasHoje = qVendasHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
 
