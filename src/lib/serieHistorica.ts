@@ -8,6 +8,7 @@ import {
   isPagamentoDuploSecundario,
   isVendaInFinancialPeriod,
 } from "@/lib/vendasFinanceiras";
+import { contarDiasDoPeriodo } from "@/lib/periodoComparacao";
 import { totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
 
 export interface PontoSerieDiaria {
@@ -81,7 +82,7 @@ export const getSerieHistoricaPeriodo = async (
   inicio: Date,
   fim: Date
 ): Promise<PontoSerieDiaria[]> => {
-  const dias = Math.round((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const dias = contarDiasDoPeriodo(inicio, fim);
   const inicioISO = inicio.toISOString();
   const fimISO = fim.toISOString();
 

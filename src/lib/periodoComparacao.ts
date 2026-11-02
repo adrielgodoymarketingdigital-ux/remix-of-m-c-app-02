@@ -17,3 +17,10 @@ export const periodoComparacaoMesAnterior = (inicioMes: Date, hoje: Date = new D
     mesEmAndamento,
   };
 };
+
+/** Quantos dias de calendário o período cobre, com início e fim inclusive. */
+export const contarDiasDoPeriodo = (inicio: Date, fim: Date): number => {
+  const diaInicio = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate()).getTime();
+  const diaFim = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate()).getTime();
+  return Math.round((diaFim - diaInicio) / (1000 * 60 * 60 * 24)) + 1;
+};

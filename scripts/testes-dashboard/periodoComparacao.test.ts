@@ -1,6 +1,6 @@
 // deno test --no-check scripts/testes-dashboard/
 import { assertEquals } from "jsr:@std/assert@1";
-import { periodoComparacaoMesAnterior } from "../../src/lib/periodoComparacao.ts";
+import { contarDiasDoPeriodo, periodoComparacaoMesAnterior } from "../../src/lib/periodoComparacao.ts";
 import { calcularVariacaoPercentual } from "../../src/lib/variacaoPercentual.ts";
 
 const dia = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
@@ -28,6 +28,12 @@ Deno.test("janeiro compara com dezembro do ano anterior", () => {
   const p = periodoComparacaoMesAnterior(new Date(2027, 0, 1), new Date(2027, 0, 15));
   assertEquals(dia(p.inicio), "2026-12-1");
   assertEquals(dia(p.fim), "2026-12-15");
+});
+
+Deno.test("contagem de dias não ganha um dia extra por causa do 23:59:59.999", () => {
+  assertEquals(contarDiasDoPeriodo(new Date(2026, 9, 26), new Date(2026, 10, 1, 23, 59, 59, 999)), 7);
+  assertEquals(contarDiasDoPeriodo(new Date(2026, 10, 1), new Date(2026, 10, 1, 23, 59, 59, 999)), 1);
+  assertEquals(contarDiasDoPeriodo(new Date(2026, 10, 1), new Date(2026, 10, 30, 23, 59, 59, 999)), 30);
 });
 
 Deno.test("variação com base negativa segue o sentido real", () => {
