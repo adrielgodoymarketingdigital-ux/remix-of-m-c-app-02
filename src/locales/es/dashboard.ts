@@ -84,6 +84,8 @@ const dashboard: Traducao<typeof dashboardPtBR> = {
   resumo: {
     vsMesAnteriorCurto: "vs. mes anterior",
     vsOntemCurto: "vs. ayer",
+    comparacaoAndamento: "El porcentaje compara con los mismos días del mes anterior.",
+    comparacaoFechado: "El porcentaje compara con todo el mes anterior.",
     titulo: "Resumen financiero",
     faturamentoTotal: "Facturación total",
     vsMesAnterior: "{{percentual}}% vs. mes anterior",

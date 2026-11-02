@@ -40,6 +40,7 @@ import { useDashboardResumo } from "@/hooks/useDashboardResumo";
 import { useCotacaoDolar } from "@/hooks/useCotacaoDolar";
 import { getSerieHistorica7Dias, getSerieHistoricaPeriodo, somarSeriePeriodo, type PontoSerieDiaria } from "@/lib/serieHistorica";
 import { calcularVariacaoPercentual } from "@/lib/variacaoPercentual";
+import { periodoComparacaoMesAnterior } from "@/lib/periodoComparacao";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto";
 import { DASHBOARD_HEADER_SLOT_ID } from "@/contexts/DashboardHeaderContext";
@@ -586,22 +587,21 @@ const Dashboard = () => {
     if (requisicao === requisicaoSerieMesRef.current) setSerieDoMes(pontos);
   };
 
-  // Compara o mês selecionado com o mês imediatamente anterior. Faturamento: mesma
-  // série diária dos sparklines, a definição do card "Faturamento Total". Lucro
-  // líquido: mesmo calcularResumo do card "Lucro Líquido", que desconta as despesas
-  // operacionais (a série só tem lucro bruto).
+  // Compara o mês selecionado com o mês anterior (mês em andamento: só os mesmos
+  // dias). Faturamento: mesma série diária dos sparklines, a definição do card
+  // "Faturamento Total". Lucro líquido: mesmo calcularResumo do card "Lucro
+  // Líquido", que desconta as despesas operacionais (a série só tem lucro bruto).
   const loadComparacaoMesAnterior = async (inicioMesAtual: Date) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const userId = resolvedUserIdRef.current ?? user.id;
 
-    const inicioMesAnterior = startOfMonth(new Date(inicioMesAtual.getFullYear(), inicioMesAtual.getMonth() - 1, 1));
-    const fimMesAnterior = endOfMonth(inicioMesAnterior);
+    const periodo = periodoComparacaoMesAnterior(inicioMesAtual);
     const [pontos, resumoAnterior] = await Promise.all([
-      getSerieHistoricaPeriodo(userId, empresaFiltroRef.current, inicioMesAnterior, fimMesAnterior),
+      getSerieHistoricaPeriodo(userId, empresaFiltroRef.current, periodo.inicio, periodo.fim),
       calcularResumo({
-        dataInicio: format(inicioMesAnterior, "yyyy-MM-dd"),
-        dataFim: format(fimMesAnterior, "yyyy-MM-dd"),
+        dataInicio: format(periodo.inicio, "yyyy-MM-dd"),
+        dataFim: format(periodo.fim, "yyyy-MM-dd"),
       }),
     ]);
     setMetricsMesAnterior({
@@ -1193,6 +1193,7 @@ const Dashboard = () => {
                 }
                 carregando={carregandoMes}
                 carregandoComparacao={carregandoComparacao}
+                mesEmAndamento={periodoComparacaoMesAnterior(datasMesAtualParaResumo.inicio).mesEmAndamento}
                 total={totalFaturamento}
                 variacaoTotal={variacaoFaturamentoMes}
                 serieDoMes={serieDoMes.map(p => p.faturamento)}

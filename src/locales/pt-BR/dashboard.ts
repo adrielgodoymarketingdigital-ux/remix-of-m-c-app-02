@@ -87,6 +87,8 @@ const dashboard = {
   resumo: {
     vsMesAnteriorCurto: "vs. mês anterior",
     vsOntemCurto: "vs. ontem",
+    comparacaoAndamento: "O percentual compara com os mesmos dias do mês anterior.",
+    comparacaoFechado: "O percentual compara com o mês anterior inteiro.",
     titulo: "Resumo Financeiro",
     faturamentoTotal: "Faturamento Total",
     vsMesAnterior: "{{percentual}}% vs. mês anterior",

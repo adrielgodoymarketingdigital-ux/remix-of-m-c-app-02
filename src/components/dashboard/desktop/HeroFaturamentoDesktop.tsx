@@ -1,9 +1,10 @@
 import type { ComponentType, ReactNode } from "react";
-import { Package, Smartphone, TrendingDown, TrendingUp, Wrench } from "lucide-react";
+import { Info, Package, Smartphone, TrendingDown, TrendingUp, Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { SeloVariacao } from "@/components/dashboard/desktop/SeloVariacao";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ interface HeroFaturamentoDesktopProps {
   fundo: string;
   carregando: boolean;
   carregandoComparacao: boolean;
+  mesEmAndamento: boolean;
   total: number;
   variacaoTotal: number;
   serieDoMes: number[];
@@ -50,7 +52,17 @@ export function HeroFaturamentoDesktop(props: HeroFaturamentoDesktopProps) {
     <section className="rounded-3xl p-5 text-white shadow-lg shadow-blue-950/20" style={{ background: fundo }}>
       <div className="flex items-center justify-between gap-6 pb-4">
         <div className="shrink-0">
-          <span className="text-lg font-semibold">{t("resumo.faturamentoTotal")}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold">{t("resumo.faturamentoTotal")}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" aria-label={t(props.mesEmAndamento ? "resumo.comparacaoAndamento" : "resumo.comparacaoFechado")} className="text-white/80 hover:text-white">
+                  <Info className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t(props.mesEmAndamento ? "resumo.comparacaoAndamento" : "resumo.comparacaoFechado")}</TooltipContent>
+            </Tooltip>
+          </div>
           <div className="my-2 text-[40px] font-extrabold leading-tight tracking-tight min-[1280px]:text-5xl">
             {carregando ? <PlaceholderValor className="h-12 w-72" /> : <ValorMonetario valor={total} />}
           </div>
