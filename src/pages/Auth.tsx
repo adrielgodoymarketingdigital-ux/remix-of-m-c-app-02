@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { ICONE_MECAPP } from "@/components/marca/MarcaMecApp";
 import { TurnstileWidget, TurnstileWidgetHandle } from "@/components/TurnstileWidget";
+import { mensagemErroRecuperacao } from "@/lib/recuperarSenha";
 
 const Auth = () => {
   const { trackLogin } = useEventTracking();
@@ -44,6 +45,10 @@ const Auth = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  // Widget próprio do modal: usar o token do login consumiria o token de uso
+  // único do formulário que fica atrás, e o "Entrar" cairia em captcha_failed.
+  const [resetCaptchaToken, setResetCaptchaToken] = useState<string | null>(null);
+  const resetTurnstileRef = useRef<TurnstileWidgetHandle>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -280,6 +285,15 @@ const Auth = () => {
     }
   };
 
+  const handleResetDialogChange = (open: boolean) => {
+    setResetDialogOpen(open);
+    if (!open) {
+      setResetEmail("");
+      setResetSuccess(false);
+      setResetCaptchaToken(null);
+    }
+  };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -291,29 +305,39 @@ const Auth = () => {
       });
       return;
     }
-    
+
+    if (!resetCaptchaToken) {
+      toast({
+        variant: "destructive",
+        title: "Verificação de segurança pendente",
+        description: "Complete a verificação de segurança para continuar.",
+      });
+      return;
+    }
+
     setResetLoading(true);
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
         redirectTo: 'https://www.appmec.in/reset-password',
+        captchaToken: resetCaptchaToken,
       });
 
       if (error) {
         console.error("Reset password error:", error);
-        if (error.message?.includes('rate') || error.status === 429) {
-          toast({
-            variant: "destructive",
-            title: "Aguarde",
-            description: "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.",
-          });
-          return;
-        }
+        // Token de uso único: a próxima tentativa precisa de um novo.
+        resetTurnstileRef.current?.reset();
+        setResetCaptchaToken(null);
+        toast({ variant: "destructive", ...mensagemErroRecuperacao(error) });
+        return;
       }
 
+      setResetCaptchaToken(null);
       setResetSuccess(true);
     } catch (error) {
       console.error("Reset password error:", error);
+      resetTurnstileRef.current?.reset();
+      setResetCaptchaToken(null);
       toast({
         variant: "destructive",
         title: "Erro",
@@ -445,13 +469,7 @@ const Auth = () => {
           {isLogin && (
             <Dialog
               open={resetDialogOpen}
-              onOpenChange={(open) => {
-                setResetDialogOpen(open);
-                if (!open) {
-                  setResetEmail("");
-                  setResetSuccess(false);
-                }
-              }}
+              onOpenChange={handleResetDialogChange}
             >
               <DialogTrigger asChild>
                 <button
@@ -484,7 +502,7 @@ const Auth = () => {
                     </div>
                     <Button
                       className="w-full h-10 bg-slate-800 hover:bg-slate-700 text-white border border-white/10"
-                      onClick={() => setResetDialogOpen(false)}
+                      onClick={() => handleResetDialogChange(false)}
                     >
                       Fechar
                     </Button>
@@ -521,10 +539,15 @@ const Auth = () => {
                           />
                         </div>
                       </div>
+                      <TurnstileWidget
+                        ref={resetTurnstileRef}
+                        onVerify={setResetCaptchaToken}
+                        onExpire={() => setResetCaptchaToken(null)}
+                      />
                       <Button
                         type="submit"
                         className="w-full h-10 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white border-0 shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)] font-medium"
-                        disabled={resetLoading}
+                        disabled={resetLoading || !resetCaptchaToken}
                       >
                         {resetLoading ? (
                           <>
@@ -540,7 +563,7 @@ const Auth = () => {
                         <button
                           type="button"
                           className="text-blue-400 hover:text-blue-300 transition-colors"
-                          onClick={() => setResetDialogOpen(false)}
+                          onClick={() => handleResetDialogChange(false)}
                         >
                           Voltar ao login
                         </button>
