@@ -221,6 +221,8 @@ const Dashboard = () => {
     loadHojeData();
   }, [mesSelecionado, dashboardBloqueado, empresaFiltro, carregandoIdentidade]);
 
+  // Com a identidade carregando, calcularResumo devolve tudo zerado e o lucro do
+  // período anterior sairia 0 (variação falsa de +100%).
   useEffect(() => {
     if (dashboardBloqueado || carregandoIdentidade) return;
     const requisicao = ++requisicaoComparacaoRef.current;
@@ -584,10 +586,10 @@ const Dashboard = () => {
     if (requisicao === requisicaoSerieMesRef.current) setSerieDoMes(pontos);
   };
 
-  // Compara o mês selecionado com o mês imediatamente anterior, usando a mesma
-  // série diária (getSerieHistoricaPeriodo) que alimenta os sparklines — assim
-  // a variação % reflete exatamente a mesma definição de faturamento/lucro
-  // mostrada no card "Faturamento Total".
+  // Compara o mês selecionado com o mês imediatamente anterior. Faturamento: mesma
+  // série diária dos sparklines, a definição do card "Faturamento Total". Lucro
+  // líquido: mesmo calcularResumo do card "Lucro Líquido", que desconta as despesas
+  // operacionais (a série só tem lucro bruto).
   const loadComparacaoMesAnterior = async (inicioMesAtual: Date) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -595,11 +597,16 @@ const Dashboard = () => {
 
     const inicioMesAnterior = startOfMonth(new Date(inicioMesAtual.getFullYear(), inicioMesAtual.getMonth() - 1, 1));
     const fimMesAnterior = endOfMonth(inicioMesAnterior);
-    const pontos = await getSerieHistoricaPeriodo(userId, empresaFiltroRef.current, inicioMesAnterior, fimMesAnterior);
-    const totais = somarSeriePeriodo(pontos);
+    const [pontos, resumoAnterior] = await Promise.all([
+      getSerieHistoricaPeriodo(userId, empresaFiltroRef.current, inicioMesAnterior, fimMesAnterior),
+      calcularResumo({
+        dataInicio: format(inicioMesAnterior, "yyyy-MM-dd"),
+        dataFim: format(fimMesAnterior, "yyyy-MM-dd"),
+      }),
+    ]);
     setMetricsMesAnterior({
-      faturamentoTotal: totais.faturamento,
-      lucroLiquido: totais.lucro,
+      faturamentoTotal: somarSeriePeriodo(pontos).faturamento,
+      lucroLiquido: resumoAnterior.lucroLiquido,
     });
   };
 
