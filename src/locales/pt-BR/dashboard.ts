@@ -46,6 +46,10 @@ const dashboard = {
     escuro: "Modo escuro",
   },
   plano: {
+    ativoRotulo: "Plano Ativo",
+    validoAte: "Válido até",
+    formatoValidade: "d 'de' MMMM 'de' yyyy",
+    verAtual: "Ver plano atual",
     vencido: "Plano vencido",
     renovar: "Renovar agora",
     // <destaque/> = prazo (diasRestantes ou "expirado").
@@ -81,6 +85,8 @@ const dashboard = {
     verPlanos: "Ver Planos Disponíveis",
   },
   resumo: {
+    vsMesAnteriorCurto: "vs. mês anterior",
+    vsOntemCurto: "vs. ontem",
     titulo: "Resumo Financeiro",
     faturamentoTotal: "Faturamento Total",
     vsMesAnterior: "{{percentual}}% vs. mês anterior",
@@ -151,7 +157,7 @@ const dashboard = {
     estoque: "Estoque",
   },
   cotacao: {
-    tempoReal: "Cotação do dólar em tempo real",
+    rotulo: "Cotação do dólar · atualiza a cada 5 min",
     atualizar: "Atualizar cotação",
   },
   notificacoes: {

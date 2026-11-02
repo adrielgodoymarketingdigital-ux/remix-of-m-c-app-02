@@ -158,6 +158,25 @@ const menu: Traducao<typeof menuPtBR> = {
     mostrarValores: "Mostrar valores",
     perfil: "Perfil",
   },
+  notificacoes: {
+    titulo: "Notificaciones",
+    marcarTodas: "Marcar todas",
+    vazio: "Todavía no hay notificaciones.",
+  },
+  conta: {
+    meuPlano: "Mi plan",
+    trocarSenha: "Cambiar contraseña",
+    senhaDescricao: "Enviaremos un enlace a {{email}}. Con él defines la contraseña nueva.",
+    senhaEnviar: "Enviar enlace",
+    senhaEnviando: "Enviando...",
+    cancelar: "Cancelar",
+    senhaEnviadaTitulo: "Enlace enviado",
+    senhaEnviadaDescricao: "Revisa la bandeja de entrada de {{email}}.",
+    senhaErroTitulo: "No se pudo enviar el enlace",
+    senhaErroLimite: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
+    senhaErroCaptcha: "La verificación de seguridad falló. Hazla de nuevo.",
+    senhaErroGeral: "Inténtalo de nuevo en unos instantes.",
+  },
 };
 
 export default menu;

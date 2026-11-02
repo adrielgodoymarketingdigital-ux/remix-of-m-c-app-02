@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard, Activity, Zap, ClipboardList, Users, AlertOctagon, ArrowUpRight, ArrowDownRight, ChevronRight, Eye } from "lucide-react";
+import { ChartNoAxesCombined, DollarSign, Package, Smartphone, Wrench, TrendingUp, Crown, Sparkles, AlertTriangle, Percent, TrendingDown, Wallet, Moon, Sun, CalendarIcon, CreditCard, Activity, Zap, ClipboardList, Users, AlertOctagon, ArrowUpRight, ArrowDownRight, ChevronRight, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { useAssinatura } from "@/hooks/useAssinatura";
@@ -23,13 +23,18 @@ import { CardAvisosSistema } from "@/components/dashboard/CardAvisosSistema";
 import { BannerNfeEmBreve } from "@/components/dashboard/BannerNfeEmBreve";
 import { CardFeedback } from "@/components/dashboard/CardFeedback";
 import { CardCotacaoDolar } from "@/components/dashboard/CardCotacaoDolar";
+import { CardPlanoDesktop } from "@/components/dashboard/desktop/CardPlanoDesktop";
+import { CardsHojeDesktop } from "@/components/dashboard/desktop/CardsHojeDesktop";
+import { HeroFaturamentoDesktop } from "@/components/dashboard/desktop/HeroFaturamentoDesktop";
+import { KpisDesktop } from "@/components/dashboard/desktop/KpisDesktop";
 
 import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { CardPrimeirosPassos } from "@/components/onboarding/CardPrimeirosPassos";
 import { useRelatorios } from "@/hooks/useRelatorios";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, isVendaNoDiaBrasilia, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro } from "@/lib/vendasFinanceiras";
 import { dataBrasiliaISO, limitesDiaBrasilia } from "@/lib/dataBrasilia";
-import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
+import { faturamentoPersonalizado, useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { useIdentidade } from "@/hooks/useResolvedUserId";
 import { useDashboardResumo } from "@/hooks/useDashboardResumo";
 import { useCotacaoDolar } from "@/hooks/useCotacaoDolar";
@@ -40,6 +45,9 @@ import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto
 import { DASHBOARD_HEADER_SLOT_ID } from "@/contexts/DashboardHeaderContext";
 import { AvisoCustoNaoConfirmado } from "@/components/financeiro/AvisoCustoNaoConfirmado";
 import { totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
+
+// Hero do computador para quem nunca personalizou a cor do card de faturamento.
+const GRADIENTE_HERO_PADRAO = "linear-gradient(115deg, #102b78, #0650b2 65%, #06306d)";
 
 interface ProdutoVendido {
   nome: string;
@@ -60,7 +68,8 @@ const Dashboard = () => {
   const { isFuncionario, isDonoLoja, temAcessoModulo, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
   const dashboardBloqueado = isFuncionario && !temAcessoModulo('dashboard');
   const { calcularResumo } = useRelatorios();
-  const { cores } = useCoresPersonalizadas();
+  const { cores, loading: carregandoCores } = useCoresPersonalizadas();
+  const isDesktop = useIsDesktop();
   const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: carregandoIdentidade, isGerenteFilial } = useIdentidade();
   const empresaFiltroRef = useRef(empresaFiltro);
   const resolvedUserIdRef = useRef(resolvedUserId);
@@ -138,6 +147,14 @@ const Dashboard = () => {
     lucroLiquido: 0,
   });
   const [hojeAnteriorData, setHojeAnteriorData] = useState({ faturamento: 0, lucro: 0 });
+  // Só o layout do computador usa: gráfico do hero (mês selecionado, até hoje) e
+  // os estados de carregamento das métricas do mês e da comparação com o anterior.
+  const [serieDoMes, setSerieDoMes] = useState<PontoSerieDiaria[]>([]);
+  const [carregandoMes, setCarregandoMes] = useState(true);
+  const [carregandoComparacao, setCarregandoComparacao] = useState(true);
+  const requisicaoMesRef = useRef(0);
+  const requisicaoComparacaoRef = useRef(0);
+  const requisicaoSerieMesRef = useRef(0);
 
   // Estado para filtro de mês - formato "YYYY-MM" ou "atual" para mês corrente
   const [mesSelecionado, setMesSelecionado] = useState<string>("atual");
@@ -191,12 +208,30 @@ const Dashboard = () => {
   useEffect(() => {
     if (dashboardBloqueado) return;
     const datas = getDatasMesSelecionado(mesSelecionado);
-    loadMetrics(datas.inicio, datas.fim);
-    loadFinanceiroData(datas.inicio, datas.fim);
+    // Só a resposta da última troca de mês/empresa encerra o carregamento.
+    const requisicao = ++requisicaoMesRef.current;
+    setCarregandoMes(true);
+    Promise.all([loadMetrics(datas.inicio, datas.fim), loadFinanceiroData(datas.inicio, datas.fim)]).finally(() => {
+      if (requisicao === requisicaoMesRef.current) setCarregandoMes(false);
+    });
     loadProdutosVendidos(datas.inicio, datas.fim);
     loadHojeData();
-    loadComparacaoMesAnterior(datas.inicio);
   }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
+
+  useEffect(() => {
+    if (dashboardBloqueado) return;
+    const requisicao = ++requisicaoComparacaoRef.current;
+    setCarregandoComparacao(true);
+    loadComparacaoMesAnterior(getDatasMesSelecionado(mesSelecionado).inicio).finally(() => {
+      if (requisicao === requisicaoComparacaoRef.current) setCarregandoComparacao(false);
+    });
+  }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
+
+  useEffect(() => {
+    if (dashboardBloqueado || !isDesktop) return;
+    const datas = getDatasMesSelecionado(mesSelecionado);
+    loadSerieDoMes(datas.inicio, datas.fim);
+  }, [mesSelecionado, dashboardBloqueado, empresaFiltro, isDesktop]);
 
   // Recarregar quando uma OS for criada ou editada
   useEffect(() => {
@@ -209,6 +244,7 @@ const Dashboard = () => {
       loadComparacaoOntem();
       loadSerieHistorica();
       loadComparacaoMesAnterior(datas.inicio);
+      if (isDesktop) loadSerieDoMes(datas.inicio, datas.fim);
     };
     window.addEventListener("os-salva", handler);
     window.addEventListener("conta-atualizada", handler);
@@ -216,7 +252,7 @@ const Dashboard = () => {
       window.removeEventListener("os-salva", handler);
       window.removeEventListener("conta-atualizada", handler);
     };
-  }, [mesSelecionado, dashboardBloqueado, empresaFiltro]);
+  }, [mesSelecionado, dashboardBloqueado, empresaFiltro, isDesktop]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -532,6 +568,19 @@ const Dashboard = () => {
     setSerieHistorica(pontos);
   };
 
+  // Série do gráfico do hero. Mês em andamento vai só até hoje: os dias futuros
+  // estão zerados e derrubariam a linha no fim.
+  const loadSerieDoMes = async (inicio: Date, fim: Date) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const userId = resolvedUserIdRef.current ?? user.id;
+    const requisicao = ++requisicaoSerieMesRef.current;
+    const hoje = new Date();
+    const fimDaSerie = fim > hoje ? new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999) : fim;
+    const pontos = await getSerieHistoricaPeriodo(userId, empresaFiltroRef.current, inicio, fimDaSerie);
+    if (requisicao === requisicaoSerieMesRef.current) setSerieDoMes(pontos);
+  };
+
   // Compara o mês selecionado com o mês imediatamente anterior, usando a mesma
   // série diária (getSerieHistoricaPeriodo) que alimenta os sparklines — assim
   // a variação % reflete exatamente a mesma definição de faturamento/lucro
@@ -813,9 +862,10 @@ const Dashboard = () => {
   // muda uma vez).
   const [dashboardHeaderSlot, setDashboardHeaderSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    if (dashboardHeaderSlot) return;
+    // isConnected: girar o tablet entre celular e computador recria o MobileHeader.
+    if (dashboardHeaderSlot?.isConnected) return;
     const found = document.getElementById(DASHBOARD_HEADER_SLOT_ID);
-    if (found) setDashboardHeaderSlot(found);
+    if (found !== dashboardHeaderSlot) setDashboardHeaderSlot(found);
   });
   const dashboardHeaderPortal = dashboardHeaderSlot && createPortal(
     <div data-tutorial="dashboard-title">
@@ -854,11 +904,68 @@ const Dashboard = () => {
   return (
     <AppLayout>
       <FormatoMoedaProvider value={fmt.moeda}>
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+      <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-auto ${isDesktop ? "mx-auto w-full max-w-[1614px] lg:pt-3" : ""}`}>
       <TutorialAutoStart />
       <CardPrimeirosPassos />
       <div className="mb-4 empty:hidden"><AvisoCustoNaoConfirmado /></div>
 
+      {isDesktop && (
+        <>
+          {assinatura && isDonoLoja && !carregandoPermissoes && !carregandoIdentidade && !isGerenteFilial && (
+            <CardPlanoDesktop assinatura={assinatura} planoVencido={planoVencido} />
+          )}
+
+          {/* ============ SAUDAÇÃO E FILTROS — COMPUTADOR ============ */}
+          <div className="mb-6 flex flex-col gap-4 min-[1280px]:flex-row min-[1280px]:items-center min-[1280px]:justify-between">
+            <div data-tutorial="dashboard-title" className="min-w-0">
+              <h1 className="mb-1 text-[28px] font-bold leading-tight text-foreground">
+                {nomeUsuario
+                  ? <Trans t={t} i18nKey="saudacao.comNome" values={{ saudacao: getSaudacao() }} components={{ destaque: <span className="text-primary">{nomeUsuario}</span> }} />
+                  : <Trans t={t} i18nKey="saudacao.bemVindo" values={{ saudacao: getSaudacao() }} components={{ destaque: <span className="text-primary" /> }} />
+                }
+                {" "}<span aria-hidden>👋</span>
+              </h1>
+              <p className="text-sm text-muted-foreground">{getFraseDiaria()}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+                <SelectTrigger className="h-11 w-[240px] rounded-xl bg-card">
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                  <SelectValue placeholder={t("mes.selecione")}>
+                    {(mesSelecionado === "atual"
+                      ? format(new Date(), t("mes.formato"), { locale: fmt.localeDateFns })
+                      : opçõesMeses.find(m => m.valor === mesSelecionado)?.label || ""
+                    ).replace(/^\w/, c => c.toUpperCase())}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="atual">{t("mes.atual")}</SelectItem>
+                  {opçõesMeses.map((mes) => (
+                    <SelectItem key={mes.valor} value={mes.valor}>
+                      {mes.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {mounted && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 rounded-xl"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  title={theme === "dark" ? t("tema.claro") : t("tema.escuro")}
+                  data-tutorial="theme-toggle"
+                >
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {!isDesktop && (
+        <>
       {/* ============ TOPO — DESKTOP (layout original, inalterado) ============ */}
       <div className="hidden sm:flex sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div data-tutorial="dashboard-title">
@@ -1012,6 +1119,9 @@ const Dashboard = () => {
         </div>
       </div>
 
+        </>
+      )}
+
       {/* Banner de Ativação de Notificações */}
       <BannerAtivarNotificacoes />
 
@@ -1057,6 +1167,44 @@ const Dashboard = () => {
           {/* Divulgação NF-e em breve — só o dono da loja; some sozinho após a data limite */}
           <BannerNfeEmBreve visivel={isDonoLoja && !carregandoPermissoes && !carregandoIdentidade && !isGerenteFilial} />
 
+          {isDesktop ? (
+            <>
+              <h2 className="mb-4 flex items-center gap-2.5 text-xl font-extrabold text-foreground">
+                <ChartNoAxesCombined className="h-5 w-5 text-primary" />
+                {t("resumo.titulo")}
+              </h2>
+              <HeroFaturamentoDesktop
+                fundo={
+                  carregandoCores
+                    ? "#0f172a"
+                    : faturamentoPersonalizado(cores)
+                      ? `linear-gradient(135deg, ${cores.card_faturamento_from}, ${cores.card_faturamento_via}, ${cores.card_faturamento_to})`
+                      : GRADIENTE_HERO_PADRAO
+                }
+                carregando={carregandoMes}
+                carregandoComparacao={carregandoComparacao}
+                total={totalFaturamento}
+                variacaoTotal={variacaoFaturamentoMes}
+                serieDoMes={serieDoMes.map(p => p.faturamento)}
+                assistencia={metrics.faturamentoServicos + metrics.faturamentoAvulsos}
+                produtos={metrics.faturamentoProdutos}
+                dispositivos={metrics.faturamentoDispositivos}
+                lucroLiquido={financeiroData.lucroLiquido}
+                variacaoLucro={variacaoLucroLiquidoMes}
+              />
+              <CardsHojeDesktop
+                carregando={hojeData.carregando}
+                faturamento={hojeData.faturamento}
+                lucro={hojeData.lucro}
+                variacaoFaturamento={variacaoFaturamentoHoje}
+                variacaoLucro={variacaoLucroHoje}
+                serieFaturamento={sparklineFaturamentoTotal}
+                serieLucro={serieHistorica.map(p => p.lucro)}
+              />
+              <KpisDesktop resumo={dashboardResumo} />
+            </>
+          ) : (
+            <>
           {/* ============ CARD ÚNICO "RESUMO FINANCEIRO" (layout do PWA, usado também no desktop) ============ */}
           <div className="mb-6">
             <h2 className="text-lg font-bold mb-3">{t("resumo.titulo")}</h2>
@@ -1257,6 +1405,9 @@ const Dashboard = () => {
               <p className="text-[9px] text-red-400 leading-tight text-center">{t("atalhos.urgentes")}</p>
             </button>
           </div>
+
+            </>
+          )}
 
           {/* ============ CARDS POR CATEGORIA (layout do PWA, usado também no desktop) ============ */}
           <div className="grid grid-cols-1 gap-3 mb-4">

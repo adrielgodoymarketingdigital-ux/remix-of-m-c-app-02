@@ -7,15 +7,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
+import { useFormatadores } from "@/hooks/useFormatadores";
 
 export function NotificationCenter({ className }: { className?: string }) {
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useNotifications();
   const navigate = useNavigate();
+  const { t } = useTranslation("menu");
+  const { localeDateFns } = useFormatadores();
 
   const handleClick = (notification: (typeof notifications)[0]) => {
     if (!notification.opened_at) {
@@ -29,10 +32,10 @@ export function NotificationCenter({ className }: { className?: string }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className={`relative h-8 w-8 shrink-0 ${className ?? ""}`}>
+        <Button variant="ghost" size="icon" aria-label={t("notificacoes.titulo")} className={`relative h-8 w-8 shrink-0 ${className ?? ""}`}>
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <Badge className="absolute top-0 right-0 h-4 min-w-4 flex items-center justify-center p-0 text-[9px] translate-x-1/3 -translate-y-1/3">
+            <Badge className="absolute top-0 right-0 h-4 min-w-4 flex items-center justify-center px-1 py-0 text-[9px] translate-x-1/3 -translate-y-1/3">
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
           )}
@@ -40,7 +43,7 @@ export function NotificationCenter({ className }: { className?: string }) {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-3 border-b">
-          <h4 className="font-semibold text-sm">Notificações</h4>
+          <h4 className="font-semibold text-sm">{t("notificacoes.titulo")}</h4>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
@@ -49,14 +52,14 @@ export function NotificationCenter({ className }: { className?: string }) {
               onClick={markAllAsRead}
             >
               <CheckCheck className="h-3.5 w-3.5" />
-              Marcar todas
+              {t("notificacoes.marcarTodas")}
             </Button>
           )}
         </div>
         <ScrollArea className="max-h-80">
           {notifications.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
-              Nenhuma notificação ainda.
+              {t("notificacoes.vazio")}
             </div>
           ) : (
             <div className="divide-y">
@@ -83,7 +86,7 @@ export function NotificationCenter({ className }: { className?: string }) {
                     <p className="text-[10px] text-muted-foreground mt-1">
                       {formatDistanceToNow(new Date(n.sent_at), {
                         addSuffix: true,
-                        locale: ptBR,
+                        locale: localeDateFns,
                       })}
                     </p>
                   </div>

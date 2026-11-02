@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { MobileHeader } from "@/components/layout/MobileHeader";
+import { DashboardTopbar } from "@/components/layout/DashboardTopbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 import { TutorialProvider } from "@/components/tutorial/TutorialContext";
@@ -16,6 +17,7 @@ import { BannerAtivarNotificacoes } from "@/components/layout/BannerAtivarNotifi
 import { PWAUpdateBanner } from "@/components/pwa/PWAUpdateBanner";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { OcultarValoresProvider } from "@/contexts/OcultarValoresContext";
 import { BotaoOcultarValores } from "@/components/layout/BotaoOcultarValores";
 import { useUserPresence } from "@/hooks/useUserPresence";
@@ -37,6 +39,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   useUserPresence((assinatura as any)?.user_id ?? null);
   const location = useLocation();
   const isDashboard = location.pathname === "/dashboard";
+  const isDesktop = useIsDesktop();
 
   const freeTrialEndsAt = (assinatura as any)?.free_trial_ends_at;
   const trialJaCancelado = (assinatura as any)?.trial_canceled === true;
@@ -51,10 +54,11 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="flex flex-1 min-h-0 overflow-x-hidden">
               <AppSidebar />
               <div className="flex min-w-0 flex-1 flex-col min-h-screen overflow-x-hidden">
-                <MobileHeader />
+                {/* Desktop e celular têm cabeçalhos separados: montar um só evita consulta duplicada */}
+                {isDesktop ? isDashboard && <DashboardTopbar /> : <MobileHeader />}
                 {/* Nova versão do app, no celular (no computador é flutuante, no App) */}
                 <PWAUpdateBanner modo="faixa" />
-                {isDashboard && <BannerVencimentoPlano />}
+                {isDashboard && <BannerVencimentoPlano somenteUrgente={isDesktop} />}
                 <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
                   <div className="px-4 sm:px-6 pt-3">
                     <TrialBanner />
@@ -70,7 +74,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Navegação inferior apenas em mobile */}
             <MobileBottomNav />
             {/* Botão flutuante ocultar valores */}
-            <BotaoOcultarValores />
+            {!isDashboard && <BotaoOcultarValores />}
             {/* Tutorial system */}
             <TutorialOverlay />
             {/* Walkthroughs curtos do onboarding (?walkthrough=<key>) */}

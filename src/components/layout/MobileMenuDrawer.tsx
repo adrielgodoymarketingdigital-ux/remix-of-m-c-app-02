@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { clearSessionMeta, SIDEBAR_GRUPOS_EXPANDIDOS_KEY } from "@/lib/sessionStorage";
+import { SIDEBAR_GRUPOS_EXPANDIDOS_KEY } from "@/lib/sessionStorage";
 import {
   Drawer,
   DrawerContent,
@@ -22,7 +22,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useLogout } from "@/hooks/useLogout";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
 import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
@@ -66,9 +66,8 @@ const tutorialTargetMap: Record<string, string> = {
 export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: MobileMenuDrawerProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
   // Textos: namespace "menu" (os itens são os mesmos do AppSidebar).
-  const { t, i18n } = useTranslation("menu");
+  const { t } = useTranslation("menu");
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   // Mesma chave do AppSidebar (desktop) — estado compartilhado entre as duas telas.
@@ -124,19 +123,8 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
     temAcessoFuncionario: (modulo) => temAcessoModuloFuncionario(modulo as keyof PermissoesModulos),
   }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin, fiscalVisivel, importacaoXmlVisivel]);
 
-  const handleLogout = async () => {
-    clearSessionMeta();
-    // Textos lidos antes do signOut: a troca de usuário volta o idioma ao pt-BR.
-    const titulo = i18n.t("logout.titulo", { ns: "menu" });
-    const descricao = i18n.t("logout.descricao", { ns: "menu" });
-    await supabase.auth.signOut();
-    toast({
-      title: titulo,
-      description: descricao,
-    });
-    onOpenChange(false);
-    navigate("/auth");
-  };
+  const sair = useLogout();
+  const handleLogout = () => sair(() => onOpenChange(false));
 
   const handleNavigate = (url: string) => {
     navigate(url);

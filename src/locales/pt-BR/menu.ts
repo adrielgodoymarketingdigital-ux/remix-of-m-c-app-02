@@ -162,6 +162,25 @@ const menu = {
     mostrarValores: "Mostrar valores",
     perfil: "Perfil",
   },
+  notificacoes: {
+    titulo: "Notificações",
+    marcarTodas: "Marcar todas",
+    vazio: "Nenhuma notificação ainda.",
+  },
+  conta: {
+    meuPlano: "Meu plano",
+    trocarSenha: "Trocar senha",
+    senhaDescricao: "Vamos enviar um link para {{email}}. Por ele você define a senha nova.",
+    senhaEnviar: "Enviar link",
+    senhaEnviando: "Enviando...",
+    cancelar: "Cancelar",
+    senhaEnviadaTitulo: "Link enviado",
+    senhaEnviadaDescricao: "Confira a caixa de entrada de {{email}}.",
+    senhaErroTitulo: "Não foi possível enviar o link",
+    senhaErroLimite: "Muitas tentativas. Aguarde alguns minutos e tente de novo.",
+    senhaErroCaptcha: "A verificação de segurança falhou. Faça a verificação de novo.",
+    senhaErroGeral: "Tente de novo em instantes.",
+  },
 } as const;
 
 export default menu;

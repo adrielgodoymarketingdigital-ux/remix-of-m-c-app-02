@@ -44,6 +44,10 @@ const dashboard: Traducao<typeof dashboardPtBR> = {
     escuro: "Modo oscuro",
   },
   plano: {
+    ativoRotulo: "Plan activo",
+    validoAte: "Válido hasta",
+    formatoValidade: "d 'de' MMMM 'de' yyyy",
+    verAtual: "Ver plan actual",
     vencido: "Plan vencido",
     renovar: "Renovar ahora",
     expiraEm: "Vence en <destaque/>",
@@ -78,6 +82,8 @@ const dashboard: Traducao<typeof dashboardPtBR> = {
     verPlanos: "Ver planes disponibles",
   },
   resumo: {
+    vsMesAnteriorCurto: "vs. mes anterior",
+    vsOntemCurto: "vs. ayer",
     titulo: "Resumen financiero",
     faturamentoTotal: "Facturación total",
     vsMesAnterior: "{{percentual}}% vs. mes anterior",
@@ -147,7 +153,7 @@ const dashboard: Traducao<typeof dashboardPtBR> = {
     estoque: "Inventario",
   },
   cotacao: {
-    tempoReal: "Cotización del dólar en tiempo real",
+    rotulo: "Cotización del dólar · se actualiza cada 5 min",
     atualizar: "Actualizar cotización",
   },
   notificacoes: {

@@ -1,84 +1,65 @@
 import { useCotacaoDolar } from "@/hooks/useCotacaoDolar";
-import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, RefreshCw, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+
+// Cotação em real: sempre no formato brasileiro, qualquer que seja o idioma da conta.
+const formatoCotacao = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+const formatoVariacao = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function CardCotacaoDolar() {
   const { cotacao, variacao, loading, atualizar } = useCotacaoDolar();
   const { t } = useTranslation("dashboard");
 
   return (
-    <Card className="relative overflow-hidden border border-border/60 bg-background/80 backdrop-blur-sm px-3 py-2 w-fit">
+    <div className="rounded-xl border border-border bg-background px-3 py-1.5">
+      <p className="mb-0.5 text-[10px] leading-tight text-muted-foreground">{t("cotacao.rotulo")}</p>
 
-      {/* Linha decorativa superior */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        </span>
+        <span className="text-xs font-semibold text-muted-foreground">USD/BRL</span>
 
-      <p className="text-[9px] text-muted-foreground/60 mb-1">{t("cotacao.tempoReal")}</p>
+        <div className="h-3.5 w-px bg-border" />
 
-      <div className="flex items-center gap-3">
-
-        {/* Label USD com ponto pulsante */}
-        <div className="flex items-center gap-1.5">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-          </span>
-          <span className="text-[10px] font-mono font-semibold tracking-widest text-muted-foreground uppercase">
-            USD/BRL
-          </span>
-        </div>
-
-        {/* Separador */}
-        <div className="h-3.5 w-px bg-border/60" />
-
-        {/* Valor */}
-        <span className="font-mono text-sm font-bold tracking-tight">
-          {loading && !cotacao ? (
-            <span className="text-muted-foreground">···</span>
-          ) : (
-            <>
-              <span className="text-[10px] text-muted-foreground mr-0.5">R$</span>
-              {cotacao?.toFixed(4) ?? "---"}
-            </>
-          )}
+        <span className="whitespace-nowrap text-sm font-bold tracking-tight text-foreground">
+          {loading && cotacao === null
+            ? <span className="text-muted-foreground">···</span>
+            : cotacao === null ? "---" : `R$ ${formatoCotacao.format(cotacao)}`}
         </span>
 
-        {/* Variação */}
         {variacao !== null && (
           <div className={cn(
-            "flex items-center gap-0.5 text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-sm",
+            "flex items-center gap-0.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-bold",
             variacao > 0
-              ? "bg-emerald-500/10 text-emerald-500"
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
               : variacao < 0
-                ? "bg-red-500/10 text-red-500"
+                ? "bg-red-500/10 text-red-700 dark:text-red-300"
                 : "bg-muted text-muted-foreground"
           )}>
             {variacao > 0 ? (
-              <TrendingUp className="h-2.5 w-2.5" />
+              <TrendingUp className="h-3 w-3" />
             ) : variacao < 0 ? (
-              <TrendingDown className="h-2.5 w-2.5" />
+              <TrendingDown className="h-3 w-3" />
             ) : (
-              <Minus className="h-2.5 w-2.5" />
+              <Minus className="h-3 w-3" />
             )}
-            {variacao > 0 ? "+" : ""}{Number(variacao).toFixed(2)}%
+            {variacao > 0 ? "+" : ""}{formatoVariacao.format(variacao)}%
           </div>
         )}
 
-        {/* Botão atualizar */}
         <button
+          type="button"
           onClick={atualizar}
-          className="text-muted-foreground/50 hover:text-muted-foreground transition-colors ml-0.5"
+          className="text-muted-foreground transition-colors hover:text-foreground"
           title={t("cotacao.atualizar")}
+          aria-label={t("cotacao.atualizar")}
         >
-          <RefreshCw className={cn("h-2.5 w-2.5", loading ? "animate-spin" : "")} />
+          <RefreshCw className={cn("h-3 w-3", loading ? "animate-spin" : "")} />
         </button>
-
       </div>
-
-      {/* Linha decorativa inferior */}
-      <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-border/40 to-transparent" />
-
-    </Card>
+    </div>
   );
 }

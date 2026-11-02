@@ -19,6 +19,12 @@ const DEFAULT_CORES: CoresPersonalizadas = {
   card_faturamento_to: "#0891b2",
 };
 
+/** A loja escolheu cores próprias para o card de faturamento? (igual ao padrão não conta) */
+export const faturamentoPersonalizado = (cores: CoresPersonalizadas) =>
+  cores.card_faturamento_from !== DEFAULT_CORES.card_faturamento_from ||
+  cores.card_faturamento_via !== DEFAULT_CORES.card_faturamento_via ||
+  cores.card_faturamento_to !== DEFAULT_CORES.card_faturamento_to;
+
 export function useCoresPersonalizadas() {
   const [cores, setCores] = useState<CoresPersonalizadas>(DEFAULT_CORES);
   const [loading, setLoading] = useState(true);

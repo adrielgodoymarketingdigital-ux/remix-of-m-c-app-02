@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface UserNotification {
@@ -13,108 +14,110 @@ export interface UserNotification {
   created_at: string;
 }
 
+interface DadosNotificacoes {
+  notifications: UserNotification[];
+  unreadCount: number;
+}
+
+const INTERVALO_ATUALIZACAO_MS = 60_000;
+
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const fetchNotifications = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/notifications?user_id=eq.${user.id}&order=sent_at.desc&limit=50`,
-        {
-          headers: {
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data: UserNotification[] = await response.json();
-        setNotifications(data);
-        setUnreadCount(data.filter((n) => !n.opened_at).length);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar notificações:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const markAsRead = useCallback(async (notificationId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/notifications?id=eq.${notificationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ opened_at: new Date().toISOString() }),
-        }
-      );
-
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notificationId ? { ...n, opened_at: new Date().toISOString() } : n
-        )
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error("Erro ao marcar notificação como lida:", error);
-    }
-  }, []);
-
-  const markAllAsRead = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!user || !session) return;
-
-      await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/notifications?user_id=eq.${user.id}&opened_at=is.null`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ opened_at: new Date().toISOString() }),
-        }
-      );
-
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, opened_at: n.opened_at || new Date().toISOString() }))
-      );
-      setUnreadCount(0);
-    } catch (error) {
-      console.error("Erro ao marcar todas como lidas:", error);
-    }
-  }, []);
+  const queryClient = useQueryClient();
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    let cancelado = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelado) setUserId(session?.user.id ?? null);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  const queryKey = ["notificacoes-usuario", userId];
+
+  // Cache compartilhado: mais de um sino na tela divide a mesma consulta. A lista
+  // traz as 50 últimas; o contador é uma contagem à parte, do total de não lidas.
+  const { data, isLoading, refetch } = useQuery({
+    queryKey,
+    enabled: !!userId,
+    staleTime: 30_000,
+    refetchInterval: INTERVALO_ATUALIZACAO_MS,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<DadosNotificacoes> => {
+      const [lista, naoLidas] = await Promise.all([
+        supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", userId!)
+          .order("sent_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId!)
+          .is("opened_at", null),
+      ]);
+      if (lista.error) throw lista.error;
+      if (naoLidas.error) throw naoLidas.error;
+      return {
+        notifications: (lista.data ?? []) as UserNotification[],
+        unreadCount: naoLidas.count ?? 0,
+      };
+    },
+  });
+
+  const atualizarCache = useCallback(
+    (alterar: (atual: DadosNotificacoes) => DadosNotificacoes) => {
+      queryClient.setQueryData<DadosNotificacoes>(["notificacoes-usuario", userId], (atual) =>
+        atual ? alterar(atual) : atual
+      );
+    },
+    [queryClient, userId]
+  );
+
+  const markAsRead = useCallback(async (notificationId: string) => {
+    const agora = new Date().toISOString();
+    const { error } = await supabase
+      .from("notifications")
+      .update({ opened_at: agora })
+      .eq("id", notificationId);
+    if (error) {
+      console.error("Erro ao marcar notificação como lida:", error);
+      return;
+    }
+    atualizarCache((atual) => ({
+      notifications: atual.notifications.map((n) =>
+        n.id === notificationId ? { ...n, opened_at: agora } : n
+      ),
+      unreadCount: Math.max(0, atual.unreadCount - 1),
+    }));
+  }, [atualizarCache]);
+
+  const markAllAsRead = useCallback(async () => {
+    if (!userId) return;
+    const agora = new Date().toISOString();
+    const { error } = await supabase
+      .from("notifications")
+      .update({ opened_at: agora })
+      .eq("user_id", userId)
+      .is("opened_at", null);
+    if (error) {
+      console.error("Erro ao marcar todas como lidas:", error);
+      return;
+    }
+    atualizarCache((atual) => ({
+      notifications: atual.notifications.map((n) => ({ ...n, opened_at: n.opened_at || agora })),
+      unreadCount: 0,
+    }));
+  }, [atualizarCache, userId]);
 
   return {
-    notifications,
-    unreadCount,
+    notifications: data?.notifications ?? [],
+    unreadCount: data?.unreadCount ?? 0,
     isLoading,
-    fetchNotifications,
+    fetchNotifications: refetch,
     markAsRead,
     markAllAsRead,
   };

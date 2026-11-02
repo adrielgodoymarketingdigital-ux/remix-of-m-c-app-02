@@ -32,7 +32,12 @@ function formatarLimiteBrasilia(instante: Date): string {
   return `${dia}/${mes} às ${hora}`;
 }
 
-export function BannerVencimentoPlano() {
+interface BannerVencimentoPlanoProps {
+  /** Sem o aviso comum de "expira em": no computador o card de plano do Dashboard já mostra a validade. */
+  somenteUrgente?: boolean;
+}
+
+export function BannerVencimentoPlano({ somenteUrgente = false }: BannerVencimentoPlanoProps) {
   const { assinatura, planoVencido } = useAssinatura();
   const { isFuncionario } = useFuncionarioPermissoes();
   const navigate = useNavigate();
@@ -173,7 +178,7 @@ export function BannerVencimentoPlano() {
     return null;
   }, [assinatura, isFuncionario, planoVencido]);
 
-  if (!bannerInfo) return null;
+  if (!bannerInfo || (somenteUrgente && bannerInfo.tipo === "aviso")) return null;
 
   const isVencido = bannerInfo.tipo === "vencido";
   const isUrgente = bannerInfo.tipo === "urgente";

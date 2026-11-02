@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface CotacaoDolar {
   cotacao: number | null;
@@ -10,39 +10,37 @@ interface CotacaoDolar {
   atualizar: () => void;
 }
 
-export function useCotacaoDolar(): CotacaoDolar {
-  const [cotacao, setCotacao] = useState<number | null>(null);
-  const [cotacaoCompra, setCotacaoCompra] = useState<number | null>(null);
-  const [variacao, setVariacao] = useState<number | null>(null);
-  const [ultimaAtualizacao, setUltimaAtualizacao] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+const INTERVALO_ATUALIZACAO_MS = 300000;
 
-  const buscar = useCallback(async () => {
-    setLoading(true);
-    setErro(null);
-    try {
+/** Cache compartilhado: quantos componentes usarem o hook, sai uma consulta só. */
+export function useCotacaoDolar(): CotacaoDolar {
+  const { data, dataUpdatedAt, isFetching, isError, refetch } = useQuery({
+    queryKey: ["cotacao-dolar"],
+    staleTime: INTERVALO_ATUALIZACAO_MS,
+    refetchInterval: INTERVALO_ATUALIZACAO_MS,
+    queryFn: async () => {
       const response = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL");
       if (!response.ok) throw new Error("Falha ao buscar cotação");
-      const data = await response.json();
-      const usd = data?.USDBRL;
+      const dados = await response.json();
+      const usd = dados?.USDBRL;
       if (!usd) throw new Error("Dados inválidos da API");
-      setCotacao(parseFloat(usd.ask));
-      setCotacaoCompra(parseFloat(usd.bid));
-      setVariacao(parseFloat(usd.pctChange));
-      setUltimaAtualizacao(new Date());
-    } catch {
-      setErro("Não foi possível carregar a cotação do dólar.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return {
+        cotacao: parseFloat(usd.ask),
+        cotacaoCompra: parseFloat(usd.bid),
+        variacao: parseFloat(usd.pctChange),
+      };
+    },
+  });
 
-  useEffect(() => {
-    buscar();
-    const intervalo = setInterval(buscar, 300000);
-    return () => clearInterval(intervalo);
-  }, [buscar]);
-
-  return { cotacao, cotacaoCompra, variacao, ultimaAtualizacao, loading, erro, atualizar: buscar };
+  return {
+    cotacao: data?.cotacao ?? null,
+    cotacaoCompra: data?.cotacaoCompra ?? null,
+    variacao: data?.variacao ?? null,
+    ultimaAtualizacao: dataUpdatedAt ? new Date(dataUpdatedAt) : null,
+    loading: isFetching,
+    erro: isError ? "Não foi possível carregar a cotação do dólar." : null,
+    atualizar: () => {
+      refetch();
+    },
+  };
 }

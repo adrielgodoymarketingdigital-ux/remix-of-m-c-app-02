@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { clearSessionMeta, SIDEBAR_GRUPOS_EXPANDIDOS_KEY } from "@/lib/sessionStorage";
+import { SIDEBAR_GRUPOS_EXPANDIDOS_KEY } from "@/lib/sessionStorage";
 import logoMec from "@/assets/logo-mec-icone.png";
 import {
   Sidebar,
@@ -36,7 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
+import { useLogout } from "@/hooks/useLogout";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
 import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
 import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
@@ -81,10 +81,9 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
-  const { toast } = useToast();
   // Rótulos do menu: namespace "menu" (src/locales/<idioma>/menu.ts). Em pt-BR
   // são os mesmos textos de menuPrincipal.ts, letra por letra.
-  const { t, i18n } = useTranslation("menu");
+  const { t } = useTranslation("menu");
   const collapsed = state === "collapsed";
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
@@ -137,18 +136,7 @@ export function AppSidebar() {
     temAcessoFuncionario: (modulo) => temAcessoModuloFuncionario(modulo as keyof PermissoesModulos),
   }), [isFuncionario, temAcessoModuloFuncionario, temAcessoModuloPlano, carregandoPermissoes, carregandoAssinatura, assinatura, isUltra, isAdmin, fiscalVisivel, importacaoXmlVisivel]);
 
-  const handleLogout = async () => {
-    clearSessionMeta();
-    // Textos lidos antes do signOut: a troca de usuário volta o idioma ao pt-BR.
-    const titulo = i18n.t("logout.titulo", { ns: "menu" });
-    const descricao = i18n.t("logout.descricao", { ns: "menu" });
-    await supabase.auth.signOut();
-    toast({
-      title: titulo,
-      description: descricao,
-    });
-    navigate("/auth");
-  };
+  const sair = useLogout();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -403,7 +391,7 @@ export function AppSidebar() {
           <Button
             variant="ghost"
             className={`w-full text-sidebar-foreground hover:text-red-400 hover:bg-red-500/10 ${collapsed ? "justify-center" : "justify-start"}`}
-            onClick={handleLogout}
+            onClick={() => sair()}
           >
             <LogOut className="h-5 w-5" />
             {!collapsed && <span className="ml-2">{t("sair")}</span>}
