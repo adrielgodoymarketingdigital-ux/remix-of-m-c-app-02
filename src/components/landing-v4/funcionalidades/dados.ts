@@ -202,8 +202,8 @@ export const grupos: Grupo[] = [
       },
       {
         id: "imei",
-        nome: "Consulta de IMEI pela Anatel",
-        texto: "Consulte o IMEI do aparelho sem sair do sistema.",
+        nome: "Consulta de IMEI pela Anatel e no Celular Seguro",
+        texto: "Abra a consulta oficial de IMEI da Anatel ou do Celular Seguro direto do cadastro do aparelho.",
         plano: "profissional",
       },
       {

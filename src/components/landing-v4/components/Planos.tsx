@@ -67,7 +67,7 @@ const planos: Plano[] = [
       "Dispositivos e ordens de serviço ilimitados",
       "Funcionários e comissões ilimitados",
       "Acompanhamento de OS (50 por mês)",
-      "Consulta de IMEI pela Anatel",
+      "Consulta de IMEI pela Anatel e no Celular Seguro",
       "Verificação de garantia Apple",
       "Suporte prioritário por WhatsApp",
     ],
