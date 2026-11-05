@@ -54,8 +54,17 @@ import {
   clampAjusteVertical,
   formatarAjusteVertical,
 } from '@/lib/etiquetas/ajusteVertical';
+import {
+  type BotaoEtiqueta,
+  descreverPlataforma,
+  MENSAGEM_IMPRESSAO_NAO_ABRIU,
+  novaTentativaImpressao,
+  registrarEventoImpressao,
+} from '@/lib/etiquetas/avisoImpressao';
+import { descreverErroImpressao, iniciarAcompanhamentoImpressao } from '@/lib/etiquetas/monitorImpressaoEtiquetas';
 import { usePadroesEtiqueta } from '@/hooks/usePadroesEtiqueta';
 import { CampoNumero, CamposPadraoEtiqueta, MiniaturaFolha, ResumoLayoutFolha } from './CamposPadraoEtiqueta';
+import { DiagnosticoImpressaoEtiquetas } from './DiagnosticoImpressaoEtiquetas';
 
 interface DialogGerarEtiquetasProps {
   open: boolean;
@@ -70,6 +79,8 @@ interface DialogGerarEtiquetasProps {
 const MAX_ETIQUETAS_POR_IMPRESSAO = 1000;
 const PX_POR_MM = 96 / 25.4;
 const LARGURA_PREVIA_PX = 300;
+// Id do iframe criado por printViaIframe (printMobile.ts).
+const ID_IFRAME_IMPRESSAO = 'print-iframe-mobile';
 
 export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, nomeLoja = '', onGerenciarPadroes }: DialogGerarEtiquetasProps) => {
   const [config, setConfig] = useState<ConfigEtiquetas>(carregarConfigEtiquetas);
@@ -158,28 +169,66 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
 
   // Mesmos caminhos dos recibos: iOS → #print-root; Android/PWA → iframe;
   // desktop → window.open síncrono no tick do clique.
-  const enviarParaImpressao = (body: string, css: string, documento: string) => {
-    const { isMobile, isStandalone, isIOS } = detectarContextoImpressaoMobile();
+  const enviarParaImpressao = (botao: BotaoEtiqueta, body: string, css: string, documento: string) => {
+    const contexto = detectarContextoImpressaoMobile();
+    const { isMobile, isStandalone, isIOS } = contexto;
     const usarMecanismoMobile = isMobile || isStandalone;
+    const acompanhamento = iniciarAcompanhamentoImpressao({
+      botao,
+      contexto,
+      caminho: !usarMecanismoMobile ? 'window.open' : isIOS ? 'print-root' : 'iframe',
+      aoNaoAbrir: () => toast.error(MENSAGEM_IMPRESSAO_NAO_ABRIU, { id: 'etiquetas-impressao-nao-abriu' }),
+    });
 
     if (usarMecanismoMobile && isIOS) {
-      printViaPrintRoot(body, css);
+      const restaurarPrint = acompanhamento.observar(window);
+      try {
+        printViaPrintRoot(body, css);
+      } finally {
+        restaurarPrint();
+      }
       return;
     }
     if (usarMecanismoMobile) {
       printViaIframe(documento, isIOS);
+      const iframe = document.getElementById(ID_IFRAME_IMPRESSAO) as HTMLIFrameElement | null;
+      if (iframe) acompanhamento.observarIframe(iframe);
       return;
     }
     const janela = window.open('', '_blank');
     if (!janela) {
+      acompanhamento.registrar('popup_bloqueado');
       toast.error('Permita pop-ups para imprimir as etiquetas.');
       return;
     }
     janela.document.write(documento);
     janela.document.close();
+    // Depois do write: document.open() apaga os listeners da janela.
+    acompanhamento.observar(janela);
   };
 
-  const handleImprimir = () => {
+  // Erro ao montar ou enviar a impressão vira aviso e registro, nunca silêncio.
+  const comProtecao = (botao: BotaoEtiqueta, acao: () => void) => {
+    try {
+      acao();
+    } catch (erro) {
+      console.error('[etiquetas-impressao] erro ao imprimir', erro);
+      const { isStandalone } = detectarContextoImpressaoMobile();
+      registrarEventoImpressao({
+        quando: new Date().toISOString(),
+        tentativa: novaTentativaImpressao(),
+        tipo: 'erro',
+        botao,
+        plataforma: descreverPlataforma(navigator.userAgent, navigator.maxTouchPoints ?? 0),
+        instalado: isStandalone,
+        caminho: null,
+        detalhe: descreverErroImpressao(erro),
+      });
+      toast.error('Não foi possível preparar a impressão das etiquetas. Tente novamente.');
+    }
+  };
+
+  const handleImprimir = () => comProtecao('imprimir', () => {
     const itens = itensImpressao.filter((i) => i.quantidade > 0);
     if (totalEtiquetas === 0) {
       toast.error('Defina a quantidade de pelo menos uma etiqueta.');
@@ -195,25 +244,27 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
     }
     salvarConfigEtiquetas(config);
     enviarParaImpressao(
+      'imprimir',
       montarBodyEtiquetas(itens, config, nomeLoja),
       `${montarCssPagina(config)}${montarCssEtiquetas(config)}`,
       montarDocumentoEtiquetas(itens, config, nomeLoja),
     );
-  };
+  });
 
   /** Uma fileira com régua e contorno, para medir quanto a impressora corta e acertar o ajuste. */
-  const handleImprimirTeste = () => {
+  const handleImprimirTeste = () => comProtecao('teste', () => {
     if (erroLayout) {
       toast.error(erroLayout);
       return;
     }
     salvarConfigEtiquetas(config);
     enviarParaImpressao(
+      'teste',
       montarBodyEtiquetaTeste(config),
       `${montarCssPagina(config)}${montarCssEtiquetaTeste(config)}`,
       montarDocumentoEtiquetaTeste(config),
     );
-  };
+  });
 
   // Padrão salvo da loja em uso: o ajuste pode ser gravado nele (vale para todos os aparelhos).
   const padraoSalvoAtual = config.formato === 'a4' ? padroes.find((p) => p.id === config.a4.id) : undefined;
@@ -513,6 +564,7 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
             Imprimir
           </Button>
         </DialogFooter>
+        <DiagnosticoImpressaoEtiquetas />
       </DialogContent>
     </Dialog>
   );
