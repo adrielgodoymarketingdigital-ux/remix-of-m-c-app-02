@@ -39,6 +39,7 @@ import { SeletorTempoGarantia } from "./SeletorTempoGarantia";
 import { ChecklistDispositivo } from "../ordens/ChecklistDispositivo";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
+import { BotaoConsultaCelularSeguro } from "./BotaoConsultaCelularSeguro";
 import { ExternalLink, Shield, Lock, ChevronDown, ChevronRight } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import type { UnidadeCopiada } from "@/lib/origem/itensCompra";
@@ -616,7 +617,7 @@ export function DialogCadastroDispositivo({
                         {/* Identificação */}
                         <div className="space-y-3">
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Identificação</p>
-                          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                          <div className="flex flex-col md:flex-row gap-2 md:items-end">
                             <div className="flex-1 space-y-1">
                               <label className="text-sm font-medium">IMEI</label>
                               <div className="flex gap-2">
@@ -634,19 +635,27 @@ export function DialogCadastroDispositivo({
                                 />
                               </div>
                             </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="whitespace-nowrap"
-                              onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
-                            >
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              Verificar IMEI
-                            </Button>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="whitespace-nowrap"
+                                onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                Verificar IMEI
+                              </Button>
+                              <BotaoConsultaCelularSeguro
+                                imei={unidade.imei}
+                                size="sm"
+                                className="whitespace-nowrap"
+                                classNameIcone="h-3 w-3 mr-1"
+                              />
+                            </div>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                          <div className="flex flex-col md:flex-row gap-2 md:items-end">
                             <div className="flex-1 space-y-1">
                               <label className="text-sm font-medium">IMEI 2 (dual chip)</label>
                               <div className="flex gap-2">
@@ -664,6 +673,12 @@ export function DialogCadastroDispositivo({
                                 />
                               </div>
                             </div>
+                            <BotaoConsultaCelularSeguro
+                              imei={unidade.imei2}
+                              size="sm"
+                              className="whitespace-nowrap"
+                              classNameIcone="h-3 w-3 mr-1"
+                            />
                           </div>
 
                           <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
@@ -979,7 +994,7 @@ export function DialogCadastroDispositivo({
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold">Identificação</h3>
                   <div className="grid grid-cols-1 gap-4">
-                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex flex-col md:flex-row gap-2 md:items-end">
                       <FormField
                         control={form.control}
                         name="imei"
@@ -1001,19 +1016,22 @@ export function DialogCadastroDispositivo({
                           </FormItem>
                         )}
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="default"
-                        className="whitespace-nowrap"
-                        onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Verificar IMEI
-                      </Button>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="default"
+                          className="whitespace-nowrap"
+                          onClick={() => window.open("https://www.gov.br/anatel/pt-br/assuntos/celular-legal/consulte-sua-situacao", "_blank")}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Verificar IMEI
+                        </Button>
+                        <BotaoConsultaCelularSeguro imei={form.watch("imei")} className="whitespace-nowrap" />
+                      </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex flex-col md:flex-row gap-2 md:items-end">
                       <FormField
                         control={form.control}
                         name="imei2"
@@ -1035,6 +1053,7 @@ export function DialogCadastroDispositivo({
                           </FormItem>
                         )}
                       />
+                      <BotaoConsultaCelularSeguro imei={form.watch("imei2")} className="whitespace-nowrap" />
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
