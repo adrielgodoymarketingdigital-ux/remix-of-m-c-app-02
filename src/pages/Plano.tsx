@@ -22,11 +22,13 @@ import {
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { textoUsoDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
 import { useTrialStatus } from "@/hooks/useTrialStatus";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { BotoesPagamentoPagarme } from "@/components/planos/BotoesPagamentoPagarme";
 import { GerenciarAssinaturaPagarme } from "@/components/planos/GerenciarAssinaturaPagarme";
 import { BotaoCancelarPlano } from "@/components/planos/BotaoCancelarPlano";
 import { BotaoCancelarTrial } from "@/components/planos/BotaoCancelarTrial";
+import { CabecalhoPlanoDesktop } from "@/components/planos/desktop/CabecalhoPlanoDesktop";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -37,6 +39,8 @@ export default function Plano() {
   console.log("[Plano] Renderizando - Build:", APP_BUILD_ID);
   
   // Todos os hooks DEVEM vir ANTES de qualquer return condicional
+  // Um layout por vez: os ids plan-* e planos-disponiveis não podem existir em dobro.
+  const isDesktop = useIsDesktop();
   const { isFuncionario, carregando: carregandoFuncionario } = useFuncionarioPermissoes();
   const [periodoPlano, setPeriodoPlano] = useState<"mensal" | "anual">("mensal");
   const { assinatura, carregando, abrirPaginaPagamento, cancelarPlano, limites, recarregar, obterContagemDispositivos, periodoDispositivos, diasRestantesTrial, horasRestantesTrial, trialExpirado, migracaoNecessaria, planoVencido, planoAnterior, planoVencidoEm } = useAssinatura();
@@ -268,12 +272,16 @@ export default function Plano() {
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 overflow-auto">
+        {isDesktop ? (
+          <CabecalhoPlanoDesktop />
+        ) : (
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold">Plano do Sistema</h1>
           <p className="text-muted-foreground">Gerencie sua assinatura</p>
         </div>
+        )}
 
-        <div className="space-y-8">
+        <div className={isDesktop ? "mx-auto max-w-[1700px] space-y-5" : "space-y-8"}>
 
             {/* Card de Trial com Cartão Ativo */}
             {trialStatus.isTrialWithCard && trialStatus.isTrialing && !trialStatus.trialExpired && (
@@ -519,7 +527,7 @@ export default function Plano() {
                 </div>
               </Card>
             ) : (
-              <Card className="p-6 border-2 border-orange-200 bg-orange-50/50">
+              <Card className={cn("p-6 border-2 border-orange-200 bg-orange-50/50", isDesktop && "dark:border-orange-900 dark:bg-orange-950/30")}>
                 <div className="flex items-start gap-4">
                   {assinatura?.plano_tipo === "demonstracao" && !trialStatus.isTrialWithCard ? (
                     <>
