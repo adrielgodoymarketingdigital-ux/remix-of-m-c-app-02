@@ -13,7 +13,7 @@ export const MENSAGEM_IMPRESSAO_NAO_ABRIU =
 const LIMITE_EVENTOS = 20;
 
 export type BotaoEtiqueta = "imprimir" | "teste";
-export type CaminhoImpressaoEtiqueta = "window.open" | "iframe" | "print-root";
+export type CaminhoImpressaoEtiqueta = "window.open" | "iframe" | "print-root" | "camada-ios";
 export type PlataformaImpressao = "iphone" | "ipad" | "ipad-provavel" | "android" | "computador";
 
 export type TipoEventoImpressao =
@@ -28,7 +28,14 @@ export type TipoEventoImpressao =
   | "sem_sinal"
   | "aviso_mostrado"
   | "popup_bloqueado"
-  | "erro";
+  | "erro"
+  // Camada do iPhone com app instalado (prévia + Compartilhar PDF)
+  | "camada_aberta"
+  | "pdf_pronto"
+  | "pdf_falhou"
+  | "compartilhado"
+  | "compartilhar_falhou"
+  | "imprimir_nao_abriu";
 
 export interface EventoImpressao {
   quando: string;
@@ -46,9 +53,15 @@ export function ehSinalDeImpressao(tipo: TipoEventoImpressao): boolean {
   return tipo === "beforeprint" || tipo === "afterprint" || tipo === "midia_print" || tipo === "pagina_oculta";
 }
 
+/** iPhone/iPad reconhecido como iOS com o app instalado: imprime pela camada (prévia + PDF). */
+export function usarCamadaIOS(p: { isIOS: boolean; isStandalone: boolean }): boolean {
+  return p.isIOS && p.isStandalone;
+}
+
 /**
  * Só avisa no iPhone/iPad reconhecido como iOS e com o app instalado, onde o
- * print() ignorado foi confirmado em aparelho real (cc435dc).
+ * print() ignorado foi confirmado em aparelho real (cc435dc e diagnóstico de
+ * 2026-11-05). Lá a impressão vai pela camada; o aviso fica de reserva se ela falhar.
  *
  * Nos outros ambientes a falta de sinal só vai para o registro (sem_sinal):
  * Android não foi medido em aparelho real e o WebKit nem sempre dispara os

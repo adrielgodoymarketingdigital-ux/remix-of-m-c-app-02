@@ -31,6 +31,7 @@ import {
   PADRAO_AVULSO_ID,
   SUGESTOES_PIMACO,
   TamanhoFonteEtiqueta,
+  calcularAlturaFolha,
   calcularLayoutFolha,
   carregarConfigEtiquetas,
   contarEtiquetas,
@@ -60,8 +61,11 @@ import {
   MENSAGEM_IMPRESSAO_NAO_ABRIU,
   novaTentativaImpressao,
   registrarEventoImpressao,
+  usarCamadaIOS,
 } from '@/lib/etiquetas/avisoImpressao';
-import { descreverErroImpressao, iniciarAcompanhamentoImpressao } from '@/lib/etiquetas/monitorImpressaoEtiquetas';
+import { criarRegistroTentativa, descreverErroImpressao, iniciarAcompanhamentoImpressao } from '@/lib/etiquetas/monitorImpressaoEtiquetas';
+import { paginasPDFEtiquetas } from '@/lib/etiquetas/pdfEtiquetas';
+import { abrirCamadaImpressaoIOS } from '@/lib/impressao/camadaImpressaoIOS';
 import { usePadroesEtiqueta } from '@/hooks/usePadroesEtiqueta';
 import { CampoNumero, CamposPadraoEtiqueta, MiniaturaFolha, ResumoLayoutFolha } from './CamposPadraoEtiqueta';
 import { DiagnosticoImpressaoEtiquetas } from './DiagnosticoImpressaoEtiquetas';
@@ -167,11 +171,37 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
     </style></head><body><div class="previa">${montarEtiquetaHtml(itemPrevia, config, nomeLoja)}</div></body></html>`;
   }, [itemPrevia, config, nomeLoja, escalaPrevia]);
 
-  // Mesmos caminhos dos recibos: iOS → #print-root; Android/PWA → iframe;
+  // Mesmos caminhos dos recibos: iOS com app instalado → camada com prévia e PDF
+  // (lá o print() é ignorado); iOS no Safari → #print-root; Android/PWA → iframe;
   // desktop → window.open síncrono no tick do clique.
   const enviarParaImpressao = (botao: BotaoEtiqueta, body: string, css: string, documento: string) => {
     const contexto = detectarContextoImpressaoMobile();
     const { isMobile, isStandalone, isIOS } = contexto;
+
+    if (usarCamadaIOS(contexto)) {
+      const registrar = criarRegistroTentativa({ botao, contexto, caminho: 'camada-ios' });
+      const titulo = botao === 'teste' ? 'Etiqueta de teste' : 'Etiquetas';
+      try {
+        abrirCamadaImpressaoIOS(documento, {
+          titulo,
+          paginas: paginasPDFEtiquetas({
+            formato: config.formato,
+            termica: config.termica,
+            folha: { larguraMm: config.a4.larguraFolhaMm, alturaMm: calcularAlturaFolha(config.a4) },
+            titulo,
+            totalPaginas: botao === 'teste' ? 1 : config.formato === 'termica' ? totalEtiquetas : totalFolhas,
+          }),
+          aoEvento: (evento, detalhe) => registrar(evento, detalhe),
+        });
+        registrar('camada_aberta');
+      } catch (erro) {
+        // Reserva: sem a camada, o aviso de antes em vez de silêncio.
+        registrar('erro', descreverErroImpressao(erro));
+        toast.error(MENSAGEM_IMPRESSAO_NAO_ABRIU, { id: 'etiquetas-impressao-nao-abriu' });
+      }
+      return;
+    }
+
     const usarMecanismoMobile = isMobile || isStandalone;
     const acompanhamento = iniciarAcompanhamentoImpressao({
       botao,
