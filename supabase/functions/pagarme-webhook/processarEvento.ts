@@ -9,6 +9,7 @@ import {
   processarFalhaCobranca,
 } from "./falhaCartaoPix.ts";
 import { type OpcoesPagarme, avisarAdmin } from "../_shared/pagarmeAssinatura.ts";
+import { limparLembretesRenovacao } from "../_shared/limparLembretesRenovacao.ts";
 import {
   EVENTOS_SEM_EFEITO,
   REGRAS_EVENTO,
@@ -272,6 +273,14 @@ async function handlePixOrderPaid(
       if (jaAtivado) {
         // A verificação manual (check-pix-payment) costuma ativar antes deste webhook:
         // o cancelamento da assinatura de cartão antiga também precisa acontecer aqui.
+        // A limpeza dos lembretes é refeita caso a verificação manual tenha parado no
+        // meio; em evento reenviado, o corte preserva lembretes do ciclo seguinte.
+        await limparLembretesRenovacao(
+          supabaseAdmin,
+          pagamento.user_id,
+          log,
+          (pagamento.paid_at as string | null) ?? paidAt,
+        );
         if (assinaturaCheck.pagarme_subscription_id && ehRenovacaoDoPlano(orderOrigem, null, pagamento.plano_tipo)) {
           await cancelarAssinaturaCartaoAntiga(supabaseAdmin, {
             assinaturaId: assinaturaCheck.id,
@@ -407,15 +416,7 @@ async function handlePixOrderPaid(
     }
 
     // Limpar followup_control após renovação confirmada
-    const { error: followupError } = await supabaseAdmin
-      .from("followup_control")
-      .delete()
-      .eq("user_id", userId);
-    if (followupError) {
-      log("⚠️ Erro ao deletar followup_control (não crítico)", { userId, error: followupError.message });
-    } else {
-      log("🧹 followup_control limpo", { userId });
-    }
+    await limparLembretesRenovacao(supabaseAdmin, userId, log);
 
     // 🎯 Meta CAPI Purchase (server-side)
     await dispararMetaCapiPurchase(supabaseAdmin, userId, pagamento.valor_centavos, planoTipo);

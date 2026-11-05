@@ -156,6 +156,82 @@ Deno.test("verdadeiro: PIX pago confirmado ativa com período contado do pagamen
   assertEquals(tabelas.pagamentos_pix[0].status, "paid");
 });
 
+Deno.test("lembretes: ativação pelo webhook limpa todos os do usuário e só os dele", async () => {
+  const pagoEm = iso(AGORA.getTime() - 60 * 60 * 1000);
+  const { tabelas, db } = banco({
+    pagamentos_pix: [{ id: "p1", user_id: "u1", plano_tipo: "intermediario_mensal", status: "pending", pagarme_order_id: "or_L1", valor_centavos: 3990 }],
+    followup_control: [
+      { user_id: "u1", etapa: "d1", enviado_em: iso(AGORA.getTime() - 2 * DIA) },
+      { user_id: "u2", etapa: "d1", enviado_em: iso(AGORA.getTime() - 2 * DIA) },
+    ],
+  });
+  const api = pagarme({ "orders/or_L1": { id: "or_L1", status: "paid", charges: [{ id: "ch_l1", paid_at: pagoEm }] } });
+
+  await processar({ type: "order.paid", data: { id: "or_L1" } }, db, api);
+
+  assertEquals(tabelas.followup_control.map((l) => l.user_id), ["u2"]);
+});
+
+/** PIX já ativado pelo check-pix-payment, que parou antes de limpar os lembretes. */
+function jaAtivadoSemLimpar(pagoEm: string, followup: Linha[]) {
+  const ctx = banco({
+    pagamentos_pix: [{ id: "p1", user_id: "u1", plano_tipo: "intermediario_mensal", status: "paid", paid_at: pagoEm, pagarme_order_id: "or_L2", valor_centavos: 3990 }],
+    followup_control: followup,
+  });
+  Object.assign(assinatura(ctx.tabelas, "u1"), { status: "active", payment_method: "pix", plano_tipo: "intermediario_mensal" });
+  const api = pagarme({ "orders/or_L2": { id: "or_L2", status: "paid", charges: [{ id: "ch_l2", paid_at: pagoEm }] } });
+  return { ...ctx, api };
+}
+
+Deno.test("lembretes: webhook depois da verificação manual limpa o que ficou", async () => {
+  const pagoEm = iso(AGORA.getTime() - 5 * 60 * 1000);
+  const { tabelas, db, api } = jaAtivadoSemLimpar(pagoEm, [
+    { user_id: "u1", etapa: "d3", enviado_em: iso(AGORA.getTime() - 3 * DIA) },
+    { user_id: "u1", etapa: "d1", enviado_em: iso(AGORA.getTime() - DIA) },
+  ]);
+
+  const r = await processar({ type: "order.paid", data: { id: "or_L2" } }, db, api);
+
+  assertEquals(r.json.already_processed, true);
+  assertEquals(tabelas.followup_control, []);
+});
+
+Deno.test("lembretes: limpar de novo, sem nada a apagar, não muda a resposta", async () => {
+  const pagoEm = iso(AGORA.getTime() - 5 * 60 * 1000);
+  const { tabelas, db, api } = jaAtivadoSemLimpar(pagoEm, []);
+
+  const r1 = await processar({ type: "order.paid", data: { id: "or_L2" } }, db, api);
+  const r2 = await processar({ type: "order.paid", data: { id: "or_L2" } }, db, api);
+
+  assertEquals(r1.json, r2.json);
+  assertEquals(r2.status, 200);
+  assertEquals(tabelas.followup_control, []);
+});
+
+Deno.test("lembretes: evento antigo reenviado preserva os do ciclo seguinte", async () => {
+  const pagoEm = iso(AGORA.getTime() - 27 * DIA);
+  const lembreteDoCicloNovo = { user_id: "u1", etapa: "d3", enviado_em: iso(AGORA.getTime() - DIA) };
+  const { tabelas, db, api } = jaAtivadoSemLimpar(pagoEm, [
+    { user_id: "u1", etapa: "d1", enviado_em: iso(AGORA.getTime() - 30 * DIA) },
+    lembreteDoCicloNovo,
+  ]);
+
+  await processar({ type: "order.paid", data: { id: "or_L2" } }, db, api);
+
+  assertEquals(tabelas.followup_control, [lembreteDoCicloNovo]);
+});
+
+Deno.test("lembretes: erro ao limpar não derruba o webhook", async () => {
+  const pagoEm = iso(AGORA.getTime() - 5 * 60 * 1000);
+  const { tabelas, api } = jaAtivadoSemLimpar(pagoEm, [{ user_id: "u1", etapa: "d1", enviado_em: iso(AGORA.getTime() - DIA) }]);
+  const dbComFalha = bancoFake(tabelas, (t, op) => (t === "followup_control" && op === "delete" ? "fora do ar" : null));
+
+  const r = await processar({ type: "order.paid", data: { id: "or_L2" } }, dbComFalha, api);
+
+  assertEquals(r.status, 200);
+  assertEquals(r.json.already_processed, true);
+});
+
 Deno.test("verdadeiro: charge.paid da assinatura de cartão confirmado tira do past_due", async () => {
   const pagoEm = iso(AGORA.getTime() - 5 * 60 * 1000);
   const { tabelas, db } = banco();

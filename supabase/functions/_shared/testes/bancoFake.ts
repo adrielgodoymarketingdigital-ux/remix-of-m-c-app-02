@@ -12,9 +12,11 @@ export function bancoFake(
     let payload: Linha = {};
     const filtros: [string, unknown][] = [];
     const filtrosIn: [string, unknown[]][] = [];
+    const filtrosLte: [string, string][] = [];
     const linhas = () =>
       (tabelas[tabela] ??= []).filter((r) =>
-        filtros.every(([c, v]) => r[c] === v) && filtrosIn.every(([c, vs]) => vs.includes(r[c]))
+        filtros.every(([c, v]) => r[c] === v) && filtrosIn.every(([c, vs]) => vs.includes(r[c])) &&
+        filtrosLte.every(([c, v]) => String(r[c]) <= v)
       );
     const executar = () => {
       const erro = falhar(tabela, op, payload);
@@ -37,6 +39,7 @@ export function bancoFake(
       eq: (c: string, v: unknown) => (filtros.push([c, v]), b),
       is: (c: string, v: unknown) => (filtros.push([c, v]), b),
       in: (c: string, vs: unknown[]) => (filtrosIn.push([c, vs]), b),
+      lte: (c: string, v: string) => (filtrosLte.push([c, v]), b),
       update: (p: Linha) => ((op = "update"), (payload = p), b),
       insert: (p: Linha) => ((op = "insert"), (payload = p), b),
       delete: () => ((op = "delete"), b),

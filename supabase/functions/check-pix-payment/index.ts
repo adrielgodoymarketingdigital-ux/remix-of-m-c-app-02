@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { PLANO_NOMES, type PlanoTipoPago } from "../_shared/planos-config.ts";
+import { limparLembretesRenovacao } from "../_shared/limparLembretesRenovacao.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -152,8 +153,10 @@ serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
 
+    let erroAtivacao: { message: string } | null = null;
+
     if (assinaturaExistente) {
-      await supabaseAdmin
+      ({ error: erroAtivacao } = await supabaseAdmin
         .from("assinaturas")
         .update({
           plano_tipo: planoTipo,
@@ -169,10 +172,10 @@ serve(async (req) => {
           bloqueado_admin_motivo: null,
           bloqueado_tipo: null,
         })
-        .eq("user_id", userId);
+        .eq("user_id", userId));
       log("Assinatura atualizada", { userId, planoTipo });
     } else {
-      await supabaseAdmin
+      ({ error: erroAtivacao } = await supabaseAdmin
         .from("assinaturas")
         .insert({
           user_id: userId,
@@ -183,8 +186,16 @@ serve(async (req) => {
           data_proxima_cobranca: dataFim,
           payment_provider: "pagarme",
           payment_method: "pix",
-        });
+        }));
       log("Assinatura criada", { userId, planoTipo });
+    }
+
+    // Quando esta verificação chega antes do webhook, ele não passa pela limpeza
+    // completa. Sem ativação não limpa: o webhook reprocessa e limpa nessa hora.
+    if (erroAtivacao) {
+      log("Erro ao ativar assinatura", { userId, error: erroAtivacao.message });
+    } else {
+      await limparLembretesRenovacao(supabaseAdmin, userId, log);
     }
 
     // Notificação admin
