@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, Crown, TrendingUp, HardDrive, Loader2, RefreshCw, ArrowUpCircle, ArrowDownCircle, Clock, Sparkles, XCircle, Gift, Shield, Headphones, AlertTriangle, CalendarClock, Info } from "lucide-react";
+import { Check, Crown, TrendingUp, HardDrive, Loader2, RefreshCw, ArrowUpCircle, ArrowDownCircle, Clock, Sparkles, Gift, Shield, Headphones, AlertTriangle, CalendarClock, Info } from "lucide-react";
 import { PLANOS } from "@/types/plano";
 import { formatCurrency } from "@/lib/formatters";
 import { Switch } from "@/components/ui/switch";
@@ -19,23 +19,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { textoUsoDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
 import { useTrialStatus } from "@/hooks/useTrialStatus";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { BotoesPagamentoPagarme } from "@/components/planos/BotoesPagamentoPagarme";
 import { GerenciarAssinaturaPagarme } from "@/components/planos/GerenciarAssinaturaPagarme";
+import { BotaoCancelarPlano } from "@/components/planos/BotaoCancelarPlano";
+import { BotaoCancelarTrial } from "@/components/planos/BotaoCancelarTrial";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -333,55 +324,7 @@ export default function Plano() {
                         Atualizar Status
                       </Button>
                       
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-                            disabled={cancelandoTrial}
-                          >
-                            {cancelandoTrial ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Cancelando...
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancelar Trial
-                              </>
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Cancelar período de teste?</AlertDialogTitle>
-                            <AlertDialogDescription className="space-y-3">
-                              <p>
-                                Ao cancelar seu trial, você perderá acesso imediato a todas as funcionalidades:
-                              </p>
-                              <ul className="list-disc pl-5 space-y-1 text-sm">
-                                <li>Não poderá mais cadastrar dispositivos, clientes ou vendas</li>
-                                <li>Não terá acesso ao PDV, Financeiro e Relatórios</li>
-                                <li>Ordens de serviço ficarão indisponíveis</li>
-                                <li>Seus dados serão mantidos, mas não poderá acessá-los</li>
-                              </ul>
-                              <p className="font-semibold text-destructive">
-                                Para voltar a usar o sistema, você precisará assinar um plano.
-                              </p>
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Continuar Trial</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleCancelarTrial}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Confirmar Cancelamento
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <BotaoCancelarTrial cancelando={cancelandoTrial} onConfirmar={handleCancelarTrial} />
                     </div>
                   </div>
                 </div>
@@ -555,57 +498,14 @@ export default function Plano() {
                         {assinatura.plano_tipo !== "trial" &&
                           assinatura.status === "active" &&
                           assinatura.payment_provider !== "pagarme" && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" disabled={cancelando}>
-                                {cancelando ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Cancelando...
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                    Cancelar Plano
-                                  </>
-                                )}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Tem certeza que deseja cancelar?</AlertDialogTitle>
-                                <AlertDialogDescription className="space-y-3">
-                                  <p>
-                                    Ao cancelar seu plano, você perderá acesso imediato a todos os benefícios:
-                                  </p>
-                                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                                    <li>Limite de dispositivos será reduzido para 5</li>
-                                    <li>Limite de clientes será reduzido para 10</li>
-                                    <li>Limite de ordens de serviço será reduzido para 5</li>
-                                    <li>Perda de acesso a módulos Premium</li>
-                                    <li>Perda de relatórios avançados</li>
-                                    <li>Perda de suporte prioritário</li>
-                                  </ul>
-                                  <p className="font-semibold text-destructive">
-                                    Esta ação é irreversível. Você será movido para o plano de demonstração.
-                                  </p>
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Voltar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={async () => {
-                                    setCancelando(true);
-                                    await cancelarPlano();
-                                    setCancelando(false);
-                                  }}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Confirmar Cancelamento
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <BotaoCancelarPlano
+                            cancelando={cancelando}
+                            onConfirmar={async () => {
+                              setCancelando(true);
+                              await cancelarPlano();
+                              setCancelando(false);
+                            }}
+                          />
                         )}
                       </div>
                     )}
