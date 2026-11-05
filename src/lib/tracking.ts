@@ -3,6 +3,7 @@
 // Este arquivo exporta tipos e função para acessar os parâmetros
 
 import { supabase } from "@/integrations/supabase/client";
+import { enviarRegistroNovo } from "@/lib/registroAntesDeSair.core";
 
 export interface TrackingParams {
   fbp: string | null;
@@ -308,6 +309,88 @@ export async function trackCompleteRegistration(userId: string, email?: string):
     console.error('[Tracking] Erro inesperado em trackCompleteRegistration:', error);
     return false;
   }
+}
+
+/**
+ * CompleteRegistration de quem acabou de se cadastrar em /auth, onde a página é
+ * trocada logo em seguida. O signUp já devolve o perfil criado (o trigger roda na
+ * mesma transação) e a conta é nova, então não há consulta prévia a
+ * registration_tracked: uma ida ao banco a mais poderia perder o evento em rede lenta.
+ * CAPI e marcação usam fetch com keepalive, que termina mesmo depois de a página sair;
+ * supabase-js não oferece essa opção.
+ * A promise resolve quando as duas requisições terminarem e nunca rejeita.
+ */
+export function trackCompleteRegistrationAntesDeSair(userId: string, email: string): Promise<void> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  const cabecalhos = async (): Promise<Record<string, string>> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return {
+      apikey: anonKey,
+      Authorization: `Bearer ${session?.access_token ?? anonKey}`,
+      'Content-Type': 'application/json',
+    };
+  };
+
+  const exigirOk = (resposta: Response) => {
+    if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+  };
+
+  return enviarRegistroNovo({
+    gerarEventId: generateEventId,
+    dispararPixel: (eventId) => {
+      if (!window.fbq) {
+        console.warn('[Tracking] Meta Pixel (fbq) não disponível');
+        return;
+      }
+      (window.fbq as any)('track', 'CompleteRegistration', {
+        content_name: 'Signup',
+        currency: 'BRL',
+        value: 0,
+        status: true,
+      }, { eventID: eventId });
+      console.log('[Tracking] CompleteRegistration Pixel disparado com eventID:', eventId);
+    },
+    enviarCapi: async (eventId) => {
+      const tracking = getTrackingParams();
+      const resposta = await fetch(`${supabaseUrl}/functions/v1/meta-capi-event`, {
+        method: 'POST',
+        keepalive: true,
+        headers: await cabecalhos(),
+        body: JSON.stringify({
+          event_name: 'CompleteRegistration',
+          event_id: eventId,
+          email,
+          fbp: tracking.fbp,
+          fbc: tracking.fbc,
+          client_user_agent: tracking.client_user_agent,
+          custom_data: {
+            plan: 'free',
+            content_name: 'Signup',
+            currency: 'BRL',
+            value: 0,
+          },
+        }),
+      });
+      exigirOk(resposta);
+    },
+    marcarRastreado: async () => {
+      const resposta = await fetch(
+        `${supabaseUrl}/rest/v1/profiles?user_id=eq.${encodeURIComponent(userId)}`,
+        {
+          method: 'PATCH',
+          keepalive: true,
+          headers: { ...(await cabecalhos()), Prefer: 'return=minimal' },
+          body: JSON.stringify({ registration_tracked: true }),
+        },
+      );
+      exigirOk(resposta);
+    },
+    aoFalhar: (etapa, erro) => {
+      console.error(`[Tracking] CompleteRegistration falhou em ${etapa}:`, erro);
+    },
+  });
 }
 
 // Expose global function (sobrescreve a do index.html com versão mais robusta)

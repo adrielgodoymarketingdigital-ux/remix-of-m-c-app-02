@@ -8,7 +8,8 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone, Eye, EyeOff, Mail, KeyRound, CheckCircle2 } from "lucide-react";
 import { aplicarMascaraTelefone, removerMascara } from "@/lib/mascaras";
-import { trackCompleteRegistration, getTrackingParams } from "@/lib/tracking";
+import { trackCompleteRegistrationAntesDeSair, getTrackingParams } from "@/lib/tracking";
+import { aguardarEnvioAntesDeSair } from "@/lib/registroAntesDeSair.core";
 import { trackTiktokPageView, trackTiktokCompleteRegistration } from "@/lib/trackingTiktok";
 import { useEventTracking } from "@/hooks/useEventTracking";
 import {
@@ -169,6 +170,8 @@ const Auth = () => {
         // O trigger handle_new_user (SECURITY DEFINER) lê esses campos e grava no profile
         const tracking = getTrackingParams();
 
+        let envioDoRegistro: Promise<unknown> = Promise.resolve();
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password: senha,
@@ -212,10 +215,9 @@ const Auth = () => {
             return;
           }
 
-          setTimeout(() => {
-            trackCompleteRegistration(data.user.id, email);
-            trackTiktokCompleteRegistration();
-          }, 1500);
+          // Sai antes do redirecionamento abaixo, que espera este envio.
+          trackTiktokCompleteRegistration();
+          envioDoRegistro = trackCompleteRegistrationAntesDeSair(data.user.id, email);
 
           supabase.functions.invoke('webhook-n8n-cadastro', {
             body: { nome: nome, telefone: celularNumeros, user_id: data.user!.id },
@@ -239,9 +241,8 @@ const Auth = () => {
           ? `${import.meta.env.VITE_HOTMART_CHECKOUT_URL}?email=${encodeURIComponent(email)}`
           : '/dashboard';
 
-        setTimeout(() => {
-          window.location.href = destino;
-        }, 500);
+        await aguardarEnvioAntesDeSair(envioDoRegistro);
+        window.location.href = destino;
       }
     } catch (error: any) {
       if (isLogin) {
