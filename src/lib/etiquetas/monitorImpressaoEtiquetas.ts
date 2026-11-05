@@ -40,21 +40,15 @@ export function descreverErroImpressao(erro: unknown): string {
   return texto.slice(0, 160);
 }
 
-export function iniciarAcompanhamentoImpressao(p: {
+/** Registro de uma tentativa (mesmo número em todos os eventos dela). */
+export function criarRegistroTentativa(p: {
   botao: BotaoEtiqueta;
   contexto: ContextoImpressaoMobile;
   caminho: CaminhoImpressaoEtiqueta;
-  aoNaoAbrir: () => void;
-}): AcompanhamentoImpressao {
+}): (tipo: TipoEventoImpressao, detalhe?: string) => void {
   const tentativa = novaTentativaImpressao();
   const plataforma = descreverPlataforma(navigator.userAgent, navigator.maxTouchPoints ?? 0);
-  let recebeuSinal = false;
-  let printChamado = false;
-  let verificacaoAgendada = false;
-  const limpezas: Array<() => void> = [];
-
-  const registrar = (tipo: TipoEventoImpressao, detalhe?: string) => {
-    if (ehSinalDeImpressao(tipo)) recebeuSinal = true;
+  return (tipo, detalhe) =>
     registrarEventoImpressao({
       quando: new Date().toISOString(),
       tentativa,
@@ -65,16 +59,43 @@ export function iniciarAcompanhamentoImpressao(p: {
       caminho: p.caminho,
       ...(detalhe ? { detalhe } : {}),
     });
+}
+
+export function iniciarAcompanhamentoImpressao(p: {
+  botao: BotaoEtiqueta;
+  contexto: ContextoImpressaoMobile;
+  caminho: CaminhoImpressaoEtiqueta;
+  aoNaoAbrir: () => void;
+}): AcompanhamentoImpressao {
+  const registrarNaTentativa = criarRegistroTentativa(p);
+  let recebeuSinal = false;
+  let printChamado = false;
+  let verificacaoAgendada = false;
+  const limpezas: Array<() => void> = [];
+
+  const registrar = (tipo: TipoEventoImpressao, detalhe?: string) => {
+    if (ehSinalDeImpressao(tipo)) recebeuSinal = true;
+    registrarNaTentativa(tipo, detalhe);
   };
 
   const encerrar = () => {
     limpezas.splice(0).forEach((limpar) => limpar());
   };
 
+  // Sair do app só conta como sinal enquanto a impressão desta tentativa está em
+  // aberto; depois disso viraria ruído no registro (ex.: sair para colar o diagnóstico).
+  const aoOcultar = () => {
+    if (document.visibilityState === "hidden") registrar("pagina_oculta");
+  };
+  document.addEventListener("visibilitychange", aoOcultar);
+  const pararDeOuvirVisibilidade = () => document.removeEventListener("visibilitychange", aoOcultar);
+  limpezas.push(pararDeOuvirVisibilidade);
+
   const agendarVerificacao = () => {
     if (verificacaoAgendada) return;
     verificacaoAgendada = true;
     setTimeout(() => {
+      pararDeOuvirVisibilidade();
       if (recebeuSinal) return;
       registrar("sem_sinal", `${ESPERA_SINAL_IMPRESSAO_MS}ms`);
       if (deveAvisarImpressaoNaoAbriu({ isIOS: p.contexto.isIOS, isStandalone: p.contexto.isStandalone, recebeuSinal })) {
@@ -89,13 +110,10 @@ export function iniciarAcompanhamentoImpressao(p: {
     limpezas.push(() => alvo.removeEventListener(evento, aoDisparar));
   };
 
-  const aoOcultar = () => {
-    if (document.visibilityState === "hidden") registrar("pagina_oculta");
-  };
-  ouvir(document, "visibilitychange", aoOcultar);
-
   setTimeout(() => {
-    if (!printChamado) registrar("print_nao_chamado", `${ESPERA_PRINT_CHAMADO_MS}ms`);
+    if (printChamado) return;
+    pararDeOuvirVisibilidade();
+    registrar("print_nao_chamado", `${ESPERA_PRINT_CHAMADO_MS}ms`);
   }, ESPERA_PRINT_CHAMADO_MS);
   setTimeout(encerrar, ACOMPANHAMENTO_MAXIMO_MS);
 
