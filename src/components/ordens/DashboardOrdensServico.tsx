@@ -64,6 +64,8 @@ export const DashboardOrdensServico = ({
     return s.count > 0 || config?.is_sistema;
   });
 
+  const aguardandoRetiradaNaLista = visibleStatuses.some((s) => s.slug === "aguardando_retirada");
+
   const ordensEntregues = ordens.filter((o) => o.status === "entregue" || o.status === "garantia");
   const valorFaturado = ordensEntregues.reduce((acc, ordem) => acc + (ordem.total || 0), 0);
 
@@ -86,16 +88,18 @@ export const DashboardOrdensServico = ({
           return (
             <StatusCard key={s.slug} cor={s.cor} label={s.nome} icon={<Icone className="h-3.5 w-3.5" />}>
               <p className="text-lg font-bold tabular-nums mt-0.5">{s.count}</p>
+              {s.slug === "aguardando_retirada" && aguardandoRetiradaCount > 0 && (
+                <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={aguardandoRetiradaValor} /></p>
+              )}
             </StatusCard>
           );
         })}
 
-        {aguardandoRetiradaCount > 0 && (
+        {/* Status desativado pela loja, mas ainda com OS: o card continua aparecendo */}
+        {!aguardandoRetiradaNaLista && aguardandoRetiradaCount > 0 && (
           <StatusCard cor={aguardandoRetiradaCor} label={aguardandoRetiradaNome} icon={<Clock className="h-3.5 w-3.5" />}>
             <p className="text-lg font-bold tabular-nums mt-0.5">{aguardandoRetiradaCount}</p>
-            <p className="text-[9px] text-muted-foreground truncate">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(aguardandoRetiradaValor)}
-            </p>
+            <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={aguardandoRetiradaValor} /></p>
           </StatusCard>
         )}
 
