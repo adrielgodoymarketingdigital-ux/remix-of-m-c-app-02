@@ -28,8 +28,7 @@ import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { DialogConfirmarBaixa } from "./DialogConfirmarBaixa";
 import { calcTotalFalta } from "@/lib/contas/totalConta";
 
-interface TabelaContasProps {
-  contas: Conta[];
+interface AcoesTabelaContas {
   onEditar: (conta: Conta) => void;
   onExcluir: (id: string) => void;
   onMarcarComoPaga: (id: string, tipo: 'pagar' | 'receber', formaPagamento?: string) => void;
@@ -46,6 +45,15 @@ interface TabelaContasProps {
   listarPagamentos?: (contaId: string) => Promise<PagamentoConta[]>;
 }
 
+/**
+ * somenteLeitura (ficha do fornecedor): esconde seleção, baixa, editar e
+ * excluir, e as ações deixam de ser obrigatórias. Sem a prop, nada muda.
+ */
+type TabelaContasProps = { contas: Conta[] } & (
+  | ({ somenteLeitura?: false } & AcoesTabelaContas)
+  | ({ somenteLeitura: true } & Partial<AcoesTabelaContas>)
+);
+
 // Visual da lista (referência layout-contas/referencia-lista). Só classes.
 const SELO = "inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1.5 text-[10px] font-bold leading-none max-[390px]:px-2 max-[390px]:py-[5px] max-[390px]:text-[9px]";
 const SELO_VERMELHO = "bg-[#FFE6E6] text-[#E02424] dark:bg-red-500/15 dark:text-red-400";
@@ -60,10 +68,11 @@ const BOTAO_BAIXA = "bg-[#E4F8ED] text-[#00A45B] hover:bg-[#D3F3E1] dark:bg-emer
 
 export function TabelaContas({
   contas,
+  somenteLeitura = false,
   onEditar,
   onExcluir,
   onMarcarComoPaga,
-  contasSelecionadas,
+  contasSelecionadas = [],
   onToggleSelecao,
   onToggleTodas,
   onRegistrarPagamento,
@@ -211,6 +220,7 @@ export function TabelaContas({
               )}
 
               {/* Rodapé: seleção para baixa em massa e ações */}
+              {!somenteLeitura && (
               <div className="mt-[18px] flex items-center justify-between gap-2.5 border-t border-border pt-3">
                 <div className="min-w-0">
                   {conta.status === "pendente" && (
@@ -218,7 +228,7 @@ export function TabelaContas({
                       <Checkbox
                         id={`selecionar-${conta.id}`}
                         checked={selecionada}
-                        onCheckedChange={() => onToggleSelecao(conta.id)}
+                        onCheckedChange={() => onToggleSelecao?.(conta.id)}
                       />
                       Selecionar
                     </label>
@@ -238,7 +248,7 @@ export function TabelaContas({
                   )}
                   <button
                     type="button"
-                    onClick={() => onEditar(conta)}
+                    onClick={() => onEditar?.(conta)}
                     aria-label={`Editar conta "${conta.nome}"`}
                     className={cn(BOTAO_ACAO, BOTAO_NEUTRO)}
                   >
@@ -260,7 +270,7 @@ export function TabelaContas({
                     <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                       <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => onExcluir(conta.id)}
+                        onClick={() => onExcluir?.(conta.id)}
                         className="w-full sm:w-auto bg-destructive text-destructive-foreground"
                       >
                         Excluir
@@ -270,22 +280,25 @@ export function TabelaContas({
                   </AlertDialog>
                 </div>
               </div>
+              )}
             </article>
           );
         })}
 
+        {!somenteLeitura && (
         <DialogConfirmarBaixa
           conta={contaBaixa}
           open={contaBaixa !== null}
           onOpenChange={(open) => { if (!open) setContaBaixa(null); }}
           onConfirmar={async (id, tipo, formaPagamento) => {
-            await onMarcarComoPaga(id, tipo, formaPagamento);
+            await onMarcarComoPaga?.(id, tipo, formaPagamento);
             return true;
           }}
           onRegistrarPagamento={onRegistrarPagamento}
           onEstornarPagamento={onEstornarPagamento}
           listarPagamentos={listarPagamentos}
         />
+        )}
       </div>
     );
   }
@@ -296,6 +309,7 @@ export function TabelaContas({
       <Table>
         <TableHeader>
           <TableRow className="bg-[#F7F9FC] hover:bg-[#F7F9FC] dark:bg-muted/40 dark:hover:bg-muted/40 [&>th]:h-11 [&>th]:px-3 [&>th]:text-[11px] [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-muted-foreground">
+            {!somenteLeitura && (
             <TableHead className="w-10">
               <Checkbox
                 checked={todasPendentesSelecionadas}
@@ -303,6 +317,7 @@ export function TabelaContas({
                 aria-label="Selecionar todas as contas pendentes"
               />
             </TableHead>
+            )}
             <TableHead>Nome</TableHead>
             <TableHead>Cliente</TableHead>
             <TableHead>Tipo</TableHead>
@@ -310,7 +325,7 @@ export function TabelaContas({
             <TableHead>Valor</TableHead>
             <TableHead>Vencimento</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
+            {!somenteLeitura && <TableHead className="text-right">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -322,17 +337,19 @@ export function TabelaContas({
 
             return (
               <TableRow key={conta.id} className={cn("[&>td]:px-3 [&>td]:py-3.5", vencida && "bg-red-50 dark:bg-red-950/20", selecionada && "bg-primary/5")}>
+                {!somenteLeitura && (
                 <TableCell>
                   {conta.status === "pendente" ? (
                     <Checkbox
                       checked={selecionada}
-                      onCheckedChange={() => onToggleSelecao(conta.id)}
+                      onCheckedChange={() => onToggleSelecao?.(conta.id)}
                       aria-label={`Selecionar conta "${conta.nome}"`}
                     />
                   ) : (
                     <div className="w-5" />
                   )}
                 </TableCell>
+                )}
                 <TableCell className="min-w-[180px] max-w-[220px]">
                   <div className="flex min-w-0 items-center gap-3">
                     <div aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E8F0FF] text-[#246BFF] dark:bg-primary/15 dark:text-primary">
@@ -377,6 +394,7 @@ export function TabelaContas({
                     {getParcialBadge(conta)}
                   </div>
                 </TableCell>
+                {!somenteLeitura && (
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1.5">
                     {conta.status === "pendente" && (
@@ -393,7 +411,7 @@ export function TabelaContas({
 
                     <button
                       type="button"
-                      onClick={() => onEditar(conta)}
+                      onClick={() => onEditar?.(conta)}
                       aria-label={`Editar conta "${conta.nome}"`}
                       className={cn(BOTAO_ACAO, BOTAO_NEUTRO)}
                     >
@@ -417,7 +435,7 @@ export function TabelaContas({
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => onExcluir(conta.id)}
+                            onClick={() => onExcluir?.(conta.id)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             Excluir
@@ -427,23 +445,26 @@ export function TabelaContas({
                     </AlertDialog>
                   </div>
                 </TableCell>
+                )}
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
+      {!somenteLeitura && (
       <DialogConfirmarBaixa
         conta={contaBaixa}
         open={contaBaixa !== null}
         onOpenChange={(open) => { if (!open) setContaBaixa(null); }}
         onConfirmar={async (id, tipo, formaPagamento) => {
-          await onMarcarComoPaga(id, tipo, formaPagamento);
+          await onMarcarComoPaga?.(id, tipo, formaPagamento);
           return true;
         }}
         onRegistrarPagamento={onRegistrarPagamento}
         onEstornarPagamento={onEstornarPagamento}
         listarPagamentos={listarPagamentos}
       />
+      )}
     </div>
   );
 }
