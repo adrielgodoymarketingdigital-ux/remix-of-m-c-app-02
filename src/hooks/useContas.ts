@@ -17,7 +17,13 @@ import {
   type ResultadoReconhecimento,
 } from "@/lib/vendas/reconhecerSegundaForma";
 
-export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
+/**
+ * opcoes.carregar = false: não busca a lista ao montar nem depois das ações
+ * (a ficha do fornecedor tem a própria consulta e passa a conta em
+ * marcarComoPaga / marcarVariasComoPaga). Sem opcoes, nada muda.
+ */
+export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { carregar?: boolean }) {
+  const carregar = opcoes?.carregar !== false;
   const [contas, setContas] = useState<Conta[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -171,6 +177,11 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     }
   }, [filtros, toast, resolvedUserIdFromContext, empresaFiltro]);
 
+  // Recarrega a lista depois das ações (só quando o hook carrega a lista).
+  const recarregar = useCallback(async () => {
+    if (carregar) await carregarContas();
+  }, [carregar, carregarContas]);
+
   const criarConta = async (dados: FormularioConta) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -225,7 +236,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
             description: "Conta criada, mas não foi possível registrar o pagamento. Dê baixa pela lista de contas.",
             variant: "destructive",
           });
-          await carregarContas();
+          await recarregar();
           return true;
         }
         window.dispatchEvent(new CustomEvent("conta-atualizada"));
@@ -240,7 +251,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
             : "A conta foi cadastrada e a entrada registrada.",
       });
 
-      await carregarContas();
+      await recarregar();
       return true;
     } catch (error) {
       console.error("Erro ao cadastrar conta:", error);
@@ -290,7 +301,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
           title: "Conta atualizada",
           description: "A conta foi atualizada com sucesso.",
         });
-        await carregarContas();
+        await recarregar();
         return true;
       }
 
@@ -333,7 +344,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         description: "A conta foi atualizada com sucesso.",
       });
 
-      await carregarContas();
+      await recarregar();
       return true;
     } catch (error) {
       console.error("Erro ao atualizar conta:", error);
@@ -393,7 +404,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
         });
       }
 
-      await carregarContas();
+      await recarregar();
       return true;
     } catch (error) {
       console.error("Erro ao excluir conta:", error);
@@ -467,7 +478,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       }
 
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
-      await carregarContas();
+      await recarregar();
       toast({
         title: quitou ? "Conta quitada" : "Recebimento registrado",
         description: quitou ? "O saldo foi zerado." : "Pagamento parcial registrado. O saldo foi atualizado.",
@@ -521,7 +532,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       }
 
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
-      await carregarContas();
+      await recarregar();
       toast({ title: "Pagamento estornado", description: "O saldo da conta foi recalculado." });
       return true;
     } catch (error) {
@@ -531,14 +542,15 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     }
   };
 
-  const marcarComoPaga = async (id: string, tipo: 'pagar' | 'receber', formaPagamento?: string) => {
+  // contaInformada: a conta vinda de fora da lista do hook (ficha do fornecedor).
+  const marcarComoPaga = async (id: string, tipo: 'pagar' | 'receber', formaPagamento?: string, contaInformada?: Conta) => {
     // Se é uma conta virtual de venda, marcar a venda como recebida
     if (id.startsWith("venda_") && tipo === "receber") {
       return await atualizarConta(id, { status: "recebido" });
     }
 
     // Conta do modelo novo: quitar = registrar um pagamento do valor do saldo.
-    const contaAlvo = contas.find(c => c.id === id);
+    const contaAlvo = contaInformada ?? contas.find(c => c.id === id);
     if (contaAlvo?.usa_historico_pagamentos) {
       const saldo = Math.max(Number(contaAlvo.valor) - Number(contaAlvo.valor_pago || 0), 0);
       if (saldo <= 0.005) {
@@ -564,7 +576,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
 
     if (sucesso) {
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
-      const conta = contas.find(c => c.id === id);
+      const conta = contaInformada ?? contas.find(c => c.id === id);
       if (conta?.recorrente) {
         try {
           const { data: { user } } = await supabase.auth.getUser();
@@ -604,7 +616,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
                 description: `A próxima parcela de "${conta.nome}" foi criada para ${proximoMes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.`,
               });
 
-              await carregarContas();
+              await recarregar();
             }
           }
         } catch (error) {
@@ -616,14 +628,15 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
     return sucesso;
   };
 
-  const marcarVariasComoPaga = async (ids: string[]) => {
+  // contasInformadas: as contas vindas de fora da lista do hook (ficha do fornecedor).
+  const marcarVariasComoPaga = async (ids: string[], contasInformadas?: Conta[]) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
       const targetUserId = resolvedUserIdFromContext ?? user.id;
 
-      const contasParaBaixa = contas.filter(c => ids.includes(c.id) && c.status === 'pendente');
+      const contasParaBaixa = (contasInformadas ?? contas).filter(c => ids.includes(c.id) && c.status === 'pendente');
 
       const hoje = dataBrasiliaISO();
       let parcelasSemCusto = 0;
@@ -705,7 +718,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
       });
 
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
-      await carregarContas();
+      await recarregar();
       return true;
     } catch (error) {
       console.error("Erro ao dar baixa em massa:", error);
@@ -719,8 +732,9 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }) {
   };
 
   useEffect(() => {
-    carregarContas();
-  }, [carregarContas]);
+    if (carregar) carregarContas();
+    else setLoading(false);
+  }, [carregar, carregarContas]);
 
   return {
     contas,
