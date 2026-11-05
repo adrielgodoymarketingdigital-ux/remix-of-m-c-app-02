@@ -1001,7 +1001,7 @@ export default function OrdemServicoPage() {
           </div>
 
           {/* 4 cards gerenciais — grid 4 colunas largura total */}
-          <Card className={isDesktop ? "my-[18px] min-w-0 overflow-hidden rounded-[17px] border-border bg-card shadow-sm" : "min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm mt-5 md:mt-7 mb-5 md:mb-7"}>
+          <Card className={isDesktop ? "my-[14px] min-w-0 overflow-hidden rounded-[17px] border-border bg-card shadow-sm" : "min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm mt-5 md:mt-7 mb-5 md:mb-7"}>
             {isDesktop ? (
               <CabecalhoSecaoOSDesktop
                 icone={Target}
@@ -1010,7 +1010,7 @@ export default function OrdemServicoPage() {
               >
                 <button
                   onClick={toggleChipsExpandido}
-                  className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-[17px] py-2.5 text-xs font-semibold text-[#1259c7] transition-colors hover:bg-muted dark:text-blue-300"
+                  className="flex h-9 items-center gap-2 rounded-full border border-border bg-muted/40 px-[17px] text-xs font-semibold text-[#1259c7] transition-colors hover:bg-muted dark:text-blue-300"
                 >
                   {chipsExpandido ? "Ocultar metas" : "Ver metas"}
                   {chipsExpandido ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}

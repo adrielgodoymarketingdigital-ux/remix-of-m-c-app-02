@@ -35,11 +35,11 @@ interface PainelControleOSDesktopProps {
 // Azul fixo: o painel não segue a cor personalizada da loja. Sem hover/foco claros, o tema padrão sumiria no azul.
 const classeFoco = "focus-visible:ring-white/70 focus-visible:ring-offset-0";
 const classeAcao = cn(
-  "h-10 gap-2 rounded-lg border-[#48a0ff] bg-[#00449a]/25 px-4 font-semibold text-white hover:bg-white/15 hover:text-white dark:border-white/25 dark:bg-white/5",
+  "h-9 gap-2 rounded-lg border-[#48a0ff] bg-[#00449a]/25 px-4 font-semibold text-white hover:bg-white/15 hover:text-white dark:border-white/25 dark:bg-white/5",
   classeFoco,
 );
 const classeCampo =
-  "h-10 rounded-lg border border-white/15 bg-white/10 text-sm font-medium text-white hover:bg-white/15 hover:text-white";
+  "h-9 rounded-lg border border-white/15 bg-white/10 text-sm font-medium text-white hover:bg-white/15 hover:text-white";
 
 const rotuloMes = (data: Date) => {
   const rotulo = format(data, "MMMM 'de' yyyy", { locale: ptBR });
@@ -112,7 +112,7 @@ export function PainelControleOSDesktop({
   onLimparPeriodo,
 }: PainelControleOSDesktopProps) {
   return (
-    <section className="relative overflow-hidden rounded-[19px] border border-transparent bg-[linear-gradient(115deg,#0865c8_0%,#07439f_48%,#06246f_100%)] px-6 py-5 text-white shadow-[0_8px_20px_rgba(15,62,143,0.12)] dark:border-white/10 dark:bg-[linear-gradient(115deg,#0c2f66_0%,#0a2350_50%,#071a3d_100%)]">
+    <section className="relative overflow-hidden rounded-[19px] border border-transparent bg-[linear-gradient(115deg,#0865c8_0%,#07439f_48%,#06246f_100%)] px-6 py-4 text-white shadow-[0_8px_20px_rgba(15,62,143,0.12)] dark:border-white/10 dark:bg-[linear-gradient(115deg,#0c2f66_0%,#0a2350_50%,#071a3d_100%)]">
       {/* Onda do fundo: estica com o painel, por isso preserveAspectRatio="none". */}
       <svg
         aria-hidden="true"
@@ -131,10 +131,10 @@ export function PainelControleOSDesktop({
         <path d="M660 300C760 272 806 176 884 118C930 84 968 68 1000 62V300Z" fill="#0b2f9e" fillOpacity="0.28" />
       </svg>
 
-      <div className="relative flex flex-col gap-4">
+      <div className="relative flex flex-col gap-3">
         <div className="flex items-center gap-4">
-          <div className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-[14px] bg-[#1178e5] dark:bg-[#1a5bb5]">
-            <SlidersHorizontal className="h-7 w-7" />
+          <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#1178e5] dark:bg-[#1a5bb5]">
+            <SlidersHorizontal className="h-6 w-6" />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -148,7 +148,7 @@ export function PainelControleOSDesktop({
                 <span className="font-semibold">{contadorOS.usadas}</span>
                 <span>/</span>
                 <span>{contadorOS.limite}</span>
-                <span className="text-[10px]">OS</span>
+                <span className="text-[11px]">OS</span>
               </div>
             )}
 
@@ -158,7 +158,7 @@ export function PainelControleOSDesktop({
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "os-nova-btn h-10 gap-2 rounded-lg border-0 bg-white px-4 font-semibold text-[#15233d] shadow-md hover:bg-white hover:text-[#15233d] hover:brightness-95",
+                    "os-nova-btn h-9 gap-2 rounded-lg border-0 bg-white px-4 font-semibold text-[#15233d] shadow-md hover:bg-white hover:text-[#15233d] hover:brightness-95",
                     classeFoco,
                   )}
                 >
@@ -231,7 +231,7 @@ export function PainelControleOSDesktop({
               onClick={onLimparPeriodo}
               aria-label="Limpar período"
               title="Limpar período"
-              className={cn("h-10 w-10 p-0 text-white hover:bg-white/15 hover:text-white", classeFoco)}
+              className={cn("h-9 w-9 p-0 text-white hover:bg-white/15 hover:text-white", classeFoco)}
             >
               <X />
             </Button>

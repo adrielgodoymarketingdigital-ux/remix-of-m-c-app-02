@@ -93,13 +93,13 @@ export const DashboardOrdensServico = ({
   const lucroTotal = (lucroOrdensEntregues || 0) + lucroAvulsosEntregues;
 
   return (
-    <div className={isDesktop ? "mb-4 space-y-5" : "space-y-2 mb-4"}>
+    <div className={isDesktop ? "mb-4 space-y-4" : "space-y-2 mb-4"}>
       {/* Cards de status dinâmicos */}
       {isDesktop && carregando ? (
         <div className="grid grid-cols-3 gap-3 min-[1152px]:grid-cols-5">
           {Array.from({ length: 10 }, (_, i) => (
-            <div key={i} className="flex min-h-[87px] items-center gap-3 rounded-[14px] border border-border bg-card px-3 py-3.5 shadow-sm">
-              <Skeleton className="h-[43px] w-[43px] shrink-0 rounded-full" />
+            <div key={i} className="flex min-h-[76px] items-center gap-3 rounded-[14px] border border-border bg-card px-3 py-[11px] shadow-sm">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
               <div className="min-w-0 flex-1 space-y-2">
                 <Skeleton className="h-3 w-full max-w-[90px]" />
                 <Skeleton className="h-6 w-10" />
@@ -290,14 +290,14 @@ function StatusCardDesktop({ cor, label, icone: Icone, valor, detalhe }: StatusC
   return (
     <div
       style={getEstiloDaCor(corValida)}
-      className="flex min-h-[87px] min-w-0 items-center gap-3 rounded-[14px] border border-l-4 border-border border-l-[color:var(--acento)] bg-card px-3 py-3.5 shadow-sm dark:border-l-[color:var(--acento-escuro)]"
+      className="flex min-h-[76px] min-w-0 items-center gap-3 rounded-[14px] border border-l-4 border-border border-l-[color:var(--acento)] bg-card px-3 py-[11px] shadow-sm dark:border-l-[color:var(--acento-escuro)]"
     >
-      <div className="flex h-[43px] w-[43px] shrink-0 items-center justify-center rounded-full bg-[var(--acento-suave)] text-[color:var(--acento)] dark:bg-[var(--acento-suave-escuro)] dark:text-[color:var(--acento-escuro)]">
-        <Icone className="h-[23px] w-[23px]" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--acento-suave)] text-[color:var(--acento)] dark:bg-[var(--acento-suave-escuro)] dark:text-[color:var(--acento-escuro)]">
+        <Icone className="h-[22px] w-[22px]" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold leading-[1.35] text-foreground [overflow-wrap:anywhere]">{label}</p>
-        <p className="mt-1.5 text-[25px] font-extrabold leading-none tabular-nums text-foreground">{valor}</p>
+        <p className="mt-1 text-2xl font-extrabold leading-none tabular-nums text-foreground">{valor}</p>
         {detalhe !== undefined && (
           <p className="mt-1 truncate text-[11px] text-muted-foreground"><ValorMonetario valor={detalhe} /></p>
         )}
@@ -360,20 +360,20 @@ function ValorCardDesktop({ tom, label, sublabel, valor, icone: Icone, carregand
   const IconeFinal = negativo ? TrendingDown : Icone;
 
   return (
-    <div className={cn("flex min-h-[134px] min-w-0 items-center gap-[18px] rounded-[17px] border bg-gradient-to-r p-[22px]", estilo.card)}>
+    <div className={cn("flex min-h-[107px] min-w-0 items-center gap-4 rounded-[17px] border bg-gradient-to-r px-5 py-3.5", estilo.card)}>
       {carregando ? (
-        <Skeleton className="h-[60px] w-[60px] shrink-0 rounded-full" />
+        <Skeleton className="h-[52px] w-[52px] shrink-0 rounded-full" />
       ) : (
-        <div className={cn("flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full", negativo ? "bg-red-500/15 text-red-700 dark:text-red-400" : estilo.icone)}>
-          <IconeFinal className="h-7 w-7" />
+        <div className={cn("flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full", negativo ? "bg-red-500/15 text-red-700 dark:text-red-400" : estilo.icone)}>
+          <IconeFinal className="h-6 w-6" />
         </div>
       )}
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold text-foreground">{label}</p>
         {carregando ? (
-          <Skeleton className="my-2 h-8 w-40 max-w-full" />
+          <Skeleton className="my-1.5 h-7 w-40 max-w-full" />
         ) : (
-          <p className={cn("my-1 text-[26px] font-extrabold leading-tight tracking-tight tabular-nums [overflow-wrap:anywhere] min-[1152px]:text-[32px]", negativo ? "text-red-700 dark:text-red-400" : estilo.valor)}>
+          <p className={cn("my-0.5 text-[28px] font-extrabold leading-tight tracking-tight tabular-nums [overflow-wrap:anywhere] min-[1152px]:text-[30px]", negativo ? "text-red-700 dark:text-red-400" : estilo.valor)}>
             <ValorMonetario valor={valor} />
           </p>
         )}
