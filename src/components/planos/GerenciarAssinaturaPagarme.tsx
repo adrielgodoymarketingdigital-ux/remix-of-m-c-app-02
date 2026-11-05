@@ -39,6 +39,8 @@ const PAGARME_PUBLIC_KEY = "pk_p096KVAIDFNmGjNk";
 interface GerenciarAssinaturaPagarmeProps {
   dataProximaCobranca?: string | null;
   onChanged?: () => void;
+  /** Só os botões, sem a linha de próxima cobrança, soltos na fileira de quem usa (computador). */
+  apenasBotoes?: boolean;
 }
 
 /** Resposta da edge function update-pagarme-card. */
@@ -107,6 +109,7 @@ const formatExpiry = (v: string) => {
 export function GerenciarAssinaturaPagarme({
   dataProximaCobranca,
   onChanged,
+  apenasBotoes = false,
 }: GerenciarAssinaturaPagarmeProps) {
   const { toast } = useToast();
   const [cancelando, setCancelando] = useState(false);
@@ -368,8 +371,8 @@ export function GerenciarAssinaturaPagarme({
     : null;
 
   return (
-    <div className="mt-4 flex flex-col gap-3">
-      {proximaCobrancaLabel && (
+    <div className={apenasBotoes ? "contents" : "mt-4 flex flex-col gap-3"}>
+      {proximaCobrancaLabel && !apenasBotoes && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <CalendarClock className="h-4 w-4" />
           <span>
@@ -378,7 +381,7 @@ export function GerenciarAssinaturaPagarme({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className={apenasBotoes ? "contents" : "flex flex-wrap gap-2"}>
         <Button
           variant="outline"
           onClick={() => setTrocaOpen(true)}

@@ -29,6 +29,9 @@ import { GerenciarAssinaturaPagarme } from "@/components/planos/GerenciarAssinat
 import { BotaoCancelarPlano } from "@/components/planos/BotaoCancelarPlano";
 import { BotaoCancelarTrial } from "@/components/planos/BotaoCancelarTrial";
 import { CabecalhoPlanoDesktop } from "@/components/planos/desktop/CabecalhoPlanoDesktop";
+import { CardPlanoAtualDesktop } from "@/components/planos/desktop/CardPlanoAtualDesktop";
+import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto";
+import { nomePlanoAtual, textoLimiteArmazenamento, textoVencimentoPlano } from "@/lib/planos/apresentacaoPlano";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -221,6 +224,12 @@ export default function Plano() {
     !!assinatura?.pagarme_subscription_id &&
     ["active", "trialing", "past_due"].includes(assinatura.status);
 
+  // Mesma condição nos dois layouts: planos pagos ativos fora da Pagar.me (lá o cancelamento é no Gerenciar).
+  const mostrarCancelarPlano =
+    assinatura?.plano_tipo !== "trial" &&
+    assinatura?.status === "active" &&
+    assinatura?.payment_provider !== "pagarme";
+
   const MOSTRAR_PLANO_ULTRA = true;
 
   const planosFiltrados = Object.entries(PLANOS).filter(([key]) =>
@@ -410,6 +419,73 @@ export default function Plano() {
                 </div>
               </Card>
             ) : (assinatura && (assinatura.status === "active" || assinatura.status === "trialing" || (trialStatus.isTrialWithCard && trialStatus.isTrialing))) ? (
+              isDesktop ? (
+                <CardPlanoAtualDesktop
+                  nomePlano={nomePlanoAtual(assinatura.plano_tipo, PLANOS)}
+                  selo={planoVencido ? (
+                    <Badge variant="destructive">PLANO VENCIDO</Badge>
+                  ) : (
+                    <Badge variant="secondary">{assinatura.plano_tipo.replace(/_/g, " ").toUpperCase()}</Badge>
+                  )}
+                  vencimento={textoVencimentoPlano(
+                    assinatura,
+                    getInfoPlanoCompacto(assinatura)?.diasRestantes ?? null,
+                    (instante) => partesDataHoraBrasilia(instante).data,
+                  )}
+                  avisoVencido={planoVencido
+                    ? `Seu ${rotuloPlano(planoAnterior)} venceu${dataVencimentoBR ? ` em ${dataVencimentoBR}` : ""}. Renove agora para voltar a usar todos os recursos.`
+                    : null}
+                  dispositivosUsados={contagemDispositivos.usados}
+                  dispositivosLimite={limites.dispositivos}
+                  dispositivosPercentual={contagemDispositivos.percentual}
+                  textoPeriodo={periodoDispositivos && limites.dispositivos !== -1 ? textoUsoDispositivos(periodoDispositivos) : null}
+                  limiteArmazenamento={textoLimiteArmazenamento(limites.armazenamento_mb)}
+                  acoes={
+                    <>
+                      {assinatura.plano_tipo === "demonstracao" ? (
+                        <Alert className="w-full">
+                          <AlertDescription>
+                            Você está no plano de demonstração. Faça upgrade para desbloquear todos os recursos!
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <>
+                          <Button variant="outline" onClick={() => recarregar()} disabled={carregando || polling}>
+                            {polling ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Verificando...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Atualizar Status
+                              </>
+                            )}
+                          </Button>
+                          {mostrarCancelarPlano && (
+                            <BotaoCancelarPlano
+                              cancelando={cancelando}
+                              onConfirmar={async () => {
+                                setCancelando(true);
+                                await cancelarPlano();
+                                setCancelando(false);
+                              }}
+                            />
+                          )}
+                        </>
+                      )}
+                      {podeTrocarCartao && (
+                        <GerenciarAssinaturaPagarme
+                          apenasBotoes
+                          dataProximaCobranca={assinatura.data_proxima_cobranca}
+                          onChanged={recarregar}
+                        />
+                      )}
+                    </>
+                  }
+                />
+              ) : (
               <Card className="p-6 border-2 border-primary">
                 <div className="flex items-start gap-4">
                   <Crown className="h-8 w-8 text-primary mt-1" />
@@ -503,9 +579,7 @@ export default function Plano() {
                         </Button>
                         
                         {/* Botão Cancelar Plano - apenas para planos pagos ativos */}
-                        {assinatura.plano_tipo !== "trial" &&
-                          assinatura.status === "active" &&
-                          assinatura.payment_provider !== "pagarme" && (
+                        {mostrarCancelarPlano && (
                           <BotaoCancelarPlano
                             cancelando={cancelando}
                             onConfirmar={async () => {
@@ -526,6 +600,7 @@ export default function Plano() {
                   </div>
                 </div>
               </Card>
+              )
             ) : (
               <Card className={cn("p-6 border-2 border-orange-200 bg-orange-50/50", isDesktop && "dark:border-orange-900 dark:bg-orange-950/30")}>
                 <div className="flex items-start gap-4">
