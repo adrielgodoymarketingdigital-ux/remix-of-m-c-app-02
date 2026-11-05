@@ -302,6 +302,15 @@ export default function OrdemServicoPage() {
     importarOSEmLote,
   } = useOrdensServico(mostrarOsFiliais);
 
+  // Fica na página porque o conteúdo da aba é desmontado ao trocar de aba; depois da
+  // primeira carga, os valores antigos ficam na tela até chegarem os novos.
+  const [primeiraCargaFeita, setPrimeiraCargaFeita] = useState(false);
+  const carregavaRef = useRef(false);
+  useEffect(() => {
+    if (carregavaRef.current && !loading) setPrimeiraCargaFeita(true);
+    carregavaRef.current = loading;
+  }, [loading]);
+
   const resolverNomeLoja = (empresaId: string | null | undefined): string => {
     if (!empresaId) return nomeMatriz || "Matriz";
     const filial = empresasFiliais.find(e => e.id === empresaId);
@@ -1107,7 +1116,13 @@ export default function OrdemServicoPage() {
           {/* Conteúdo das abas — irmão do Card "Indicadores", não mais filho dele. */}
           <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
             <TabsContent value="minhas" className={isDesktop ? "mt-3" : "mt-5 md:mt-7"}>
-          <DashboardOrdensServico ordens={ordens} servicosAvulsos={servicosAvulsosFiltrados} lucroOrdensEntregues={lucroOrdensEntregues} />
+          <DashboardOrdensServico
+            ordens={ordens}
+            servicosAvulsos={servicosAvulsosFiltrados}
+            lucroOrdensEntregues={lucroOrdensEntregues}
+            carregando={!primeiraCargaFeita}
+            temPeriodo={!!(dataInicio || dataFim)}
+          />
 
           <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm mt-5 md:mt-7">
             <CardHeader className="p-4 sm:p-5 border-b border-border/30 bg-muted/10">

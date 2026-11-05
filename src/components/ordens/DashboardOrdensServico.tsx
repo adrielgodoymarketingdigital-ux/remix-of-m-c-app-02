@@ -1,6 +1,9 @@
-import { Package, DollarSign, TrendingUp, Wrench, ClipboardCheck, CircleCheck, CirclePlay, Clock, CircleX, PackageCheck, Shield, TriangleAlert, LucideIcon } from "lucide-react";
+import { Package, Coins, DollarSign, TrendingUp, TrendingDown, Wrench, ClipboardCheck, CircleCheck, CirclePlay, Clock, CircleX, PackageCheck, Shield, TriangleAlert, LucideIcon } from "lucide-react";
 import { getEstiloDaCor } from "@/components/tutoriais/CardCategoriaTutorial";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
+import { useOcultarValores } from "@/contexts/OcultarValoresContext";
+import { cn } from "@/lib/utils";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
@@ -40,12 +43,18 @@ interface DashboardOrdensServicoProps {
   ordens: OrdemServico[];
   servicosAvulsos?: ServicoAvulso[];
   lucroOrdensEntregues?: number | null;
+  /** Só no computador: primeira carga ainda não terminou. */
+  carregando?: boolean;
+  /** Só no computador: há data no filtro (com "Todos os meses" sem datas, não há período a citar). */
+  temPeriodo?: boolean;
 }
 
 export const DashboardOrdensServico = ({
   ordens,
   servicosAvulsos = [],
   lucroOrdensEntregues,
+  carregando = false,
+  temPeriodo = true,
 }: DashboardOrdensServicoProps) => {
   const { podeVerLucros, isFuncionario } = useFuncionarioPermissoes();
   const { statusList } = useOSStatusConfig();
@@ -84,9 +93,21 @@ export const DashboardOrdensServico = ({
   const lucroTotal = (lucroOrdensEntregues || 0) + lucroAvulsosEntregues;
 
   return (
-    <div className="space-y-2 mb-4">
+    <div className={isDesktop ? "mb-4 space-y-5" : "space-y-2 mb-4"}>
       {/* Cards de status dinâmicos */}
-      {isDesktop ? (
+      {isDesktop && carregando ? (
+        <div className="grid grid-cols-3 gap-3 min-[1152px]:grid-cols-5">
+          {Array.from({ length: 10 }, (_, i) => (
+            <div key={i} className="flex min-h-[87px] items-center gap-3 rounded-[14px] border border-border bg-card px-3 py-3.5 shadow-sm">
+              <Skeleton className="h-[43px] w-[43px] shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-3 w-full max-w-[90px]" />
+                <Skeleton className="h-6 w-10" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : isDesktop ? (
         <div className="grid grid-cols-3 gap-3 min-[1152px]:grid-cols-5">
           <StatusCardDesktop cor="#3b82f6" label="Total de Ordens" icone={Package} valor={ordens.length} />
 
@@ -156,7 +177,44 @@ export const DashboardOrdensServico = ({
       )}
 
       {/* Linha com cards financeiros */}
-      {!isFuncionario ? (
+      {isDesktop ? (
+        !isFuncionario ? (
+          <div className="grid grid-cols-2 gap-5">
+            <ValorCardDesktop
+              tom="azul"
+              label="Valor Faturado"
+              sublabel={temPeriodo ? "Total faturado no período" : "Total faturado"}
+              valor={valorFaturado + valorAvulsos}
+              icone={Coins}
+              carregando={carregando}
+            />
+
+            {podeVerLucros && (
+              <ValorCardDesktop
+                tom="verde"
+                label="Lucro Total"
+                sublabel={temPeriodo ? "Lucro líquido no período" : "Lucro líquido"}
+                valor={lucroTotal}
+                icone={TrendingUp}
+                carregando={carregando}
+              />
+            )}
+          </div>
+        ) : (
+          podeVerLucros && (
+            <div className="grid grid-cols-2 gap-5">
+              <ValorCardDesktop
+                tom="verde"
+                label="Lucro Avulsos"
+                sublabel="Serviços avulsos entregues"
+                valor={lucroAvulsosEntregues}
+                icone={TrendingUp}
+                carregando={carregando}
+              />
+            </div>
+          )
+        )
+      ) : !isFuncionario ? (
         <div className="grid gap-2 grid-cols-2">
           <ValorCard
             label="Valor Faturado"
@@ -268,6 +326,59 @@ function ValorCard({ label, sublabel, valor, icon }: ValorCardProps) {
         <ValorMonetario valor={valor} />
       </p>
       <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{sublabel}</p>
+    </div>
+  );
+}
+
+const TONS_VALOR_DESKTOP = {
+  azul: {
+    card: "border-[#b9d8ff] from-[#eff6ff] to-[#e8f3ff] dark:border-blue-500/25 dark:from-blue-500/10 dark:to-blue-500/5",
+    icone: "bg-[#d7eaff] text-[#0873eb] dark:bg-blue-500/20 dark:text-blue-300",
+    valor: "text-[#0866e9] dark:text-blue-300",
+  },
+  verde: {
+    card: "border-[#b9ecd4] from-[#ecfbf5] to-[#e7faf1] dark:border-emerald-500/25 dark:from-emerald-500/10 dark:to-emerald-500/5",
+    icone: "bg-[#d3f5e4] text-[#0bad60] dark:bg-emerald-500/20 dark:text-emerald-400",
+    valor: "text-[#047857] dark:text-emerald-400",
+  },
+};
+
+interface ValorCardDesktopProps {
+  tom: keyof typeof TONS_VALOR_DESKTOP;
+  label: string;
+  sublabel: string;
+  valor: number;
+  icone: LucideIcon;
+  carregando: boolean;
+}
+
+function ValorCardDesktop({ tom, label, sublabel, valor, icone: Icone, carregando }: ValorCardDesktopProps) {
+  const { valoresOcultos } = useOcultarValores();
+  const estilo = TONS_VALOR_DESKTOP[tom];
+  // Com os valores ocultos, o vermelho entregaria que houve prejuízo
+  const negativo = valor < 0 && !valoresOcultos;
+  const IconeFinal = negativo ? TrendingDown : Icone;
+
+  return (
+    <div className={cn("flex min-h-[134px] min-w-0 items-center gap-[18px] rounded-[17px] border bg-gradient-to-r p-[22px]", estilo.card)}>
+      {carregando ? (
+        <Skeleton className="h-[60px] w-[60px] shrink-0 rounded-full" />
+      ) : (
+        <div className={cn("flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full", negativo ? "bg-red-500/15 text-red-700 dark:text-red-400" : estilo.icone)}>
+          <IconeFinal className="h-7 w-7" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold text-foreground">{label}</p>
+        {carregando ? (
+          <Skeleton className="my-2 h-8 w-40 max-w-full" />
+        ) : (
+          <p className={cn("my-1 text-[26px] font-extrabold leading-tight tracking-tight tabular-nums [overflow-wrap:anywhere] min-[1152px]:text-[32px]", negativo ? "text-red-700 dark:text-red-400" : estilo.valor)}>
+            <ValorMonetario valor={valor} />
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground">{sublabel}</p>
+      </div>
     </div>
   );
 }
