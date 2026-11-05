@@ -22,6 +22,23 @@ export function nomePlanoAtual(
   return planos[planoTipo]?.nome ?? NOMES_FORA_DO_CATALOGO[planoTipo] ?? planoTipo.replace(/_/g, " ");
 }
 
+/**
+ * Selo ao lado de "Seu Plano Atual": plano e ciclo legíveis ("Intermediário Mensal").
+ * Fora dos planos pagos do catálogo (Free, admin, trial, demonstração, tipo desconhecido)
+ * fica o texto de sempre, sem inventar nome nem ciclo.
+ */
+export function seloPlanoAtual(
+  planoTipo: string,
+  planos: Record<string, { nome: string }>,
+  planoVencido = false,
+): string {
+  if (planoVencido) return "PLANO VENCIDO";
+  const ciclo = planoTipo.match(/_(mensal|anual)$/)?.[1];
+  if (!ciclo || !planos[planoTipo]) return planoTipo.replace(/_/g, " ").toUpperCase();
+  const nome = nomePlanoAtual(planoTipo, planos).replace(/^Plano /, "");
+  return `${nome} ${ciclo === "mensal" ? "Mensal" : "Anual"}`;
+}
+
 /** Público de cada plano: mesmos textos de landing-v4/components/Planos.tsx. O Free não tem. */
 const DESCRICOES_POR_NIVEL: Record<string, string> = {
   basico: "Para quem está começando",

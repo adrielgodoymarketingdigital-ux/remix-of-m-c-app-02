@@ -9,6 +9,7 @@ import {
   limparRecurso,
   nomePlanoAtual,
   periodoDoPlano,
+  seloPlanoAtual,
   textoLimiteArmazenamento,
   textoVencimentoPlano,
 } from "../../src/lib/planos/apresentacaoPlano.ts";
@@ -26,6 +27,30 @@ Deno.test("nome: catálogo, fora do catálogo e vazio", () => {
   assertEquals(nomePlanoAtual("demonstracao", PLANOS), "Demonstração");
   assertEquals(nomePlanoAtual("outro_plano", PLANOS), "outro plano");
   assertEquals(nomePlanoAtual(null, PLANOS), "");
+});
+
+Deno.test("selo: cada plano e ciclo, com acento e sem caixa alta", () => {
+  assertEquals(seloPlanoAtual("basico_mensal", PLANOS), "Básico Mensal");
+  assertEquals(seloPlanoAtual("basico_anual", PLANOS), "Básico Anual");
+  assertEquals(seloPlanoAtual("intermediario_mensal", PLANOS), "Intermediário Mensal");
+  assertEquals(seloPlanoAtual("intermediario_anual", PLANOS), "Intermediário Anual");
+  assertEquals(seloPlanoAtual("profissional_mensal", PLANOS), "Profissional Mensal");
+  assertEquals(seloPlanoAtual("profissional_anual", PLANOS), "Profissional Anual");
+  assertEquals(seloPlanoAtual("profissional_ultra_mensal", PLANOS), "Ultra Mensal");
+  assertEquals(seloPlanoAtual("profissional_ultra_anual", PLANOS), "Ultra Anual");
+});
+
+Deno.test("selo: fora do catálogo pago fica o texto de sempre", () => {
+  assertEquals(seloPlanoAtual("free", PLANOS), "FREE");
+  assertEquals(seloPlanoAtual("admin", PLANOS), "ADMIN");
+  assertEquals(seloPlanoAtual("trial", PLANOS), "TRIAL");
+  assertEquals(seloPlanoAtual("demonstracao", PLANOS), "DEMONSTRACAO");
+  assertEquals(seloPlanoAtual("plano_novo_mensal", PLANOS), "PLANO NOVO MENSAL");
+});
+
+Deno.test("selo: vencido prevalece", () => {
+  assertEquals(seloPlanoAtual("free", PLANOS, true), "PLANO VENCIDO");
+  assertEquals(seloPlanoAtual("intermediario_mensal", PLANOS, true), "PLANO VENCIDO");
 });
 
 Deno.test("descrição: mensal e anual iguais, Free sem descrição", () => {

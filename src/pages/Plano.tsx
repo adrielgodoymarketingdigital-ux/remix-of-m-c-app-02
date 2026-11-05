@@ -35,7 +35,7 @@ import { GradePlanosDesktop } from "@/components/planos/desktop/GradePlanosDeskt
 import { BeneficiosPlanoDesktop } from "@/components/planos/desktop/BeneficiosPlanoDesktop";
 import { PerguntasPlanoDesktop } from "@/components/planos/desktop/PerguntasPlanoDesktop";
 import { PERGUNTAS_PLANO } from "@/components/planos/perguntasPlano";
-import { descontoAnual, nomePlanoAtual, periodoDoPlano, textoLimiteArmazenamento, textoVencimentoPlano } from "@/lib/planos/apresentacaoPlano";
+import { descontoAnual, nomePlanoAtual, periodoDoPlano, seloPlanoAtual, textoLimiteArmazenamento, textoVencimentoPlano } from "@/lib/planos/apresentacaoPlano";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -418,11 +418,11 @@ export default function Plano() {
               isDesktop ? (
                 <CardPlanoAtualDesktop
                   nomePlano={nomePlanoAtual(assinatura.plano_tipo, PLANOS)}
-                  selo={planoVencido ? (
-                    <Badge variant="destructive">PLANO VENCIDO</Badge>
-                  ) : (
-                    <Badge variant="secondary">{assinatura.plano_tipo.replace(/_/g, " ").toUpperCase()}</Badge>
-                  )}
+                  selo={
+                    <Badge variant={planoVencido ? "destructive" : "secondary"}>
+                      {seloPlanoAtual(assinatura.plano_tipo, PLANOS, planoVencido)}
+                    </Badge>
+                  }
                   vencimento={textoVencimentoPlano(
                     assinatura,
                     getInfoPlanoCompacto(assinatura)?.diasRestantes ?? null,
