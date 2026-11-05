@@ -8,7 +8,7 @@
 
 export const ESPERA_SINAL_IMPRESSAO_MS = 1500;
 export const MENSAGEM_IMPRESSAO_NAO_ABRIU =
-  "Não foi possível abrir a impressão neste aparelho. Tente pelo navegador ou use Salvar PDF";
+  "Não foi possível abrir a impressão neste aparelho. Tente pelo navegador.";
 
 const LIMITE_EVENTOS = 20;
 

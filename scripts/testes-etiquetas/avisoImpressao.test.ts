@@ -43,7 +43,7 @@ Deno.test("aviso: só iOS instalado sem nenhum sinal", () => {
 
 Deno.test("aviso: espera e texto combinados", () => {
   assertEquals(ESPERA_SINAL_IMPRESSAO_MS, 1500);
-  assertEquals(MENSAGEM_IMPRESSAO_NAO_ABRIU, "Não foi possível abrir a impressão neste aparelho. Tente pelo navegador ou use Salvar PDF");
+  assertEquals(MENSAGEM_IMPRESSAO_NAO_ABRIU, "Não foi possível abrir a impressão neste aparelho. Tente pelo navegador.");
 });
 
 Deno.test("sinais: eventos de impressão contam; passos do próprio app não", () => {
