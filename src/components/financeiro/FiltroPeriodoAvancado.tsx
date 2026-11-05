@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar, Filter } from "lucide-react";
 import { nowBrasilia } from "@/lib/dataBrasilia";
+import { cn } from "@/lib/utils";
 
 export interface FiltrosPeriodo {
   dataInicio: string;
@@ -32,7 +33,7 @@ const MESES = [
   { value: "12", label: "Dezembro" },
 ];
 
-type PresetType = "hoje" | "ontem" | "7dias" | "mes_atual" | "por_mes" | "personalizado";
+export type PresetType = "hoje" | "ontem" | "7dias" | "mes_atual" | "por_mes" | "personalizado";
 
 interface FiltroPeriodoAvancadoProps {
   onFiltrar: (filtros: FiltrosPeriodo) => void;
@@ -40,6 +41,12 @@ interface FiltroPeriodoAvancadoProps {
   showTipoFiltro?: boolean;
   tipoFiltro?: string;
   onTipoFiltroChange?: (tipo: string) => void;
+  /** Opcional: quais períodos mostrar e com que rótulo (padrão: os 6 de sempre). */
+  opcoes?: { value: PresetType; label: string }[];
+  /** Opcional: esconde o botão "Limpar" (quem usa sempre precisa de um período). */
+  ocultarLimpar?: boolean;
+  /** Opcional: no celular, períodos em grade de 2 colunas em vez de uma linha rolando. */
+  opcoesEmGrade?: boolean;
 }
 
 const anos = Array.from({ length: 2035 - 2020 + 1 }, (_, i) => (2035 - i).toString());
@@ -50,6 +57,9 @@ export function FiltroPeriodoAvancado({
   showTipoFiltro,
   tipoFiltro,
   onTipoFiltroChange,
+  opcoes,
+  ocultarLimpar,
+  opcoesEmGrade,
 }: FiltroPeriodoAvancadoProps) {
   const [preset, setPreset] = useState<PresetType>("mes_atual");
   const [mesSelecionado, setMesSelecionado] = useState(
@@ -124,7 +134,7 @@ export function FiltroPeriodoAvancado({
     onFiltrar({ dataInicio: "", dataFim: "" });
   };
 
-  const presets: { value: PresetType; label: string }[] = [
+  const presetsPadrao: { value: PresetType; label: string }[] = [
     { value: "hoje", label: "Hoje" },
     { value: "ontem", label: "Ontem" },
     { value: "7dias", label: "7 dias" },
@@ -132,12 +142,16 @@ export function FiltroPeriodoAvancado({
     { value: "por_mes", label: "Por mês" },
     { value: "personalizado", label: "Personalizado" },
   ];
+  const presets = opcoes ?? presetsPadrao;
 
   return (
     <div className="rounded-2xl border bg-card p-2 sm:p-3 space-y-3 shadow-sm">
       {/* Celular: uma linha só, rolando para o lado. sm+: quebra linha como antes.
           p-1/-m-1 dão espaço para o anel de foco não ser cortado pela rolagem. */}
-      <div className="-m-1 flex gap-1.5 overflow-x-auto scrollbar-hide p-1 sm:flex-wrap sm:overflow-visible">
+      <div className={cn(
+        "-m-1 gap-1.5 p-1 sm:flex sm:flex-wrap sm:overflow-visible",
+        opcoesEmGrade ? "grid grid-cols-2" : "flex overflow-x-auto scrollbar-hide",
+      )}>
         {presets.map((p) => (
           <Button
             key={p.value}
@@ -243,15 +257,17 @@ export function FiltroPeriodoAvancado({
             </Button>
           )}
 
-          <Button
-            variant="outline"
-            onClick={handleLimpar}
-            disabled={loading}
-            size="sm"
-            className="h-11 sm:h-8 text-xs"
-          >
-            Limpar
-          </Button>
+          {!ocultarLimpar && (
+            <Button
+              variant="outline"
+              onClick={handleLimpar}
+              disabled={loading}
+              size="sm"
+              className="h-11 sm:h-8 text-xs"
+            >
+              Limpar
+            </Button>
+          )}
         </div>
       )}
     </div>
