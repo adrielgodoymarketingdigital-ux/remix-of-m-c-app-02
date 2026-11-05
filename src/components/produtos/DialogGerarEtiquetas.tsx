@@ -285,7 +285,7 @@ export const DialogGerarEtiquetas = ({ open, onOpenChange, itensSelecionados, no
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl sm:max-h-[92vh] overflow-y-auto">
+      <DialogContent data-print-hide="true" className="sm:max-w-5xl sm:max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Tags className="w-5 h-5" />
