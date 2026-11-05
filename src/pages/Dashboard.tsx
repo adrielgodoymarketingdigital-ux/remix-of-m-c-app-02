@@ -915,7 +915,7 @@ const Dashboard = () => {
   return (
     <AppLayout>
       <FormatoMoedaProvider value={fmt.moeda}>
-      <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-auto ${isDesktop ? "mx-auto w-full max-w-[1614px] lg:pt-3" : ""}`}>
+      <main className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-auto ${isDesktop ? "mx-auto w-full max-w-[1614px] lg:pt-1" : ""}`}>
       <TutorialAutoStart />
       <CardPrimeirosPassos />
       <div className="mb-4 empty:hidden"><AvisoCustoNaoConfirmado /></div>
@@ -927,9 +927,9 @@ const Dashboard = () => {
           )}
 
           {/* ============ SAUDAÇÃO E FILTROS — COMPUTADOR ============ */}
-          <div className="mb-6 flex flex-col gap-4 min-[1280px]:flex-row min-[1280px]:items-center min-[1280px]:justify-between">
+          <div className="mb-5 flex flex-col gap-3 min-[1280px]:flex-row min-[1280px]:items-center min-[1280px]:justify-between">
             <div data-tutorial="dashboard-title" className="min-w-0">
-              <h1 className="mb-1 text-[28px] font-bold leading-tight text-foreground">
+              <h1 className="mb-0.5 text-[26px] font-bold leading-8 text-foreground">
                 {nomeUsuario
                   ? <Trans t={t} i18nKey="saudacao.comNome" values={{ saudacao: getSaudacao() }} components={{ destaque: <span className="text-primary">{nomeUsuario}</span> }} />
                   : <Trans t={t} i18nKey="saudacao.bemVindo" values={{ saudacao: getSaudacao() }} components={{ destaque: <span className="text-primary" /> }} />
@@ -940,7 +940,7 @@ const Dashboard = () => {
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-                <SelectTrigger className="h-11 w-[240px] rounded-xl bg-card">
+                <SelectTrigger className="h-9 w-[240px] rounded-xl bg-card">
                   <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                   <SelectValue placeholder={t("mes.selecione")}>
                     {(mesSelecionado === "atual"
@@ -962,7 +962,7 @@ const Dashboard = () => {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-11 w-11 rounded-xl"
+                  className="h-9 w-9 rounded-xl"
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                   title={theme === "dark" ? t("tema.claro") : t("tema.escuro")}
                   data-tutorial="theme-toggle"
@@ -1180,7 +1180,7 @@ const Dashboard = () => {
 
           {isDesktop ? (
             <>
-              <h2 className="mb-4 flex items-center gap-2.5 text-xl font-extrabold text-foreground">
+              <h2 className="mb-3 flex items-center gap-2.5 text-xl font-extrabold text-foreground">
                 <ChartNoAxesCombined className="h-5 w-5 text-primary" />
                 {t("resumo.titulo")}
               </h2>

@@ -29,7 +29,7 @@ export function KpisDesktop({ resumo }: { resumo: DashboardResumo }) {
   ];
 
   return (
-    <section className="mb-6 mt-4 grid grid-cols-6 gap-3 min-[1080px]:grid-cols-5 min-[1400px]:gap-4">
+    <section className="mb-6 mt-3 grid grid-cols-6 gap-3 min-[1080px]:grid-cols-5 min-[1400px]:gap-4">
       {kpis.map(({ icone: Icone, cor, valor, rotulo, detalhe, rota }, i) => (
         <button
           key={rota}

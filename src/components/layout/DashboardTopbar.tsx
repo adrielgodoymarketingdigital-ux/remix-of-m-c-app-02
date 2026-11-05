@@ -13,7 +13,7 @@ export function DashboardTopbar() {
   const rotuloValores = valoresOcultos ? t("cabecalho.mostrarValores") : t("cabecalho.ocultarValores");
 
   return (
-    <header className="flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-8">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-8">
       <div className="flex min-w-0 items-center gap-3">
         <LayoutDashboard className="h-6 w-6 shrink-0 text-foreground" />
         <span className="truncate text-2xl font-bold tracking-tight text-foreground">{t("cabecalho.titulos.dashboard")}</span>

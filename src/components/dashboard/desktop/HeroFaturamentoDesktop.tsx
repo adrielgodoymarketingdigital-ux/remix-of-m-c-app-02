@@ -30,7 +30,7 @@ const PlaceholderValor = ({ className }: { className: string }) => (
 
 function ItemBreakdown({ icone: Icone, rotulo, children }: { icone: ComponentType<{ className?: string }>; rotulo: string; children: ReactNode }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/15 bg-black/20 p-4">
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/15 bg-black/20 px-4 py-3">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
         <Icone className="h-5 w-5" />
       </div>
@@ -49,11 +49,11 @@ export function HeroFaturamentoDesktop(props: HeroFaturamentoDesktopProps) {
   const IconeLucro = lucroNegativo ? TrendingDown : TrendingUp;
 
   return (
-    <section className="rounded-3xl p-5 text-white shadow-lg shadow-blue-950/20" style={{ background: fundo }}>
-      <div className="flex items-center justify-between gap-6 pb-4">
+    <section className="rounded-3xl px-5 py-4 text-white shadow-lg shadow-blue-950/20" style={{ background: fundo }}>
+      <div className="flex items-center justify-between gap-6 pb-3">
         <div className="shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold">{t("resumo.faturamentoTotal")}</span>
+            <span className="text-lg font-semibold leading-6">{t("resumo.faturamentoTotal")}</span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button type="button" aria-label={t(props.mesEmAndamento ? "resumo.comparacaoAndamento" : "resumo.comparacaoFechado")} className="text-white/80 hover:text-white">
@@ -63,10 +63,10 @@ export function HeroFaturamentoDesktop(props: HeroFaturamentoDesktopProps) {
               <TooltipContent>{t(props.mesEmAndamento ? "resumo.comparacaoAndamento" : "resumo.comparacaoFechado")}</TooltipContent>
             </Tooltip>
           </div>
-          <div className="my-2 text-[40px] font-extrabold leading-tight tracking-tight min-[1280px]:text-5xl">
-            {carregando ? <PlaceholderValor className="h-12 w-72" /> : <ValorMonetario valor={total} />}
+          <div className="my-1 text-[40px] font-extrabold leading-[44px] tracking-tight min-[1280px]:text-[44px]">
+            {carregando ? <PlaceholderValor className="h-11 w-72" /> : <ValorMonetario valor={total} />}
           </div>
-          <div className="flex h-7 items-center gap-2.5">
+          <div className="flex h-6 items-center gap-2.5">
             {carregando || carregandoComparacao
               ? <PlaceholderValor className="h-6 w-40" />
               : (
@@ -77,9 +77,9 @@ export function HeroFaturamentoDesktop(props: HeroFaturamentoDesktopProps) {
               )}
           </div>
         </div>
-        <div className="relative h-[120px] min-w-0 flex-1 bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.07)_0_1px,transparent_1px_64px)]">
+        <div className="relative h-[100px] min-w-0 flex-1 bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.07)_0_1px,transparent_1px_64px)]">
           {!carregando && serieDoMes.length >= 2 && (
-            <Sparkline dados={serieDoMes} cor="#22d3ee" altura={120} destacarUltimoPonto />
+            <Sparkline dados={serieDoMes} cor="#22d3ee" altura={100} destacarUltimoPonto />
           )}
         </div>
       </div>
@@ -95,7 +95,7 @@ export function HeroFaturamentoDesktop(props: HeroFaturamentoDesktopProps) {
           {carregando ? <PlaceholderValor className="h-5 w-24" /> : <ValorMonetario valor={props.dispositivos} />}
         </ItemBreakdown>
         <div className={cn(
-          "flex min-w-0 items-center gap-3 rounded-2xl border p-4",
+          "flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-3",
           lucroNegativo ? "border-red-400 bg-[#3b0a14]" : "border-emerald-400 bg-[#002c3b]"
         )}>
           <IconeLucro className={cn("h-7 w-7 shrink-0", lucroNegativo ? "text-red-300" : "text-emerald-300")} />

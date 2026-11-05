@@ -28,7 +28,7 @@ const ESTILOS = {
 function BarrasSerie({ dados, classeBarra }: { dados: number[]; classeBarra: string }) {
   const maior = Math.max(0, ...dados.map(Math.abs));
   return (
-    <div aria-hidden className="hidden h-[70px] shrink-0 items-end gap-1.5 min-[1200px]:flex">
+    <div aria-hidden className="hidden h-16 shrink-0 items-end gap-1.5 min-[1200px]:flex">
       {dados.map((valor, i) => (
         <span
           key={i}
@@ -54,14 +54,14 @@ function CardHoje({ estilo, icone: Icone, rotulo, valor, variacao, serie, carreg
   const { t } = useTranslation("dashboard");
   const cores = ESTILOS[estilo];
   return (
-    <div className={cn("flex min-h-[128px] items-center justify-between gap-4 rounded-2xl border p-5", cores.card)}>
+    <div className={cn("flex min-h-[102px] items-center justify-between gap-4 rounded-2xl border px-5 py-3", cores.card)}>
       <div className="flex min-w-0 items-center gap-4">
-        <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", cores.icone)}>
+        <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", cores.icone)}>
           <Icone className="h-6 w-6" />
         </div>
         <div className="min-w-0">
           <p className="text-sm text-foreground">{rotulo}</p>
-          <div className="my-1 whitespace-nowrap text-2xl font-extrabold tracking-tight text-foreground">
+          <div className="my-0.5 whitespace-nowrap text-2xl font-extrabold tracking-tight text-foreground">
             {carregando ? <Skeleton className="h-7 w-32" /> : <ValorMonetario valor={valor} />}
           </div>
           <div className="flex items-center gap-2">
@@ -88,7 +88,7 @@ interface CardsHojeDesktopProps {
 export function CardsHojeDesktop(props: CardsHojeDesktopProps) {
   const { t } = useTranslation("dashboard");
   return (
-    <section className="mt-4 grid grid-cols-2 gap-4">
+    <section className="mt-3 grid grid-cols-2 gap-4">
       <CardHoje
         estilo="azul"
         icone={ChartNoAxesColumn}
