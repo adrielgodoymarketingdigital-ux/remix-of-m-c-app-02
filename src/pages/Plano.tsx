@@ -32,6 +32,9 @@ import { CabecalhoPlanoDesktop } from "@/components/planos/desktop/CabecalhoPlan
 import { CardPlanoAtualDesktop } from "@/components/planos/desktop/CardPlanoAtualDesktop";
 import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto";
 import { GradePlanosDesktop } from "@/components/planos/desktop/GradePlanosDesktop";
+import { BeneficiosPlanoDesktop } from "@/components/planos/desktop/BeneficiosPlanoDesktop";
+import { PerguntasPlanoDesktop } from "@/components/planos/desktop/PerguntasPlanoDesktop";
+import { PERGUNTAS_PLANO } from "@/components/planos/perguntasPlano";
 import { descontoAnual, nomePlanoAtual, periodoDoPlano, textoLimiteArmazenamento, textoVencimentoPlano } from "@/lib/planos/apresentacaoPlano";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -899,6 +902,9 @@ export default function Plano() {
               )}
 
               {/* Seção de Garantias */}
+              {isDesktop ? (
+                <BeneficiosPlanoDesktop />
+              ) : (
               <div className="grid md:grid-cols-3 gap-4 mt-8">
                 <Card className="p-4 flex items-center gap-3 bg-gradient-to-br from-card to-muted/30">
                   <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
@@ -928,82 +934,27 @@ export default function Plano() {
                   </div>
                 </Card>
               </div>
+              )}
             </div>
 
             {/* FAQ */}
+            {isDesktop ? (
+              <PerguntasPlanoDesktop />
+            ) : (
             <div>
               <h2 className="text-2xl font-bold mb-4">Perguntas Frequentes</h2>
               <Card className="p-6">
                 <Accordion type="single" collapsible>
-                  <AccordionItem value="item-1">
-                    <AccordionTrigger>Como funciona o faturamento?</AccordionTrigger>
-                    <AccordionContent>
-                      O faturamento é mensal e automático. Você será cobrado no mesmo
-                      dia de cada mês a partir da data de contratação do plano.
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="item-2">
-                    <AccordionTrigger>
-                      Posso mudar de plano a qualquer momento?
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      Sim! Você pode fazer upgrade ou downgrade do seu plano a
-                      qualquer momento. As alterações entram em vigor imediatamente e
-                      o valor é ajustado proporcionalmente.
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="item-3">
-                    <AccordionTrigger>O que acontece se eu cancelar?</AccordionTrigger>
-                    <AccordionContent>
-                      Você pode cancelar seu plano a qualquer momento. Seus dados
-                      ficarão disponíveis até o final do período pago e você pode
-                      reativar dentro de 30 dias sem perder informações.
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="item-4">
-                    <AccordionTrigger>
-                      Há limite de transações nos planos?
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      Não! Todos os planos incluem transações ilimitadas. Os limites
-                      aplicam-se apenas ao número de dispositivos cadastrados e
-                      usuários simultâneos.
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="item-6">
-                    <AccordionTrigger>O que acontece se meu pagamento falhar?</AccordionTrigger>
-                    <AccordionContent>
-                      Se houver falha no pagamento, seu plano será automaticamente revertido 
-                      para o plano de demonstração. Seus dados serão preservados e você pode 
-                      reativar sua assinatura a qualquer momento atualizando seu método de pagamento.
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="item-7">
-                    <AccordionTrigger>Posso fazer downgrade do meu plano?</AccordionTrigger>
-                    <AccordionContent>
-                      Sim! Você pode fazer downgrade a qualquer momento. O valor já pago será 
-                      creditado proporcionalmente. Note que ao fazer downgrade, você perderá 
-                      acesso a recursos do plano superior, mas seus dados permanecerão seguros.
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="item-8">
-                    <AccordionTrigger>Como funciona o plano de demonstração?</AccordionTrigger>
-                    <AccordionContent>
-                      O plano de demonstração permite visualizar a interface do sistema com 
-                      dados fictícios. É ideal para conhecer o produto antes de assinar. Para 
-                      começar a usar o sistema com seus próprios dados, assine qualquer um dos 
-                      nossos planos pagos.
-                    </AccordionContent>
-                  </AccordionItem>
+                  {PERGUNTAS_PLANO.map(({ id, pergunta, resposta }) => (
+                    <AccordionItem key={id} value={id}>
+                      <AccordionTrigger>{pergunta}</AccordionTrigger>
+                      <AccordionContent>{resposta}</AccordionContent>
+                    </AccordionItem>
+                  ))}
                 </Accordion>
               </Card>
             </div>
+            )}
             
             {/* Build ID discreto para verificação */}
             <div className="text-center mt-8 pb-4">
