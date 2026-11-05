@@ -70,7 +70,103 @@ async function gerarPDF(iframe: HTMLIFrameElement, formato: FormatoPapelRecibo, 
   return new File([pdf.output("blob")], nome, { type: "application/pdf" });
 }
 
-export function abrirCamadaImpressaoIOS(documento: string, p: { titulo: string; formato: FormatoPapelRecibo }): void {
+/**
+ * PDF com uma página por elemento (ex.: cada etiqueta), no tamanho exato pedido.
+ * Usado só pelas etiquetas; os recibos seguem no gerarPDF acima.
+ */
+export interface PaginasPDFCamada {
+  larguraMm: number;
+  alturaMm: number;
+  /** Cada elemento que casa com o seletor vira uma página. */
+  seletor: string;
+  /** Escala do html2canvas (1 = 96 dpi). */
+  escala: number;
+  nomeArquivo: string;
+  tempoMaximoMs: number;
+}
+
+/** Passos da camada, para quem quiser registrar (os recibos não usam). */
+export type EventoCamadaImpressao = "pdf_pronto" | "pdf_falhou" | "compartilhado" | "compartilhar_falhou" | "imprimir_nao_abriu";
+
+async function gerarPDFPorPaginas(
+  iframe: HTMLIFrameElement,
+  paginas: PaginasPDFCamada,
+  parar: () => boolean,
+  aoProgresso: (feitas: number, total: number) => void,
+): Promise<File> {
+  const doc = iframe.contentDocument;
+  const elementos = Array.from(doc?.querySelectorAll<HTMLElement>(paginas.seletor) ?? []);
+  if (!doc || !elementos.length) throw new Error("nenhuma página para o PDF");
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+  const { larguraMm, alturaMm } = paginas;
+  const orientacao = larguraMm > alturaMm ? "landscape" : "portrait";
+  const pdf = new jsPDF({ orientation: orientacao, unit: "mm", format: [larguraMm, alturaMm] });
+
+  // Cada página é desenhada num documento só com ela: o html2canvas clona o
+  // documento inteiro a cada chamada, e com centenas de etiquetas o PDF não
+  // ficava pronto no tempo máximo (e a tela travava).
+  const estilos = Array.from(doc.querySelectorAll("style")).map((e) => e.outerHTML).join("");
+  const auxiliar = document.createElement("iframe");
+  auxiliar.setAttribute("aria-hidden", "true");
+  auxiliar.tabIndex = -1;
+  auxiliar.style.cssText = `position:fixed;left:-10000px;top:0;border:0;width:${Math.ceil((larguraMm * 96) / 25.4) + 2}px;height:${Math.ceil((alturaMm * 96) / 25.4) + 2}px;`;
+  document.body.appendChild(auxiliar);
+  // O html2canvas mede a linha de base das fontes no documento PRINCIPAL
+  // (FontMetrics usa o `document` global) com uma <img> ao lado do texto; o
+  // reset do Tailwind (img { display: block }) tira essa <img> da linha e o
+  // texto saía deslocado para baixo no PDF. Só durante a geração, a <img> da
+  // medição (div oculto com white-space: nowrap criado por ele) volta a ficar em linha.
+  const correcaoMedicao = document.createElement("style");
+  correcaoMedicao.textContent =
+    'body > div[style*="visibility: hidden"][style*="white-space: nowrap"] > img { display: inline !important; }';
+  document.head.appendChild(correcaoMedicao);
+  try {
+    await new Promise<void>((resolve) => {
+      auxiliar.addEventListener("load", () => resolve(), { once: true });
+      auxiliar.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8">${estilos}</head><body style="margin:0;background:#fff"></body></html>`;
+    });
+    const corpo = auxiliar.contentDocument?.body;
+    if (!corpo) throw new Error("documento auxiliar indisponível");
+
+    // Páginas iguais (mesma etiqueta repetida) são desenhadas uma vez só e reaproveitadas no PDF.
+    const imagens = new Map<string, { dados: string; apelido: string }>();
+    for (const [i, elemento] of elementos.entries()) {
+      if (parar()) throw new Error("geração do PDF interrompida");
+      const chave = elemento.innerHTML;
+      let imagem = imagens.get(chave);
+      if (!imagem) {
+        corpo.innerHTML = elemento.outerHTML;
+        const alvo = corpo.firstElementChild as HTMLElement;
+        const canvas = await html2canvas(alvo, { scale: paginas.escala, useCORS: true, backgroundColor: "#ffffff", logging: false });
+        // PNG: barras de código nítidas (JPEG borra as bordas).
+        imagem = { dados: canvas.toDataURL("image/png"), apelido: `pagina-${imagens.size}` };
+        imagens.set(chave, imagem);
+        // Devolve a vez à tela (Fechar continua respondendo).
+        await new Promise((r) => setTimeout(r, 0));
+      }
+      if (i > 0) pdf.addPage([larguraMm, alturaMm], orientacao);
+      pdf.addImage(imagem.dados, "PNG", 0, 0, larguraMm, alturaMm, imagem.apelido, "FAST");
+      aoProgresso(i + 1, elementos.length);
+    }
+  } finally {
+    auxiliar.remove();
+    correcaoMedicao.remove();
+  }
+  return new File([pdf.output("blob")], paginas.nomeArquivo, { type: "application/pdf" });
+}
+
+type OpcoesCamadaImpressao =
+  | { titulo: string; formato: FormatoPapelRecibo; paginas?: undefined; aoEvento?: undefined }
+  | { titulo: string; formato?: undefined; paginas: PaginasPDFCamada; aoEvento?: (evento: EventoCamadaImpressao, detalhe?: string) => void };
+
+export function abrirCamadaImpressaoIOS(documento: string, p: OpcoesCamadaImpressao): void {
+  const avisar = (evento: EventoCamadaImpressao, detalhe?: string) => {
+    try {
+      p.aoEvento?.(evento, detalhe);
+    } catch {
+      // registro opcional: nunca atrapalha a camada
+    }
+  };
   document.getElementById(ID_CAMADA_IMPRESSAO_IOS)?.remove();
 
   const raiz = document.createElement("div");
@@ -133,7 +229,7 @@ export function abrirCamadaImpressaoIOS(documento: string, p: { titulo: string; 
   folha.className = "cii-folha";
   const iframe = document.createElement("iframe");
   iframe.title = p.titulo;
-  const { larguraPx } = medidasDoFormato(p.formato);
+  const larguraPx = p.paginas ? Math.round((p.paginas.larguraMm * 96) / 25.4) : medidasDoFormato(p.formato).larguraPx;
   iframe.style.width = `${larguraPx}px`;
   iframe.style.height = "1123px";
   folha.append(iframe);
@@ -167,13 +263,22 @@ export function abrirCamadaImpressaoIOS(documento: string, p: { titulo: string; 
       if (win?.ResizeObserver && doc?.body) new win.ResizeObserver(() => ajustar()).observe(doc.body);
     });
 
-    const nome = nomeArquivoPDF(p.titulo, p.formato);
+    const paginas = p.paginas;
+    const formato = p.formato;
+    const limitePdf = Date.now() + (paginas?.tempoMaximoMs ?? 0);
+    const gerar = paginas
+      ? () =>
+          gerarPDFPorPaginas(iframe, paginas, () => fechada || Date.now() > limitePdf, (feitas, total) => {
+            if (total > 1 && !fechada) compartilharBtn.textContent = `Preparando ${feitas}/${total}...`;
+          })
+      : () => gerarPDF(iframe, formato as FormatoPapelRecibo, nomeArquivoPDF(p.titulo, formato as FormatoPapelRecibo));
     const pdf = comTempoMaximo(
-      carregou.then(() => new Promise((r) => setTimeout(r, 400))).then(() => gerarPDF(iframe, p.formato, nome)),
-      TEMPO_MAXIMO_PDF_MS,
+      carregou.then(() => new Promise((r) => setTimeout(r, 400))).then(gerar),
+      paginas?.tempoMaximoMs ?? TEMPO_MAXIMO_PDF_MS,
       () => null,
     ).catch((erro) => {
       console.error("[camada impressão] falha ao gerar o PDF", erro);
+      avisar("pdf_falhou", erro instanceof Error ? erro.message.slice(0, 120) : undefined);
       return null;
     });
     let arquivo: File | null = null;
@@ -182,6 +287,8 @@ export function abrirCamadaImpressaoIOS(documento: string, p: { titulo: string; 
       arquivo = f;
       compartilharBtn.textContent = f ? "Compartilhar PDF" : "PDF indisponível";
       compartilharBtn.disabled = !f;
+      if (f) avisar("pdf_pronto", `${Math.round(f.size / 1024)}KB`);
+      else avisar("pdf_falhou", "sem arquivo (tempo máximo ou erro)");
       if (!f) mostrarDica("Não foi possível gerar o PDF. Tente Imprimir ou feche e abra de novo.");
     });
 
@@ -190,6 +297,7 @@ export function abrirCamadaImpressaoIOS(documento: string, p: { titulo: string; 
       try {
         if (typeof navigator.canShare === "function" && navigator.canShare({ files: [arquivo] })) {
           await navigator.share({ files: [arquivo], title: p.titulo });
+          avisar("compartilhado", "share");
           return;
         }
         const url = URL.createObjectURL(arquivo);
@@ -199,6 +307,7 @@ export function abrirCamadaImpressaoIOS(documento: string, p: { titulo: string; 
         link.style.display = "none";
         raiz.appendChild(link);
         link.click();
+        avisar("compartilhado", "download");
         setTimeout(() => {
           link.remove();
           URL.revokeObjectURL(url);
@@ -206,6 +315,7 @@ export function abrirCamadaImpressaoIOS(documento: string, p: { titulo: string; 
       } catch (erro) {
         if (erro instanceof Error && erro.name === "AbortError") return;
         console.error("[camada impressão] falha ao compartilhar", erro);
+        avisar("compartilhar_falhou", erro instanceof Error ? erro.name : undefined);
         mostrarDica("Não foi possível compartilhar. Tente de novo.");
       }
     });
@@ -227,7 +337,10 @@ export function abrirCamadaImpressaoIOS(documento: string, p: { titulo: string; 
       setTimeout(() => {
         win?.removeEventListener("beforeprint", marcar);
         window.removeEventListener("beforeprint", marcar);
-        if (!abriu && !fechada) mostrarDica("A impressão não abriu? Use Compartilhar PDF › Imprimir.");
+        if (!abriu && !fechada) {
+          avisar("imprimir_nao_abriu");
+          mostrarDica("A impressão não abriu? Use Compartilhar PDF › Imprimir.");
+        }
       }, ESPERA_IMPRIMIR_MS);
     });
   } catch (erro) {
