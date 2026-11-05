@@ -63,7 +63,7 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
     <Card
       id={`plan-${planoKey}`}
       className={cn(
-        "relative flex min-w-0 flex-col p-4 transition-shadow hover:shadow-md",
+        "relative flex min-w-0 flex-col px-4 pb-3 pt-[18px] transition-shadow hover:shadow-md",
         COLUNAS,
         centralizar && "col-start-2 min-[1484px]:col-start-auto",
         faixa === "popular" && "border-primary shadow-sm",
@@ -74,7 +74,7 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
       {faixa && (
         <div
           className={cn(
-            "absolute right-0 top-0 z-10 rounded-bl-lg rounded-tr-lg px-3 py-1 text-xs font-bold",
+            "absolute right-3 top-0 z-10 -translate-y-1/2 rounded-full px-2.5 py-0.5 text-xs font-bold",
             faixa === "popular" ? "bg-primary text-primary-foreground" : "bg-amber-400 text-amber-950",
           )}
         >
@@ -82,9 +82,12 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
         </div>
       )}
 
-      <div className={cn("mb-2 flex min-h-6 items-center", faixa && "pr-[90px]")}>{selo}</div>
+      {/* Selo e faixa ficam sobre a borda: não ocupam altura, e o cartão sem selo não reserva espaço. */}
+      {selo && (
+        <div className={cn("absolute left-4 top-0 z-10 flex -translate-y-1/2", faixa && "max-w-[calc(100%-132px)]")}>{selo}</div>
+      )}
 
-      <div className="flex min-h-[72px] items-start gap-3">
+      <div className="flex min-h-[56px] items-start gap-3">
         <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", cor)}>
           <Icone className="h-6 w-6" />
         </span>
@@ -94,7 +97,7 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
         </div>
       </div>
 
-      <div className={cn("mb-3 mt-2", periodo === "anual" && "min-h-[84px]")}>
+      <div className={cn("mb-2 mt-1", periodo === "anual" && "min-h-[84px]")}>
         <p className="flex flex-wrap items-baseline gap-x-1.5">
           <span className="text-[26px] font-bold leading-tight tracking-tight text-foreground">{formatCurrency(preco)}</span>
           <span className="text-[13px] text-muted-foreground">{periodoTexto}</span>
@@ -111,7 +114,7 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
         )}
       </div>
 
-      <ul className="mb-4 flex-1 space-y-2">
+      <ul className="mb-3 flex-1 space-y-1">
         {recursos.map((recurso) => (
           <li key={recurso} className="flex items-start gap-2 text-[13px] leading-snug text-foreground">
             <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
@@ -162,7 +165,7 @@ export function GradePlanosDesktop({
 
   return (
     <section>
-      <div id="planos-disponiveis" className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div id="planos-disponiveis" className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-bold tracking-tight text-foreground">Planos Disponíveis</h2>
           <p className="text-[13px] text-muted-foreground">Investimento que se paga no primeiro mês. Cancele quando quiser.</p>
@@ -190,7 +193,7 @@ export function GradePlanosDesktop({
         </div>
       </div>
 
-      <div className="grid grid-cols-6 gap-3 min-[1484px]:grid-cols-5">
+      <div className="grid grid-cols-6 gap-x-3 gap-y-4 min-[1484px]:grid-cols-5">
         <CartaoPlano
           planoKey="free"
           nome={PLANOS.free.nome}

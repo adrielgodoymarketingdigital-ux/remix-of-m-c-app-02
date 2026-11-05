@@ -12,8 +12,8 @@ import {
 /** Breadcrumb e título da tela de Plano no computador. */
 export function CabecalhoPlanoDesktop() {
   return (
-    <header className="mx-auto mb-5 max-w-[1700px]">
-      <Breadcrumb className="mb-3">
+    <header className="mx-auto mb-4 max-w-[1700px]">
+      <Breadcrumb className="mb-1">
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
@@ -32,12 +32,12 @@ export function CabecalhoPlanoDesktop() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="flex items-center gap-4">
-        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 text-white shadow-sm">
-          <Crown className="h-7 w-7" />
+      <div className="flex items-center gap-3">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-blue-700 to-blue-500 text-white shadow-sm">
+          <Crown className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-foreground">Plano do Sistema</h1>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-foreground">Plano do Sistema</h1>
           <p className="text-sm text-muted-foreground">Gerencie sua assinatura</p>
         </div>
       </div>

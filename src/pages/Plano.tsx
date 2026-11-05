@@ -286,7 +286,7 @@ export default function Plano() {
         </div>
         )}
 
-        <div className={isDesktop ? "mx-auto max-w-[1700px] space-y-5" : "space-y-8"}>
+        <div className={isDesktop ? "mx-auto max-w-[1700px] space-y-4" : "space-y-8"}>
 
             {/* Card de Trial com Cartão Ativo */}
             {trialStatus.isTrialWithCard && trialStatus.isTrialing && !trialStatus.trialExpired && (
