@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import { DialogCadastroFornecedor } from "@/components/fornecedores/DialogCadastroFornecedor";
 import { TabelaFornecedores } from "@/components/fornecedores/TabelaFornecedores";
+import { DialogFichaFornecedor } from "@/components/fornecedores/DialogFichaFornecedor";
+import { usePodeVerContas } from "@/hooks/usePodeVerContas";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { Fornecedor } from "@/types/fornecedor";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +26,9 @@ export default function Fornecedores() {
   const [filtroTipo, setFiltroTipo] = useState<"todos" | "juridica" | "fisica">("todos");
   const [dialogAberto, setDialogAberto] = useState(false);
   const [fornecedorEditando, setFornecedorEditando] = useState<Fornecedor | null>(null);
+  const [fornecedorFicha, setFornecedorFicha] = useState<Fornecedor | null>(null);
+  // Ficha mostra contas: só com o módulo Contas liberado (mesma regra da rota /contas).
+  const podeVerContas = usePodeVerContas();
 
   const {
     fornecedores,
@@ -146,6 +151,7 @@ export default function Fornecedores() {
             fornecedores={fornecedoresFiltrados}
             onEditar={handleEditar}
             onExcluir={handleExcluir}
+            onVisualizar={podeVerContas ? setFornecedorFicha : undefined}
           />
         )}
 
@@ -176,6 +182,13 @@ export default function Fornecedores() {
         onSubmit={handleSubmit}
         fornecedor={fornecedorEditando}
       />
+
+      {podeVerContas && (
+        <DialogFichaFornecedor
+          fornecedor={fornecedorFicha}
+          onOpenChange={(aberto) => { if (!aberto) setFornecedorFicha(null); }}
+        />
+      )}
     </AppLayout>
   );
 }

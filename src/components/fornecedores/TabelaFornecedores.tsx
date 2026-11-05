@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Fornecedor } from "@/types/fornecedor";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -28,12 +28,15 @@ interface TabelaFornecedoresProps {
   fornecedores: Fornecedor[];
   onEditar: (fornecedor: Fornecedor) => void;
   onExcluir: (id: string) => void;
+  /** Abre a ficha de contas do fornecedor. Sem a prop, o botão "Visualizar" não aparece. */
+  onVisualizar?: (fornecedor: Fornecedor) => void;
 }
 
 export function TabelaFornecedores({
   fornecedores,
   onEditar,
   onExcluir,
+  onVisualizar,
 }: TabelaFornecedoresProps) {
   const isMobile = useIsMobile();
 
@@ -80,7 +83,19 @@ export function TabelaFornecedores({
               )}
             </div>
             
-            <div className="flex items-center justify-end gap-2 pt-3 border-t">
+            <div className={`flex items-center gap-2 pt-3 border-t ${onVisualizar ? "justify-between" : "justify-end"}`}>
+              {onVisualizar && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onVisualizar(fornecedor)}
+                  className="h-9 min-w-0 gap-1.5"
+                >
+                  <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Visualizar
+                </Button>
+              )}
+              <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -113,6 +128,7 @@ export function TabelaFornecedores({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              </div>
             </div>
           </Card>
         ))}
@@ -180,6 +196,17 @@ export function TabelaFornecedores({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
+                  {onVisualizar && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onVisualizar(fornecedor)}
+                      title="Visualizar contas"
+                      aria-label={`Visualizar contas de "${fornecedor.nome}"`}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
