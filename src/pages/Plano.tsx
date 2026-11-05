@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { nomePlanoAmigavel, rotuloPlano, textoRenovarPlano } from "@/lib/planoVencido";
 import { getLimitesFree } from "@/types/assinatura";
 import { partesDataHoraBrasilia } from "@/lib/dataBrasilia";
@@ -31,7 +31,8 @@ import { BotaoCancelarTrial } from "@/components/planos/BotaoCancelarTrial";
 import { CabecalhoPlanoDesktop } from "@/components/planos/desktop/CabecalhoPlanoDesktop";
 import { CardPlanoAtualDesktop } from "@/components/planos/desktop/CardPlanoAtualDesktop";
 import { getInfoPlanoCompacto } from "@/components/dashboard/StatusPlanoCompacto";
-import { nomePlanoAtual, textoLimiteArmazenamento, textoVencimentoPlano } from "@/lib/planos/apresentacaoPlano";
+import { GradePlanosDesktop } from "@/components/planos/desktop/GradePlanosDesktop";
+import { descontoAnual, nomePlanoAtual, periodoDoPlano, textoLimiteArmazenamento, textoVencimentoPlano } from "@/lib/planos/apresentacaoPlano";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -107,6 +108,15 @@ export default function Plano() {
     percentual: 0
   });
   
+  // No computador, o seletor abre no período do plano atual. Só uma vez: depois quem manda é o clique.
+  // Com ?highlight= fica no mensal, onde está o cartão a destacar.
+  const periodoDefinido = useRef(false);
+  useEffect(() => {
+    if (!isDesktop || !assinatura || periodoDefinido.current) return;
+    periodoDefinido.current = true;
+    if (!highlightPlan) setPeriodoPlano(periodoDoPlano(assinatura.plano_tipo));
+  }, [isDesktop, assinatura, highlightPlan]);
+
   // Polling após checkout success
   useEffect(() => {
     if (searchParams.get("success")) {
@@ -236,24 +246,7 @@ export default function Plano() {
     key.includes(periodoPlano) && (MOSTRAR_PLANO_ULTRA || !key.includes("ultra"))
   );
 
-  const calcularDescontoAnual = (keyAnual: string) => {
-    const keyMensal = keyAnual.replace("_anual", "_mensal");
-    const planoMensal = PLANOS[keyMensal];
-    const planoAnual = PLANOS[keyAnual];
-    
-    if (!planoMensal || !planoAnual) return null;
-    
-    const precoMensalTotal = planoMensal.preco * 12;
-    const valorMensalEquivalente = planoAnual.preco / 12;
-    const economia = precoMensalTotal - planoAnual.preco;
-    const percentualDesconto = (economia / precoMensalTotal) * 100;
-    
-    return {
-      valorMensalEquivalente,
-      economia,
-      percentualDesconto: Math.round(percentualDesconto * 10) / 10,
-    };
-  };
+  const calcularDescontoAnual = (keyAnual: string) => descontoAnual(keyAnual, PLANOS);
 
   const determinarTipoMudanca = (planoKey: string) => {
     if (!assinatura || assinatura.plano_tipo === "trial") return "upgrade";
@@ -679,6 +672,27 @@ export default function Plano() {
 
             {/* Comparação de Planos */}
             <div>
+              {isDesktop ? (
+                <GradePlanosDesktop
+                  periodo={periodoPlano}
+                  onPeriodo={(periodo) => {
+                    periodoDefinido.current = true;
+                    setPeriodoPlano(periodo);
+                  }}
+                  planos={planosFiltrados}
+                  recursosFree={recursosFreeDaConta}
+                  planoTipo={assinatura?.plano_tipo}
+                  statusAssinatura={assinatura?.status}
+                  planoVencido={planoVencido}
+                  migracaoNecessaria={migracaoNecessaria}
+                  chavePlanoAnterior={chavePlanoAnterior}
+                  planoDestacado={planoDestacado}
+                  carregando={carregando}
+                  tipoMudanca={determinarTipoMudanca}
+                  onSucesso={() => recarregar()}
+                />
+              ) : (
+              <>
               <div id="planos-disponiveis" className="text-center space-y-2 mb-8">
                 <h2 className="text-3xl font-bold">Planos Disponíveis</h2>
                 <p className="text-muted-foreground max-w-xl mx-auto">
@@ -881,6 +895,8 @@ export default function Plano() {
                   );
                 })}
               </div>
+              </>
+              )}
 
               {/* Seção de Garantias */}
               <div className="grid md:grid-cols-3 gap-4 mt-8">

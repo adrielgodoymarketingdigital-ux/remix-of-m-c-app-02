@@ -5,6 +5,7 @@ import {
   QrCode,
   Loader2,
   RefreshCw,
+  ShoppingCart,
   Sparkles,
   ShieldCheck,
   Lock,
@@ -31,6 +32,8 @@ interface BotoesPagamentoPagarmeProps {
   popular?: boolean;
   carregando?: boolean;
   onSuccess?: () => void;
+  /** Botão menor e com carrinho, para o cartão do computador. Fluxo e diálogos iguais. */
+  compacto?: boolean;
 }
 
 export function BotoesPagamentoPagarme({
@@ -39,6 +42,7 @@ export function BotoesPagamentoPagarme({
   popular,
   carregando,
   onSuccess,
+  compacto = false,
 }: BotoesPagamentoPagarmeProps) {
   const [abrirCartao, setAbrirCartao] = useState(false);
   const [abrirPix, setAbrirPix] = useState(false);
@@ -67,7 +71,8 @@ export function BotoesPagamentoPagarme({
         disabled={carregando}
         variant={planoAtual ? "outline" : "default"}
         className={cn(
-          "w-full h-12 text-base font-semibold transition-all duration-300",
+          "w-full font-semibold transition-all duration-300",
+          compacto ? "h-10 text-sm" : "h-12 text-base",
           popular && !planoAtual && "shadow-lg hover:shadow-xl",
           planoAtual && "border-primary/40 text-primary hover:bg-primary/10"
         )}
@@ -81,7 +86,7 @@ export function BotoesPagamentoPagarme({
           </>
         ) : (
           <>
-            <Sparkles className="mr-2 h-4 w-4" />
+            {compacto ? <ShoppingCart className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
             Assinar Plano
           </>
         )}
