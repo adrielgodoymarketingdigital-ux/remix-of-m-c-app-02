@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer, SlidersHorizontal, Smartphone } from "lucide-react";
+import { Plus, FileText, Settings, Hash, MessageCircle, Layout, ClipboardList, Palette, Wrench, Trash2, Upload, CreditCard, List, Columns3, CalendarIcon, X, Tag, RadioTower, Copy, Eye, ChevronUp, ChevronDown, CheckSquare, RefreshCw, MapPin, Download, Timer, SlidersHorizontal, Smartphone, Target, ChartNoAxesColumnIncreasing, Users } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TerceirizadaTab } from "@/components/ordens/tiny/TerceirizadaTab";
 import { MicroSoldaUpStoreTab } from "@/components/ordens/tiny/MicroSoldaUpStoreTab";
@@ -49,6 +49,7 @@ import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { DashboardOrdensServico } from "@/components/ordens/DashboardOrdensServico";
 import { PainelControleOSDesktop } from "@/components/ordens/PainelControleOSDesktop";
+import { CabecalhoSecaoOSDesktop } from "@/components/ordens/CabecalhoSecaoOSDesktop";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AdicionaisPorOSProvider } from "@/contexts/AdicionaisPorOSContext";
 import { TermoResponsabilidadeConfig } from "@/types/configuracao-loja";
@@ -94,6 +95,9 @@ const ImpressaoEtiqueta = lazy(() => import("@/components/ordens/ImpressaoEtique
 const DialogPersonalizarColunas = lazy(() => import("@/components/ordens/DialogPersonalizarColunas").then((m) => ({ default: m.DialogPersonalizarColunas })));
 const DialogConfiguracaoTracking = lazy(() => import("@/components/ordens/DialogConfiguracaoTracking").then((m) => ({ default: m.DialogConfiguracaoTracking })));
 const DialogConfiguracaoCatalogoDispositivos = lazy(() => import("@/components/ordens/DialogConfiguracaoCatalogoDispositivos").then((m) => ({ default: m.DialogConfiguracaoCatalogoDispositivos })));
+
+const classeAbaDesktop =
+  "h-9 gap-2 rounded-full border border-transparent px-[17px] text-xs font-semibold data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:shadow-sm";
 
 /** Os 12 meses do filtro do painel, do atual para trás. */
 const mesesDoFiltro = () =>
@@ -988,25 +992,41 @@ export default function OrdemServicoPage() {
           </div>
 
           {/* 4 cards gerenciais — grid 4 colunas largura total */}
-          <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm mt-5 md:mt-7 mb-5 md:mb-7">
-            <CardHeader className="p-4 sm:p-5 pb-0">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
-                  <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Metas</CardTitle>
-                </div>
+          <Card className={isDesktop ? "my-[18px] min-w-0 overflow-hidden rounded-[17px] border-border bg-card shadow-sm" : "min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm mt-5 md:mt-7 mb-5 md:mb-7"}>
+            {isDesktop ? (
+              <CabecalhoSecaoOSDesktop
+                icone={Target}
+                titulo="Metas"
+                subtitulo="Defina e acompanhe suas metas de atendimento"
+              >
                 <button
                   onClick={toggleChipsExpandido}
-                  className="flex items-center gap-1.5 text-xs font-medium text-blue-400 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400/60 transition-all px-3 py-1.5 rounded-lg shrink-0"
+                  className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-[17px] py-2.5 text-xs font-semibold text-[#1259c7] transition-colors hover:bg-muted dark:text-blue-300"
                 >
-                  {chipsExpandido ? (
-                    <><ChevronUp className="h-3.5 w-3.5 shrink-0" /><span>Ocultar metas</span></>
-                  ) : (
-                    <><ChevronDown className="h-3.5 w-3.5 shrink-0" /><span>Ver metas</span></>
-                  )}
+                  {chipsExpandido ? "Ocultar metas" : "Ver metas"}
+                  {chipsExpandido ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
                 </button>
-              </div>
-            </CardHeader>
+              </CabecalhoSecaoOSDesktop>
+            ) : (
+              <CardHeader className="p-4 sm:p-5 pb-0">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
+                    <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Metas</CardTitle>
+                  </div>
+                  <button
+                    onClick={toggleChipsExpandido}
+                    className="flex items-center gap-1.5 text-xs font-medium text-blue-400 border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 hover:text-blue-300 hover:border-blue-400/60 transition-all px-3 py-1.5 rounded-lg shrink-0"
+                  >
+                    {chipsExpandido ? (
+                      <><ChevronUp className="h-3.5 w-3.5 shrink-0" /><span>Ocultar metas</span></>
+                    ) : (
+                      <><ChevronDown className="h-3.5 w-3.5 shrink-0" /><span>Ver metas</span></>
+                    )}
+                  </button>
+                </div>
+              </CardHeader>
+            )}
             <CardContent
               className="px-4 sm:px-5"
               style={{
@@ -1027,37 +1047,66 @@ export default function OrdemServicoPage() {
           {/* Card "Indicadores" contém apenas o header e a navegação por abas —
               o conteúdo de cada aba (Gestão de OS, Terceirizada, MicroSolda)
               fica fora deste Card, como irmão, para não herdar seu fundo/estilo. */}
-          <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm">
-            <CardHeader className="p-4 sm:p-5 pb-0">
-              <div className="flex items-center gap-2">
-                <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
-                <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Indicadores</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-5">
-              <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
-                <TabsList className="h-8 bg-muted/40 border border-border/40 p-0.5">
-                  <TabsTrigger value="minhas" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                    Minhas OS
-                  </TabsTrigger>
-                  {!checandoAcessoTiny && temAcessoTiny && (
-                    <TabsTrigger value="terceirizada" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                      Terceirizada
+          {isDesktop ? (
+            <Card className="min-w-0 overflow-hidden rounded-[17px] border-border bg-card shadow-sm">
+              <CabecalhoSecaoOSDesktop
+                icone={ChartNoAxesColumnIncreasing}
+                titulo="Indicadores"
+                subtitulo="Principais indicadores das suas ordens de serviço"
+              >
+                <Tabs value={abaAtiva} onValueChange={handleMudarAba}>
+                  <TabsList className={cn("h-auto flex-wrap justify-end rounded-full", temAcessoTiny ? "gap-1 border border-border bg-muted/40 p-1" : "bg-transparent p-0")}>
+                    <TabsTrigger value="minhas" className={classeAbaDesktop}>
+                      <Users className="h-4 w-4 shrink-0 text-primary" />
+                      Minhas OS
                     </TabsTrigger>
-                  )}
-                  {!checandoAcessoTiny && temAcessoTiny && (
-                    <TabsTrigger value="microsolda" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                      MicroSolda + UpStore
+                    {!checandoAcessoTiny && temAcessoTiny && (
+                      <TabsTrigger value="terceirizada" className={classeAbaDesktop}>
+                        Terceirizada
+                      </TabsTrigger>
+                    )}
+                    {!checandoAcessoTiny && temAcessoTiny && (
+                      <TabsTrigger value="microsolda" className={classeAbaDesktop}>
+                        MicroSolda + UpStore
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+                </Tabs>
+              </CabecalhoSecaoOSDesktop>
+            </Card>
+          ) : (
+            <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm">
+              <CardHeader className="p-4 sm:p-5 pb-0">
+                <div className="flex items-center gap-2">
+                  <div className="h-3.5 w-0.5 rounded-full bg-primary/60" />
+                  <CardTitle className="text-sm font-semibold tracking-tight text-foreground/90">Indicadores</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-5">
+                <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
+                  <TabsList className="h-8 bg-muted/40 border border-border/40 p-0.5">
+                    <TabsTrigger value="minhas" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                      Minhas OS
                     </TabsTrigger>
-                  )}
-                </TabsList>
-              </Tabs>
-            </CardContent>
-          </Card>
+                    {!checandoAcessoTiny && temAcessoTiny && (
+                      <TabsTrigger value="terceirizada" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                        Terceirizada
+                      </TabsTrigger>
+                    )}
+                    {!checandoAcessoTiny && temAcessoTiny && (
+                      <TabsTrigger value="microsolda" className="text-xs h-7 px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                        MicroSolda + UpStore
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+                </Tabs>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Conteúdo das abas — irmão do Card "Indicadores", não mais filho dele. */}
           <Tabs value={abaAtiva} onValueChange={handleMudarAba} className="w-full">
-            <TabsContent value="minhas" className="mt-5 md:mt-7">
+            <TabsContent value="minhas" className={isDesktop ? "mt-3" : "mt-5 md:mt-7"}>
           <DashboardOrdensServico ordens={ordens} servicosAvulsos={servicosAvulsosFiltrados} lucroOrdensEntregues={lucroOrdensEntregues} />
 
           <Card className="min-w-0 overflow-hidden border-border/40 bg-muted/20 shadow-sm mt-5 md:mt-7">
