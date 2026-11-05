@@ -93,6 +93,13 @@ const DialogPersonalizarColunas = lazy(() => import("@/components/ordens/DialogP
 const DialogConfiguracaoTracking = lazy(() => import("@/components/ordens/DialogConfiguracaoTracking").then((m) => ({ default: m.DialogConfiguracaoTracking })));
 const DialogConfiguracaoCatalogoDispositivos = lazy(() => import("@/components/ordens/DialogConfiguracaoCatalogoDispositivos").then((m) => ({ default: m.DialogConfiguracaoCatalogoDispositivos })));
 
+/** Os 12 meses do filtro do painel, do atual para trás. */
+const mesesDoFiltro = () =>
+  Array.from({ length: 12 }, (_, i) => {
+    const data = subMonths(new Date(), i);
+    return { valor: format(data, "yyyy-MM"), data };
+  });
+
 export default function OrdemServicoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -704,6 +711,69 @@ export default function OrdemServicoPage() {
     setOrdemParaEtiqueta(ordemCompleta);
   };
 
+  const menuConfiguracoes = (
+    <DropdownMenuContent align="end">
+      <DropdownMenuItem onClick={() => setDialogNumeracao(true)}>
+        <Hash className="h-4 w-4 mr-2" />
+        Numeração de OS
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogMensagensWhatsApp(true)}>
+        <MessageCircle className="h-4 w-4 mr-2" />
+        Mensagens WhatsApp
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogTermoGarantia(true)}>
+        <FileText className="h-4 w-4 mr-2" />
+        Termo de Garantia
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogTermoResponsabilidade(true)}>
+        <ClipboardList className="h-4 w-4 mr-2" />
+        Termo de Responsabilidade
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogLayoutOS(true)}>
+        <Layout className="h-4 w-4 mr-2" />
+        Layout da OS
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogStatusOS(true)}>
+        <Palette className="h-4 w-4 mr-2" />
+        Status da OS
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogTaxasCartao(true)}>
+        <CreditCard className="h-4 w-4 mr-2" />
+        Taxas de Cartão
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogValorHora(true)}>
+        <Timer className="h-4 w-4 mr-2" />
+        Valor por Hora (Mão de Obra)
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogEtiqueta(true)}>
+        <Tag className="h-4 w-4 mr-2" />
+        Etiqueta de Identificação
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogPersonalizarColunas(true)}>
+        <Columns3 className="h-4 w-4 mr-2" />
+        Personalizar Colunas
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogTracking(true)}>
+        <RadioTower className="h-4 w-4 mr-2" />
+        Página de Acompanhamento
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogLocalizacao(true)}>
+        <MapPin className="h-4 w-4 mr-2" />
+        Localizações Físicas
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setDialogCatalogoDispositivos(true)}>
+        <Smartphone className="h-4 w-4 mr-2" />
+        Catálogo de Dispositivos
+      </DropdownMenuItem>
+      {usoCompartilhamentos.limite !== 0 && (
+        <DropdownMenuItem disabled className="font-mono text-xs opacity-70">
+          <RadioTower className="h-4 w-4 mr-2" />
+          {usoCompartilhamentos.limite === -1 ? "∞" : `${usoCompartilhamentos.usado}/${usoCompartilhamentos.limite}`} compartilhamentos
+        </DropdownMenuItem>
+      )}
+    </DropdownMenuContent>
+  );
+
   return (
     <AdicionaisPorOSProvider value={adicionaisPorOs}>
     <AppLayout>
@@ -802,66 +872,7 @@ export default function OrdemServicoPage() {
                       <Settings className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setDialogNumeracao(true)}>
-                      <Hash className="h-4 w-4 mr-2" />
-                      Numeração de OS
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogMensagensWhatsApp(true)}>
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Mensagens WhatsApp
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogTermoGarantia(true)}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Termo de Garantia
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogTermoResponsabilidade(true)}>
-                      <ClipboardList className="h-4 w-4 mr-2" />
-                      Termo de Responsabilidade
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogLayoutOS(true)}>
-                      <Layout className="h-4 w-4 mr-2" />
-                      Layout da OS
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogStatusOS(true)}>
-                      <Palette className="h-4 w-4 mr-2" />
-                      Status da OS
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogTaxasCartao(true)}>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Taxas de Cartão
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogValorHora(true)}>
-                      <Timer className="h-4 w-4 mr-2" />
-                      Valor por Hora (Mão de Obra)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogEtiqueta(true)}>
-                      <Tag className="h-4 w-4 mr-2" />
-                      Etiqueta de Identificação
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogPersonalizarColunas(true)}>
-                      <Columns3 className="h-4 w-4 mr-2" />
-                      Personalizar Colunas
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogTracking(true)}>
-                      <RadioTower className="h-4 w-4 mr-2" />
-                      Página de Acompanhamento
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogLocalizacao(true)}>
-                      <MapPin className="h-4 w-4 mr-2" />
-                      Localizações Físicas
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDialogCatalogoDispositivos(true)}>
-                      <Smartphone className="h-4 w-4 mr-2" />
-                      Catálogo de Dispositivos
-                    </DropdownMenuItem>
-                    {usoCompartilhamentos.limite !== 0 && (
-                      <DropdownMenuItem disabled className="font-mono text-xs opacity-70">
-                        <RadioTower className="h-4 w-4 mr-2" />
-                        {usoCompartilhamentos.limite === -1 ? "∞" : `${usoCompartilhamentos.usado}/${usoCompartilhamentos.limite}`} compartilhamentos
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
+                  {menuConfiguracoes}
                 </DropdownMenu>
               </div>
 
@@ -875,9 +886,7 @@ export default function OrdemServicoPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todos os meses</SelectItem>
-                      {Array.from({ length: 12 }, (_, i) => {
-                        const data = subMonths(new Date(), i);
-                        const valor = format(data, "yyyy-MM");
+                      {mesesDoFiltro().map(({ valor, data }) => {
                         const label = format(data, "MMMM yyyy", { locale: ptBR });
                         return (
                           <SelectItem key={valor} value={valor}>
