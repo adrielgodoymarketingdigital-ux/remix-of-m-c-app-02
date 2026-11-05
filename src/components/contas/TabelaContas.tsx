@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { DialogConfirmarBaixa } from "./DialogConfirmarBaixa";
+import { calcTotalFalta } from "@/lib/contas/totalConta";
 
 interface TabelaContasProps {
   contas: Conta[];
@@ -56,16 +57,6 @@ const BOTAO_NEUTRO = "bg-[#F4F6FA] text-[#0B1429] hover:bg-[#E9EDF4] dark:bg-mut
 const BOTAO_EXCLUIR = "bg-[#FFF0F0] text-[#F04438] hover:bg-[#FFE2E2] dark:bg-red-500/15 dark:text-red-400 dark:hover:bg-red-500/25";
 const ROTULO_INFO = "mb-2 text-[10px] leading-none text-muted-foreground";
 const BOTAO_BAIXA = "bg-[#E4F8ED] text-[#00A45B] hover:bg-[#D3F3E1] dark:bg-emerald-500/15 dark:text-emerald-400 dark:hover:bg-emerald-500/25";
-
-// Total e saldo dependem do modelo: conta antiga guarda o saldo em `valor`
-// (com a entrada em `valor_pago`); conta nova guarda o total em `valor`.
-function calcTotalFalta(conta: Conta) {
-  const pago = Number(conta.valor_pago || 0);
-  if (conta.usa_historico_pagamentos) {
-    return { total: Number(conta.valor), falta: Math.max(Number(conta.valor) - pago, 0) };
-  }
-  return { total: Number(conta.valor) + pago, falta: Number(conta.valor) };
-}
 
 export function TabelaContas({
   contas,
