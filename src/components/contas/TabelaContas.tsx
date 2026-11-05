@@ -46,12 +46,16 @@ interface AcoesTabelaContas {
 }
 
 /**
- * somenteLeitura (ficha do fornecedor): esconde seleção, baixa, editar e
+ * ocultarEditarExcluir (ficha do fornecedor com baixa): mantém seleção e baixa,
+ * esconde editar e excluir, e onEditar/onExcluir deixam de ser obrigatórios.
+ *
+ * somenteLeitura: esconde seleção, baixa, editar e
  * excluir, e as ações deixam de ser obrigatórias. Sem a prop, nada muda.
  */
 type TabelaContasProps = { contas: Conta[] } & (
-  | ({ somenteLeitura?: false } & AcoesTabelaContas)
-  | ({ somenteLeitura: true } & Partial<AcoesTabelaContas>)
+  | ({ somenteLeitura?: false; ocultarEditarExcluir?: false } & AcoesTabelaContas)
+  | ({ somenteLeitura?: false; ocultarEditarExcluir: true } & Omit<AcoesTabelaContas, "onEditar" | "onExcluir"> & Partial<Pick<AcoesTabelaContas, "onEditar" | "onExcluir">>)
+  | ({ somenteLeitura: true; ocultarEditarExcluir?: false } & Partial<AcoesTabelaContas>)
 );
 
 // Visual da lista (referência layout-contas/referencia-lista). Só classes.
@@ -69,6 +73,7 @@ const BOTAO_BAIXA = "bg-[#E4F8ED] text-[#00A45B] hover:bg-[#D3F3E1] dark:bg-emer
 export function TabelaContas({
   contas,
   somenteLeitura = false,
+  ocultarEditarExcluir = false,
   onEditar,
   onExcluir,
   onMarcarComoPaga,
@@ -246,6 +251,7 @@ export function TabelaContas({
                       {conta.tipo === 'pagar' ? 'Pagar' : 'Receber'}
                     </button>
                   )}
+                  {!ocultarEditarExcluir && (<>
                   <button
                     type="button"
                     onClick={() => onEditar?.(conta)}
@@ -278,6 +284,7 @@ export function TabelaContas({
                     </AlertDialogFooter>
                   </AlertDialogContent>
                   </AlertDialog>
+                  </>)}
                 </div>
               </div>
               )}
@@ -409,6 +416,7 @@ export function TabelaContas({
                       </button>
                     )}
 
+                    {!ocultarEditarExcluir && (<>
                     <button
                       type="button"
                       onClick={() => onEditar?.(conta)}
@@ -443,6 +451,7 @@ export function TabelaContas({
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                    </>)}
                   </div>
                 </TableCell>
                 )}
