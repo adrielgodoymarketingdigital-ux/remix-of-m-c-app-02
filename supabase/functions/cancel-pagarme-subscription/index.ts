@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { cancelarMantendoAcesso } from "./cancelarMantendoAcesso.ts";
+import { cancelarMantendoAcesso, limparMotivo } from "./cancelarMantendoAcesso.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +45,14 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const resultado = await cancelarMantendoAcesso(supabaseAdmin, userId);
+    // O alvo é sempre a assinatura do dono do token; do corpo só se aproveita o texto.
+    const corpo = await req.json().catch(() => null);
+    const resultado = await cancelarMantendoAcesso(
+      supabaseAdmin,
+      userId,
+      {},
+      limparMotivo(corpo?.motivo)
+    );
     if (!resultado.ok) {
       return new Response(JSON.stringify({ error: resultado.erro }), {
         status: resultado.httpStatus,

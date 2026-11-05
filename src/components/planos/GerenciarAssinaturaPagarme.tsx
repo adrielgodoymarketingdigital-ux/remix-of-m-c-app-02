@@ -331,27 +331,14 @@ export function GerenciarAssinaturaPagarme({
   const handleCancelar = async () => {
     setCancelando(true);
     try {
+      const motivo = motivoCancelamento === "Outro motivo" ? motivoCustom : motivoCancelamento;
       const { error } = await supabase.functions.invoke(
         "cancel-pagarme-subscription",
-        { body: {} }
+        { body: { motivo } }
       );
       if (error) {
         const corpo = await (error as { context?: Response }).context?.json?.().catch(() => null);
         throw new Error(corpo?.error || error.message || "Falha ao cancelar.");
-      }
-
-      const motivo = motivoCancelamento === "Outro motivo" ? motivoCustom : motivoCancelamento;
-      if (motivo) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from("assinaturas")
-            .update({
-              motivo_cancelamento: motivo,
-              cancelado_em: new Date().toISOString(),
-            })
-            .eq("user_id", user.id);
-        }
       }
 
       toast({

@@ -1,7 +1,12 @@
 // deno test --allow-env supabase/functions/cancel-pagarme-subscription/
 import { assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { bancoFake, fetchFake } from "../_shared/testes/bancoFake.ts";
-import { MSG_FALHA_CANCELAMENTO, cancelarMantendoAcesso } from "./cancelarMantendoAcesso.ts";
+import {
+  MSG_FALHA_CANCELAMENTO,
+  TAMANHO_MAXIMO_MOTIVO,
+  cancelarMantendoAcesso,
+  limparMotivo,
+} from "./cancelarMantendoAcesso.ts";
 
 type Linha = Record<string, unknown>;
 
@@ -31,6 +36,42 @@ Deno.test("limpa o id ANTES do DELETE e marca canceled", async () => {
   assertEquals(idNaHoraDoDelete, [null]);
   assertEquals(tabelas.assinaturas[0].status, "canceled");
   assertEquals(tabelas.assinaturas[0].pagarme_subscription_id, null);
+});
+
+Deno.test("grava o motivo só na assinatura de quem cancelou", async () => {
+  const { tabelas, db } = cenario();
+  tabelas.assinaturas.push({ id: "a2", user_id: "u2", status: "active", pagarme_subscription_id: null, motivo_cancelamento: "de outro" });
+
+  const r = await cancelarMantendoAcesso(db, "u1", { fetchFn: fetchFake(200).fn, pagarmeKey: "sk" }, "Preço alto");
+
+  assertEquals(r, { ok: true });
+  assertEquals(tabelas.assinaturas[0].motivo_cancelamento, "Preço alto");
+  assertEquals(tabelas.assinaturas[1].motivo_cancelamento, "de outro");
+  assertEquals(tabelas.assinaturas[1].status, "active");
+});
+
+Deno.test("sem resposta: não fica o motivo de um cancelamento anterior", async () => {
+  const { tabelas, db } = cenario();
+  tabelas.assinaturas[0].motivo_cancelamento = "Motivo antigo";
+  await cancelarMantendoAcesso(db, "u1", { fetchFn: fetchFake(200).fn, pagarmeKey: "sk" });
+  assertEquals(tabelas.assinaturas[0].motivo_cancelamento, null);
+});
+
+Deno.test("falha na Pagar.me: não grava motivo", async () => {
+  const { tabelas, db } = cenario();
+  const r = await cancelarMantendoAcesso(db, "u1", { fetchFn: fetchFake(500).fn, pagarmeKey: "sk" }, "Preço alto");
+  assertEquals(r.ok, false);
+  assertEquals(tabelas.assinaturas[0].motivo_cancelamento, undefined);
+  assertEquals(tabelas.assinaturas[0].status, "active");
+});
+
+Deno.test("limparMotivo aceita só texto e limita o tamanho", () => {
+  assertEquals(limparMotivo("  Preço alto  "), "Preço alto");
+  assertEquals(limparMotivo("   "), null);
+  assertEquals(limparMotivo(""), null);
+  assertEquals(limparMotivo(undefined), null);
+  assertEquals(limparMotivo({ user_id: "u2" }), null);
+  assertEquals(limparMotivo("x".repeat(TAMANHO_MAXIMO_MOTIVO + 50))?.length, TAMANHO_MAXIMO_MOTIVO);
 });
 
 Deno.test("404 (já cancelada na Pagar.me): conclui como sucesso", async () => {

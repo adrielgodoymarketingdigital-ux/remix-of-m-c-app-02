@@ -18,10 +18,19 @@ export type ResultadoCancelamento =
   | { ok: true }
   | { ok: false; httpStatus: number; erro: string };
 
+export const TAMANHO_MAXIMO_MOTIVO = 500;
+
+/** Texto vindo do cliente: só string, sem espaços nas pontas e com tamanho limitado. */
+export function limparMotivo(motivo: unknown): string | null {
+  if (typeof motivo !== "string") return null;
+  return motivo.trim().slice(0, TAMANHO_MAXIMO_MOTIVO) || null;
+}
+
 export async function cancelarMantendoAcesso(
   supabaseAdmin: AdminClient,
   userId: string,
-  opts: OpcoesPagarme = {}
+  opts: OpcoesPagarme = {},
+  motivo: string | null = null
 ): Promise<ResultadoCancelamento> {
   const { data: assinatura } = await supabaseAdmin
     .from("assinaturas")
@@ -76,10 +85,13 @@ export async function cancelarMantendoAcesso(
   }
 
   // Marca local como canceled. Acesso continua até data_proxima_cobranca.
+  // cancelado_em vem do trigger trg_set_cancelado_em. O motivo é sempre o deste
+  // cancelamento: sem resposta, não sobra o de um cancelamento anterior.
   await supabaseAdmin
     .from("assinaturas")
     .update({
       status: "canceled",
+      motivo_cancelamento: motivo,
       updated_at: new Date().toISOString(),
     })
     .eq("id", assinatura.id);
