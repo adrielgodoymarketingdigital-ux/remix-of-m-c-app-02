@@ -906,7 +906,9 @@ export default function OrdemServicoPage() {
                     <Calendar
                       mode="single"
                       selected={dataInicio}
-                      onSelect={(d) => { setDataInicio(d); aplicarFiltroMes("todos"); }}
+                      onSelect={setDataInicio}
+                      defaultMonth={dataInicio ?? dataFim}
+                      locale={ptBR}
                       initialFocus
                       className={cn("p-3 pointer-events-auto")}
                     />
@@ -930,7 +932,9 @@ export default function OrdemServicoPage() {
                     <Calendar
                       mode="single"
                       selected={dataFim}
-                      onSelect={(d) => { setDataFim(d); aplicarFiltroMes("todos"); }}
+                      onSelect={setDataFim}
+                      defaultMonth={dataFim ?? dataInicio}
+                      locale={ptBR}
                       initialFocus
                       className={cn("p-3 pointer-events-auto")}
                     />
