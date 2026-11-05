@@ -1,5 +1,7 @@
-import { Package, DollarSign, TrendingUp, Wrench, ClipboardCheck, CircleCheck, Clock, CircleX, PackageCheck, Shield, TriangleAlert, LucideIcon } from "lucide-react";
+import { Package, DollarSign, TrendingUp, Wrench, ClipboardCheck, CircleCheck, CirclePlay, Clock, CircleX, PackageCheck, Shield, TriangleAlert, LucideIcon } from "lucide-react";
+import { getEstiloDaCor } from "@/components/tutoriais/CardCategoriaTutorial";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 
@@ -12,6 +14,11 @@ const ICONE_POR_STATUS: Record<string, LucideIcon> = {
   cancelada: CircleX,
   garantia: Shield,
   estornado: TriangleAlert,
+};
+
+const ICONE_POR_STATUS_DESKTOP: Record<string, LucideIcon> = {
+  ...ICONE_POR_STATUS,
+  em_andamento: CirclePlay,
 };
 
 interface OrdemServico {
@@ -42,6 +49,7 @@ export const DashboardOrdensServico = ({
 }: DashboardOrdensServicoProps) => {
   const { podeVerLucros, isFuncionario } = useFuncionarioPermissoes();
   const { statusList } = useOSStatusConfig();
+  const isDesktop = useIsDesktop();
 
   const statusCounts = statusList
     .filter((s) => s.ativo)
@@ -78,38 +86,74 @@ export const DashboardOrdensServico = ({
   return (
     <div className="space-y-2 mb-4">
       {/* Cards de status dinâmicos */}
-      <div className="grid gap-2 grid-cols-5">
-        <StatusCard cor="#3b82f6" label="Total de Ordens" icon={<Package className="h-3.5 w-3.5" />}>
-          <p className="text-lg font-bold tabular-nums mt-0.5">{ordens.length}</p>
-        </StatusCard>
+      {isDesktop ? (
+        <div className="grid grid-cols-3 gap-3 min-[1152px]:grid-cols-5">
+          <StatusCardDesktop cor="#3b82f6" label="Total de Ordens" icone={Package} valor={ordens.length} />
 
-        {visibleStatuses.map((s) => {
-          const Icone = ICONE_POR_STATUS[s.slug] ?? ClipboardCheck;
-          return (
-            <StatusCard key={s.slug} cor={s.cor} label={s.nome} icon={<Icone className="h-3.5 w-3.5" />}>
-              <p className="text-lg font-bold tabular-nums mt-0.5">{s.count}</p>
-              {s.slug === "aguardando_retirada" && aguardandoRetiradaCount > 0 && (
-                <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={aguardandoRetiradaValor} /></p>
-              )}
-            </StatusCard>
-          );
-        })}
+          {visibleStatuses.map((s) => (
+            <StatusCardDesktop
+              key={s.slug}
+              cor={s.cor}
+              label={s.nome}
+              icone={ICONE_POR_STATUS_DESKTOP[s.slug] ?? ClipboardCheck}
+              valor={s.count}
+              detalhe={s.slug === "aguardando_retirada" && aguardandoRetiradaCount > 0 ? aguardandoRetiradaValor : undefined}
+            />
+          ))}
 
-        {/* Status desativado pela loja, mas ainda com OS: o card continua aparecendo */}
-        {!aguardandoRetiradaNaLista && aguardandoRetiradaCount > 0 && (
-          <StatusCard cor={aguardandoRetiradaCor} label={aguardandoRetiradaNome} icon={<Clock className="h-3.5 w-3.5" />}>
-            <p className="text-lg font-bold tabular-nums mt-0.5">{aguardandoRetiradaCount}</p>
-            <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={aguardandoRetiradaValor} /></p>
-          </StatusCard>
-        )}
-
-        <StatusCard cor="#8b5cf6" label="Avulsos" icon={<Wrench className="h-3.5 w-3.5" />}>
-          <p className="text-lg font-bold tabular-nums mt-0.5">{totalAvulsos}</p>
-          {totalAvulsos > 0 && (
-            <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={valorAvulsos} /></p>
+          {/* Status desativado pela loja, mas ainda com OS: o card continua aparecendo */}
+          {!aguardandoRetiradaNaLista && aguardandoRetiradaCount > 0 && (
+            <StatusCardDesktop
+              cor={aguardandoRetiradaCor}
+              label={aguardandoRetiradaNome}
+              icone={Clock}
+              valor={aguardandoRetiradaCount}
+              detalhe={aguardandoRetiradaValor}
+            />
           )}
-        </StatusCard>
-      </div>
+
+          <StatusCardDesktop
+            cor="#8b5cf6"
+            label="Avulsos"
+            icone={Wrench}
+            valor={totalAvulsos}
+            detalhe={totalAvulsos > 0 ? valorAvulsos : undefined}
+          />
+        </div>
+      ) : (
+        <div className="grid gap-2 grid-cols-5">
+          <StatusCard cor="#3b82f6" label="Total de Ordens" icon={<Package className="h-3.5 w-3.5" />}>
+            <p className="text-lg font-bold tabular-nums mt-0.5">{ordens.length}</p>
+          </StatusCard>
+
+          {visibleStatuses.map((s) => {
+            const Icone = ICONE_POR_STATUS[s.slug] ?? ClipboardCheck;
+            return (
+              <StatusCard key={s.slug} cor={s.cor} label={s.nome} icon={<Icone className="h-3.5 w-3.5" />}>
+                <p className="text-lg font-bold tabular-nums mt-0.5">{s.count}</p>
+                {s.slug === "aguardando_retirada" && aguardandoRetiradaCount > 0 && (
+                  <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={aguardandoRetiradaValor} /></p>
+                )}
+              </StatusCard>
+            );
+          })}
+
+          {/* Status desativado pela loja, mas ainda com OS: o card continua aparecendo */}
+          {!aguardandoRetiradaNaLista && aguardandoRetiradaCount > 0 && (
+            <StatusCard cor={aguardandoRetiradaCor} label={aguardandoRetiradaNome} icon={<Clock className="h-3.5 w-3.5" />}>
+              <p className="text-lg font-bold tabular-nums mt-0.5">{aguardandoRetiradaCount}</p>
+              <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={aguardandoRetiradaValor} /></p>
+            </StatusCard>
+          )}
+
+          <StatusCard cor="#8b5cf6" label="Avulsos" icon={<Wrench className="h-3.5 w-3.5" />}>
+            <p className="text-lg font-bold tabular-nums mt-0.5">{totalAvulsos}</p>
+            {totalAvulsos > 0 && (
+              <p className="text-[9px] text-muted-foreground truncate"><ValorMonetario valor={valorAvulsos} /></p>
+            )}
+          </StatusCard>
+        </div>
+      )}
 
       {/* Linha com cards financeiros */}
       {!isFuncionario ? (
@@ -167,6 +211,39 @@ function StatusCard({ cor, label, icon, children }: StatusCardProps) {
       </div>
       <p className="text-[9px] font-medium text-foreground leading-[1.2] min-h-[3.6em]">{label}</p>
       {children}
+    </div>
+  );
+}
+
+const COR_NEUTRA = "#6b7280";
+
+interface StatusCardDesktopProps {
+  cor: string;
+  label: string;
+  icone: LucideIcon;
+  valor: number;
+  detalhe?: number;
+}
+
+function StatusCardDesktop({ cor, label, icone: Icone, valor, detalhe }: StatusCardDesktopProps) {
+  // A cor do status vem do banco e pode ter sido digitada à mão
+  const corValida = /^#[0-9a-f]{6}$/i.test(cor) ? cor : COR_NEUTRA;
+
+  return (
+    <div
+      style={getEstiloDaCor(corValida)}
+      className="flex min-h-[87px] min-w-0 items-center gap-3 rounded-[14px] border border-l-4 border-border border-l-[color:var(--acento)] bg-card px-3 py-3.5 shadow-sm dark:border-l-[color:var(--acento-escuro)]"
+    >
+      <div className="flex h-[43px] w-[43px] shrink-0 items-center justify-center rounded-full bg-[var(--acento-suave)] text-[color:var(--acento)] dark:bg-[var(--acento-suave-escuro)] dark:text-[color:var(--acento-escuro)]">
+        <Icone className="h-[23px] w-[23px]" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold leading-[1.35] text-foreground [overflow-wrap:anywhere]">{label}</p>
+        <p className="mt-1.5 text-[25px] font-extrabold leading-none tabular-nums text-foreground">{valor}</p>
+        {detalhe !== undefined && (
+          <p className="mt-1 truncate text-[11px] text-muted-foreground"><ValorMonetario valor={detalhe} /></p>
+        )}
+      </div>
     </div>
   );
 }
