@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useOrdensServico, type OrdemServico } from "@/hooks/useOrdensServico";
+import { useIsDesktop } from "@/hooks/use-mobile";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { useOSStatusConfigContext as useOSStatusConfig } from "@/contexts/OSStatusConfigContext";
 import { useOSTracking } from "@/hooks/useOSTracking";
@@ -47,6 +48,7 @@ import { TabelaOrdensServico } from "@/components/ordens/TabelaOrdensServico";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { DashboardOrdensServico } from "@/components/ordens/DashboardOrdensServico";
+import { PainelControleOSDesktop } from "@/components/ordens/PainelControleOSDesktop";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AdicionaisPorOSProvider } from "@/contexts/AdicionaisPorOSContext";
 import { TermoResponsabilidadeConfig } from "@/types/configuracao-loja";
@@ -103,6 +105,7 @@ const mesesDoFiltro = () =>
 export default function OrdemServicoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const isDesktop = useIsDesktop();
   const tabParam = searchParams.get("tab");
   const [temAcessoTiny, setTemAcessoTiny] = useState(false);
   const [checandoAcessoTiny, setChecandoAcessoTiny] = useState(true);
@@ -782,186 +785,206 @@ export default function OrdemServicoPage() {
         <div className="min-w-0 p-4 md:p-6 max-w-full overflow-x-hidden">
           <div className="flex min-w-0 flex-col gap-4">
 
-            {/* Card com fundo invertido ao tema — gradiente preto no modo claro, claro no modo escuro */}
-            <div className="relative rounded-2xl bg-gradient-to-br from-slate-800 to-black dark:bg-slate-100 dark:bg-none px-4 py-4 md:px-5 md:py-5 flex flex-col gap-4 overflow-hidden">
-              <div className="flex items-center gap-3">
-                <SidebarTrigger className="hidden lg:flex shrink-0 text-white/70 hover:text-white dark:text-slate-500 dark:hover:text-slate-900" />
+            {isDesktop ? (
+              <PainelControleOSDesktop
+                contadorOS={contadorOS}
+                onNovaCompleta={handleNovaOrdem}
+                onNovaSimplificada={handleNovaOrdemSimplificada}
+                onImportar={() => setDialogImportarOS(true)}
+                onExportar={() => setDialogExportarRelatorio(true)}
+                onAvulso={() => setDialogServicoAvulso(true)}
+                menuConfiguracoes={menuConfiguracoes}
+                meses={mesesDoFiltro()}
+                mesFiltro={mesFiltro}
+                onMesFiltroChange={aplicarFiltroMes}
+                dataInicio={dataInicio}
+                onDataInicioChange={setDataInicio}
+                dataFim={dataFim}
+                onDataFimChange={setDataFim}
+                onLimparPeriodo={() => { setDataInicio(undefined); setDataFim(undefined); aplicarFiltroMes("todos"); }}
+              />
+            ) : (
+              /* Card com fundo invertido ao tema — gradiente preto no modo claro, claro no modo escuro */
+              <div className="relative rounded-2xl bg-gradient-to-br from-slate-800 to-black dark:bg-slate-100 dark:bg-none px-4 py-4 md:px-5 md:py-5 flex flex-col gap-4 overflow-hidden">
+                <div className="flex items-center gap-3">
+                  <SidebarTrigger className="hidden lg:flex shrink-0 text-white/70 hover:text-white dark:text-slate-500 dark:hover:text-slate-900" />
 
-                <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
-                  <SlidersHorizontal className="h-5 w-5 text-primary" />
+                  <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
+                    <SlidersHorizontal className="h-5 w-5 text-primary" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-white dark:text-slate-900 truncate">
+                      Centro de Controle
+                    </h1>
+                    <p className="text-xs text-white/50 dark:text-slate-500 truncate hidden sm:block">
+                      Acompanhe e gerencie todas as ordens
+                    </p>
+                  </div>
+
+                  <div className="ml-auto flex items-center gap-2 shrink-0">
+                    {!contadorOS.ilimitado && (
+                      <div className="hidden sm:flex items-center gap-1.5 rounded-lg bg-white/10 dark:bg-slate-900/10 px-2.5 py-1 font-mono text-xs text-white/70 dark:text-slate-600">
+                        <span className="text-primary-foreground dark:text-primary font-semibold">{contadorOS.usadas}</span>
+                        <span>/</span>
+                        <span>{contadorOS.limite}</span>
+                        <span className="text-[10px]">OS</span>
+                      </div>
+                    )}
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="os-nova-btn h-9 text-xs gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide text-white"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Nova OS
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleNovaOrdem}>
+                          Completa
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleNovaOrdemSimplificada}>
+                          Simplificada
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-white dark:text-slate-900 truncate">
-                    Centro de Controle
-                  </h1>
-                  <p className="text-xs text-white/50 dark:text-slate-500 truncate hidden sm:block">
-                    Acompanhe e gerencie todas as ordens
-                  </p>
-                </div>
-
-                <div className="ml-auto flex items-center gap-2 shrink-0">
-                  {!contadorOS.ilimitado && (
-                    <div className="hidden sm:flex items-center gap-1.5 rounded-lg bg-white/10 dark:bg-slate-900/10 px-2.5 py-1 font-mono text-xs text-white/70 dark:text-slate-600">
-                      <span className="text-primary-foreground dark:text-primary font-semibold">{contadorOS.usadas}</span>
-                      <span>/</span>
-                      <span>{contadorOS.limite}</span>
-                      <span className="text-[10px]">OS</span>
-                    </div>
-                  )}
+                {/* Barra de ações */}
+                <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2 min-w-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogImportarOS(true)}
+                    className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
+                  >
+                    <Upload className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Importar</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogExportarRelatorio(true)}
+                    className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
+                  >
+                    <Download className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Exportar</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogServicoAvulso(true)}
+                    className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
+                  >
+                    <Wrench className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Avulso</span>
+                  </Button>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
+                        variant="outline"
                         size="sm"
-                        className="os-nova-btn h-9 text-xs gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/25 font-semibold tracking-wide text-white"
+                        className="h-9 w-9 p-0 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 shrink-0"
                       >
-                        <Plus className="h-3.5 w-3.5" />
-                        Nova OS
+                        <Settings className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleNovaOrdem}>
-                        Completa
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleNovaOrdemSimplificada}>
-                        Simplificada
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
+                    {menuConfiguracoes}
                   </DropdownMenu>
                 </div>
-              </div>
 
-              {/* Barra de ações */}
-              <div className="flex flex-nowrap items-center gap-1.5 sm:gap-2 min-w-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDialogImportarOS(true)}
-                  className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
-                >
-                  <Upload className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">Importar</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDialogExportarRelatorio(true)}
-                  className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
-                >
-                  <Download className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">Exportar</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDialogServicoAvulso(true)}
-                  className="h-9 text-[11px] sm:text-xs flex-1 sm:flex-none gap-1 sm:gap-1.5 px-2 sm:px-3 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900"
-                >
-                  <Wrench className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">Avulso</span>
-                </Button>
+                {/* Filtro de período */}
+                <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap min-w-0">
+                  <div className="flex items-center gap-1 sm:gap-1.5 rounded-lg bg-white/5 dark:bg-slate-900/5 px-2 sm:px-2.5 py-1.5 text-xs text-white/70 dark:text-slate-600 font-mono min-w-0">
+                    <CalendarIcon className="h-3 w-3 shrink-0" />
+                    <Select value={mesFiltro} onValueChange={aplicarFiltroMes}>
+                      <SelectTrigger className="h-5 w-[92px] sm:w-[130px] border-0 bg-transparent shadow-none focus:ring-0 text-[11px] sm:text-xs p-0 text-white/70 dark:text-slate-600">
+                        <SelectValue placeholder="Mês" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos os meses</SelectItem>
+                        {mesesDoFiltro().map(({ valor, data }) => {
+                          const label = format(data, "MMMM yyyy", { locale: ptBR });
+                          return (
+                            <SelectItem key={valor} value={valor}>
+                              {label.charAt(0).toUpperCase() + label.slice(1)}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                  <span className="text-xs text-white/30 dark:text-slate-400 font-mono shrink-0 hidden sm:inline">|</span>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn("h-7 shrink-0 text-[11px] sm:text-xs gap-1 px-2 sm:px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataInicio && "text-white/50 dark:text-slate-400")}
+                      >
+                        <CalendarIcon className="h-3 w-3 shrink-0" />
+                        {dataInicio ? format(dataInicio, "dd/MM") : "início"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dataInicio}
+                        onSelect={setDataInicio}
+                        defaultMonth={dataInicio ?? dataFim}
+                        locale={ptBR}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <span className="text-[11px] sm:text-xs text-white/30 dark:text-slate-400 font-mono shrink-0">até</span>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn("h-7 shrink-0 text-[11px] sm:text-xs gap-1 px-2 sm:px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataFim && "text-white/50 dark:text-slate-400")}
+                      >
+                        <CalendarIcon className="h-3 w-3 shrink-0" />
+                        {dataFim ? format(dataFim, "dd/MM") : "fim"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dataFim}
+                        onSelect={setDataFim}
+                        defaultMonth={dataFim ?? dataInicio}
+                        locale={ptBR}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  {(dataInicio || dataFim || mesFiltro !== "todos") && (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="h-9 w-9 p-0 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white dark:text-slate-700 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 shrink-0"
+                      onClick={() => { setDataInicio(undefined); setDataFim(undefined); aplicarFiltroMes("todos"); }}
+                      className="h-7 w-7 sm:w-auto shrink-0 text-xs gap-1 px-0 sm:px-2 text-white/50 dark:text-slate-500 hover:text-destructive hover:bg-white/10 dark:hover:bg-slate-900/10"
                     >
-                      <Settings className="h-4 w-4" />
+                      <X className="h-3 w-3" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  {menuConfiguracoes}
-                </DropdownMenu>
-              </div>
-
-              {/* Filtro de período */}
-              <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap min-w-0">
-                <div className="flex items-center gap-1 sm:gap-1.5 rounded-lg bg-white/5 dark:bg-slate-900/5 px-2 sm:px-2.5 py-1.5 text-xs text-white/70 dark:text-slate-600 font-mono min-w-0">
-                  <CalendarIcon className="h-3 w-3 shrink-0" />
-                  <Select value={mesFiltro} onValueChange={aplicarFiltroMes}>
-                    <SelectTrigger className="h-5 w-[92px] sm:w-[130px] border-0 bg-transparent shadow-none focus:ring-0 text-[11px] sm:text-xs p-0 text-white/70 dark:text-slate-600">
-                      <SelectValue placeholder="Mês" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os meses</SelectItem>
-                      {mesesDoFiltro().map(({ valor, data }) => {
-                        const label = format(data, "MMMM yyyy", { locale: ptBR });
-                        return (
-                          <SelectItem key={valor} value={valor}>
-                            {label.charAt(0).toUpperCase() + label.slice(1)}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  )}
                 </div>
-
-                <span className="text-xs text-white/30 dark:text-slate-400 font-mono shrink-0 hidden sm:inline">|</span>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn("h-7 shrink-0 text-[11px] sm:text-xs gap-1 px-2 sm:px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataInicio && "text-white/50 dark:text-slate-400")}
-                    >
-                      <CalendarIcon className="h-3 w-3 shrink-0" />
-                      {dataInicio ? format(dataInicio, "dd/MM") : "início"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dataInicio}
-                      onSelect={setDataInicio}
-                      defaultMonth={dataInicio ?? dataFim}
-                      locale={ptBR}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <span className="text-[11px] sm:text-xs text-white/30 dark:text-slate-400 font-mono shrink-0">até</span>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn("h-7 shrink-0 text-[11px] sm:text-xs gap-1 px-2 sm:px-2.5 bg-white/5 dark:bg-slate-900/5 border-white/10 dark:border-slate-900/10 text-white/70 dark:text-slate-600 hover:bg-white/10 dark:hover:bg-slate-900/10 hover:text-white dark:hover:text-slate-900 font-mono", !dataFim && "text-white/50 dark:text-slate-400")}
-                    >
-                      <CalendarIcon className="h-3 w-3 shrink-0" />
-                      {dataFim ? format(dataFim, "dd/MM") : "fim"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dataFim}
-                      onSelect={setDataFim}
-                      defaultMonth={dataFim ?? dataInicio}
-                      locale={ptBR}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                {(dataInicio || dataFim || mesFiltro !== "todos") && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setDataInicio(undefined); setDataFim(undefined); aplicarFiltroMes("todos"); }}
-                    className="h-7 w-7 sm:w-auto shrink-0 text-xs gap-1 px-0 sm:px-2 text-white/50 dark:text-slate-500 hover:text-destructive hover:bg-white/10 dark:hover:bg-slate-900/10"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* 4 cards gerenciais — grid 4 colunas largura total */}
