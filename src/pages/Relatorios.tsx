@@ -19,7 +19,9 @@ import { RelatorioDispositivosComponent } from "@/components/relatorios/Relatori
 import { RelatorioProdutosComponent } from "@/components/relatorios/RelatorioProdutos";
 import { RelatorioServicosComponent } from "@/components/relatorios/RelatorioServicos";
 import { RelatorioVendasAvulsasComponent } from "@/components/relatorios/RelatorioVendasAvulsas";
-import { Filter, Calendar, FileDown, ClipboardList, ShoppingCart, TrendingUp, Users, Loader2, Download } from "lucide-react";
+import { Filter, Calendar, FileDown, ClipboardList, ShoppingCart, TrendingUp, Users, Loader2, Download, BarChart3, ChevronRight, Smartphone, Package, Wrench, Receipt } from "lucide-react";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import {
   RelatorioDispositivo,
   RelatorioProduto,
@@ -63,6 +65,43 @@ const MESES = [
   { value: "12", label: "Dezembro" },
 ];
 
+// Só o layout do computador: acento de cada cartão de exportação (transparência, vale nos dois temas).
+const ACENTO_EXPORTACAO_DESKTOP: Record<string, { icone: string; cartao: string; botao: string }> = {
+  os: {
+    icone: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    cartao: "hover:border-blue-500/40",
+    botao: "border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300 group-hover:bg-blue-500/15",
+  },
+  vendas: {
+    icone: "bg-green-500/10 text-green-600 dark:text-green-400",
+    cartao: "hover:border-green-500/40",
+    botao: "border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-300 group-hover:bg-green-500/15",
+  },
+  financeiro: {
+    icone: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    cartao: "hover:border-purple-500/40",
+    botao: "border-purple-500/20 bg-purple-500/10 text-purple-700 dark:text-purple-300 group-hover:bg-purple-500/15",
+  },
+  clientes: {
+    icone: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    cartao: "hover:border-orange-500/40",
+    botao: "border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-300 group-hover:bg-orange-500/15",
+  },
+};
+
+const ABAS_DESKTOP = [
+  { value: "dispositivos", label: "Dispositivos", icon: Smartphone },
+  { value: "produtos", label: "Produtos", icon: Package },
+  { value: "servicos", label: "Serviços", icon: Wrench },
+  { value: "avulsas", label: "Venda Avulsa", icon: Receipt },
+];
+
+const IconeSecao = ({ icon: Icon }: { icon: typeof Filter }) => (
+  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+    <Icon className="h-5 w-5" />
+  </div>
+);
+
 export default function Relatorios() {
   const {
     loading,
@@ -76,6 +115,7 @@ export default function Relatorios() {
   const { calcularResumo, calcularEvolucaoMensal } = useRelatorios();
   const { config } = useConfiguracaoLoja();
   const { userId: identidadeUserId, empresaId: empresaFiltro } = useIdentidade();
+  const isDesktop = useIsDesktop();
 
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
@@ -416,6 +456,240 @@ export default function Relatorios() {
       acao: exportarClientes,
     },
   ];
+
+  // Computador (>= 1024px): mesmo estado e mesmos handlers, só o visual muda. Celular segue no return de baixo.
+  if (isDesktop) {
+    return (
+      <AppLayout>
+        <main className="flex-1 p-4 sm:p-6 overflow-auto">
+          <div className="mx-auto max-w-none space-y-5">
+            <AvisoCustoNaoConfirmado />
+            <div className="flex items-center gap-4">
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/20">
+                <BarChart3 className="h-7 w-7" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-[28px] font-bold leading-9 tracking-tight">Relatórios</h1>
+                <p className="text-sm leading-5 text-muted-foreground">
+                  Análise de vendas e exportação de relatórios em PDF
+                </p>
+              </div>
+            </div>
+
+            {/* Filtros */}
+            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <IconeSecao icon={Filter} />
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold leading-6">Filtros</h2>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Aplicados em todas as análises e exportações
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-end gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4" />
+                    Filtrar por:
+                  </Label>
+                  <div className="flex h-11 items-center gap-1 rounded-xl border border-border bg-muted/50 p-1">
+                    {([
+                      { valor: "mes", texto: "Mês" },
+                      { valor: "periodo", texto: "Período" },
+                    ] as const).map((opcao) => (
+                      <button
+                        key={opcao.valor}
+                        type="button"
+                        aria-pressed={tipoFiltroData === opcao.valor}
+                        onClick={() => setTipoFiltroData(opcao.valor)}
+                        className={cn(
+                          "h-full rounded-lg px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          tipoFiltroData === opcao.valor
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:bg-background hover:text-foreground"
+                        )}
+                      >
+                        {opcao.texto}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {tipoFiltroData === "mes" ? (
+                  <>
+                    <div className="min-w-[180px] flex-1 space-y-2">
+                      <Label htmlFor="mes" className="text-sm">Mês</Label>
+                      <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+                        <SelectTrigger id="mes" className="h-11">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MESES.map((mes) => (
+                            <SelectItem key={mes.value} value={mes.value}>{mes.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="min-w-[180px] flex-1 space-y-2">
+                      <Label htmlFor="ano" className="text-sm">Ano</Label>
+                      <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
+                        <SelectTrigger id="ano" className="h-11">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {anos.map((ano) => (
+                            <SelectItem key={ano} value={ano}>{ano}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="min-w-[180px] flex-1 space-y-2">
+                      <Label htmlFor="dataInicio" className="text-sm">Data Início</Label>
+                      <Input id="dataInicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="h-11" />
+                    </div>
+                    <div className="min-w-[180px] flex-1 space-y-2">
+                      <Label htmlFor="dataFim" className="text-sm">Data Fim</Label>
+                      <Input id="dataFim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="h-11" />
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-2">
+                  <Button onClick={handleFiltrar} disabled={loading} className="h-11 w-40">
+                    Filtrar
+                  </Button>
+                  <Button variant="outline" onClick={handleLimparFiltros} disabled={loading} className="h-11 w-32">
+                    Limpar
+                  </Button>
+                </div>
+              </div>
+            </section>
+
+            {/* Seção de Exportação */}
+            <section className="space-y-3">
+              <div className="flex items-center gap-3">
+                <IconeSecao icon={Download} />
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold leading-6">Exportar Relatórios em PDF</h2>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Clique em qualquer relatório para gerar e baixar o PDF com os dados do período selecionado.
+                  </p>
+                </div>
+              </div>
+              {/* 4 numa linha só a partir de 1400px: abaixo disso, com a sidebar aberta, o texto ficava espremido. */}
+              <div className="grid gap-4 lg:grid-cols-2 min-[1400px]:grid-cols-4">
+                {relatoriosExportacao.map((rel) => {
+                  const acento = ACENTO_EXPORTACAO_DESKTOP[rel.id];
+                  const gerando = exportandoTipo === rel.id;
+                  return (
+                    <button
+                      key={rel.id}
+                      type="button"
+                      onClick={!isExportando ? rel.acao : undefined}
+                      aria-disabled={isExportando}
+                      aria-busy={gerando}
+                      className={cn(
+                        "group flex h-full flex-col rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        isExportando ? "cursor-default" : cn("cursor-pointer", acento.cartao)
+                      )}
+                    >
+                      <div className="flex w-full items-start gap-3">
+                        <div className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-xl", acento.icone)}>
+                          {gerando ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <rel.icon className="h-5 w-5" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-semibold leading-5 text-foreground">{rel.titulo}</h3>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{rel.descricao}</p>
+                        </div>
+                        <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                      <span className="mt-auto block w-full pt-4">
+                        <span
+                          className={cn(
+                            "flex h-10 w-full items-center justify-center gap-2 rounded-lg border text-sm font-medium transition-colors",
+                            acento.botao,
+                            isExportando && !gerando && "opacity-50"
+                          )}
+                        >
+                          {gerando ? (
+                            <><Loader2 className="h-4 w-4 animate-spin" /> Gerando PDF...</>
+                          ) : (
+                            <><FileDown className="h-4 w-4" /> Exportar PDF</>
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Análise por Tipo */}
+            <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <IconeSecao icon={BarChart3} />
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold leading-6">Análise por Tipo de Venda</h2>
+                    <p className="text-xs leading-5 text-muted-foreground">Detalhamento e comparativo por categoria</p>
+                  </div>
+                </div>
+                {activeTab !== "avulsas" && (
+                  <Button
+                    variant="outline"
+                    onClick={handleExportarAnalise}
+                    disabled={loading || exportando}
+                    className="h-10 shrink-0 gap-2"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    {exportando ? "Exportando..." : "Exportar aba"}
+                  </Button>
+                )}
+              </div>
+
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid h-auto w-full grid-cols-4 rounded-xl p-1">
+                  {ABAS_DESKTOP.map((aba) => (
+                    <TabsTrigger
+                      key={aba.value}
+                      value={aba.value}
+                      className="gap-2 rounded-lg py-2.5 text-sm data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                    >
+                      <aba.icon className="h-4 w-4" />
+                      {aba.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+
+                <TabsContent value="dispositivos" className="mt-5 space-y-4">
+                  <RelatorioDispositivosComponent dispositivos={dispositivos} loading={loading} />
+                </TabsContent>
+                <TabsContent value="produtos" className="mt-5 space-y-4">
+                  <RelatorioProdutosComponent produtos={produtos} loading={loading} />
+                </TabsContent>
+                <TabsContent value="servicos" className="mt-5 space-y-4">
+                  <RelatorioServicosComponent servicos={servicos} loading={loading} />
+                </TabsContent>
+                <TabsContent value="avulsas" className="mt-5 space-y-4">
+                  <RelatorioVendasAvulsasComponent vendas={vendasAvulsas} loading={loading} />
+                </TabsContent>
+              </Tabs>
+            </section>
+          </div>
+        </main>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
