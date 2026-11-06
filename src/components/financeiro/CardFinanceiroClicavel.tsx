@@ -1,8 +1,10 @@
-import type { KeyboardEvent } from "react";
+import type { CSSProperties, KeyboardEvent } from "react";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { ChevronRight, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/formatters";
 import { ESTILO_TOM, MOLDURA_CARD_FINANCEIRO, type TomCardFinanceiro } from "./estiloCardFinanceiro";
 
 interface CardFinanceiroClicavelProps {
@@ -20,7 +22,21 @@ interface CardFinanceiroClicavelProps {
   tom?: TomCardFinanceiro;
   /** Degradê suave da cor do cartão no rodapé. Puro enfeite, não é gráfico. */
   degrade?: boolean;
+  /**
+   * Opcional: o valor nunca é cortado com "…". A fonte fica no tamanho de sempre
+   * (text-lg) e só diminui quando o número não caberia na largura do cartão
+   * (container query). Sem a prop, nada muda.
+   */
+  valorAjustavel?: boolean;
+  /** Opcional: no computador (lg+), esqueleto no lugar do valor. Abaixo de lg nada muda. */
+  carregando?: boolean;
 }
+
+/**
+ * Largura média de um caractere do valor em negrito, em "em". Folgada de propósito
+ * (dígitos ~0,6em, pontuação ~0,3em) para o número caber com sobra.
+ */
+const LARGURA_CARACTERE_EM = 0.64;
 
 export function CardFinanceiroClicavel({
   titulo,
@@ -34,8 +50,55 @@ export function CardFinanceiroClicavel({
   tipo = "valor",
   tom = "neutro",
   degrade = false,
+  valorAjustavel = false,
+  carregando = false,
 }: CardFinanceiroClicavelProps) {
   const estilo = ESTILO_TOM[tom];
+
+  // Quantos caracteres o valor ocupa na tela (só para escolher o tamanho da fonte).
+  const caracteresDoValor = valorAjustavel
+    ? tipo === "quantidade"
+      ? String(quantidade ?? 0).length
+      : tipo === "percentual"
+        ? `${(valor ?? 0).toFixed(2)}%`.length
+        : formatCurrency(valor ?? 0).length
+    : 0;
+  // text-lg (1.125rem) enquanto couber; abaixo disso, encolhe na medida da largura do cartão.
+  const estiloValor: CSSProperties | undefined = valorAjustavel
+    ? { fontSize: `min(1.125rem, calc(100cqi / ${(caracteresDoValor * LARGURA_CARACTERE_EM).toFixed(2)}))` }
+    : undefined;
+  const classeValor = valorAjustavel
+    ? "font-bold tracking-tight tabular-nums whitespace-nowrap leading-7"
+    : null;
+
+  const conteudoValor = (
+    <>
+      {tipo === "valor" && (
+        <div
+          className={cn(classeValor ?? "text-lg font-bold tracking-tight tabular-nums truncate", valorColor)}
+          style={estiloValor}
+        >
+          <ValorMonetario valor={valor ?? 0} />
+        </div>
+      )}
+      {tipo === "quantidade" && (
+        <div
+          className={cn(classeValor ?? "text-lg font-bold tracking-tight tabular-nums", valorColor)}
+          style={estiloValor}
+        >
+          {quantidade ?? 0}
+        </div>
+      )}
+      {tipo === "percentual" && (
+        <div
+          className={cn(classeValor ?? "text-lg font-bold tracking-tight tabular-nums truncate", valorColor)}
+          style={estiloValor}
+        >
+          {(valor ?? 0).toFixed(2)}%
+        </div>
+      )}
+    </>
+  );
 
   // Teclado: Enter/Espaço chamam o mesmo handler do clique. Espaço sem
   // preventDefault rolaria a página.
@@ -57,6 +120,7 @@ export function CardFinanceiroClicavel({
         onClick &&
           "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         ativo && "ring-2 ring-primary shadow-md",
+        valorAjustavel && "[container-type:inline-size]",
       )}
       onClick={onClick}
       role={onClick ? "button" : undefined}
@@ -73,7 +137,14 @@ export function CardFinanceiroClicavel({
         />
       )}
 
-      <div className="flex items-start gap-2.5">
+      <div
+        className={cn(
+          "flex items-start gap-2.5",
+          // Computador, cartão estreito (7 numa linha em ~1366-1600px): ícone em cima do
+          // título para o título não ser cortado no meio da palavra.
+          valorAjustavel && "lg:[@container(max-width:139px)]:flex-col lg:[@container(max-width:139px)]:gap-2",
+        )}
+      >
         <div
           aria-hidden="true"
           className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl sm:h-10 sm:w-10", estilo.caixa)}
@@ -97,23 +168,24 @@ export function CardFinanceiroClicavel({
       </div>
 
       <div className="mt-2.5">
-        {tipo === "valor" && (
-          <div className={cn("text-lg font-bold tracking-tight tabular-nums truncate", valorColor)}>
-            <ValorMonetario valor={valor ?? 0} />
-          </div>
-        )}
-        {tipo === "quantidade" && (
-          <div className={cn("text-lg font-bold tracking-tight tabular-nums", valorColor)}>
-            {quantidade ?? 0}
-          </div>
-        )}
-        {tipo === "percentual" && (
-          <div className={cn("text-lg font-bold tracking-tight tabular-nums truncate", valorColor)}>
-            {(valor ?? 0).toFixed(2)}%
-          </div>
+        {carregando ? (
+          <>
+            <Skeleton aria-hidden="true" className="hidden h-7 w-3/4 rounded-md lg:block" />
+            <div className="lg:hidden">{conteudoValor}</div>
+          </>
+        ) : (
+          conteudoValor
         )}
         {subtitulo && (
-          <p className="mt-0.5 text-[11px] sm:text-xs text-muted-foreground truncate">{subtitulo}</p>
+          <p
+            className={cn(
+              "mt-0.5 text-[11px] sm:text-xs text-muted-foreground truncate",
+              // Computador: subtítulo quebra em até 2 linhas em vez de "…".
+              valorAjustavel && "lg:line-clamp-2 lg:whitespace-normal",
+            )}
+          >
+            {subtitulo}
+          </p>
         )}
       </div>
     </Card>

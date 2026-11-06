@@ -9,7 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Filter } from "lucide-react";
+import {
+  BarChart3,
+  Calendar,
+  CalendarDays,
+  CalendarRange,
+  Clock,
+  Filter,
+  History,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
 import { nowBrasilia } from "@/lib/dataBrasilia";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +57,23 @@ interface FiltroPeriodoAvancadoProps {
   ocultarLimpar?: boolean;
   /** Opcional: no celular, períodos em grade de 2 colunas em vez de uma linha rolando. */
   opcoesEmGrade?: boolean;
+  /**
+   * Opcional: visual do computador (lg+) da Análise de Lucros e Custos — períodos
+   * numa barra com ícones e Tipo/Limpar alinhados à direita. Abaixo de lg nada muda.
+   * Sem a prop, a saída é a mesma de sempre.
+   */
+  visualDesktop?: boolean;
 }
+
+/** Ícone de cada período no visual do computador (só aparece em lg+). */
+const ICONE_PRESET: Record<PresetType, LucideIcon> = {
+  hoje: Clock,
+  ontem: History,
+  "7dias": CalendarRange,
+  mes_atual: CalendarDays,
+  por_mes: BarChart3,
+  personalizado: Calendar,
+};
 
 const anos = Array.from({ length: 2035 - 2020 + 1 }, (_, i) => (2035 - i).toString());
 
@@ -60,6 +86,7 @@ export function FiltroPeriodoAvancado({
   opcoes,
   ocultarLimpar,
   opcoesEmGrade,
+  visualDesktop,
 }: FiltroPeriodoAvancadoProps) {
   const [preset, setPreset] = useState<PresetType>("mes_atual");
   const [mesSelecionado, setMesSelecionado] = useState(
@@ -145,35 +172,50 @@ export function FiltroPeriodoAvancado({
   const presets = opcoes ?? presetsPadrao;
 
   return (
-    <div className="rounded-2xl border bg-card p-2 sm:p-3 space-y-3 shadow-sm">
+    <div
+      className={cn(
+        "rounded-2xl border bg-card p-2 sm:p-3 space-y-3 shadow-sm",
+        visualDesktop &&
+          "lg:flex lg:flex-wrap lg:items-end lg:justify-between lg:gap-3 lg:space-y-0 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none",
+      )}
+    >
       {/* Celular: uma linha só, rolando para o lado. sm+: quebra linha como antes.
           p-1/-m-1 dão espaço para o anel de foco não ser cortado pela rolagem. */}
       <div className={cn(
         "-m-1 gap-1.5 p-1 sm:flex sm:flex-wrap sm:overflow-visible",
         opcoesEmGrade ? "grid grid-cols-2" : "flex overflow-x-auto scrollbar-hide",
+        visualDesktop && "lg:m-0 lg:w-fit lg:gap-1 lg:rounded-2xl lg:border lg:bg-card lg:p-1 lg:shadow-sm",
       )}>
-        {presets.map((p) => (
-          <Button
-            key={p.value}
-            variant={preset === p.value ? "default" : "outline"}
-            size="sm"
-            aria-pressed={preset === p.value}
-            className="h-11 shrink-0 rounded-xl px-4 text-[13px] sm:h-8 sm:px-3 sm:text-xs"
-            onClick={() => handlePreset(p.value)}
-          >
-            {p.label}
-          </Button>
-        ))}
+        {presets.map((p) => {
+          const Icone = ICONE_PRESET[p.value];
+          return (
+            <Button
+              key={p.value}
+              variant={preset === p.value ? "default" : "outline"}
+              size="sm"
+              aria-pressed={preset === p.value}
+              className={cn(
+                "h-11 shrink-0 rounded-xl px-4 text-[13px] sm:h-8 sm:px-3 sm:text-xs",
+                visualDesktop && "lg:h-9 lg:gap-1.5 lg:px-3.5 lg:text-[13px]",
+                visualDesktop && preset !== p.value && "lg:border-transparent lg:shadow-none",
+              )}
+              onClick={() => handlePreset(p.value)}
+            >
+              {visualDesktop && <Icone aria-hidden="true" className="hidden h-4 w-4 lg:block" />}
+              {p.label}
+            </Button>
+          );
+        })}
       </div>
 
       {(preset === "por_mes" || preset === "personalizado" || showTipoFiltro) && (
-        <div className="flex flex-wrap items-end gap-2">
+        <div className={cn("flex flex-wrap items-end gap-2", visualDesktop && "lg:justify-end")}>
           {preset === "por_mes" && (
             <>
               <div className="space-y-1">
                 <Label className="text-xs">Mês</Label>
                 <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
-                  <SelectTrigger className="h-11 sm:h-8 text-xs w-[120px]">
+                  <SelectTrigger className={cn("h-11 sm:h-8 text-xs w-[120px]", visualDesktop && "lg:h-9")}>
                     <SelectValue placeholder="Mês" />
                   </SelectTrigger>
                   <SelectContent>
@@ -188,7 +230,7 @@ export function FiltroPeriodoAvancado({
               <div className="space-y-1">
                 <Label className="text-xs">Ano</Label>
                 <Select value={anoSelecionado} onValueChange={setAnoSelecionado}>
-                  <SelectTrigger className="h-11 sm:h-8 text-xs w-[90px]">
+                  <SelectTrigger className={cn("h-11 sm:h-8 text-xs w-[90px]", visualDesktop && "lg:h-9")}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -211,7 +253,7 @@ export function FiltroPeriodoAvancado({
                   type="date"
                   value={dataInicio}
                   onChange={(e) => setDataInicio(e.target.value)}
-                  className="h-11 sm:h-8 text-xs w-[150px]"
+                  className={cn("h-11 sm:h-8 text-xs w-[150px]", visualDesktop && "lg:h-9")}
                 />
               </div>
               <div className="space-y-1">
@@ -220,7 +262,7 @@ export function FiltroPeriodoAvancado({
                   type="date"
                   value={dataFim}
                   onChange={(e) => setDataFim(e.target.value)}
-                  className="h-11 sm:h-8 text-xs w-[150px]"
+                  className={cn("h-11 sm:h-8 text-xs w-[150px]", visualDesktop && "lg:h-9")}
                 />
               </div>
             </>
@@ -233,7 +275,7 @@ export function FiltroPeriodoAvancado({
                 value={tipoFiltro || "todos"}
                 onValueChange={(v) => onTipoFiltroChange?.(v)}
               >
-                <SelectTrigger className="h-11 sm:h-8 text-xs w-[110px]">
+                <SelectTrigger className={cn("h-11 sm:h-8 text-xs w-[110px]", visualDesktop && "lg:h-9 lg:w-[160px] lg:rounded-xl lg:bg-card")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -250,7 +292,7 @@ export function FiltroPeriodoAvancado({
               onClick={handleFiltrar}
               disabled={loading}
               size="sm"
-              className="h-11 sm:h-8 text-xs"
+              className={cn("h-11 sm:h-8 text-xs", visualDesktop && "lg:h-9 lg:rounded-xl")}
             >
               <Filter className="h-3 w-3 mr-1" />
               Filtrar
@@ -263,8 +305,9 @@ export function FiltroPeriodoAvancado({
               onClick={handleLimpar}
               disabled={loading}
               size="sm"
-              className="h-11 sm:h-8 text-xs"
+              className={cn("h-11 sm:h-8 text-xs", visualDesktop && "lg:h-9 lg:gap-1.5 lg:rounded-xl lg:bg-card lg:px-3.5")}
             >
+              {visualDesktop && <Trash2 aria-hidden="true" className="hidden h-3.5 w-3.5 lg:block" />}
               Limpar
             </Button>
           )}
