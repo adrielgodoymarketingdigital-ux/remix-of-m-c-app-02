@@ -24,7 +24,9 @@ import {
 import { Pencil, Trash2, Eye, X, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { Cliente } from "@/types/cliente";
 import { formatCPF, formatPhone } from "@/lib/formatters";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsDesktop, useIsMobile } from "@/hooks/use-mobile";
+import { documentoDoCliente } from "@/lib/clientes/dadosCliente";
+import { avatarCliente } from "@/components/clientes/avatarCliente";
 import { isAniversarioHoje, isAniversarioEsteMes, formatarDiaAniversario } from "@/hooks/useAniversariantes";
 import { useClienteTracking } from "@/hooks/useClienteTracking";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
@@ -49,6 +51,7 @@ export function TabelaClientes({
   onVerHistorico,
 }: TabelaClientesProps) {
   const isMobile = useIsMobile();
+  const isDesktop = useIsDesktop();
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [confirmandoMassa, setConfirmandoMassa] = useState(false);
   const [pagina, setPagina] = useState(1);
@@ -277,6 +280,173 @@ export function TabelaClientes({
             </div>
           </Card>
         ))}
+        <Paginacao />
+        {dialogCompartilhar && (
+          <DialogCompartilharClienteLink
+            open={!!dialogCompartilhar}
+            onOpenChange={(open) => !open && setDialogCompartilhar(null)}
+            link={dialogCompartilhar.link}
+            nomeCliente={dialogCompartilhar.cliente.nome}
+            telefoneCliente={dialogCompartilhar.cliente.telefone}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Computador (≥1024px): mesma tabela, mesmas ações; só a apresentação muda.
+  if (isDesktop) {
+    return (
+      <div className="space-y-3">
+        <BarraSelecao />
+        <Card className="overflow-hidden">
+          <Table className="min-w-[860px] table-fixed">
+            <TableHeader className="bg-muted/40">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-12 pl-4">
+                  <Checkbox
+                    checked={todosSelecionados ? true : algunsSelecionados ? "indeterminate" : false}
+                    onCheckedChange={toggleTodos}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead className="w-[170px]">CPF/CNPJ</TableHead>
+                <TableHead className="w-[150px]">Telefone</TableHead>
+                <TableHead className="w-[22%]">Endereço</TableHead>
+                <TableHead className="w-[216px] pr-4 text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clientesPagina.map((cliente) => {
+                const avatar = avatarCliente(cliente.id, cliente.nome);
+                const documento = formatCPF(documentoDoCliente(cliente));
+                const telefone = formatPhone(cliente.telefone);
+                return (
+                  <TableRow
+                    key={cliente.id}
+                    className={selecionados.has(cliente.id) ? "bg-primary/5" : ""}
+                  >
+                    <TableCell className="pl-4">
+                      <Checkbox
+                        checked={selecionados.has(cliente.id)}
+                        onCheckedChange={() => toggleSelecionado(cliente.id)}
+                        aria-label={`Selecionar ${cliente.nome}`}
+                      />
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatar.classes}`}
+                          aria-hidden="true"
+                        >
+                          {avatar.iniciais}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate font-medium" title={cliente.nome}>
+                              {cliente.nome}
+                            </span>
+                            {isAniversarioHoje(cliente.data_nascimento) && (
+                              <span className="inline-flex shrink-0 items-center text-amber-500" title="Aniversário hoje!">
+                                🎂
+                              </span>
+                            )}
+                            {isAniversarioEsteMes(cliente.data_nascimento) && !isAniversarioHoje(cliente.data_nascimento) && (
+                              <span className="shrink-0 text-xs text-muted-foreground" title="Aniversário este mês">
+                                🎈 {formatarDiaAniversario(cliente.data_nascimento)}
+                              </span>
+                            )}
+                          </div>
+                          {cliente.email && (
+                            <p className="truncate text-xs text-muted-foreground" title={cliente.email}>
+                              {cliente.email}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="truncate tabular-nums" title={documento || undefined}>
+                      {documento || <span className="text-muted-foreground">-</span>}
+                    </TableCell>
+                    <TableCell className="truncate tabular-nums" title={telefone || undefined}>
+                      {telefone || <span className="text-muted-foreground">-</span>}
+                    </TableCell>
+                    <TableCell className="truncate" title={cliente.endereco || undefined}>
+                      {cliente.endereco || <span className="text-muted-foreground">-</span>}
+                    </TableCell>
+                    <TableCell className="pr-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onVerHistorico(cliente)}
+                          title="Ver histórico"
+                          aria-label={`Ver histórico de ${cliente.nome}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleCompartilharLink(cliente)}
+                          disabled={gerando}
+                          title="Compartilhar link de acompanhamento"
+                          aria-label={`Compartilhar link de acompanhamento de ${cliente.nome}`}
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onEditar(cliente)}
+                          title="Editar"
+                          aria-label={`Editar ${cliente.nome}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Excluir"
+                              aria-label={`Excluir ${cliente.nome}`}
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir o cliente "{cliente.nome}"?
+                                Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => onExcluir(cliente.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
         <Paginacao />
         {dialogCompartilhar && (
           <DialogCompartilharClienteLink
