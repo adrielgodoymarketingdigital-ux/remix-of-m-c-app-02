@@ -14,7 +14,11 @@ import { LIMITE_PADRAO_RELATORIO_VENDIDOS, situacaoEstoque } from "@/lib/estoque
 import { limiteDoItem } from "@/lib/estoque/estoqueMinimoItem";
 import { useConfiguracaoEstoque } from "@/hooks/useConfiguracaoEstoque";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
-import { Package, TrendingUp, AlertCircle } from "lucide-react";
+import { Package, TrendingUp, AlertCircle, Trophy } from "lucide-react";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { CardResumoRelatorio, CabecalhoTabelaRelatorio } from "@/components/relatorios/CardResumoRelatorio";
+import { EstadoRelatorio } from "@/components/relatorios/EstadoRelatorio";
+
 
 interface RelatorioProdutosProps {
   produtos: RelatorioProduto[];
@@ -31,6 +35,83 @@ export const RelatorioProdutosComponent = ({
   const receitaTotal = produtos.reduce((acc, p) => acc + p.receitaTotal, 0);
   const ticketMedio = totalVendido > 0 ? receitaTotal / totalVendido : 0;
   const produtosBaixaRotatividade = produtos.filter((p) => p.quantidadeVendida < 5).length;
+  const isDesktop = useIsDesktop();
+
+  // Computador (>= 1024px): mesmos dados, textos e regra de estoque, só o visual muda. Celular segue no return de baixo.
+  if (isDesktop) {
+    return (
+      <div className="space-y-5">
+        <div className="grid gap-4 lg:grid-cols-2 min-[1400px]:grid-cols-4">
+          <CardResumoRelatorio titulo="Total Vendido" valor={totalVendido} descricao="Produtos vendidos" icon={Package} acento="blue" />
+          <CardResumoRelatorio titulo="Receita Total" valor={<ValorMonetario valor={receitaTotal} />} descricao="Em vendas" icon={TrendingUp} acento="green" />
+          <CardResumoRelatorio titulo="Ticket Médio" valor={<ValorMonetario valor={ticketMedio} />} descricao="Por produto" icon={Package} acento="purple" />
+          <CardResumoRelatorio titulo="Baixa Rotatividade" valor={produtosBaixaRotatividade} descricao="Menos de 5 vendas" icon={AlertCircle} acento="orange" classeValor="text-orange-500" />
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="p-5 pb-4">
+            <CabecalhoTabelaRelatorio titulo="Produtos Mais Vendidos" descricao="Produtos com mais saída no período e o estoque atual." icon={Trophy} acento="orange" />
+          </div>
+          {loading ? (
+            <EstadoRelatorio tipo="carregando" texto="Carregando..." />
+          ) : produtos.length === 0 ? (
+            <EstadoRelatorio tipo="vazio" texto="Nenhum produto vendido no período" icon={Package} />
+          ) : (
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="pl-5">Nome</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead className="text-right">Qtd. Vendida</TableHead>
+                  <TableHead className="text-right">Estoque Atual</TableHead>
+                  <TableHead className="text-right">Receita Total</TableHead>
+                  <TableHead className="text-right">Lucro</TableHead>
+                  <TableHead className="pr-5 text-right">Ticket Médio</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {produtos.map((produto) => (
+                  <TableRow key={produto.id}>
+                    <TableCell className="pl-5 font-medium">{produto.nome}</TableCell>
+                    <TableCell>
+                      {produto.sku ? (
+                        <Badge variant="outline">{produto.sku}</Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {produto.quantidadeVendida}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        variant={
+                          situacaoEstoque(produto.estoqueAtual, limiteDoItem(produto.estoqueMinimo, limiteBaixo), LIMITE_PADRAO_RELATORIO_VENDIDOS) === "ok"
+                            ? "secondary"
+                            : "destructive"
+                        }
+                      >
+                        {produto.estoqueAtual}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <ValorMonetario valor={produto.receitaTotal} />
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums text-primary">
+                      <ValorMonetario valor={produto.lucroTotal} />
+                    </TableCell>
+                    <TableCell className="pr-5 text-right tabular-nums">
+                      <ValorMonetario valor={produto.ticketMedio} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

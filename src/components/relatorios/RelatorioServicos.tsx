@@ -10,7 +10,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { RelatorioServico } from "@/types/relatorio-vendas";
 import { formatCurrency } from "@/lib/formatters";
-import { Wrench, TrendingUp, Clock, CheckCircle } from "lucide-react";
+import { Wrench, TrendingUp, Clock, CheckCircle, Trophy } from "lucide-react";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { CardResumoRelatorio, CabecalhoTabelaRelatorio } from "@/components/relatorios/CardResumoRelatorio";
+import { EstadoRelatorio } from "@/components/relatorios/EstadoRelatorio";
+
 
 interface RelatorioServicosProps {
   servicos: RelatorioServico[];
@@ -33,6 +37,77 @@ export const RelatorioServicosComponent = ({
     servicos.length > 0
       ? servicos.reduce((acc, s) => acc + s.tempoMedioConclusao, 0) / servicos.length
       : 0;
+  const isDesktop = useIsDesktop();
+
+  // Computador (>= 1024px): mesmos dados e textos, só o visual muda. Celular segue no return de baixo.
+  if (isDesktop) {
+    return (
+      <div className="space-y-5">
+        <div className="grid gap-4 lg:grid-cols-2 min-[1400px]:grid-cols-4">
+          <CardResumoRelatorio titulo="Total Realizado" valor={totalRealizado} descricao="Serviços realizados" icon={Wrench} acento="blue" />
+          <CardResumoRelatorio titulo="Receita Total" valor={formatCurrency(receitaTotal)} descricao="Em serviços" icon={TrendingUp} acento="green" />
+          <CardResumoRelatorio titulo="Ticket Médio" valor={formatCurrency(ticketMedio)} descricao="Por serviço" icon={Wrench} acento="purple" />
+          <CardResumoRelatorio titulo="Tempo Médio" valor={tempoMedioConclusao.toFixed(1)} descricao="Dias para conclusão" icon={Clock} acento="cyan" />
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="p-5 pb-4">
+            <CabecalhoTabelaRelatorio titulo="Serviços Mais Realizados" descricao="Serviços com mais execuções no período e como estão andando." icon={Trophy} acento="orange" />
+          </div>
+          {loading ? (
+            <EstadoRelatorio tipo="carregando" texto="Carregando..." />
+          ) : servicos.length === 0 ? (
+            <EstadoRelatorio tipo="vazio" texto="Nenhum serviço realizado no período" icon={Wrench} />
+          ) : (
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="pl-5">Serviço</TableHead>
+                  <TableHead className="text-right">Realizados</TableHead>
+                  <TableHead className="text-right">Receita Total</TableHead>
+                  <TableHead className="text-center">Pendente</TableHead>
+                  <TableHead className="text-center">Em Andamento</TableHead>
+                  <TableHead className="text-center">Concluído</TableHead>
+                  <TableHead className="pr-5 text-right">Tempo Médio (dias)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {servicos.map((servico) => (
+                  <TableRow key={servico.id}>
+                    <TableCell className="pl-5 font-medium">{servico.nomeServico}</TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {servico.quantidadeRealizada}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrency(servico.receitaTotal)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="secondary">
+                        {servico.statusDistribuicao.pendente}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="default">
+                        {servico.statusDistribuicao.em_andamento}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge className="bg-green-500 hover:bg-green-600">
+                        {servico.statusDistribuicao.concluido}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="pr-5 text-right tabular-nums">
+                      {servico.tempoMedioConclusao.toFixed(1)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
