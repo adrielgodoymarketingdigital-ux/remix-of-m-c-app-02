@@ -21,8 +21,13 @@ const ICONES: Record<string, { Icone: LucideIcon; cor: string }> = {
 
 const nivelDo = (key: string) => key.replace(/_(mensal|anual)$/, "");
 
-/** Um cartão por vez em 5 colunas; em 3, os 2 últimos ficam centralizados na grade de 6. */
-const COLUNAS = "col-span-2 min-[1484px]:col-span-1";
+/**
+ * 5 colunas a partir de 1280px de janela; abaixo disso (1024–1279) o cartão ficaria com
+ * menos de 170px, então são 3 e os 2 últimos ficam centralizados na grade de 6.
+ * Entre 1280 e 1499 o cartão é estreito (185–235px): sem o ícone, padding menor e,
+ * até 1439, preço em 20px, para nome, selo e preço anual caberem numa linha.
+ */
+const COLUNAS = "col-span-2 min-[1280px]:col-span-1";
 
 function SeloMudanca({ tipo, children }: { tipo: "upgrade" | "downgrade"; children: ReactNode }) {
   return (
@@ -66,9 +71,9 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
     <Card
       id={`plan-${planoKey}`}
       className={cn(
-        "relative flex min-w-0 flex-col rounded-xl px-4 pb-3 pt-5 transition-shadow hover:shadow-md",
+        "relative flex min-w-0 flex-col rounded-xl px-4 pb-3 pt-5 transition-shadow hover:shadow-md min-[1280px]:max-[1499px]:px-3",
         COLUNAS,
-        centralizar && "col-start-2 min-[1484px]:col-start-auto",
+        centralizar && "col-start-2 min-[1280px]:col-start-auto",
         // Mais Popular sobra 4px acima e abaixo, como na referência; o padding compensa,
         // então preço, lista e botão continuam alinhados com os vizinhos.
         faixa === "popular" && "-my-1 border-primary pb-4 pt-6 shadow-md shadow-primary/10 ring-1 ring-primary/30",
@@ -90,7 +95,7 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
 
       {/* Altura igual em todos: o preço alinha, e o cartão sem selo centraliza nome e ícone. */}
       <div className="flex min-h-[82px] items-center gap-3">
-        <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", cor)}>
+        <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl min-[1280px]:max-[1499px]:hidden", cor)}>
           <Icone className="h-6 w-6" />
         </span>
         <div className={cn("min-w-0", selo && "self-start")}>
@@ -102,7 +107,7 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
 
       <div className={cn("mb-2 mt-1", periodo === "anual" && "min-h-[84px]")}>
         <p className="flex flex-wrap items-baseline gap-x-1.5">
-          <span className="text-2xl font-bold leading-tight tracking-tight text-foreground">{formatCurrency(preco)}</span>
+          <span className="text-2xl font-bold leading-tight tracking-tight text-foreground min-[1280px]:max-[1439px]:text-xl">{formatCurrency(preco)}</span>
           <span className="text-xs text-muted-foreground">{periodoTexto}</span>
         </p>
         {desconto && (
@@ -199,7 +204,7 @@ export function GradePlanosDesktop({
         </div>
       </div>
 
-      <div className="grid grid-cols-6 gap-x-3 gap-y-4 min-[1484px]:grid-cols-5">
+      <div className="grid grid-cols-6 gap-x-3 gap-y-4 min-[1280px]:grid-cols-5">
         <CartaoPlano
           planoKey="free"
           nome={PLANOS.free.nome}
