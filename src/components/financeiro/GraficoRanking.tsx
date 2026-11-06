@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LucroPorItem } from "@/types/relatorio";
 import { formatCurrency } from "@/lib/formatters";
 import { useOcultarValores } from "@/contexts/OcultarValoresContext";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { TabelaTopItens } from "./TabelaTopItens";
 import {
   BarChart,
   Bar,
@@ -16,10 +18,25 @@ import {
 
 interface GraficoRankingProps {
   itens: LucroPorItem[];
+  /** Opcional: no computador (lg+), esqueleto nas tabelas. */
+  loading?: boolean;
+  /** Opcional: botão "Ver todos" das tabelas do computador. */
+  onVerTodos?: () => void;
 }
 
-export function GraficoRanking({ itens }: GraficoRankingProps) {
+export function GraficoRanking({ itens, loading = false, onVerTodos }: GraficoRankingProps) {
   const { valoresOcultos } = useOcultarValores();
+  const isDesktop = useIsDesktop();
+
+  // Computador: os mesmos 8 itens de cada ranking, em tabela.
+  const itensTopLucro = useMemo(
+    () => [...itens].sort((a, b) => b.lucroTotal - a.lucroTotal).slice(0, 8),
+    [itens]
+  );
+  const itensMaisVendidos = useMemo(
+    () => [...itens].sort((a, b) => b.quantidadeVendida - a.quantidadeVendida).slice(0, 8),
+    [itens]
+  );
 
   const truncarNome = (nome: string) =>
     nome.length > 25 ? `${nome.substring(0, 22)}...` : nome;
@@ -52,6 +69,29 @@ export function GraficoRanking({ itens }: GraficoRankingProps) {
     if (name === "lucro" || name === "receita") return formatCurrency(value);
     return value;
   };
+
+  if (isDesktop) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        <TabelaTopItens
+          titulo="Top Lucro por Item"
+          subtitulo="Produtos e serviços que mais geram lucro no período."
+          modo="lucro"
+          itens={itensTopLucro}
+          loading={loading}
+          onVerTodos={onVerTodos}
+        />
+        <TabelaTopItens
+          titulo="Mais Vendidos (Quantidade)"
+          subtitulo="Itens mais vendidos no período."
+          modo="quantidade"
+          itens={itensMaisVendidos}
+          loading={loading}
+          onVerTodos={onVerTodos}
+        />
+      </div>
+    );
+  }
 
   if (itens.length === 0) return null;
 
