@@ -98,6 +98,21 @@ export default function Equipe() {
     setDialogOpen(true);
   };
 
+  // Mesmo botão e mesmo interruptor no computador e no celular; só a moldura do card muda.
+  const botaoMinhaComissao = donoFuncionario.incluido && donoFuncionario.linhaDono && (
+    <Button variant="outline" size="sm" onClick={() => handleEditar(donoFuncionario.linhaDono!)}>
+      Minha comissão
+    </Button>
+  );
+  const interruptorDono = (
+    <Switch
+      checked={donoFuncionario.incluido}
+      disabled={donoFuncionario.definir.isPending}
+      onCheckedChange={(incluir) => donoFuncionario.definir.mutate(incluir)}
+      aria-label="Incluir meu usuário como funcionário"
+    />
+  );
+
   if (carregandoAssinatura) {
     return (
       <AppLayout>
@@ -144,33 +159,45 @@ export default function Equipe() {
 
         {/* Fora do bloqueio por plano: o dono pode se incluir também no Free e no Básico. */}
         {donoFuncionario.souDono && (
-          <Card>
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <div>
-                  <p className="font-medium">Incluir meu usuário como funcionário</p>
+          isDesktop ? (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="flex items-center gap-4 p-5">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <UserCheck className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">Incluir meu usuário como funcionário</p>
                   <p className="text-sm text-muted-foreground">
                     Para se escolher como vendedor e técnico e calcular comissão para você. Não ocupa vaga do plano
                     e não muda suas permissões de dono. Ao desligar, seu histórico é mantido.
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 self-end sm:self-auto">
-                {donoFuncionario.incluido && donoFuncionario.linhaDono && (
-                  <Button variant="outline" size="sm" onClick={() => handleEditar(donoFuncionario.linhaDono!)}>
-                    Minha comissão
-                  </Button>
-                )}
-                <Switch
-                  checked={donoFuncionario.incluido}
-                  disabled={donoFuncionario.definir.isPending}
-                  onCheckedChange={(incluir) => donoFuncionario.definir.mutate(incluir)}
-                  aria-label="Incluir meu usuário como funcionário"
-                />
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex shrink-0 items-center gap-3">
+                  {botaoMinhaComissao}
+                  {interruptorDono}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div>
+                    <p className="font-medium">Incluir meu usuário como funcionário</p>
+                    <p className="text-sm text-muted-foreground">
+                      Para se escolher como vendedor e técnico e calcular comissão para você. Não ocupa vaga do plano
+                      e não muda suas permissões de dono. Ao desligar, seu histórico é mantido.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 self-end sm:self-auto">
+                  {botaoMinhaComissao}
+                  {interruptorDono}
+                </div>
+              </CardContent>
+            </Card>
+          )
         )}
 
         {!planoPermiteEquipe && (
