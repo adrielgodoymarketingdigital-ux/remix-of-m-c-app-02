@@ -49,6 +49,13 @@ const CARGO_COLORS: Record<string, string> = {
   "Estoque": "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
 };
 
+// Coluna "Ações" fixa à direita no computador: com a tabela rolando na horizontal, o lápis e o "…"
+// continuam à vista. Fundo opaco (card + a mesma camada do hover/cabeçalho) para nada vazar por baixo.
+const COLUNA_FIXA = "sticky right-0 z-10 shadow-[-8px_0_8px_-8px_hsl(var(--foreground)/0.15)]";
+const FUNDO_CABECALHO_FIXO = "[background:linear-gradient(hsl(var(--muted)/0.5),hsl(var(--muted)/0.5)),hsl(var(--card))]";
+const FUNDO_CELULA_FIXA =
+  "bg-card group-hover:[background:linear-gradient(hsl(var(--muted)/0.5),hsl(var(--muted)/0.5)),hsl(var(--card))]";
+
 export function TabelaFuncionarios({
   funcionarios, onEditar, onToggleAtivo, onExcluir, onReenviarConvite, cabecalho,
 }: TabelaFuncionariosProps) {
@@ -221,13 +228,13 @@ export function TabelaFuncionarios({
       <Table>
         <TableHeader className="bg-muted/50">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="h-11">Funcionário</TableHead>
-            <TableHead className="h-11">Cargo</TableHead>
-            <TableHead className="h-11">Comissão</TableHead>
-            <TableHead className="h-11">Status</TableHead>
-            <TableHead className="h-11">Acessos</TableHead>
-            <TableHead className="h-11">Cadastro</TableHead>
-            <TableHead className="h-11 text-right">Ações</TableHead>
+            <TableHead className="h-11 px-3 first:pl-4">Funcionário</TableHead>
+            <TableHead className="h-11 px-3">Cargo</TableHead>
+            <TableHead className="h-11 px-3">Comissão</TableHead>
+            <TableHead className="h-11 px-3">Status</TableHead>
+            <TableHead className="h-11 px-3">Acessos</TableHead>
+            <TableHead className="h-11 px-3">Cadastro</TableHead>
+            <TableHead className={cn("h-11 px-3 pr-4 text-right", COLUNA_FIXA, FUNDO_CABECALHO_FIXO)}>Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -239,8 +246,8 @@ export function TabelaFuncionarios({
             const cargoColor = funcionario.cargo ? (CARGO_COLORS[funcionario.cargo] || "bg-muted text-muted-foreground") : "";
 
             return (
-              <TableRow key={funcionario.id}>
-                <TableCell className="py-3">
+              <TableRow key={funcionario.id} className="group">
+                <TableCell className="py-3 pl-4 pr-3">
                   <div className="flex items-center gap-3">
                     <span
                       aria-hidden="true"
@@ -249,17 +256,17 @@ export function TabelaFuncionarios({
                       {inicialDoNome(funcionario.nome)}
                     </span>
                     <div className="min-w-0">
-                      <p className="flex items-center gap-2 font-medium">
-                        <span className="max-w-[220px] truncate" title={funcionario.nome}>{funcionario.nome}</span>
+                      <div className="flex items-center gap-2 font-medium">
+                        <span className="max-w-[200px] truncate" title={funcionario.nome}>{funcionario.nome}</span>
                         {ehDono && <Badge variant="secondary" className="shrink-0 text-xs">Você (dono)</Badge>}
-                      </p>
-                      <p className="max-w-[260px] truncate text-sm text-muted-foreground" title={funcionario.email}>
+                      </div>
+                      <p className="max-w-[220px] truncate text-sm text-muted-foreground" title={funcionario.email}>
                         {funcionario.email}
                       </p>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="py-3">
+                <TableCell className="px-3 py-3">
                   {funcionario.cargo ? (
                     <Badge variant="outline" className={cn("whitespace-nowrap border-transparent px-3 py-1 font-medium", cargoColor)}>
                       {funcionario.cargo}
@@ -268,10 +275,11 @@ export function TabelaFuncionarios({
                     <span className="text-sm text-muted-foreground">—</span>
                   )}
                 </TableCell>
-                <TableCell className="py-3">
-                  <span className="whitespace-nowrap text-sm font-medium">{formatComissao(funcionario)}</span>
+                <TableCell className="px-3 py-3">
+                  {/* Pode quebrar em duas linhas para a tabela caber sem rolar. */}
+                  <span className="block max-w-[150px] text-sm font-medium">{formatComissao(funcionario)}</span>
                 </TableCell>
-                <TableCell className="py-3">
+                <TableCell className="px-3 py-3">
                   <div className="flex flex-col items-start gap-1">
                     <Badge variant={funcionario.ativo ? "default" : "secondary"} className="px-3 py-1">
                       {funcionario.ativo ? "Ativo" : "Inativo"}
@@ -289,8 +297,8 @@ export function TabelaFuncionarios({
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="py-3">
-                  <div className="flex max-w-[320px] flex-wrap gap-1.5">
+                <TableCell className="px-3 py-3">
+                  <div className="flex max-w-[230px] flex-wrap gap-1.5">
                     {ehDono ? (
                       <span className="text-sm text-muted-foreground">Acesso total (dono)</span>
                     ) : modulosAtivos.length > 0 ? (
@@ -305,10 +313,10 @@ export function TabelaFuncionarios({
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="whitespace-nowrap py-3 text-sm text-muted-foreground">
+                <TableCell className="whitespace-nowrap px-3 py-3 text-sm text-muted-foreground">
                   {format(new Date(funcionario.created_at), "dd/MM/yyyy", { locale: ptBR })}
                 </TableCell>
-                <TableCell className="py-3">
+                <TableCell className={cn("py-3 pl-3 pr-4", COLUNA_FIXA, FUNDO_CELULA_FIXA)}>
                   <div className="flex items-center justify-end gap-1">
                     {/* Mesmo Editar do menu "…" (que também aparece para o dono). */}
                     <Button
