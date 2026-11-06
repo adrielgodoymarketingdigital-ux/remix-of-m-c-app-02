@@ -23,9 +23,10 @@ import { format, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
-import { useIsMobileOrTablet } from "@/hooks/use-mobile";
+import { useIsDesktop, useIsMobileOrTablet } from "@/hooks/use-mobile";
 import { calcularVariacaoPercentual } from "@/lib/variacaoPercentual";
 import { Sparkline } from "@/components/dashboard/Sparkline";
+import { CartoesDesempenhoDesktop, EsqueletoCartoesDesempenhoDesktop } from "./desktop/CartoesDesempenhoDesktop";
 
 interface DashboardEquipeProps {
   funcionarios: Funcionario[];
@@ -46,6 +47,8 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
   const [pagina, setPagina] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState<number>(10);
   const isMobileOrTablet = useIsMobileOrTablet();
+  // Computador (>= 1024px) usa o visual novo; abaixo disso o JSX é o de sempre.
+  const isDesktop = useIsDesktop();
 
   const cargosDisponiveis = useMemo(() => {
     const cargos = new Set<string>();
@@ -121,6 +124,14 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
   };
 
   if (carregando) {
+    if (isDesktop) {
+      return (
+        <div className="space-y-6">
+          <EsqueletoCartoesDesempenhoDesktop />
+          <Skeleton className="h-64" />
+        </div>
+      );
+    }
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -178,6 +189,19 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
       </div>
 
       {/* Cards resumo */}
+      {isDesktop ? (
+        <CartoesDesempenhoDesktop
+          totalVendido={totalVendido}
+          totalComissoes={totalComissoes}
+          funcionariosAtivos={funcionarios.filter(f => f.ativo).length}
+          mesLabel={mesLabel}
+          mesAnteriorLabel={mesAnteriorLabel}
+          variacaoTotalVendido={variacaoTotalVendido}
+          variacaoTotalComissoes={variacaoTotalComissoes}
+          sparklineTotalVendido={sparklineTotalVendido}
+          sparklineTotalComissoes={sparklineTotalComissoes}
+        />
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -261,6 +285,7 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Tabela por funcionário */}
       <Card>
