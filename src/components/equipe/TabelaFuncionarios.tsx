@@ -453,14 +453,20 @@ export function TabelaFuncionarios({
       )}
 
       {funcionariosFiltrados.length > 0 && (
-        <div className="hidden lg:flex lg:items-center lg:justify-between gap-3 pt-4 text-sm text-muted-foreground">
+        <div
+          className={
+            visualDesktop
+              ? "mt-4 flex items-center justify-between gap-3 border-t pt-4 text-sm text-muted-foreground"
+              : "hidden lg:flex lg:items-center lg:justify-between gap-3 pt-4 text-sm text-muted-foreground"
+          }
+        >
           <div className="flex items-center gap-2">
             <span>Mostrando</span>
             <Select
               value={String(itensPorPagina)}
               onValueChange={(v) => setItensPorPagina(Number(v))}
             >
-              <SelectTrigger className="h-8 w-[70px]">
+              <SelectTrigger className={visualDesktop ? "h-9 w-[76px]" : "h-8 w-[70px]"} aria-label={visualDesktop ? "Itens por página" : undefined}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -472,27 +478,37 @@ export function TabelaFuncionarios({
             <span>por página</span>
           </div>
 
-          <span>
+          {/* No computador o contador fica junto dos botões (ml-auto vence o justify-between). */}
+          <span className={visualDesktop ? "ml-auto" : undefined}>
             {inicio + 1}-{Math.min(inicio + itensPorPagina, funcionariosFiltrados.length)} de {funcionariosFiltrados.length}
           </span>
 
-          <div className="flex items-center gap-1">
+          <div className={visualDesktop ? "flex items-center gap-1.5" : "flex items-center gap-1"}>
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className={visualDesktop ? "h-9 w-9" : "h-8 w-8"}
+              aria-label={visualDesktop ? "Página anterior" : undefined}
               onClick={() => setPagina((p) => Math.max(1, p - 1))}
               disabled={paginaAtual === 1}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="flex items-center justify-center h-8 min-w-8 px-2 rounded-md bg-primary text-primary-foreground text-sm font-medium">
+            <span
+              className={
+                visualDesktop
+                  ? "flex items-center justify-center h-9 min-w-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-semibold"
+                  : "flex items-center justify-center h-8 min-w-8 px-2 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+              }
+              aria-current={visualDesktop ? "page" : undefined}
+            >
               {paginaAtual}
             </span>
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className={visualDesktop ? "h-9 w-9" : "h-8 w-8"}
+              aria-label={visualDesktop ? "Próxima página" : undefined}
               onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
               disabled={paginaAtual === totalPaginas}
             >
