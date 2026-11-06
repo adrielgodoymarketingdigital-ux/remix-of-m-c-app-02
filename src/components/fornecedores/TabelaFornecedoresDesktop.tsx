@@ -103,10 +103,10 @@ export function TabelaFornecedoresDesktop({
         </div>
       ) : (
         <>
-          <Table>
-            <TableHeader className="bg-muted/40">
+          <Table className="min-w-[960px] table-fixed">
+            <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead aria-sort={ARIA_SORT[ordem]} className="pl-5">
+                <TableHead aria-sort={ARIA_SORT[ordem]} className="w-[34%] pl-5">
                   <button
                     type="button"
                     onClick={() => setOrdem(proximaOrdemNome)}
@@ -120,12 +120,12 @@ export function TabelaFornecedoresDesktop({
                     />
                   </button>
                 </TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Documento</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Cidade/UF</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="pr-5 text-right">Ações</TableHead>
+                <TableHead className="w-[60px] px-3">Tipo</TableHead>
+                <TableHead className="w-[180px] px-3">Documento</TableHead>
+                <TableHead className="w-[24%] px-3">Contato</TableHead>
+                <TableHead className="w-[18%] px-3">Cidade/UF</TableHead>
+                <TableHead className="w-[100px] px-3">Status</TableHead>
+                <TableHead className="sticky right-0 z-10 w-[136px] bg-card pr-5 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -139,7 +139,7 @@ export function TabelaFornecedoresDesktop({
                 return (
                   <TableRow key={fornecedor.id}>
                     <TableCell className="pl-5">
-                      <div className="flex min-w-[220px] max-w-[320px] items-center gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
                         <div
                           className={cn(
                             "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
@@ -164,18 +164,20 @@ export function TabelaFornecedoresDesktop({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-3">
                       <Badge variant="outline" className="font-medium">
                         {fornecedor.tipo === "juridica" ? "PJ" : "PF"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap tabular-nums">
-                      <span className={cn(documento === "-" && "text-muted-foreground")}>{documento}</span>
+                    <TableCell className="truncate px-3 tabular-nums">
+                      <span className={cn(documento === "-" && "text-muted-foreground")} title={documento === "-" ? undefined : documento}>
+                        {documento}
+                      </span>
                     </TableCell>
-                    <TableCell>
-                      <div className="max-w-[240px] text-sm">
-                        {fornecedor.telefone && <p className="truncate">{fornecedor.telefone}</p>}
-                        {fornecedor.celular && <p className="truncate">{fornecedor.celular}</p>}
+                    <TableCell className="px-3">
+                      <div className="min-w-0 text-sm">
+                        {fornecedor.telefone && <p className="truncate" title={fornecedor.telefone}>{fornecedor.telefone}</p>}
+                        {fornecedor.celular && <p className="truncate" title={fornecedor.celular}>{fornecedor.celular}</p>}
                         {fornecedor.email && (
                           <p className="truncate text-muted-foreground" title={fornecedor.email}>
                             {fornecedor.email}
@@ -186,15 +188,15 @@ export function TabelaFornecedoresDesktop({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-3">
                       <p
-                        className={cn("max-w-[200px] truncate", cidade === "-" && "text-muted-foreground")}
+                        className={cn("truncate", cidade === "-" && "text-muted-foreground")}
                         title={cidade === "-" ? undefined : cidade}
                       >
                         {cidade}
                       </p>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-3">
                       <Badge
                         variant="outline"
                         className={cn(
@@ -212,7 +214,7 @@ export function TabelaFornecedoresDesktop({
                         {fornecedor.ativo ? "Ativo" : "Inativo"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="pr-5 text-right">
+                    <TableCell className="sticky right-0 bg-card pr-5 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {onVisualizar && (
                           <Button
