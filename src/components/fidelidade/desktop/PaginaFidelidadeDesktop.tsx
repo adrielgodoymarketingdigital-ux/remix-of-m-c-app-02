@@ -1,14 +1,15 @@
 import type { ClienteFidelidade, FidelidadeNivel } from "@/types/fidelidade";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Award, Gift, Search, Star, Users } from "lucide-react";
+import { Gift, Search } from "lucide-react";
 import { CabecalhoFidelidadeDesktop } from "./CabecalhoFidelidadeDesktop";
+import { IndicadoresFidelidadeDesktop, type ContagemNivel } from "./IndicadoresFidelidadeDesktop";
 import { formatarDataFidelidade, formatarMoedaFidelidade } from "./formatacao";
 
-export type ContagemNivel = FidelidadeNivel & { count: number };
+export type { ContagemNivel };
 
 export interface PaginaFidelidadeDesktopProps {
   clientes: ClienteFidelidade[];
@@ -53,55 +54,12 @@ export function PaginaFidelidadeDesktop({
     <div className="space-y-6">
       <CabecalhoFidelidadeDesktop onAbrirConfiguracoes={onAbrirConfiguracoes} />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="w-4 h-4" /> Clientes no programa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-16" /> : (
-              <p className="text-3xl font-bold">{clientes.length}</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Star className="w-4 h-4" /> Total de pontos distribuídos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : (
-              <p className="text-3xl font-bold">{totalPontosDistribuidos.toLocaleString("pt-BR")}</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Award className="w-4 h-4" /> Clientes por nível
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-32" /> : (
-              <div className="flex flex-wrap gap-2">
-                {contagemNiveis.length === 0 ? (
-                  <span className="text-sm text-muted-foreground">Sem níveis criados</span>
-                ) : contagemNiveis.map(n => (
-                  <Badge key={n.id} style={{ backgroundColor: n.cor, color: "#fff" }}>
-                    {n.nome}: {n.count}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <IndicadoresFidelidadeDesktop
+        isLoading={isLoading}
+        totalClientes={clientes.length}
+        totalPontosDistribuidos={totalPontosDistribuidos}
+        contagemNiveis={contagemNiveis}
+      />
 
       {/* Busca */}
       <div className="relative">
