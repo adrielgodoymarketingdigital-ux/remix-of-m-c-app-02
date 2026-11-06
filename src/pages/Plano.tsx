@@ -421,7 +421,7 @@ export default function Plano() {
                   selo={
                     <Badge
                       variant={planoVencido ? "destructive" : "secondary"}
-                      className={planoVencido ? undefined : "border-0 bg-primary/10 text-primary hover:bg-primary/10"}
+                      className={cn("whitespace-nowrap px-2 py-0", !planoVencido && "border-0 bg-primary/10 text-primary hover:bg-primary/10")}
                     >
                       {seloPlanoAtual(assinatura.plano_tipo, PLANOS, planoVencido)}
                     </Badge>
