@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { useDonoComoFuncionario } from "@/hooks/useDonoComoFuncionario";
 import { contarVagasUsadas } from "@/lib/equipe/donoFuncionario.core";
+import { useIsDesktop } from "@/hooks/use-mobile";
 
 export default function Equipe() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -35,6 +36,7 @@ export default function Equipe() {
     reenviarConvite,
   } = useFuncionarios();
   const donoFuncionario = useDonoComoFuncionario(funcionarios);
+  const isDesktop = useIsDesktop();
 
   // Limites por plano
   const getLimiteFuncionarios = () => {
@@ -52,6 +54,16 @@ export default function Equipe() {
   const vagasUsadas = contarVagasUsadas(funcionarios);
   const podeAdicionarMais = vagasUsadas < limiteFuncionarios;
   const planoPermiteEquipe = limiteFuncionarios > 0;
+
+  // Computador: título e contador ficam na mesma linha da busca (dentro da tabela).
+  const cabecalhoPainel = (
+    <div className="min-w-0">
+      <CardTitle className="text-xl">Funcionários</CardTitle>
+      <CardDescription className="mt-1">
+        {vagasUsadas} de {limiteFuncionarios === 999 ? "∞" : limiteFuncionarios} funcionário(s)
+      </CardDescription>
+    </div>
+  );
 
   const handleSalvar = async (dados: FuncionarioFormData & { senha?: string }): Promise<{ id: string } | void> => {
     setSalvando(true);
@@ -205,6 +217,48 @@ export default function Equipe() {
             <TabsContent value="funcionarios">
               <div className="space-y-4">
               <ConfiguracaoOSEquipe />
+              {isDesktop ? (
+                <Card>
+                  <CardContent className="p-5">
+                    {carregando ? (
+                      <div className="space-y-4" aria-busy="true">
+                        <div className="flex items-end justify-between gap-4">
+                          {cabecalhoPainel}
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Skeleton className="h-10 w-64" />
+                            <Skeleton className="h-10 w-24" />
+                          </div>
+                        </div>
+                        <div className="overflow-hidden rounded-lg border">
+                          <div className="h-11 border-b bg-muted/50" />
+                          {[0, 1, 2].map((i) => (
+                            <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-b-0">
+                              <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+                              <div className="flex-1 space-y-2">
+                                <Skeleton className="h-4 w-40" />
+                                <Skeleton className="h-3 w-56" />
+                              </div>
+                              <Skeleton className="h-6 w-20 rounded-full" />
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-6 w-16 rounded-full" />
+                              <Skeleton className="h-8 w-20" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <TabelaFuncionarios
+                        funcionarios={funcionarios}
+                        onEditar={handleEditar}
+                        onToggleAtivo={(id, ativo) => toggleAtivo.mutate({ id, ativo })}
+                        onExcluir={(id) => excluirFuncionario.mutate(id)}
+                        onReenviarConvite={(id) => reenviarConvite.mutate(id)}
+                        cabecalho={cabecalhoPainel}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
               <Card>
                 <CardHeader>
                   <CardTitle>Funcionários</CardTitle>
@@ -230,6 +284,7 @@ export default function Equipe() {
                   )}
                 </CardContent>
               </Card>
+              )}
               </div>
             </TabsContent>
 

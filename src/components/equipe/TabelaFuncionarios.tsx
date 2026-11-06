@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -23,7 +23,7 @@ import type { Funcionario } from "@/types/funcionario";
 import { MODULOS_LABELS } from "@/types/funcionario";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useIsMobileOrTablet } from "@/hooks/use-mobile";
+import { useIsDesktop, useIsMobileOrTablet } from "@/hooks/use-mobile";
 
 interface TabelaFuncionariosProps {
   funcionarios: Funcionario[];
@@ -31,6 +31,11 @@ interface TabelaFuncionariosProps {
   onToggleAtivo: (id: string, ativo: boolean) => void;
   onExcluir: (id: string) => void;
   onReenviarConvite: (id: string) => void;
+  /**
+   * Título e contador do painel. Só no computador: vão à esquerda, na mesma linha da busca e dos
+   * filtros, e continuam aparecendo com a lista vazia. Sem a prop, nada muda.
+   */
+  cabecalho?: ReactNode;
 }
 
 type FiltroStatus = "todos" | "ativo" | "inativo";
@@ -44,7 +49,7 @@ const CARGO_COLORS: Record<string, string> = {
 };
 
 export function TabelaFuncionarios({
-  funcionarios, onEditar, onToggleAtivo, onExcluir, onReenviarConvite,
+  funcionarios, onEditar, onToggleAtivo, onExcluir, onReenviarConvite, cabecalho,
 }: TabelaFuncionariosProps) {
   const [funcionarioExcluir, setFuncionarioExcluir] = useState<Funcionario | null>(null);
   const [busca, setBusca] = useState("");
@@ -52,6 +57,8 @@ export function TabelaFuncionarios({
   const [pagina, setPagina] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState<number>(10);
   const isMobileOrTablet = useIsMobileOrTablet();
+  const isDesktop = useIsDesktop();
+  const cabecalhoDesktop = isDesktop && cabecalho !== undefined;
 
   const funcionariosFiltrados = useMemo(() => {
     const buscaLower = busca.trim().toLowerCase();
@@ -115,7 +122,7 @@ export function TabelaFuncionarios({
     return escopo ? `${valor} (${escopo})` : valor;
   };
 
-  if (funcionarios.length === 0) {
+  if (funcionarios.length === 0 && !cabecalhoDesktop) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <p>Nenhum funcionário cadastrado ainda.</p>
@@ -124,42 +131,62 @@ export function TabelaFuncionarios({
     );
   }
 
+  const buscaEFiltros = (
+    <>
+      <div className="relative w-64">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar funcionário..."
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            Filtros
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-56 space-y-2">
+          <p className="text-sm font-medium">Status</p>
+          <Select value={filtroStatus} onValueChange={(v: FiltroStatus) => setFiltroStatus(v)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="ativo">Ativos</SelectItem>
+              <SelectItem value="inativo">Inativos</SelectItem>
+            </SelectContent>
+          </Select>
+        </PopoverContent>
+      </Popover>
+    </>
+  );
+
   return (
     <>
-      <div className="hidden lg:flex lg:items-center lg:justify-end gap-2 mb-4">
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar funcionário..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="pl-9"
-          />
+      {cabecalhoDesktop ? (
+        <div className="flex items-end justify-between gap-4 mb-4">
+          <div className="min-w-0">{cabecalho}</div>
+          <div className="flex shrink-0 items-center gap-2">
+            {buscaEFiltros}
+          </div>
         </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <SlidersHorizontal className="h-4 w-4" />
-              Filtros
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-56 space-y-2">
-            <p className="text-sm font-medium">Status</p>
-            <Select value={filtroStatus} onValueChange={(v: FiltroStatus) => setFiltroStatus(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="ativo">Ativos</SelectItem>
-                <SelectItem value="inativo">Inativos</SelectItem>
-              </SelectContent>
-            </Select>
-          </PopoverContent>
-        </Popover>
-      </div>
+      ) : (
+        <div className="hidden lg:flex lg:items-center lg:justify-end gap-2 mb-4">
+          {buscaEFiltros}
+        </div>
+      )}
 
-      {funcionariosFiltrados.length === 0 ? (
+      {funcionarios.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>Nenhum funcionário cadastrado ainda.</p>
+          <p className="text-sm mt-1">Clique em "Novo Funcionário" para adicionar.</p>
+        </div>
+      ) : funcionariosFiltrados.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>Nenhum funcionário encontrado.</p>
           <p className="text-sm mt-1">Tente ajustar a busca ou os filtros.</p>
