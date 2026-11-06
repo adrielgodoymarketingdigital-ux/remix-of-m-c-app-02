@@ -69,7 +69,9 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
         "relative flex min-w-0 flex-col rounded-xl px-4 pb-3 pt-5 transition-shadow hover:shadow-md",
         COLUNAS,
         centralizar && "col-start-2 min-[1484px]:col-start-auto",
-        faixa === "popular" && "border-primary shadow-md shadow-primary/10 ring-1 ring-primary/30",
+        // Mais Popular sobra 4px acima e abaixo, como na referência; o padding compensa,
+        // então preço, lista e botão continuam alinhados com os vizinhos.
+        faixa === "popular" && "-my-1 border-primary pb-4 pt-6 shadow-md shadow-primary/10 ring-1 ring-primary/30",
         atual && "border-primary ring-2 ring-primary/20",
         destacado && "ring-4 ring-red-500/50",
       )}
