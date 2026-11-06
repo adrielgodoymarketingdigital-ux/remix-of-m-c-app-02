@@ -39,18 +39,18 @@ export function CardPlanoAtualDesktop({
   const ilimitado = dispositivosLimite === -1;
 
   return (
-    <Card className="relative grid grid-cols-[1.2fr_1fr] items-center gap-x-6 gap-y-4 overflow-hidden rounded-xl border-blue-200 bg-gradient-to-r from-card to-blue-100 p-5 dark:border-blue-900 dark:to-blue-950/50 min-[1484px]:grid-cols-[1.2fr_0.8fr_auto]">
+    <Card className="relative grid grid-cols-[1.2fr_1fr] items-center gap-x-5 gap-y-3 overflow-hidden rounded-xl border-blue-200 bg-gradient-to-r from-card to-blue-100 px-5 py-3 dark:border-blue-900 dark:to-blue-950/50 min-[1280px]:grid-cols-[1.2fr_0.8fr_auto]">
       <Crown aria-hidden className="pointer-events-none absolute -bottom-6 right-4 h-32 w-32 text-blue-600/[0.07] dark:text-blue-300/[0.06]" />
       <div className="flex min-w-0 items-start gap-4">
         <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
           <Crown className="h-6 w-6" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground">Seu Plano Atual</h2>
             {selo}
           </div>
-          <p className="text-lg font-bold leading-snug text-foreground">{nomePlano}</p>
+          <p className="text-lg font-bold leading-tight text-foreground">{nomePlano}</p>
           {vencimento && (
             <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5 shrink-0" />
@@ -59,13 +59,13 @@ export function CardPlanoAtualDesktop({
           )}
           {avisoVencido && <p className="mt-1 text-sm text-muted-foreground">{avisoVencido}</p>}
 
-          <p className="mt-2 text-[13px] text-muted-foreground">
+          <p className="mt-1 text-[13px] text-muted-foreground">
             <strong className="font-semibold text-primary">{dispositivosUsados}</strong>
             {ilimitado ? " / ∞ Ilimitados" : ` / ${dispositivosLimite} dispositivos utilizados`}
           </p>
           {textoPeriodo && <p className="text-xs text-muted-foreground">{textoPeriodo}</p>}
           {!ilimitado && (
-            <div className="mt-1.5 flex max-w-[320px] items-center gap-2.5">
+            <div className="mt-1 flex max-w-[320px] items-center gap-2.5">
               <div className="h-2 min-w-0 flex-1 rounded-full bg-blue-200/70 dark:bg-muted">
                 <div
                   className={cn(
@@ -91,7 +91,8 @@ export function CardPlanoAtualDesktop({
         </div>
       </div>
 
-      <div className="relative col-span-2 flex flex-wrap gap-2 min-[1484px]:col-span-1 min-[1484px]:justify-end">{acoes}</div>
+      {/* Botões menores (36px) para caber numa linha só a partir de 1280px; os componentes não mudam. */}
+      <div className="relative col-span-2 flex flex-wrap gap-2 min-[1280px]:col-span-1 min-[1280px]:justify-end [&_button]:h-9 [&_button]:px-3 [&_button]:text-[13px]">{acoes}</div>
     </Card>
   );
 }
