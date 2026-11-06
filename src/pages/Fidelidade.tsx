@@ -31,6 +31,8 @@ import { rotuloPlano } from "@/lib/planoVencido";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { PaginaFidelidadeDesktop } from "@/components/fidelidade/desktop/PaginaFidelidadeDesktop";
 
 function formatarMoeda(valor: number) {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -367,6 +369,8 @@ export default function Fidelidade() {
   const [clienteResgate, setClienteResgate] = useState<ClienteFidelidade | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // Computador (>= 1024px) troca só o visual; chamado antes dos returns antecipados.
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -455,6 +459,42 @@ export default function Fidelidade() {
     ...n,
     count: clientes.filter(c => c.nivel?.id === n.id).length,
   }));
+
+  // Computador (>= 1024px): mesmo estado e mesmos handlers, só o visual muda. Celular segue no return de baixo.
+  if (isDesktop) {
+    return (
+      <AppLayout>
+        <PaginaFidelidadeDesktop
+          clientes={clientes}
+          niveis={niveis}
+          isLoading={isLoading}
+          busca={busca}
+          onBuscaChange={setBusca}
+          totalPontosDistribuidos={totalPontosDistribuidos}
+          contagemNiveis={contagemNiveis}
+          onAbrirConfiguracoes={() => setConfigOpen(true)}
+          onResgatar={setClienteResgate}
+        />
+
+        <DialogResgate
+          cliente={clienteResgate}
+          open={!!clienteResgate}
+          onClose={() => setClienteResgate(null)}
+          onConfirmar={resgatar}
+        />
+
+        <DialogConfig
+          open={configOpen}
+          onClose={() => setConfigOpen(false)}
+          config={config}
+          niveis={niveis}
+          onSalvarConfig={salvarConfig}
+          onSalvarNivel={salvarNivel}
+          onDeletarNivel={deletarNivel}
+        />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
