@@ -27,6 +27,7 @@ import { useIsDesktop, useIsMobileOrTablet } from "@/hooks/use-mobile";
 import { calcularVariacaoPercentual } from "@/lib/variacaoPercentual";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CartoesDesempenhoDesktop, EsqueletoCartoesDesempenhoDesktop } from "./desktop/CartoesDesempenhoDesktop";
+import { EsqueletoTabelaDesempenhoDesktop, TabelaDesempenhoDesktop } from "./desktop/TabelaDesempenhoDesktop";
 
 interface DashboardEquipeProps {
   funcionarios: Funcionario[];
@@ -128,7 +129,7 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
       return (
         <div className="space-y-6">
           <EsqueletoCartoesDesempenhoDesktop />
-          <Skeleton className="h-64" />
+          <EsqueletoTabelaDesempenhoDesktop />
         </div>
       );
     }
@@ -288,6 +289,26 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
       )}
 
       {/* Tabela por funcionário */}
+      {isDesktop ? (
+        <TabelaDesempenhoDesktop
+          funcionarios={funcionarios}
+          comissoes={comissoes}
+          comissoesFiltradas={comissoesFiltradas}
+          linhasExibidas={linhasExibidas}
+          busca={busca}
+          onBuscaChange={setBusca}
+          onExportar={exportarDesempenho}
+          onAbrirPerfil={abrirPerfil}
+          opcoesPorPagina={ITENS_POR_PAGINA_OPCOES}
+          itensPorPagina={itensPorPagina}
+          onItensPorPaginaChange={setItensPorPagina}
+          paginaAtual={paginaAtual}
+          totalPaginas={totalPaginas}
+          inicio={inicio}
+          onPaginaAnterior={() => setPagina((p) => Math.max(1, p - 1))}
+          onProximaPagina={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+        />
+      ) : (
       <Card>
         <CardHeader className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <CardTitle>Desempenho por Funcionário</CardTitle>
@@ -422,6 +443,7 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
           )}
          </CardContent>
        </Card>
+      )}
 
        <PerfilDesempenhoFuncionario
          funcionario={funcionarioSelecionado}
