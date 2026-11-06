@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CalendarClock, Crown, HardDrive } from "lucide-react";
+import { CalendarClock, Crown, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -39,9 +39,10 @@ export function CardPlanoAtualDesktop({
   const ilimitado = dispositivosLimite === -1;
 
   return (
-    <Card className="grid grid-cols-[1.2fr_1fr] items-center gap-x-6 gap-y-4 border-primary/40 bg-gradient-to-r from-card to-primary/5 p-5 min-[1484px]:grid-cols-[1.2fr_0.8fr_auto]">
+    <Card className="relative grid grid-cols-[1.2fr_1fr] items-center gap-x-6 gap-y-4 overflow-hidden rounded-xl border-blue-200 bg-gradient-to-r from-card to-blue-100 p-5 dark:border-blue-900 dark:to-blue-950/50 min-[1484px]:grid-cols-[1.2fr_0.8fr_auto]">
+      <Crown aria-hidden className="pointer-events-none absolute -bottom-6 right-4 h-32 w-32 text-blue-600/[0.07] dark:text-blue-300/[0.06]" />
       <div className="flex min-w-0 items-start gap-4">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+        <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
           <Crown className="h-6 w-6" />
         </div>
         <div className="min-w-0 flex-1">
@@ -59,17 +60,17 @@ export function CardPlanoAtualDesktop({
           {avisoVencido && <p className="mt-1 text-sm text-muted-foreground">{avisoVencido}</p>}
 
           <p className="mt-2 text-[13px] text-muted-foreground">
-            <strong className="font-semibold text-foreground">{dispositivosUsados}</strong>
+            <strong className="font-semibold text-primary">{dispositivosUsados}</strong>
             {ilimitado ? " / ∞ Ilimitados" : ` / ${dispositivosLimite} dispositivos utilizados`}
           </p>
           {textoPeriodo && <p className="text-xs text-muted-foreground">{textoPeriodo}</p>}
           {!ilimitado && (
             <div className="mt-1.5 flex max-w-[320px] items-center gap-2.5">
-              <div className="h-2 min-w-0 flex-1 rounded-full bg-muted">
+              <div className="h-2 min-w-0 flex-1 rounded-full bg-blue-200/70 dark:bg-muted">
                 <div
                   className={cn(
                     "h-2 rounded-full transition-all",
-                    dispositivosPercentual >= 90 ? "bg-red-500" : dispositivosPercentual >= 70 ? "bg-yellow-500" : "bg-green-500",
+                    dispositivosPercentual >= 90 ? "bg-red-500" : dispositivosPercentual >= 70 ? "bg-yellow-500" : "bg-gradient-to-r from-sky-500 to-blue-700",
                   )}
                   style={{ width: `${Math.min(dispositivosPercentual, 100)}%` }}
                 />
@@ -82,7 +83,7 @@ export function CardPlanoAtualDesktop({
 
       <div className="flex min-w-0 items-center gap-4 border-l border-border pl-6">
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-card text-primary ring-1 ring-border">
-          <HardDrive className="h-6 w-6" />
+          <Database className="h-6 w-6" />
         </div>
         <div className="min-w-0">
           <p className="text-[13px] text-muted-foreground">Armazenamento</p>
@@ -90,7 +91,7 @@ export function CardPlanoAtualDesktop({
         </div>
       </div>
 
-      <div className="col-span-2 flex flex-wrap gap-2 min-[1484px]:col-span-1 min-[1484px]:justify-end">{acoes}</div>
+      <div className="relative col-span-2 flex flex-wrap gap-2 min-[1484px]:col-span-1 min-[1484px]:justify-end">{acoes}</div>
     </Card>
   );
 }

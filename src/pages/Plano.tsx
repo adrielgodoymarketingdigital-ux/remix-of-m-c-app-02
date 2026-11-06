@@ -419,7 +419,10 @@ export default function Plano() {
                 <CardPlanoAtualDesktop
                   nomePlano={nomePlanoAtual(assinatura.plano_tipo, PLANOS)}
                   selo={
-                    <Badge variant={planoVencido ? "destructive" : "secondary"}>
+                    <Badge
+                      variant={planoVencido ? "destructive" : "secondary"}
+                      className={planoVencido ? undefined : "border-0 bg-primary/10 text-primary hover:bg-primary/10"}
+                    >
                       {seloPlanoAtual(assinatura.plano_tipo, PLANOS, planoVencido)}
                     </Badge>
                   }

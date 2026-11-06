@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Box, Check, Crown, Gem, Package, RefreshCw, Star, type LucideIcon } from "lucide-react";
+import { Box, Check, Crown, Gem, Package, Star, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,9 +28,12 @@ function SeloMudanca({ tipo, children }: { tipo: "upgrade" | "downgrade"; childr
   return (
     <Badge
       variant="outline"
-      className={tipo === "upgrade"
-        ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/50 dark:text-green-400 dark:border-green-700"
-        : "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/50 dark:text-orange-400 dark:border-orange-700"}
+      className={cn(
+        "whitespace-nowrap border-transparent",
+        tipo === "upgrade"
+          ? "bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-400"
+          : "bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-400",
+      )}
     >
       {children}
     </Badge>
@@ -63,18 +66,19 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
     <Card
       id={`plan-${planoKey}`}
       className={cn(
-        "relative flex min-w-0 flex-col px-4 pb-3 pt-[18px] transition-shadow hover:shadow-md",
+        "relative flex min-w-0 flex-col rounded-xl px-4 pb-3 pt-5 transition-shadow hover:shadow-md",
         COLUNAS,
         centralizar && "col-start-2 min-[1484px]:col-start-auto",
-        faixa === "popular" && "border-primary shadow-sm",
+        faixa === "popular" && "border-primary shadow-md shadow-primary/10 ring-1 ring-primary/30",
         atual && "border-primary ring-2 ring-primary/20",
         destacado && "ring-4 ring-red-500/50",
       )}
     >
       {faixa && (
         <div
+          data-faixa
           className={cn(
-            "absolute right-3 top-0 z-10 -translate-y-1/2 rounded-full px-2.5 py-0.5 text-xs font-bold",
+            "absolute right-0 top-0 z-10 rounded-bl-lg rounded-tr-[11px] px-3 py-0.5 text-xs font-bold",
             faixa === "popular" ? "bg-primary text-primary-foreground" : "bg-amber-400 text-amber-950",
           )}
         >
@@ -82,16 +86,13 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
         </div>
       )}
 
-      {/* Selo e faixa ficam sobre a borda: não ocupam altura, e o cartão sem selo não reserva espaço. */}
-      {selo && (
-        <div className={cn("absolute left-4 top-0 z-10 flex -translate-y-1/2", faixa && "max-w-[calc(100%-132px)]")}>{selo}</div>
-      )}
-
-      <div className="flex min-h-[56px] items-start gap-3">
+      {/* Altura igual em todos: o preço alinha, e o cartão sem selo centraliza nome e ícone. */}
+      <div className="flex min-h-[82px] items-center gap-3">
         <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", cor)}>
           <Icone className="h-6 w-6" />
         </span>
-        <div className="min-w-0">
+        <div className={cn("min-w-0", selo && "self-start")}>
+          {selo && <div data-selo className="mb-1 flex">{selo}</div>}
           <h3 className="text-[15px] font-bold leading-snug text-foreground">{nome}</h3>
           {descricao && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{descricao}</p>}
         </div>
@@ -117,7 +118,7 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
       <ul className="mb-3 flex-1 space-y-1">
         {recursos.map((recurso) => (
           <li key={recurso} className="flex items-start gap-2 text-[13px] leading-snug text-foreground">
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
+            <Check strokeWidth={3} className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
             <span className="min-w-0">{limparRecurso(recurso)}</span>
           </li>
         ))}
@@ -171,7 +172,7 @@ export function GradePlanosDesktop({
           <p className="text-[13px] text-muted-foreground">Investimento que se paga no primeiro mês. Cancele quando quiser.</p>
         </div>
         <div className="flex items-center gap-2">
-          <div role="group" aria-label="Período de cobrança" className="flex rounded-full border border-border bg-card p-0.5">
+          <div role="group" aria-label="Período de cobrança" className="flex rounded-full bg-muted/60 p-0.5">
             {(["mensal", "anual"] as const).map((opcao) => (
               <button
                 key={opcao}
@@ -179,15 +180,18 @@ export function GradePlanosDesktop({
                 aria-pressed={periodo === opcao}
                 onClick={() => onPeriodo(opcao)}
                 className={cn(
-                  "h-9 rounded-full px-4 text-[13px] font-medium transition-colors",
-                  periodo === opcao ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                  "flex h-9 items-center gap-2 rounded-full px-4 text-[13px] font-medium transition-colors",
+                  periodo === opcao
+                    ? "bg-gradient-to-r from-blue-600 to-blue-500 pr-2 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {opcao === "mensal" ? "Mensal" : "Anual"}
+                {periodo === opcao && <span aria-hidden className="h-5 w-5 rounded-full border-2 border-white/90 bg-white/25" />}
               </button>
             ))}
           </div>
-          <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-bold text-green-700 dark:bg-green-900 dark:text-green-400">
+          <span className="rounded-full bg-green-100 px-3 py-2 text-xs font-bold text-green-700 dark:bg-green-900 dark:text-green-400">
             até 20%
           </span>
         </div>
@@ -234,21 +238,10 @@ export function GradePlanosDesktop({
                   <Badge variant="secondary">Plano Atual</Badge>
                 ) : mudanca === "upgrade" ? (
                   <SeloMudanca tipo="upgrade">
-                    {planoVencido ? (
-                      <>
-                        <RefreshCw className="mr-1 h-3 w-3 shrink-0" />
-                        {mesmoNivelAnterior ? "Renovar o seu plano" : "Renovar"}
-                      </>
-                    ) : (
-                      <>
-                        <ArrowUpCircle className="mr-1 h-3 w-3 shrink-0" />
-                        Upgrade
-                      </>
-                    )}
+                    {planoVencido ? (mesmoNivelAnterior ? "Renovar o seu plano" : "Renovar") : "Upgrade"}
                   </SeloMudanca>
                 ) : mudanca === "downgrade" ? (
                   <SeloMudanca tipo="downgrade">
-                    <ArrowDownCircle className="mr-1 h-3 w-3 shrink-0" />
                     Downgrade
                   </SeloMudanca>
                 ) : null
