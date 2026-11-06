@@ -55,6 +55,11 @@ export default function Equipe() {
   const podeAdicionarMais = vagasUsadas < limiteFuncionarios;
   const planoPermiteEquipe = limiteFuncionarios > 0;
 
+  // Abas no computador: maiores, com borda e texto na cor primária na aba ativa.
+  const classeAbaDesktop = isDesktop
+    ? "rounded-lg border border-transparent px-6 py-2.5 text-[15px] data-[state=active]:border-primary/50 data-[state=active]:text-primary"
+    : undefined;
+
   // Computador: título e contador ficam na mesma linha da busca (dentro da tabela).
   const cabecalhoPainel = (
     <div className="min-w-0">
@@ -230,12 +235,12 @@ export default function Equipe() {
 
         {planoPermiteEquipe && (
           <Tabs defaultValue="funcionarios">
-            <TabsList>
-              <TabsTrigger value="funcionarios">
+            <TabsList className={isDesktop ? "h-auto gap-1 rounded-xl p-1" : undefined}>
+              <TabsTrigger value="funcionarios" className={classeAbaDesktop}>
                 <Users className="h-4 w-4 mr-2" />
                 Funcionários
               </TabsTrigger>
-              <TabsTrigger value="desempenho">
+              <TabsTrigger value="desempenho" className={classeAbaDesktop}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Desempenho
               </TabsTrigger>
