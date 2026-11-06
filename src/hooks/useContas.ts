@@ -8,6 +8,7 @@ import { diaBrasiliaDaData } from "@/lib/vendasFinanceiras";
 import { pagamentoDoCadastro } from "@/lib/financeiro/pagamentoDoCadastro";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
+import { proximaDataRecorrente } from "@/lib/contas/recorrencia";
 import { cancelarParcelaDaContaExcluida } from "@/lib/vendas/estornoParcelaSecundaria";
 import { valorAReceberSemConta } from "@/lib/vendas/trocaPDV";
 import {
@@ -582,20 +583,25 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             const targetUserId = resolvedUserIdFromContext ?? user.id;
-            const dataAtual = new Date(conta.data);
-            const proximoMes = new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, dataAtual.getDate());
-            const proximaData = `${proximoMes.getFullYear()}-${String(proximoMes.getMonth() + 1).padStart(2, '0')}-${String(proximoMes.getDate()).padStart(2, '0')}`;
+            // Direto do texto da data, sem fuso (antes nascia 1 dia antes no Brasil).
+            const proxima = proximaDataRecorrente(conta.data);
+            const proximaData = proxima.data;
 
-            const { data: existente } = await supabase
+            // "Já existe a próxima?" aceita também o dia anterior: o código antigo
+            // gerava 1 dia antes, e essas contas não podem ser duplicadas agora.
+            // (Não olha o mês inteiro: há lojas com duas recorrentes de mesmo nome
+            // em dias diferentes do mês.)
+            const { data: existentes } = await supabase
               .from("contas")
               .select("id")
               .eq("user_id", targetUserId)
               .eq("nome", conta.nome)
-              .eq("data", proximaData)
+              .gte("data", proxima.diaAnterior)
+              .lte("data", proxima.data)
               .eq("recorrente", true)
-              .maybeSingle();
+              .limit(1);
 
-            if (!existente) {
+            if (!existentes || existentes.length === 0) {
               await supabase.from("contas").insert({
                 nome: conta.nome,
                 tipo: conta.tipo,
@@ -613,7 +619,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
 
               toast({
                 title: "Conta recorrente gerada",
-                description: `A próxima parcela de "${conta.nome}" foi criada para ${proximoMes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.`,
+                description: `A próxima parcela de "${conta.nome}" foi criada para ${new Date(proxima.ano, proxima.mes - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.`,
               });
 
               await recarregar();
