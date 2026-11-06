@@ -56,8 +56,10 @@ export default function Equipe() {
   const planoPermiteEquipe = limiteFuncionarios > 0;
 
   // Abas no computador: maiores, com borda e texto na cor primária na aba ativa.
+  // leading-6 fixa a altura em pixels inteiros (24 + 20 + 2 de borda = 46; barra com p-1 = 54). Sem ele, o
+  // text-[15px] dava 22,5px de linha e tudo abaixo da barra ficava em meio pixel (texto e bordas borrados).
   const classeAbaDesktop = isDesktop
-    ? "rounded-lg border border-transparent px-6 py-2.5 text-[15px] data-[state=active]:border-primary/50 data-[state=active]:text-primary"
+    ? "rounded-lg border border-transparent px-6 py-2.5 text-[15px] leading-6 data-[state=active]:border-primary/50 data-[state=active]:text-primary"
     : undefined;
 
   // Computador: título e contador ficam na mesma linha da busca (dentro da tabela).
