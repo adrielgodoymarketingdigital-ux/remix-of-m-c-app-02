@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, Eye, X, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
+import { Pencil, Trash2, Eye, X, ChevronLeft, ChevronRight, Share2, SearchX, Users } from "lucide-react";
 import { Cliente } from "@/types/cliente";
 import { formatCPF, formatPhone } from "@/lib/formatters";
 import { useIsDesktop, useIsMobile } from "@/hooks/use-mobile";
@@ -41,6 +41,8 @@ interface TabelaClientesProps {
   onExcluir: (id: string) => void;
   onExcluirEmMassa?: (ids: string[]) => Promise<void>;
   onVerHistorico: (cliente: Cliente) => void;
+  /** Só no computador: total cadastrado, para separar "nenhum cadastrado" de "busca sem resultado". */
+  totalCadastrados?: number;
 }
 
 export function TabelaClientes({
@@ -49,6 +51,7 @@ export function TabelaClientes({
   onExcluir,
   onExcluirEmMassa,
   onVerHistorico,
+  totalCadastrados,
 }: TabelaClientesProps) {
   const isMobile = useIsMobile();
   const isDesktop = useIsDesktop();
@@ -128,6 +131,20 @@ export function TabelaClientes({
   const algunsSelecionados = idsPagina.some(id => selecionados.has(id)) && !todosSelecionados;
 
   if (clientes.length === 0) {
+    if (isDesktop) {
+      const semResultado = (totalCadastrados ?? 0) > 0;
+      const Icone = semResultado ? SearchX : Users;
+      return (
+        <Card className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Icone className="h-7 w-7" aria-hidden="true" />
+          </div>
+          <p className="font-medium text-muted-foreground">
+            {semResultado ? "Nenhum cliente encontrado para a busca" : "Nenhum cliente cadastrado"}
+          </p>
+        </Card>
+      );
+    }
     return (
       <div className="text-center py-8 text-muted-foreground">
         Nenhum cliente cadastrado
@@ -446,8 +463,18 @@ export function TabelaClientes({
               })}
             </TableBody>
           </Table>
+          <div className="flex items-center justify-between gap-3 border-t bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+            <span>{clientes.length} cliente{clientes.length !== 1 ? "s" : ""} · página {pagina} de {totalPaginas}</span>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1} aria-label="Página anterior">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas} aria-label="Próxima página">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </Card>
-        <Paginacao />
         {dialogCompartilhar && (
           <DialogCompartilharClienteLink
             open={!!dialogCompartilhar}

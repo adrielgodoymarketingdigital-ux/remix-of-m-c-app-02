@@ -111,6 +111,7 @@ export default function Clientes() {
               onExcluir={handleExcluir}
               onExcluirEmMassa={handleExcluirEmMassa}
               onVerHistorico={handleVerHistorico}
+              totalCadastrados={clientes.length}
             />
           }
         />
