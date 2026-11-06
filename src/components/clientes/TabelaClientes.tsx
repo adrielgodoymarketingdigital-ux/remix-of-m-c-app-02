@@ -328,10 +328,10 @@ export function TabelaClientes({
                   />
                 </TableHead>
                 <TableHead>Nome</TableHead>
-                <TableHead className="w-[170px]">CPF/CNPJ</TableHead>
-                <TableHead className="w-[150px]">Telefone</TableHead>
-                <TableHead className="w-[22%]">Endereço</TableHead>
-                <TableHead className="w-[216px] pr-4 text-right">Ações</TableHead>
+                <TableHead className="w-[176px] px-3">CPF/CNPJ</TableHead>
+                <TableHead className="w-[150px] px-3">Telefone</TableHead>
+                <TableHead className="w-[16%] px-3">Endereço</TableHead>
+                <TableHead className="w-[204px] pr-4 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -344,14 +344,14 @@ export function TabelaClientes({
                     key={cliente.id}
                     className={selecionados.has(cliente.id) ? "bg-primary/5" : ""}
                   >
-                    <TableCell className="pl-4">
+                    <TableCell className="py-2 pl-4">
                       <Checkbox
                         checked={selecionados.has(cliente.id)}
                         onCheckedChange={() => toggleSelecionado(cliente.id)}
                         aria-label={`Selecionar ${cliente.nome}`}
                       />
                     </TableCell>
-                    <TableCell className="py-3">
+                    <TableCell className="py-2 pr-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <div
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatar.classes}`}
@@ -383,16 +383,16 @@ export function TabelaClientes({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="truncate tabular-nums" title={documento || undefined}>
+                    <TableCell className="truncate px-3 py-2" title={documento || undefined}>
                       {documento || <span className="text-muted-foreground">-</span>}
                     </TableCell>
-                    <TableCell className="truncate tabular-nums" title={telefone || undefined}>
+                    <TableCell className="truncate px-3 py-2" title={telefone || undefined}>
                       {telefone || <span className="text-muted-foreground">-</span>}
                     </TableCell>
-                    <TableCell className="truncate" title={cliente.endereco || undefined}>
+                    <TableCell className="truncate px-3 py-2" title={cliente.endereco || undefined}>
                       {cliente.endereco || <span className="text-muted-foreground">-</span>}
                     </TableCell>
-                    <TableCell className="pr-4 text-right">
+                    <TableCell className="py-2 pl-2 pr-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="ghost"
