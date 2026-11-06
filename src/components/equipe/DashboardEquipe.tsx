@@ -28,6 +28,7 @@ import { calcularVariacaoPercentual } from "@/lib/variacaoPercentual";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { CartoesDesempenhoDesktop, EsqueletoCartoesDesempenhoDesktop } from "./desktop/CartoesDesempenhoDesktop";
 import { EsqueletoTabelaDesempenhoDesktop, TabelaDesempenhoDesktop } from "./desktop/TabelaDesempenhoDesktop";
+import { BarraMesDesempenhoDesktop } from "./desktop/BarraMesDesempenhoDesktop";
 
 interface DashboardEquipeProps {
   funcionarios: Funcionario[];
@@ -146,6 +147,18 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
   return (
     <div className="space-y-6">
       {/* Filtro de mês */}
+      {isDesktop ? (
+        <BarraMesDesempenhoDesktop
+          mesLabel={mesLabel}
+          isAtual={isAtual}
+          onMesAnterior={() => setMesSelecionado(prev => subMonths(prev, 1))}
+          onProximoMes={() => setMesSelecionado(prev => addMonths(prev, 1))}
+          onMesAtual={() => setMesSelecionado(new Date())}
+          filtroCargo={filtroCargo}
+          onFiltroCargoChange={setFiltroCargo}
+          cargosDisponiveis={cargosDisponiveis}
+        />
+      ) : (
       <div className="flex items-center justify-center lg:justify-between gap-2">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setMesSelecionado(prev => subMonths(prev, 1))}>
@@ -188,6 +201,7 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
           </PopoverContent>
         </Popover>
       </div>
+      )}
 
       {/* Cards resumo */}
       {isDesktop ? (
