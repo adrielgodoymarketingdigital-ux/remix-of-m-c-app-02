@@ -123,7 +123,7 @@ export function TabelaDesempenhoDesktop({
                   return (
                     <TableRow key={c.funcionarioId}>
                       <TableCell>
-                        <div className="flex w-[11rem] items-center gap-3 xl:w-[12rem] 2xl:w-[18rem]">
+                        <div className="flex w-[11rem] items-center gap-3 min-[1280px]:w-[12rem] min-[1360px]:w-[15rem] min-[1440px]:w-[18.5rem] min-[1536px]:w-[22rem]">
                           <span
                             aria-hidden="true"
                             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary"
