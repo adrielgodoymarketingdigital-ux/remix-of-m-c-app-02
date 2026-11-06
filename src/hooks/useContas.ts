@@ -591,15 +591,21 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
             // gerava 1 dia antes, e essas contas não podem ser duplicadas agora.
             // (Não olha o mês inteiro: há lojas com duas recorrentes de mesmo nome
             // em dias diferentes do mês.)
-            const { data: existentes } = await supabase
+            // Mesma filial: duas filiais do mesmo dono podem ter a mesma conta no
+            // mesmo dia. Sem filial também conta, porque o código antigo gerava a
+            // próxima sem empresa_id.
+            let consultaExistente = supabase
               .from("contas")
               .select("id")
               .eq("user_id", targetUserId)
               .eq("nome", conta.nome)
               .gte("data", proxima.diaAnterior)
               .lte("data", proxima.data)
-              .eq("recorrente", true)
-              .limit(1);
+              .eq("recorrente", true);
+            consultaExistente = conta.empresa_id
+              ? consultaExistente.or(`empresa_id.eq.${conta.empresa_id},empresa_id.is.null`)
+              : consultaExistente.is("empresa_id", null);
+            const { data: existentes } = await consultaExistente.limit(1);
 
             if (!existentes || existentes.length === 0) {
               await supabase.from("contas").insert({
@@ -612,6 +618,9 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
                 categoria: conta.categoria || null,
                 descricao: conta.descricao || null,
                 fornecedor_id: conta.fornecedor_id || null,
+                // Mesma filial da conta paga (antes ia sem empresa_id e, na
+                // filial, a próxima aparecia na matriz).
+                empresa_id: conta.empresa_id ?? null,
                 user_id: targetUserId,
                 // Só envia quando marcada (default da coluna é false).
                 ...(conta.compra_estoque ? { compra_estoque: true } : {}),

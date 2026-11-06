@@ -17,6 +17,8 @@ export interface Conta {
   os_numero?: string;
   fornecedor_id?: string;
   cliente_id?: string;
+  /** Filial da conta (null = matriz/legado). Vem do select("*"). */
+  empresa_id?: string | null;
   data_pagamento?: string;
   forma_pagamento?: string;
   forma_pagamento_entrada?: string;
