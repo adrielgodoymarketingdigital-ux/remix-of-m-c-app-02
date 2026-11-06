@@ -70,7 +70,7 @@ export function TabelaFornecedoresDesktop({
   const IconeOrdem = ordem === "asc" ? ArrowUp : ordem === "desc" ? ArrowDown : ArrowUpDown;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden rounded-2xl shadow-sm">
       <div className="flex items-center gap-3 border-b px-5 py-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Users className="h-5 w-5" aria-hidden="true" />
