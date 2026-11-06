@@ -47,19 +47,19 @@ export function CardPlanoAtualDesktop({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-semibold text-foreground">Seu Plano Atual</h2>
+            <h2 className="text-[13px] font-semibold text-foreground">Seu Plano Atual</h2>
             {selo}
           </div>
-          <p className="text-lg font-bold leading-tight text-foreground">{nomePlano}</p>
+          <p className="text-base font-bold leading-tight text-foreground">{nomePlano}</p>
           {vencimento && (
-            <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5 shrink-0" />
               {vencimento}
             </p>
           )}
           {avisoVencido && <p className="mt-1 text-sm text-muted-foreground">{avisoVencido}</p>}
 
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             <strong className="font-semibold text-primary">{dispositivosUsados}</strong>
             {ilimitado ? " / ∞ Ilimitados" : ` / ${dispositivosLimite} dispositivos utilizados`}
           </p>
@@ -86,8 +86,8 @@ export function CardPlanoAtualDesktop({
           <Database className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <p className="text-[13px] text-muted-foreground">Armazenamento</p>
-          <p className="text-base font-semibold text-foreground">{limiteArmazenamento}</p>
+          <p className="text-xs text-muted-foreground">Armazenamento</p>
+          <p className="text-sm font-semibold text-foreground">{limiteArmazenamento}</p>
         </div>
       </div>
 

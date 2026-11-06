@@ -72,7 +72,7 @@ export function BotoesPagamentoPagarme({
         variant={planoAtual ? "outline" : "default"}
         className={cn(
           "w-full font-semibold transition-all duration-300",
-          compacto ? "h-10 text-sm" : "h-12 text-base",
+          compacto ? "h-10 text-[13px]" : "h-12 text-base",
           popular && !planoAtual && "shadow-lg hover:shadow-xl",
           planoAtual && "border-primary/40 text-primary hover:bg-primary/10"
         )}

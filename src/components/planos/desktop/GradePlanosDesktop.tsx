@@ -93,19 +93,19 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
         </span>
         <div className={cn("min-w-0", selo && "self-start")}>
           {selo && <div data-selo className="mb-1 flex">{selo}</div>}
-          <h3 className="text-[15px] font-bold leading-snug text-foreground">{nome}</h3>
+          <h3 className="text-sm font-bold leading-snug text-foreground">{nome}</h3>
           {descricao && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{descricao}</p>}
         </div>
       </div>
 
       <div className={cn("mb-2 mt-1", periodo === "anual" && "min-h-[84px]")}>
         <p className="flex flex-wrap items-baseline gap-x-1.5">
-          <span className="text-[26px] font-bold leading-tight tracking-tight text-foreground">{formatCurrency(preco)}</span>
-          <span className="text-[13px] text-muted-foreground">{periodoTexto}</span>
+          <span className="text-2xl font-bold leading-tight tracking-tight text-foreground">{formatCurrency(preco)}</span>
+          <span className="text-xs text-muted-foreground">{periodoTexto}</span>
         </p>
         {desconto && (
           <div className="mt-1 space-y-1">
-            <p className="text-[13px] font-medium text-green-600 dark:text-green-400">
+            <p className="text-xs font-medium text-green-600 dark:text-green-400">
               {formatCurrency(desconto.valorMensalEquivalente)}/mês
             </p>
             <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-400">
@@ -117,8 +117,8 @@ function CartaoPlano({ planoKey, nome, preco, periodoTexto, recursos, periodo, s
 
       <ul className="mb-3 flex-1 space-y-1">
         {recursos.map((recurso) => (
-          <li key={recurso} className="flex items-start gap-2 text-[13px] leading-snug text-foreground">
-            <Check strokeWidth={3} className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
+          <li key={recurso} className="flex items-start gap-2 text-xs leading-snug text-foreground">
+            <Check strokeWidth={3} className="mt-px h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
             <span className="min-w-0">{limparRecurso(recurso)}</span>
           </li>
         ))}
@@ -209,9 +209,9 @@ export function GradePlanosDesktop({
           destacado={false}
           selo={freeAtual && <Badge variant="secondary">{planoVencido ? "Em uso até renovar" : "Plano Atual"}</Badge>}
           botao={freeAtual ? (
-            <Button className="h-10 w-full" disabled>{planoVencido ? "Recursos básicos" : "Plano Atual"}</Button>
+            <Button className="h-10 w-full text-[13px]" disabled>{planoVencido ? "Recursos básicos" : "Plano Atual"}</Button>
           ) : (
-            <Button variant="outline" className="h-10 w-full" disabled>Plano Gratuito</Button>
+            <Button variant="outline" className="h-10 w-full text-[13px]" disabled>Plano Gratuito</Button>
           )}
         />
         {planos.map(([key, plano], indice) => {
