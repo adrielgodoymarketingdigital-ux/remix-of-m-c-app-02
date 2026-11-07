@@ -11,6 +11,7 @@ import { useIdentidade } from "./useResolvedUserId";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 import { estornarEstoqueOS, ItemOSEstoque } from "@/lib/ordemServico/estoqueItensOS";
+import { quitarContaReceberDaOS, lerContaDaOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
 import { lucroLinhaServico, totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
 import { adicionaisCorrespondemBusca, type AdicionaisPorOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { buscarResumoAdicionaisLoja, precarregarDispositivosAdicionaisOS } from "./useOsDispositivosAdicionais";
@@ -652,55 +653,33 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           const saldoAReceberSaida = valorOrdem - entradaPagaSaida;
           const valorAReceberFinal = saldoAReceberSaida > 0 ? saldoAReceberSaida : valorOrdem;
 
-          let contaExistente: { id: string } | null = null;
-
-          const { data: contaPorNumero } = await supabase
-            .from("contas")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("os_numero", ordem.numero_os)
-            .eq("tipo", "receber")
-            .eq("status", "pendente")
-            .maybeSingle();
-
-          contaExistente = contaPorNumero;
-
-          if (!contaExistente) {
-            const { data: contaPorNome } = await supabase
-              .from("contas")
-              .select("id")
-              .eq("user_id", userId)
-              .ilike("nome", `%OS ${ordem.numero_os}%`)
-              .eq("tipo", "receber")
-              .eq("status", "pendente")
-              .maybeSingle();
-            contaExistente = contaPorNome;
-          }
-
           const dataRecebimentoFinal = dataRecebimento || dataHoje();
 
-          if (contaExistente) {
-            if (deveMarcarRecebido) {
-              await supabase
-                .from("contas")
-                .update({ status: "recebido", data: dataRecebimentoFinal, data_pagamento: dataRecebimentoFinal })
-                .eq("id", contaExistente.id);
-            }
-          } else if (deveMarcarRecebido) {
-            await supabase.from("contas").insert({
-              nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || 'Cliente'}`,
-              tipo: "receber",
-              valor: valorAReceberFinal,
-              valor_pago: entradaPagaSaida > 0 ? entradaPagaSaida : null,
-              data: dataRecebimentoFinal,
-              data_pagamento: dataRecebimentoFinal,
-              status: "recebido",
-              recorrente: false,
-              categoria: "Serviços",
-              descricao: `Ordem de Serviço ${ordem.numero_os} - ${ordem.defeito_relatado}`,
-              user_id: userId,
-              os_numero: ordem.numero_os,
+          // Conta já recebida em Contas → nada (antes nascia uma 2ª conta "recebido").
+          if (deveMarcarRecebido && ordem.numero_os) {
+            const resultadoConta = await quitarContaReceberDaOS({
+              userId,
+              numeroOS: ordem.numero_os,
+              modo: "quitar",
+              dataRecebimento: dataRecebimentoFinal,
+              formaPagamento: formaPagamento ?? null,
+              camposConta: { data: dataRecebimentoFinal },
+              novaConta: {
+                nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || 'Cliente'}`,
+                tipo: "receber",
+                valor: valorAReceberFinal,
+                valor_pago: entradaPagaSaida > 0 ? entradaPagaSaida : null,
+                data: dataRecebimentoFinal,
+                data_pagamento: dataRecebimentoFinal,
+                status: "recebido",
+                recorrente: false,
+                categoria: "Serviços",
+                descricao: `Ordem de Serviço ${ordem.numero_os} - ${ordem.defeito_relatado}`,
+                user_id: userId,
+                os_numero: ordem.numero_os,
+              },
             });
+            if (resultadoConta.status === "erro") throw new Error(resultadoConta.mensagem);
           }
         }
 
@@ -765,13 +744,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       // resolve no próprio fechamento. Nunca bloqueia o fluxo.
       if (novoStatus === "entregue" || statusAnterior === "entregue") {
         try {
-          const { data: contaAtualOS } = await supabase
-            .from("contas")
-            .select("status")
-            .eq("user_id", userId)
-            .eq("os_numero", ordem.numero_os)
-            .eq("tipo", "receber")
-            .maybeSingle();
+          // Com contas duplicadas o .maybeSingle() devolvia null.
+          const contaAtualOS = ordem.numero_os ? await lerContaDaOS(userId, ordem.numero_os) : null;
 
           const dataCaixaDepois =
             novoStatus === "entregue"

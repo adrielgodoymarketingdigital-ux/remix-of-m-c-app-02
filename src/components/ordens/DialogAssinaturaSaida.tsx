@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
+import { quitarContaReceberDaOS, lerContaDaOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
 import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
 import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
@@ -232,29 +233,24 @@ export const DialogAssinaturaSaida = ({
         } as any);
       }
 
+      // Baixa da conta a receber: se ela já foi recebida em Contas, nada muda
+      // (antes a busca só via 'pendente' e nascia uma 2ª conta "recebido").
       if (temEntrada && saldoRestante > 0) {
-        // Buscar conta existente da OS
-        const { data: contaExistente } = await supabase
-          .from("contas")
-          .select("id")
-          .eq("user_id", effectiveUserId)
-          .eq("os_numero", ordem.numero_os)
-          .eq("tipo", "receber")
-          .eq("status", "pendente")
-          .maybeSingle();
-
         if (saldoAPrazo) {
           // Cenário 2: saldo fica como conta a receber pendente
-          if (contaExistente) {
-            await supabase.from("contas").update({
+          await quitarContaReceberDaOS({
+            userId: effectiveUserId,
+            numeroOS: ordem.numero_os,
+            modo: "manter_pendente",
+            dataRecebimento,
+            camposConta: {
               valor: saldoRestante,
               valor_pago: entradaPaga,
               status: "pendente",
               data_vencimento: dataVencimentoSaldo,
               forma_pagamento: formaPagamentoSaldo,
-            }).eq("id", contaExistente.id);
-          } else {
-            await supabase.from("contas").insert({
+            },
+            novaConta: {
               nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
               tipo: "receber",
               valor: saldoRestante,
@@ -268,20 +264,19 @@ export const DialogAssinaturaSaida = ({
               user_id: effectiveUserId,
               empresa_id: empresaIdParaUpdate,
               forma_pagamento: formaPagamentoSaldo,
-            });
-          }
+            },
+          });
         } else {
           // Cenário 1: saldo pago na entrega — marcar conta como recebida
           const formaSelecionadaFinal = formaPagamento || formaPagamentoAtual;
-          if (contaExistente) {
-            await supabase.from("contas").update({
-              status: "recebido",
-              data: dataRecebimento,
-              data_pagamento: dataRecebimento,
-              forma_pagamento: formaSelecionadaFinal,
-            }).eq("id", contaExistente.id);
-          } else {
-            await supabase.from("contas").insert({
+          await quitarContaReceberDaOS({
+            userId: effectiveUserId,
+            numeroOS: ordem.numero_os,
+            modo: "quitar",
+            dataRecebimento,
+            formaPagamento: formaSelecionadaFinal,
+            camposConta: { data: dataRecebimento, forma_pagamento: formaSelecionadaFinal },
+            novaConta: {
               nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
               tipo: "receber",
               valor: saldoRestante,
@@ -295,47 +290,22 @@ export const DialogAssinaturaSaida = ({
               user_id: effectiveUserId,
               empresa_id: empresaIdParaUpdate,
               forma_pagamento: formaSelecionadaFinal,
-            });
-          }
+            },
+          });
         }
       } else {
         // Marcar conta vinculada como recebida (exceto se for a_prazo)
         const deveMarcarRecebido = formaSelecionada !== 'a_prazo';
 
         if (deveMarcarRecebido) {
-          // Buscar conta vinculada por os_numero
-          let contaId: string | null = null;
-
-          const { data: contaPorNumero } = await supabase
-            .from("contas")
-            .select("id")
-            .eq("user_id", effectiveUserId)
-            .eq("os_numero", ordem.numero_os)
-            .eq("tipo", "receber")
-            .eq("status", "pendente")
-            .maybeSingle();
-
-          contaId = contaPorNumero?.id || null;
-
-          if (!contaId) {
-            const { data: contaPorNome } = await supabase
-              .from("contas")
-              .select("id")
-              .eq("user_id", effectiveUserId)
-              .ilike("nome", `%OS ${ordem.numero_os}%`)
-              .eq("tipo", "receber")
-              .eq("status", "pendente")
-              .maybeSingle();
-            contaId = contaPorNome?.id || null;
-          }
-
-          if (contaId) {
-            await supabase
-              .from("contas")
-              .update({ status: "recebido", data: dataRecebimento, data_pagamento: dataRecebimento })
-              .eq("id", contaId);
-          } else {
-            await supabase.from("contas").insert({
+          await quitarContaReceberDaOS({
+            userId: effectiveUserId,
+            numeroOS: ordem.numero_os,
+            modo: "quitar",
+            dataRecebimento,
+            formaPagamento: formaSelecionada || null,
+            camposConta: { data: dataRecebimento },
+            novaConta: {
               nome: `OS ${ordem.numero_os} - ${ordem.cliente?.nome || ""}`.trim(),
               tipo: "receber",
               valor: ordem.total || 0,
@@ -347,8 +317,8 @@ export const DialogAssinaturaSaida = ({
               categoria: "Serviços",
               user_id: effectiveUserId,
               empresa_id: empresaIdParaUpdate,
-            });
-          }
+            },
+          });
         }
       }
 
@@ -356,13 +326,8 @@ export const DialogAssinaturaSaida = ({
       // retroativa), ajusta os totais congelados desse caixa. Caixa aberto se
       // resolve sozinho no próximo fechamento. Nunca bloqueia a entrega.
       try {
-        const { data: contaAtual } = await supabase
-          .from("contas")
-          .select("status")
-          .eq("user_id", effectiveUserId)
-          .eq("os_numero", ordem.numero_os)
-          .eq("tipo", "receber")
-          .maybeSingle();
+        // Com contas duplicadas o .maybeSingle() devolvia null.
+        const contaAtual = await lerContaDaOS(effectiveUserId, ordem.numero_os);
 
         const ordemBase = ordem as unknown as OrdemParaCaixa & { forma_pagamento?: string | null };
         await ajustarCaixasFechadosOS({

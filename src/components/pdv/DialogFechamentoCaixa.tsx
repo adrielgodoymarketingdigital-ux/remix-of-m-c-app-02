@@ -22,6 +22,7 @@ import {
 } from "@/lib/caixa/servicosCaixa";
 import { TOTAIS_DEVOLUCOES_ZERO, type TotaisDevolucoesTroca } from "@/lib/caixa/devolucoesTroca";
 import { carregarDevolucoesDoCaixa } from "@/lib/caixa/carregarDevolucoesTroca";
+import { mapaStatusContaPorOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
 
 interface ResumoFechamento {
   total_dinheiro: number;
@@ -234,9 +235,8 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
           contasQuery = contasQuery.or(`empresa_id.eq.${caixa.empresa_id},empresa_id.is.null`);
         }
         const { data: contasOs } = await contasQuery;
-        (contasOs || []).forEach((c: { os_numero: string | null; status: string | null }) => {
-          if (c.os_numero && c.status) statusContaPorOs.set(c.os_numero, c.status);
-        });
+        // OS com contas duplicadas: vale a quitada (antes vencia a última lida).
+        mapaStatusContaPorOS(contasOs || []).forEach((status, numero) => statusContaPorOs.set(numero, status));
       }
 
       const eventosOS = osRows.flatMap((o) =>

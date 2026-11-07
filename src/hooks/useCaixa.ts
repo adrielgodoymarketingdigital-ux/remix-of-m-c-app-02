@@ -10,6 +10,7 @@ import {
   type OrdemParaCaixa,
 } from "@/lib/caixa/servicosCaixa";
 import { carregarDevolucoesDoCaixa } from "@/lib/caixa/carregarDevolucoesTroca";
+import { mapaStatusContaPorOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
 
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
@@ -253,9 +254,8 @@ export function useCaixa() {
         contasQuery = contasQuery.or(`empresa_id.eq.${caixa.empresa_id},empresa_id.is.null`);
       }
       const { data: contasOs } = await contasQuery;
-      (contasOs ?? []).forEach((c: { os_numero: string | null; status: string | null }) => {
-        if (c.os_numero && c.status) statusContaPorOs.set(c.os_numero, c.status);
-      });
+      // OS com contas duplicadas: vale a quitada (antes vencia a última lida).
+      mapaStatusContaPorOS(contasOs ?? []).forEach((status, numero) => statusContaPorOs.set(numero, status));
     }
 
     const eventosOS = osRows.flatMap((o) =>

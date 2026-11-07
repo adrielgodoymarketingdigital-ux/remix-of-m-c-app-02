@@ -8,6 +8,7 @@ import { resolverIdentidadeOS } from "@/lib/ordemServico/resolverIdentidadeOS";
 import { criarOuAtualizarCliente } from "@/lib/ordemServico/criarOuAtualizarCliente";
 import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
 import { criarContaAReceberOS } from "@/lib/ordemServico/criarContaAReceberOS";
+import { lerContaDaOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
 import { baixarEstoqueNovaOS, sincronizarEstoqueEdicaoOS, ItemOSEstoque } from "@/lib/ordemServico/estoqueItensOS";
 import { lucroLinhaServico, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
@@ -980,13 +981,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // retroativo de caixas fechados (getValorFaturavelOS depende dele).
       let statusContaAntesOS: string | null = null;
       if (ordem.numero_os) {
-        const { data: contaAntes } = await supabase
-          .from("contas")
-          .select("status")
-          .eq("user_id", effectiveUserId)
-          .eq("os_numero", ordem.numero_os)
-          .eq("tipo", "receber")
-          .maybeSingle();
+        const contaAntes = await lerContaDaOS(effectiveUserId, ordem.numero_os);
         statusContaAntesOS = contaAntes?.status ?? null;
       }
 
@@ -1088,14 +1083,9 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
             ? `OS ${ordem.numero_os} - ${formData.defeitoRelatado} (Entrada paga: R$ ${entradaPaga.toFixed(2)})${isSemPrazo ? ' (Sem prazo)' : ''}`
             : `Ordem de Serviço ${ordem.numero_os} - ${formData.defeitoRelatado}${isSemPrazo ? ' (Sem prazo)' : ''}`;
 
-          // Verificar se já existe conta para esta OS
-          const { data: contaExistente } = await supabase
-            .from("contas")
-            .select("id")
-            .eq("user_id", effectiveUserId)
-            .eq("os_numero", ordem.numero_os)
-            .eq("tipo", "receber")
-            .maybeSingle();
+          // Verificar se já existe conta para esta OS (com duplicadas, a
+          // recebida mais antiga — o .maybeSingle() devolvia null e criava outra)
+          const contaExistente = await lerContaDaOS(effectiveUserId, ordem.numero_os);
 
           if (contaExistente) {
             // Se a OS já está entregue/garantia e a forma de pagamento não é mais "a prazo",
@@ -1213,13 +1203,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // daquele período já foi fechado, corrige os totais congelados dele.
       // Nunca bloqueia o salvamento (erros são logados internamente).
       if (ordem.numero_os) {
-        const { data: contaDepois } = await supabase
-          .from("contas")
-          .select("status")
-          .eq("user_id", effectiveUserId)
-          .eq("os_numero", ordem.numero_os)
-          .eq("tipo", "receber")
-          .maybeSingle();
+        const contaDepois = await lerContaDaOS(effectiveUserId, ordem.numero_os);
 
         const dataSaidaDepois =
           formData.status === "entregue"
