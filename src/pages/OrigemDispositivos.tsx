@@ -16,6 +16,7 @@ import { DialogEditarCompra } from "@/components/origem/DialogEditarCompra";
 import { TabelaCompras } from "@/components/origem/TabelaCompras";
 import { ListaComprasMobile } from "@/components/origem/ListaComprasMobile";
 import { TopoComprasDesktop } from "@/components/origem/TopoComprasDesktop";
+import { TabelaComprasDesktop } from "@/components/origem/TabelaComprasDesktop";
 import { DialogVisualizacaoCompra } from "@/components/origem/DialogVisualizacaoCompra";
 import { DialogCadastroDispositivo } from "@/components/dispositivos/DialogCadastroDispositivo";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
@@ -33,7 +34,11 @@ import {
   lerValorFiltro,
   montarCsvCompras,
   nomeArquivoCsvCompras,
+  ordenarCompras,
+  proximaOrdenacao,
   resumoCompras,
+  type CampoOrdenacao,
+  type OrdenacaoCompras,
 } from "@/lib/origem/listaComprasDesktop";
 import { AppLayout } from "@/components/layout/AppLayout";
 
@@ -72,6 +77,10 @@ export default function OrigemDispositivos() {
   // Filtro de valor: só existe no computador (texto digitado; lerValorFiltro converte).
   const [filtroValorMinimo, setFiltroValorMinimo] = useState("");
   const [filtroValorMaximo, setFiltroValorMaximo] = useState("");
+  // Tabela do computador: ordenação, página e seleção (a seleção só serve para exportar).
+  const [ordemDesktop, setOrdemDesktop] = useState<OrdenacaoCompras>(null);
+  const [paginaDesktop, setPaginaDesktop] = useState(1);
+  const [selecionadasDesktop, setSelecionadasDesktop] = useState<Set<string>>(() => new Set());
 
   const { compras, loading, criarCompra, atualizarCompra, excluirCompra, carregarCompras } = useComprasDispositivos();
   const { pessoas } = useOrigemPessoas();
@@ -141,11 +150,36 @@ export default function OrigemDispositivos() {
   );
   const limitesValorAtivos = (valorMinimo != null ? 1 : 0) + (valorMaximo != null ? 1 : 0);
   const temFiltrosAtivosDesktop = !!temFiltrosAtivos || limitesValorAtivos > 0;
+  const comprasOrdenadasDesktop = useMemo(
+    () => ordenarCompras(comprasVisiveisDesktop, ordemDesktop),
+    [comprasVisiveisDesktop, ordemDesktop]
+  );
+  // Selecionadas que continuam visíveis no filtro atual (as outras não contam nem exportam).
+  const quantidadeSelecionadaDesktop = useMemo(
+    () => comprasVisiveisDesktop.reduce((n, c) => n + (selecionadasDesktop.has(c.id) ? 1 : 0), 0),
+    [comprasVisiveisDesktop, selecionadasDesktop]
+  );
 
-  // Gerado e baixado no navegador; nada é enviado. A seleção por linha entra na F5
-  // (até lá o Set vazio exporta todas as compras visíveis).
+  // Filtro ou ordem novos voltam para a 1ª página (se já está nela, o React não renderiza de novo).
+  useEffect(() => {
+    setPaginaDesktop(1);
+  }, [busca, filtroFormaPagamento, filtroDataInicial, filtroDataFinal, filtroValorMinimo, filtroValorMaximo, ordemDesktop]);
+
+  const selecionarDesktop = (ids: string[], marcar: boolean) => {
+    setSelecionadasDesktop((atual) => {
+      const nova = new Set(atual);
+      for (const id of ids) {
+        if (marcar) nova.add(id);
+        else nova.delete(id);
+      }
+      return nova;
+    });
+  };
+
+  // Gerado e baixado no navegador; nada é enviado. Com linhas marcadas, só elas
+  // (na ordem da tela); sem nenhuma, todas as compras visíveis no filtro.
   const exportarCsv = () => {
-    const lista = comprasParaExportar(comprasVisiveisDesktop, new Set<string>());
+    const lista = comprasParaExportar(comprasOrdenadasDesktop, selecionadasDesktop);
     if (lista.length === 0) return;
     const blob = new Blob([montarCsvCompras(lista)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -450,13 +484,21 @@ export default function OrigemDispositivos() {
                 quantidadeEncontrada={comprasVisiveisDesktop.length}
                 quantidadeTotal={compras.length}
                 onExportar={exportarCsv}
+                quantidadeSelecionada={quantidadeSelecionadaDesktop}
+                onLimparSelecao={() => setSelecionadasDesktop(new Set())}
               />
 
-              {/* Tabela de hoje até a F5 (nova tabela do computador). */}
-              <TabelaCompras
-                compras={comprasVisiveisDesktop}
-                aparelhosEncontrados={aparelhosEncontrados}
+              <TabelaComprasDesktop
+                compras={comprasOrdenadasDesktop}
                 loading={loading}
+                filtroAtivo={temFiltrosAtivosDesktop}
+                aparelhosEncontrados={aparelhosEncontrados}
+                ordem={ordemDesktop}
+                onOrdenar={(campo: CampoOrdenacao) => setOrdemDesktop((atual) => proximaOrdenacao(atual, campo))}
+                pagina={paginaDesktop}
+                onPagina={setPaginaDesktop}
+                selecionadas={selecionadasDesktop}
+                onSelecionar={selecionarDesktop}
                 onVerDetalhes={(c) => { setCompraSelecionada(c); setDialogDetalhesAberto(true); }}
                 onEditar={(c) => { setCompraSelecionada(c); setDialogEditarAberto(true); }}
                 onExcluir={excluirCompra}

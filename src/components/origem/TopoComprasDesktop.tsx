@@ -51,6 +51,9 @@ interface TopoComprasDesktopProps {
   quantidadeEncontrada: number;
   quantidadeTotal: number;
   onExportar: () => void;
+  /** Linhas marcadas na tabela que continuam visíveis: com alguma, o CSV leva só elas. */
+  quantidadeSelecionada?: number;
+  onLimparSelecao?: () => void;
 }
 
 interface Indicador {
@@ -224,10 +227,25 @@ export function TopoComprasDesktop(p: TopoComprasDesktopProps) {
       </Card>
 
       <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-muted-foreground">
-          {p.quantidadeEncontrada} {p.quantidadeEncontrada === 1 ? "compra encontrada" : "compras encontradas"}
-          {p.temFiltrosAtivos && ` (de ${p.quantidadeTotal} total)`}
-        </p>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <p>
+            {p.quantidadeEncontrada} {p.quantidadeEncontrada === 1 ? "compra encontrada" : "compras encontradas"}
+            {p.temFiltrosAtivos && ` (de ${p.quantidadeTotal} total)`}
+          </p>
+          {!!p.quantidadeSelecionada && (
+            <>
+              <p className="font-medium text-foreground">
+                {p.quantidadeSelecionada} {p.quantidadeSelecionada === 1 ? "selecionada" : "selecionadas"}
+                <span className="font-normal text-muted-foreground"> · o CSV leva só as selecionadas</span>
+              </p>
+              {p.onLimparSelecao && (
+                <Button variant="link" onClick={p.onLimparSelecao} className="h-auto p-0 text-sm">
+                  Limpar seleção
+                </Button>
+              )}
+            </>
+          )}
+        </div>
         <Button variant="outline" onClick={p.onExportar} disabled={p.loading || p.quantidadeEncontrada === 0} className="h-10 gap-2">
           <Download className="h-4 w-4" aria-hidden="true" />
           Exportar CSV

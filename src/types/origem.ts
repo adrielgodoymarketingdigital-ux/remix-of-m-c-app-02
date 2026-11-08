@@ -84,6 +84,8 @@ export interface CompraDispositivo {
     modelo: string;
     imei?: string;
     numero_serie?: string | null;
+    /** Cor do aparelho principal (lista do computador e CSV). */
+    cor?: string | null;
   };
   /** Todos os aparelhos com dispositivos.compra_id = esta compra (vêm no mesmo select da lista, para a busca). */
   aparelhos?: {

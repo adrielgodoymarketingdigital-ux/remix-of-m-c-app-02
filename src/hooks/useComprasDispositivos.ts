@@ -49,7 +49,8 @@ export function useComprasDispositivos() {
             marca,
             modelo,
             imei,
-            numero_serie
+            numero_serie,
+            cor
           ),
           aparelhos:dispositivos!dispositivos_compra_id_fkey (
             id,
