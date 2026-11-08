@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { consolidarLojas, lojasUnicas, participacaoNoTotal } from "@/lib/multiempresas/consolidacao";
 import {
   BarChart as ReBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, LineChart, Line, CartesianGrid, RadarChart,
@@ -216,13 +217,15 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
   periodo: Periodo;
   onAbrirMetas: (e: EmpresaCard) => void;
 }) {
-  const fatTotal = useMemo(() => empresas.reduce((s, e) => s + e.metricas.faturamento_mes, 0), [empresas]);
-  const osTotal = useMemo(() => empresas.reduce((s, e) => s + e.metricas.os_mes, 0), [empresas]);
-  const osAbertas = useMemo(() => empresas.reduce((s, e) => s + e.metricas.os_em_aberto, 0), [empresas]);
-  const osFinalizadas = useMemo(() => empresas.reduce((s, e) => s + e.metricas.os_finalizadas, 0), [empresas]);
-  const vendasTotal = useMemo(() => empresas.reduce((s, e) => s + e.metricas.vendas_mes, 0), [empresas]);
-  const fatOS = useMemo(() => empresas.reduce((s, e) => s + (e.metricas.faturamento_os ?? 0), 0), [empresas]);
-  const fatVendas = useMemo(() => empresas.reduce((s, e) => s + (e.metricas.faturamento_vendas ?? 0), 0), [empresas]);
+  // Consolidado: cada loja somada uma única vez (o card da matriz não inclui as filiais).
+  const totais = useMemo(() => consolidarLojas(empresas), [empresas]);
+  const fatTotal = totais.faturamento;
+  const osTotal = totais.os;
+  const osAbertas = totais.osAbertas;
+  const osFinalizadas = totais.osFinalizadas;
+  const vendasTotal = totais.vendas;
+  const fatOS = totais.faturamentoOS;
+  const fatVendas = totais.faturamentoVendas;
   const ticketMedioGlobal = osTotal > 0 ? fatTotal / osTotal : 0;
   const taxaFinalizacao = osTotal > 0 ? Math.round((osFinalizadas / osTotal) * 100) : 0;
 
@@ -247,7 +250,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
   // Top produtos consolidado
   const topProdutosConsolidado = useMemo(() => {
     const mapa: Record<string, { nome: string; tipo: string; label: string; total: number; quantidade: number }> = {};
-    for (const emp of empresas) {
+    for (const emp of lojasUnicas(empresas)) {
       for (const p of (emp.metricas.top_produtos || [])) {
         if (!mapa[p.nome]) mapa[p.nome] = { nome: p.nome, tipo: p.tipo, label: p.label, total: 0, quantidade: 0 };
         mapa[p.nome].total += p.total;
@@ -260,7 +263,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
   // Formas de pagamento consolidado
   const formasConsolidado = useMemo(() => {
     const mapa: Record<string, { label: string; total: number; quantidade: number }> = {};
-    for (const emp of empresas) {
+    for (const emp of lojasUnicas(empresas)) {
       for (const f of (emp.metricas.vendas_por_forma || [])) {
         if (!mapa[f.forma]) mapa[f.forma] = { label: f.label, total: 0, quantidade: 0 };
         mapa[f.forma].total += f.total;
@@ -396,7 +399,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
             <div className="space-y-2">
               {ranking.map((emp, i) => {
                 const ticket = emp.metricas.os_mes > 0 ? emp.metricas.faturamento_mes / emp.metricas.os_mes : 0;
-                const pct = fatTotal > 0 ? (emp.metricas.faturamento_mes / fatTotal) * 100 : 0;
+                const pct = participacaoNoTotal(emp.metricas.faturamento_mes, fatTotal);
                 const cor = emp.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length];
                 return (
                   <div key={emp.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors">
@@ -626,7 +629,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               <tbody>
                 {ranking.map((emp, i) => {
                   const ticket = emp.metricas.os_mes > 0 ? emp.metricas.faturamento_mes / emp.metricas.os_mes : 0;
-                  const pct = fatTotal > 0 ? (emp.metricas.faturamento_mes / fatTotal) * 100 : 0;
+                  const pct = participacaoNoTotal(emp.metricas.faturamento_mes, fatTotal);
                   const taxaFin = emp.metricas.os_mes > 0 ? Math.round((emp.metricas.os_finalizadas / emp.metricas.os_mes) * 100) : 0;
                   const cor = emp.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length];
                   return (
@@ -862,7 +865,7 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
   const [expandido, setExpandido] = useState(false);
   const metaFat = empresa.metas.find(m => m.tipo === "faturamento");
   const pctFat = metaFat && metaFat.valor > 0 ? Math.min(100, (empresa.metricas.faturamento_mes / metaFat.valor) * 100) : null;
-  const pctTotal = fatTotal > 0 ? Math.min(100, (empresa.metricas.faturamento_mes / fatTotal) * 100) : 0;
+  const pctTotal = participacaoNoTotal(empresa.metricas.faturamento_mes, fatTotal);
   const ticketMedio = empresa.metricas.os_mes > 0 ? empresa.metricas.faturamento_mes / empresa.metricas.os_mes : 0;
 
   return (
@@ -1318,7 +1321,8 @@ export default function MultiEmpresas() {
     );
   }
 
-  const fatTotal = todasEmpresas.reduce((s, e) => s + e.metricas.faturamento_mes, 0);
+  // Total consolidado para o "Part. %" dos cards: cada loja somada uma única vez.
+  const fatTotal = consolidarLojas(todasEmpresas).faturamento;
 
   return (
     <AppLayout>

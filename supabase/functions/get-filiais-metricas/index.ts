@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { filtrarRegistrosDaLoja, filtroLeituraLoja, type LojaLeitura } from "./lojas.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,50 +36,71 @@ const isItemOS = (v: any) => {
   return false;
 };
 
+// Colunas lidas nas consultas abaixo (só leitura).
+interface LinhaVenda {
+  empresa_id: string | null;
+  total: number | null;
+  valor_desconto_manual: number | null;
+  valor_desconto_cupom: number | null;
+  tipo: string;
+  peca_id: string | null;
+  observacoes: string | null;
+  forma_pagamento: string | null;
+  produto_id: string | null;
+  quantidade: number | null;
+}
+interface LinhaUltimaVenda extends LinhaVenda {
+  id: string;
+  data: string;
+  cliente_id: string | null;
+}
+interface LinhaOS {
+  empresa_id: string | null;
+  total: number | null;
+  status: string | null;
+}
+
 async function buscarMetricasEmpresa(
   supabase: any,
   userId: string,
-  empresaId: string,
+  loja: LojaLeitura,
   dataInicio: Date,
   dataFim: Date,
-  isMatriz: boolean,
-  todasEmpresaIds?: string[],
 ) {
+  // Cada loja lê só os próprios registros. A matriz também lê os registros sem
+  // empresa_id (só na leitura — nada é gravado). A matriz NÃO inclui as filiais:
+  // o consolidado é somado na tela, uma vez por loja.
+  const filtro = filtroLeituraLoja(loja);
+  const filtroSemLoja = `empresa_id.eq.${filtro.empresaId},empresa_id.is.null`;
+
   const buildVendasQuery = (select: string) => {
     const base = supabase.from("vendas").select(select).eq("user_id", userId).eq("cancelada", false);
-    if (isMatriz && todasEmpresaIds && todasEmpresaIds.length > 0) {
-      // Matriz: inclui todas as filiais + registros sem empresa_id
-      return base.or(`empresa_id.in.(${todasEmpresaIds.join(",")}),empresa_id.is.null`);
-    }
-    if (isMatriz) return base.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
-    return base.eq("empresa_id", empresaId);
+    return filtro.incluirSemLoja ? base.or(filtroSemLoja) : base.eq("empresa_id", filtro.empresaId);
   };
 
   const buildOsQuery = (select: string) => {
     const base = supabase.from("ordens_servico").select(select).eq("user_id", userId);
-    if (isMatriz && todasEmpresaIds && todasEmpresaIds.length > 0) {
-      // Matriz: inclui todas as filiais + registros sem empresa_id
-      return base.or(`empresa_id.in.(${todasEmpresaIds.join(",")}),empresa_id.is.null`);
-    }
-    if (isMatriz) return base.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
-    return base.eq("empresa_id", empresaId);
+    return filtro.incluirSemLoja ? base.or(filtroSemLoja) : base.eq("empresa_id", filtro.empresaId);
   };
 
   const [vendasRes, osRes, ultimasVendasRes] = await Promise.all([
-    buildVendasQuery("total, valor_desconto_manual, valor_desconto_cupom, tipo, peca_id, observacoes, forma_pagamento, produto_id, quantidade")
+    buildVendasQuery("empresa_id, total, valor_desconto_manual, valor_desconto_cupom, tipo, peca_id, observacoes, forma_pagamento, produto_id, quantidade")
       .gte("data", dataInicio.toISOString())
       .lte("data", dataFim.toISOString()),
-    buildOsQuery("total, status")
+    buildOsQuery("empresa_id, total, status")
       .gte("created_at", dataInicio.toISOString())
       .lte("created_at", dataFim.toISOString())
       .is("deleted_at", null),
-    buildVendasQuery("id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id, observacoes")
+    buildVendasQuery("id, empresa_id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id, observacoes")
       .order("data", { ascending: false })
       .limit(5),
   ]);
 
-  const osData = osRes.data || [];
-  const vendasFaturamento = (vendasRes.data || []).filter((v: any) => !isItemOS(v));
+  // Defesa extra: a mesma regra da consulta, em código puro e testado (lojas.ts).
+  const linhasOS: LinhaOS[] = osRes.data || [];
+  const linhasVendas: LinhaVenda[] = vendasRes.data || [];
+  const osData = filtrarRegistrosDaLoja(linhasOS, loja);
+  const vendasFaturamento = filtrarRegistrosDaLoja(linhasVendas, loja).filter((v: any) => !isItemOS(v));
   const faturamentoVendas = vendasFaturamento.reduce((sum: number, v: any) => sum + calcularVendaLiquida(v), 0);
   const faturamentoOS = osData
     .filter((o: any) => isStatusFinal(o.status))
@@ -140,7 +162,8 @@ async function buscarMetricasEmpresa(
   }
 
   // Últimas vendas
-  const ultimas = ultimasVendasRes.data || [];
+  const linhasUltimas: LinhaUltimaVenda[] = ultimasVendasRes.data || [];
+  const ultimas = filtrarRegistrosDaLoja(linhasUltimas, loja);
   const clienteIds = [...new Set(ultimas.map((v: any) => v.cliente_id).filter(Boolean))];
   const produtoIds2 = [...new Set(ultimas.map((v: any) => v.produto_id).filter(Boolean))];
   const pecaIds2 = [...new Set(ultimas.map((v: any) => v.peca_id).filter(Boolean))];
@@ -242,11 +265,8 @@ serve(async (req) => {
         .insert({ nome: nomeMatriz, proprietario_id: user.id, tipo: "matriz", ativa: true })
         .select().single();
       if (erroMatriz || !novaMatriz) throw new Error("Erro ao criar empresa matriz: " + erroMatriz?.message);
-      await Promise.all([
-        supabase.from("ordens_servico").update({ empresa_id: novaMatriz.id }).eq("user_id", user.id).is("empresa_id", null),
-        supabase.from("vendas").update({ empresa_id: novaMatriz.id }).eq("user_id", user.id).is("empresa_id", null),
-      ]);
-      const metricas = await buscarMetricasEmpresa(supabase, user.id, novaMatriz.id, dataInicio, dataFim, true, [novaMatriz.id]);
+      // Vendas e OS sem empresa_id NÃO são regravadas: contam na matriz só na leitura.
+      const metricas = await buscarMetricasEmpresa(supabase, user.id, { id: novaMatriz.id, tipo: "matriz" }, dataInicio, dataFim);
       const empresaCompleta = { ...novaMatriz, gerentes: [], metas: [], metricas };
       return new Response(
         JSON.stringify({ empresas: [], matrizMetricas: metricas, todasEmpresas: [empresaCompleta] }),
@@ -260,18 +280,18 @@ serve(async (req) => {
       empresas[0].tipo = "matriz";
     }
 
+    // Vendas e OS sem empresa_id NÃO são regravadas: contam na matriz só na leitura.
+    // Só UMA loja é lida como matriz (a mesma que a tela mostra como Matriz), para
+    // que um registro sem loja nunca conte duas vezes.
     const matrizExistente = empresas.find((e: any) => e.tipo === "matriz") || empresas[0];
-    await Promise.all([
-      supabase.from("ordens_servico").update({ empresa_id: matrizExistente.id }).eq("user_id", user.id).is("empresa_id", null),
-      supabase.from("vendas").update({ empresa_id: matrizExistente.id }).eq("user_id", user.id).is("empresa_id", null),
-    ]);
 
     const empresaIds = empresas.map((e: any) => e.id);
     const { data: todasMetas } = await supabase.from("empresa_metas").select("*").in("empresa_id", empresaIds);
 
     const empresasComMetricas = await Promise.all(
       empresas.map(async (empresa: any) => {
-        const metricas = await buscarMetricasEmpresa(supabase, user.id, empresa.id, dataInicio, dataFim, empresa.tipo === "matriz", empresaIds);
+        const loja: LojaLeitura = { id: empresa.id, tipo: empresa.id === matrizExistente.id ? "matriz" : "filial" };
+        const metricas = await buscarMetricasEmpresa(supabase, user.id, loja, dataInicio, dataFim);
         return {
           ...empresa,
           gerentes: [],
