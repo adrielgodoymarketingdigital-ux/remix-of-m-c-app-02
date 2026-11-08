@@ -27,7 +27,7 @@ const excluirItemOS = (v: any) => {
  * useOrdensServico/useClientes/useProdutos só expõem listas cruas.
  */
 export const useDashboardResumo = (inicioMes: Date, fimMes: Date) => {
-  const { userId, empresaId, carregando: carregandoIdentidade } = useIdentidade();
+  const { userId, empresaId, isFilial, carregando: carregandoIdentidade } = useIdentidade();
   const [resumo, setResumo] = useState<DashboardResumo>({
     osAbertas: 0,
     totalClientes: 0,
@@ -49,27 +49,29 @@ export const useDashboardResumo = (inicioMes: Date, fimMes: Date) => {
       const inicioMesISO = new Date(inicioMes.getFullYear(), inicioMes.getMonth(), inicioMes.getDate(), 0, 0, 0, 0).toISOString();
       const fimMesISO = new Date(fimMes.getFullYear(), fimMes.getMonth(), fimMes.getDate(), 23, 59, 59, 999).toISOString();
 
+      // Loja (filtroLeituraLoja): filial escolhida/gerente/funcionário de filial =
+      // só a loja; matriz = matriz + registros sem loja.
       let qOrdens = supabase
         .from("ordens_servico")
         .select("id, status, created_at")
         .eq("user_id", userId)
         .eq("is_teste", false)
         .is("deleted_at", null);
-      if (empresaId) qOrdens = qOrdens.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      if (empresaId) qOrdens = isFilial ? qOrdens.eq("empresa_id", empresaId) : qOrdens.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
 
       let qClientes = supabase
         .from("clientes")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .is("deleted_at", null);
-      if (empresaId) qClientes = qClientes.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      if (empresaId) qClientes = isFilial ? qClientes.eq("empresa_id", empresaId) : qClientes.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
 
       let qProdutos = supabase
         .from("produtos")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .is("deleted_at", null);
-      if (empresaId) qProdutos = qProdutos.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      if (empresaId) qProdutos = isFilial ? qProdutos.eq("empresa_id", empresaId) : qProdutos.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
 
       let qVendasPendentes = supabase
         .from("vendas")
@@ -80,7 +82,7 @@ export const useDashboardResumo = (inicioMes: Date, fimMes: Date) => {
         .eq("recebido", false)
         .gte("data", inicioMesISO)
         .lte("data", fimMesISO);
-      if (empresaId) qVendasPendentes = qVendasPendentes.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
+      if (empresaId) qVendasPendentes = isFilial ? qVendasPendentes.eq("empresa_id", empresaId) : qVendasPendentes.or(`empresa_id.eq.${empresaId},empresa_id.is.null`);
 
       const [
         { data: ordens },
@@ -112,7 +114,7 @@ export const useDashboardResumo = (inicioMes: Date, fimMes: Date) => {
     return () => {
       cancelado = true;
     };
-  }, [userId, empresaId, carregandoIdentidade, inicioMes.getTime(), fimMes.getTime()]);
+  }, [userId, empresaId, isFilial, carregandoIdentidade, inicioMes.getTime(), fimMes.getTime()]);
 
   return resumo;
 };

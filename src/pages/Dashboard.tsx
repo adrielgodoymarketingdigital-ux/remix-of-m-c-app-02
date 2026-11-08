@@ -71,10 +71,13 @@ const Dashboard = () => {
   const { calcularResumo } = useRelatorios();
   const { cores, loading: carregandoCores } = useCoresPersonalizadas();
   const isDesktop = useIsDesktop();
-  const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: carregandoIdentidade, isGerenteFilial } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, isFilial, carregando: carregandoIdentidade, isGerenteFilial } = useIdentidade();
   const empresaFiltroRef = useRef(empresaFiltro);
+  // Filial escolhida / gerente / funcionário de filial: só a loja (sem os
+  // registros sem loja). Matriz: matriz + sem loja (filtroLeituraLoja).
+  const isFilialRef = useRef(isFilial);
   const resolvedUserIdRef = useRef(resolvedUserId);
-  useEffect(() => { empresaFiltroRef.current = empresaFiltro; }, [empresaFiltro]);
+  useEffect(() => { empresaFiltroRef.current = empresaFiltro; isFilialRef.current = isFilial; }, [empresaFiltro, isFilial]);
   useEffect(() => { resolvedUserIdRef.current = resolvedUserId; }, [resolvedUserId]);
 
 
@@ -289,7 +292,7 @@ const Dashboard = () => {
       .is("deleted_at", null)
       .gte("created_at", inicioISO)
       .lte("created_at", fimISO);
-    if (ef) qTodasOrdens = qTodasOrdens.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    if (ef) qTodasOrdens = isFilialRef.current ? qTodasOrdens.eq("empresa_id", ef) : qTodasOrdens.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: todasOrdens } = await qTodasOrdens;
 
     // Buscar apenas finalizadas/entregues para cálculo de faturamento
@@ -307,7 +310,7 @@ const Dashboard = () => {
       .or(
         `and(data_saida.not.is.null,data_saida.gte.${inicioISO},data_saida.lte.${fimISO}),and(data_saida.is.null,created_at.gte.${inicioISO},created_at.lte.${fimISO})`
       );
-    if (ef) qVendasServicos = qVendasServicos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    if (ef) qVendasServicos = isFilialRef.current ? qVendasServicos.eq("empresa_id", ef) : qVendasServicos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: vendasServicos } = await qVendasServicos;
 
     // Buscar status das contas a receber vinculadas às OS (para não contar saldo pendente/cancelado como faturado)
@@ -322,7 +325,7 @@ const Dashboard = () => {
         .eq("user_id", userId)
         .eq("tipo", "receber")
         .in("os_numero", numerosOsServicos);
-      if (ef) qContasOsServicos = qContasOsServicos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+      if (ef) qContasOsServicos = isFilialRef.current ? qContasOsServicos.eq("empresa_id", ef) : qContasOsServicos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
       const { data: contasOsServicos } = await qContasOsServicos;
       (contasOsServicos || []).forEach((c: any) => {
         if (c.os_numero) statusContaPorOsMapServicos.set(c.os_numero, c.status);
@@ -357,7 +360,7 @@ const Dashboard = () => {
       .eq("cancelada", false)
       .is("deleted_at", null)
       .or(`and(data.gte.${queryInicio},data.lte.${queryFim}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${queryInicio},data_recebimento.lte.${queryFim}T23:59:59)`);
-    if (ef) qVendasProdutos = qVendasProdutos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    if (ef) qVendasProdutos = isFilialRef.current ? qVendasProdutos.eq("empresa_id", ef) : qVendasProdutos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: vendasProdutos } = await qVendasProdutos;
 
     // Buscar vendas de dispositivos com custo
@@ -369,7 +372,7 @@ const Dashboard = () => {
       .eq("cancelada", false)
       .is("deleted_at", null)
       .or(`and(data.gte.${queryInicio},data.lte.${queryFim}T23:59:59),and(data_recebimento.not.is.null,data_recebimento.gte.${queryInicio},data_recebimento.lte.${queryFim}T23:59:59)`);
-    if (ef) qVendasDispositivos = qVendasDispositivos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    if (ef) qVendasDispositivos = isFilialRef.current ? qVendasDispositivos.eq("empresa_id", ef) : qVendasDispositivos.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: vendasDispositivos } = await qVendasDispositivos;
 
     // Calcular serviços (custo pelo servico_id + custos adicionais assumidos pela loja)
@@ -449,7 +452,7 @@ const Dashboard = () => {
       .in("status", ["finalizado", "entregue", "garantia"])
       .gte("created_at", avulsosInicioISO)
       .lte("created_at", avulsosFimISO);
-    if (ef) qAvulsosMes = qAvulsosMes.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    if (ef) qAvulsosMes = isFilialRef.current ? qAvulsosMes.eq("empresa_id", ef) : qAvulsosMes.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: avulsosMes } = await qAvulsosMes;
 
     const faturamentoServicosAvulsos = avulsosMes?.reduce((acc, a) => acc + Number(a.preco || 0), 0) || 0;
@@ -510,7 +513,7 @@ const Dashboard = () => {
       .eq("tipo", "pagar")
       .eq("status", "pendente")
       .eq("data", hoje);
-    if (ef) qContasHoje = qContasHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    if (ef) qContasHoje = isFilialRef.current ? qContasHoje.eq("empresa_id", ef) : qContasHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: contasHoje } = await qContasHoje;
 
     // Calcular totais
@@ -525,7 +528,7 @@ const Dashboard = () => {
       .eq("tipo", "receber")
       .eq("status", "pendente")
       .eq("data", hoje);
-    if (ef) qReceberHoje = qReceberHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    if (ef) qReceberHoje = isFilialRef.current ? qReceberHoje.eq("empresa_id", ef) : qReceberHoje.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: receberHoje } = await qReceberHoje;
 
     const totalReceberHoje = receberHoje?.reduce((acc, c) => acc + Number(c.valor || 0), 0) || 0;
@@ -540,7 +543,7 @@ const Dashboard = () => {
       .eq("status", "pendente")
       .gte("data", format(inicio, "yyyy-MM-dd"))
       .lte("data", format(fim, "yyyy-MM-dd"));
-    if (ef) qReceberMes = qReceberMes.or(`empresa_id.eq.${ef},empresa_id.is.null`);
+    if (ef) qReceberMes = isFilialRef.current ? qReceberMes.eq("empresa_id", ef) : qReceberMes.or(`empresa_id.eq.${ef},empresa_id.is.null`);
     const { data: receberMes } = await qReceberMes;
 
     const totalReceberMes = receberMes?.reduce((acc, c) => acc + Number(c.valor || 0), 0) || 0;

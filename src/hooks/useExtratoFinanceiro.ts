@@ -78,7 +78,14 @@ const PAGE_SIZE = 50;
  * vivem no banco, não aqui.
  */
 export function useExtratoFinanceiro() {
-  const { userId, empresaId, isFilial, carregando: identidadeCarregando } = useIdentidade();
+  // Extrato fica com o filtro de loja de ANTES da F3 (as fn_extrato_* serão
+  // revistas na fase do Extrato); por isso empresaIdAnterior/isFilialAnterior.
+  const {
+    userId,
+    empresaIdAnterior: empresaId,
+    isFilialAnterior: isFilial,
+    carregando: identidadeCarregando,
+  } = useIdentidade();
   const { isFuncionario } = useFuncionarioPermissoes();
 
   const [resumo, setResumo] = useState<ResumoExtrato | null>(null);

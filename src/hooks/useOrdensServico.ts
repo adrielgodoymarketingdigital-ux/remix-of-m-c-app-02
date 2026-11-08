@@ -275,7 +275,9 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           .eq("is_teste", false)
           .is("deleted_at", null);
 
-        // Funcionários comuns não têm filtro de empresa_id — veem todas as OS do dono
+        // Dono/gerente: filtro abaixo. Funcionário: a loja dele (filtroLeituraLoja) —
+        // de filial = só a filial; da matriz = matriz + sem loja; matriz ilegível =
+        // sem filtro de loja (como antes).
         if (!isFuncionario) {
           if (empresaFiltro) {
             if (isFilial) {
@@ -292,8 +294,9 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
           }
           // Usuário sem multiempresas (isProprietario=false): sem filtro por empresa_id
         } else if (isFuncionario && empresaFiltro) {
-          // Funcionário vinculado a uma empresa específica (filial) → filtrar por ela
-          query = query.eq("empresa_id", empresaFiltro);
+          query = isFilial
+            ? query.eq("empresa_id", empresaFiltro)
+            : query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
         }
 
         // Se é funcionário e NÃO tem permissão de ver todas as OS, filtrar apenas as dele

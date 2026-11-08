@@ -357,7 +357,7 @@ export const ajudaModulos: AjudaModulo[] = [
     passos: [
       "1. Clique em \"+ Nova Filial\" para cadastrar uma nova empresa/unidade.",
       "2. Use o seletor de filial no topo do menu lateral para alternar entre as empresas.",
-      "3. Veja o Dashboard consolidado com faturamento total, OS e ticket médio de todas as filiais.",
+      "3. O Dashboard e as demais telas mostram a empresa escolhida no seletor. O consolidado de todas as filiais (faturamento total, OS e ticket médio) fica aqui, na tela Multi Empresas.",
       "4. Use a aba \"Empresas\" para comparar o desempenho entre as unidades e a aba \"Relatórios\" para análises mais detalhadas.",
       "5. Acompanhe o \"Ranking Geral\" para ver qual filial está performando melhor no período.",
     ],

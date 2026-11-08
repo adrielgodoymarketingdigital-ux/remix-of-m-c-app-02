@@ -1,7 +1,11 @@
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { decidirFiltroLeitura, decidirFiltroLeituraAnterior, filtroLeituraPrecisaDaMatriz } from "@/lib/multiempresas/filtroLeituraLoja";
+import { papelDeGravacao } from "@/lib/multiempresas/resolverLojaGravacao";
+import { buscarMatrizId } from "@/lib/multiempresas/identidadeGravacao";
 
 interface GerenteFilialData {
   proprietario_id: string;
@@ -163,10 +167,21 @@ export function useEmpresaInfo(): { empresaId: string | null; isFilial: boolean 
 
 /**
  * Retorna { userId, empresaId, carregando } de forma consolidada.
- * carregando = true enquanto o perfil de gerente de filial ainda não foi resolvido.
+ * carregando = true enquanto o perfil de gerente de filial (ou, para o
+ * funcionário sem loja, a matriz do dono) ainda não foi resolvido.
  * Use para evitar disparar queries com userId/empresaId provisórios.
+ * Filtro de loja: regra única de src/lib/multiempresas/filtroLeituraLoja.ts.
  */
-export function useIdentidade(): { userId: string | null; empresaId: string | null; carregando: boolean; isFilial: boolean; isGerenteFilial: boolean } {
+export function useIdentidade(): {
+  userId: string | null;
+  empresaId: string | null;
+  carregando: boolean;
+  isFilial: boolean;
+  isGerenteFilial: boolean;
+  /** Filtro de ANTES da F3 — só o Extrato usa, até a fase dele. */
+  empresaIdAnterior: string | null;
+  isFilialAnterior: boolean;
+} {
   const { isProprietario, empresaAtiva, matrizId } = useEmpresa();
   const { lojaUserId, isFuncionario, funcionarioEmpresaId } = useFuncionarioPermissoes();
   const gerenteData = useGerenteFilialData();
@@ -183,29 +198,51 @@ export function useIdentidade(): { userId: string | null; empresaId: string | nu
   }, []);
 
   // Gerente de filial tem prioridade — mesmo que tenha empresa própria (isProprietario = true)
-  const carregando = gerenteData === undefined;
+  const ehGerente = !!gerenteData?.proprietario_id;
+  const ehFuncionario = !ehGerente && isFuncionario && !!lojaUserId;
+  const entrada = {
+    papel: papelDeGravacao({ ehGerente, ehFuncionario }),
+    gerenteEmpresaId: gerenteData?.empresa_id ?? null,
+    funcionarioEmpresaId,
+    isProprietario,
+    empresaAtiva,
+  };
+
+  // Funcionário da matriz (sem loja): lê a matriz do dono para ver "matriz +
+  // sem loja". Se não der para ler (ex.: RLS), fica sem filtro de loja — o
+  // comportamento de antes, nunca tela vazia.
+  const precisaMatrizDoDono = gerenteData !== undefined && ehFuncionario && filtroLeituraPrecisaDaMatriz(entrada);
+  const { data: matrizDoDono, isLoading: carregandoMatrizDoDono } = useQuery({
+    queryKey: ["multiempresas-matriz-do-dono", lojaUserId],
+    queryFn: () => buscarMatrizId(lojaUserId as string),
+    enabled: precisaMatrizDoDono,
+    staleTime: 10 * 60_000,
+  });
+
+  const carregando = gerenteData === undefined || (precisaMatrizDoDono && carregandoMatrizDoDono);
+
+  const { empresaId, isFilial } = decidirFiltroLeitura({
+    ...entrada,
+    matrizId: entrada.papel === "funcionario" ? (matrizDoDono ?? null) : matrizId,
+  });
+
+  const anterior = decidirFiltroLeituraAnterior({ ...entrada, matrizId });
 
   let userId: string | null = selfId;
-  let empresaId: string | null = null;
-  let isFilial = false;
-
-  if (gerenteData?.proprietario_id) {
+  if (ehGerente) {
     // Gerente de filial de outro proprietário → usa dados do proprietário
-    userId = gerenteData.proprietario_id;
-    empresaId = gerenteData.empresa_id;
-    isFilial = true;
-  } else if (isFuncionario && lojaUserId) {
+    userId = gerenteData?.proprietario_id ?? selfId;
+  } else if (ehFuncionario) {
     userId = lojaUserId;
-    // Funcionário vinculado a uma empresa específica → filtrar por ela
-    if (funcionarioEmpresaId) {
-      empresaId = funcionarioEmpresaId;
-    }
-  } else if (isProprietario) {
-    // Sempre aplica filtro de empresa quando há matrizId — garante que vendas
-    // de filiais (empresa_id = filial_id) não apareçam na visão da matriz
-    empresaId = empresaAtiva ?? matrizId ?? null;
-    isFilial = empresaAtiva !== null;
   }
 
-  return { userId, empresaId, carregando, isFilial, isGerenteFilial: !!gerenteData?.proprietario_id };
+  return {
+    userId,
+    empresaId,
+    carregando,
+    isFilial,
+    isGerenteFilial: ehGerente,
+    empresaIdAnterior: anterior.empresaId,
+    isFilialAnterior: anterior.isFilial,
+  };
 }

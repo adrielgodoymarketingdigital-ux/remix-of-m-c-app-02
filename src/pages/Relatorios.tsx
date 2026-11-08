@@ -114,7 +114,8 @@ export default function Relatorios() {
 
   const { calcularResumo, calcularEvolucaoMensal } = useRelatorios();
   const { config } = useConfiguracaoLoja();
-  const { userId: identidadeUserId, empresaId: empresaFiltro } = useIdentidade();
+  // Loja da visão (filtroLeituraLoja): filial = só a loja; matriz = matriz + sem loja.
+  const { userId: identidadeUserId, empresaId: empresaFiltro, isFilial } = useIdentidade();
   const isDesktop = useIsDesktop();
 
   const [dataInicio, setDataInicio] = useState("");
@@ -262,7 +263,7 @@ export default function Relatorios() {
       // Limites do dia em Brasília (em UTC): "AAAA-MM-DD"/"…T23:59:59" crus eram lidos em UTC pelo banco.
       if (dataInicioFiltro) query = query.gte("created_at", limitesDiaBrasilia(dataInicioFiltro).inicioISO);
       if (dataFimFiltro) query = query.lte("created_at", limitesDiaBrasilia(dataFimFiltro).fimISO);
-      if (empresaFiltro) query = query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      if (empresaFiltro) query = isFilial ? query.eq("empresa_id", empresaFiltro) : query.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -304,7 +305,7 @@ export default function Relatorios() {
       // Período em Brasília: venda das 21h às 23:59 entra no dia em que foi feita.
       if (dataInicioFiltro) vendasPromise = vendasPromise.gte("data", limitesDiaBrasilia(dataInicioFiltro).inicioISO);
       if (dataFimFiltro) vendasPromise = vendasPromise.lte("data", limitesDiaBrasilia(dataFimFiltro).fimISO);
-      if (empresaFiltro) vendasPromise = vendasPromise.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      if (empresaFiltro) vendasPromise = isFilial ? vendasPromise.eq("empresa_id", empresaFiltro) : vendasPromise.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
 
       let avulsasPromise = supabase
         .from("vendas_avulsas" as any)

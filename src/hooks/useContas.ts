@@ -6,7 +6,7 @@ import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-re
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { diaBrasiliaDaData } from "@/lib/vendasFinanceiras";
 import { pagamentoDoCadastro } from "@/lib/financeiro/pagamentoDoCadastro";
-import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
+import { useResolvedUserId, useIdentidade } from "./useResolvedUserId";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { resolverEmpresaGravacaoSegura } from "@/lib/multiempresas/identidadeGravacao";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
@@ -31,10 +31,15 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const resolvedUserIdFromContext = useResolvedUserId();
-  const { empresaId: empresaFiltro, isFilial } = useEmpresaInfo();
+  // Loja da visão (filtroLeituraLoja): dono e gerente iguais a antes; funcionário
+  // de filial = só a loja dele; funcionário da matriz = matriz + sem loja (antes
+  // ficava sem filtro e via todas as lojas).
+  const { empresaId: empresaFiltro, isFilial, carregando: identidadeCarregando } = useIdentidade();
   const { isFuncionario } = useFuncionarioPermissoes();
 
   const carregarContas = useCallback(async () => {
+    // Espera a identidade (gerente / matriz do dono) para não listar com o filtro provisório.
+    if (identidadeCarregando) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
@@ -63,26 +68,32 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
         query = query.lte("data", filtros.fim.toISOString().split("T")[0]);
       }
 
-      // Carregar contas, vendas a_receber e OS excluídas em paralelo com retry
-      // Vendas virtuais não são incluídas quando há filtro de empresa (tabela vendas não tem empresa_id)
+      // Carregar contas, vendas a_receber e OS excluídas em paralelo com retry.
+      // As vendas a receber (contas virtuais) seguem o MESMO filtro de loja das
+      // contas: vendas têm empresa_id. Antes, com qualquer filtro de loja, elas
+      // sumiam de Contas.
+      let queryVendasAReceber = supabase
+        .from("vendas")
+        .select("id, data, total, valor_desconto_manual, valor_desconto_cupom, valor_troca, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_fkey(nome), produtos(nome), dispositivos(marca, modelo), pecas(nome)")
+        .eq("user_id", targetUserId)
+        .in("forma_pagamento", ["a_receber", "a_prazo"])
+        .eq("cancelada", false);
+      if (empresaFiltro) {
+        queryVendasAReceber = isFilial
+          ? queryVendasAReceber.eq("empresa_id", empresaFiltro)
+          : queryVendasAReceber.or(`empresa_id.eq.${empresaFiltro},empresa_id.is.null`);
+      }
       const [contasResult, vendasResult, osExcluidasResult] = await Promise.all([
         withRetry(async () => {
           const r = await Promise.resolve(query);
           if (r.error) throw r.error;
           return r;
         }, 'useContas.queryContas'),
-        empresaFiltro
-          ? Promise.resolve({ data: [] })
-          : withRetry(async () => {
-              const r = await supabase
-                .from("vendas")
-                .select("id, data, total, valor_desconto_manual, valor_desconto_cupom, valor_troca, forma_pagamento, data_prevista_recebimento, recebido, data_recebimento, parcela_numero, total_parcelas, cancelada, user_id, cliente_id, tipo, produto_id, dispositivo_id, peca_id, clientes!vendas_cliente_fkey(nome), produtos(nome), dispositivos(marca, modelo), pecas(nome)")
-                .eq("user_id", targetUserId)
-                .in("forma_pagamento", ["a_receber", "a_prazo"])
-                .eq("cancelada", false);
-              if (r.error) throw r.error;
-              return r;
-            }, 'useContas.queryVendasAReceber'),
+        withRetry(async () => {
+          const r = await Promise.resolve(queryVendasAReceber);
+          if (r.error) throw r.error;
+          return r;
+        }, 'useContas.queryVendasAReceber'),
         withRetry(async () => {
           const r = await supabase
             .from("ordens_servico")
@@ -179,7 +190,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
     } finally {
       setLoading(false);
     }
-  }, [filtros, toast, resolvedUserIdFromContext, empresaFiltro]);
+  }, [filtros, toast, resolvedUserIdFromContext, empresaFiltro, isFilial, identidadeCarregando]);
 
   // Recarrega a lista depois das ações (só quando o hook carrega a lista).
   const recarregar = useCallback(async () => {
