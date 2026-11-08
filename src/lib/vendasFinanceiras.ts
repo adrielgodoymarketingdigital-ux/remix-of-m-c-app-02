@@ -152,6 +152,28 @@ export const isVendaNoDiaBrasilia = (venda: VendaFinanceiraLike, diaBrasilia: st
   return diaBrasiliaDaData(dataRef) === diaBrasilia;
 };
 
+/**
+ * Vendas que entram nos cards "Hoje" do Dashboard (faturamento/lucro do dia e
+ * por setor). Mesma regra financeira do mês (shouldIncludeVendaInFinancialTotals:
+ * a receber/a prazo só depois de recebida, cancelada nunca), mas com o dia de
+ * Brasília (isVendaNoDiaBrasilia) — não usar isVendaInFinancialPeriod aqui, que
+ * lê o dia no fuso do navegador. Fora também: itens usados em OS, linha
+ * secundária de pagamento duplo ainda não reconhecida e venda de peça.
+ */
+export const filtrarVendasDoHoje = <T extends VendaFinanceiraLike & { peca_id?: string | null }>(
+  vendas: readonly T[],
+  diaBrasilia: string,
+): T[] =>
+  vendas.filter((v) => {
+    if (typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return false;
+    // Linha secundária de pagamento duplo: só entra quando é a parte "a receber"
+    // já recebida (custo proporcional já gravado em custo_unitario).
+    if (isPagamentoDuploSecundario(v) && !deveContarSecundarioNoLucro(v)) return false;
+    if (v.peca_id) return false;
+    if (!shouldIncludeVendaInFinancialTotals(v)) return false;
+    return isVendaNoDiaBrasilia(v, diaBrasilia);
+  });
+
 export const isVendaInOptionalFinancialPeriod = (
   venda: VendaFinanceiraLike,
   inicio?: Date | null,
