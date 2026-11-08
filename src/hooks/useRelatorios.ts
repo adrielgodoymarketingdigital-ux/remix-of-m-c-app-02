@@ -13,13 +13,13 @@ import {
 import { useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaDataCompetencia, getVendaReceitaLiquida, isVendaInOptionalFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro, resolverCustoVendaParaLucro } from "@/lib/vendasFinanceiras";
-import { useIdentidade } from "./useResolvedUserId";
+import { useIdentidadeLeitura } from "./useResolvedUserId";
 import { ehDespesaOperacional } from "@/lib/financeiro/despesasOperacionais";
 
 export const useRelatorios = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidadeLeitura();
   const empresaFiltroRef = useRef(empresaFiltro);
   const isFilialRef = useRef(isFilial);
   const resolvedUserIdRef = useRef(resolvedUserId);

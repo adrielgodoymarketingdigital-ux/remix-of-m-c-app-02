@@ -8,7 +8,7 @@ import {
   FiltrosRelatorioVendas,
 } from "@/types/relatorio-vendas";
 import { useToast } from "@/hooks/use-toast";
-import { useIdentidade } from "./useResolvedUserId";
+import { useIdentidadeLeitura } from "./useResolvedUserId";
 import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 
 /** Lê produtos.estoque_minimo dos produtos do relatório, em lotes; qualquer erro = deixa sem. */
@@ -30,7 +30,7 @@ async function preencherEstoqueMinimo(produtosMap: Map<string, RelatorioProduto>
 export const useRelatoriosVendas = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { userId: resolvedUserId, empresaId: empresaFiltro, isFilial } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, isFilial } = useIdentidadeLeitura();
   const empresaFiltroRef = useRef(empresaFiltro);
   const isFilialRef = useRef(isFilial);
   const resolvedUserIdRef = useRef(resolvedUserId);

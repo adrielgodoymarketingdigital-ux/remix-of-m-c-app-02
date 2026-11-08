@@ -7,7 +7,7 @@ import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { useEventDispatcher } from "./useEventDispatcher";
 import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-retry";
 import { dataHoje } from "@/lib/formatters";
-import { useIdentidade } from "./useResolvedUserId";
+import { useIdentidade, useIdentidadeLeitura } from "./useResolvedUserId";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 import { estornarEstoqueOS, ItemOSEstoque } from "@/lib/ordemServico/estoqueItensOS";
@@ -92,13 +92,23 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
   const { toast } = useToast();
   const { lojaUserId, isFuncionario, funcionarioId, permissoes, carregando: funcionarioCarregando } = useFuncionarioPermissoes();
   const { dispatchEvent } = useEventDispatcher();
-  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
+  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidadeLeitura();
   const { isProprietario } = useEmpresa();
   const resolvedUserIdRef = useRef<string | null>(null);
   const empresaFiltroRef = useRef(empresaFiltro);
   const isFilialRef = useRef(isFilial);
   const isProprietarioRef = useRef(isProprietario);
   useEffect(() => { empresaFiltroRef.current = empresaFiltro; isFilialRef.current = isFilial; isProprietarioRef.current = isProprietario; }, [empresaFiltro, isFilial, isProprietario]);
+  // O que GRAVA (importação por planilha: clientes e OS) e o ajuste de caixa
+  // fechado continuam com a identidade de antes (useIdentidade). Só a leitura
+  // usa a regra nova (useIdentidadeLeitura).
+  const { empresaId: empresaAntiga, isFilial: isFilialAntiga } = useIdentidade();
+  const empresaAntigaRef = useRef(empresaAntiga);
+  const isFilialAntigaRef = useRef(isFilialAntiga);
+  useEffect(() => {
+    empresaAntigaRef.current = empresaAntiga;
+    isFilialAntigaRef.current = isFilialAntiga;
+  }, [empresaAntiga, isFilialAntiga]);
   const detalhesCacheRef = useRef<Record<string, OrdemServico>>({});
 
   const ordens = useMemo(() => {
@@ -766,7 +776,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
             statusContaAntes: statusAnterior === "entregue" ? "recebido" : null,
             statusContaDepois: contaAtualOS?.status ?? null,
             userIdCaixa: userId,
-            empresaId: empresaId ?? null,
+            empresaId: empresaAntigaRef.current ?? null,
           });
         } catch (ajusteErr) {
           console.error("[atualizarStatus] ajuste de caixa fechado falhou:", ajusteErr);
@@ -814,7 +824,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
     const userId = await resolverUserId();
 
     // Garantir empresa_id correto para gerentes de filial, mesmo se o ref ainda não carregou
-    let empresaIdParaImport = empresaFiltroRef.current;
+    let empresaIdParaImport = empresaAntigaRef.current;
     if (!empresaIdParaImport) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -868,7 +878,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
 
     // empresa_id para clientes novos: filial se ativa, senão busca a matriz
     let empresaIdCliente: string | null = null;
-    if (isFilialRef.current && empresaIdParaImport) {
+    if (isFilialAntigaRef.current && empresaIdParaImport) {
       empresaIdCliente = empresaIdParaImport;
     } else {
       const { data: empresaMatriz } = await supabase
@@ -886,7 +896,7 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
       .select("id, nome, telefone")
       .eq("user_id", userId)
       .is("deleted_at", null);
-    if (isFilialRef.current && empresaIdCliente) {
+    if (isFilialAntigaRef.current && empresaIdCliente) {
       queryClientes = queryClientes.eq("empresa_id", empresaIdCliente);
     }
     const { data: clientesExistentes } = await queryClientes;

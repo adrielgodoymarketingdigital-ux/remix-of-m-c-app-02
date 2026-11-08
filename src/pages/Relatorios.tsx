@@ -32,7 +32,7 @@ import {
 import { FiltrosRelatorio } from "@/types/relatorio";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { useIdentidade } from "@/hooks/useResolvedUserId";
+import { useIdentidadeLeitura } from "@/hooks/useResolvedUserId";
 import { supabase } from "@/integrations/supabase/client";
 import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import {
@@ -115,7 +115,7 @@ export default function Relatorios() {
   const { calcularResumo, calcularEvolucaoMensal } = useRelatorios();
   const { config } = useConfiguracaoLoja();
   // Loja da visão (filtroLeituraLoja): filial = só a loja; matriz = matriz + sem loja.
-  const { userId: identidadeUserId, empresaId: empresaFiltro, isFilial } = useIdentidade();
+  const { userId: identidadeUserId, empresaId: empresaFiltro, isFilial } = useIdentidadeLeitura();
   const isDesktop = useIsDesktop();
 
   const [dataInicio, setDataInicio] = useState("");

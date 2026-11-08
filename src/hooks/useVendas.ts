@@ -7,7 +7,7 @@ import { withRetry, shouldSuppressToast } from "@/lib/supabase-retry";
 import { dataHoje, extrairDataLocal } from "@/lib/formatters";
 import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
-import { useIdentidade } from "./useResolvedUserId";
+import { useIdentidade, useIdentidadeLeitura } from "./useResolvedUserId";
 import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
@@ -72,8 +72,11 @@ export const useVendas = () => {
   const { toast } = useToast();
   const { dispatchEvent } = useEventDispatcher();
   const { lojaUserId, isFuncionario } = useFuncionarioPermissoes();
-  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidade();
-  const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaFiltro);
+  const { userId: resolvedUserIdFromContext, empresaId: empresaFiltro, carregando: identidadeCarregando, isFilial } = useIdentidadeLeitura();
+  // Formas de pagamento personalizadas são configuração (não lista de vendas):
+  // continuam com a loja de antes (useIdentidade), sem a regra nova de leitura.
+  const { empresaId: empresaConfigFormas } = useIdentidade();
+  const { formas: formasCustomizadas } = useFormasPagamentoCustomizadas(empresaConfigFormas);
 
   const resolverFormaPagamentoBanco = (forma: string): string =>
     forma.startsWith("custom_") ? "outro" : forma;

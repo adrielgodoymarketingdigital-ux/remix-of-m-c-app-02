@@ -6,7 +6,7 @@ import { withRetry, classifyError, shouldSuppressToast } from "@/lib/supabase-re
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { diaBrasiliaDaData } from "@/lib/vendasFinanceiras";
 import { pagamentoDoCadastro } from "@/lib/financeiro/pagamentoDoCadastro";
-import { useResolvedUserId, useIdentidade } from "./useResolvedUserId";
+import { useResolvedUserId, useEmpresaInfo, useIdentidadeLeitura } from "./useResolvedUserId";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { resolverEmpresaGravacaoSegura } from "@/lib/multiempresas/identidadeGravacao";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
@@ -34,7 +34,9 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
   // Loja da visão (filtroLeituraLoja): dono e gerente iguais a antes; funcionário
   // de filial = só a loja dele; funcionário da matriz = matriz + sem loja (antes
   // ficava sem filtro e via todas as lojas).
-  const { empresaId: empresaFiltro, isFilial, carregando: identidadeCarregando } = useIdentidade();
+  const { empresaId: empresaFiltro, isFilial, carregando: identidadeCarregando } = useIdentidadeLeitura();
+  // Gravação (F2) continua com a mesma fonte de antes — a F3 só muda a leitura.
+  const { empresaId: empresaGravacaoVisao } = useEmpresaInfo();
   const { isFuncionario } = useFuncionarioPermissoes();
 
   const carregarContas = useCallback(async () => {
@@ -226,8 +228,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
       // Loja da conta: dono e gerente seguem a loja da visão (como antes);
       // funcionário grava na loja dele (sem loja = matriz; matriz ilegível = sem loja).
       const empresaGravacao = isFuncionario
-        ? await resolverEmpresaGravacaoSegura(user.id, false, null, empresaFiltro)
-        : empresaFiltro;
+        ? await resolverEmpresaGravacaoSegura(user.id, false, null, empresaGravacaoVisao)
+        : empresaGravacaoVisao;
       if (empresaGravacao) insertData.empresa_id = empresaGravacao;
       const { data: contaCriada, error } = await supabase
         .from("contas")

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useIdentidade } from "@/hooks/useResolvedUserId";
+import { useIdentidadeLeitura } from "@/hooks/useResolvedUserId";
 
 const STATUS_FECHADOS = ["entregue", "finalizado", "garantia", "cancelada"];
 
@@ -27,7 +27,7 @@ const excluirItemOS = (v: any) => {
  * useOrdensServico/useClientes/useProdutos só expõem listas cruas.
  */
 export const useDashboardResumo = (inicioMes: Date, fimMes: Date) => {
-  const { userId, empresaId, isFilial, carregando: carregandoIdentidade } = useIdentidade();
+  const { userId, empresaId, isFilial, carregando: carregandoIdentidade } = useIdentidadeLeitura();
   const [resumo, setResumo] = useState<DashboardResumo>({
     osAbertas: 0,
     totalClientes: 0,

@@ -1,6 +1,7 @@
 /**
  * Qual loja cada pessoa ENXERGA nas telas (filtro de leitura). Função pura.
  *
+ * Usada só por useIdentidadeLeitura (Vendas, Dashboard, OS, Contas, Relatórios).
  * Saída no formato que os hooks já usam (useIdentidade):
  * - { empresaId: X, isFilial: true }  → só a loja X (registros sem loja NÃO entram)
  * - { empresaId: X, isFilial: false } → matriz X + registros sem loja
@@ -53,9 +54,9 @@ export function decidirFiltroLeitura(e: EntradaFiltroLeitura): FiltroLeitura {
 }
 
 /**
- * Regra de ANTES da F3 (cópia fiel do useIdentidade antigo). Só o Extrato ainda
- * usa (fica para a fase do Extrato); também serve de base para provar que dono
- * e gerente continuam vendo o mesmo.
+ * Regra de ANTES da F3 — a mesma do useIdentidade, que continua inalterado e é
+ * usado por todas as telas fora do escopo da F3 (e pelo Extrato). Aqui serve de
+ * referência nos testes para provar que dono e gerente veem o mesmo de antes.
  */
 export function decidirFiltroLeituraAnterior(e: Omit<EntradaFiltroLeitura, "matrizId"> & { matrizId?: string | null }): FiltroLeitura {
   switch (e.papel) {

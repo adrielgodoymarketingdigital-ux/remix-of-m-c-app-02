@@ -35,7 +35,7 @@ import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCust
 import { dataBrasiliaISO, limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import { faturamentoPersonalizado, useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 import { useIsDesktop } from "@/hooks/use-mobile";
-import { useIdentidade } from "@/hooks/useResolvedUserId";
+import { useIdentidadeLeitura } from "@/hooks/useResolvedUserId";
 import { useDashboardResumo } from "@/hooks/useDashboardResumo";
 import { useCotacaoDolar } from "@/hooks/useCotacaoDolar";
 import { getSerieHistorica7Dias, getSerieHistoricaPeriodo, somarSeriePeriodo, type PontoSerieDiaria } from "@/lib/serieHistorica";
@@ -71,7 +71,7 @@ const Dashboard = () => {
   const { calcularResumo } = useRelatorios();
   const { cores, loading: carregandoCores } = useCoresPersonalizadas();
   const isDesktop = useIsDesktop();
-  const { userId: resolvedUserId, empresaId: empresaFiltro, isFilial, carregando: carregandoIdentidade, isGerenteFilial } = useIdentidade();
+  const { userId: resolvedUserId, empresaId: empresaFiltro, isFilial, carregando: carregandoIdentidade, isGerenteFilial } = useIdentidadeLeitura();
   const empresaFiltroRef = useRef(empresaFiltro);
   // Filial escolhida / gerente / funcionário de filial: só a loja (sem os
   // registros sem loja). Matriz: matriz + sem loja (filtroLeituraLoja).
