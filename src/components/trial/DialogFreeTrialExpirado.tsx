@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Crown, Frown, Loader2 } from "lucide-react";
@@ -13,6 +14,7 @@ interface DialogFreeTrialExpiradoProps {
 
 export function DialogFreeTrialExpirado({ open, onClose }: DialogFreeTrialExpiradoProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation("comum");
   const [salvando, setSalvando] = useState(false);
 
   const handleContinuarFree = async () => {
@@ -39,8 +41,8 @@ export function DialogFreeTrialExpirado({ open, onClose }: DialogFreeTrialExpira
       if (error) {
         console.error("Erro ao atualizar para plano free:", error);
         toast({
-          title: "Erro",
-          description: "Não foi possível atualizar seu plano. Tente novamente.",
+          title: t("testeGratis.expirado.erroTitulo"),
+          description: t("testeGratis.expirado.erroDescricao"),
           variant: "destructive",
         });
       } else {
@@ -66,9 +68,9 @@ export function DialogFreeTrialExpirado({ open, onClose }: DialogFreeTrialExpira
               <Frown className="h-8 w-8 text-amber-500" />
             </div>
           </div>
-          <DialogTitle className="text-center text-xl">Seu período Premium expirou!</DialogTitle>
+          <DialogTitle className="text-center text-xl">{t("testeGratis.expirado.titulo")}</DialogTitle>
           <DialogDescription className="text-center">
-            As 24 horas de acesso completo terminaram. Agora você está no plano gratuito com funcionalidades limitadas. Assine para continuar aproveitando tudo!
+            {t("testeGratis.expirado.descricao")}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex flex-col gap-2 sm:flex-col">
@@ -77,7 +79,7 @@ export function DialogFreeTrialExpirado({ open, onClose }: DialogFreeTrialExpira
             className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold shadow-lg"
           >
             <Crown className="h-4 w-4 mr-2" />
-            Assinar um plano
+            {t("testeGratis.expirado.assinar")}
           </Button>
           <Button
             variant="ghost"
@@ -88,10 +90,10 @@ export function DialogFreeTrialExpirado({ open, onClose }: DialogFreeTrialExpira
             {salvando ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Atualizando...
+                {t("testeGratis.expirado.atualizando")}
               </>
             ) : (
-              "Continuar com plano gratuito"
+              t("testeGratis.expirado.continuarFree")
             )}
           </Button>
         </DialogFooter>

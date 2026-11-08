@@ -57,6 +57,23 @@ const comum: Traducao<typeof comumPtBR> = {
     atualizar: "Actualizar ahora",
     depois: "Después",
   },
+  testeGratis: {
+    contador: {
+      titulo: "⭐ Prueba todas las funciones Premium por:",
+      dias: "{{dias}} días",
+      diasEHoras: "{{dias}} días y {{horas}} h",
+      verPlanos: "Ver planes",
+    },
+    expirado: {
+      titulo: "¡Tu período Premium terminó!",
+      descricao: "Tu período de prueba terminó. Ahora estás en el plan gratuito con funciones limitadas. ¡Suscríbete para seguir aprovechando todo!",
+      assinar: "Suscribirme a un plan",
+      continuarFree: "Continuar con el plan gratuito",
+      atualizando: "Actualizando...",
+      erroTitulo: "Error",
+      erroDescricao: "No se pudo actualizar tu plan. Inténtalo de nuevo.",
+    },
+  },
 };
 
 export default comum;

@@ -66,6 +66,26 @@ const comum = {
     atualizar: "Atualizar agora",
     depois: "Depois",
   },
+  // Teste grátis do cadastro (FreeTrialTimer e DialogFreeTrialExpirado).
+  testeGratis: {
+    contador: {
+      titulo: "⭐ Teste todas as funcionalidades Premium por mais:",
+      // Só aparece com mais de 48h restantes, então {{dias}} é sempre 2 ou mais.
+      dias: "{{dias}} dias",
+      diasEHoras: "{{dias}} dias e {{horas}}h",
+      verPlanos: "Ver Planos",
+    },
+    // Sem citar a duração: vale para o teste de 24h e para o de 14 dias.
+    expirado: {
+      titulo: "Seu período Premium expirou!",
+      descricao: "Seu período de teste terminou. Agora você está no plano gratuito com funcionalidades limitadas. Assine para continuar aproveitando tudo!",
+      assinar: "Assinar um plano",
+      continuarFree: "Continuar com plano gratuito",
+      atualizando: "Atualizando...",
+      erroTitulo: "Erro",
+      erroDescricao: "Não foi possível atualizar seu plano. Tente novamente.",
+    },
+  },
 } as const;
 
 export default comum;
