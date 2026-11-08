@@ -16,6 +16,8 @@ export interface DadosEntradaTroca {
     marca: string;
     modelo: string;
     imei: string | null;
+    /** IMEI 2 (dual chip). Opcional: troca pendente salva antes dele não tem o campo. */
+    imei2?: string | null;
     numeroSerie: string | null;
     cor: string | null;
     capacidadeGb: number | null;

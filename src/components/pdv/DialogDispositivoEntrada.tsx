@@ -23,6 +23,7 @@ import { ComNegrito } from "@/components/i18n/ComNegrito";
 import { ChecklistDispositivo } from "@/components/ordens/ChecklistDispositivo";
 import { Checklist } from "@/types/ordem-servico";
 import type { DadosEntradaTroca } from "@/lib/vendas/trocaPDV";
+import { montarEntradaTroca } from "@/lib/vendas/entradaTrocaForm";
 
 interface DialogDispositivoEntradaProps {
   open: boolean;
@@ -81,52 +82,29 @@ export function DialogDispositivoEntrada({
   };
 
   const handleConfirmar = () => {
-    if (!vendedorNome.trim()) {
-      toast.error(t("entradaTroca.toast.informeVendedor"));
-      return;
-    }
-    if (!marca.trim() || !modelo.trim()) {
-      toast.error(t("entradaTroca.toast.informeMarcaModelo"));
-      return;
-    }
-    const custo = parseFloat(valorCusto.replace(",", "."));
-    if (isNaN(custo) || custo <= 0) {
-      toast.error(t("entradaTroca.toast.custoInvalido"));
-      return;
-    }
-    const venda = parseFloat(valorVenda.replace(",", "."));
-    if (isNaN(venda) || venda <= 0) {
-      toast.error(t("entradaTroca.toast.vendaInvalido"));
-      return;
-    }
-
-    const capacidade = capacidadeGb ? parseInt(capacidadeGb) : NaN;
-    const checklistEntrada =
-      checklist.entrada && Object.keys(checklist.entrada).length > 0
-        ? checklist.entrada
-        : null;
-
-    onConfirmar({
-      vendedor: {
-        nome: vendedorNome.trim(),
-        cpf: vendedorCpf.trim() || null,
-        telefone: vendedorTelefone.trim() || null,
-      },
-      aparelho: {
-        marca: marca.trim(),
-        modelo: modelo.trim(),
-        imei: imei.trim() || null,
-        numeroSerie: numeroSerie.trim() || null,
-        cor: cor.trim() || null,
-        capacidadeGb: Number.isFinite(capacidade) ? capacidade : null,
-        condicao,
-        checklistEntrada,
-      },
-      // Centavos: o mesmo valor vai para vendas.valor_troca, compra e vendas_trocas (numeric(12,2)).
-      valorEntrada: Math.round(custo * 100) / 100,
-      valorVenda: Math.round(venda * 100) / 100,
-      observacoes: observacoes.trim() || null,
+    // Validação e montagem: lógica pura em lib/vendas/entradaTrocaForm.ts.
+    const resultado = montarEntradaTroca({
+      vendedorNome,
+      vendedorCpf,
+      vendedorTelefone,
+      marca,
+      modelo,
+      imei,
+      numeroSerie,
+      cor,
+      capacidadeGb,
+      condicao,
+      checklistEntrada: checklist.entrada,
+      valorCusto,
+      valorVenda,
+      observacoes,
     });
+    if (!resultado.ok) {
+      toast.error(t(`entradaTroca.toast.${resultado.erro}`));
+      return;
+    }
+
+    onConfirmar(resultado.dados);
     resetForm();
     onOpenChange(false);
   };
