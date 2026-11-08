@@ -31,7 +31,7 @@ import { KpisDesktop } from "@/components/dashboard/desktop/KpisDesktop";
 import { TutorialAutoStart } from "@/components/tutorial/TutorialAutoStart";
 import { CardPrimeirosPassos } from "@/components/onboarding/CardPrimeirosPassos";
 import { useRelatorios } from "@/hooks/useRelatorios";
-import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, isVendaNoDiaBrasilia, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro } from "@/lib/vendasFinanceiras";
+import { distribuirCustoParcelasGrupo, getFinancialQueryDateBounds, getVendaCustoTotal, getVendaReceitaLiquida, isVendaInFinancialPeriod, getValorFaturavelOS, isPagamentoDuploSecundario, deveContarSecundarioNoLucro, filtrarVendasDoHoje } from "@/lib/vendasFinanceiras";
 import { dataBrasiliaISO, limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import { faturamentoPersonalizado, useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
 import { useIsDesktop } from "@/hooks/use-mobile";
@@ -633,7 +633,8 @@ const Dashboard = () => {
 
     // "Hoje" é o dia de Brasília, não o do navegador nem o dia UTC: a consulta vai de
     // 00:00 a 23:59:59.999 de Brasília (em UTC) e cada venda é conferida pelo dia de
-    // Brasília dela (isVendaNoDiaBrasilia) — venda das 21h às 23:59 conta hoje.
+    // Brasília dela (filtrarVendasDoHoje) — venda das 21h às 23:59 conta hoje. Venda
+    // a receber/a prazo só entra depois de recebida, no dia do recebimento (regra do mês).
     const hoje = dataBrasiliaISO();
     const { inicioISO: inicioDiaISO, fimISO: fimDiaISO } = limitesDiaBrasilia(hoje);
 
@@ -722,14 +723,7 @@ const Dashboard = () => {
       return acc + custo;
     }, 0);
 
-    const vendasFiltradas = (vendasHoje || []).filter((v) => {
-      if (v.observacoes && typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return false;
-      // Linha secundária de pagamento duplo: só entra quando é a parte "a receber"
-      // já recebida (custo proporcional já gravado em custo_unitario).
-      if (isPagamentoDuploSecundario(v as any) && !deveContarSecundarioNoLucro(v as any)) return false;
-      if (v.peca_id) return false;
-      return isVendaNoDiaBrasilia(v as any, hoje);
-    });
+    const vendasFiltradas = filtrarVendasDoHoje(vendasHoje || [], hoje);
 
     const vendasProdutosHoje = vendasFiltradas.filter(v => (v as any).tipo === "produto");
     const vendasDispositivosHoje = vendasFiltradas.filter(v => (v as any).tipo === "dispositivo");
