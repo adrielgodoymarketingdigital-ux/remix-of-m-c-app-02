@@ -16,6 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
 import { MessageCircle, Mail, Clock, CreditCard, AlertTriangle, Phone, ChevronLeft, ChevronRight, Download, ShieldAlert, ShieldX, ShieldCheck, Lock, Trash2, KeyRound, CalendarX2 } from "lucide-react";
 import { aplicarMascaraTelefone } from "@/lib/mascaras";
+import { rotuloTesteGratisAdmin } from "@/lib/testeGratis";
 import { toast } from "sonner";
 
 interface TabelaUsuariosAdminProps {
@@ -172,6 +173,15 @@ export function TabelaUsuariosAdmin({
 
     const config = planos[plano] || { label: plano, variant: "outline" as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  // Conta free com teste grátis do cadastro em andamento: "Em teste até DD/MM" no lugar de "free".
+  const formatarPlanoUsuario = (usuario: UsuarioAdmin) => {
+    const rotuloTeste = rotuloTesteGratisAdmin(usuario.plano_tipo, usuario.free_trial_ends_at, Date.now());
+    if (rotuloTeste) {
+      return <Badge variant="outline" className="whitespace-nowrap border-violet-300 text-violet-700">{rotuloTeste}</Badge>;
+    }
+    return formatarPlano(usuario.plano_tipo);
   };
 
   const formatarStatus = (usuario: UsuarioAdmin) => {
@@ -345,7 +355,7 @@ export function TabelaUsuariosAdmin({
                   <TableCell className="text-sm text-muted-foreground">{usuario.email || "-"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {formatarPlano(usuario.plano_tipo)}
+                      {formatarPlanoUsuario(usuario)}
                       {usuario.is_trial_with_card && (
                         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-green-300 text-green-600">
                           7d 💳

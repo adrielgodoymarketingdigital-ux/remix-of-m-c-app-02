@@ -129,6 +129,8 @@ serve(async (req: Request) => {
         trial_with_card: assinatura?.trial_with_card || false,
         trial_end_at: assinatura?.trial_end_at || null,
         trial_canceled: assinatura?.trial_canceled || false,
+        // Fim do teste grátis do cadastro (plano free). Campo novo; os demais não mudam.
+        free_trial_ends_at: assinatura?.free_trial_ends_at || null,
         bloqueado_admin: assinatura?.bloqueado_admin || false,
         bloqueado_admin_motivo: assinatura?.bloqueado_admin_motivo || null,
         bloqueado_admin_em: assinatura?.bloqueado_admin_em || null,

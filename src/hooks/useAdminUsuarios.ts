@@ -28,6 +28,8 @@ export interface UsuarioAdmin {
   data_inicio: string | null;
   data_fim: string | null;
   created_at: string | null;
+  /** Fim do teste grátis do cadastro (plano free); null se a função ainda não devolve. */
+  free_trial_ends_at: string | null;
   dias_restantes_trial: number | null;
   horas_restantes_trial: number | null;
   is_trial: boolean;
@@ -226,6 +228,7 @@ export function useAdminUsuarios() {
           data_inicio: item.data_inicio,
           data_fim: item.data_fim,
           created_at: item.created_at,
+          free_trial_ends_at: item.free_trial_ends_at ?? null,
           dias_restantes_trial: diasRestantesTrial,
           horas_restantes_trial: horasRestantesTrial,
           is_trial: isTrial,
