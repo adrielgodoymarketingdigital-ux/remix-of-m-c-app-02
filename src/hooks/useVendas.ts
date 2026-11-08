@@ -12,6 +12,7 @@ import { useFormasPagamentoCustomizadas } from "./useFormasPagamentoCustomizadas
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { isVendaDeItemOS } from "@/lib/caixa/servicosCaixa";
 import { cancelarSecundariasEmCascata, type ResultadoCascata } from "@/lib/vendas/cancelarSecundariasEmCascata";
+import { excluirContasPendentesDaVenda, type ResultadoContasDaVenda } from "@/lib/vendas/excluirContasPendentesDaVenda";
 import { AcaoAparelhoTroca, bloqueioEditarVendaComTroca, decidirCancelamentoTroca, MENSAGEM_APARELHO_TROCA_VENDIDO, MENSAGEM_EDITAR_VENDA_COM_TROCA } from "@/lib/vendas/trocaPDV";
 import i18n from "@/lib/i18n/instancia";
 import { carregarTrocaDaVenda, marcarTrocaCancelada, tirarAparelhoDaTrocaDoEstoque } from "@/lib/vendas/cancelamentoTroca";
@@ -600,6 +601,7 @@ export const useVendas = () => {
         ? troca.linhasParaCancelar
         : [{ linha: vendaOriginal, estornar: true }];
       const cascatas: ResultadoCascata[] = [];
+      const contasDasLinhas: ResultadoContasDaVenda[] = [];
 
       for (const { linha, estornar } of linhasACancelar) {
         // Estornar estoque se solicitado
@@ -666,6 +668,11 @@ export const useVendas = () => {
 
         if (updateError) throw updateError;
 
+        // Conta a receber da própria linha ("venda_id:<id>"): apaga só a pendente sem
+        // nenhum pagamento; recebida/paga/parcial fica e exige estorno manual (só avisa).
+        // Parcelado: cada parcela é uma linha, então só a conta dela.
+        contasDasLinhas.push(await excluirContasPendentesDaVenda([linha.id], linha.user_id));
+
         // Pagamento duplo: cancela junto as parcelas da 2ª forma (linhas secundárias)
         // e suas contas a receber pendentes. Se alguma parcela já foi recebida, não
         // mexe em nada — exige estorno manual (só avisa).
@@ -692,14 +699,22 @@ export const useVendas = () => {
         }
       }
 
+      // Contas a receber das linhas canceladas (forma principal).
+      const contasRemovidas = contasDasLinhas.reduce((s, r) => s + r.excluidas, 0);
+      const contasRecebidas = contasDasLinhas.reduce((s, r) => s + r.preservadasRecebidas, 0);
+      const errosContas = contasDasLinhas.flatMap((r) => (r.status === "erro" ? [r.mensagem] : []));
+
       const itensCancelados = linhasACancelar.filter((l) => l.estornar).length;
+      const textoCancelada = decisaoTroca.cancelarVendaInteira
+        ? `${tV("avisos.canceladaTrocaInteira", { count: itensCancelados })}${estornarEstoque ? tV("avisos.eEstoqueEstornado") : tV("avisos.ponto")}`
+        : estornarEstoque
+          ? tV("avisos.canceladaEstornada")
+          : tV("avisos.canceladaSucesso");
       toast({
         title: tV("avisos.canceladaTitulo"),
-        description: decisaoTroca.cancelarVendaInteira
-          ? `${tV("avisos.canceladaTrocaInteira", { count: itensCancelados })}${estornarEstoque ? tV("avisos.eEstoqueEstornado") : tV("avisos.ponto")}`
-          : estornarEstoque
-            ? tV("avisos.canceladaEstornada")
-            : tV("avisos.canceladaSucesso"),
+        description: contasRemovidas > 0
+          ? `${textoCancelada} ${tV("avisos.contasRemovidas", { count: contasRemovidas })}`
+          : textoCancelada,
       });
 
       for (const cascata of cascatas) {
@@ -739,6 +754,30 @@ export const useVendas = () => {
           });
         }
       }
+
+      // Só 1 aviso fica na tela (TOAST_LIMIT = 1): o alerta das contas vem por último,
+      // num aviso só, e lembra a 2ª forma se a cascata acima também pediu revisão.
+      const alertasContas: string[] = [];
+      if (contasRecebidas > 0) alertasContas.push(tV("avisos.contasRecebidasDescricao", { count: contasRecebidas }));
+      if (errosContas.length > 0) {
+        console.error("[cancelamento] etapa=contas a receber", errosContas);
+        alertasContas.push(tV("avisos.contasErroDescricao", { mensagem: errosContas.join("; ") }));
+      }
+      if (alertasContas.length > 0) {
+        const cascataPedeRevisao = cascatas.some((c) =>
+          c.status === "erro" ||
+          c.status === "bloqueado_parcela_recebida" ||
+          (c.status === "cancelado" && c.parcelasRecebidasParaRevisao > 0));
+        if (cascataPedeRevisao) alertasContas.push(tV("avisos.contasVerSegundaForma"));
+        toast({
+          title: errosContas.length > 0 ? tV("avisos.contasErroTitulo") : tV("avisos.contasRecebidasTitulo"),
+          description: alertasContas.join(" "),
+          variant: "destructive",
+          duration: 15000,
+        });
+      }
+      // Dashboard e Contas recarregam (o "Total a Receber" muda).
+      window.dispatchEvent(new CustomEvent("conta-atualizada"));
 
       // Recarregar vendas
       await carregarVendas();
