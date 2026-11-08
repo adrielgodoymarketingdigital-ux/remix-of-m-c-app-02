@@ -10,11 +10,12 @@ import { useComprasDispositivos } from "@/hooks/useComprasDispositivos";
 import { useOrigemPessoas } from "@/hooks/useOrigemPessoas";
 import { useDispositivos } from "@/hooks/useDispositivos";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsDesktop } from "@/hooks/use-mobile";
 import { DialogCadastroCompra } from "@/components/origem/DialogCadastroCompra";
 import { DialogEditarCompra } from "@/components/origem/DialogEditarCompra";
 import { TabelaCompras } from "@/components/origem/TabelaCompras";
 import { ListaComprasMobile } from "@/components/origem/ListaComprasMobile";
+import { TopoComprasDesktop } from "@/components/origem/TopoComprasDesktop";
 import { DialogVisualizacaoCompra } from "@/components/origem/DialogVisualizacaoCompra";
 import { DialogCadastroDispositivo } from "@/components/dispositivos/DialogCadastroDispositivo";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
@@ -26,6 +27,14 @@ import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { compraNoPeriodo, contarHojeEMes } from "@/lib/origem/comprasDispositivos";
 import { buscarNaCompra, type AparelhoEncontrado } from "@/lib/origem/buscaCompras";
 import type { ResultadoCompra } from "@/lib/origem/fluxoCompra";
+import {
+  comprasParaExportar,
+  filtrarPorValor,
+  lerValorFiltro,
+  montarCsvCompras,
+  nomeArquivoCsvCompras,
+  resumoCompras,
+} from "@/lib/origem/listaComprasDesktop";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 // Precisa bater com FormaPagamentoCompra (src/types/origem.ts) — o filtro
@@ -47,6 +56,8 @@ export default function OrigemDispositivos() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  // Layout novo só a partir de 1024px; 768–1023 continua no ramo antigo (não-mobile).
+  const isDesktop = useIsDesktop();
   const [busca, setBusca] = useState("");
   const [dialogAberto, setDialogAberto] = useState(false);
   const [dialogEditarAberto, setDialogEditarAberto] = useState(false);
@@ -58,6 +69,9 @@ export default function OrigemDispositivos() {
   const [filtroDataInicial, setFiltroDataInicial] = useState("");
   const [filtroDataFinal, setFiltroDataFinal] = useState("");
   const [dispositivoIdParam, setDispositivoIdParam] = useState<string | undefined>(undefined);
+  // Filtro de valor: só existe no computador (texto digitado; lerValorFiltro converte).
+  const [filtroValorMinimo, setFiltroValorMinimo] = useState("");
+  const [filtroValorMaximo, setFiltroValorMaximo] = useState("");
 
   const { compras, loading, criarCompra, atualizarCompra, excluirCompra, carregarCompras } = useComprasDispositivos();
   const { pessoas } = useOrigemPessoas();
@@ -109,6 +123,40 @@ export default function OrigemDispositivos() {
     setFiltroFormaPagamento("todos");
     setFiltroDataInicial("");
     setFiltroDataFinal("");
+    setFiltroValorMinimo("");
+    setFiltroValorMaximo("");
+  };
+
+  // ---- Só no computador (>= 1024px): filtro de valor por cima dos filtros de sempre,
+  // indicadores sobre a lista filtrada e exportação CSV no navegador.
+  const valorMinimo = lerValorFiltro(filtroValorMinimo);
+  const valorMaximo = lerValorFiltro(filtroValorMaximo);
+  const comprasVisiveisDesktop = useMemo(
+    () => filtrarPorValor(comprasFiltradas, valorMinimo, valorMaximo),
+    [comprasFiltradas, valorMinimo, valorMaximo]
+  );
+  const resumoDesktop = useMemo(
+    () => resumoCompras(comprasVisiveisDesktop, pessoas.length),
+    [comprasVisiveisDesktop, pessoas]
+  );
+  const limitesValorAtivos = (valorMinimo != null ? 1 : 0) + (valorMaximo != null ? 1 : 0);
+  const temFiltrosAtivosDesktop = !!temFiltrosAtivos || limitesValorAtivos > 0;
+
+  // Gerado e baixado no navegador; nada é enviado. A seleção por linha entra na F5
+  // (até lá o Set vazio exporta todas as compras visíveis).
+  const exportarCsv = () => {
+    const lista = comprasParaExportar(comprasVisiveisDesktop, new Set<string>());
+    if (lista.length === 0) return;
+    const blob = new Blob([montarCsvCompras(lista)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = nomeArquivoCsvCompras(dataBrasiliaISO());
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success(`${lista.length} ${lista.length === 1 ? "compra exportada" : "compras exportadas"}`);
   };
 
   // Só usado no layout mobile (ver render abaixo) — os 3 cards de métrica não
@@ -366,6 +414,47 @@ export default function OrigemDispositivos() {
 
               <ListaComprasMobile
                 compras={comprasFiltradas}
+                aparelhosEncontrados={aparelhosEncontrados}
+                loading={loading}
+                onVerDetalhes={(c) => { setCompraSelecionada(c); setDialogDetalhesAberto(true); }}
+                onEditar={(c) => { setCompraSelecionada(c); setDialogEditarAberto(true); }}
+                onExcluir={excluirCompra}
+                onEditarDispositivo={handleEditarDispositivo}
+                onExcluirDispositivo={handleExcluirDispositivo}
+              />
+            </div>
+          ) : isDesktop ? (
+            // Computador (>= 1024px): mesmo estado e mesmos handlers, só o visual muda.
+            // De 768 a 1023px segue o ramo de baixo, intocado.
+            <div className="space-y-5">
+              <TopoComprasDesktop
+                resumo={resumoDesktop}
+                loading={loading}
+                onNovaCompra={() => setDialogAberto(true)}
+                opcoesPagamento={OPCOES_PAGAMENTO}
+                busca={busca}
+                onBusca={setBusca}
+                formaPagamento={filtroFormaPagamento}
+                onFormaPagamento={setFiltroFormaPagamento}
+                dataInicial={filtroDataInicial}
+                onDataInicial={setFiltroDataInicial}
+                dataFinal={filtroDataFinal}
+                onDataFinal={setFiltroDataFinal}
+                valorMinimo={filtroValorMinimo}
+                onValorMinimo={setFiltroValorMinimo}
+                valorMaximo={filtroValorMaximo}
+                onValorMaximo={setFiltroValorMaximo}
+                limitesValorAtivos={limitesValorAtivos}
+                temFiltrosAtivos={temFiltrosAtivosDesktop}
+                onLimparFiltros={limparFiltros}
+                quantidadeEncontrada={comprasVisiveisDesktop.length}
+                quantidadeTotal={compras.length}
+                onExportar={exportarCsv}
+              />
+
+              {/* Tabela de hoje até a F5 (nova tabela do computador). */}
+              <TabelaCompras
+                compras={comprasVisiveisDesktop}
                 aparelhosEncontrados={aparelhosEncontrados}
                 loading={loading}
                 onVerDetalhes={(c) => { setCompraSelecionada(c); setDialogDetalhesAberto(true); }}
