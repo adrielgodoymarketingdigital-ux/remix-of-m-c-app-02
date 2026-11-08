@@ -95,7 +95,7 @@ export async function cancelarPlanoParaFree(
   }
   logStep("Subscription updated to free/active");
 
-  await supabaseClient.from("admin_notifications").insert({
+  await avisarAdmin(supabaseClient, {
     tipo: isTrialWithCard ? "trial_cancelado" : "cancelamento",
     titulo: isTrialWithCard ? "Trial cancelado pelo usuário" : "Assinatura cancelada",
     mensagem: isTrialWithCard

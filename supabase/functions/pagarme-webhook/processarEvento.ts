@@ -235,7 +235,7 @@ async function handlePixOrderPaid(
             })
             .eq("id", assinaturaFallback.id);
 
-          await supabaseAdmin.from("admin_notifications").insert({
+          await avisarAdmin(supabaseAdmin, {
             tipo: "nova_assinatura",
             titulo: "Renovação via PIX (link externo)",
             mensagem: `Pagamento PIX externo confirmado para plano ${assinaturaFallback.plano_tipo}`,
@@ -480,7 +480,7 @@ async function handlePixOrderPaid(
 
     // ── 4. Notificação admin ─────────────────────────────────────────
     const isRenovacaoPix = !!assinaturaExistente;
-    await supabaseAdmin.from("admin_notifications").insert({
+    await avisarAdmin(supabaseAdmin, {
       tipo: "nova_assinatura",
       titulo: isRenovacaoPix ? "Renovação via PIX!" : "Nova assinatura via PIX!",
       mensagem: `Pagamento PIX confirmado para plano ${planoTipo}`,
@@ -832,7 +832,7 @@ async function handleSubscriptionCanceled(
     log("⚠️ Erro ao resetar purchase_event_id (não crítico)", { userId: assinatura.user_id, error: resetError.message });
   }
 
-  await supabaseAdmin.from("admin_notifications").insert({
+  await avisarAdmin(supabaseAdmin, {
     tipo: "cancelamento",
     titulo: "Assinatura cancelada",
     mensagem: `Usuário cancelou plano ${assinatura.plano_tipo}`,

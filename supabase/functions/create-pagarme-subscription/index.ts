@@ -8,6 +8,7 @@ import {
 } from "../_shared/planos-config.ts";
 import { detectarRajadaSuspeita, marcarContaSuspeita } from "../_shared/antiRajadaCadastro.ts";
 import { validarTurnstile } from "../_shared/turnstile.ts";
+import { avisarAdmin } from "../_shared/pagarmeAssinatura.ts";
 import { criarEGravarAssinatura, extractGatewayMessage } from "./criarAssinatura.ts";
 
 const corsHeaders = {
@@ -311,7 +312,7 @@ serve(async (req) => {
 
     // ── 9. Notificação admin (se aprovada) ───────────────────────────
     if (paymentApproved) {
-      await supabaseAdmin.from("admin_notifications").insert({
+      await avisarAdmin(supabaseAdmin, {
         tipo: "nova_assinatura_cartao",
         titulo: "Nova assinatura via Cartão!",
         mensagem: `Pagamento aprovado para plano ${displayName}`,

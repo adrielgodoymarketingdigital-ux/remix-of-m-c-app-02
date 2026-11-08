@@ -15,13 +15,26 @@ const log = (step: string, details?: unknown) => {
   console.log(`[PAGARME] ${step}${d}`);
 };
 
-/** Grava um aviso para o admin. Nunca lança: o aviso não pode derrubar o fluxo principal. */
-export async function avisarAdmin(supabaseAdmin: AdminClient, aviso: Record<string, unknown>) {
+/**
+ * Grava um aviso para o admin. Nunca lança: o aviso não pode derrubar o fluxo principal.
+ * O supabase-js devolve a recusa do banco (ex.: CHECK do tipo) em `error`, sem lançar:
+ * sem conferir, o aviso sumia sem deixar rastro. No log vão só o tipo e o código/mensagem
+ * do erro (nunca `details`, que traz a linha recusada, nem os dados do aviso).
+ * Retorna se o aviso foi gravado.
+ */
+export async function avisarAdmin(supabaseAdmin: AdminClient, aviso: Record<string, unknown>): Promise<boolean> {
   try {
-    await supabaseAdmin.from("admin_notifications").insert(aviso);
+    const { error } = await supabaseAdmin.from("admin_notifications").insert(aviso);
+    if (!error) return true;
+    avisoNaoGravado(aviso.tipo, [error.code, error.message].filter(Boolean).join(" "));
   } catch (err) {
-    log("⚠️ Erro ao gravar aviso para o admin", { error: String(err) });
+    avisoNaoGravado(aviso.tipo, err instanceof Error ? err.message : String(err));
   }
+  return false;
+}
+
+function avisoNaoGravado(tipo: unknown, motivo: string) {
+  console.error(`[PAGARME] ❌ Aviso ao admin não gravado - ${JSON.stringify({ tipo: String(tipo ?? ""), motivo })}`);
 }
 
 export interface ResultadoDelete {

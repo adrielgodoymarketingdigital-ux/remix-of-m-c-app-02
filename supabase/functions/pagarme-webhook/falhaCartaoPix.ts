@@ -153,7 +153,7 @@ export async function processarFalhaCobranca(
   if (error) throw new Error(`Erro past_due: ${error.message}`);
 
   // Notifica admin
-  await supabaseAdmin.from("admin_notifications").insert({
+  await avisarAdmin(supabaseAdmin, {
     tipo: "pagamento_falhou",
     titulo: "Pagamento recorrente falhou",
     mensagem: `Pagar.me não conseguiu cobrar a assinatura ${assinatura.plano_tipo}`,
