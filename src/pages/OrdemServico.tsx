@@ -66,6 +66,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { KanbanOrdensServico } from "@/components/ordens/KanbanOrdensServico";
 import { KanbanTempoAberto } from "@/components/ordens/KanbanTempoAberto";
+import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 
 const DialogOrdemServico = lazy(() => import("@/components/ordens/DialogOrdemServico").then((m) => ({ default: m.DialogOrdemServico })));
 const DialogOrdemServicoSimplificada = lazy(() => import("@/components/ordens/DialogOrdemServicoSimplificada").then((m) => ({ default: m.DialogOrdemServicoSimplificada })));
@@ -639,6 +640,8 @@ export default function OrdemServicoPage() {
         categoria: "Serviços",
         descricao: `Ordem de Serviço ${ordem.numero_os} - ${ordem.defeito_relatado}${semPrazo ? ' (Sem prazo)' : ''}${entradaPaga > 0 ? ` (Entrada paga: R$ ${entradaPaga.toFixed(2)})` : ''}`,
         user_id: data,
+        // Conta da OS herda a loja da OS.
+        empresa_id: empresaIdHerdado(ordem),
         os_numero: ordem.numero_os,
         valor_pago: entradaPaga > 0 ? entradaPaga : null,
       });

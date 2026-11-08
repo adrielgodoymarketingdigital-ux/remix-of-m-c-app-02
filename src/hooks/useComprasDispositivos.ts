@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
 import { useEmpresaInfo } from "./useResolvedUserId";
+import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
+import { resolverEmpresaGravacaoSegura } from "@/lib/multiempresas/identidadeGravacao";
 import { filtroEmpresaCompras, montarDadosInsercaoCompra } from "@/lib/origem/comprasDispositivos";
 import { idsDispositivosDaCompra } from "@/lib/origem/itensCompra";
 import {
@@ -20,6 +22,7 @@ export function useComprasDispositivos() {
   const [loading, setLoading] = useState(true);
   // Empresa ativa: a mesma usada no filtro da lista e gravada no insert.
   const { empresaId, isFilial } = useEmpresaInfo();
+  const { isFuncionario } = useFuncionarioPermissoes();
 
   const carregarCompras = useCallback(async () => {
     try {
@@ -96,7 +99,20 @@ export function useComprasDispositivos() {
       // Uma linha de compra (valor_pago = total) para todos os aparelhos; os adicionais só ganham o compra_id.
       const { dispositivos_adicionais: adicionais, ...dadosCompra } = dados;
       const idsVinculo = idsDispositivosDaCompra(dados.dispositivo_id, adicionais);
-      const dadosInsercao = montarDadosInsercaoCompra(dadosCompra, { userId: user.id, empresaId, agora: new Date() });
+      // Loja da compra: dono e gerente seguem a loja da visão (como antes);
+      // funcionário grava na loja dele (sem loja = matriz). Só o empresa_id
+      // muda — user_id e quem enxerga a compra ficam como estão. Se a
+      // identificação falhar ou demorar, fica o valor de antes (não bloqueia).
+      etapa = "identificar loja";
+      let empresaGravacao = empresaId ?? null;
+      if (isFuncionario) {
+        empresaGravacao = await comLimiteDeTempo(
+          resolverEmpresaGravacaoSegura(user.id, false, null, empresaGravacao),
+          LIMITE_SESSAO_MS,
+          "Identificar loja",
+        ).catch(() => empresaGravacao);
+      }
+      const dadosInsercao = montarDadosInsercaoCompra(dadosCompra, { userId: user.id, empresaId: empresaGravacao, agora: new Date() });
       payloadKB = tamanhoPayloadKB([dadosInsercao]);
 
       etapa = "criar compra";

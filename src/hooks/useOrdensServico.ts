@@ -15,6 +15,7 @@ import { quitarContaReceberDaOS, lerContaDaOS } from "@/lib/ordemServico/quitarC
 import { lucroLinhaServico, totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
 import { adicionaisCorrespondemBusca, type AdicionaisPorOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { buscarResumoAdicionaisLoja, precarregarDispositivosAdicionaisOS } from "./useOsDispositivosAdicionais";
+import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 
 export interface OrdemServico {
   id: string;
@@ -638,6 +639,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
               categoria: "Serviços",
               descricao: `Ordem de Serviço ${ordem.numero_os} - ${ordem.defeito_relatado}${entradaPaga > 0 ? ` (Entrada paga: R$ ${entradaPaga.toFixed(2)})` : ''}`,
               user_id: userId,
+              // Conta da OS herda a loja da OS.
+              empresa_id: empresaIdHerdado(ordem),
               os_numero: ordem.numero_os,
               valor_pago: entradaPaga > 0 ? entradaPaga : null,
             });
@@ -676,6 +679,8 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
                 categoria: "Serviços",
                 descricao: `Ordem de Serviço ${ordem.numero_os} - ${ordem.defeito_relatado}`,
                 user_id: userId,
+                // Conta da OS herda a loja da OS.
+                empresa_id: empresaIdHerdado(ordem),
                 os_numero: ordem.numero_os,
               },
             });

@@ -13,6 +13,8 @@ import { Calendar, Package, User, CreditCard, AlertCircle, CheckCircle2, Plus } 
 import { toast } from "sonner";
 import { DialogCadastroFornecedor } from "@/components/fornecedores/DialogCadastroFornecedor";
 import { FormularioFornecedor } from "@/types/fornecedor";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { resolverEmpresaGravacaoSegura } from "@/lib/multiempresas/identidadeGravacao";
 
 export interface ServicoComFornecedor {
   nome: string;
@@ -42,6 +44,7 @@ export const DialogNovoServico = ({ open, onOpenChange, onCriar }: DialogNovoSer
   const [dialogFornecedorOpen, setDialogFornecedorOpen] = useState(false);
 
   const { fornecedores, loading: loadingFornecedores, criarFornecedor, refetch: refetchFornecedores } = useFornecedores();
+  const { isProprietario, empresaAtiva } = useEmpresa();
 
   // Função para criar conta diretamente sem usar o hook
   const criarContaAPagar = async (dados: {
@@ -59,9 +62,14 @@ export const DialogNovoServico = ({ open, onOpenChange, onCriar }: DialogNovoSer
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
+      // Loja da conta (regra única de resolverLojaGravacao). Só o empresa_id é
+      // novo; o user_id continua o de antes. Falha na identificação = sem loja.
+      const empresaId = await resolverEmpresaGravacaoSegura(user.id, isProprietario, empresaAtiva, null);
+
         const { error } = await supabase.from("contas").insert({
         ...dados,
         user_id: user.id,
+        empresa_id: empresaId,
       } as any);
 
       if (error) throw error;

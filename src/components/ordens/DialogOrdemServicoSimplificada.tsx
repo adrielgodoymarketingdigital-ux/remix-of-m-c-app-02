@@ -413,6 +413,8 @@ export const DialogOrdemServicoSimplificada = ({
           total,
           entradaPaga,
           effectiveUserId,
+          // Mesma loja gravada na OS acima.
+          empresaId,
         });
       }
 
@@ -432,6 +434,7 @@ export const DialogOrdemServicoSimplificada = ({
               descricao: `Taxa ${percentual}% da bandeira ${taxaSel.bandeira} sobre OS ${numeroOS}`,
               os_numero: numeroOS,
               user_id: effectiveUserId,
+              empresa_id: empresaId,
             });
           }
         }

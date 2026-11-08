@@ -19,6 +19,8 @@ import { useClientes } from "@/hooks/useClientes";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useFuncionarios } from "@/hooks/useFuncionarios";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { empresaIdHerdado, papelDeGravacao, precisaDaMatriz, resolverLojaGravacao } from "@/lib/multiempresas/resolverLojaGravacao";
+import { buscarMatrizId } from "@/lib/multiempresas/identidadeGravacao";
 import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2, Banknote, QrCode, Clock, ArrowDownCircle, UserRound, ShieldCheck } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
@@ -157,7 +159,7 @@ const PDV = () => {
   const nomesForma = useNomesFormaPagamento();
   const textoBloqueioTroca = (bloqueio: string) => (bloqueio === MENSAGEM_TROCA_MAIOR_QUE_ITENS_SEM_PECA ? t("pagina.troca.bloqueio") : bloqueio);
   const { clientes, refetch: carregarClientes, criarCliente } = useClientes({ modoSilencioso: true });
-  const { lojaUserId, funcionarioId, isFuncionario } = useFuncionarioPermissoes();
+  const { lojaUserId, funcionarioId, isFuncionario, funcionarioEmpresaId } = useFuncionarioPermissoes();
   // Passa lojaUserId como override para garantir que busca os funcionários do dono,
   // independente de empresaAtiva no contexto (que causaria retorno vazio)
   const { funcionarios } = useFuncionarios(lojaUserId);
@@ -550,22 +552,18 @@ const PDV = () => {
       // User ID para registrar: proprietário da filial (se gerente) > dono da loja (se funcionário) > próprio ID
       const userIdParaVenda = gerenteFilialData?.proprietario_id || lojaUserId || user.id;
 
-      // Empresa ID: filial do gerente > empresa ativa no contexto (proprietário trocou de empresa) > empresa matriz
-      let empresaIdPDV: string | null = gerenteFilialData?.empresa_id ?? null;
-
-      if (!empresaIdPDV) {
-        if (isProprietario && empresaAtivaCtx) {
-          empresaIdPDV = empresaAtivaCtx;
-        } else {
-          const { data: empresaPrincipalPDV } = await supabase
-            .from("empresas")
-            .select("id")
-            .eq("proprietario_id", userIdParaVenda)
-            .eq("tipo", "matriz")
-            .maybeSingle();
-          empresaIdPDV = empresaPrincipalPDV?.id ?? null;
-        }
-      }
+      // Empresa ID (regra única em resolverLojaGravacao): gerente → filial dele;
+      // funcionário → loja dele (sem loja = matriz); dono → empresa ativa ou matriz.
+      // Matriz que não dá para ler fica null — nunca bloqueia a venda.
+      const entradaLoja = {
+        papel: papelDeGravacao({ ehGerente: !!gerenteFilialData?.proprietario_id, ehFuncionario: isFuncionario }),
+        gerenteEmpresaId: gerenteFilialData?.empresa_id ?? null,
+        funcionarioEmpresaId,
+        isProprietario,
+        empresaAtiva: empresaAtivaCtx,
+      };
+      const matrizIdPDV = precisaDaMatriz(entradaLoja) ? await buscarMatrizId(userIdParaVenda) : null;
+      const empresaIdPDV: string | null = resolverLojaGravacao({ ...entradaLoja, matrizId: matrizIdPDV });
 
       // Usar cliente selecionado
       const clienteId = clienteSelecionado?.id || null;
@@ -740,6 +738,8 @@ const PDV = () => {
                 categoria: "Vendas",
                 descricao: `venda_id:${venda.id}`,
                 user_id: userIdParaVenda,
+                // Conta da venda herda a loja da venda que a originou.
+                empresa_id: empresaIdHerdado(venda),
               });
             }
           }
@@ -902,6 +902,8 @@ const PDV = () => {
               categoria: "Taxa de Cartão",
               descricao: `Taxa ${percentual}% da bandeira ${taxaSel.bandeira} sobre venda de ${formatCurrency(totalVenda)}`,
               user_id: userIdParaVenda,
+              // Mesma loja das linhas da venda.
+              empresa_id: empresaIdPDV,
             });
             if (taxaError) {
               console.error("[PDV] Erro ao registrar taxa de cartão:", taxaError);

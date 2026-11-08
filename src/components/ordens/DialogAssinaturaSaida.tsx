@@ -30,6 +30,7 @@ import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
 import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
 import { marcaModelo, numeroAdicional, tituloDispositivo } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 
 const FORMAS_PAGAMENTO = [
   { value: 'dinheiro', label: 'Dinheiro', icon: Banknote },
@@ -185,10 +186,15 @@ export const DialogAssinaturaSaida = ({
       // vale a escolha que está no banco (se a leitura falhar, fica a do objeto da tela).
       const { data: osNoBanco } = await supabase
         .from("ordens_servico")
-        .select("avarias")
+        .select("avarias, empresa_id")
         .eq("id", ordem.id)
         .maybeSingle();
       if (osNoBanco) aplicarEscolhaFotosDoBanco(novasAvarias, osNoBanco.avarias);
+      // Conta criada na entrega herda a loja da OS (do banco; se a leitura falhar,
+      // a do objeto da tela; por último a do gerente, como antes).
+      const empresaIdDaOS = osNoBanco
+        ? empresaIdHerdado(osNoBanco)
+        : (empresaIdHerdado(ordem) ?? empresaIdParaUpdate);
 
       const tempoGastoDigitado = tempoGasto ? Number(tempoGasto.replace(",", ".")) : null;
       const tempoGastoValido = tempoGastoDigitado != null && !Number.isNaN(tempoGastoDigitado);
@@ -262,7 +268,7 @@ export const DialogAssinaturaSaida = ({
               recorrente: false,
               categoria: "Serviços",
               user_id: effectiveUserId,
-              empresa_id: empresaIdParaUpdate,
+              empresa_id: empresaIdDaOS,
               forma_pagamento: formaPagamentoSaldo,
             },
           });
@@ -288,7 +294,7 @@ export const DialogAssinaturaSaida = ({
               recorrente: false,
               categoria: "Serviços",
               user_id: effectiveUserId,
-              empresa_id: empresaIdParaUpdate,
+              empresa_id: empresaIdDaOS,
               forma_pagamento: formaSelecionadaFinal,
             },
           });
@@ -316,7 +322,7 @@ export const DialogAssinaturaSaida = ({
               recorrente: false,
               categoria: "Serviços",
               user_id: effectiveUserId,
-              empresa_id: empresaIdParaUpdate,
+              empresa_id: empresaIdDaOS,
             },
           });
         }

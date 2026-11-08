@@ -31,6 +31,7 @@ interface LinhaCancelamento {
 import { reconhecerRecebimentoVendaVinculada } from "@/lib/vendas/reconhecerSegundaForma";
 import { alterarDataVenda as alterarDataVendaNoBanco } from "@/lib/vendas/alterarDataVenda";
 import { SELECT_VENDA_COM_ITENS } from "@/lib/vendas/itensVenda";
+import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 
 const ehAReceber = (forma: string | null | undefined) => forma === "a_receber" || forma === "a_prazo";
 
@@ -1148,6 +1149,8 @@ export const useVendas = () => {
           categoria: "Vendas",
           descricao: `venda_id:${vendaId}`,
           user_id: vendaOriginal.user_id,
+          // Conta da venda herda a loja da venda.
+          empresa_id: empresaIdHerdado(vendaOriginal),
         });
       } else if (!agoraAReceber && eraAReceber) {
         // Mudou de a_receber para outra forma: remover conta pendente

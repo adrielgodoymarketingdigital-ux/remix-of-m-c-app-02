@@ -11,6 +11,8 @@ export interface DadosContaAReceberOS {
   formaPagamentoEntrada?: string;
   dataVencimentoPrazo?: string;
   effectiveUserId: string;
+  /** empresa_id da OS de origem: a conta e a entrada herdam a loja da OS (null continua null). */
+  empresaId: string | null;
 }
 
 /**
@@ -31,6 +33,7 @@ export async function criarContaAReceberOS(dados: DadosContaAReceberOS): Promise
     formaPagamentoEntrada,
     dataVencimentoPrazo,
     effectiveUserId,
+    empresaId,
   } = dados;
 
   const temEntrada = entradaPaga > 0;
@@ -55,6 +58,7 @@ export async function criarContaAReceberOS(dados: DadosContaAReceberOS): Promise
       categoria: "Serviços",
       descricao: descricaoConta,
       user_id: effectiveUserId,
+      empresa_id: empresaId,
       usa_historico_pagamentos: true,
     })
     .select("id")
@@ -71,6 +75,7 @@ export async function criarContaAReceberOS(dados: DadosContaAReceberOS): Promise
     const { error: erroPag } = await supabase.from("pagamentos_contas").insert({
       conta_id: contaCriada.id,
       user_id: effectiveUserId,
+      empresa_id: empresaId,
       valor: entradaPaga,
       data_pagamento: dataHoje(),
       forma_pagamento: formaPagamentoEntrada || null,

@@ -2,6 +2,8 @@ import { useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useIdentidade } from "./useResolvedUserId";
+import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
+import { resolverEmpresaGravacaoSegura } from "@/lib/multiempresas/identidadeGravacao";
 import type { FiltrosPeriodo } from "@/components/financeiro/FiltroPeriodoAvancado";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import type { OrigemEventoExtrato } from "@/lib/financeiro/origensExtrato";
@@ -77,6 +79,7 @@ const PAGE_SIZE = 50;
  */
 export function useExtratoFinanceiro() {
   const { userId, empresaId, isFilial, carregando: identidadeCarregando } = useIdentidade();
+  const { isFuncionario } = useFuncionarioPermissoes();
 
   const [resumo, setResumo] = useState<ResumoExtrato | null>(null);
   const [carregandoResumo, setCarregandoResumo] = useState(false);
@@ -166,9 +169,16 @@ export function useExtratoFinanceiro() {
   /** Grava um lançamento manual ou ajuste de balanço para a loja/empresa da visão atual. */
   const criarLancamento = useCallback(async (lancamento: NovoLancamentoExtrato): Promise<boolean> => {
     if (identidadeCarregando || !userId) return false;
+    // Dono e gerente: loja da visão atual (como antes). Funcionário: a loja dele
+    // (sem loja = matriz; matriz ilegível = sem loja).
+    let empresaGravacao = empresaId;
+    if (isFuncionario) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) empresaGravacao = await resolverEmpresaGravacaoSegura(user.id, false, null, empresaId);
+    }
     const { error } = await supabase.from("extrato_lancamentos_manuais").insert({
       user_id: userId,
-      empresa_id: empresaId,
+      empresa_id: empresaGravacao,
       tipo: lancamento.tipo,
       valor: lancamento.valor,
       motivo: lancamento.motivo?.trim() || null,
@@ -182,7 +192,7 @@ export function useExtratoFinanceiro() {
       return false;
     }
     return true;
-  }, [userId, empresaId, identidadeCarregando]);
+  }, [userId, empresaId, identidadeCarregando, isFuncionario]);
 
   /** Edita valor/data/conta_no_saldo de um lançamento manual ou de balanço já gravado. */
   const atualizarLancamento = useCallback(async (edicao: EdicaoLancamentoExtrato): Promise<boolean> => {

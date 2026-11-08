@@ -7,6 +7,8 @@ import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { diaBrasiliaDaData } from "@/lib/vendasFinanceiras";
 import { pagamentoDoCadastro } from "@/lib/financeiro/pagamentoDoCadastro";
 import { useResolvedUserId, useEmpresaInfo } from "./useResolvedUserId";
+import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
+import { resolverEmpresaGravacaoSegura } from "@/lib/multiempresas/identidadeGravacao";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
 import { proximaDataRecorrente } from "@/lib/contas/recorrencia";
 import { cancelarParcelaDaContaExcluida } from "@/lib/vendas/estornoParcelaSecundaria";
@@ -30,6 +32,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
   const { toast } = useToast();
   const resolvedUserIdFromContext = useResolvedUserId();
   const { empresaId: empresaFiltro, isFilial } = useEmpresaInfo();
+  const { isFuncionario } = useFuncionarioPermissoes();
 
   const carregarContas = useCallback(async () => {
     try {
@@ -209,7 +212,12 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
         user_id: targetUserId,
         usa_historico_pagamentos: true,
       };
-      if (empresaFiltro) insertData.empresa_id = empresaFiltro;
+      // Loja da conta: dono e gerente seguem a loja da visão (como antes);
+      // funcionário grava na loja dele (sem loja = matriz; matriz ilegível = sem loja).
+      const empresaGravacao = isFuncionario
+        ? await resolverEmpresaGravacaoSegura(user.id, false, null, empresaFiltro)
+        : empresaFiltro;
+      if (empresaGravacao) insertData.empresa_id = empresaGravacao;
       const { data: contaCriada, error } = await supabase
         .from("contas")
         .insert(insertData)

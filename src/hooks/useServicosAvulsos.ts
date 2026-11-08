@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { dataHoje } from "@/lib/formatters";
 import { filtroServicosAvulsosMes } from "@/lib/assinatura/cotaComApagados";
 import { contarApagadosDaCota } from "@/lib/assinatura/consultaCotaApagados";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { resolverEmpresaGravacaoSegura } from "@/lib/multiempresas/identidadeGravacao";
 
 export interface ServicoAvulso {
   id: string;
@@ -28,6 +30,7 @@ export function useServicosAvulsos() {
   const [servicosAvulsos, setServicosAvulsos] = useState<ServicoAvulso[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOperating, setIsOperating] = useState(false);
+  const { isProprietario, empresaAtiva } = useEmpresa();
 
   const carregarServicosAvulsos = useCallback(async () => {
     try {
@@ -108,8 +111,14 @@ export function useServicosAvulsos() {
 
       const lucro = dados.preco - dados.custo;
 
+      // Loja do serviço avulso (regra única de resolverLojaGravacao). Só o
+      // empresa_id é novo: o user_id continua o de antes (get_loja_owner_id).
+      // Se a identificação falhar, grava sem loja (como antes) e não bloqueia.
+      const empresaId = await resolverEmpresaGravacaoSegura(user.id, isProprietario, empresaAtiva, null);
+
       const { data: inserted, error } = await supabase.from("servicos_avulsos").insert({
         user_id: userId,
+        empresa_id: empresaId,
         nome: dados.nome,
         custo: dados.custo,
         preco: dados.preco,
@@ -124,6 +133,8 @@ export function useServicosAvulsos() {
       try {
         await supabase.from("contas").insert({
           user_id: userId,
+          // A conta herda a loja do serviço avulso que a originou.
+          empresa_id: empresaId,
           nome: `Serviço Avulso - ${dados.nome}`,
           tipo: "receber" as any,
           valor: dados.preco,

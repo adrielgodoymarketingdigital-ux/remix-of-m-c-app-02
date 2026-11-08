@@ -5,6 +5,7 @@ import { AvariasOS } from "@/types/ordem-servico";
 import { encryptSenhaDesbloqueio, encryptValue } from "@/lib/password-encryption";
 import { formatCurrency, dataHoje } from "@/lib/formatters";
 import { resolverIdentidadeOS } from "@/lib/ordemServico/resolverIdentidadeOS";
+import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 import { criarOuAtualizarCliente } from "@/lib/ordemServico/criarOuAtualizarCliente";
 import { gerarNumeroOSComRetry } from "@/lib/ordemServico/gerarNumeroOSComRetry";
 import { criarContaAReceberOS } from "@/lib/ordemServico/criarContaAReceberOS";
@@ -989,10 +990,13 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // da tela pode estar desatualizado) — base da diferença de estoque abaixo.
       const { data: osAntes } = await supabase
         .from("ordens_servico")
-        .select("avarias")
+        .select("avarias, empresa_id")
         .eq("id", ordem.id)
         .eq("user_id", effectiveUserId)
         .maybeSingle();
+      // Contas geradas nesta edição herdam a loja da OS (do banco; se a leitura
+      // falhar, a do objeto da tela). Nunca a loja de quem está editando.
+      const empresaIdDaOS = empresaIdHerdado(osAntes ?? (ordem as { empresa_id?: string | null }));
       const itensAntes = ((osAntes?.avarias as { produtos_utilizados?: ItemOSEstoque[] } | null)?.produtos_utilizados ?? []);
       // "Incluir fotos neste link" é escolhida fora deste formulário: mantém o valor do
       // banco (se a leitura falhar, o do objeto da tela) — perder um "desmarcado"
@@ -1124,6 +1128,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
               categoria: "Serviços",
               descricao: descricaoConta,
               user_id: effectiveUserId,
+              empresa_id: empresaIdDaOS,
             });
           }
         } else {
@@ -1192,6 +1197,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
                 fornecedor_id: s.peca_fornecedor_id || null,
                 os_numero: ordem.numero_os,
                 user_id: effectiveUserId,
+                empresa_id: empresaIdDaOS,
               });
             }
           }
@@ -1335,6 +1341,8 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
           formaPagamentoEntrada: temEntrada ? formData.formaPagamentoEntrada : undefined,
           dataVencimentoPrazo: dadosPag?.data_vencimento_prazo,
           effectiveUserId,
+          // Mesma loja gravada na OS acima.
+          empresaId,
         });
       }
 
@@ -1358,6 +1366,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
             fornecedor_id: s.peca_fornecedor_id || null,
             os_numero: numeroOS,
             user_id: effectiveUserId,
+            empresa_id: empresaId,
           });
         }
       }
@@ -1381,6 +1390,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
               descricao: `Taxa ${percentual}% da bandeira ${taxaSel.bandeira} sobre OS ${numeroOS} (${formatCurrency(total)})`,
               os_numero: numeroOS,
               user_id: effectiveUserId,
+              empresa_id: empresaId,
             });
             if (taxaError) {
               console.error("[OS] Erro ao registrar taxa de cartão:", taxaError);
