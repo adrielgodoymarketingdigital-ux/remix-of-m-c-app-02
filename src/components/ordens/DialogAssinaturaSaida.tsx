@@ -31,6 +31,9 @@ import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanham
 import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais";
 import { marcaModelo, numeroAdicional, tituloDispositivo } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
+import { CartaoNaSaidaOS } from "./CartaoNaSaidaOS";
+import type { TaxaCartao } from "@/hooks/useTaxasCartao";
+import { ehFormaCartao, parcelasIniciais, valorRecebidoAgora, type CalcularTaxa } from "@/lib/ordemServico/taxaCartaoSaida";
 
 const FORMAS_PAGAMENTO = [
   { value: 'dinheiro', label: 'Dinheiro', icon: Banknote },
@@ -70,6 +73,11 @@ export const DialogAssinaturaSaida = ({
   const [mostrarChecklistSaida, setMostrarChecklistSaida] = useState(false);
   const [editandoChecklistSaida, setEditandoChecklistSaida] = useState(false);
   const [checklistPreenchido, setChecklistPreenchido] = useState<Checklist | null>(null);
+  // Cartão na entrega: bandeira e parcelas escolhidas agora; bandeiras e conta vêm do
+  // CartaoNaSaidaOS (useTaxasCartao), montado só com forma de cartão.
+  const [bandeiraId, setBandeiraId] = useState("");
+  const [parcelas, setParcelas] = useState(2);
+  const [taxasCartao, setTaxasCartao] = useState<{ ativas: TaxaCartao[]; calcular: CalcularTaxa<TaxaCartao> } | null>(null);
 
   // O componente pode ficar montado de um dia para o outro (lista de OS aberta):
   // recalcula as datas padrão a cada abertura, no dia de Brasília.
@@ -78,6 +86,14 @@ export const DialogAssinaturaSaida = ({
     setDataRecebimento(dataBrasiliaISO());
     setDataVencimentoSaldo(vencimentoSaldoPadrao());
   }, [open]);
+
+  // Bandeira começa vazia a cada abertura; parcelas começam nas gravadas na OS (ou 2).
+  const parcelasGravadas = (ordem?.avarias as AvariasOS | null | undefined)?.dados_pagamento?.parcelas;
+  useEffect(() => {
+    if (!open) return;
+    setBandeiraId("");
+    setParcelas(parcelasIniciais(parcelasGravadas));
+  }, [open, ordem?.id, parcelasGravadas]);
 
   // Tempo gasto é sempre persistido em horas decimais (tempo_gasto_horas), mas o
   // usuário pode digitar em minutos ou horas — a unidade é só facilidade de entrada.
@@ -116,6 +132,9 @@ export const DialogAssinaturaSaida = ({
   const entradaPaga = Number(avariasData?.dados_pagamento?.entrada || 0);
   const temEntrada = entradaPaga > 0;
   const saldoRestante = temEntrada ? Math.max(0, (ordem.total || 0) - entradaPaga) : (ordem.total || 0);
+  // Base da taxa de cartão: o valor recebido agora (= saldoRestante).
+  const baseTaxaCartao = valorRecebidoAgora(ordem.total, entradaPaga);
+  const formaEscolhidaAgora = formaPagamento || formaPagamentoAtual;
 
   const handleSalvarAssinatura = async () => {
     // Se for digital, precisa ter assinatura
@@ -522,6 +541,18 @@ export const DialogAssinaturaSaida = ({
                   })}
                 </SelectContent>
               </Select>
+              {ehFormaCartao(formaEscolhidaAgora) && (
+                <CartaoNaSaidaOS
+                  forma={formaEscolhidaAgora}
+                  base={baseTaxaCartao}
+                  saldoAPrazo={temEntrada && saldoRestante > 0 && saldoAPrazo}
+                  parcelas={parcelas}
+                  onParcelasChange={setParcelas}
+                  bandeiraId={bandeiraId}
+                  onBandeiraChange={setBandeiraId}
+                  onTaxas={(ativas, calcular) => setTaxasCartao({ ativas, calcular })}
+                />
+              )}
             </CardContent>
           </Card>
 
