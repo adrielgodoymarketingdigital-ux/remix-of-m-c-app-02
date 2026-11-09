@@ -23,6 +23,24 @@ const pedidos = {
       aReceber: "Pedidos a Receber",
       aReceberLegenda: "não pagos e em aberto",
     },
+    // Mesmos nomes do Select de status de sempre (STATUS_LABELS do usePedidos).
+    status: {
+      aguardando: "Aguardando",
+      confirmado: "Confirmado",
+      chegou: "Chegou",
+      entregue: "Entregue",
+      cancelado: "Cancelado",
+    },
+    filtros: {
+      busca: "Buscar por cliente, descrição ou telefone...",
+      buscaRotulo: "Buscar pedidos",
+      statusRotulo: "Filtrar por status",
+      todosStatus: "Todos os status",
+      limpar: "Limpar filtros",
+      encontrados_zero: "Nenhum pedido encontrado",
+      encontrados_one: "{{count}} pedido encontrado",
+      encontrados_other: "{{count}} pedidos encontrados",
+    },
   },
 };
 

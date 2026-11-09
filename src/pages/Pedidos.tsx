@@ -44,7 +44,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { ListaCompras } from "@/components/pedidos/ListaCompras";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { TopoPedidosDesktop } from "@/components/pedidos/TopoPedidosDesktop";
-import { resumoPedidos } from "@/lib/pedidos/listaPedidosDesktop";
+import { FiltrosPedidosDesktop } from "@/components/pedidos/FiltrosPedidosDesktop";
+import { filtrarPedidos, resumoPedidos, temFiltrosAtivos, TODOS_OS_STATUS } from "@/lib/pedidos/listaPedidosDesktop";
 
 const STATUS_OPCOES: { value: StatusPedido; label: string }[] = [
   { value: "aguardando", label: "Aguardando" },
@@ -145,6 +146,17 @@ export default function Pedidos() {
   // Computador: indicadores de todos os pedidos (src/lib/pedidos/listaPedidosDesktop),
   // a mesma conta dos contadores de cima. Abaixo de 1024px nada muda.
   const resumoDesktop = useMemo(() => resumoPedidos(pedidos), [pedidos]);
+  // Busca sem acento (telefone também só com números) e status: a lista filtrada do
+  // computador. Mesmo estado (busca, filtroStatus) do celular; os cartões não seguem os filtros.
+  const pedidosFiltradosDesktop = useMemo(
+    () => filtrarPedidos(pedidos, { busca, status: filtroStatus }),
+    [pedidos, busca, filtroStatus],
+  );
+  const temFiltrosAtivosDesktop = temFiltrosAtivos({ busca, status: filtroStatus });
+  const limparFiltrosDesktop = () => {
+    setBusca("");
+    setFiltroStatus(TODOS_OS_STATUS);
+  };
 
   return (
     <AppLayout>
@@ -162,46 +174,32 @@ export default function Pedidos() {
 
           {aba === "lista" && <ListaCompras />}
 
-          {/* Provisório (fase 1): filtros e lista de sempre, até as fases 2 e 3 trocarem por
-              filtros e tabela do computador. */}
-          {aba === "pedidos" && <>
-        {/* Filtros */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por cliente, descrição ou telefone..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="pl-9"
+          {aba === "pedidos" && (
+            <FiltrosPedidosDesktop
+              busca={busca}
+              onBusca={setBusca}
+              status={filtroStatus}
+              onStatus={setFiltroStatus}
+              temFiltrosAtivos={temFiltrosAtivosDesktop}
+              onLimparFiltros={limparFiltrosDesktop}
+              quantidadeEncontrada={pedidosFiltradosDesktop.length}
+              loading={loading}
             />
-          </div>
-          <Select
-            value={filtroStatus}
-            onValueChange={(v) => setFiltroStatus(v as StatusPedido | "todos")}
-          >
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os status</SelectItem>
-              {STATUS_OPCOES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          )}
 
+          {/* Provisório (fases 1 e 2): a lista de sempre, já com a lista filtrada do computador,
+              até a fase 3 trocar pela tabela. */}
+          {aba === "pedidos" && <>
         {/* Lista */}
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">Carregando...</div>
-        ) : pedidosFiltrados.length === 0 ? (
+        ) : pedidosFiltradosDesktop.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {pedidos.length === 0 ? "Nenhum pedido cadastrado ainda." : "Nenhum pedido encontrado com esses filtros."}
           </div>
         ) : (
           <div className="space-y-3">
-            {pedidosFiltrados.map((pedido) => (
+            {pedidosFiltradosDesktop.map((pedido) => (
               <Card key={pedido.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">

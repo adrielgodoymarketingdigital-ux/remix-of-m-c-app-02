@@ -22,6 +22,23 @@ const pedidos: Traducao<typeof pedidosPtBR> = {
       aReceber: "Pedidos por cobrar",
       aReceberLegenda: "sin pagar y en curso",
     },
+    status: {
+      aguardando: "En espera",
+      confirmado: "Confirmado",
+      chegou: "Llegó",
+      entregue: "Entregado",
+      cancelado: "Cancelado",
+    },
+    filtros: {
+      busca: "Buscar por cliente, descripción o teléfono...",
+      buscaRotulo: "Buscar pedidos",
+      statusRotulo: "Filtrar por estado",
+      todosStatus: "Todos los estados",
+      limpar: "Limpiar filtros",
+      encontrados_zero: "Ningún pedido encontrado",
+      encontrados_one: "{{count}} pedido encontrado",
+      encontrados_other: "{{count}} pedidos encontrados",
+    },
   },
 };
 
