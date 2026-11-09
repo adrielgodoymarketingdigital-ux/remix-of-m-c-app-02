@@ -10,6 +10,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { DadosVendaCarregados, LinhaVendaRecibo, ProdutoRecibo, TrocaReciboEntrada } from "./reciboVendaModelo";
+import { aparelhoRecebidoDaLinha, COLUNAS_APARELHO_RECEBIDO } from "./reciboTroca";
 
 const COLUNAS_VENDA =
   "id, tipo, dispositivo_id, produto_id, peca_id, quantidade, total, valor_desconto_manual, valor_desconto_cupom, cupom_codigo, " +
@@ -125,11 +126,11 @@ async function carregarTroca(grupoVenda: string): Promise<TrocaReciboEntrada | n
     if (troca.dispositivo_entrada_id) {
       const { data: disp } = await supabase
         .from("dispositivos")
-        .select("marca, modelo, capacidade_gb, cor, imei, condicao, fotos, foto_url")
+        .select(`${COLUNAS_APARELHO_RECEBIDO}, condicao, fotos, foto_url`)
         .eq("id", troca.dispositivo_entrada_id)
         .maybeSingle();
       if (disp) {
-        aparelho = { marca: disp.marca, modelo: disp.modelo, capacidadeGb: disp.capacidade_gb, cor: disp.cor, imei: disp.imei };
+        aparelho = aparelhoRecebidoDaLinha(disp);
         condicao = disp.condicao;
         fotoUrl = primeiraFoto(disp.fotos, disp.foto_url);
       }

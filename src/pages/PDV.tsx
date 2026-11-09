@@ -973,6 +973,7 @@ const PDV = () => {
                   capacidadeGb: entradaTroca.aparelho.capacidadeGb,
                   cor: entradaTroca.aparelho.cor,
                   imei: entradaTroca.aparelho.imei,
+                  imei2: entradaTroca.aparelho.imei2 ?? null,
                 },
                 valorEntrada: totais.valorEntrada,
                 cancelada: false,

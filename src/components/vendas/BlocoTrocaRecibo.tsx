@@ -18,6 +18,7 @@ export function BlocoTrocaRecibo({ bloco }: { bloco: Bloco }) {
         <strong>{bloco.aparelhoTitulo}:</strong> {bloco.aparelhoDescricao}
       </div>
       {bloco.imei && <div style={{ margin: "2px 0", overflowWrap: "anywhere" }}>IMEI: {bloco.imei}</div>}
+      {bloco.imei2 && <div style={{ margin: "2px 0", overflowWrap: "anywhere" }}>IMEI 2: {bloco.imei2}</div>}
       {bloco.linhas.map((l) => (
         <div key={l.rotulo} style={{ ...linha, fontWeight: l.destaque ? 700 : undefined }}>
           <span style={{ flex: "1 1 auto", minWidth: 0, overflowWrap: "anywhere" }}>{l.rotulo}:</span>

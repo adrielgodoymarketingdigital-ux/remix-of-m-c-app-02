@@ -71,3 +71,13 @@ Deno.test("pagamento duplo PIX + a receber 2x, dois itens: PDV = reaberto", () =
     pagamentoDuplo: { valorPrimeira: 1200, segundaForma: "a_receber", nomeSegundaForma: "A Receber", valorSegunda: 700 },
   }, banco(linhas, null));
 });
+
+Deno.test("troca com IMEI 2: PDV = reaberto e os dois mostram o IMEI 2 do aparelho recebido", () => {
+  const trocaImei2 = { ...TROCA, aparelho: { marca: "Apple", modelo: "iPhone 13", imei: "350000000000099", imei2: "350000000000098" } };
+  const linhas = [linha({ total: 5000, valor_troca: 2000 })];
+  const r = comparar({
+    itens: [itemIphone], cliente: { nome: "Cliente Teste", cpf: "000.000.000-00" }, subtotal: 5000, descontoManual: 0, descontoCupom: 0,
+    total: 5000, troca: trocaImei2, formaPagamento: "pix", nomeFormaPagamento: "PIX", data: DATA, numeroVenda: "VD-000777",
+  }, banco(linhas, trocaImei2 as DadosVendaCarregados["troca"]));
+  assertEquals([r.troca?.imei, r.troca?.imei2], ["350000000000099", "350000000000098"]);
+});

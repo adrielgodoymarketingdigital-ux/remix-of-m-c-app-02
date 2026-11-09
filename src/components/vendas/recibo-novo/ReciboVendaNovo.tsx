@@ -264,6 +264,11 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
                       <span className="rvn-negrito">IMEI:</span> {m.troca.imei}
                     </p>
                   )}
+                  {m.troca.imei2 && (
+                    <p>
+                      <span className="rvn-negrito">IMEI 2:</span> {m.troca.imei2}
+                    </p>
+                  )}
                   {m.troca.condicao && (
                     <p>
                       <span className="rvn-negrito">Condição:</span> {m.troca.condicao}

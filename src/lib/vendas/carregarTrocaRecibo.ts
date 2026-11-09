@@ -7,7 +7,7 @@
  * sem acesso a dispositivos do dono) → bloco só com os valores.
  */
 import { supabase } from "@/integrations/supabase/client";
-import type { DadosTrocaRecibo } from "./reciboTroca";
+import { aparelhoRecebidoDaLinha, COLUNAS_APARELHO_RECEBIDO, type DadosTrocaRecibo } from "./reciboTroca";
 
 export async function carregarTrocaRecibo(grupoVenda: string | null | undefined): Promise<DadosTrocaRecibo | null> {
   if (!grupoVenda) return null;
@@ -25,11 +25,11 @@ export async function carregarTrocaRecibo(grupoVenda: string | null | undefined)
     if (troca.dispositivo_entrada_id) {
       const { data: disp, error: erroDisp } = await supabase
         .from("dispositivos")
-        .select("marca, modelo, capacidade_gb, cor, imei")
+        .select(COLUNAS_APARELHO_RECEBIDO)
         .eq("id", troca.dispositivo_entrada_id)
         .maybeSingle();
       if (erroDisp) console.error("[recibo] etapa=ler aparelho da troca", erroDisp);
-      if (disp) aparelho = { marca: disp.marca, modelo: disp.modelo, capacidadeGb: disp.capacidade_gb, cor: disp.cor, imei: disp.imei };
+      if (disp) aparelho = aparelhoRecebidoDaLinha(disp);
     }
     return {
       aparelho,

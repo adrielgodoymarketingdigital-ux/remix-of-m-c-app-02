@@ -14,6 +14,8 @@ export interface AparelhoRecebidoRecibo {
   capacidadeGb?: number | null;
   cor?: string | null;
   imei?: string | null;
+  /** IMEI 2 (dual chip). Troca antiga / vazio → o recibo fica como antes. */
+  imei2?: string | null;
 }
 
 export interface DadosTrocaRecibo {
@@ -42,6 +44,8 @@ export interface BlocoTrocaRecibo {
   aparelhoDescricao: string;
   /** IMEI completo, quando existe. */
   imei: string | null;
+  /** IMEI 2, só quando existe (sem ele o bloco nem tem a chave: igual ao de antes). */
+  imei2?: string;
   linhas: LinhaReciboTroca[];
   /** Frase final: "Pago integralmente com o aparelho recebido." / troca cancelada. */
   observacao: string | null;
@@ -53,6 +57,21 @@ const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" 
 export const formatarMoedaRecibo = (valor: number): string => brl.format(Math.round((Number(valor) || 0) * 100) / 100);
 
 const limpo = (v: string | null | undefined) => (v ?? "").trim();
+
+/** Colunas de `dispositivos` que o bloco usa (o select dos carregadores tem de trazer todas). */
+export const COLUNAS_APARELHO_RECEBIDO = "marca, modelo, capacidade_gb, cor, imei, imei2";
+
+/** Linha de `dispositivos` → aparelho recebido do recibo (recibos reabertos). */
+export function aparelhoRecebidoDaLinha(d: {
+  marca?: string | null;
+  modelo?: string | null;
+  capacidade_gb?: number | null;
+  cor?: string | null;
+  imei?: string | null;
+  imei2?: string | null;
+}): AparelhoRecebidoRecibo {
+  return { marca: d.marca, modelo: d.modelo, capacidadeGb: d.capacidade_gb, cor: d.cor, imei: d.imei, imei2: d.imei2 ?? null };
+}
 
 export function descreverAparelhoRecebido(a: AparelhoRecebidoRecibo | null): string {
   if (!a) return "Aparelho";
@@ -87,6 +106,7 @@ export function montarBlocoTrocaRecibo(p: {
   const formaDevolucao = troca.formaDevolucao === "pix" ? "Pix" : troca.formaDevolucao === "dinheiro" ? "Dinheiro" : "";
   const pagoIntegralmente = pagoC === 0;
   const forma = limpo(p.formaPagamentoLabel);
+  const imei2 = limpo(troca.aparelho?.imei2);
 
   const linhas: LinhaReciboTroca[] = [
     { rotulo: "Valor do aparelho recebido", valor: formatarMoedaRecibo(entradaC / 100), negativo: true },
@@ -110,6 +130,7 @@ export function montarBlocoTrocaRecibo(p: {
     aparelhoTitulo: "Aparelho recebido na troca",
     aparelhoDescricao: descreverAparelhoRecebido(troca.aparelho),
     imei: limpo(troca.aparelho?.imei) || null,
+    ...(imei2 ? { imei2 } : {}),
     linhas,
     observacao: troca.cancelada
       ? "Troca cancelada junto com a venda."
@@ -124,6 +145,7 @@ export function textoBlocoTrocaRecibo(b: BlocoTrocaRecibo): string[] {
     b.titulo,
     `${b.aparelhoTitulo}: ${b.aparelhoDescricao}`,
     ...(b.imei ? [`IMEI: ${b.imei}`] : []),
+    ...(b.imei2 ? [`IMEI 2: ${b.imei2}`] : []),
     ...b.linhas.map((l) => `${l.rotulo}: ${l.negativo ? "− " : ""}${l.valor}`),
     ...(b.observacao ? [b.observacao] : []),
   ];
@@ -147,6 +169,7 @@ export function htmlBlocoTrocaRecibo(b: BlocoTrocaRecibo): string {
     `<div style="font-weight:700;letter-spacing:.5px;margin-bottom:4px;">${escapar(b.titulo)}</div>`,
     `<div style="margin:2px 0;overflow-wrap:anywhere;"><strong>${escapar(b.aparelhoTitulo)}:</strong> ${escapar(b.aparelhoDescricao)}</div>`,
     b.imei ? `<div style="margin:2px 0;overflow-wrap:anywhere;">IMEI: ${escapar(b.imei)}</div>` : "",
+    b.imei2 ? `<div style="margin:2px 0;overflow-wrap:anywhere;">IMEI 2: ${escapar(b.imei2)}</div>` : "",
     ...b.linhas.map((l) => linha(l.rotulo, `${l.negativo ? "− " : ""}${l.valor}`, l.destaque ? "font-weight:700;" : "")),
     b.observacao ? `<div style="margin-top:4px;font-style:italic;overflow-wrap:anywhere;">${escapar(b.observacao)}</div>` : "",
     `</div>`,
