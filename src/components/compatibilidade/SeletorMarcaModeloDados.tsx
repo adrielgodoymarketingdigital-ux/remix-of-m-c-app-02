@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
@@ -9,8 +9,10 @@ import type { OpcoesMarcaModelo } from "@/lib/compatibilidade/compatibilidade";
 /**
  * Combobox com as opções vindas dos dados. Com `permitirNovo` (admin), o texto
  * digitado que não está na lista vira a opção "Usar “…”".
+ * `icone`, `classeBotao` e `id` são só do computador (CompatibilidadePeliculaDesktop):
+ * sem eles o botão sai exatamente como antes (celular e admin).
  */
-function ComboboxDados({
+export function ComboboxDados({
   value,
   opcoes,
   placeholder,
@@ -18,6 +20,9 @@ function ComboboxDados({
   onChange,
   disabled,
   permitirNovo,
+  icone: Icone,
+  classeBotao,
+  id,
 }: {
   value: string;
   opcoes: string[];
@@ -26,6 +31,12 @@ function ComboboxDados({
   onChange: (value: string) => void;
   disabled?: boolean;
   permitirNovo?: boolean;
+  /** Ícone à esquerda do texto do botão. */
+  icone?: LucideIcon;
+  /** Classes a mais no botão (somadas às de sempre). */
+  classeBotao?: string;
+  /** id do botão, para um <Label htmlFor>. */
+  id?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
@@ -47,9 +58,17 @@ function ComboboxDados({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn("w-full justify-between font-normal h-10 rounded-xl", !value && "text-muted-foreground")}
+          id={id}
+          className={cn("w-full justify-between font-normal h-10 rounded-xl", !value && "text-muted-foreground", classeBotao)}
         >
-          <span className="truncate">{value || placeholder}</span>
+          {Icone ? (
+            <span className="flex min-w-0 items-center gap-3">
+              <Icone className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="truncate">{value || placeholder}</span>
+            </span>
+          ) : (
+            <span className="truncate">{value || placeholder}</span>
+          )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
