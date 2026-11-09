@@ -8,6 +8,7 @@
  */
 import { duplicadoNaCompra } from "../origem/itensCompra.ts";
 import { documentoDoCliente } from "../clientes/dadosCliente.ts";
+import { apenasDigitos, normalizarTexto } from "../busca/normalizarBusca.ts";
 import type { DadosEntradaTroca } from "./trocaPDV.ts";
 
 /** Os campos do diálogo como estão na tela (texto cru, sem trim). */
@@ -115,5 +116,62 @@ export function vendedorDoCliente(cliente: {
     nome: cliente.nome ?? "",
     documento: documentoDoCliente(cliente),
     telefone: cliente.telefone ?? "",
+  };
+}
+
+// ── Cliente cadastrado → quem entrega o aparelho (F3) ───────────────────────
+
+export interface ClienteBuscaTroca {
+  nome: string;
+  cpf?: string | null;
+  cnpj?: string | null;
+  telefone?: string | null;
+}
+
+/** Máximo de clientes sugeridos na busca. */
+export const LIMITE_CLIENTES_TROCA = 5;
+/** CPF/CNPJ e telefone só entram na busca a partir de 3 dígitos digitados. */
+const MIN_DIGITOS_BUSCA = 3;
+
+/**
+ * Busca na lista que o PDV já carregou (nada vai ao banco): nome sem acento e
+ * por palavras; CPF, CNPJ e telefone só pelos dígitos (ignora pontos, traços,
+ * barras, parênteses e espaços). Nomes que começam com o termo vêm primeiro;
+ * o resto mantém a ordem da lista. Termo vazio → nenhuma sugestão.
+ */
+export function filtrarClientesTroca<T extends ClienteBuscaTroca>(
+  clientes: readonly T[],
+  termo: string,
+  limite = LIMITE_CLIENTES_TROCA,
+): T[] {
+  const texto = normalizarTexto(termo);
+  if (!texto) return [];
+  const palavras = texto.split(" ");
+  const digitos = apenasDigitos(termo);
+  const porDigitos = digitos.length >= MIN_DIGITOS_BUSCA;
+
+  const achados: { c: T; comeca: boolean }[] = [];
+  for (const c of clientes) {
+    const nome = normalizarTexto(c.nome);
+    const peloNome = palavras.every((p) => nome.includes(p));
+    const pelosDigitos = porDigitos && [c.cpf, c.cnpj, c.telefone].some((v) => apenasDigitos(v).includes(digitos));
+    if (peloNome || pelosDigitos) achados.push({ c, comeca: peloNome && nome.startsWith(texto) });
+  }
+  // sort estável: dentro de cada grupo, a ordem da lista (useClientes ordena por nome).
+  return achados.sort((a, b) => Number(b.comeca) - Number(a.comeca)).slice(0, limite).map((a) => a.c);
+}
+
+/**
+ * O que a seção "puxar cliente" mostra. Sem a prop `clientes` (cartão do
+ * aparelho), não há busca; sem `clienteVenda`, não há o botão. Sem nenhuma das
+ * duas, a seção não existe e o diálogo fica igual ao de antes.
+ */
+export function secaoClienteTroca(p: { clientes?: readonly unknown[] | null; clienteVenda?: { nome?: string | null } | null }): {
+  busca: boolean;
+  usarClienteVenda: boolean;
+} {
+  return {
+    busca: Array.isArray(p.clientes),
+    usarClienteVenda: !!p.clienteVenda && !!p.clienteVenda.nome?.trim(),
   };
 }

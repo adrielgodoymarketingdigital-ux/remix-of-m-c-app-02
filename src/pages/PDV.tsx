@@ -1662,6 +1662,9 @@ const PDV = () => {
         open={dialogDispositivoEntradaAberto}
         onOpenChange={setDialogDispositivoEntradaAberto}
         onConfirmar={handleConfirmarDispositivoEntrada}
+        // Mesma lista (e o mesmo filtro de loja) do cliente da venda; o diálogo não carrega nada.
+        clientes={clientes}
+        clienteVenda={clienteSelecionado}
       />
 
       <DialogFormasPagamentoConfig

@@ -23,14 +23,24 @@ import { ComNegrito } from "@/components/i18n/ComNegrito";
 import { ChecklistDispositivo } from "@/components/ordens/ChecklistDispositivo";
 import { Checklist } from "@/types/ordem-servico";
 import type { DadosEntradaTroca } from "@/lib/vendas/trocaPDV";
-import { montarEntradaTroca } from "@/lib/vendas/entradaTrocaForm";
+import { montarEntradaTroca, vendedorDoCliente } from "@/lib/vendas/entradaTrocaForm";
 import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
+import { SeletorClienteTroca } from "@/components/pdv/SeletorClienteTroca";
+import type { Cliente } from "@/types/cliente";
 
 interface DialogDispositivoEntradaProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Recebe os dados da entrada; nada é gravado aqui — o PDV grava ao finalizar a venda. */
   onConfirmar: (dados: DadosEntradaTroca) => void;
+  /**
+   * Clientes já carregados pelo PDV, para puxar os dados de quem entrega o
+   * aparelho. Ausente (cartão do aparelho) = sem busca, diálogo como antes.
+   * Nunca carregar aqui: há um diálogo por cartão na tela Dispositivos.
+   */
+  clientes?: Cliente[];
+  /** Cliente da venda no PDV: botão "Usar cliente da venda". */
+  clienteVenda?: Cliente | null;
 }
 
 const estadoInicialChecklist: Checklist = { entrada: {}, saida: {} };
@@ -39,6 +49,8 @@ export function DialogDispositivoEntrada({
   open,
   onOpenChange,
   onConfirmar,
+  clientes,
+  clienteVenda,
 }: DialogDispositivoEntradaProps) {
   // Textos: namespace "pdv" (validação é síncrona: o t da renderização serve).
   const { t } = useTranslation("pdv");
@@ -62,6 +74,10 @@ export function DialogDispositivoEntrada({
   const [valorVenda, setValorVenda] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
+  // Puxar cliente cadastrado (só no PDV, com a prop clientes/clienteVenda).
+  const [buscaCliente, setBuscaCliente] = useState("");
+  const [clienteEscolhido, setClienteEscolhido] = useState<string | null>(null);
+
   const resetForm = () => {
     setVendedorNome("");
     setVendedorCpf("");
@@ -80,6 +96,18 @@ export function DialogDispositivoEntrada({
     setValorCusto("");
     setValorVenda("");
     setObservacoes("");
+    setBuscaCliente("");
+    setClienteEscolhido(null);
+  };
+
+  /** Copia nome, documento (CPF, senão CNPJ) e telefone do cadastro; os campos seguem editáveis. */
+  const preencherComCliente = (cliente: Cliente) => {
+    const v = vendedorDoCliente(cliente);
+    setVendedorNome(v.nome);
+    setVendedorCpf(v.documento);
+    setVendedorTelefone(v.telefone);
+    setClienteEscolhido(v.nome.trim() || null);
+    setBuscaCliente("");
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -142,6 +170,16 @@ export function DialogDispositivoEntrada({
                 {t("entradaTroca.vendedorDescricao")}
               </p>
             </div>
+            {/* Puxar cliente cadastrado: só com as props (PDV). Sem elas, nada aparece. */}
+            <SeletorClienteTroca
+              clientes={clientes}
+              clienteVenda={clienteVenda}
+              busca={buscaCliente}
+              onBuscaChange={setBuscaCliente}
+              escolhido={clienteEscolhido}
+              onEscolher={preencherComCliente}
+              onLimparEscolha={() => setClienteEscolhido(null)}
+            />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="sm:col-span-3 space-y-1">
                 <Label htmlFor="vendedor-nome">{t("entradaTroca.nome")}</Label>

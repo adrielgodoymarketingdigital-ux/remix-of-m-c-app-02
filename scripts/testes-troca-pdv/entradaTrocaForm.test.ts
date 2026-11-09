@@ -9,8 +9,11 @@
 import { assertEquals, assertStrictEquals } from "jsr:@std/assert@1";
 import {
   colunasImeiDaEntrada,
+  filtrarClientesTroca,
   imeisRepetidos,
+  LIMITE_CLIENTES_TROCA,
   montarEntradaTroca,
+  secaoClienteTroca,
   vendedorDoCliente,
   type CamposEntradaTroca,
 } from "../../src/lib/vendas/entradaTrocaForm.ts";
@@ -261,4 +264,85 @@ Deno.test("cliente copiado → montar entrada: mesmo resultado de digitar à mã
   const semDados = vendedorDoCliente({ nome: "Maria" });
   const r = montarEntradaTroca({ ...completo, vendedorNome: semDados.nome, vendedorCpf: semDados.documento, vendedorTelefone: semDados.telefone });
   assertEquals(r.dados!.vendedor, { nome: "Maria", cpf: null, telefone: null });
+});
+
+// ── F3: buscar cliente cadastrado (quem entrega o aparelho) ─────────────────
+// Lista fictícia, na ordem do useClientes (por nome).
+const clientes = [
+  { id: "1", nome: "Ana Paula Teste", cpf: "123.456.789-00", telefone: "(11) 98888-7777" },
+  { id: "2", nome: "Bruno Exemplo", cpf: "98765432100", telefone: "11977776666" },
+  { id: "3", nome: "Empresa Fictícia Ltda", cnpj: "12.345.678/0001-90", telefone: null },
+  { id: "4", nome: "João Ninguém", cpf: null, cnpj: null, telefone: "(21) 3333-4444" },
+  { id: "5", nome: "Mariana Ana", cpf: "", telefone: "" },
+  { id: "6", nome: "Ana Lúcia", cpf: "111.222.333-44" },
+  { id: "7", nome: "Ana Beatriz", cpf: "555.666.777-88" },
+  { id: "8", nome: "Ana Clara", cpf: "999.000.111-22" },
+  { id: "9", nome: "Ana Dias", cpf: "333.444.555-66" },
+];
+const ids = (termo: string) => filtrarClientesTroca(clientes, termo).map((c) => c.id);
+
+Deno.test("busca por nome: sem acento, sem caixa, por palavras; quem começa com o termo vem primeiro", () => {
+  assertEquals(ids("joao"), ["4"]);
+  assertEquals(ids("JOÃO ninguem"), ["4"]);
+  assertEquals(ids("ficticia ltda"), ["3"]);
+  assertEquals(ids("paula ana"), ["1"]);
+  // "Mariana Ana" contém "ana" mas não começa com ele: fica depois das "Ana ...".
+  assertEquals(ids("ana"), ["1", "6", "7", "8", "9"]);
+});
+
+Deno.test("limite de 5 sugestões", () => {
+  assertEquals(LIMITE_CLIENTES_TROCA, 5);
+  assertEquals(ids("a").length, 5);
+  assertEquals(filtrarClientesTroca(clientes, "ana", 2).map((c) => c.id), ["1", "6"]);
+});
+
+Deno.test("busca por CPF com e sem pontuação", () => {
+  assertEquals(ids("123.456.789-00"), ["1"]);
+  assertEquals(ids("12345678900"), ["1"]);
+  assertEquals(ids("987.654"), ["2"]); // gravado sem pontuação, digitado com
+  assertEquals(ids("456789"), ["1"]); // pedaço do meio
+});
+
+Deno.test("busca por CNPJ com e sem pontuação", () => {
+  assertEquals(ids("12.345.678/0001-90"), ["3"]);
+  assertEquals(ids("12345678000190"), ["3"]);
+  assertEquals(ids("0001-90"), ["3"]);
+});
+
+Deno.test("busca por telefone com e sem pontuação", () => {
+  assertEquals(ids("(11) 98888-7777"), ["1"]);
+  assertEquals(ids("11988887777"), ["1"]);
+  assertEquals(ids("3333-4444"), ["4"]);
+  assertEquals(ids("97777 6666"), ["2"]);
+});
+
+Deno.test("menos de 3 dígitos não busca por documento/telefone; termo vazio não sugere nada", () => {
+  assertEquals(ids("11"), []);
+  assertEquals(ids(""), []);
+  assertEquals(ids("   "), []);
+  assertEquals(ids("zzz"), []);
+});
+
+Deno.test("lista vazia ou campos nulos não quebram", () => {
+  assertEquals(filtrarClientesTroca([], "ana"), []);
+  assertEquals(filtrarClientesTroca([{ nome: "Sem Nada", cpf: null, cnpj: null, telefone: null }], "123").length, 0);
+});
+
+Deno.test("vendedorDoCliente: cliente sem CPF usa o CNPJ; sem telefone fica vazio", () => {
+  assertEquals(vendedorDoCliente(clientes[2]), { nome: "Empresa Fictícia Ltda", documento: "12.345.678/0001-90", telefone: "" });
+  assertEquals(vendedorDoCliente(clientes[4]), { nome: "Mariana Ana", documento: "", telefone: "" });
+  assertEquals(vendedorDoCliente(clientes[3]), { nome: "João Ninguém", documento: "", telefone: "(21) 3333-4444" });
+});
+
+Deno.test("seção do cliente: sem a prop clientes não há busca; sem clienteVenda não há botão", () => {
+  assertEquals(secaoClienteTroca({}), { busca: false, usarClienteVenda: false }); // cartão do aparelho: igual a antes
+  assertEquals(secaoClienteTroca({ clientes: undefined, clienteVenda: null }), { busca: false, usarClienteVenda: false });
+  assertEquals(secaoClienteTroca({ clientes: [] }), { busca: true, usarClienteVenda: false }); // PDV sem clientes ainda
+  assertEquals(secaoClienteTroca({ clientes, clienteVenda: clientes[0] }), { busca: true, usarClienteVenda: true });
+  assertEquals(secaoClienteTroca({ clientes, clienteVenda: { nome: "  " } }), { busca: true, usarClienteVenda: false });
+});
+
+Deno.test("troca sem cliente escolhido: mesmos dados de antes (referência antiga)", () => {
+  // O diálogo só muda os três campos do vendedor ao escolher; sem escolher, é o de sempre.
+  assertEquals(novo(completo), referenciaAntiga(completo));
 });

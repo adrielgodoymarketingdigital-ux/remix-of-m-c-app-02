@@ -5,7 +5,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { registrarEntradaTroca } from "../../src/lib/vendas/registrarEntradaTroca.ts";
 import type { DadosEntradaTroca } from "../../src/lib/vendas/trocaPDV.ts";
-import { montarEntradaTroca } from "../../src/lib/vendas/entradaTrocaForm.ts";
+import { montarEntradaTroca, vendedorDoCliente } from "../../src/lib/vendas/entradaTrocaForm.ts";
 import { chamadas, reiniciarBanco } from "./supabaseFalso.ts";
 
 const ctx = { userId: "dono-teste", empresaId: "empresa-teste", grupoVenda: "grupo-teste", caixaId: null };
@@ -101,4 +101,35 @@ Deno.test("retomada: aparelho já gravado não é inserido de novo", async () =>
   const r2 = await registrarEntradaTroca(dados({ ...aparelhoBase, imei2: "222222222222222" }), ctx, progresso);
   assertEquals(r2, { ok: true });
   assertEquals(chamadas.filter((c) => c.tabela === "dispositivos" && c.op === "insert").length, 0);
+});
+
+// ── F3: cliente escolhido = cópia dos dados em origem_pessoas (sem cliente_id) ──
+const camposBase = {
+  vendedorNome: "", vendedorCpf: "", vendedorTelefone: "",
+  marca: "Marca Teste", modelo: "Modelo Teste", imei: "111111111111111", imei2: "",
+  numeroSerie: "", cor: "", capacidadeGb: "", condicao: "usado", checklistEntrada: {},
+  valorCusto: "500", valorVenda: "800", observacoes: "",
+};
+const pessoaGravada = () => chamadas.find((c) => c.tabela === "origem_pessoas")!.linha;
+
+Deno.test("cliente escolhido: origem_pessoas recebe a cópia, igual a digitar à mão, sem cliente_id", async () => {
+  const cliente = { id: "cli-1", nome: "Cliente Fictício", cpf: null, cnpj: "12.345.678/0001-90", telefone: "(11) 90000-0000" };
+  const v = vendedorDoCliente(cliente);
+  reiniciarBanco();
+  await registrarEntradaTroca(montarEntradaTroca({ ...camposBase, vendedorNome: v.nome, vendedorCpf: v.documento, vendedorTelefone: v.telefone }).dados!, ctx, {});
+  const viaCliente = pessoaGravada();
+  reiniciarBanco();
+  await registrarEntradaTroca(montarEntradaTroca({ ...camposBase, vendedorNome: "Cliente Fictício", vendedorCpf: "12.345.678/0001-90", vendedorTelefone: "(11) 90000-0000" }).dados!, ctx, {});
+  assertEquals(viaCliente, pessoaGravada());
+  assertEquals(viaCliente, {
+    user_id: "dono-teste", tipo: "fisica", nome: "Cliente Fictício", cpf_cnpj: "12.345.678/0001-90",
+    telefone: "(11) 90000-0000", ativo: true,
+  });
+  assertEquals(chamadas.some((c) => "cliente_id" in c.linha), false);
+});
+
+Deno.test("sem cliente escolhido: origem_pessoas igual à de antes", async () => {
+  reiniciarBanco();
+  await registrarEntradaTroca(montarEntradaTroca({ ...camposBase, vendedorNome: "Pessoa Teste" }).dados!, ctx, {});
+  assertEquals(pessoaGravada(), { user_id: "dono-teste", tipo: "fisica", nome: "Pessoa Teste", cpf_cnpj: null, telefone: null, ativo: true });
 });
