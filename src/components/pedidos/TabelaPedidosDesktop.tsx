@@ -18,6 +18,7 @@ import {
   paginasVisiveis,
   type PaginaPedidos,
   type StatusDoPedido,
+  valorDoPedido,
 } from "@/lib/pedidos/listaPedidosDesktop";
 import type { Pedido } from "@/hooks/usePedidos";
 
@@ -137,6 +138,7 @@ export function TabelaPedidosDesktop(p: TabelaPedidosDesktopProps) {
           <TableBody>
             {pagina.itens.map((pedido) => {
               const dia = diaCriacaoBrasilia(pedido.created_at);
+              const valor = valorDoPedido(pedido.valor_total);
               return (
                 <TableRow key={pedido.id}>
                   <TableCell className="py-3 pl-5 pr-3">
@@ -162,8 +164,9 @@ export function TabelaPedidosDesktop(p: TabelaPedidosDesktopProps) {
                     {dia ? data(dia) : <span className="text-muted-foreground">{VAZIO}</span>}
                   </TableCell>
                   <TableCell className="px-3 py-3 text-right font-medium tabular-nums [overflow-wrap:anywhere]">
-                    {pedido.valor_total != null ? (
-                      <ValorMonetario valor={pedido.valor_total} tipo="preco" />
+                    {/* Vazio ou zero = "—", como a lista de sempre. */}
+                    {valor !== null ? (
+                      <ValorMonetario valor={valor} tipo="preco" />
                     ) : (
                       <span className="font-normal text-muted-foreground">{VAZIO}</span>
                     )}

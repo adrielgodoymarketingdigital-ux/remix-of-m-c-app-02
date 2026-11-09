@@ -15,6 +15,7 @@ import {
   type StatusDoPedido,
   temFiltrosAtivos,
   TODOS_OS_STATUS,
+  valorDoPedido,
 } from "../../src/lib/pedidos/listaPedidosDesktop.ts";
 
 const p = (id: string, extra: Partial<PedidoDaLista> = {}): PedidoDaLista => ({
@@ -168,4 +169,26 @@ Deno.test("data de criação: vazia ou inválida = null", () => {
   assertEquals(diaCriacaoBrasilia(null), null);
   assertEquals(diaCriacaoBrasilia(""), null);
   assertEquals(diaCriacaoBrasilia("não é data"), null);
+});
+
+// ---------- Valor (vazio e zero = "—") ----------
+
+Deno.test("valor: vazio e zero não mostram valor (como a lista de sempre)", () => {
+  assertEquals(valorDoPedido(null), null);
+  assertEquals(valorDoPedido(undefined), null);
+  assertEquals(valorDoPedido(0), null);
+  assertEquals(valorDoPedido(0.001), null); // zero em centavos
+  assertEquals(valorDoPedido(Number.NaN), null);
+});
+
+Deno.test("valor: qualquer valor diferente de zero aparece como está", () => {
+  assertEquals(valorDoPedido(0.01), 0.01);
+  assertEquals(valorDoPedido(4500), 4500);
+  assertEquals(valorDoPedido(1234.56), 1234.56);
+});
+
+Deno.test("valor: mostra exatamente quando a lista antiga mostrava (valor_total truthy)", () => {
+  for (const v of [null, 0, 0.01, 1, 99.9, 4500]) {
+    assertEquals(valorDoPedido(v) !== null, !!v, String(v));
+  }
 });

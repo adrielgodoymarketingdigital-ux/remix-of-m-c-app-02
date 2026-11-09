@@ -111,3 +111,14 @@ export function diaCriacaoBrasilia(createdAt: string | null | undefined): string
   const instante = new Date(createdAt);
   return Number.isNaN(instante.getTime()) ? null : dataBrasiliaISO(instante);
 }
+
+// ---------- Valor da tabela ----------
+
+/**
+ * Valor que a coluna Valor mostra. Vazio (null) ou zero = null (a tabela mostra "—"),
+ * como a lista de sempre, que escondia o valor nos dois casos (`pedido.valor_total && …`).
+ */
+export function valorDoPedido(valorTotal: number | null | undefined): number | null {
+  const n = Number(valorTotal);
+  return valorTotal == null || !Number.isFinite(n) || Math.round(n * 100) === 0 ? null : n;
+}
