@@ -7,6 +7,8 @@ import {
   lerValorFiltro,
   lucroDoServico,
   normalizarTexto,
+  OPCOES_POR_PAGINA,
+  POR_PAGINA_PADRAO,
   paginar,
   paginasVisiveis,
   resumoServicos,
@@ -167,6 +169,38 @@ Deno.test("paginação: página fora do intervalo é corrigida", () => {
 
 Deno.test("paginação: lista vazia = 0 a 0 de 0, uma página", () => {
   assertEquals(paginar([], 5, 10), { itens: [], pagina: 1, totalPaginas: 1, inicio: 0, fim: 0, total: 0 });
+});
+
+Deno.test("113 serviços: primeira, meio e última página em 10, 20 e 50 (padrão 20)", () => {
+  const lista = Array.from({ length: 113 }, (_, i) => s(String(i + 1)));
+  assertEquals(POR_PAGINA_PADRAO, 20);
+  assertEquals([...OPCOES_POR_PAGINA], [10, 20, 50]);
+  const resumo = (pg: number, tam: number) => {
+    const p = paginar(lista, pg, tam);
+    return [p.pagina, p.totalPaginas, p.inicio, p.fim, p.itens.length];
+  };
+  assertEquals(resumo(1, 10), [1, 12, 1, 10, 10]);
+  assertEquals(resumo(6, 10), [6, 12, 51, 60, 10]);
+  assertEquals(resumo(12, 10), [12, 12, 111, 113, 3]);
+  assertEquals(resumo(1, 20), [1, 6, 1, 20, 20]);
+  assertEquals(resumo(3, 20), [3, 6, 41, 60, 20]);
+  assertEquals(resumo(6, 20), [6, 6, 101, 113, 13]);
+  assertEquals(resumo(1, 50), [1, 3, 1, 50, 50]);
+  assertEquals(resumo(3, 50), [3, 3, 101, 113, 13]);
+});
+
+Deno.test("lista encolhe: excluir o único item da última página volta para a anterior", () => {
+  const lista = Array.from({ length: 101 }, (_, i) => s(String(i + 1)));
+  assertEquals(paginar(lista, 6, 20).itens.length, 1);
+  const semOUltimo = lista.slice(0, 100);
+  const p = paginar(semOUltimo, 6, 20);
+  assertEquals([p.pagina, p.totalPaginas, p.inicio, p.fim], [5, 5, 81, 100]);
+});
+
+Deno.test("filtro deixa uma página só: página pedida alta cai para 1, sem botões extras", () => {
+  const p = paginar(muitos.slice(0, 7), 4, 20);
+  assertEquals([p.pagina, p.totalPaginas, p.inicio, p.fim], [1, 1, 1, 7]);
+  assertEquals(paginasVisiveis(p.pagina, p.totalPaginas), [1]);
 });
 
 Deno.test("botões de página com reticências", () => {

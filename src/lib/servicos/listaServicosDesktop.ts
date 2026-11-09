@@ -129,6 +129,8 @@ export function filtrarServicos<T extends ServicoDaLista>(servicos: readonly T[]
 // ---------- Paginação ----------
 
 export const OPCOES_POR_PAGINA = [10, 20, 50] as const;
+/** Tamanho ao abrir a tela; não é guardado em lugar nenhum (volta a 20 a cada visita). */
+export const POR_PAGINA_PADRAO = 20;
 
 export interface PaginaServicos<T> {
   itens: T[];
