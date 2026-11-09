@@ -3,9 +3,9 @@ import { LINKS } from "../links";
 import { Botao } from "../components/Botao";
 import { IconeCheck } from "../components/Icones";
 
-// VERSÃO 3 - chamada final: um pedido de ação com as garantias reais (24h de acesso para testar e cancelar quando quiser).
+// VERSÃO 3 - chamada final: um pedido de ação com as garantias reais (14 dias de acesso para testar e cancelar quando quiser).
 const garantias = [
-  { titulo: "24h de acesso para testar os principais recursos", texto: "Antes de escolher o plano." },
+  { titulo: "14 dias de acesso para testar os principais recursos", texto: "Antes de escolher o plano." },
   { titulo: "Cancele quando quiser", texto: "Sem multa, pelo próprio sistema. Seus dados continuam guardados." },
   { titulo: "Sem instalar nada", texto: "Funciona no navegador do computador, do tablet e do celular." },
 ];

@@ -353,7 +353,7 @@ export default function PaginaFuncionalidades({ claro = false }: { claro?: boole
                     </Botao>
                     <p className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs t-txt-3 lg:justify-start">
                       <span className="inline-flex items-center gap-1">
-                        <IconeCheck className="h-3.5 w-3.5 t-acento" /> 24h de acesso para testar os principais recursos
+                        <IconeCheck className="h-3.5 w-3.5 t-acento" /> 14 dias de acesso para testar os principais recursos
                       </span>
                       <a href={planos} className="font-semibold t-acento hover:underline">
                         Ver planos →

@@ -176,7 +176,7 @@ saber onde está o lucro.
 
             {/* Trust Indicators */}
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 pt-4 text-sm text-slate-500">
-              {["24h de acesso Premium grátis", "Cancele a qualquer momento", "Suporte em português"].map((item, index) =>
+              {["14 dias de acesso Premium grátis", "Cancele a qualquer momento", "Suporte em português"].map((item, index) =>
               <div key={index} className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                   <span>{item}</span>

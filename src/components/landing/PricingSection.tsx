@@ -92,7 +92,7 @@ export function PricingSection() {
           </h2>
           
           <p className="text-lg text-slate-600 max-w-xl mx-auto">
-            Comece grátis e teste <span className="font-semibold text-amber-600">TODAS as funcionalidades Premium por 24 horas</span>
+            Comece grátis e teste <span className="font-semibold text-amber-600">TODAS as funcionalidades Premium por 14 dias</span>
             <span className="block text-base text-blue-600 mt-2 font-bold">Ou assine um plano agora abaixo! 👇</span>
           </p>
 
@@ -165,7 +165,7 @@ export function PricingSection() {
         <div className="mt-16 max-w-4xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: Shield, title: "24h Premium Grátis", desc: "Teste tudo" },
+              { icon: Shield, title: "14 dias Premium Grátis", desc: "Teste tudo" },
               { icon: CreditCard, title: "Pagar.me", desc: "Pagamento seguro" },
               { icon: Zap, title: "Ativação", desc: "Imediata" },
               { icon: Headphones, title: "Suporte", desc: "Em português" },

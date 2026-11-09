@@ -236,7 +236,7 @@ export function LP1Pricing() {
 
 // ─── FAQ ────────────────────────────────────────────────────
 const FAQ_ITEMS = [
-  { q: "Preciso pagar para testar?", a: "Não! Você pode testar gratuitamente por 24 horas sem precisar de cartão de crédito." },
+  { q: "Preciso pagar para testar?", a: "Não! Você pode testar gratuitamente por 14 dias sem precisar de cartão de crédito." },
   { q: "Posso usar no celular?", a: "Sim! O MecApp é 100% responsivo e funciona em qualquer dispositivo com navegador." },
   { q: "Consigo imprimir OS e recibos?", a: "Sim! Temos modelos A4 e 80mm, personalizáveis com a logo e dados da sua loja." },
   { q: "Como funciona o catálogo online?", a: "Você ativa o catálogo, adiciona dispositivos e compartilha o link com seus clientes. É como uma vitrine 24h." },

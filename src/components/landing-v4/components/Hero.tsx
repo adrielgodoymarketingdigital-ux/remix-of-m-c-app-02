@@ -105,7 +105,7 @@ export const Hero = forwardRef<HTMLAnchorElement>(function Hero(_, ctaRef) {
           </div>
 
           <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
-            {["24h de acesso para testar os principais recursos", "Cancele a qualquer momento"].map((t, n) => (
+            {["14 dias de acesso para testar os principais recursos", "Cancele a qualquer momento"].map((t, n) => (
               <li key={t} className="anim-entrar flex items-center gap-2" style={{ "--d": `${300 + n * 120}ms` } as CSSProperties}>
                 <IconeCheck className="h-4 w-4 text-emerald-600" />
                 {t}

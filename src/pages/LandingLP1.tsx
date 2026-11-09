@@ -122,7 +122,7 @@ function LP1Hero() {
             <div className="mt-12 pt-8 grid grid-cols-3 gap-6 max-w-md" style={{ borderTop: `1px solid ${BLUE[200]}` }}>
               {[
                 { value: "350+", label: "Lojas Ativas" },
-                { value: "24h", label: "Teste Grátis" },
+                { value: "14 dias", label: "Teste Grátis" },
                 { value: "99.9%", label: "Uptime" },
               ].map((s) => (
                 <div key={s.label}>

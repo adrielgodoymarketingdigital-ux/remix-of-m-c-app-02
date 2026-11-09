@@ -83,7 +83,7 @@ export function TrialBanner() {
     );
   }
   
-  // Trial legado (24h) - manter comportamento anterior
+  // Trial legado (prazo curto, em horas) - manter comportamento anterior
   const mostrarHoras = diasRestantesTrial === 0 && horasRestantesTrial > 0;
   
   return (

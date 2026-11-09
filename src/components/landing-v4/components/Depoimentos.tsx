@@ -226,7 +226,7 @@ export function Depoimentos({ cta = false }: { cta?: boolean }) {
                     <span className="reflexo-auto absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent" />
                   </span>
                   <p className="relative font-display text-2xl font-bold leading-tight">Seja o próximo lojista a mandar uma mensagem dessas.</p>
-                  <p className="relative mt-2 text-sm text-blue-100">24h de acesso para testar os principais recursos · Cancele a qualquer momento</p>
+                  <p className="relative mt-2 text-sm text-blue-100">14 dias de acesso para testar os principais recursos · Cancele a qualquer momento</p>
                   <Botao href={LINKS.testeGratis} variante="branco" seta className="relative mt-6 w-full !bg-white">
                     Quero isso na minha loja
                   </Botao>

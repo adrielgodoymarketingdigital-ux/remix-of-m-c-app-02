@@ -219,7 +219,7 @@ export function Planos() {
               <span className="bg-gradient-to-r from-brand-400 to-sky-300 bg-clip-text text-transparent">Escolha o plano depois.</span>
             </h2>
             <p data-reveal style={{ "--i": 1 } as CSSProperties} className="mt-5 max-w-xl text-lg text-slate-300">
-              Todo cadastro ganha 24h de acesso para testar os principais recursos. Cancele a qualquer momento.
+              Todo cadastro ganha 14 dias de acesso para testar os principais recursos. Cancele a qualquer momento.
             </p>
           </div>
 

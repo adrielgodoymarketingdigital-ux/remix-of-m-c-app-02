@@ -362,7 +362,7 @@ export function useAssinatura() {
     return 0;
   }, [assinatura]);
 
-  // Horas restantes do trial (para trials de 24h)
+  // Horas restantes do trial (para trials curtos)
   const horasRestantesTrial = useMemo(() => {
     if (assinatura?.plano_tipo === 'trial' && assinatura?.data_fim) {
       const diffTime = new Date(assinatura.data_fim).getTime() - new Date().getTime();
@@ -519,11 +519,11 @@ export function useAssinatura() {
       return aplicarModulosExtras(getLimitesFree(assinatura.created_at), assinatura);
     }
 
-    // Para plano Free, verificar se tem trial de 24h ativo
+    // Para plano Free, verificar se tem teste do cadastro ativo
     if (assinatura.plano_tipo === 'free') {
       const freeTrialEndsAt = (assinatura as any).free_trial_ends_at;
       if (freeTrialEndsAt && new Date(freeTrialEndsAt) > new Date()) {
-        console.log("🎁 Trial 24h ativo, liberando acesso completo");
+        console.log("🎁 Teste do cadastro ativo, liberando acesso completo");
         return LIMITES_POR_PLANO.trial;
       }
       return aplicarModulosExtras(getLimitesFree(assinatura.created_at), assinatura);

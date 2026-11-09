@@ -232,7 +232,7 @@ export function Recomendador() {
                         href={LINKS.testeGratis}
                         className="py-2.5 text-center text-sm font-semibold text-slate-300 underline decoration-white/30 underline-offset-4 transition-colors hover:text-white"
                       >
-                        Prefiro testar 24h grátis antes
+                        Prefiro testar 14 dias grátis antes
                       </a>
                     </div>
                   </div>

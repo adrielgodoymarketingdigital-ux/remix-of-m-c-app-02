@@ -332,11 +332,11 @@ export function PricingCard({
           className={cn("w-full h-11 font-semibold transition-all", theme.buttonClass)}
           onClick={handleCheckout}
         >
-          {isFree ? "Testar Grátis por 24h" : "Assinar Agora"}
+          {isFree ? "Testar Grátis por 14 dias" : "Assinar Agora"}
         </Button>
 
         <p className="text-center text-[10px] text-slate-500 mt-3">
-          {isFree ? "⭐ 24h com acesso Premium completo · Sem cartão" : "🔒 Pagamento seguro via Pagar.me"}
+          {isFree ? "⭐ 14 dias com acesso Premium completo · Sem cartão" : "🔒 Pagamento seguro via Pagar.me"}
         </p>
       </div>
     </div>

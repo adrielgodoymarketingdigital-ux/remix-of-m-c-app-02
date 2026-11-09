@@ -42,13 +42,13 @@ export function FinalCTA() {
               </h2>
 
               <p className="text-lg text-slate-400 max-w-xl mx-auto">
-                Regístrate y prueba <span className="text-amber-400 font-semibold">todas las funciones Premium por 24 horas</span>.
+                Regístrate y prueba <span className="text-amber-400 font-semibold">todas las funciones Premium por 14 días</span>.
                 Sin tarjeta, sin compromiso.
               </p>
 
               <div className="flex flex-wrap justify-center gap-6 pt-2">
                 {[
-                  "24h de acceso Premium gratis",
+                  "14 días de acceso Premium gratis",
                   "Configuración en 5 minutos",
                   "Soporte en portugués",
                 ].map((benefit, index) => (
