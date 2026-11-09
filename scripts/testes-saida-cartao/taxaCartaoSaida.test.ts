@@ -8,9 +8,11 @@ import {
   ehFormaCartao,
   jaTemContaTaxa,
   montarContaTaxaCartao,
+  mostraParcelas,
   motivoSemTaxaAntesDaConsulta,
   OPCOES_PARCELAS,
   parcelasIniciais,
+  parcelasPadraoDaForma,
   rotuloParcela,
   taxaDaSaida,
   type TaxaBandeira,
@@ -147,9 +149,34 @@ Deno.test("rótulo das parcelas usa o valor recebido agora", () => {
   assertEquals(rotuloParcela(12, 1200, fmt), "12x de R$ 100,00");
 });
 
+Deno.test("parcelas aparecem só no crédito e no crédito parcelado", () => {
+  assert(mostraParcelas("credito"));
+  assert(mostraParcelas("credito_parcelado"));
+  for (const f of ["debito", "dinheiro", "pix", "a_prazo", "", null, undefined]) assert(!mostraParcelas(f));
+});
+
+Deno.test("padrão do seletor: crédito começa em 1x; crédito parcelado nas gravadas (ou 2)", () => {
+  assertEquals(parcelasPadraoDaForma("credito", 2), 1);
+  assertEquals(parcelasPadraoDaForma("credito", 6), 1);
+  assertEquals(parcelasPadraoDaForma("credito", undefined), 1);
+  assertEquals(parcelasPadraoDaForma("credito_parcelado", 6), 6);
+  assertEquals(parcelasPadraoDaForma("credito_parcelado", undefined), 2);
+});
+
+Deno.test("crédito com parcelas: taxa continua a de crédito à vista", () => {
+  for (const n of OPCOES_PARCELAS) {
+    assertEquals(base({ forma: "credito", parcelas: n }), { taxa: VISA, percentual: 3, valor: 6 }, `${n}x`);
+  }
+});
+
+Deno.test("dados_pagamento: crédito grava as parcelas e mantém a forma credito", () => {
+  assertEquals(dadosPagamentoDaSaida({ forma: "credito", parcelas: 2, total: 50 }, "credito", 1), { forma: "credito", parcelas: 1, total: 50 });
+  assertEquals(dadosPagamentoDaSaida(undefined, "credito", 5), { forma: "credito", parcelas: 5 });
+});
+
 Deno.test("dados_pagamento: outras formas não mudam parcelas (nem criam a chave)", () => {
   const antigo = { forma: "credito_parcelado", parcelas: 4, total: 300, entrada: 0 };
-  for (const f of ["dinheiro", "pix", "debito", "credito", "a_prazo"]) {
+  for (const f of ["dinheiro", "pix", "debito", "a_prazo"]) {
     const r = dadosPagamentoDaSaida(antigo, f, 9);
     assertEquals(r, { ...antigo, forma: f }, f);
   }

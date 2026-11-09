@@ -40,7 +40,7 @@ import {
   jaTemContaTaxa,
   montarContaTaxaCartao,
   motivoSemTaxaAntesDaConsulta,
-  parcelasIniciais,
+  parcelasPadraoDaForma,
   SEM_TAXA,
   taxaDaSaida,
   valorRecebidoAgora,
@@ -90,7 +90,8 @@ export const DialogAssinaturaSaida = ({
   // Cartão na entrega: bandeira e parcelas escolhidas agora; bandeiras e conta vêm do
   // CartaoNaSaidaOS (useTaxasCartao), montado só com forma de cartão.
   const [bandeiraId, setBandeiraId] = useState("");
-  const [parcelas, setParcelas] = useState(2);
+  // null = o usuário ainda não escolheu: vale o padrão da forma (parcelasPadraoDaForma).
+  const [parcelasEscolhidas, setParcelasEscolhidas] = useState<number | null>(null);
   const [taxasCartao, setTaxasCartao] = useState<{ ativas: TaxaCartao[]; calcular: CalcularTaxa<TaxaCartao> } | null>(null);
 
   // O componente pode ficar montado de um dia para o outro (lista de OS aberta):
@@ -101,12 +102,12 @@ export const DialogAssinaturaSaida = ({
     setDataVencimentoSaldo(vencimentoSaldoPadrao());
   }, [open]);
 
-  // Bandeira começa vazia a cada abertura; parcelas começam nas gravadas na OS (ou 2).
+  // Bandeira e parcelas voltam ao padrão a cada abertura.
   const parcelasGravadas = (ordem?.avarias as AvariasOS | null | undefined)?.dados_pagamento?.parcelas;
   useEffect(() => {
     if (!open) return;
     setBandeiraId("");
-    setParcelas(parcelasIniciais(parcelasGravadas));
+    setParcelasEscolhidas(null);
   }, [open, ordem?.id, parcelasGravadas]);
 
   // Tempo gasto é sempre persistido em horas decimais (tempo_gasto_horas), mas o
@@ -149,6 +150,7 @@ export const DialogAssinaturaSaida = ({
   // Base da taxa de cartão: o valor recebido agora (= saldoRestante).
   const baseTaxaCartao = valorRecebidoAgora(ordem.total, entradaPaga);
   const formaEscolhidaAgora = formaPagamento || formaPagamentoAtual;
+  const parcelas = parcelasEscolhidas ?? parcelasPadraoDaForma(formaEscolhidaAgora, parcelasGravadas);
 
   const handleSalvarAssinatura = async () => {
     // Se for digital, precisa ter assinatura
@@ -622,7 +624,7 @@ export const DialogAssinaturaSaida = ({
                   base={baseTaxaCartao}
                   saldoAPrazo={temEntrada && saldoRestante > 0 && saldoAPrazo}
                   parcelas={parcelas}
-                  onParcelasChange={setParcelas}
+                  onParcelasChange={setParcelasEscolhidas}
                   bandeiraId={bandeiraId}
                   onBandeiraChange={setBandeiraId}
                   onTaxas={(ativas, calcular) => setTaxasCartao({ ativas, calcular })}

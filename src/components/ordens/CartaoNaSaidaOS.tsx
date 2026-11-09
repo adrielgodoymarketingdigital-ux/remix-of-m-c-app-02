@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SeletorBandeiraCartao } from "@/components/pdv/SeletorBandeiraCartao";
 import { useTaxasCartao, type TaxaCartao } from "@/hooks/useTaxasCartao";
 import { formatCurrency } from "@/lib/formatters";
-import { OPCOES_PARCELAS, rotuloParcela, taxaDaSaida, type CalcularTaxa } from "@/lib/ordemServico/taxaCartaoSaida";
+import { mostraParcelas, OPCOES_PARCELAS, rotuloParcela, taxaDaSaida, type CalcularTaxa } from "@/lib/ordemServico/taxaCartaoSaida";
 
 interface CartaoNaSaidaOSProps {
   /** Forma escolhida na entrega (débito, crédito ou crédito parcelado). */
@@ -47,12 +47,13 @@ export function CartaoNaSaidaOS({
     forma, taxasAtivas, bandeiraId, parcelas, base, saldoAPrazo, calcularTaxa,
   });
 
-  // Débito/crédito sem bandeira cadastrada: nada a mostrar (nem o espaçamento).
-  if (forma !== "credito_parcelado" && taxasAtivas.length === 0) return null;
+  // Débito sem bandeira cadastrada: nada a mostrar (nem o espaçamento).
+  if (!mostraParcelas(forma) && taxasAtivas.length === 0) return null;
 
   return (
     <div className="mt-3 space-y-3">
-      {forma === "credito_parcelado" && (
+      {/* Crédito e crédito parcelado; no crédito a taxa continua a de crédito à vista. */}
+      {mostraParcelas(forma) && (
         <div className="space-y-2">
           <Label htmlFor="parcelas-saida" className="text-sm">Número de Parcelas</Label>
           <Select value={String(parcelas)} onValueChange={(v) => onParcelasChange(Number(v))}>

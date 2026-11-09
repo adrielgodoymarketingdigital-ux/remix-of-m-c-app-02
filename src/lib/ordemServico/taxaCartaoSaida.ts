@@ -6,8 +6,9 @@
  * Regras (decididas pelo Adriel em 2026-11-09):
  * - base da taxa = valor recebido agora: saldo restante se houve entrada, total se não;
  *   a forma é a escolhida agora (não a da criação);
- * - parcelas só mudam quando a forma é crédito parcelado; nas outras formas o valor
- *   gravado continua o mesmo;
+ * - parcelas só mudam quando a forma é crédito ou crédito parcelado; nas outras formas o
+ *   valor gravado continua o mesmo. No crédito (à vista) as parcelas são só registradas:
+ *   forma e taxa continuam as do crédito (decisão de 2026-11-09);
  * - a conta "Taxa de Cartão" segue o formato da criação da OS
  *   (handleSubmitOrdemServico.ts), com a data = "Data no caixa", e só é lançada se:
  *   forma de cartão, bandeira escolhida, taxa > 0, saldo não ficou a prazo e a OS
@@ -15,6 +16,8 @@
  */
 
 export const FORMAS_CARTAO_SAIDA = ["debito", "credito", "credito_parcelado"] as const;
+/** Formas em que a entrega mostra e grava o número de parcelas. */
+export const FORMAS_COM_PARCELAS = ["credito", "credito_parcelado"] as const;
 export const CATEGORIA_TAXA_CARTAO = "Taxa de Cartão";
 /** Opções do seletor de parcelas (igual ao ResumoFinanceiro da criação da OS). */
 export const OPCOES_PARCELAS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -44,6 +47,10 @@ export function ehFormaCartao(forma: string | null | undefined): boolean {
   return !!forma && (FORMAS_CARTAO_SAIDA as readonly string[]).includes(forma);
 }
 
+export function mostraParcelas(forma: string | null | undefined): boolean {
+  return !!forma && (FORMAS_COM_PARCELAS as readonly string[]).includes(forma);
+}
+
 /** Valor recebido agora na entrega: saldo restante se houve entrada; total se não houve. */
 export function valorRecebidoAgora(total: number | null | undefined, entradaPaga: number | null | undefined): number {
   const t = Number(total || 0);
@@ -55,6 +62,15 @@ export function valorRecebidoAgora(total: number | null | undefined, entradaPaga
 export function parcelasIniciais(gravadas: unknown): number {
   const n = Number(gravadas);
   return Number.isInteger(n) && n >= 1 && n <= 12 ? n : PARCELAS_PADRAO;
+}
+
+/**
+ * Parcelas mostradas quando o usuário ainda não escolheu: crédito começa em 1x (a
+ * criação grava parcelas = 2 em toda OS, mesmo à vista); crédito parcelado começa nas
+ * gravadas (ou 2).
+ */
+export function parcelasPadraoDaForma(forma: string | null | undefined, gravadas: unknown): number {
+  return forma === "credito" ? 1 : parcelasIniciais(gravadas);
 }
 
 /** Texto da opção do seletor: "3x de R$ 33,33". */
@@ -130,7 +146,7 @@ export function jaTemContaTaxa(
 }
 
 /**
- * Patch de dados_pagamento na entrega. Parcelas só entram no crédito parcelado;
+ * Patch de dados_pagamento na entrega. Parcelas só entram no crédito e no crédito parcelado;
  * nas outras formas o objeto fica exatamente como antes (a chave nem aparece).
  */
 export function dadosPagamentoDaSaida<D extends object>(
@@ -142,7 +158,7 @@ export function dadosPagamentoDaSaida<D extends object>(
   return {
     ...anterior,
     forma: formaSelecionada || anterior.forma,
-    ...(formaSelecionada === "credito_parcelado" ? { parcelas } : {}),
+    ...(mostraParcelas(formaSelecionada) ? { parcelas } : {}),
   };
 }
 
