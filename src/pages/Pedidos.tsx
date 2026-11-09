@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,9 @@ import {
 } from "@/hooks/usePedidos";
 import { formatCurrency } from "@/lib/formatters";
 import { ListaCompras } from "@/components/pedidos/ListaCompras";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { TopoPedidosDesktop } from "@/components/pedidos/TopoPedidosDesktop";
+import { resumoPedidos } from "@/lib/pedidos/listaPedidosDesktop";
 
 const STATUS_OPCOES: { value: StatusPedido; label: string }[] = [
   { value: "aguardando", label: "Aguardando" },
@@ -74,6 +77,7 @@ export default function Pedidos() {
   const [pedidoExcluindo, setPedidoExcluindo] = useState<Pedido | null>(null);
   const [form, setForm] = useState<FormularioPedido>(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     carregarPedidos();
@@ -138,8 +142,144 @@ export default function Pedidos() {
     nao_pago: pedidos.filter((p) => !p.pago && p.status !== "cancelado" && p.status !== "entregue").length,
   };
 
+  // Computador: indicadores de todos os pedidos (src/lib/pedidos/listaPedidosDesktop),
+  // a mesma conta dos contadores de cima. Abaixo de 1024px nada muda.
+  const resumoDesktop = useMemo(() => resumoPedidos(pedidos), [pedidos]);
+
   return (
     <AppLayout>
+      {isDesktop ? (
+        // Computador (>= 1024px): mesmo estado e mesmos handlers; topo próprio.
+        // Abaixo disso segue o layout de sempre (ramo de baixo, intocado).
+        <main className="flex-1 p-6 overflow-auto space-y-5">
+          <TopoPedidosDesktop
+            aba={aba}
+            onAba={setAba}
+            resumo={resumoDesktop}
+            loading={loading}
+            onNovoPedido={abrirNovo}
+          />
+
+          {aba === "lista" && <ListaCompras />}
+
+          {/* Provisório (fase 1): filtros e lista de sempre, até as fases 2 e 3 trocarem por
+              filtros e tabela do computador. */}
+          {aba === "pedidos" && <>
+        {/* Filtros */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por cliente, descrição ou telefone..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select
+            value={filtroStatus}
+            onValueChange={(v) => setFiltroStatus(v as StatusPedido | "todos")}
+          >
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os status</SelectItem>
+              {STATUS_OPCOES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Lista */}
+        {loading ? (
+          <div className="text-center py-12 text-muted-foreground">Carregando...</div>
+        ) : pedidosFiltrados.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            {pedidos.length === 0 ? "Nenhum pedido cadastrado ainda." : "Nenhum pedido encontrado com esses filtros."}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {pedidosFiltrados.map((pedido) => (
+              <Card key={pedido.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      {/* Nome + status */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold truncate">{pedido.cliente_nome}</span>
+                        <Badge className={`text-xs ${STATUS_CORES[pedido.status]}`}>
+                          {STATUS_LABELS[pedido.status]}
+                        </Badge>
+                        {pedido.pago ? (
+                          <Badge className="text-xs bg-green-100 text-green-800">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />Pago
+                          </Badge>
+                        ) : (
+                          <Badge className="text-xs bg-orange-100 text-orange-800">
+                            <XCircle className="h-3 w-3 mr-1" />Não pago
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Descrição */}
+                      <div className="flex items-start gap-1.5 mt-1.5">
+                        <Package className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                        <p className="text-sm text-muted-foreground line-clamp-2">{pedido.descricao}</p>
+                      </div>
+
+                      {/* Telefone + previsão */}
+                      <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+                        {pedido.cliente_telefone && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Phone className="h-3 w-3" />
+                            {pedido.cliente_telefone}
+                          </span>
+                        )}
+                        {pedido.previsao_chegada && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <CalendarClock className="h-3 w-3" />
+                            Previsão: {new Date(pedido.previsao_chegada + "T00:00:00").toLocaleDateString("pt-BR")}
+                          </span>
+                        )}
+                        {pedido.valor_total && (
+                          <span className="text-sm font-semibold text-primary">
+                            {formatCurrency(pedido.valor_total)}
+                          </span>
+                        )}
+                      </div>
+
+                      {pedido.observacoes && (
+                        <p className="text-xs text-muted-foreground mt-1 italic line-clamp-1">
+                          {pedido.observacoes}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Ações */}
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" onClick={() => abrirEditar(pedido)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setPedidoExcluindo(pedido)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+          </>}
+        </main>
+      ) : (
       <div className="container mx-auto p-4 lg:p-6 lg:max-w-none space-y-6">
         {/* Cabeçalho. lg:pt-6: o olho flutuante do layout (BotaoOcultarValores,
             fixed top-4 right-4, só no desktop) ficava por cima de "Novo Pedido" */}
@@ -330,6 +470,7 @@ export default function Pedidos() {
         )}
         </>}
       </div>
+      )}
 
       {/* Dialog Novo / Editar */}
       <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
