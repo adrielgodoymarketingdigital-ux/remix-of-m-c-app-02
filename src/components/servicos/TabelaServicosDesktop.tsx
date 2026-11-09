@@ -105,20 +105,20 @@ export function TabelaServicosDesktop(p: TabelaServicosDesktopProps) {
 
   return (
     <Card className="overflow-hidden rounded-2xl shadow-sm">
-      {/* table-fixed + larguras: só o Nome estica. Colunas fixas somam 760px; em 1280px com o
-          menu aberto (976px de caixa) sobram ~216px para o Nome, que corta com reticências e
+      {/* table-fixed + larguras: só o Nome estica. Colunas fixas somam 776px; em 1280px com o
+          menu aberto (974px de caixa) sobram ~198px para o Nome, que corta com reticências e
           mostra o nome inteiro na dica. Abaixo de 920px de caixa a tabela rola dentro do cartão. */}
       <Table className="min-w-[920px] table-fixed">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[80px] pl-5 pr-2">{t("colunas.codigo")}</TableHead>
+            <TableHead className="w-[104px] pl-5 pr-2">{t("colunas.codigo")}</TableHead>
             <TableHead className="px-3">{t("colunas.nome")}</TableHead>
-            <TableHead className="w-[112px] px-2">{t("colunas.tipo")}</TableHead>
-            <TableHead className="w-[128px] px-2">{t("colunas.peca")}</TableHead>
-            <TableHead className="w-[112px] px-3 text-right">{t("colunas.custo")}</TableHead>
-            <TableHead className="w-[112px] px-3 text-right">{t("colunas.preco")}</TableHead>
-            <TableHead className="w-[128px] px-3 text-right">{t("colunas.lucro")}</TableHead>
-            <TableHead className="w-[88px] px-2 pr-4 text-center">{t("colunas.acoes")}</TableHead>
+            <TableHead className="w-[124px] px-2">{t("colunas.tipo")}</TableHead>
+            <TableHead className="w-[124px] px-2">{t("colunas.peca")}</TableHead>
+            <TableHead className="w-[108px] px-3 text-right">{t("colunas.custo")}</TableHead>
+            <TableHead className="w-[108px] px-3 text-right">{t("colunas.preco")}</TableHead>
+            <TableHead className="w-[124px] px-3 text-right">{t("colunas.lucro")}</TableHead>
+            <TableHead className="w-[84px] px-2 pr-4 text-center">{t("colunas.acoes")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -142,7 +142,7 @@ export function TabelaServicosDesktop(p: TabelaServicosDesktopProps) {
                 </TableCell>
                 <TableCell className="px-2 py-3">
                   {tipo ? (
-                    <Badge variant="outline" className="block max-w-full truncate" title={tipo}>
+                    <Badge variant="outline" className="inline-block max-w-full truncate align-middle" title={tipo}>
                       {tipo}
                     </Badge>
                   ) : (
@@ -151,7 +151,7 @@ export function TabelaServicosDesktop(p: TabelaServicosDesktopProps) {
                 </TableCell>
                 <TableCell className="px-2 py-3">
                   {servico.peca_nome ? (
-                    <Badge variant="secondary" className="block max-w-full truncate" title={servico.peca_nome}>
+                    <Badge variant="secondary" className="inline-block max-w-full truncate align-middle" title={servico.peca_nome}>
                       {servico.peca_nome}
                     </Badge>
                   ) : (
