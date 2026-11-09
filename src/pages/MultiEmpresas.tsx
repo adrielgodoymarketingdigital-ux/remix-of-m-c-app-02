@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { consolidarLojas, lojasUnicas, participacaoNoTotal } from "@/lib/multiempresas/consolidacao";
+import { consolidarLojas, lojasUnicas, osParaMeta, participacaoNoTotal, ticketMedioOS, ticketMedioOSConsolidado } from "@/lib/multiempresas/consolidacao";
 import {
   BarChart as ReBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, LineChart, Line, CartesianGrid, RadarChart,
@@ -43,7 +43,11 @@ interface TopProduto {
 }
 interface MetricasEmpresa {
   faturamento_mes: number; faturamento_os: number; faturamento_vendas: number;
+  /** Serviços avulsos + vendas avulsas (função nova). */
+  faturamento_avulsos?: number;
   os_mes: number; os_em_aberto: number; os_finalizadas: number;
+  /** OS que entraram no faturamento de OS (base do ticket médio de OS e da meta de OS). */
+  os_faturadas?: number;
   vendas_mes: number; ultimas_vendas: VendaItem[];
   vendas_por_tipo: VendaTipo[]; vendas_por_forma: VendaPorForma[];
   top_produtos: TopProduto[];
@@ -226,7 +230,9 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
   const vendasTotal = totais.vendas;
   const fatOS = totais.faturamentoOS;
   const fatVendas = totais.faturamentoVendas;
-  const ticketMedioGlobal = osTotal > 0 ? fatTotal / osTotal : 0;
+  const fatAvulsos = totais.faturamentoAvulsos;
+  // Ticket médio de OS: faturamento de OS ÷ OS faturadas (status faturável, mês da entrega).
+  const ticketMedioGlobal = useMemo(() => ticketMedioOSConsolidado(empresas), [empresas]);
   const taxaFinalizacao = osTotal > 0 ? Math.round((osFinalizadas / osTotal) * 100) : 0;
 
   // Ranking faturamento por empresa
@@ -280,14 +286,14 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
     const maxOS = Math.max(...empresas.map(e => e.metricas.os_mes)) || 1;
     const maxVendas = Math.max(...empresas.map(e => e.metricas.vendas_mes)) || 1;
     const maxFin = Math.max(...empresas.map(e => e.metricas.os_finalizadas)) || 1;
-    const maxTicket = Math.max(...empresas.map(e => e.metricas.os_mes > 0 ? e.metricas.faturamento_mes / e.metricas.os_mes : 0)) || 1;
+    const maxTicket = Math.max(...empresas.map(e => ticketMedioOS(e.metricas))) || 1;
 
     return [
       { indicador: "Faturamento", ...Object.fromEntries(empresas.map(e => [e.nome, Math.round((e.metricas.faturamento_mes / maxFat) * 100)])) },
       { indicador: "OS Total", ...Object.fromEntries(empresas.map(e => [e.nome, Math.round((e.metricas.os_mes / maxOS) * 100)])) },
       { indicador: "Vendas", ...Object.fromEntries(empresas.map(e => [e.nome, Math.round((e.metricas.vendas_mes / maxVendas) * 100)])) },
       { indicador: "Finalizadas", ...Object.fromEntries(empresas.map(e => [e.nome, Math.round((e.metricas.os_finalizadas / maxFin) * 100)])) },
-      { indicador: "Ticket Médio", ...Object.fromEntries(empresas.map(e => { const t = e.metricas.os_mes > 0 ? e.metricas.faturamento_mes / e.metricas.os_mes : 0; return [e.nome, Math.round((t / maxTicket) * 100)]; })) },
+      { indicador: "Ticket de OS", ...Object.fromEntries(empresas.map(e => [e.nome, Math.round((ticketMedioOS(e.metricas) / maxTicket) * 100)])) },
     ];
   }, [empresas]);
 
@@ -319,9 +325,9 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
       <div>
         <p className="mb-[15px] text-[11px] leading-[1.6] text-muted-foreground sm:text-xs">Resumo consolidado de todas as empresas no período selecionado.</p>
         <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
-          <KpiCard titulo="Faturamento Total" valor={formatarMoedaCompacta(fatTotal)} sub={`OS: ${formatarMoedaCompacta(fatOS)} · Vendas: ${formatarMoedaCompacta(fatVendas)}`} icon={DollarSign} cor="#246BFF" />
+          <KpiCard titulo="Faturamento Total" valor={formatarMoedaCompacta(fatTotal)} sub={`OS: ${formatarMoedaCompacta(fatOS)} · Vendas: ${formatarMoedaCompacta(fatVendas)}${fatAvulsos > 0 ? ` · Avulsos: ${formatarMoedaCompacta(fatAvulsos)}` : ""}`} icon={DollarSign} cor="#246BFF" />
           <KpiCard titulo="Ordens de Serviço" valor={String(osTotal)} sub={`${osFinalizadas} finalizadas · ${osAbertas} em aberto`} icon={Activity} cor="#10B981" />
-          <KpiCard titulo="Ticket Médio Global" valor={formatarMoedaCompacta(ticketMedioGlobal)} sub={`${taxaFinalizacao}% taxa de finalização`} icon={TrendingUp} cor="#8B5CF6" />
+          <KpiCard titulo="Ticket Médio de OS" valor={formatarMoedaCompacta(ticketMedioGlobal)} sub={`${taxaFinalizacao}% taxa de finalização`} icon={TrendingUp} cor="#8B5CF6" />
           <KpiCard titulo="Vendas Realizadas" valor={String(vendasTotal)} sub={`${empresas.length} empresa(s) ativas`} icon={ShoppingBag} cor="#FF9900" />
         </div>
       </div>
@@ -398,7 +404,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
           <CardContent>
             <div className="space-y-2">
               {ranking.map((emp, i) => {
-                const ticket = emp.metricas.os_mes > 0 ? emp.metricas.faturamento_mes / emp.metricas.os_mes : 0;
+                const ticket = ticketMedioOS(emp.metricas);
                 const pct = participacaoNoTotal(emp.metricas.faturamento_mes, fatTotal);
                 const cor = emp.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length];
                 return (
@@ -441,14 +447,14 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
               <Activity className="h-4 w-4 text-emerald-500" />
               OS por Empresa
             </CardTitle>
-            <p className="text-[11px] text-muted-foreground">Ordens de serviço abertas (âmbar) vs finalizadas (verde) por empresa. TM = ticket médio da empresa no período.</p>
+            <p className="text-[11px] text-muted-foreground">Ordens de serviço abertas (âmbar) vs finalizadas (verde) por empresa. TM OS = ticket médio de OS (faturamento de OS ÷ OS faturadas) no período.</p>
           </CardHeader>
           <CardContent className="space-y-3">
             {empresas.map((emp, i) => {
               const total = emp.metricas.os_mes || 0;
               const pctFin = total > 0 ? Math.round((emp.metricas.os_finalizadas / total) * 100) : 0;
               const cor = emp.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length];
-              const ticket = emp.metricas.os_mes > 0 ? emp.metricas.faturamento_mes / emp.metricas.os_mes : 0;
+              const ticket = ticketMedioOS(emp.metricas);
               return (
                 <div key={emp.id} className="space-y-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
@@ -460,7 +466,7 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
                       <span className="text-emerald-400 font-medium">{emp.metricas.os_finalizadas} fin.</span>
                       <span>/</span>
                       <span className={emp.metricas.os_em_aberto > 0 ? "text-amber-400 font-medium" : ""}>{emp.metricas.os_em_aberto} ab.</span>
-                      <span className="text-muted-foreground">· TM {formatarMoedaCompacta(ticket)}</span>
+                      <span className="text-muted-foreground">· TM OS {formatarMoedaCompacta(ticket)}</span>
                     </div>
                   </div>
                   <div className="flex h-2 gap-0.5">
@@ -621,14 +627,14 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
                   <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Em Aberto</th>
                   <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Finalizadas</th>
                   <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Vendas</th>
-                  <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Ticket Médio</th>
+                  <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Ticket Médio (OS)</th>
                   <th className="text-right py-2 pr-3 font-medium text-muted-foreground">Fat. OS</th>
                   <th className="text-right py-2 font-medium text-muted-foreground">Part. %</th>
                 </tr>
               </thead>
               <tbody>
                 {ranking.map((emp, i) => {
-                  const ticket = emp.metricas.os_mes > 0 ? emp.metricas.faturamento_mes / emp.metricas.os_mes : 0;
+                  const ticket = ticketMedioOS(emp.metricas);
                   const pct = participacaoNoTotal(emp.metricas.faturamento_mes, fatTotal);
                   const taxaFin = emp.metricas.os_mes > 0 ? Math.round((emp.metricas.os_finalizadas / emp.metricas.os_mes) * 100) : 0;
                   const cor = emp.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length];
@@ -705,7 +711,9 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
                 const metaOS = emp.metas.find(m => m.tipo === "os");
                 const cor = emp.tipo === "matriz" ? "#f59e0b" : CORES[i % CORES.length];
                 const pctFat = metaFat ? Math.min(100, Math.round((emp.metricas.faturamento_mes / metaFat.valor) * 100)) : null;
-                const pctOS = metaOS ? Math.min(100, Math.round((emp.metricas.os_mes / metaOS.valor) * 100)) : null;
+                // Meta de OS compara com as OS faturadas (mesmo número do ticket de OS).
+                const osMeta = osParaMeta(emp.metricas);
+                const pctOS = metaOS ? Math.min(100, Math.round((osMeta / metaOS.valor) * 100)) : null;
                 if (!metaFat && !metaOS) return (
                   <div key={emp.id} className="text-xs text-muted-foreground p-3 rounded-lg border border-dashed border-border/40 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -736,8 +744,8 @@ function DashboardConsolidada({ empresas, isLoading, periodo, onAbrirMetas }: {
                     {pctOS !== null && (
                       <div>
                         <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-                          <span>OS</span>
-                          <span className={pctOS >= 100 ? "text-emerald-400 font-semibold" : ""}>{emp.metricas.os_mes} / {metaOS!.valor} · {pctOS}%</span>
+                          <span>OS faturadas</span>
+                          <span className={pctOS >= 100 ? "text-emerald-400 font-semibold" : ""}>{osMeta} / {metaOS!.valor} · {pctOS}%</span>
                         </div>
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                           <div className="h-full rounded-full transition-all bg-blue-500/70" style={{ width: `${pctOS}%` }} />
@@ -866,7 +874,7 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
   const metaFat = empresa.metas.find(m => m.tipo === "faturamento");
   const pctFat = metaFat && metaFat.valor > 0 ? Math.min(100, (empresa.metricas.faturamento_mes / metaFat.valor) * 100) : null;
   const pctTotal = participacaoNoTotal(empresa.metricas.faturamento_mes, fatTotal);
-  const ticketMedio = empresa.metricas.os_mes > 0 ? empresa.metricas.faturamento_mes / empresa.metricas.os_mes : 0;
+  const ticketMedio = ticketMedioOS(empresa.metricas);
 
   return (
     <Card className={`flex flex-col ${isMatriz ? "border-amber-200 dark:border-amber-800/50" : "border-border/60"}`}>
@@ -913,7 +921,7 @@ function CardEmpresa({ empresa, isMatriz, cor, fatTotal, onMetas, onNotificacoes
             <p className="text-lg font-semibold text-violet-400">{empresa.metricas.vendas_mes}</p>
           </div>
           <div className="rounded-md bg-muted/40 p-2">
-            <p className="text-[10px] text-muted-foreground">Ticket médio</p>
+            <p className="text-[10px] text-muted-foreground">Ticket médio de OS</p>
             <p className="text-sm font-semibold">{formatarMoeda(ticketMedio)}</p>
           </div>
         </div>

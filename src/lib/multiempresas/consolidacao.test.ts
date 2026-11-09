@@ -2,7 +2,7 @@
 // Consolidado da tela Multi Empresas: cada loja somada uma única vez. Dados fictícios.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { consolidarLojas, lojasUnicas, participacaoNoTotal, type LojaComMetricas } from "./consolidacao.ts";
+import { consolidarLojas, lojasUnicas, osParaMeta, participacaoNoTotal, ticketMedioOS, ticketMedioOSConsolidado, type LojaComMetricas } from "./consolidacao.ts";
 
 function loja(id: string, fat: number, os = 0, vendas = 0, fatOS = 0): LojaComMetricas {
   return {
@@ -67,4 +67,36 @@ test("lista vazia e campos opcionais ausentes viram zero", () => {
   assert.equal(t.faturamentoOS, 0);
   assert.equal(t.faturamentoVendas, 0);
   assert.equal(t.faturamento, 10);
+});
+
+// ── Ticket médio de OS e meta de OS ───────────────────────────────────────
+
+const comFaturadas = (l: LojaComMetricas, osFaturadas: number, avulsos = 0): LojaComMetricas =>
+  ({ ...l, metricas: { ...l.metricas, os_faturadas: osFaturadas, faturamento_avulsos: avulsos } });
+
+test("ticket de OS = faturamento de OS ÷ OS faturadas (vendas não entram)", () => {
+  const m = comFaturadas(matriz, 2);
+  assert.equal(ticketMedioOS(m.metricas), 400 / 2);
+  assert.equal(ticketMedioOS(comFaturadas(matriz, 0).metricas), 0);
+});
+
+test("ticket de OS consolidado: soma de OS ÷ soma de faturadas, cada loja uma vez", () => {
+  const lojas = [comFaturadas(matriz, 2), comFaturadas(filialA, 1), comFaturadas(filialA, 1), comFaturadas(filialB, 1)];
+  assert.equal(ticketMedioOSConsolidado(lojas), (400 + 200 + 50) / (2 + 1 + 1));
+});
+
+test("função antiga publicada (sem os_faturadas): mantém a conta de antes", () => {
+  assert.equal(ticketMedioOS(matriz.metricas), 1000 / 4);
+  assert.equal(ticketMedioOSConsolidado([matriz, filialA, filialB]), 1750 / 7);
+  assert.equal(osParaMeta(matriz.metricas), 4);
+});
+
+test("meta de OS compara com as OS faturadas", () => {
+  assert.equal(osParaMeta(comFaturadas(matriz, 3).metricas), 3);
+});
+
+test("consolidado soma avulsos e OS faturadas", () => {
+  const t = consolidarLojas([comFaturadas(matriz, 2, 30), comFaturadas(filialA, 1, 5)]);
+  assert.equal(t.faturamentoAvulsos, 35);
+  assert.equal(t.osFaturadas, 3);
 });
