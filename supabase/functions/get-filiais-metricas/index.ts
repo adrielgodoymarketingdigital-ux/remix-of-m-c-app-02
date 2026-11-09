@@ -1,6 +1,21 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { filtrarRegistrosDaLoja, filtroLeituraLoja, type LojaLeitura } from "./lojas.ts";
+import {
+  calcularMetricasLegado,
+  calcularMetricasLoja,
+  janelaBrasilia,
+  janelaConsulta,
+  janelaLegado,
+  STATUS_OS_FATURAVEL_METRICAS,
+  type DadosLoja,
+  type JanelaBrasilia,
+  type JanelaLegado,
+  type OSMetrica,
+  type ServicoAvulsoMetrica,
+  type VendaAvulsaMetrica,
+  type VendaMetrica,
+} from "./calculoMetricas.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,190 +30,198 @@ const TIPOS_LABEL: Record<string, string> = {
   servico_avulso: "Serviço Avulso",
 };
 
-const FORMA_LABEL: Record<string, string> = {
-  dinheiro: "Dinheiro", pix: "Pix", cartao_credito: "Crédito",
-  cartao_debito: "Débito", a_receber: "A receber", a_prazo: "A prazo",
-};
-
-function calcularVendaLiquida(v: any): number {
+/** Valor exibido na lista "últimas vendas" (como antes). */
+function calcularVendaLiquida(v: { total?: unknown; valor_desconto_manual?: unknown; valor_desconto_cupom?: unknown }): number {
   return (Number(v.total) || 0) - (Number(v.valor_desconto_manual) || 0) - (Number(v.valor_desconto_cupom) || 0);
 }
 
-const STATUS_FINAIS = ["finalizado", "entregue"];
-const isStatusFinal = (status: string) =>
-  STATUS_FINAIS.includes((status || "").toLowerCase());
-const isItemOS = (v: any) => {
-  if (v.peca_id != null) return true;
-  if (v.tipo === "servico") return true;
-  const obs = typeof v.observacoes === "string" ? v.observacoes : "";
-  if (obs.includes("utilizado na OS")) return true;
-  if (obs === "pagamento_duplo_secundario") return true;
-  return false;
-};
+const TAMANHO_PAGINA = 1000;
 
-// Colunas lidas nas consultas abaixo (só leitura).
-interface LinhaVenda {
-  empresa_id: string | null;
-  total: number | null;
-  valor_desconto_manual: number | null;
-  valor_desconto_cupom: number | null;
-  tipo: string;
-  peca_id: string | null;
-  observacoes: string | null;
-  forma_pagamento: string | null;
-  produto_id: string | null;
-  quantidade: number | null;
+/**
+ * Lê TODAS as linhas de uma consulta, de 1000 em 1000 (o PostgREST corta em
+ * 1000 sem avisar). `montar` precisa devolver uma consulta nova a cada chamada.
+ * Erro de leitura LANÇA: melhor a tela avisar do que mostrar número errado.
+ */
+async function buscarTodas<T>(montar: () => any, rotulo: string): Promise<T[]> {
+  const linhas: T[] = [];
+  for (let de = 0; ; de += TAMANHO_PAGINA) {
+    const { data, error } = await montar().order("id", { ascending: true }).range(de, de + TAMANHO_PAGINA - 1);
+    if (error) throw new Error(`Erro ao ler ${rotulo}: ${error.message}`);
+    const pagina = (data ?? []) as T[];
+    linhas.push(...pagina);
+    if (pagina.length < TAMANHO_PAGINA) return linhas;
+  }
 }
-interface LinhaUltimaVenda extends LinhaVenda {
-  id: string;
-  data: string;
-  cliente_id: string | null;
-}
-interface LinhaOS {
-  empresa_id: string | null;
-  total: number | null;
-  status: string | null;
-}
+
+const SELECT_VENDAS =
+  "id, empresa_id, tipo, peca_id, produto_id, cliente_id, data, data_recebimento, forma_pagamento, recebido, cancelada, " +
+  "parcela_numero, total_parcelas, total, valor_desconto_manual, valor_desconto_cupom, custo_unitario, quantidade, " +
+  "grupo_venda, segunda_forma_pagamento, valor_segunda_forma, observacoes, deleted_at";
+// Só o pedaço de avarias que a regra usa (avarias pode ter fotos e assinaturas).
+const SELECT_OS =
+  "id, empresa_id, numero_os, total, status, is_teste, created_at, data_saida, deleted_at, forma_pagamento, " +
+  "dados_pagamento:avarias->dados_pagamento";
 
 async function buscarMetricasEmpresa(
   supabase: any,
   userId: string,
   loja: LojaLeitura,
-  dataInicio: Date,
-  dataFim: Date,
+  janela: JanelaBrasilia,
+  antiga: JanelaLegado,
 ) {
-  // Cada loja lê só os próprios registros. A matriz também lê os registros sem
-  // empresa_id (só na leitura — nada é gravado). A matriz NÃO inclui as filiais:
-  // o consolidado é somado na tela, uma vez por loja.
+  // Regra de loja da F1: matriz = matriz + sem loja; filial = só a filial.
   const filtro = filtroLeituraLoja(loja);
   const filtroSemLoja = `empresa_id.eq.${filtro.empresaId},empresa_id.is.null`;
+  const daLoja = (q: any) => (filtro.incluirSemLoja ? q.or(filtroSemLoja) : q.eq("empresa_id", filtro.empresaId));
+  // Uma leitura só atende a conta nova (Brasília, competência) e a antiga (campo legado).
+  const consulta = janelaConsulta(janela, antiga);
 
-  const buildVendasQuery = (select: string) => {
-    const base = supabase.from("vendas").select(select).eq("user_id", userId).eq("cancelada", false);
-    return filtro.incluirSemLoja ? base.or(filtroSemLoja) : base.eq("empresa_id", filtro.empresaId);
-  };
-
-  const buildOsQuery = (select: string) => {
-    const base = supabase.from("ordens_servico").select(select).eq("user_id", userId);
-    return filtro.incluirSemLoja ? base.or(filtroSemLoja) : base.eq("empresa_id", filtro.empresaId);
-  };
-
-  const [vendasRes, osRes, ultimasVendasRes] = await Promise.all([
-    buildVendasQuery("empresa_id, total, valor_desconto_manual, valor_desconto_cupom, tipo, peca_id, observacoes, forma_pagamento, produto_id, quantidade")
-      .gte("data", dataInicio.toISOString())
-      .lte("data", dataFim.toISOString()),
-    buildOsQuery("empresa_id, total, status")
-      .gte("created_at", dataInicio.toISOString())
-      .lte("created_at", dataFim.toISOString())
-      .is("deleted_at", null),
-    buildVendasQuery("id, empresa_id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id, observacoes")
+  const [vendas, osCriadas, osEntregues, servicosAvulsos, vendasAvulsas, ultimasRes] = await Promise.all([
+    buscarTodas<VendaMetrica>(
+      () =>
+        daLoja(supabase.from("vendas").select(SELECT_VENDAS).eq("user_id", userId).eq("cancelada", false)).or(
+          // Valores entre aspas: o ISO tem "." e ":" dentro do filtro or() do PostgREST.
+          `and(data.gte."${consulta.dataDeISO}",data.lte."${consulta.dataAteISO}"),` +
+            `and(data_recebimento.not.is.null,data_recebimento.gte."${consulta.recebimentoDe}",data_recebimento.lte."${consulta.recebimentoAte}T23:59:59")`,
+        ),
+      "vendas",
+    ),
+    buscarTodas<OSComPagamento>(
+      () =>
+        daLoja(supabase.from("ordens_servico").select(SELECT_OS).eq("user_id", userId).is("deleted_at", null))
+          .gte("created_at", consulta.criacaoDeISO)
+          .lte("created_at", consulta.criacaoAteISO),
+      "ordens de serviço",
+    ),
+    buscarTodas<OSComPagamento>(
+      () =>
+        daLoja(supabase.from("ordens_servico").select(SELECT_OS).eq("user_id", userId).is("deleted_at", null))
+          .in("status", [...STATUS_OS_FATURAVEL_METRICAS])
+          .not("data_saida", "is", null)
+          .gte("data_saida", janela.inicioISO)
+          .lte("data_saida", janela.fimISO),
+      "ordens de serviço entregues",
+    ),
+    buscarTodas<ServicoAvulsoMetrica>(
+      () =>
+        daLoja(supabase.from("servicos_avulsos").select("id, empresa_id, preco, status, created_at").eq("user_id", userId))
+          .in("status", [...STATUS_OS_FATURAVEL_METRICAS])
+          .gte("created_at", janela.inicioISO)
+          .lte("created_at", janela.fimISO),
+      "serviços avulsos",
+    ),
+    // Vendas avulsas não têm loja: só a matriz lê (sem loja = matriz).
+    filtro.incluirSemLoja
+      ? buscarTodas<VendaAvulsaMetrica>(
+          () =>
+            supabase.from("vendas_avulsas").select("id, valor, created_at, deleted_at").eq("user_id", userId)
+              .is("deleted_at", null)
+              .gte("created_at", janela.inicioISO)
+              .lte("created_at", janela.fimISO),
+          "vendas avulsas",
+        )
+      : Promise.resolve([] as VendaAvulsaMetrica[]),
+    daLoja(
+      supabase.from("vendas")
+        .select("id, empresa_id, data, tipo, total, valor_desconto_manual, valor_desconto_cupom, forma_pagamento, quantidade, cliente_id, produto_id, peca_id, observacoes")
+        .eq("user_id", userId)
+        .eq("cancelada", false)
+        .is("deleted_at", null),
+    )
       .order("data", { ascending: false })
       .limit(5),
   ]);
 
-  // Defesa extra: a mesma regra da consulta, em código puro e testado (lojas.ts).
-  const linhasOS: LinhaOS[] = osRes.data || [];
-  const linhasVendas: LinhaVenda[] = vendasRes.data || [];
-  const osData = filtrarRegistrosDaLoja(linhasOS, loja);
-  const vendasFaturamento = filtrarRegistrosDaLoja(linhasVendas, loja).filter((v: any) => !isItemOS(v));
-  const faturamentoVendas = vendasFaturamento.reduce((sum: number, v: any) => sum + calcularVendaLiquida(v), 0);
-  const faturamentoOS = osData
-    .filter((o: any) => isStatusFinal(o.status))
-    .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
-  const faturamento = faturamentoVendas + faturamentoOS;
+  // OS: as criadas no período (contagem, conta antiga) + as entregues no período (faturamento), sem repetir.
+  const osPorId = new Map<string, OSMetrica>();
+  for (const o of [...osCriadas, ...osEntregues]) {
+    const { dados_pagamento, ...resto } = o;
+    osPorId.set(o.id, { ...resto, avarias: dados_pagamento ? { dados_pagamento } : null });
+  }
+  const os = [...osPorId.values()];
 
-  // Por tipo
-  const porTipo: Record<string, { tipo: string; label: string; total: number; quantidade: number }> = {};
-  for (const v of vendasFaturamento) {
-    const tipo = v.tipo || "outros";
-    if (!porTipo[tipo]) porTipo[tipo] = { tipo, label: TIPOS_LABEL[tipo] || tipo, total: 0, quantidade: 0 };
-    porTipo[tipo].total += calcularVendaLiquida(v);
-    porTipo[tipo].quantidade += 1;
+  // Status da conta a receber de cada OS faturável (mesmo filtro de loja do Dashboard).
+  const numeros = [...new Set(os.map((o) => o.numero_os).filter((n): n is string => !!n))];
+  const statusContaPorOS: Record<string, string | null> = {};
+  for (let i = 0; i < numeros.length; i += 200) {
+    const lote = numeros.slice(i, i + 200);
+    const contas = await buscarTodas<{ os_numero: string | null; status: string | null }>(
+      () =>
+        daLoja(supabase.from("contas").select("id, os_numero, status").eq("user_id", userId).eq("tipo", "receber"))
+          .in("os_numero", lote),
+      "contas das OS",
+    );
+    for (const c of contas) if (c.os_numero) statusContaPorOS[c.os_numero] = c.status;
   }
 
-  // Por forma de pagamento
-  const porForma: Record<string, { forma: string; label: string; total: number; quantidade: number }> = {};
-  for (const v of vendasFaturamento) {
-    const forma = v.forma_pagamento || "outros";
-    if (!porForma[forma]) porForma[forma] = { forma, label: FORMA_LABEL[forma] || forma, total: 0, quantidade: 0 };
-    porForma[forma].total += calcularVendaLiquida(v);
-    porForma[forma].quantidade += 1;
-  }
+  const dados: DadosLoja = { vendas, os, statusContaPorOS, servicosAvulsos, vendasAvulsas };
+  const m = calcularMetricasLoja(dados, janela, loja);
+  const legado = calcularMetricasLegado({ vendas, os }, antiga, loja);
 
-  // Top produtos/peças
-  const topMap: Record<string, { id: string; tipo: string; total: number; quantidade: number }> = {};
-  for (const v of vendasFaturamento) {
-    const key = v.produto_id || v.peca_id;
-    if (!key) continue;
-    if (!topMap[key]) topMap[key] = { id: key, tipo: v.tipo, total: 0, quantidade: 0 };
-    topMap[key].total += calcularVendaLiquida(v);
-    topMap[key].quantidade += v.quantidade || 1;
-  }
+  // Nomes do top produtos/peças.
+  const produtoIds = m.top_ids.filter((t) => t.tipo === "produto" || t.tipo === "dispositivo").map((t) => t.id);
+  const pecaIds = m.top_ids.filter((t) => t.tipo === "peca" || t.tipo === "servico_avulso").map((t) => t.id);
+  const [prodRes, pecRes] = await Promise.all([
+    produtoIds.length ? supabase.from("produtos").select("id, nome").in("id", produtoIds) : { data: [] },
+    pecaIds.length ? supabase.from("pecas").select("id, nome").in("id", pecaIds) : { data: [] },
+  ]);
+  const nomeMap: Record<string, string> = {};
+  for (const p of (prodRes.data || [])) nomeMap[p.id] = p.nome;
+  for (const p of (pecRes.data || [])) nomeMap[p.id] = p.nome;
+  const topItens = m.top_ids.map((t) => ({
+    id: t.id,
+    nome: nomeMap[t.id] || "Item",
+    tipo: t.tipo,
+    label: TIPOS_LABEL[t.tipo] || t.tipo,
+    total: t.total,
+    quantidade: t.quantidade,
+  }));
 
-  // Resolver nomes dos top produtos
-  const topIds = Object.keys(topMap);
-  let topItens: { id: string; nome: string; tipo: string; label: string; total: number; quantidade: number }[] = [];
-  if (topIds.length > 0) {
-    const produtoIds = topIds.filter(id => topMap[id].tipo === "produto" || topMap[id].tipo === "dispositivo");
-    const pecaIds = topIds.filter(id => topMap[id].tipo === "peca" || topMap[id].tipo === "servico_avulso");
-    const [prodRes, pecRes] = await Promise.all([
-      produtoIds.length ? supabase.from("produtos").select("id, nome").in("id", produtoIds) : { data: [] },
-      pecaIds.length ? supabase.from("pecas").select("id, nome").in("id", pecaIds) : { data: [] },
-    ]);
-    const nomeMap: Record<string, string> = {};
-    for (const p of (prodRes.data || [])) nomeMap[p.id] = p.nome;
-    for (const p of (pecRes.data || [])) nomeMap[p.id] = p.nome;
-    topItens = Object.entries(topMap)
-      .map(([id, item]) => ({
-        id,
-        nome: nomeMap[id] || "Item",
-        tipo: item.tipo,
-        label: TIPOS_LABEL[item.tipo] || item.tipo,
-        total: item.total,
-        quantidade: item.quantidade,
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
-  }
-
-  // Últimas vendas
-  const linhasUltimas: LinhaUltimaVenda[] = ultimasVendasRes.data || [];
-  const ultimas = filtrarRegistrosDaLoja(linhasUltimas, loja);
-  const clienteIds = [...new Set(ultimas.map((v: any) => v.cliente_id).filter(Boolean))];
-  const produtoIds2 = [...new Set(ultimas.map((v: any) => v.produto_id).filter(Boolean))];
-  const pecaIds2 = [...new Set(ultimas.map((v: any) => v.peca_id).filter(Boolean))];
+  // Últimas vendas (lista de exibição; agora sem as apagadas).
+  const ultimas = filtrarRegistrosDaLoja((ultimasRes.data || []) as Array<VendaMetrica & { cliente_id: string | null }>, loja);
+  const clienteIds = [...new Set(ultimas.map((v) => v.cliente_id).filter(Boolean))];
+  const produtoIds2 = [...new Set(ultimas.map((v) => v.produto_id).filter(Boolean))];
+  const pecaIds2 = [...new Set(ultimas.map((v) => v.peca_id).filter(Boolean))];
   const [clientesRes, produtosRes, pecasRes] = await Promise.all([
     clienteIds.length ? supabase.from("clientes").select("id, nome").in("id", clienteIds) : { data: [] },
     produtoIds2.length ? supabase.from("produtos").select("id, nome").in("id", produtoIds2) : { data: [] },
     pecaIds2.length ? supabase.from("pecas").select("id, nome").in("id", pecaIds2) : { data: [] },
   ]);
-  const clienteMap = Object.fromEntries((clientesRes.data || []).map((c: any) => [c.id, c.nome]));
-  const produtoMap = Object.fromEntries((produtosRes.data || []).map((p: any) => [p.id, p.nome]));
-  const pecaMap = Object.fromEntries((pecasRes.data || []).map((p: any) => [p.id, p.nome]));
-  const ultimasVendas = ultimas.map((v: any) => ({
+  const clienteMap: Record<string, string> = Object.fromEntries((clientesRes.data || []).map((c: { id: string; nome: string }) => [c.id, c.nome]));
+  const produtoMap: Record<string, string> = Object.fromEntries((produtosRes.data || []).map((p: { id: string; nome: string }) => [p.id, p.nome]));
+  const pecaMap: Record<string, string> = Object.fromEntries((pecasRes.data || []).map((p: { id: string; nome: string }) => [p.id, p.nome]));
+  const ultimasVendas = ultimas.map((v) => ({
     id: v.id, data: v.data, tipo: v.tipo,
     label: TIPOS_LABEL[v.tipo] || v.tipo,
-    nome: produtoMap[v.produto_id] || pecaMap[v.peca_id] || (v.tipo === "servico_avulso" ? "Serviço Avulso" : "Item"),
-    cliente: clienteMap[v.cliente_id] || null,
+    nome: (v.produto_id && produtoMap[v.produto_id]) || (v.peca_id && pecaMap[v.peca_id]) || (v.tipo === "servico_avulso" ? "Serviço Avulso" : "Item"),
+    cliente: (v.cliente_id && clienteMap[v.cliente_id]) || null,
     valor: calcularVendaLiquida(v),
     forma_pagamento: v.forma_pagamento,
     quantidade: v.quantidade,
   }));
 
   return {
-    faturamento_mes: faturamento,
-    faturamento_os: faturamentoOS,
-    faturamento_vendas: faturamentoVendas,
-    os_mes: osData.length,
-    os_em_aberto: osData.filter((o: any) => !isStatusFinal(o.status)).length,
-    os_finalizadas: osData.filter((o: any) => isStatusFinal(o.status)).length,
-    vendas_mes: vendasFaturamento.length,
+    faturamento_mes: m.faturamento_mes,
+    faturamento_os: m.faturamento_os,
+    faturamento_vendas: m.faturamento_vendas,
+    faturamento_avulsos: m.faturamento_avulsos,
+    os_mes: m.os_mes,
+    os_em_aberto: m.os_em_aberto,
+    os_finalizadas: m.os_finalizadas,
+    os_faturadas: m.os_faturadas,
+    vendas_mes: m.vendas_mes,
     ultimas_vendas: ultimasVendas,
-    vendas_por_tipo: Object.values(porTipo),
-    vendas_por_forma: Object.values(porForma).sort((a, b) => b.total - a.total),
+    vendas_por_tipo: m.vendas_por_tipo,
+    vendas_por_forma: m.vendas_por_forma,
     top_produtos: topItens,
+    // Conta ANTIGA, só para comparação por um período. A tela não mostra.
+    legado,
   };
 }
+
+type OSComPagamento = Omit<OSMetrica, "avarias"> & {
+  dados_pagamento: NonNullable<NonNullable<OSMetrica["avarias"]>["dados_pagamento"]> | null;
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -214,38 +237,20 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error("Token inválido");
 
-    // Parsear filtro de data do body (POST) ou usar mês atual como padrão
-    let dataInicio: Date;
-    let dataFim: Date;
-
+    // Período: a tela manda "AAAA-MM-DD" (dias de Brasília). Sem datas: mês atual até hoje.
+    let dataInicioCorpo: string | null = null;
+    let dataFimCorpo: string | null = null;
     if (req.method === "POST") {
       try {
         const body = await req.json();
-        if (body.data_inicio && body.data_fim) {
-          dataInicio = new Date(body.data_inicio);
-          dataFim = new Date(body.data_fim);
-          dataFim.setHours(23, 59, 59, 999);
-        } else {
-          dataInicio = new Date();
-          dataInicio.setDate(1);
-          dataInicio.setHours(0, 0, 0, 0);
-          dataFim = new Date();
-          dataFim.setHours(23, 59, 59, 999);
+        if (body?.data_inicio && body?.data_fim) {
+          dataInicioCorpo = String(body.data_inicio);
+          dataFimCorpo = String(body.data_fim);
         }
-      } catch {
-        dataInicio = new Date();
-        dataInicio.setDate(1);
-        dataInicio.setHours(0, 0, 0, 0);
-        dataFim = new Date();
-        dataFim.setHours(23, 59, 59, 999);
-      }
-    } else {
-      dataInicio = new Date();
-      dataInicio.setDate(1);
-      dataInicio.setHours(0, 0, 0, 0);
-      dataFim = new Date();
-      dataFim.setHours(23, 59, 59, 999);
+      } catch { /* corpo vazio: mês atual */ }
     }
+    const janela = janelaBrasilia(dataInicioCorpo, dataFimCorpo);
+    const antiga = janelaLegado(dataInicioCorpo, dataFimCorpo);
 
     const { data: empresas, error: empresasError } = await supabase
       .from("empresas")
@@ -266,7 +271,7 @@ serve(async (req) => {
         .select().single();
       if (erroMatriz || !novaMatriz) throw new Error("Erro ao criar empresa matriz: " + erroMatriz?.message);
       // Vendas e OS sem empresa_id NÃO são regravadas: contam na matriz só na leitura.
-      const metricas = await buscarMetricasEmpresa(supabase, user.id, { id: novaMatriz.id, tipo: "matriz" }, dataInicio, dataFim);
+      const metricas = await buscarMetricasEmpresa(supabase, user.id, { id: novaMatriz.id, tipo: "matriz" }, janela, antiga);
       const empresaCompleta = { ...novaMatriz, gerentes: [], metas: [], metricas };
       return new Response(
         JSON.stringify({ empresas: [], matrizMetricas: metricas, todasEmpresas: [empresaCompleta] }),
@@ -291,7 +296,7 @@ serve(async (req) => {
     const empresasComMetricas = await Promise.all(
       empresas.map(async (empresa: any) => {
         const loja: LojaLeitura = { id: empresa.id, tipo: empresa.id === matrizExistente.id ? "matriz" : "filial" };
-        const metricas = await buscarMetricasEmpresa(supabase, user.id, loja, dataInicio, dataFim);
+        const metricas = await buscarMetricasEmpresa(supabase, user.id, loja, janela, antiga);
         return {
           ...empresa,
           gerentes: [],
@@ -309,6 +314,7 @@ serve(async (req) => {
         empresas: filiais,
         matrizMetricas: matriz?.metricas ?? { faturamento_mes: 0, os_mes: 0, vendas_mes: 0, ultimas_vendas: [], vendas_por_tipo: [] },
         todasEmpresas: empresasComMetricas,
+        periodo: { inicio: janela.inicioDia, fim: janela.fimDia },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

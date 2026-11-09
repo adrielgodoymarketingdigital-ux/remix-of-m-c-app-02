@@ -152,6 +152,45 @@ export function janelaLegado(dataInicio?: string | null, dataFim?: string | null
   return { inicioISO: ini.toISOString(), fimISO: fim.toISOString() };
 }
 
+/**
+ * Limites da LEITURA no banco: um superconjunto que atende a conta nova
+ * (competência de recebimento, dias de Brasília) e a antiga (campo legado).
+ * O corte exato é feito depois, nas funções puras.
+ * - vendas por `data`: período novo com 1 dia de folga de cada lado (como o
+ *   Dashboard) unido ao período antigo;
+ * - vendas por `data_recebimento`: dias de Brasília com 1 dia de folga;
+ * - OS por `created_at`: união dos dois períodos.
+ */
+export interface JanelaConsulta {
+  dataDeISO: string;
+  dataAteISO: string;
+  recebimentoDe: string;
+  recebimentoAte: string;
+  criacaoDeISO: string;
+  criacaoAteISO: string;
+}
+
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+const menorISO = (a: string, b: string) => (Date.parse(a) <= Date.parse(b) ? a : b);
+const maiorISO = (a: string, b: string) => (Date.parse(a) >= Date.parse(b) ? a : b);
+const somarDias = (dia: string, n: number) => {
+  const [y, m, d] = dia.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) + n * UM_DIA_MS).toISOString().slice(0, 10);
+};
+
+export function janelaConsulta(nova: JanelaBrasilia, antiga: JanelaLegado): JanelaConsulta {
+  const novaDe = new Date(Date.parse(nova.inicioISO) - UM_DIA_MS).toISOString();
+  const novaAte = new Date(Date.parse(nova.fimISO) + UM_DIA_MS).toISOString();
+  return {
+    dataDeISO: menorISO(novaDe, antiga.inicioISO),
+    dataAteISO: maiorISO(novaAte, antiga.fimISO),
+    recebimentoDe: somarDias(nova.inicioDia, -1),
+    recebimentoAte: somarDias(nova.fimDia, 1),
+    criacaoDeISO: menorISO(nova.inicioISO, antiga.inicioISO),
+    criacaoAteISO: maiorISO(nova.fimISO, antiga.fimISO),
+  };
+}
+
 const instante = (v: string | null | undefined): number => (v ? Date.parse(v) : Number.NaN);
 const dentro = (v: string | null | undefined, inicioISO: string, fimISO: string): boolean => {
   const t = instante(v);

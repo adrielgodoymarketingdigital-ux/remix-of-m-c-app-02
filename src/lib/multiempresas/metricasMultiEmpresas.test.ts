@@ -8,6 +8,7 @@ import {
   calcularMetricasLegado,
   calcularMetricasLoja,
   janelaBrasilia,
+  janelaConsulta,
   janelaLegado,
   STATUS_OS_FATURAVEL_METRICAS,
   type DadosLoja,
@@ -299,4 +300,41 @@ test("período padrão (sem datas): mês atual de Brasília até hoje", () => {
   assert.equal(j.fimDia, "2026-11-30");
   assert.equal(j.inicioISO, "2026-11-01T03:00:00.000Z");
   assert.equal(j.fimISO, "2026-12-01T02:59:59.999Z");
+});
+
+// ── A leitura no banco (superconjunto) não perde nada ─────────────────────
+
+/** Os mesmos filtros que index.ts manda ao banco, aplicados em memória. */
+function filtrarComoConsulta(d: DadosLoja): DadosLoja {
+  const c = janelaConsulta(NOVA, ANTIGA);
+  const entre = (v: string | null | undefined, a: string, b: string) => !!v && Date.parse(v) >= Date.parse(a) && Date.parse(v) <= Date.parse(b);
+  const diaEntre = (v: string | null | undefined, a: string, b: string) => !!v && v.slice(0, 10) >= a && v.slice(0, 10) <= b;
+  return {
+    ...d,
+    vendas: d.vendas.filter((v) => v.cancelada === false
+      && (entre(v.data, c.dataDeISO, c.dataAteISO) || diaEntre(v.data_recebimento, c.recebimentoDe, c.recebimentoAte))),
+    os: d.os.filter((o) => !o.deleted_at && (
+      entre(o.created_at, c.criacaoDeISO, c.criacaoAteISO)
+      || (STATUS_OS_FATURAVEL_METRICAS.includes(o.status ?? "") && entre(o.data_saida, NOVA.inicioISO, NOVA.fimISO)))),
+  };
+}
+
+test("a consulta do banco é um superconjunto: conta nova e antiga não perdem linha", () => {
+  const completo = cenarioMisto();
+  const lido = filtrarComoConsulta(completo);
+  assert.ok(lido.vendas.length < completo.vendas.length || lido.os.length < completo.os.length, "a consulta deveria cortar algo");
+  for (const loja of [MATRIZ, FILIAL]) {
+    assert.deepEqual(nova(lido, loja), nova(completo, loja), `nova ${loja.tipo}`);
+    assert.deepEqual(antiga(lido, loja), antiga(completo, loja), `antiga ${loja.tipo}`);
+  }
+});
+
+test("janela da consulta: folga de 1 dia e união com o período antigo", () => {
+  const c = janelaConsulta(NOVA, ANTIGA);
+  assert.equal(c.recebimentoDe, "2026-10-31");
+  assert.equal(c.recebimentoAte, "2026-12-01");
+  assert.equal(c.criacaoDeISO, "2026-11-01T00:00:00.000Z"); // o antigo começava 3h antes
+  assert.equal(c.criacaoAteISO, "2026-12-01T02:59:59.999Z"); // o novo termina 3h depois
+  assert.ok(Date.parse(c.dataDeISO) <= Date.parse(ANTIGA.inicioISO));
+  assert.ok(Date.parse(c.dataAteISO) >= Date.parse(NOVA.fimISO));
 });
