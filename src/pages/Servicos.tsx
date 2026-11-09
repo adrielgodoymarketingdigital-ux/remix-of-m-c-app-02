@@ -15,7 +15,15 @@ import { Switch } from "@/components/ui/switch";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { TopoServicosDesktop, TODOS_OS_TIPOS } from "@/components/servicos/TopoServicosDesktop";
-import { contarSemTipo, filtrarServicos, lerValorFiltro, resumoServicos } from "@/lib/servicos/listaServicosDesktop";
+import { TabelaServicosDesktop } from "@/components/servicos/TabelaServicosDesktop";
+import {
+  contarSemTipo,
+  filtrarServicos,
+  lerValorFiltro,
+  paginar,
+  POR_PAGINA_PADRAO,
+  resumoServicos,
+} from "@/lib/servicos/listaServicosDesktop";
 
 export default function Servicos() {
   const [busca, setBusca] = useState("");
@@ -27,6 +35,9 @@ export default function Servicos() {
   const [tipoIdDesktop, setTipoIdDesktop] = useState(TODOS_OS_TIPOS);
   const [precoMinimoDesktop, setPrecoMinimoDesktop] = useState("");
   const [precoMaximoDesktop, setPrecoMaximoDesktop] = useState("");
+  // Paginação do computador: só em memória (volta a 20 por página a cada visita).
+  const [paginaDesktop, setPaginaDesktop] = useState(1);
+  const [porPaginaDesktop, setPorPaginaDesktop] = useState(POR_PAGINA_PADRAO);
   const isDesktop = useIsDesktop();
 
   const {
@@ -89,6 +100,23 @@ export default function Servicos() {
     setPrecoMaximoDesktop("");
   };
 
+  // Volta para a página 1 quando a busca, um filtro ou o tamanho da página mudam
+  // (ajuste de estado durante a renderização, sem efeito e sem render a mais na tela).
+  const chaveFiltrosDesktop = JSON.stringify([busca, soSemTipo, tipoIdDesktop, precoMinimo, precoMaximo, porPaginaDesktop]);
+  const [chaveFiltrosAnterior, setChaveFiltrosAnterior] = useState(chaveFiltrosDesktop);
+  let paginaPedidaDesktop = paginaDesktop;
+  if (chaveFiltrosAnterior !== chaveFiltrosDesktop) {
+    setChaveFiltrosAnterior(chaveFiltrosDesktop);
+    setPaginaDesktop(1);
+    paginaPedidaDesktop = 1;
+  }
+  const paginaAtualDesktop = useMemo(
+    () => paginar(servicosFiltradosDesktop, paginaPedidaDesktop, porPaginaDesktop),
+    [servicosFiltradosDesktop, paginaPedidaDesktop, porPaginaDesktop],
+  );
+  // A lista encolheu (exclusão, atualização em tempo real) e a página pedida sumiu: fica na última que existe.
+  if (!loading && paginaAtualDesktop.pagina !== paginaPedidaDesktop) setPaginaDesktop(paginaAtualDesktop.pagina);
+
   const handleSubmit = async (dados: DadosSubmitServico) => {
     const dadosServico = {
       ...dados,
@@ -124,8 +152,8 @@ export default function Servicos() {
   return (
     <AppLayout>
       {isDesktop ? (
-        // Computador (>= 1024px): mesmo estado, mesmos handlers e a mesma tabela;
-        // só o topo muda. Abaixo disso segue o layout de sempre (ramo de baixo, intocado).
+        // Computador (>= 1024px): mesmo estado e mesmos handlers; topo e tabela próprios.
+        // Abaixo disso segue o layout de sempre (ramo de baixo, intocado).
         <main className="flex-1 p-6 overflow-auto space-y-5">
           <TopoServicosDesktop
             resumo={resumoDesktop}
@@ -150,20 +178,19 @@ export default function Servicos() {
             quantidadeEncontrada={servicosFiltradosDesktop.length}
           />
 
-          {loading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : (
-            <TabelaServicos
-              servicos={servicosFiltradosDesktop}
-              tipoNomePorId={tipoNomePorId}
-              onEditar={handleEditar}
-              onExcluir={handleExcluir}
-            />
-          )}
+          <TabelaServicosDesktop
+            pagina={paginaAtualDesktop}
+            porPagina={porPaginaDesktop}
+            onPagina={setPaginaDesktop}
+            onPorPagina={setPorPaginaDesktop}
+            loading={loading}
+            totalCatalogo={servicos.length}
+            tipoNomePorId={tipoNomePorId}
+            onNovoServico={handleNovoServico}
+            onLimparFiltros={limparFiltrosDesktop}
+            onEditar={handleEditar}
+            onExcluir={handleExcluir}
+          />
 
           {/* Tipos de Serviço */}
           <GerenciadorTiposServico />

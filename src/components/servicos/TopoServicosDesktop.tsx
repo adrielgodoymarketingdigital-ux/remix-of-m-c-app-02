@@ -250,11 +250,12 @@ export function TopoServicosDesktop(p: TopoServicosDesktopProps) {
         </div>
       </Card>
 
+      {/* Com 0 o próprio cartão da tabela já diz "Nenhum serviço encontrado/cadastrado". */}
       {p.loading ? (
         <Skeleton className="h-5 w-40" />
-      ) : (
+      ) : p.quantidadeEncontrada > 0 ? (
         <p className="text-sm text-muted-foreground">{t("encontrados", { count: p.quantidadeEncontrada })}</p>
-      )}
+      ) : null}
     </div>
   );
 }
