@@ -31,7 +31,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { TopoOrcamentosDesktop } from "@/components/orcamentos/desktop/TopoOrcamentosDesktop";
-import { resumoOrcamentos } from "@/lib/orcamentos/listaOrcamentosDesktop";
+import { FiltrosOrcamentosDesktop } from "@/components/orcamentos/desktop/FiltrosOrcamentosDesktop";
+import { filtrarOrcamentos, resumoOrcamentos, TODOS_OS_STATUS, type FiltroStatus } from "@/lib/orcamentos/listaOrcamentosDesktop";
 
 export default function Orcamentos() {
   const {
@@ -52,6 +53,10 @@ export default function Orcamentos() {
   const [orcamentoExcluir, setOrcamentoExcluir] = useState<Orcamento | null>(null);
   const [configLayoutAberto, setConfigLayoutAberto] = useState(false);
   const isDesktop = useIsDesktop();
+  // Só no computador: status efetivo e período pela criação (a busca é a mesma de cima).
+  const [statusDesktop, setStatusDesktop] = useState<FiltroStatus>(TODOS_OS_STATUS);
+  const [dataInicioDesktop, setDataInicioDesktop] = useState("");
+  const [dataFimDesktop, setDataFimDesktop] = useState("");
 
   const orcamentosFiltrados = orcamentos.filter((o) => {
     const matchBusca =
@@ -72,6 +77,24 @@ export default function Orcamentos() {
   // Computador (>= 1024px): cartões pelas regras de src/lib/orcamentos/listaOrcamentosDesktop
   // (mesmas contas de `stats`, somando em centavos). Abaixo disso segue `stats`.
   const resumoDesktop = useMemo(() => resumoOrcamentos(orcamentos), [orcamentos]);
+  const orcamentosFiltradosDesktop = useMemo(
+    () =>
+      filtrarOrcamentos(orcamentos, {
+        busca,
+        status: statusDesktop,
+        dataInicio: dataInicioDesktop,
+        dataFim: dataFimDesktop,
+      }),
+    [orcamentos, busca, statusDesktop, dataInicioDesktop, dataFimDesktop],
+  );
+  const temFiltrosAtivosDesktop =
+    busca.trim() !== "" || statusDesktop !== TODOS_OS_STATUS || dataInicioDesktop !== "" || dataFimDesktop !== "";
+  const limparFiltrosDesktop = () => {
+    setBusca("");
+    setStatusDesktop(TODOS_OS_STATUS);
+    setDataInicioDesktop("");
+    setDataFimDesktop("");
+  };
 
   const handleSalvar = async (dados: any) => {
     if (orcamentoSelecionado) {
@@ -109,7 +132,7 @@ export default function Orcamentos() {
     <AppLayout>
       {isDesktop ? (
         // Computador (>= 1024px): mesmo estado e mesmos handlers; topo próprio.
-        // Busca, status e tabela ainda são os de sempre (próximas fases).
+        // A tabela ainda é a de sempre (próxima fase), já com a lista dos filtros novos.
         // Abaixo disso segue o layout de sempre (ramo de baixo, intocado).
         <main className="flex-1 overflow-auto p-6 space-y-6">
           <TopoOrcamentosDesktop
@@ -119,30 +142,20 @@ export default function Orcamentos() {
             onNovoOrcamento={() => setDialogAberto(true)}
           />
 
-          <div className="flex flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por número ou cliente..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filtrar por status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os status</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="aprovado">Aprovado</SelectItem>
-                <SelectItem value="rejeitado">Rejeitado</SelectItem>
-                <SelectItem value="expirado">Expirado</SelectItem>
-                <SelectItem value="convertido">Convertido</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FiltrosOrcamentosDesktop
+            busca={busca}
+            onBusca={setBusca}
+            status={statusDesktop}
+            onStatus={setStatusDesktop}
+            dataInicio={dataInicioDesktop}
+            onDataInicio={setDataInicioDesktop}
+            dataFim={dataFimDesktop}
+            onDataFim={setDataFimDesktop}
+            temFiltrosAtivos={temFiltrosAtivosDesktop}
+            onLimparFiltros={limparFiltrosDesktop}
+            carregando={carregando}
+            quantidadeEncontrada={orcamentosFiltradosDesktop.length}
+          />
 
           {carregando ? (
             <div className="flex items-center justify-center py-12">
@@ -150,7 +163,7 @@ export default function Orcamentos() {
             </div>
           ) : (
             <TabelaOrcamentos
-              orcamentos={orcamentosFiltrados}
+              orcamentos={orcamentosFiltradosDesktop}
               onVisualizar={handleVisualizar}
               onEditar={handleEditar}
               onExcluir={setOrcamentoExcluir}

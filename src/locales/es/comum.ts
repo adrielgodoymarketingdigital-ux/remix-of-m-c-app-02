@@ -123,6 +123,33 @@ const comum: Traducao<typeof comumPtBR> = {
       aprovados: "Aprobados",
       valorAprovado: "Valor aprobado",
     },
+    status: {
+      pendente: "Pendiente",
+      aprovado: "Aprobado",
+      rejeitado: "Rechazado",
+      expirado: "Vencido",
+      convertido: "Convertido",
+    },
+    filtros: {
+      busca: "Buscar por número, cliente o teléfono...",
+      buscaRotulo: "Buscar presupuestos",
+      statusRotulo: "Filtrar por estado",
+      todosStatus: "Todos los estados",
+      statusPlural: {
+        pendente: "Pendientes",
+        expirado: "Vencidos",
+        aprovado: "Aprobados",
+        convertido: "Convertidos",
+        rejeitado: "Rechazados",
+      },
+      dataInicial: "Fecha inicial (creación)",
+      dataFinal: "Fecha final (creación)",
+      ate: "a",
+      limparFiltros: "Limpiar filtros",
+      encontrados_zero: "Ningún presupuesto encontrado",
+      encontrados_one: "{{count}} presupuesto encontrado",
+      encontrados_other: "{{count}} presupuestos encontrados",
+    },
   },
 };
 

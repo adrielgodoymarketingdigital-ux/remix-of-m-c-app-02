@@ -89,12 +89,14 @@ export function resumoOrcamentos(lista: readonly Pick<OrcamentoDaLista, "status"
 
 /** Valor do filtro de status quando nenhum está escolhido. */
 export const TODOS_OS_STATUS = "todos";
+/** Valor do filtro de status: um status efetivo ou "todos". */
+export type FiltroStatus = StatusDoOrcamento | typeof TODOS_OS_STATUS;
 
 export interface FiltrosOrcamentos {
   /** Trecho do número, do nome do cliente ou do telefone (sem acento/maiúscula). */
   busca?: string;
   /** Status efetivo ou TODOS_OS_STATUS / vazio. */
-  status?: StatusDoOrcamento | typeof TODOS_OS_STATUS | null;
+  status?: FiltroStatus | null;
   /** Período pela data de criação, dias de calendário de Brasília (YYYY-MM-DD, inclusivos). Vazio = sem limite. */
   dataInicio?: string | null;
   dataFim?: string | null;

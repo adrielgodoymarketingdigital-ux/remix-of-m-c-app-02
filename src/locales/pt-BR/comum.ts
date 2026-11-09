@@ -145,6 +145,34 @@ const comum = {
       aprovados: "Aprovados",
       valorAprovado: "Valor Aprovado",
     },
+    // Status de um orçamento (selo e lista de troca). Expirado = pendente com a validade vencida.
+    status: {
+      pendente: "Pendente",
+      aprovado: "Aprovado",
+      rejeitado: "Rejeitado",
+      expirado: "Expirado",
+      convertido: "Convertido",
+    },
+    filtros: {
+      busca: "Buscar por número, cliente ou telefone...",
+      buscaRotulo: "Buscar orçamentos",
+      statusRotulo: "Filtrar por status",
+      todosStatus: "Todos os status",
+      statusPlural: {
+        pendente: "Pendentes",
+        expirado: "Expirados",
+        aprovado: "Aprovados",
+        convertido: "Convertidos",
+        rejeitado: "Rejeitados",
+      },
+      dataInicial: "Data inicial (criação)",
+      dataFinal: "Data final (criação)",
+      ate: "até",
+      limparFiltros: "Limpar filtros",
+      encontrados_zero: "Nenhum orçamento encontrado",
+      encontrados_one: "{{count}} orçamento encontrado",
+      encontrados_other: "{{count}} orçamentos encontrados",
+    },
   },
 } as const;
 
