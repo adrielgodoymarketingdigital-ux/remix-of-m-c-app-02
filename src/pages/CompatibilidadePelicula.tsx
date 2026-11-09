@@ -7,6 +7,8 @@ import { SeletorMarcaModeloDados } from "@/components/compatibilidade/SeletorMar
 import { AbasTipoCompatibilidade } from "@/components/compatibilidade/AbasTipoCompatibilidade";
 import { useTipoCompatibilidadeDaUrl } from "@/hooks/useTipoCompatibilidadeDaUrl";
 import { useCompatibilidadePelicula } from "@/hooks/useCompatibilidadePelicula";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { CompatibilidadePeliculaDesktop } from "@/components/compatibilidade/CompatibilidadePeliculaDesktop";
 import {
   TipoCompatibilidade,
   encontrarCompativeis,
@@ -138,6 +140,17 @@ function PainelCompatibilidade({ tipo }: { tipo: TipoCompatibilidade }) {
 
 export default function CompatibilidadePelicula() {
   const [tipo, setTipo] = useTipoCompatibilidadeDaUrl();
+  const isDesktop = useIsDesktop();
+
+  // Computador (>= 1024px): só o visual muda (mesma busca, mesmos dados, mesmo
+  // tipo na URL). Abaixo disso segue o layout de sempre, intocado.
+  if (isDesktop) {
+    return (
+      <AppLayout>
+        <CompatibilidadePeliculaDesktop tipo={tipo} onTipoChange={setTipo} textos={TEXTOS[tipo]} />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

@@ -86,6 +86,36 @@ const comum = {
       erroDescricao: "Não foi possível atualizar seu plano. Tente novamente.",
     },
   },
+  // Compatibilidade de Películas e Vidros, layout de COMPUTADOR
+  // (components/compatibilidade/CompatibilidadePeliculaDesktop). Os textos que
+  // já existiam são letra por letra os da página (o celular ainda usa os dele,
+  // fixos em pages/CompatibilidadePelicula.tsx). Os do tipo (película/vidro)
+  // vêm do TEXTOS da página.
+  compatibilidade: {
+    titulo: "Compatibilidade de Películas e Vidros",
+    subtitulo: "Descubra quais outros modelos usam a mesma película ou o mesmo vidro de tela",
+    abaPeliculas: "Películas",
+    abaVidros: "Vidros",
+    carregando: "Carregando compatibilidade...",
+    erro: "Não foi possível carregar a compatibilidade agora. Tente novamente em instantes.",
+    buscarModelo: "Buscar modelo",
+    selecioneMarca: "Selecione a marca",
+    selecioneModelo: "Selecione o modelo",
+    buscaMarca: "Buscar marca...",
+    buscaModelo: "Buscar modelo...",
+    semCadastro: "Ainda não temos dados de compatibilidade para esse modelo",
+    // Novos do layout de computador.
+    rotuloMarca: "Marca",
+    rotuloModelo: "Modelo",
+    encontrados_zero: "Nenhum modelo encontrado",
+    encontrados_one: "{{count}} modelo encontrado",
+    encontrados_other: "{{count}} modelos encontrados",
+    nenhumaEquivalencia: "Nenhuma equivalência cadastrada para este modelo.",
+    // {{nomes}} = nomes dos grupos separados por " · "
+    grupos_zero: "Sem grupo",
+    grupos_one: "Grupo: {{nomes}}",
+    grupos_other: "Grupos: {{nomes}}",
+  },
 } as const;
 
 export default comum;
