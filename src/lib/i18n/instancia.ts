@@ -7,6 +7,7 @@ import configuracoesPtBR from "@/locales/pt-BR/configuracoes";
 import pdvPtBR from "@/locales/pt-BR/pdv";
 import vendasPtBR from "@/locales/pt-BR/vendas";
 import servicosPtBR from "@/locales/pt-BR/servicos";
+import pedidosPtBR from "@/locales/pt-BR/pedidos";
 import { IDIOMA_PADRAO, IDIOMAS, type Idioma } from "@/lib/i18n/idiomas";
 import { carregarLocaleDateFns } from "@/lib/i18n/localeDateFns";
 
@@ -17,7 +18,7 @@ import { carregarLocaleDateFns } from "@/lib/i18n/localeDateFns";
  * (src/locales/<idioma>/<ns>.ts), cada um num chunk baixado só quando aquele
  * idioma é aplicado (aplicarIdioma) — quem usa pt-BR nunca baixa nenhum.
  */
-export const NAMESPACES = ["comum", "menu", "dashboard", "configuracoes", "pdv", "vendas", "servicos"] as const;
+export const NAMESPACES = ["comum", "menu", "dashboard", "configuracoes", "pdv", "vendas", "servicos", "pedidos"] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
 const ARQUIVOS = import.meta.glob<{ default: Record<string, unknown> }>([
@@ -40,7 +41,7 @@ void i18n.use(initReactI18next).init({
   load: "currentOnly",
   ns: [...NAMESPACES],
   defaultNS: "comum",
-  resources: { [IDIOMA_PADRAO]: { comum: comumPtBR, menu: menuPtBR, dashboard: dashboardPtBR, configuracoes: configuracoesPtBR, pdv: pdvPtBR, vendas: vendasPtBR, servicos: servicosPtBR } },
+  resources: { [IDIOMA_PADRAO]: { comum: comumPtBR, menu: menuPtBR, dashboard: dashboardPtBR, configuracoes: configuracoesPtBR, pdv: pdvPtBR, vendas: vendasPtBR, servicos: servicosPtBR, pedidos: pedidosPtBR } },
   partialBundledLanguages: true,
   initAsync: false,
   // O React já escapa o texto.
