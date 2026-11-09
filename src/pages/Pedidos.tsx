@@ -45,7 +45,15 @@ import { ListaCompras } from "@/components/pedidos/ListaCompras";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { TopoPedidosDesktop } from "@/components/pedidos/TopoPedidosDesktop";
 import { FiltrosPedidosDesktop } from "@/components/pedidos/FiltrosPedidosDesktop";
-import { filtrarPedidos, resumoPedidos, temFiltrosAtivos, TODOS_OS_STATUS } from "@/lib/pedidos/listaPedidosDesktop";
+import { TabelaPedidosDesktop } from "@/components/pedidos/TabelaPedidosDesktop";
+import {
+  filtrarPedidos,
+  paginar,
+  POR_PAGINA_PADRAO,
+  resumoPedidos,
+  temFiltrosAtivos,
+  TODOS_OS_STATUS,
+} from "@/lib/pedidos/listaPedidosDesktop";
 
 const STATUS_OPCOES: { value: StatusPedido; label: string }[] = [
   { value: "aguardando", label: "Aguardando" },
@@ -79,6 +87,9 @@ export default function Pedidos() {
   const [form, setForm] = useState<FormularioPedido>(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
   const isDesktop = useIsDesktop();
+  // Paginação do computador: só em memória (volta a 20 por página a cada visita).
+  const [paginaDesktop, setPaginaDesktop] = useState(1);
+  const [porPaginaDesktop, setPorPaginaDesktop] = useState(POR_PAGINA_PADRAO);
 
   useEffect(() => {
     carregarPedidos();
@@ -157,6 +168,22 @@ export default function Pedidos() {
     setBusca("");
     setFiltroStatus(TODOS_OS_STATUS);
   };
+  // Qualquer filtro (ou o tamanho da página) mudou: volta à página 1 já neste render.
+  const chaveFiltrosDesktop = JSON.stringify([busca, filtroStatus, porPaginaDesktop]);
+  const [chaveFiltrosAnterior, setChaveFiltrosAnterior] = useState(chaveFiltrosDesktop);
+  let paginaPedidaDesktop = paginaDesktop;
+  if (chaveFiltrosAnterior !== chaveFiltrosDesktop) {
+    setChaveFiltrosAnterior(chaveFiltrosDesktop);
+    setPaginaDesktop(1);
+    paginaPedidaDesktop = 1;
+  }
+  const paginaAtualDesktop = useMemo(
+    () => paginar(pedidosFiltradosDesktop, paginaPedidaDesktop, porPaginaDesktop),
+    [pedidosFiltradosDesktop, paginaPedidaDesktop, porPaginaDesktop],
+  );
+  // A página pedida deixou de existir (ex.: excluiu o último pedido da última página):
+  // paginar já mostrou a última que existe; guarda essa para os botões seguirem dela.
+  if (!loading && paginaAtualDesktop.pagina !== paginaPedidaDesktop) setPaginaDesktop(paginaAtualDesktop.pagina);
 
   return (
     <AppLayout>
@@ -187,95 +214,20 @@ export default function Pedidos() {
             />
           )}
 
-          {/* Provisório (fases 1 e 2): a lista de sempre, já com a lista filtrada do computador,
-              até a fase 3 trocar pela tabela. */}
-          {aba === "pedidos" && <>
-        {/* Lista */}
-        {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Carregando...</div>
-        ) : pedidosFiltradosDesktop.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {pedidos.length === 0 ? "Nenhum pedido cadastrado ainda." : "Nenhum pedido encontrado com esses filtros."}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {pedidosFiltradosDesktop.map((pedido) => (
-              <Card key={pedido.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      {/* Nome + status */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold truncate">{pedido.cliente_nome}</span>
-                        <Badge className={`text-xs ${STATUS_CORES[pedido.status]}`}>
-                          {STATUS_LABELS[pedido.status]}
-                        </Badge>
-                        {pedido.pago ? (
-                          <Badge className="text-xs bg-green-100 text-green-800">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />Pago
-                          </Badge>
-                        ) : (
-                          <Badge className="text-xs bg-orange-100 text-orange-800">
-                            <XCircle className="h-3 w-3 mr-1" />Não pago
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Descrição */}
-                      <div className="flex items-start gap-1.5 mt-1.5">
-                        <Package className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                        <p className="text-sm text-muted-foreground line-clamp-2">{pedido.descricao}</p>
-                      </div>
-
-                      {/* Telefone + previsão */}
-                      <div className="flex items-center gap-4 mt-1.5 flex-wrap">
-                        {pedido.cliente_telefone && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            {pedido.cliente_telefone}
-                          </span>
-                        )}
-                        {pedido.previsao_chegada && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <CalendarClock className="h-3 w-3" />
-                            Previsão: {new Date(pedido.previsao_chegada + "T00:00:00").toLocaleDateString("pt-BR")}
-                          </span>
-                        )}
-                        {pedido.valor_total && (
-                          <span className="text-sm font-semibold text-primary">
-                            {formatCurrency(pedido.valor_total)}
-                          </span>
-                        )}
-                      </div>
-
-                      {pedido.observacoes && (
-                        <p className="text-xs text-muted-foreground mt-1 italic line-clamp-1">
-                          {pedido.observacoes}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Ações */}
-                    <div className="flex gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" onClick={() => abrirEditar(pedido)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setPedidoExcluindo(pedido)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-          </>}
+          {aba === "pedidos" && (
+            <TabelaPedidosDesktop
+              pagina={paginaAtualDesktop}
+              porPagina={porPaginaDesktop}
+              onPagina={setPaginaDesktop}
+              onPorPagina={setPorPaginaDesktop}
+              loading={loading}
+              totalCadastrados={pedidos.length}
+              onNovoPedido={abrirNovo}
+              onLimparFiltros={limparFiltrosDesktop}
+              onEditar={abrirEditar}
+              onExcluir={setPedidoExcluindo}
+            />
+          )}
         </main>
       ) : (
       <div className="container mx-auto p-4 lg:p-6 lg:max-w-none space-y-6">

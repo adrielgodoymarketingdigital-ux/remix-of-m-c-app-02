@@ -5,6 +5,7 @@
  * Sem dependências de React/Supabase (testado com Deno em scripts/testes-pedidos-layout/).
  */
 import { normalizarTexto } from "../servicos/listaServicosDesktop.ts";
+import { dataBrasiliaISO } from "../dataBrasilia.ts";
 
 // A paginação é a mesma da tela Serviços (20 por página, 10/20/50, "1 … 4 5 6 … 12").
 export {
@@ -96,4 +97,17 @@ export function filtrarPedidos<T extends PedidoDaLista>(pedidos: readonly T[], f
 /** Algum filtro valendo: mostra "Limpar filtros". Busca só com espaços não conta. */
 export function temFiltrosAtivos(f: FiltrosPedidos): boolean {
   return normalizarTexto(f.busca) !== "" || (!!f.status && f.status !== TODOS_OS_STATUS);
+}
+
+// ---------- Datas da tabela ----------
+
+/**
+ * Dia de calendário de Brasília ("AAAA-MM-DD") em que o pedido foi criado.
+ * `created_at` é timestamptz: um pedido feito às 23h30 de Brasília (02h30 UTC
+ * do dia seguinte) é do dia de Brasília, não do dia UTC. Inválido/vazio → null.
+ */
+export function diaCriacaoBrasilia(createdAt: string | null | undefined): string | null {
+  if (!createdAt) return null;
+  const instante = new Date(createdAt);
+  return Number.isNaN(instante.getTime()) ? null : dataBrasiliaISO(instante);
 }

@@ -2,6 +2,7 @@
 // Dados totalmente fictícios.
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  diaCriacaoBrasilia,
   filtrarPedidos,
   OPCOES_POR_PAGINA,
   pedidoAReceber,
@@ -152,4 +153,19 @@ Deno.test("paginação com 45 pedidos: 3 páginas e página fora do fim é corri
   const encolhida = paginar(filtrarPedidos(lista, { busca: "n1" }), 3, 20); // n1, n10..n19 = 11
   assertEquals([encolhida.pagina, encolhida.total], [1, 11]);
   assertEquals(paginar([], 1, 20), { itens: [], pagina: 1, totalPaginas: 1, inicio: 0, fim: 0, total: 0 });
+});
+
+// ---------- Data de criação (dia de Brasília) ----------
+
+Deno.test("data de criação: dia de Brasília, não o dia UTC", () => {
+  assertEquals(diaCriacaoBrasilia("2026-11-10T02:30:00+00:00"), "2026-11-09"); // 23h30 de 09/11 em Brasília
+  assertEquals(diaCriacaoBrasilia("2026-11-10T03:00:00Z"), "2026-11-10");      // meia-noite em Brasília
+  assertEquals(diaCriacaoBrasilia("2026-11-09T12:00:00.123456+00:00"), "2026-11-09");
+  assertEquals(diaCriacaoBrasilia("2026-01-01T02:59:59Z"), "2025-12-31");      // virada de ano
+});
+
+Deno.test("data de criação: vazia ou inválida = null", () => {
+  assertEquals(diaCriacaoBrasilia(null), null);
+  assertEquals(diaCriacaoBrasilia(""), null);
+  assertEquals(diaCriacaoBrasilia("não é data"), null);
 });
