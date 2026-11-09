@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,19 @@ import { marcaModelo, numeroAdicional, tituloDispositivo } from "@/lib/ordemServ
 import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 import { CartaoNaSaidaOS } from "./CartaoNaSaidaOS";
 import type { TaxaCartao } from "@/hooks/useTaxasCartao";
-import { ehFormaCartao, parcelasIniciais, valorRecebidoAgora, type CalcularTaxa } from "@/lib/ordemServico/taxaCartaoSaida";
+import {
+  CATEGORIA_TAXA_CARTAO,
+  dadosPagamentoDaSaida,
+  ehFormaCartao,
+  jaTemContaTaxa,
+  montarContaTaxaCartao,
+  motivoSemTaxaAntesDaConsulta,
+  parcelasIniciais,
+  SEM_TAXA,
+  taxaDaSaida,
+  valorRecebidoAgora,
+  type CalcularTaxa,
+} from "@/lib/ordemServico/taxaCartaoSaida";
 
 const FORMAS_PAGAMENTO = [
   { value: 'dinheiro', label: 'Dinheiro', icon: Banknote },
@@ -62,6 +74,8 @@ export const DialogAssinaturaSaida = ({
 }: DialogAssinaturaSaidaProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  // Trava contra duplo clique (o setLoading só vale no próximo render).
+  const salvandoRef = useRef(false);
   const { adicionais } = useOsDispositivosAdicionais(ordem?.id);
   const [assinaturaSaida, setAssinaturaSaida] = useState<string | null>(null);
   const [tipoAssinaturaSaida, setTipoAssinaturaSaida] = useState<TipoAssinatura>("digital");
@@ -149,6 +163,8 @@ export const DialogAssinaturaSaida = ({
 
     const formaSelecionada = formaPagamento || formaPagamentoAtual;
 
+    if (salvandoRef.current) return;
+    salvandoRef.current = true;
     setLoading(true);
     try {
       // Resolver userId efetivo: gerente de filial usa proprietario_id
@@ -195,10 +211,12 @@ export const DialogAssinaturaSaida = ({
           data_assinatura_saida: new Date().toISOString(),
           tipo_assinatura_saida: tipoAssinaturaSaida,
         },
-        dados_pagamento: {
-          ...avariasData?.dados_pagamento,
-          forma: formaSelecionada || avariasData?.dados_pagamento?.forma,
-        },
+        // Parcelas só mudam no crédito parcelado; nas outras formas fica como estava.
+        dados_pagamento: dadosPagamentoDaSaida(
+          avariasData?.dados_pagamento,
+          formaSelecionada,
+          parcelas,
+        ) as AvariasOS["dados_pagamento"],
       };
 
       // "Incluir fotos neste link" pode ter mudado depois que esta OS foi carregada:
@@ -374,10 +392,66 @@ export const DialogAssinaturaSaida = ({
         console.error("[DialogAssinaturaSaida] ajuste de caixa fechado falhou:", e);
       }
 
-      toast({
-        title: "Entrega confirmada",
-        description: "A assinatura de recebimento foi registrada com sucesso.",
+      // Taxa de cartão: mesma conta "Taxa de Cartão" da criação da OS, sobre o valor
+      // recebido agora, na Data no caixa. Nunca derruba a entrega (já gravada acima).
+      let taxaNaoLancada = false;
+      const saldoFicouAPrazo = temEntrada && saldoRestante > 0 && saldoAPrazo;
+      const { taxa: taxaBandeira, percentual: percentualTaxa, valor: valorTaxa } = taxaDaSaida({
+        forma: formaSelecionada,
+        taxasAtivas: taxasCartao?.ativas ?? [],
+        bandeiraId,
+        parcelas,
+        base: baseTaxaCartao,
+        saldoAPrazo: saldoFicouAPrazo,
+        calcularTaxa: taxasCartao?.calcular ?? (() => SEM_TAXA),
       });
+      if (taxaBandeira && motivoSemTaxaAntesDaConsulta(formaSelecionada, taxaBandeira, saldoFicouAPrazo, valorTaxa) === null) {
+        try {
+          // Reentrega ou taxa já lançada na criação: não duplica.
+          const { data: existentes, error: erroConsulta } = await supabase
+            .from("contas")
+            .select("id, categoria, os_numero")
+            .eq("user_id", effectiveUserId)
+            .eq("os_numero", ordem.numero_os)
+            .eq("categoria", CATEGORIA_TAXA_CARTAO)
+            .limit(1);
+          if (erroConsulta) throw erroConsulta;
+          if (!jaTemContaTaxa(existentes, ordem.numero_os)) {
+            const { error: erroTaxa } = await supabase.from("contas").insert(
+              montarContaTaxaCartao({
+                bandeira: taxaBandeira.bandeira,
+                numeroOS: ordem.numero_os,
+                percentual: percentualTaxa,
+                valorTaxa,
+                base: baseTaxaCartao,
+                dataCaixa: dataRecebimento,
+                userId: effectiveUserId,
+                empresaId: empresaIdDaOS,
+                formatar: formatCurrency,
+              }),
+            );
+            if (erroTaxa) throw erroTaxa;
+          }
+        } catch (e) {
+          taxaNaoLancada = true;
+          // Só código e mensagem do erro (sem dados do cliente).
+          const erro = e as { code?: string; message?: string } | null;
+          console.error("[DialogAssinaturaSaida] taxa de cartão não lançada:", erro?.code ?? "", erro?.message ?? "");
+        }
+      }
+
+      toast(
+        taxaNaoLancada
+          ? {
+              title: "Taxa de cartão não lançada",
+              description: "A entrega foi confirmada, mas a taxa do cartão não entrou no financeiro. Lance a taxa em Contas a Pagar.",
+              variant: "destructive",
+            }
+          : {
+              title: "Entrega confirmada",
+              description: "A assinatura de recebimento foi registrada com sucesso.",
+            },
+      );
 
       onSuccess();
       onOpenChange(false);
@@ -389,6 +463,7 @@ export const DialogAssinaturaSaida = ({
         variant: "destructive",
       });
     } finally {
+      salvandoRef.current = false;
       setLoading(false);
     }
   };
