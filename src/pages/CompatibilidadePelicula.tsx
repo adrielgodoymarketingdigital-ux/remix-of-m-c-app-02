@@ -147,7 +147,7 @@ export default function CompatibilidadePelicula() {
   if (isDesktop) {
     return (
       <AppLayout>
-        <CompatibilidadePeliculaDesktop tipo={tipo} onTipoChange={setTipo} textos={TEXTOS[tipo]} />
+        <CompatibilidadePeliculaDesktop tipo={tipo} onTipoChange={setTipo} />
       </AppLayout>
     );
   }

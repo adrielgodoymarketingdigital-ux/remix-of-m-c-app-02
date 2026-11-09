@@ -89,8 +89,7 @@ const comum = {
   // Compatibilidade de Películas e Vidros, layout de COMPUTADOR
   // (components/compatibilidade/CompatibilidadePeliculaDesktop). Os textos que
   // já existiam são letra por letra os da página (o celular ainda usa os dele,
-  // fixos em pages/CompatibilidadePelicula.tsx). Os do tipo (película/vidro)
-  // vêm do TEXTOS da página.
+  // fixos em pages/CompatibilidadePelicula.tsx e no seletor compartilhado).
   compatibilidade: {
     titulo: "Compatibilidade de Películas e Vidros",
     subtitulo: "Descubra quais outros modelos usam a mesma película ou o mesmo vidro de tela",
@@ -104,6 +103,23 @@ const comum = {
     buscaMarca: "Buscar marca...",
     buscaModelo: "Buscar modelo...",
     semCadastro: "Ainda não temos dados de compatibilidade para esse modelo",
+    nenhumaOpcao: "Nenhuma opção encontrada.",
+    // Por tipo: os mesmos do TEXTOS da página (o celular segue lendo de lá).
+    // usaOMesmo = "{marca} {modelo} " + TEXTOS.usaOMesmo + ":" do celular.
+    porTipo: {
+      pelicula: {
+        descricaoBusca: "Selecione a marca e o modelo do celular para ver quais outros modelos usam a mesma película",
+        tituloResultado: "Películas compatíveis",
+        usaOMesmo: "{{marca}} {{modelo}} usa a mesma película que:",
+        semDados: "Ainda não há dados de compatibilidade de películas.",
+      },
+      vidro: {
+        descricaoBusca: "Selecione a marca e o modelo do celular para ver quais outros modelos usam o mesmo vidro na troca de vidro da tela",
+        tituloResultado: "Vidros compatíveis (troca de vidro da tela)",
+        usaOMesmo: "{{marca}} {{modelo}} usa o mesmo vidro de tela que:",
+        semDados: "Ainda não há dados de compatibilidade de vidros. Em breve esta lista estará disponível aqui.",
+      },
+    },
     // Novos do layout de computador.
     rotuloMarca: "Marca",
     rotuloModelo: "Modelo",

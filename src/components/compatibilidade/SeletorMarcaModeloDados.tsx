@@ -9,8 +9,8 @@ import type { OpcoesMarcaModelo } from "@/lib/compatibilidade/compatibilidade";
 /**
  * Combobox com as opções vindas dos dados. Com `permitirNovo` (admin), o texto
  * digitado que não está na lista vira a opção "Usar “…”".
- * `icone`, `classeBotao` e `id` são só do computador (CompatibilidadePeliculaDesktop):
- * sem eles o botão sai exatamente como antes (celular e admin).
+ * `icone`, `classeBotao`, `id` e `textoVazio` são só do computador
+ * (CompatibilidadePeliculaDesktop): sem eles sai exatamente como antes (celular e admin).
  */
 export function ComboboxDados({
   value,
@@ -23,6 +23,7 @@ export function ComboboxDados({
   icone: Icone,
   classeBotao,
   id,
+  textoVazio,
 }: {
   value: string;
   opcoes: string[];
@@ -37,6 +38,8 @@ export function ComboboxDados({
   classeBotao?: string;
   /** id do botão, para um <Label htmlFor>. */
   id?: string;
+  /** Texto da busca sem resultado (sem `permitirNovo`); padrão "Nenhuma opção encontrada." */
+  textoVazio?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
@@ -76,7 +79,7 @@ export function ComboboxDados({
         <Command>
           <CommandInput placeholder={buscaPlaceholder} value={busca} onValueChange={setBusca} />
           <CommandList>
-            {!mostrarNovo && <CommandEmpty>{permitirNovo ? "Digite para cadastrar um novo." : "Nenhuma opção encontrada."}</CommandEmpty>}
+            {!mostrarNovo && <CommandEmpty>{permitirNovo ? "Digite para cadastrar um novo." : textoVazio ?? "Nenhuma opção encontrada."}</CommandEmpty>}
             {mostrarNovo && (
               <CommandGroup>
                 <CommandItem value={`__novo__${digitado}`} forceMount onSelect={() => escolher(digitado)}>

@@ -14,14 +14,6 @@ import {
 } from "@/lib/compatibilidade/compatibilidade";
 import { gruposDosCompativeis } from "@/lib/compatibilidade/gruposDosCompativeis";
 
-/** Textos que dependem do tipo: os mesmos do celular (TEXTOS de pages/CompatibilidadePelicula). */
-export interface TextosDoTipoCompatibilidade {
-  descricaoBusca: string;
-  tituloResultado: string;
-  usaOMesmo: string;
-  semDados: string;
-}
-
 const SEPARADOR_GRUPOS = " · ";
 const CARTAO = "rounded-2xl p-7 shadow-sm";
 const CAIXA_ICONE = "grid h-14 w-14 shrink-0 place-items-center rounded-2xl";
@@ -66,8 +58,11 @@ function CabecalhoCartao({ icone, titulo, descricao, direita }: { icone: ReactNo
   );
 }
 
-function PainelDesktop({ tipo, textos }: { tipo: TipoCompatibilidade; textos: TextosDoTipoCompatibilidade }) {
+function PainelDesktop({ tipo }: { tipo: TipoCompatibilidade }) {
   const { t } = useTranslation("comum");
+  // Textos que dependem do tipo (película/vidro): comum.compatibilidade.porTipo.<tipo>.
+  const doTipo = (chave: "descricaoBusca" | "tituloResultado" | "usaOMesmo" | "semDados", vars?: Record<string, string>) =>
+    t(`compatibilidade.porTipo.${tipo}.${chave}`, vars);
   const [marca, setMarca] = useState("");
   const [modelo, setModelo] = useState("");
 
@@ -92,7 +87,7 @@ function PainelDesktop({ tipo, textos }: { tipo: TipoCompatibilidade; textos: Te
   if (isError || grupos.length === 0) {
     return (
       <Aviso icone={isError ? <AlertTriangle className="h-8 w-8 text-muted-foreground" /> : <HelpCircle className="h-8 w-8 text-muted-foreground" />}>
-        {isError ? t("compatibilidade.erro") : textos.semDados}
+        {isError ? t("compatibilidade.erro") : doTipo("semDados")}
       </Aviso>
     );
   }
@@ -115,7 +110,7 @@ function PainelDesktop({ tipo, textos }: { tipo: TipoCompatibilidade; textos: Te
               </div>
             }
             titulo={t("compatibilidade.buscarModelo")}
-            descricao={textos.descricaoBusca}
+            descricao={doTipo("descricaoBusca")}
           />
           <div className="grid max-w-[1050px] grid-cols-2 gap-6">
             <div className="min-w-0 space-y-2.5">
@@ -128,6 +123,7 @@ function PainelDesktop({ tipo, textos }: { tipo: TipoCompatibilidade; textos: Te
                 opcoes={opcoes.marcas}
                 placeholder={t("compatibilidade.selecioneMarca")}
                 buscaPlaceholder={t("compatibilidade.buscaMarca")}
+                textoVazio={t("compatibilidade.nenhumaOpcao")}
                 onChange={(novaMarca) => {
                   setMarca(novaMarca);
                   setModelo("");
@@ -144,6 +140,7 @@ function PainelDesktop({ tipo, textos }: { tipo: TipoCompatibilidade; textos: Te
                 opcoes={modelos}
                 placeholder={t("compatibilidade.selecioneModelo")}
                 buscaPlaceholder={t("compatibilidade.buscaModelo")}
+                textoVazio={t("compatibilidade.nenhumaOpcao")}
                 onChange={setModelo}
                 disabled={!marca}
               />
@@ -172,8 +169,8 @@ function PainelDesktop({ tipo, textos }: { tipo: TipoCompatibilidade; textos: Te
                 iconeNeutro
               )
             }
-            titulo={textos.tituloResultado}
-            descricao={`${marca} ${modelo} ${textos.usaOMesmo}:`}
+            titulo={doTipo("tituloResultado")}
+            descricao={doTipo("usaOMesmo", { marca, modelo })}
             direita={
               <span
                 className={cn(
@@ -223,11 +220,10 @@ function PainelDesktop({ tipo, textos }: { tipo: TipoCompatibilidade; textos: Te
 interface CompatibilidadePeliculaDesktopProps {
   tipo: TipoCompatibilidade;
   onTipoChange: (tipo: TipoCompatibilidade) => void;
-  textos: TextosDoTipoCompatibilidade;
 }
 
 /** Layout de computador (>= 1024px) da tela Compatibilidade de Películas e Vidros. */
-export function CompatibilidadePeliculaDesktop({ tipo, onTipoChange, textos }: CompatibilidadePeliculaDesktopProps) {
+export function CompatibilidadePeliculaDesktop({ tipo, onTipoChange }: CompatibilidadePeliculaDesktopProps) {
   const { t } = useTranslation("comum");
   return (
     <main className="flex-1 space-y-6 p-6">
@@ -244,7 +240,7 @@ export function CompatibilidadePeliculaDesktop({ tipo, onTipoChange, textos }: C
       <AbasTipoCompatibilidadeDesktop tipo={tipo} onChange={onTipoChange} />
 
       {/* key: trocar de aba limpa marca/modelo escolhidos (igual ao celular). */}
-      <PainelDesktop key={tipo} tipo={tipo} textos={textos} />
+      <PainelDesktop key={tipo} tipo={tipo} />
     </main>
   );
 }
