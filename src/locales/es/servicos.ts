@@ -4,6 +4,35 @@ import type servicosPtBR from "../pt-BR/servicos";
 import type { Traducao } from "../tipos";
 
 const servicos: Traducao<typeof servicosPtBR> = {
+  telaDesktop: {
+    titulo: "Servicios",
+    subtitulo: "Gestione los servicios que ofrece en su servicio técnico",
+    vincularTipos: "Vincular tipos automáticamente",
+    novoServico: "Nuevo servicio",
+    indicadores: {
+      total: "Total de servicios",
+      totalLegenda: "servicios registrados",
+      comPeca: "Con repuesto vinculado",
+      semPeca: "Sin repuesto vinculado",
+      percentualDosServicos: "{{percentual}}% de los servicios",
+      lucro: "Ganancia total (estimada)",
+      lucroLegenda: "suma de precio − costo de cada servicio",
+    },
+    busca: "Buscar por nombre o código...",
+    buscaRotulo: "Buscar servicios",
+    soSemTipo: "Solo sin tipo vinculado ({{quantidade}})",
+    tipoRotulo: "Tipo de servicio",
+    todosTipos: "Todos los tipos",
+    filtros: "Filtros",
+    filtroPrecoAtivo: "(filtro de precio activo)",
+    precoTitulo: "Precio de venta",
+    precoMinimo: "Precio mínimo",
+    precoMaximo: "Precio máximo",
+    limparFiltros: "Limpiar filtros",
+    encontrados_zero: "Ningún servicio encontrado",
+    encontrados_one: "{{count}} servicio encontrado",
+    encontrados_other: "{{count}} servicios encontrados",
+  },
   exclusao: {
     servicoTitulo: "No es posible eliminar este servicio",
     servicoEmUso_zero: "Este servicio no se usa en ninguna orden de servicio.",

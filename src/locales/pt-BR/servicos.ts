@@ -1,5 +1,36 @@
 // Namespace "servicos" em pt-BR: vai embutido no pacote principal (src/lib/i18n/instancia.ts).
 const servicos = {
+  // Tela Serviços no computador (>= 1024px): cabeçalho, indicadores e filtros
+  // (components/servicos/TopoServicosDesktop). Celular e tablet seguem com o texto fixo de antes.
+  telaDesktop: {
+    titulo: "Serviços",
+    subtitulo: "Gerencie os serviços oferecidos na sua assistência técnica",
+    vincularTipos: "Vincular tipos automaticamente",
+    novoServico: "Novo Serviço",
+    indicadores: {
+      total: "Total de Serviços",
+      totalLegenda: "serviços cadastrados",
+      comPeca: "Com Peça Vinculada",
+      semPeca: "Sem Peça Vinculada",
+      percentualDosServicos: "{{percentual}}% dos serviços",
+      lucro: "Lucro Total (Estimado)",
+      lucroLegenda: "soma de preço − custo de cada serviço",
+    },
+    busca: "Buscar por nome ou código...",
+    buscaRotulo: "Buscar serviços",
+    soSemTipo: "Somente sem tipo vinculado ({{quantidade}})",
+    tipoRotulo: "Tipo de serviço",
+    todosTipos: "Todos os tipos",
+    filtros: "Filtros",
+    filtroPrecoAtivo: "(filtro de preço ativo)",
+    precoTitulo: "Preço de venda",
+    precoMinimo: "Preço mínimo",
+    precoMaximo: "Preço máximo",
+    limparFiltros: "Limpar filtros",
+    encontrados_zero: "Nenhum serviço encontrado",
+    encontrados_one: "{{count}} serviço encontrado",
+    encontrados_other: "{{count}} serviços encontrados",
+  },
   exclusao: {
     // hooks/useServicos.ts
     servicoTitulo: "Não é possível excluir este serviço",

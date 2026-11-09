@@ -13,6 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { TopoServicosDesktop, TODOS_OS_TIPOS } from "@/components/servicos/TopoServicosDesktop";
+import { contarSemTipo, filtrarServicos, lerValorFiltro, resumoServicos } from "@/lib/servicos/listaServicosDesktop";
 
 export default function Servicos() {
   const [busca, setBusca] = useState("");
@@ -20,6 +23,11 @@ export default function Servicos() {
   const [assistenteAberto, setAssistenteAberto] = useState(false);
   const [soSemTipo, setSoSemTipo] = useState(false);
   const [servicoParaEditar, setServicoParaEditar] = useState<Servico | null>(null);
+  // Filtros que só existem no computador (>= 1024px).
+  const [tipoIdDesktop, setTipoIdDesktop] = useState(TODOS_OS_TIPOS);
+  const [precoMinimoDesktop, setPrecoMinimoDesktop] = useState("");
+  const [precoMaximoDesktop, setPrecoMaximoDesktop] = useState("");
+  const isDesktop = useIsDesktop();
 
   const {
     servicos,
@@ -51,6 +59,35 @@ export default function Servicos() {
   }, [servicos, busca, soSemTipo]);
 
   const qtdSemTipo = useMemo(() => servicos.filter((s) => !s.tipo_servico_id).length, [servicos]);
+
+  // Computador: indicadores do catálogo inteiro; lista filtrada com busca sem acento,
+  // tipo e faixa de preço (src/lib/servicos/listaServicosDesktop). Abaixo de 1024px
+  // continua valendo o servicosFiltrados de cima, sem mudança.
+  const resumoDesktop = useMemo(() => resumoServicos(servicos), [servicos]);
+  const qtdSemTipoDesktop = useMemo(() => contarSemTipo(servicos), [servicos]);
+  const precoMinimo = lerValorFiltro(precoMinimoDesktop);
+  const precoMaximo = lerValorFiltro(precoMaximoDesktop);
+  const servicosFiltradosDesktop = useMemo(
+    () =>
+      filtrarServicos(servicos, {
+        busca,
+        soSemTipo,
+        tipoServicoId: tipoIdDesktop === TODOS_OS_TIPOS ? null : tipoIdDesktop,
+        precoMinimo,
+        precoMaximo,
+      }),
+    [servicos, busca, soSemTipo, tipoIdDesktop, precoMinimo, precoMaximo],
+  );
+  const filtroPrecoAtivoDesktop = precoMinimo != null || precoMaximo != null;
+  const temFiltrosAtivosDesktop =
+    busca.trim() !== "" || soSemTipo || tipoIdDesktop !== TODOS_OS_TIPOS || filtroPrecoAtivoDesktop;
+  const limparFiltrosDesktop = () => {
+    setBusca("");
+    setSoSemTipo(false);
+    setTipoIdDesktop(TODOS_OS_TIPOS);
+    setPrecoMinimoDesktop("");
+    setPrecoMaximoDesktop("");
+  };
 
   const handleSubmit = async (dados: DadosSubmitServico) => {
     const dadosServico = {
@@ -86,6 +123,52 @@ export default function Servicos() {
 
   return (
     <AppLayout>
+      {isDesktop ? (
+        // Computador (>= 1024px): mesmo estado, mesmos handlers e a mesma tabela;
+        // só o topo muda. Abaixo disso segue o layout de sempre (ramo de baixo, intocado).
+        <main className="flex-1 p-6 overflow-auto space-y-5">
+          <TopoServicosDesktop
+            resumo={resumoDesktop}
+            loading={loading}
+            onNovoServico={handleNovoServico}
+            onVincularTipos={() => setAssistenteAberto(true)}
+            busca={busca}
+            onBusca={setBusca}
+            soSemTipo={soSemTipo}
+            onSoSemTipo={setSoSemTipo}
+            quantidadeSemTipo={qtdSemTipoDesktop}
+            tipos={tiposServico}
+            tipoId={tipoIdDesktop}
+            onTipoId={setTipoIdDesktop}
+            precoMinimo={precoMinimoDesktop}
+            onPrecoMinimo={setPrecoMinimoDesktop}
+            precoMaximo={precoMaximoDesktop}
+            onPrecoMaximo={setPrecoMaximoDesktop}
+            filtroPrecoAtivo={filtroPrecoAtivoDesktop}
+            temFiltrosAtivos={temFiltrosAtivosDesktop}
+            onLimparFiltros={limparFiltrosDesktop}
+            quantidadeEncontrada={servicosFiltradosDesktop.length}
+          />
+
+          {loading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : (
+            <TabelaServicos
+              servicos={servicosFiltradosDesktop}
+              tipoNomePorId={tipoNomePorId}
+              onEditar={handleEditar}
+              onExcluir={handleExcluir}
+            />
+          )}
+
+          {/* Tipos de Serviço */}
+          <GerenciadorTiposServico />
+        </main>
+      ) : (
       <main className="flex-1 p-6 overflow-auto">
         <div className="max-w-7xl lg:max-w-none mx-auto space-y-6">
           {/* lg:pt-6: o olho flutuante do layout (BotaoOcultarValores, fixed
@@ -149,6 +232,7 @@ export default function Servicos() {
           <GerenciadorTiposServico />
         </div>
       </main>
+      )}
 
       <DialogCadastroServico
         open={dialogAberto}
