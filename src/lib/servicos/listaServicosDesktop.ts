@@ -1,6 +1,6 @@
 /**
  * Regras puras da tela Serviços no computador (≥1024px): indicadores do topo,
- * lucro por serviço, filtros e paginação. Tudo em memória sobre a lista que
+ * lucro por serviço, filtros (inclusive preço mínimo/máximo) e paginação. Tudo em memória sobre a lista que
  * useServicos já carrega inteira (sem paginação no banco); nenhuma consulta.
  * Sem dependências (testado com Deno em scripts/testes-servicos-layout/).
  */
@@ -90,12 +90,35 @@ export interface FiltrosServicos {
   soSemTipo?: boolean;
   /** id do tipo de serviço; null/vazio = todos. Hoje o app NÃO tem este filtro (só o mockup). */
   tipoServicoId?: string | null;
+  /** Preço mínimo e máximo (inclusivos; null = sem limite). Preço vazio conta 0, como no lucro. */
+  precoMinimo?: number | null;
+  precoMaximo?: number | null;
+}
+
+/**
+ * Lê o valor digitado no filtro de preço. Aceita "1234,56", "1.234,56", "1234.56"
+ * e "R$ 1.234,56". Vazio, inválido ou negativo devolve null (= sem limite):
+ * nenhum preço é negativo, então um limite negativo não teria sentido.
+ */
+export function lerValorFiltro(texto: string | null | undefined): number | null {
+  let t = (texto ?? "").replace(/R\$/gi, "").replace(/\s/g, "");
+  if (!t) return null;
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, ""); // "1.234" = mil duzentos e trinta e quatro
+  if (!/^\d+(\.\d+)?$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Aplica os filtros juntos (E). Mantém a ordem recebida (o hook já ordena por nome). */
 export function filtrarServicos<T extends ServicoDaLista>(servicos: readonly T[], f: FiltrosServicos): T[] {
   const termo = normalizarTexto(f.busca);
+  const minimo = f.precoMinimo == null ? null : Math.round(f.precoMinimo * 100);
+  const maximo = f.precoMaximo == null ? null : Math.round(f.precoMaximo * 100);
   return servicos.filter((s) => {
+    // Mínimo maior que o máximo não é invertido: o resultado fica vazio.
+    if (minimo != null && centavos(s.preco) < minimo) return false;
+    if (maximo != null && centavos(s.preco) > maximo) return false;
     if (f.soSemTipo && temTipoVinculado(s)) return false;
     if (f.tipoServicoId && s.tipo_servico_id !== f.tipoServicoId) return false;
     if (termo && !normalizarTexto(s.nome).includes(termo) && !normalizarTexto(s.codigo).includes(termo)) return false;

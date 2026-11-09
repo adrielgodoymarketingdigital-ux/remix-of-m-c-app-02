@@ -4,6 +4,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   contarSemTipo,
   filtrarServicos,
+  lerValorFiltro,
   lucroDoServico,
   normalizarTexto,
   paginar,
@@ -96,6 +97,52 @@ Deno.test("filtros combinados (E)", () => {
 
 Deno.test("filtros em lista vazia", () => {
   assertEquals(filtrarServicos([], { busca: "x", soSemTipo: true, tipoServicoId: "t" }), []);
+});
+
+// ---------- Filtro de preço ----------
+// preços do catálogo: a 580, b 80, c 100, d vazio (conta 0), e 0,30, f 250
+
+Deno.test("preço: só mínimo, só máximo, os dois (limites inclusivos)", () => {
+  assertEquals(ids(filtrarServicos(catalogo, { precoMinimo: 100 })), "a,c,f");
+  assertEquals(ids(filtrarServicos(catalogo, { precoMaximo: 100 })), "b,c,d,e");
+  assertEquals(ids(filtrarServicos(catalogo, { precoMinimo: 80, precoMaximo: 250 })), "b,c,f");
+  assertEquals(ids(filtrarServicos(catalogo, { precoMinimo: 0.3, precoMaximo: 0.3 })), "e");
+});
+
+Deno.test("preço vazio conta 0 no filtro", () => {
+  assertEquals(ids(filtrarServicos(catalogo, { precoMaximo: 0 })), "d");
+  assertEquals(ids(filtrarServicos(catalogo, { precoMinimo: 0.01 })), "a,b,c,e,f");
+});
+
+Deno.test("preço: mínimo maior que máximo = vazio, sem erro", () => {
+  assertEquals(filtrarServicos(catalogo, { precoMinimo: 500, precoMaximo: 100 }), []);
+});
+
+Deno.test("preço: limite null = sem limite", () => {
+  assertEquals(ids(filtrarServicos(catalogo, { precoMinimo: null, precoMaximo: null })), "a,b,c,d,e,f");
+});
+
+Deno.test("preço combinado com busca, tipo e sem tipo", () => {
+  assertEquals(ids(filtrarServicos(catalogo, { busca: "troca", precoMinimo: 200 })), "a");
+  assertEquals(ids(filtrarServicos(catalogo, { soSemTipo: true, precoMaximo: 100 })), "c,d,e");
+  assertEquals(ids(filtrarServicos(catalogo, { tipoServicoId: "t-soft", precoMinimo: 81 })), "");
+});
+
+Deno.test("valor digitado: formatos aceitos; vazio, inválido e negativo = sem limite", () => {
+  assertEquals(lerValorFiltro("100"), 100);
+  assertEquals(lerValorFiltro("1.234,56"), 1234.56);
+  assertEquals(lerValorFiltro("R$ 1.234,56"), 1234.56);
+  assertEquals(lerValorFiltro("1234.56"), 1234.56);
+  assertEquals(lerValorFiltro("1.234"), 1234);
+  assertEquals(lerValorFiltro("0,5"), 0.5);
+  assertEquals(lerValorFiltro(""), null);
+  assertEquals(lerValorFiltro("   "), null);
+  assertEquals(lerValorFiltro(null), null);
+  assertEquals(lerValorFiltro("abc"), null);
+  assertEquals(lerValorFiltro("-10"), null);
+  assertEquals(lerValorFiltro("-10,50"), null);
+  // negativo digitado não filtra nada
+  assertEquals(filtrarServicos(catalogo, { precoMaximo: lerValorFiltro("-10") }).length, 6);
 });
 
 // ---------- Paginação ----------
