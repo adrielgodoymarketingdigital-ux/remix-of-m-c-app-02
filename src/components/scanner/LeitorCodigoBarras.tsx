@@ -37,6 +37,8 @@ interface LeitorCodigoBarrasProps {
   mostrarInput?: boolean;
   scannerId?: string;
   titulo?: string;
+  /** aria-label e dica do botão. Ausente = sem aria-label e dica "Escanear código de barras" (como sempre). */
+  rotuloBotao?: string;
 }
 
 export const LeitorCodigoBarras = ({
@@ -49,6 +51,7 @@ export const LeitorCodigoBarras = ({
   mostrarInput = true,
   scannerId = "barcode-reader",
   titulo = "Escanear Código de Barras",
+  rotuloBotao,
 }: LeitorCodigoBarrasProps) => {
   const [dialogAberto, setDialogAberto] = useState(false);
   const [escaneando, setEscaneando] = useState(false);
@@ -313,7 +316,8 @@ export const LeitorCodigoBarras = ({
           size="icon"
           onClick={() => setDialogAberto(true)}
           disabled={disabled}
-          title="Escanear código de barras"
+          title={rotuloBotao ?? "Escanear código de barras"}
+          aria-label={rotuloBotao}
         >
           <ScanBarcode className="h-4 w-4" />
         </Button>

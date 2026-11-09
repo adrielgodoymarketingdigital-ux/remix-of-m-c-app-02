@@ -236,6 +236,10 @@ const pdv: Traducao<typeof pdvPtBR> = {
     modeloPlaceholder: "Ej.: iPhone 13, Galaxy S21",
     imei: "IMEI",
     imeiPlaceholder: "15 dígitos",
+    imei2: "IMEI 2 (dual SIM)",
+    imei2Placeholder: "15 dígitos (opcional)",
+    lerImei: "Escanear IMEI",
+    lerImei2: "Escanear IMEI 2",
     numeroSerie: "Número de serie",
     numeroSeriePlaceholder: "N/S",
     cor: "Color",
@@ -256,6 +260,7 @@ const pdv: Traducao<typeof pdvPtBR> = {
     toast: {
       informeVendedor: "Indique el nombre de quien entrega el equipo.",
       informeMarcaModelo: "Indique la marca y el modelo del equipo.",
+      imeiRepetido: "El IMEI 1 y el IMEI 2 no pueden ser iguales.",
       custoInvalido: "Indique un costo válido.",
       vendaInvalido: "Indique un precio de venta válido.",
     },

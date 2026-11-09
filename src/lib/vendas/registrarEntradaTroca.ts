@@ -12,6 +12,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { camposDevolucao, type DadosEntradaTroca, type FormaDevolucao } from "./trocaPDV";
+import { colunasImeiDaEntrada } from "./entradaTrocaForm";
 
 export interface ContextoEntradaTroca {
   /** Dono da loja (= vendas.user_id). */
@@ -77,7 +78,8 @@ export async function registrarEntradaTroca(
           tipo: "celular",
           marca: a.marca,
           modelo: a.modelo,
-          imei: a.imei,
+          // imei e imei2 (imei2 ?? null: troca pendente salva antes do IMEI 2 não tem o campo).
+          ...colunasImeiDaEntrada(a),
           numero_serie: a.numeroSerie,
           cor: a.cor,
           capacidade_gb: a.capacidadeGb,

@@ -24,6 +24,7 @@ import { ChecklistDispositivo } from "@/components/ordens/ChecklistDispositivo";
 import { Checklist } from "@/types/ordem-servico";
 import type { DadosEntradaTroca } from "@/lib/vendas/trocaPDV";
 import { montarEntradaTroca } from "@/lib/vendas/entradaTrocaForm";
+import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
 
 interface DialogDispositivoEntradaProps {
   open: boolean;
@@ -48,6 +49,8 @@ export function DialogDispositivoEntrada({
   const [marca, setMarca] = useState("");
   const [modelo, setModelo] = useState("");
   const [imei, setImei] = useState("");
+  const [imei2, setImei2] = useState("");
+  const [versaoLeitores, setVersaoLeitores] = useState(0);
   const [numeroSerie, setNumeroSerie] = useState("");
   const [cor, setCor] = useState("");
   const [capacidadeGb, setCapacidadeGb] = useState("");
@@ -66,6 +69,9 @@ export function DialogDispositivoEntrada({
     setMarca("");
     setModelo("");
     setImei("");
+    setImei2("");
+    // Remonta os leitores: um leitor aberto fecha e solta a câmera.
+    setVersaoLeitores((v) => v + 1);
     setNumeroSerie("");
     setCor("");
     setCapacidadeGb("");
@@ -90,6 +96,7 @@ export function DialogDispositivoEntrada({
       marca,
       modelo,
       imei,
+      imei2,
       numeroSerie,
       cor,
       capacidadeGb,
@@ -190,14 +197,46 @@ export function DialogDispositivoEntrada({
                   onChange={(e) => setModelo(e.target.value)}
                 />
               </div>
+              {/* IMEI 1 e 2: cada um com o seu leitor (câmera); leitor USB digita direto no campo. */}
               <div className="space-y-1">
                 <Label htmlFor="imei">{t("entradaTroca.imei")}</Label>
-                <Input
-                  id="imei"
-                  placeholder={t("entradaTroca.imeiPlaceholder")}
-                  value={imei}
-                  onChange={(e) => setImei(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="imei"
+                    placeholder={t("entradaTroca.imeiPlaceholder")}
+                    value={imei}
+                    onChange={(e) => setImei(e.target.value)}
+                    className="flex-1"
+                  />
+                  <LeitorCodigoBarras
+                    key={`imei-${versaoLeitores}`}
+                    mostrarInput={false}
+                    scannerId="scanner-troca-imei"
+                    titulo={t("entradaTroca.lerImei")}
+                    rotuloBotao={t("entradaTroca.lerImei")}
+                    onCodigoLido={setImei}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="imei2">{t("entradaTroca.imei2")}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="imei2"
+                    placeholder={t("entradaTroca.imei2Placeholder")}
+                    value={imei2}
+                    onChange={(e) => setImei2(e.target.value)}
+                    className="flex-1"
+                  />
+                  <LeitorCodigoBarras
+                    key={`imei2-${versaoLeitores}`}
+                    mostrarInput={false}
+                    scannerId="scanner-troca-imei2"
+                    titulo={t("entradaTroca.lerImei2")}
+                    rotuloBotao={t("entradaTroca.lerImei2")}
+                    onCodigoLido={setImei2}
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="numero-serie">{t("entradaTroca.numeroSerie")}</Label>
@@ -227,7 +266,7 @@ export function DialogDispositivoEntrada({
                   onChange={(e) => setCapacidadeGb(e.target.value)}
                 />
               </div>
-              <div className="space-y-1 sm:col-span-2">
+              <div className="space-y-1">
                 <Label htmlFor="condicao">{t("entradaTroca.condicao")}</Label>
                 <Select value={condicao} onValueChange={setCondicao}>
                   <SelectTrigger id="condicao">

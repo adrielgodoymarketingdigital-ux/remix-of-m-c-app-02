@@ -247,6 +247,10 @@ const pdv = {
     modeloPlaceholder: "Ex: iPhone 13, Galaxy S21",
     imei: "IMEI",
     imeiPlaceholder: "15 dígitos",
+    imei2: "IMEI 2 (dual chip)",
+    imei2Placeholder: "15 dígitos (opcional)",
+    lerImei: "Escanear IMEI",
+    lerImei2: "Escanear IMEI 2",
     numeroSerie: "Número de Série",
     numeroSeriePlaceholder: "S/N",
     cor: "Cor",
@@ -267,6 +271,7 @@ const pdv = {
     toast: {
       informeVendedor: "Informe o nome do vendedor.",
       informeMarcaModelo: "Informe a marca e o modelo do dispositivo.",
+      imeiRepetido: "IMEI 1 e IMEI 2 não podem ser iguais.",
       custoInvalido: "Informe um valor de custo válido.",
       vendaInvalido: "Informe um valor de venda válido.",
     },

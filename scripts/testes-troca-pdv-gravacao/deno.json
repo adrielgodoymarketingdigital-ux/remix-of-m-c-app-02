@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@/integrations/supabase/client": "./supabaseFalso.ts",
+    "@/": "../../src/"
+  },
+  "unstable": ["sloppy-imports"]
+}
