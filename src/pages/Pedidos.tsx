@@ -46,6 +46,7 @@ import { useIsDesktop } from "@/hooks/use-mobile";
 import { TopoPedidosDesktop } from "@/components/pedidos/TopoPedidosDesktop";
 import { FiltrosPedidosDesktop } from "@/components/pedidos/FiltrosPedidosDesktop";
 import { TabelaPedidosDesktop } from "@/components/pedidos/TabelaPedidosDesktop";
+import { ListaComprasDesktop } from "@/components/pedidos/ListaComprasDesktop";
 import {
   filtrarPedidos,
   paginar,
@@ -199,7 +200,7 @@ export default function Pedidos() {
             onNovoPedido={abrirNovo}
           />
 
-          {aba === "lista" && <ListaCompras />}
+          {aba === "lista" && <ListaComprasDesktop />}
 
           {aba === "pedidos" && (
             <FiltrosPedidosDesktop
