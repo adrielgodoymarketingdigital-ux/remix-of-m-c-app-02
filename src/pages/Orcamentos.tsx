@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +33,15 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { useIsDesktop } from "@/hooks/use-mobile";
 import { TopoOrcamentosDesktop } from "@/components/orcamentos/desktop/TopoOrcamentosDesktop";
 import { FiltrosOrcamentosDesktop } from "@/components/orcamentos/desktop/FiltrosOrcamentosDesktop";
-import { filtrarOrcamentos, resumoOrcamentos, TODOS_OS_STATUS, type FiltroStatus } from "@/lib/orcamentos/listaOrcamentosDesktop";
+import { TabelaOrcamentosDesktop } from "@/components/orcamentos/desktop/TabelaOrcamentosDesktop";
+import {
+  filtrarOrcamentos,
+  paginar,
+  POR_PAGINA_PADRAO,
+  resumoOrcamentos,
+  TODOS_OS_STATUS,
+  type FiltroStatus,
+} from "@/lib/orcamentos/listaOrcamentosDesktop";
 
 export default function Orcamentos() {
   const {
@@ -57,6 +66,9 @@ export default function Orcamentos() {
   const [statusDesktop, setStatusDesktop] = useState<FiltroStatus>(TODOS_OS_STATUS);
   const [dataInicioDesktop, setDataInicioDesktop] = useState("");
   const [dataFimDesktop, setDataFimDesktop] = useState("");
+  const [paginaDesktop, setPaginaDesktop] = useState(1);
+  const [porPaginaDesktop, setPorPaginaDesktop] = useState(POR_PAGINA_PADRAO);
+  const { t: tExclusao } = useTranslation("comum", { keyPrefix: "orcamentos.tabela.exclusao" });
 
   const orcamentosFiltrados = orcamentos.filter((o) => {
     const matchBusca =
@@ -96,6 +108,23 @@ export default function Orcamentos() {
     setDataFimDesktop("");
   };
 
+  // Volta para a página 1 quando a busca, um filtro ou o tamanho da página mudam
+  // (ajuste de estado durante a renderização, como em Serviços).
+  const chaveFiltrosDesktop = JSON.stringify([busca, statusDesktop, dataInicioDesktop, dataFimDesktop, porPaginaDesktop]);
+  const [chaveFiltrosAnterior, setChaveFiltrosAnterior] = useState(chaveFiltrosDesktop);
+  let paginaPedidaDesktop = paginaDesktop;
+  if (chaveFiltrosAnterior !== chaveFiltrosDesktop) {
+    setChaveFiltrosAnterior(chaveFiltrosDesktop);
+    setPaginaDesktop(1);
+    paginaPedidaDesktop = 1;
+  }
+  const paginaAtualDesktop = useMemo(
+    () => paginar(orcamentosFiltradosDesktop, paginaPedidaDesktop, porPaginaDesktop),
+    [orcamentosFiltradosDesktop, paginaPedidaDesktop, porPaginaDesktop],
+  );
+  // A lista encolheu (exclusão, mudança de status com filtro) e a página pedida sumiu: fica na última que existe.
+  if (!carregando && paginaAtualDesktop.pagina !== paginaPedidaDesktop) setPaginaDesktop(paginaAtualDesktop.pagina);
+
   const handleSalvar = async (dados: any) => {
     if (orcamentoSelecionado) {
       await atualizarOrcamento(orcamentoSelecionado.id, dados);
@@ -131,8 +160,7 @@ export default function Orcamentos() {
   return (
     <AppLayout>
       {isDesktop ? (
-        // Computador (>= 1024px): mesmo estado e mesmos handlers; topo próprio.
-        // A tabela ainda é a de sempre (próxima fase), já com a lista dos filtros novos.
+        // Computador (>= 1024px): mesmo estado, mesmos handlers e diálogos; topo, filtros e tabela próprios.
         // Abaixo disso segue o layout de sempre (ramo de baixo, intocado).
         <main className="flex-1 overflow-auto p-6 space-y-6">
           <TopoOrcamentosDesktop
@@ -157,20 +185,21 @@ export default function Orcamentos() {
             quantidadeEncontrada={orcamentosFiltradosDesktop.length}
           />
 
-          {carregando ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : (
-            <TabelaOrcamentos
-              orcamentos={orcamentosFiltradosDesktop}
-              onVisualizar={handleVisualizar}
-              onEditar={handleEditar}
-              onExcluir={setOrcamentoExcluir}
-              onAtualizarStatus={atualizarStatus}
-              onConverterOS={handleConverterOS}
-            />
-          )}
+          <TabelaOrcamentosDesktop
+            pagina={paginaAtualDesktop}
+            porPagina={porPaginaDesktop}
+            onPagina={setPaginaDesktop}
+            onPorPagina={setPorPaginaDesktop}
+            carregando={carregando}
+            totalGeral={orcamentos.length}
+            onNovoOrcamento={() => setDialogAberto(true)}
+            onLimparFiltros={limparFiltrosDesktop}
+            onVisualizar={handleVisualizar}
+            onEditar={handleEditar}
+            onExcluir={setOrcamentoExcluir}
+            onAtualizarStatus={atualizarStatus}
+            onConverterOS={handleConverterOS}
+          />
         </main>
       ) : (
       <main className="flex-1 overflow-auto p-4 md:p-6 space-y-6">
@@ -345,20 +374,33 @@ export default function Orcamentos() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            {/* Computador: os mesmos textos traduzidos (comum.orcamentos.tabela.exclusao).
+                Abaixo de 1024px, os de sempre. */}
+            <AlertDialogTitle>{isDesktop ? tExclusao("titulo") : "Confirmar exclusão"}</AlertDialogTitle>
             <AlertDialogDescription>
+              {isDesktop ? (
+                <Trans
+                  t={tExclusao}
+                  i18nKey="texto"
+                  values={{ numero: orcamentoExcluir?.numero_orcamento }}
+                  components={{ b: <strong /> }}
+                />
+              ) : (
+                <>
               Tem certeza que deseja excluir o orçamento{" "}
               <strong>{orcamentoExcluir?.numero_orcamento}</strong>? Esta ação não
               pode ser desfeita.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{isDesktop ? tExclusao("cancelar") : "Cancelar"}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmarExclusao}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir
+              {isDesktop ? tExclusao("confirmar") : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
