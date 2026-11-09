@@ -1,0 +1,430 @@
+import { dataBrasiliaISO } from "./dataBrasilia.ts";
+
+export interface VendaFinanceiraLike {
+  data?: string | null;
+  data_recebimento?: string | null;
+  forma_pagamento?: string | null;
+  recebido?: boolean | null;
+  cancelada?: boolean | null;
+  parcela_numero?: number | null;
+  total_parcelas?: number | null;
+  total?: number | string | null;
+  valor_desconto_manual?: number | string | null;
+  valor_desconto_cupom?: number | string | null;
+  custo_unitario?: number | string | null;
+  quantidade?: number | string | null;
+  grupo_venda?: string | null;
+  segunda_forma_pagamento?: string | null;
+  valor_segunda_forma?: number | null;
+  observacoes?: string | null;
+}
+
+const FORMAS_POR_COMPETENCIA = new Set(["a_receber", "a_prazo"]);
+
+/**
+ * Marcador gravado em vendas.observacoes nas linhas auxiliares de "pagamento
+ * duplo" (2ª forma de pagamento). Uma linha secundária "à vista" (pix/dinheiro/
+ * cartão) já está embutida no total da linha principal — nunca entra em
+ * cálculos de lucro/faturamento. Uma linha secundária "a receber"/"a prazo" só
+ * entra quando efetivamente recebida (ver deveContarSecundarioNoLucro e
+ * src/lib/vendas/reconhecerSegundaForma.ts).
+ */
+export const MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO = "pagamento_duplo_secundario";
+
+const toNumber = (value: number | string | null | undefined) => Number(value || 0);
+
+const formatDateForQuery = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getDateKeyFromValue = (value?: string | null) => {
+  if (!value) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const normalizedValue = value.includes("T") ? value : value.replace(" ", "T");
+  const parsed = new Date(normalizedValue);
+  if (!Number.isNaN(parsed.getTime())) {
+    return formatDateForQuery(parsed);
+  }
+
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
+
+  return null;
+};
+
+export const isVendaPorCompetenciaRecebimento = (venda: VendaFinanceiraLike) =>
+  FORMAS_POR_COMPETENCIA.has(venda.forma_pagamento || "");
+
+export const isVendaFinanceiramentePendente = (venda: VendaFinanceiraLike) =>
+  isVendaPorCompetenciaRecebimento(venda) && venda.recebido !== true;
+
+export const isVendaParcelaSubsequente = (venda: VendaFinanceiraLike) =>
+  Number(venda.parcela_numero || 0) > 1;
+
+export const isPagamentoDuploSecundario = (venda: VendaFinanceiraLike): boolean =>
+  venda.observacoes === MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO;
+
+/**
+ * Uma linha secundária de pagamento duplo entra em cálculos de lucro/
+ * faturamento somente quando:
+ *  (a) é a parte "a receber"/"a prazo" (as partes à vista já estão no total da
+ *      linha principal — contá-las duplicaria a receita); e
+ *  (b) já foi efetivamente recebida (recebido = true), com a fatia de custo
+ *      proporcional já gravada em custo_unitario pelo fluxo de reconhecimento.
+ * A competência (mês) usa data_recebimento via getVendaDataCompetencia.
+ */
+export const deveContarSecundarioNoLucro = (venda: VendaFinanceiraLike): boolean =>
+  isPagamentoDuploSecundario(venda) &&
+  isVendaPorCompetenciaRecebimento(venda) &&
+  venda.recebido === true &&
+  !isCustoNaoConfirmado(venda);
+
+/**
+ * Parcela secundária de pagamento duplo já recebida, mas sem a fatia de custo
+ * gravada (custo_unitario nulo/0). Acontece quando a parcela foi baixada sem
+ * passar por reconhecerRecebimentoVendaVinculada, ou quando a venda principal
+ * não foi encontrada (cancelada/removida). Não dá para saber qual é o custo
+ * correto — e usar o custo cheio do aparelho contra uma parcela pequena gera
+ * prejuízo fantasma —, então a parcela fica FORA do lucro/faturamento até o
+ * custo ser confirmado (mesmo padrão do "custo não confirmado" das comissões).
+ *
+ * Limitação conhecida: item com custo realmente R$ 0,00 também cai aqui.
+ */
+export const isCustoNaoConfirmado = (venda: VendaFinanceiraLike): boolean =>
+  isPagamentoDuploSecundario(venda) &&
+  isVendaPorCompetenciaRecebimento(venda) &&
+  venda.recebido === true &&
+  toNumber(venda.custo_unitario) <= 0;
+
+// ATENÇÃO: esta função (e getVendaReceitaLiquida logo abaixo) tem uma réplica
+// em SQL no bloco 1 de fn_extrato_eventos_raw (migration
+// supabase/migrations/20260909150000_extrato_financeiro.sql), usada pela tela
+// Financeiro → Extrato. Se mudar a regra aqui, atualize a migration também —
+// ver script de verificação em scripts/verificar-extrato-financeiro/.
+export const shouldIncludeVendaInFinancialTotals = (venda: VendaFinanceiraLike) => {
+  if (venda.cancelada) return false;
+  // Para vendas "a_receber"/"a_prazo" parceladas, cada parcela conta individualmente quando recebida
+  if (isVendaPorCompetenciaRecebimento(venda)) {
+    if (venda.recebido !== true) return false;
+    // Permitir todas as parcelas (incluindo subsequentes) desde que recebidas
+    return true;
+  }
+  // Para outros meios de pagamento, ignorar parcelas subsequentes (lógica original)
+  if (isVendaParcelaSubsequente(venda)) return false;
+  return true;
+};
+
+export const getVendaDataCompetencia = (venda: VendaFinanceiraLike) => {
+  if (isVendaPorCompetenciaRecebimento(venda)) {
+    if (venda.recebido !== true) return null;
+    return venda.data_recebimento || venda.data || null;
+  }
+
+  return venda.data || null;
+};
+
+/** Dia "AAAA-MM-DD" de Brasília de uma data da venda (timestamptz em ISO, ou data pura). */
+export const diaBrasiliaDaData = (valor?: string | null): string | null => {
+  if (!valor) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor;
+  const instante = new Date(valor.includes("T") ? valor : valor.replace(" ", "T"));
+  return Number.isNaN(instante.getTime()) ? null : dataBrasiliaISO(instante);
+};
+
+/**
+ * A venda conta no dia `diaBrasilia` ("AAAA-MM-DD", calendário de Brasília)? Usa a
+ * data do recebimento na venda a prazo/a receber já recebida e a data da venda nas
+ * demais. Não depende do fuso do navegador: uma venda às 21:00:30 de Brasília
+ * (00:00:30 UTC do dia seguinte) conta no dia em que foi feita.
+ */
+export const isVendaNoDiaBrasilia = (venda: VendaFinanceiraLike, diaBrasilia: string): boolean => {
+  const dataRef = isVendaPorCompetenciaRecebimento(venda) && venda.recebido
+    ? venda.data_recebimento || venda.data
+    : venda.data;
+  return diaBrasiliaDaData(dataRef) === diaBrasilia;
+};
+
+/**
+ * Vendas que entram nos cards "Hoje" do Dashboard (faturamento/lucro do dia e
+ * por setor). Mesma regra financeira do mês (shouldIncludeVendaInFinancialTotals:
+ * a receber/a prazo só depois de recebida, cancelada nunca), mas com o dia de
+ * Brasília (isVendaNoDiaBrasilia) — não usar isVendaInFinancialPeriod aqui, que
+ * lê o dia no fuso do navegador. Fora também: itens usados em OS, linha
+ * secundária de pagamento duplo ainda não reconhecida e venda de peça.
+ */
+export const filtrarVendasDoHoje = <T extends VendaFinanceiraLike & { peca_id?: string | null }>(
+  vendas: readonly T[],
+  diaBrasilia: string,
+): T[] =>
+  vendas.filter((v) => {
+    if (typeof v.observacoes === "string" && v.observacoes.includes("utilizado na OS")) return false;
+    // Linha secundária de pagamento duplo: só entra quando é a parte "a receber"
+    // já recebida (custo proporcional já gravado em custo_unitario).
+    if (isPagamentoDuploSecundario(v) && !deveContarSecundarioNoLucro(v)) return false;
+    if (v.peca_id) return false;
+    if (!shouldIncludeVendaInFinancialTotals(v)) return false;
+    return isVendaNoDiaBrasilia(v, diaBrasilia);
+  });
+
+export const isVendaInOptionalFinancialPeriod = (
+  venda: VendaFinanceiraLike,
+  inicio?: Date | null,
+  fim?: Date | null,
+) => {
+  if (!shouldIncludeVendaInFinancialTotals(venda)) return false;
+  if (!inicio && !fim) return true;
+
+  const dataCompetencia = getVendaDataCompetencia(venda);
+  const dataCompetenciaKey = getDateKeyFromValue(dataCompetencia);
+  if (!dataCompetenciaKey) return false;
+
+  const inicioKey = inicio ? formatDateForQuery(inicio) : null;
+  const fimKey = fim ? formatDateForQuery(fim) : null;
+
+  if (inicioKey && dataCompetenciaKey < inicioKey) return false;
+  if (fimKey && dataCompetenciaKey > fimKey) return false;
+
+  return true;
+};
+
+export const isVendaInFinancialPeriod = (
+  venda: VendaFinanceiraLike,
+  inicio: Date,
+  fim: Date,
+) => {
+  if (!shouldIncludeVendaInFinancialTotals(venda)) return false;
+
+  const dataCompetencia = getVendaDataCompetencia(venda);
+  const dataCompetenciaKey = getDateKeyFromValue(dataCompetencia);
+  if (!dataCompetenciaKey) return false;
+
+  const inicioKey = formatDateForQuery(inicio);
+  const fimKey = formatDateForQuery(fim);
+  return dataCompetenciaKey >= inicioKey && dataCompetenciaKey <= fimKey;
+};
+
+export const getFinancialQueryDateBounds = (inicio?: Date | null, fim?: Date | null) => {
+  const queryInicio = inicio ? new Date(inicio) : null;
+  const queryFim = fim ? new Date(fim) : null;
+
+  if (queryInicio) queryInicio.setDate(queryInicio.getDate() - 1);
+  if (queryFim) queryFim.setDate(queryFim.getDate() + 1);
+
+  return {
+    queryInicio: queryInicio ? formatDateForQuery(queryInicio) : null,
+    queryFim: queryFim ? formatDateForQuery(queryFim) : null,
+  };
+};
+
+export const getVendaReceitaLiquida = (venda: VendaFinanceiraLike) => {
+  const receitaBase =
+    toNumber(venda.total) -
+    toNumber(venda.valor_desconto_manual) -
+    toNumber(venda.valor_desconto_cupom);
+
+  // Se tem pagamento duplo com segunda forma "a_receber" (não recebida ainda),
+  // descontar o valor da segunda forma do faturamento
+  const valorSegundaAReceber =
+    venda.segunda_forma_pagamento === "a_receber" && toNumber(venda.valor_segunda_forma) > 0
+      ? toNumber(venda.valor_segunda_forma)
+      : 0;
+
+  const receitaAjustada = receitaBase - valorSegundaAReceber;
+
+  // Para vendas "a_receber"/"a_prazo", cada parcela tem seu próprio valor
+  if (isVendaPorCompetenciaRecebimento(venda)) {
+    return receitaAjustada;
+  }
+
+  // Para outros meios de pagamento parcelados, reconstituir valor total na parcela 1
+  if (
+    toNumber(venda.total_parcelas) > 1 &&
+    Number(venda.parcela_numero || 1) === 1
+  ) {
+    return receitaAjustada * toNumber(venda.total_parcelas);
+  }
+
+  return receitaAjustada;
+};
+
+/**
+ * Fração do custo da venda que deve ser reconhecida AGORA (no período da venda).
+ * É 1 para qualquer venda normal. Só é menor que 1 quando a venda tem pagamento
+ * duplo com 2ª forma "a receber" ainda não recebida: nesse caso reconhece-se
+ * apenas a proporção correspondente à parte já recebida da receita
+ * (mesma proporção usada por getVendaReceitaLiquida ao cortar valor_segunda_forma).
+ * O custo restante é reconhecido parcela a parcela quando a 2ª forma é recebida
+ * (ver src/lib/vendas/reconhecerSegundaForma.ts).
+ */
+export const calcularFracaoCustoReconhecidaAgora = (venda: VendaFinanceiraLike): number => {
+  const receitaBase =
+    toNumber(venda.total) -
+    toNumber(venda.valor_desconto_manual) -
+    toNumber(venda.valor_desconto_cupom);
+
+  const valorSegundaAReceber =
+    venda.segunda_forma_pagamento === "a_receber" && toNumber(venda.valor_segunda_forma) > 0
+      ? toNumber(venda.valor_segunda_forma)
+      : 0;
+
+  if (valorSegundaAReceber <= 0 || receitaBase <= 0) return 1;
+
+  const fracao = (receitaBase - valorSegundaAReceber) / receitaBase;
+  if (fracao < 0) return 0;
+  if (fracao > 1) return 1;
+  return fracao;
+};
+
+export const getVendaCustoTotal = (venda: VendaFinanceiraLike) => {
+  const custoTotal = toNumber(venda.custo_unitario) * toNumber(venda.quantidade || 1);
+  return custoTotal * calcularFracaoCustoReconhecidaAgora(venda);
+};
+
+/**
+ * A linha reconhece só uma FATIA do item (parcela de pagamento duplo, parcela
+ * de venda a prazo parcelada, ou principal com parte da receita diferida).
+ * Para essas linhas, custo cheio do item nunca é uma estimativa válida.
+ */
+export const isVendaLinhaParcial = (venda: VendaFinanceiraLike): boolean =>
+  isPagamentoDuploSecundario(venda) ||
+  (isVendaPorCompetenciaRecebimento(venda) && toNumber(venda.total_parcelas) > 1) ||
+  calcularFracaoCustoReconhecidaAgora(venda) < 1;
+
+export interface CustoParaLucro {
+  custo: number;
+  /** true → a linha NÃO deve entrar no lucro (nem receita nem custo) até o custo ser confirmado. */
+  naoConfirmado: boolean;
+}
+
+/**
+ * Custo a usar no lucro de uma linha de venda.
+ *  - custo_unitario > 0: custo salvo (com o diferimento proporcional).
+ *  - sem custo salvo + linha INTEIRA (venda simples, sem parcelas): estimativa
+ *    pelo custo atual do item (vendas antigas anteriores ao custo_unitario).
+ *  - sem custo salvo + linha PARCIAL: NÃO aplica o custo cheio do item (era o
+ *    que gerava prejuízo fantasma: aparelho de R$ 6.720 contra parcela de
+ *    R$ 1.930). Se o item tem custo de referência > 0, o custo real é
+ *    desconhecido → naoConfirmado. Se o item realmente custa 0, custo 0.
+ */
+export const resolverCustoVendaParaLucro = (
+  venda: VendaFinanceiraLike,
+  custoReferenciaItem: number,
+): CustoParaLucro => {
+  if (toNumber(venda.custo_unitario) > 0) {
+    return { custo: getVendaCustoTotal(venda), naoConfirmado: false };
+  }
+  if (!isVendaLinhaParcial(venda)) {
+    return { custo: toNumber(custoReferenciaItem) * toNumber(venda.quantidade || 1), naoConfirmado: false };
+  }
+  if (toNumber(custoReferenciaItem) > 0) {
+    return { custo: 0, naoConfirmado: true };
+  }
+  return { custo: 0, naoConfirmado: false };
+};
+
+/**
+ * Para vendas parceladas "a_receber"/"a_prazo", distribui o custo da parcela 1
+ * igualmente entre todas as parcelas do grupo.
+ * Deve ser chamado ANTES de calcular totais quando se tem acesso a todas as vendas.
+ */
+export const distribuirCustoParcelasGrupo = (vendas: VendaFinanceiraLike[]): VendaFinanceiraLike[] => {
+  // Agrupar por grupo_venda
+  const grupos = new Map<string, VendaFinanceiraLike[]>();
+  const semGrupo: VendaFinanceiraLike[] = [];
+
+  for (const v of vendas) {
+    // Linhas secundárias de pagamento duplo NÃO entram no rateio por grupo:
+    // a fatia de custo de cada parcela já é gravada exata em custo_unitario no
+    // momento do recebimento (reconhecerSegundaForma). Reagrupá-las aqui
+    // re-mediaria esse custo e quebraria o fechamento.
+    if (
+      v.grupo_venda &&
+      isVendaPorCompetenciaRecebimento(v) &&
+      Number(v.total_parcelas || 1) > 1 &&
+      !isPagamentoDuploSecundario(v)
+    ) {
+      const arr = grupos.get(v.grupo_venda);
+      if (arr) arr.push(v);
+      else grupos.set(v.grupo_venda, [v]);
+    } else {
+      semGrupo.push(v);
+    }
+  }
+
+  const resultado: VendaFinanceiraLike[] = [...semGrupo];
+
+  for (const [, parcelas] of grupos) {
+    // Encontrar custo total do grupo (normalmente na parcela 1)
+    const custoGrupo = parcelas.reduce((acc, p) => acc + toNumber(p.custo_unitario) * toNumber(p.quantidade || 1), 0);
+    const totalParcelas = parcelas.length || 1;
+    const custoPorParcela = custoGrupo / totalParcelas;
+
+    for (const p of parcelas) {
+      // custoPorParcela é o custo total desta entrada (já considerando a quantidade original).
+      // Dividimos pela quantidade para obter o custo unitário correto, evitando que
+      // getVendaCustoTotal (custo_unitario * quantidade) produza valores errados
+      // (ex: sem esta divisão: 700 * 100 = 70.000 em vez de 700).
+      const qtd = toNumber(p.quantidade || 1);
+      resultado.push({
+        ...p,
+        custo_unitario: qtd > 0 ? custoPorParcela / qtd : custoPorParcela,
+      });
+    }
+  }
+
+  return resultado;
+};
+
+export interface OrdemFaturavelLike {
+  numero_os?: string | null;
+  total?: number | string | null;
+  forma_pagamento?: string | null;
+  avarias?: {
+    dados_pagamento?: {
+      entrada?: number | string | null;
+      saldo_cancelado?: boolean;
+      forma?: string | null;
+    } | null;
+  } | null;
+}
+
+export type StatusContaOS = string | null | undefined;
+
+/**
+ * Decide quanto de uma OS deve entrar em cálculos de faturamento/receita:
+ * sem entrada, conta o total; com entrada e saldo pendente ou cancelado,
+ * conta só a entrada; com entrada e saldo já baixado, conta o total.
+ *
+ * ATENÇÃO: réplica exata em SQL no bloco 4 de fn_extrato_eventos_raw
+ * (migration supabase/migrations/20260909150000_extrato_financeiro.sql),
+ * usada pela tela Financeiro → Extrato. Se mudar esta função, atualize a
+ * migration também — ver scripts/verificar-extrato-financeiro/.
+ */
+export const getValorFaturavelOS = (
+  ordem: OrdemFaturavelLike,
+  statusContaVinculada: StatusContaOS
+): number => {
+  const total = toNumber(ordem.total);
+  const dadosPagamento = ordem.avarias?.dados_pagamento;
+  const entrada = toNumber(dadosPagamento?.entrada);
+  const formaPagamento = dadosPagamento?.forma || (ordem as any).forma_pagamento || "";
+
+  // OS com forma a_prazo/a_receber sem entrada: só contabilizar quando conta estiver recebida
+  if ((formaPagamento === 'a_prazo' || formaPagamento === 'a_receber') && entrada <= 0) {
+    if (statusContaVinculada === "pendente" || statusContaVinculada === null) return 0;
+    return total;
+  }
+
+  if (!dadosPagamento || entrada <= 0) return total;
+  if (dadosPagamento.saldo_cancelado === true) return entrada;
+  if (statusContaVinculada === "pendente") return entrada;
+  return total;
+};
