@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
+import { useOcultarValores } from "@/contexts/OcultarValoresContext";
 import { formatCurrency } from "@/lib/formatters";
 import type { ResumoServicos } from "@/lib/servicos/listaServicosDesktop";
 
@@ -67,7 +68,13 @@ export function TopoServicosDesktop(p: TopoServicosDesktopProps) {
   const { t } = useTranslation("servicos", { keyPrefix: "telaDesktop" });
   const { resumo } = p;
   const numero = (n: number) => ({ valor: n, textoValor: String(n) });
-  const lucroNegativo = resumo.lucroTotal < 0;
+  const { valoresOcultos } = useOcultarValores();
+  // Com o olho ligado o lucro fica em cor neutra: verde/vermelho entregaria se é positivo ou negativo.
+  const corLucro = valoresOcultos
+    ? undefined
+    : resumo.lucroTotal < 0
+      ? "text-red-600 dark:text-red-400"
+      : "text-emerald-600 dark:text-emerald-400";
 
   const indicadores: Indicador[] = [
     {
@@ -99,7 +106,7 @@ export function TopoServicosDesktop(p: TopoServicosDesktopProps) {
       legenda: t("indicadores.lucroLegenda"),
       Icone: CircleDollarSign,
       cor: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-      corValor: lucroNegativo ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400",
+      corValor: corLucro,
     },
   ];
 
@@ -128,28 +135,36 @@ export function TopoServicosDesktop(p: TopoServicosDesktopProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        {indicadores.map(({ rotulo, valor, textoValor, legenda, Icone, cor, corValor }) => (
-          <Card key={rotulo} className="flex min-w-0 items-center gap-4 rounded-2xl p-5 shadow-sm">
-            <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${cor}`}>
-              <Icone className="h-6 w-6" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1 [container-type:inline-size]">
-              <p className="truncate text-sm text-muted-foreground">{rotulo}</p>
-              {p.loading ? (
-                <Skeleton className="my-1 h-7 w-16" />
-              ) : (
-                <p
-                  className={`font-bold leading-8 tabular-nums [overflow-wrap:anywhere] ${corValor ?? ""}`}
-                  style={fonteQueCabe(textoValor)}
-                >
-                  {valor}
-                </p>
-              )}
-              <p className="truncate text-xs text-muted-foreground" title={legenda}>{legenda}</p>
-            </div>
-          </Card>
-        ))}
+      {/* 4 cartões lado a lado só quando cabem rótulo e legenda numa linha (~363px cada);
+          a regra olha a largura da área ao lado do menu, aberto ou recolhido, e não a da tela. */}
+      <div className="[container-type:inline-size]">
+        <div className="grid grid-cols-2 gap-4 [@container(min-width:1500px)]:grid-cols-4">
+          {indicadores.map(({ rotulo, valor, textoValor, legenda, Icone, cor, corValor }) => (
+            <Card key={rotulo} className="flex min-w-0 items-center gap-4 rounded-2xl p-5 shadow-sm">
+              <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${cor}`}>
+                <Icone className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1 [container-type:inline-size]">
+                <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{rotulo}</p>
+                {p.loading ? (
+                  <Skeleton className="my-1 h-7 w-16" />
+                ) : (
+                  <p
+                    className={`font-bold leading-8 tabular-nums [overflow-wrap:anywhere] ${corValor ?? ""}`}
+                    style={fonteQueCabe(textoValor)}
+                  >
+                    {valor}
+                  </p>
+                )}
+                {p.loading ? (
+                  <Skeleton className="h-3 w-24" />
+                ) : (
+                  <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{legenda}</p>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
 
       <Card className="rounded-2xl p-3 shadow-sm">
@@ -235,7 +250,11 @@ export function TopoServicosDesktop(p: TopoServicosDesktopProps) {
         </div>
       </Card>
 
-      <p className="text-sm text-muted-foreground">{t("encontrados", { count: p.quantidadeEncontrada })}</p>
+      {p.loading ? (
+        <Skeleton className="h-5 w-40" />
+      ) : (
+        <p className="text-sm text-muted-foreground">{t("encontrados", { count: p.quantidadeEncontrada })}</p>
+      )}
     </div>
   );
 }
