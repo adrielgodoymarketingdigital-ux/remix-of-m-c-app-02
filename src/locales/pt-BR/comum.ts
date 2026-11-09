@@ -132,6 +132,20 @@ const comum = {
     grupos_one: "Grupo: {{nomes}}",
     grupos_other: "Grupos: {{nomes}}",
   },
+  // Tela Orçamentos no computador (>= 1024px; pages/Orcamentos + components/orcamentos/desktop).
+  // Abaixo disso a página continua com os textos fixos de sempre.
+  orcamentos: {
+    titulo: "Orçamentos",
+    subtitulo: "Gerencie seus orçamentos e propostas comerciais",
+    configurarLayout: "Configurar layout de impressão",
+    novoOrcamento: "Novo Orçamento",
+    indicadores: {
+      total: "Total de Orçamentos",
+      pendentes: "Pendentes",
+      aprovados: "Aprovados",
+      valorAprovado: "Valor Aprovado",
+    },
+  },
 } as const;
 
 export default comum;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,9 @@ import { DialogConfiguracaoLayoutOrcamento } from "@/components/orcamentos/Dialo
 import { Orcamento } from "@/types/orcamento";
 import { formatCurrency } from "@/lib/formatters";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { TopoOrcamentosDesktop } from "@/components/orcamentos/desktop/TopoOrcamentosDesktop";
+import { resumoOrcamentos } from "@/lib/orcamentos/listaOrcamentosDesktop";
 
 export default function Orcamentos() {
   const {
@@ -48,6 +51,7 @@ export default function Orcamentos() {
   const [orcamentoSelecionado, setOrcamentoSelecionado] = useState<Orcamento | null>(null);
   const [orcamentoExcluir, setOrcamentoExcluir] = useState<Orcamento | null>(null);
   const [configLayoutAberto, setConfigLayoutAberto] = useState(false);
+  const isDesktop = useIsDesktop();
 
   const orcamentosFiltrados = orcamentos.filter((o) => {
     const matchBusca =
@@ -65,6 +69,9 @@ export default function Orcamentos() {
       .filter((o) => o.status === "aprovado" || o.status === "convertido")
       .reduce((acc, o) => acc + o.valor_total, 0),
   };
+  // Computador (>= 1024px): cartões pelas regras de src/lib/orcamentos/listaOrcamentosDesktop
+  // (mesmas contas de `stats`, somando em centavos). Abaixo disso segue `stats`.
+  const resumoDesktop = useMemo(() => resumoOrcamentos(orcamentos), [orcamentos]);
 
   const handleSalvar = async (dados: any) => {
     if (orcamentoSelecionado) {
@@ -100,6 +107,59 @@ export default function Orcamentos() {
 
   return (
     <AppLayout>
+      {isDesktop ? (
+        // Computador (>= 1024px): mesmo estado e mesmos handlers; topo próprio.
+        // Busca, status e tabela ainda são os de sempre (próximas fases).
+        // Abaixo disso segue o layout de sempre (ramo de baixo, intocado).
+        <main className="flex-1 overflow-auto p-6 space-y-6">
+          <TopoOrcamentosDesktop
+            resumo={resumoDesktop}
+            carregando={carregando}
+            onConfigurarLayout={() => setConfigLayoutAberto(true)}
+            onNovoOrcamento={() => setDialogAberto(true)}
+          />
+
+          <div className="flex flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por número ou cliente..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filtrar por status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os status</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="aprovado">Aprovado</SelectItem>
+                <SelectItem value="rejeitado">Rejeitado</SelectItem>
+                <SelectItem value="expirado">Expirado</SelectItem>
+                <SelectItem value="convertido">Convertido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {carregando ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : (
+            <TabelaOrcamentos
+              orcamentos={orcamentosFiltrados}
+              onVisualizar={handleVisualizar}
+              onEditar={handleEditar}
+              onExcluir={setOrcamentoExcluir}
+              onAtualizarStatus={atualizarStatus}
+              onConverterOS={handleConverterOS}
+            />
+          )}
+        </main>
+      ) : (
       <main className="flex-1 overflow-auto p-4 md:p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -222,6 +282,7 @@ export default function Orcamentos() {
           />
         )}
       </main>
+      )}
 
       {/* Dialog de Configuração de Layout de Impressão */}
       <DialogConfiguracaoLayoutOrcamento

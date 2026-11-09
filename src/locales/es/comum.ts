@@ -112,6 +112,18 @@ const comum: Traducao<typeof comumPtBR> = {
     grupos_one: "Grupo: {{nomes}}",
     grupos_other: "Grupos: {{nomes}}",
   },
+  orcamentos: {
+    titulo: "Presupuestos",
+    subtitulo: "Gestione sus presupuestos y propuestas comerciales",
+    configurarLayout: "Configurar el diseño de impresión",
+    novoOrcamento: "Nuevo presupuesto",
+    indicadores: {
+      total: "Total de presupuestos",
+      pendentes: "Pendientes",
+      aprovados: "Aprobados",
+      valorAprovado: "Valor aprobado",
+    },
+  },
 };
 
 export default comum;
