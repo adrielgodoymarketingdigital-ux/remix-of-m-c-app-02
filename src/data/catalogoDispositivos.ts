@@ -54,6 +54,9 @@ export const catalogoDispositivos: CatalogoDispositivos = {
         "iPhone 17",
         "iPhone 17 Pro",
         "iPhone 17 Pro Max",
+        "iPhone 18 Pro",
+        "iPhone 18 Pro Max",
+        "iPhone Duo",
       ],
       Samsung: [
         "Galaxy A03",
