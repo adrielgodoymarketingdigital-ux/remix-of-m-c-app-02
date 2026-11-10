@@ -339,6 +339,7 @@ export default function CatalogoDispositivos() {
           loading={loading}
           temAcessoLandingPage={temAcessoLandingPage}
           dispositivos={dispositivos}
+          produtosPecas={produtosPecas}
           configLoja={configLoja}
           itensCatalogo={itensCatalogo}
           itensSelecionados={itensSelecionados}

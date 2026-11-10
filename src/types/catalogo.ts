@@ -64,6 +64,8 @@ export interface CategoriaCatalogo {
   id: string;
   nome: string;
   cor?: string;
+  /** Ícone lucide da lista fechada (src/lib/catalogo/iconeCategoria.ts). Sem ele, a tela escolhe pelo nome. Só a tela do computador usa; o catálogo público ignora. */
+  icone?: string;
   itemIds: string[];
 }
 

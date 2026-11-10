@@ -3,7 +3,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  alternarItem,
   apareceNoPublico,
+  categoriasDoItem,
+  codigoDoItem,
+  desmarcarTodos,
+  marcadosNoFiltro,
+  marcarTodos,
+  resumoSelecao,
+  seloEstoque,
   chaveTipo,
   contarPorCategoria,
   estaOculto,
@@ -317,4 +325,56 @@ test("custo e lucro: dono vê sempre; funcionário só com cada permissão", () 
   assert.deepEqual(visibilidadeCustoLucro({ ehDono: false, ver_custos: true }), { custo: true, lucro: false });
   assert.deepEqual(visibilidadeCustoLucro({ ehDono: false, ver_lucros: true }), { custo: false, lucro: true });
   assert.deepEqual(visibilidadeCustoLucro({ ehDono: false, ver_custos: true, ver_lucros: true }), { custo: true, lucro: true });
+});
+
+// ---------- seleção (F2) ----------
+
+test("alternarItem marca no fim e desmarca sem mexer na ordem", () => {
+  assert.deepEqual(alternarItem([], "a"), ["a"]);
+  assert.deepEqual(alternarItem(["a", "b"], "c"), ["a", "b", "c"]);
+  assert.deepEqual(alternarItem(["a", "b", "c"], "b"), ["a", "c"]);
+});
+
+test("marcarTodos soma só o filtro, sem repetir", () => {
+  assert.deepEqual(marcarTodos(["x"], ["a", "b", "x", "a"]), ["x", "a", "b"]);
+  assert.deepEqual(marcarTodos([], []), []);
+});
+
+test("desmarcarTodos tira só o filtro; marcados fora do filtro ficam", () => {
+  assert.deepEqual(desmarcarTodos(["x", "a", "b"], ["a", "b", "c"]), ["x"]);
+  assert.deepEqual(desmarcarTodos(["a"], ["a"]), []); // vazio = todos entram de novo
+});
+
+test("marcadosNoFiltro", () => {
+  assert.equal(marcadosNoFiltro([], ["a"]), "nenhum");
+  assert.equal(marcadosNoFiltro(["a"], ["a", "b"]), "alguns");
+  assert.equal(marcadosNoFiltro(["a", "b", "z"], ["a", "b"]), "todos");
+  assert.equal(marcadosNoFiltro(["a"], []), "nenhum");
+});
+
+test("resumoSelecao: vazio = todos entram; ocultos não vão para o público; ids sumidos não contam", () => {
+  const r0 = resumoSelecao(TODOS, []);
+  assert.deepEqual(r0, { todosEntram: true, marcados: 0, noPublico: 4, total: 5 }); // iPad oculto
+  const r1 = resumoSelecao(TODOS, ["d1", "d2", "sumiu"]);
+  assert.deepEqual(r1, { todosEntram: false, marcados: 2, noPublico: 1, total: 5 });
+});
+
+test("seloEstoque", () => {
+  assert.equal(seloEstoque({ quantidade: 3 }), "em_estoque");
+  assert.equal(seloEstoque({ quantidade: 0 }), "sem_estoque");
+  assert.equal(seloEstoque({ quantidade: -1 }), "sem_estoque");
+});
+
+test("codigoDoItem: sku, senão código de barras; dispositivo nunca", () => {
+  assert.equal(codigoDoItem(CAPA), "CAP-001");
+  assert.equal(codigoDoItem(CABO), "7890001");
+  assert.equal(codigoDoItem(TELA), null);
+  assert.equal(codigoDoItem({ tipo_item: "dispositivo", sku: "X" }), null);
+  assert.equal(codigoDoItem({ tipo_item: "produto", sku: "  ", codigo_barras: " 12 " }), "12");
+});
+
+test("categoriasDoItem na ordem dos grupos", () => {
+  const g = gruposDeCategoria(TODOS, MANUAIS);
+  assert.deepEqual(categoriasDoItem("d1", g).map((x) => x.id), ["m2", "m1"]);
+  assert.deepEqual(categoriasDoItem("x1", g), []);
 });

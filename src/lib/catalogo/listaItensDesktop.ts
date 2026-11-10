@@ -354,3 +354,73 @@ export function visibilidadeCustoLucro(p: PermissoesCustoLucro): { custo: boolea
   if (p.ehDono) return { custo: true, lucro: true };
   return { custo: p.ver_custos === true, lucro: p.ver_lucros === true };
 }
+
+// ---------- Seleção ("Entra no catálogo") ----------
+// Só mexem na lista itensSelecionadosIds (rascunho: grava com o Salvar do topo).
+// Regra de sempre: lista vazia = todos entram.
+
+/** Marca/desmarca um item. Mantém a ordem dos já marcados; o novo vai para o fim. */
+export function alternarItem(selecionados: readonly string[], id: string): string[] {
+  return selecionados.includes(id) ? selecionados.filter((s) => s !== id) : [...selecionados, id];
+}
+
+/** "Marcar todos" do filtro atual: soma os ids do filtro aos já marcados (sem repetir). */
+export function marcarTodos(selecionados: readonly string[], idsDoFiltro: readonly string[]): string[] {
+  const ja = new Set(selecionados);
+  return [...selecionados, ...idsDoFiltro.filter((id, i) => !ja.has(id) && idsDoFiltro.indexOf(id) === i)];
+}
+
+/** "Desmarcar todos" do filtro atual: tira só os ids do filtro; os marcados fora dele ficam. */
+export function desmarcarTodos(selecionados: readonly string[], idsDoFiltro: readonly string[]): string[] {
+  const tirar = new Set(idsDoFiltro);
+  return selecionados.filter((id) => !tirar.has(id));
+}
+
+/** Quantos itens DO FILTRO estão marcados: decide entre "Marcar todos" e "Desmarcar todos". */
+export function marcadosNoFiltro(selecionados: readonly string[], idsDoFiltro: readonly string[]): "nenhum" | "alguns" | "todos" {
+  if (idsDoFiltro.length === 0) return "nenhum";
+  const sel = new Set(selecionados);
+  const n = idsDoFiltro.filter((id) => sel.has(id)).length;
+  return n === 0 ? "nenhum" : n === idsDoFiltro.length ? "todos" : "alguns";
+}
+
+export interface ResumoSelecao {
+  /** Nada marcado = todos entram (regra de sempre). */
+  todosEntram: boolean;
+  /** Marcados que existem na lista (ids de itens que sumiram não contam). */
+  marcados: number;
+  /** Itens que aparecem no link público (selecionados e não ocultos). */
+  noPublico: number;
+  total: number;
+}
+
+export function resumoSelecao(itens: readonly ItemDaLista[], selecionados: readonly string[]): ResumoSelecao {
+  const sel = new Set(selecionados);
+  return {
+    todosEntram: selecionados.length === 0,
+    marcados: itens.filter((i) => sel.has(i.id)).length,
+    noPublico: itens.filter((i) => apareceNoPublico(i, selecionados)).length,
+    total: itens.length,
+  };
+}
+
+// ---------- Cartão do item ----------
+
+/** "Em estoque" com quantidade > 0; 0, negativa ou vazia = "Sem estoque". */
+export function seloEstoque(item: Pick<ItemDaLista, "quantidade">): "em_estoque" | "sem_estoque" {
+  return (item.quantidade ?? 0) > 0 ? "em_estoque" : "sem_estoque";
+}
+
+/** Código a mostrar: SKU, senão código de barras. Dispositivo não mostra IMEI aqui. */
+export function codigoDoItem(item: Pick<ItemDaLista, "tipo_item" | "sku" | "codigo_barras">): string | null {
+  if (item.tipo_item === "dispositivo") return null;
+  const sku = item.sku?.trim();
+  if (sku) return sku;
+  const barras = item.codigo_barras?.trim();
+  return barras || null;
+}
+
+/** Categorias (do agrupamento atual) em que o item está, na ordem dos grupos. */
+export function categoriasDoItem(id: string, grupos: readonly GrupoCategoria[]): GrupoCategoria[] {
+  return grupos.filter((g) => g.itemIds.has(id));
+}

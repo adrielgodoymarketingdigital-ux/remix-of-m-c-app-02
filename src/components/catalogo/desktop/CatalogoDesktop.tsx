@@ -6,40 +6,32 @@
 // F2 (Itens), F3 (Aparência) e F4 (Compartilhar) trocam esses conteúdos depois.
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, FileDown, Globe, Loader2, Monitor, Pencil, Save, Smartphone, Tablet } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { FileDown, Globe, Loader2, Monitor, Pencil, Save, Smartphone, Tablet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { SeletorDispositivosCatalogo } from "@/components/catalogo/SeletorDispositivosCatalogo";
-import { GerenciadorCategoriasCatalogo } from "@/components/catalogo/GerenciadorCategoriasCatalogo";
 import { CatalogoOnline } from "@/components/catalogo/CatalogoOnline";
 import { ConfiguracaoTemplates } from "@/components/catalogo/ConfiguracaoTemplates";
 import { GerenciadorLinkLandingPage } from "@/components/catalogo/GerenciadorLinkLandingPage";
 import { ConfiguracaoLandingPage as ConfigLPComponent } from "@/components/catalogo/ConfiguracaoLandingPage";
 import { LandingPagePreview } from "@/components/catalogo/LandingPagePreview";
 import { toast } from "@/hooks/use-toast";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useLinkCatalogo, type ResultadoSalvarCatalogo } from "@/hooks/useLinkCatalogo";
 import { assinaturaEstado, temAlteracoes } from "@/lib/catalogo/alteracoesNaoSalvas";
+import { montarMapaCustos, visibilidadeCustoLucro } from "@/lib/catalogo/listaItensDesktop";
 import { sanitizarCategoriasCatalogo, sanitizarSelecaoCatalogo } from "@/lib/catalogo-selection";
 import { CONFIG_PADRAO, type ConfiguracaoCatalogo, type ConfiguracaoLandingPage } from "@/types/catalogo";
 import type { ItemCatalogo } from "@/types/catalogo-item";
 import type { ConfiguracaoLoja } from "@/types/configuracao-loja";
 import type { Dispositivo } from "@/types/dispositivo";
+import type { ItemEstoque } from "@/types/produto";
 import { BarraSalvarCatalogo } from "./BarraSalvarCatalogo";
 import { CabecalhoCatalogoDesktop, type PassoCatalogo } from "./CabecalhoCatalogoDesktop";
+import { ItensCatalogoDesktop } from "./ItensCatalogoDesktop";
 import { LinkCatalogoDesktop } from "./LinkCatalogoDesktop";
 
 export type DispositivoPrevia = "mobile" | "tablet" | "desktop";
@@ -50,6 +42,8 @@ export interface CatalogoDesktopProps {
   loading: boolean;
   temAcessoLandingPage: boolean;
   dispositivos: Dispositivo[];
+  /** Só para o mapa de custos da tela do dono (o custo nunca entra no ItemCatalogo). */
+  produtosPecas: ItemEstoque[];
   configLoja: ConfiguracaoLoja | null;
   itensCatalogo: ItemCatalogo[];
   itensSelecionados: ItemCatalogo[];
@@ -96,7 +90,6 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
   const { t } = useTranslation("catalogo", { keyPrefix: "telaDesktop" });
   const link = useLinkCatalogo();
   const [passo, setPasso] = useState<PassoCatalogo>("itens");
-  const [passoPendente, setPassoPendente] = useState<PassoCatalogo | null>(null);
 
   // ---------- Alterações não salvas ----------
   const idsDisponiveis = useMemo(() => p.itensCatalogo.map((i) => i.id), [p.itensCatalogo]);
@@ -158,22 +151,56 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
     return true;
   };
 
-  // ---------- Troca de passo ----------
-  const pedirPasso = (valor: string) => {
-    const novo = valor as PassoCatalogo;
-    if (novo === passo) return;
-    if (alterado) setPassoPendente(novo);
-    else setPasso(novo);
-  };
-  const trocarSemSalvar = () => {
-    if (passoPendente) setPasso(passoPendente);
-    setPassoPendente(null);
-  };
-  const salvarETrocar = async () => {
-    const destino = passoPendente;
-    setPassoPendente(null);
-    if ((await salvar()) && destino) setPasso(destino);
-  };
+  // Trocar de passo não perde nada (o estado é da página): troca direto, sem confirmação.
+  const pedirPasso = (valor: string) => setPasso(valor as PassoCatalogo);
+
+  // A página limpa a seleção e as categorias (ids que sumiram) só quando a lista de itens muda
+  // (efeito com [itensCatalogo]). Se os itens chegam ANTES da config salva, a limpeza não roda e
+  // a tela fica com ids "fantasmas" que o link público descarta. No computador a mesma limpeza,
+  // com as mesmas funções, roda sempre que aparecer um id que não existe mais.
+  const { selecionados, configCatalogo, onSelecaoChange, setConfigCatalogo } = p;
+  useEffect(() => {
+    if (idsDisponiveis.length === 0) return;
+    const existe = new Set(idsDisponiveis);
+    const fantasmaNaSelecao = selecionados.some((id) => !existe.has(id));
+    const fantasmaNasCategorias = (configCatalogo.categoriasCatalogo ?? []).some((c) => c.itemIds.some((id) => !existe.has(id)));
+    if (!fantasmaNaSelecao && !fantasmaNasCategorias) return;
+    if (fantasmaNaSelecao) onSelecaoChange(sanitizarSelecaoCatalogo(selecionados, idsDisponiveis).idsValidos);
+    if (fantasmaNasCategorias) {
+      setConfigCatalogo((prev) => ({ ...prev, categoriasCatalogo: sanitizarCategoriasCatalogo(prev.categoriasCatalogo, idsDisponiveis) }));
+    }
+  }, [idsDisponiveis, selecionados, configCatalogo.categoriasCatalogo, onSelecaoChange, setConfigCatalogo]);
+
+  // ---------- Custo e lucro (só a tela do dono) ----------
+  // Mapa id → custo montado à parte, com o que useDispositivos/useProdutos já carregam.
+  // Nunca entra no ItemCatalogo: a prévia, o link público e o PDF não o recebem.
+  const mapaCustos = useMemo(
+    () =>
+      montarMapaCustos([
+        ...p.dispositivos.map((d) => ({ id: d.id, custo: d.custo })),
+        ...p.produtosPecas.map((i) => ({ id: i.id, custo: i.custo })),
+      ]),
+    [p.dispositivos, p.produtosPecas],
+  );
+  // Mesma permissão das telas de Dispositivos e Produtos: dono sempre; funcionário pelo
+  // ver_custos / ver_lucros. Enquanto carrega, nada aparece (isDonoLoja ainda é false).
+  const permissoes = useFuncionarioPermissoes();
+  const visibilidade = visibilidadeCustoLucro({
+    ehDono: permissoes.isDonoLoja,
+    ver_custos: permissoes.permissoes?.recursos?.ver_custos,
+    ver_lucros: permissoes.permissoes?.recursos?.ver_lucros,
+  });
+
+  // A seleção salva foi descartada pela regra de sempre (sanitizarSelecaoCatalogo volta a
+  // "todos" quando metade ou mais dos marcados sumiu): só avisa, a regra não muda.
+  const selecaoDescartada = useMemo(() => {
+    if (!link.carregado || idsDisponiveis.length === 0) return null;
+    const salvos = link.configSalva?.itensSelecionadosIds;
+    if (!Array.isArray(salvos) || salvos.length === 0) return null;
+    const ids = salvos.filter((id): id is string => typeof id === "string");
+    const r = sanitizarSelecaoCatalogo(ids, idsDisponiveis);
+    return r.resetarSelecao ? { salvos: new Set(ids).size, sumiram: r.idsInvalidos.length } : null;
+  }, [link.carregado, link.configSalva, idsDisponiveis]);
 
   // Mesmo valor que a aba Online antiga passava às categorias.
   const itensParaCategorias = p.selecionados.length > 0 ? p.itensSelecionados : p.itensCatalogo;
@@ -194,82 +221,25 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
         ) : (
           <>
             {/* 1. Itens */}
-            <TabsContent value="itens" className="mt-0 space-y-5">
-              <Card className="rounded-2xl">
-                <CardContent className="space-y-3 px-5 py-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-11 w-11 place-items-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
-                        <Pencil className="h-5 w-5" aria-hidden="true" />
-                      </div>
-                      <div>
-                        <Label htmlFor="modo-edicao-desktop" className="cursor-pointer text-sm font-semibold">
-                          {t("itens.modoEdicao")}
-                        </Label>
-                        <p className="text-xs text-muted-foreground">{t("itens.modoEdicaoDescricao")}</p>
-                      </div>
-                    </div>
-                    <Switch id="modo-edicao-desktop" checked={p.modoEdicao} onCheckedChange={p.setModoEdicao} />
-                  </div>
-                  {p.modoEdicao && (
-                    <div
-                      role="note"
-                      className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
-                    >
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                      <span>{t("itens.avisoEstoque")}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-                <Card className="rounded-2xl">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{t("itens.selecionarTitulo")}</CardTitle>
-                    <CardDescription>{t("itens.selecionarDescricao")}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <SeletorDispositivosCatalogo
-                      itens={p.itensCatalogo}
-                      selecionados={p.selecionados}
-                      onSelecionar={p.onSelecaoChange}
-                      onToggleExibirNoCatalogo={p.onToggleExibirNoCatalogo}
-                      atualizandoIds={p.atualizandoVisibilidade}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-2xl">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{t("itens.categoriasTitulo")}</CardTitle>
-                    <CardDescription>{t("itens.categoriasDescricao")}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <GerenciadorCategoriasCatalogo
-                      categorias={p.configCatalogo.categoriasCatalogo || []}
-                      itensDisponiveis={itensParaCategorias}
-                      onChange={(cats) => p.setConfigCatalogo((prev) => ({ ...prev, categoriasCatalogo: cats }))}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card className="overflow-hidden rounded-2xl">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{t("itens.previaTitulo")}</CardTitle>
-                  <CardDescription>{t("itens.previaDescricao")}</CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <CatalogoOnline
-                    itens={p.itensSelecionados}
-                    configuracaoLoja={p.configLoja}
-                    config={p.configCatalogo}
-                    modoEdicao={p.modoEdicao}
-                    onAtualizarItem={p.onAtualizarItem}
-                  />
-                </CardContent>
-              </Card>
+            <TabsContent value="itens" className="mt-0">
+              <ItensCatalogoDesktop
+                itens={p.itensCatalogo}
+                itensParaVincular={itensParaCategorias}
+                selecionados={p.selecionados}
+                onSelecaoChange={p.onSelecaoChange}
+                categorias={p.configCatalogo.categoriasCatalogo}
+                onCategoriasChange={(cats) => p.setConfigCatalogo((prev) => ({ ...prev, categoriasCatalogo: cats }))}
+                onToggleExibirNoCatalogo={p.onToggleExibirNoCatalogo}
+                atualizandoVisibilidade={p.atualizandoVisibilidade}
+                modoEdicao={p.modoEdicao}
+                setModoEdicao={p.setModoEdicao}
+                onAtualizarItem={p.onAtualizarItem}
+                tituloCatalogo={p.configCatalogo.textos?.tituloCapa || p.configLoja?.nome_loja || t("titulo")}
+                mapaCustos={mapaCustos}
+                mostrarCusto={visibilidade.custo}
+                mostrarLucro={visibilidade.lucro}
+                selecaoDescartada={selecaoDescartada}
+              />
             </TabsContent>
 
             {/* 2. Aparência */}
@@ -392,21 +362,6 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
         )}
       </Tabs>
 
-      <AlertDialog open={passoPendente !== null} onOpenChange={(aberto) => !aberto && setPassoPendente(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("trocarPasso.titulo")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("trocarPasso.descricao")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("trocarPasso.ficar")}</AlertDialogCancel>
-            <Button variant="outline" onClick={trocarSemSalvar}>
-              {t("trocarPasso.continuar")}
-            </Button>
-            <AlertDialogAction onClick={() => void salvarETrocar()}>{t("trocarPasso.salvarEContinuar")}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </main>
   );
 }

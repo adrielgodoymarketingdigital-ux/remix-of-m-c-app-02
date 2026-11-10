@@ -99,7 +99,15 @@ do catálogo (`/c/...`) e vice-versa; links já enviados a clientes param de fun
   vai filtrar; o celular continua como está.
 - **Seleção volta a "todos" sozinha** (`src/lib/catalogo-selection.ts:24-29`): se metade ou mais dos
   itens marcados sumiu (vendidos/apagados), a seleção inteira é descartada e o catálogo passa a
-  mostrar tudo, sem aviso.
+  mostrar tudo. No computador (F2) há um aviso; no celular e no tablet, nenhum.
+- **Limpeza da seleção depende da ordem de carregamento** (`src/pages/CatalogoDispositivos.tsx:170-192`,
+  efeito com `[itensCatalogo]`): se os itens chegam ANTES do `catalogo_config`, a limpeza não roda para
+  a seleção salva. A tela fica com ids que não existem mais ("1 de 3 marcados"), enquanto o link público
+  (que sempre limpa) mostra outra coisa. No computador a F2 roda a mesma limpeza sempre que aparece um
+  id assim (`CatalogoDesktop.tsx`); no celular e no tablet continua dependendo da ordem.
+- **Custo vazio de produto e peça vira R$ 0,00** (`src/hooks/useProdutos.ts`, `custo: Number(p.custo || 0)`):
+  na tela do dono não dá para distinguir "sem custo" de "custo zero"; o lucro sai igual ao preço.
+  Dispositivo traz o custo como está no banco (nulo aparece como "—").
 - **Opções sem efeito** (`src/types/catalogo.ts`): `tamanhoFonte` tem controle em
   `ConfiguracaoTemplates.tsx:754-769`, mas não é aplicado em lugar nenhum; `layoutGrid`, `mostrarRodape`,
   `mostrarIMEI` e `mostrarNumeroSerie` existem só no tipo.
