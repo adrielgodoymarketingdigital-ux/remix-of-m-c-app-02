@@ -18,6 +18,7 @@ import { ConfiguracaoTemplates } from "@/components/catalogo/ConfiguracaoTemplat
 import { GerenciadorLinkCatalogo } from "@/components/catalogo/GerenciadorLinkCatalogo";
 import { GerenciadorLinkLandingPage } from "@/components/catalogo/GerenciadorLinkLandingPage";
 import { gerarCatalogoPDF } from "@/lib/gerarCatalogoPDF";
+import { itensParaPdf } from "@/lib/catalogo/itensParaPdf";
 import { toast } from "@/hooks/use-toast";
 import { FileDown, Eye, Loader2, BookOpen, Palette, Link2, Smartphone, Tablet, Monitor, Pencil, Globe, Save } from "lucide-react";
 import { ConfiguracaoCatalogo, CONFIG_PADRAO, ConfiguracaoLandingPage, LANDING_PAGE_PADRAO } from "@/types/catalogo";
@@ -199,10 +200,12 @@ export default function CatalogoDispositivos() {
   };
 
   const handleGerarPDF = async () => {
-    if (itensSelecionados.length === 0) {
+    // Dispositivos + produtos + peças, mesma regra da prévia: nada selecionado = todos.
+    const itensPdf = itensParaPdf(itensCatalogo, selecionados);
+    if (itensPdf.length === 0) {
       toast({
         title: "Nenhum item disponível",
-        description: "Não há itens disponíveis para gerar o catálogo.",
+        description: "Não há itens para gerar o PDF.",
         variant: "destructive",
       });
       return;
@@ -210,16 +213,22 @@ export default function CatalogoDispositivos() {
 
     setGerandoPDF(true);
     try {
-      // Filtrar apenas dispositivos para o PDF (mantém compatibilidade)
-      const dispositivosSelecionados = dispositivos.filter(d => selecionados.includes(d.id));
-      await gerarCatalogoPDF({
-        dispositivos: dispositivosSelecionados,
+      const totalNoPdf = await gerarCatalogoPDF({
+        itens: itensPdf,
         configuracaoLoja: configLoja,
         config: configCatalogo,
       });
+      if (totalNoPdf === 0) {
+        toast({
+          title: "Nenhum item disponível",
+          description: "Não há itens para gerar o PDF.",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: "Catálogo gerado!",
-        description: `PDF com ${selecionados.length} itens foi baixado.`,
+        description: `PDF com ${totalNoPdf} ${totalNoPdf === 1 ? "item" : "itens"} foi baixado.`,
       });
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);

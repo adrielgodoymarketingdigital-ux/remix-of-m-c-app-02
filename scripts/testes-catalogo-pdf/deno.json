@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@/": "../../src/",
+    "jspdf": "./jspdfDeno.ts"
+  },
+  "unstable": ["sloppy-imports"]
+}
