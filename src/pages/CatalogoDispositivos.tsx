@@ -27,6 +27,8 @@ import { LandingPagePreview } from "@/components/catalogo/LandingPagePreview";
 import { supabase } from "@/integrations/supabase/client";
 import { ItemCatalogo, dispositivoParaItemCatalogo, produtoParaItemCatalogo } from "@/types/catalogo-item";
 import { sanitizarCategoriasCatalogo, sanitizarSelecaoCatalogo } from "@/lib/catalogo-selection";
+import { useIsDesktop } from "@/hooks/use-mobile";
+import { CatalogoDesktop } from "@/components/catalogo/desktop/CatalogoDesktop";
 
 type DevicePreview = "mobile" | "tablet" | "desktop";
 
@@ -35,7 +37,8 @@ export default function CatalogoDispositivos() {
   const { items: produtosPecas, loading: loadingProdutos, carregarTodos: carregarProdutos } = useProdutos();
   const { config: configLoja, loading: loadingConfig } = useConfiguracaoLoja();
   const { temAcessoModulo } = useAssinatura();
-  
+  const isDesktop = useIsDesktop();
+
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [gerandoPDF, setGerandoPDF] = useState(false);
   const [configCatalogo, setConfigCatalogo] = useState<ConfiguracaoCatalogo>(CONFIG_PADRAO);
@@ -326,6 +329,42 @@ export default function CatalogoDispositivos() {
   };
 
   const loading = loadingDispositivos || loadingConfig || loadingProdutos;
+
+  // Computador (>= 1024px): passos + Salvar único, com o mesmo estado e as mesmas funções.
+  // Celular e tablet seguem com o JSX de baixo, intocado.
+  if (isDesktop) {
+    return (
+      <AppLayout>
+        <CatalogoDesktop
+          loading={loading}
+          temAcessoLandingPage={temAcessoLandingPage}
+          dispositivos={dispositivos}
+          configLoja={configLoja}
+          itensCatalogo={itensCatalogo}
+          itensSelecionados={itensSelecionados}
+          selecionados={selecionados}
+          onSelecaoChange={handleSelecaoChange}
+          onToggleExibirNoCatalogo={handleToggleExibirNoCatalogo}
+          atualizandoVisibilidade={atualizandoVisibilidade}
+          configCatalogo={configCatalogo}
+          setConfigCatalogo={setConfigCatalogo}
+          modoEdicao={modoEdicao}
+          setModoEdicao={setModoEdicao}
+          previewDevice={previewDevice}
+          setPreviewDevice={setPreviewDevice}
+          onAtualizarItem={handleAtualizarItem}
+          onGerarPDF={handleGerarPDF}
+          gerandoPDF={gerandoPDF}
+          configLP={configLP}
+          setConfigLP={setConfigLP}
+          onConfigLPChange={handleConfigLPChange}
+          lpAlterada={lpAlterada}
+          salvandoLP={salvandoLP}
+          onSalvarLP={handleSalvarLP}
+        />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

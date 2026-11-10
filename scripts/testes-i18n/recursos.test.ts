@@ -19,6 +19,8 @@ import servicosPtBR from "../../src/locales/pt-BR/servicos.ts";
 import servicosEs from "../../src/locales/es/servicos.ts";
 import pedidosPtBR from "../../src/locales/pt-BR/pedidos.ts";
 import pedidosEs from "../../src/locales/es/pedidos.ts";
+import catalogoPtBR from "../../src/locales/pt-BR/catalogo.ts";
+import catalogoEs from "../../src/locales/es/catalogo.ts";
 import { ADMIN_MENU, GRUPOS_MENU, MENU_PRINCIPAL } from "../../src/lib/menu/menuPrincipal.ts";
 import { chaveDaRota } from "../../src/lib/i18n/chaves.ts";
 
@@ -69,6 +71,7 @@ const NAMESPACES: [string, Arvore, Arvore][] = [
   ["vendas", vendasPtBR as Arvore, vendasEs as Arvore],
   ["servicos", servicosPtBR as Arvore, servicosEs as Arvore],
   ["pedidos", pedidosPtBR as Arvore, pedidosEs as Arvore],
+  ["catalogo", catalogoPtBR as Arvore, catalogoEs as Arvore],
 ];
 
 // Listas (frases do dia) viram folhas "frases.0", "frases.1"...
