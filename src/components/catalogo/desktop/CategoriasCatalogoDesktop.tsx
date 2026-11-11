@@ -34,12 +34,10 @@ export function CategoriasCatalogoDesktop(p: CategoriasCatalogoDesktopProps) {
   const { t } = useTranslation("catalogo", { keyPrefix: "telaDesktop.categorias" });
   const [dialogAberto, setDialogAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [aberturas, setAberturas] = useState(0);
   const doEstoque = p.grupos.length > 0 && p.grupos[0].origem === "estoque";
 
   const abrir = (id: string | null) => {
     setEditandoId(id);
-    setAberturas((n) => n + 1);
     setDialogAberto(true);
   };
 
@@ -138,7 +136,6 @@ export function CategoriasCatalogoDesktop(p: CategoriasCatalogoDesktopProps) {
       {doEstoque && <p className="mt-3 text-xs text-muted-foreground">{t("doEstoque")}</p>}
 
       <DialogCategoriaCatalogo
-        key={aberturas}
         open={dialogAberto}
         onOpenChange={setDialogAberto}
         categoria={editandoId ? p.categoriasManuais.find((c) => c.id === editandoId) ?? null : null}

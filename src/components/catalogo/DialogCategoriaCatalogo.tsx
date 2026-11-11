@@ -1,7 +1,8 @@
 // Diálogo de categoria do catálogo (nome, cor e itens vinculados). Saiu de dentro do
 // GerenciadorCategoriasCatalogo SEM mudar o JSX, para o computador reaproveitar; o celular e o
 // tablet continuam com o mesmo diálogo. `comIcone` (só o computador) acrescenta o seletor de ícone.
-// Quem abre deve trocar a `key` a cada abertura: o formulário nasce dos dados da categoria.
+// O formulário recomeça dos dados da categoria a cada abertura. O diálogo fica montado o tempo todo
+// (como era dentro do Gerenciador), então os ids do Radix saem iguais aos de antes.
 import { useState } from "react";
 import { ItemCatalogo } from "@/types/catalogo-item";
 import { CategoriaCatalogo } from "@/types/catalogo";
@@ -50,6 +51,18 @@ export function DialogCategoriaCatalogo({
   const [corCategoria, setCorCategoria] = useState(categoria?.cor || "#3B82F6");
   const [itensSelecionados, setItensSelecionados] = useState<string[]>(categoria?.itemIds ?? []);
   const [icone, setIcone] = useState<string | undefined>(categoria?.icone);
+
+  // Abriu agora: recomeça o formulário (o mesmo que o Gerenciador fazia ao abrir).
+  const [abertoAntes, setAbertoAntes] = useState(open);
+  if (open !== abertoAntes) {
+    setAbertoAntes(open);
+    if (open) {
+      setNomeCategoria(categoria?.nome ?? "");
+      setCorCategoria(categoria?.cor || "#3B82F6");
+      setItensSelecionados(categoria?.itemIds ?? []);
+      setIcone(categoria?.icone);
+    }
+  }
 
   const salvar = () => {
     if (!nomeCategoria.trim()) return;

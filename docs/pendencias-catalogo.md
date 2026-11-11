@@ -106,8 +106,15 @@ do catálogo (`/c/...`) e vice-versa; links já enviados a clientes param de fun
   (que sempre limpa) mostra outra coisa. No computador a F2 roda a mesma limpeza sempre que aparece um
   id assim (`CatalogoDesktop.tsx`); no celular e no tablet continua dependendo da ordem.
 - **Custo vazio de produto e peça vira R$ 0,00** (`src/hooks/useProdutos.ts`, `custo: Number(p.custo || 0)`):
-  na tela do dono não dá para distinguir "sem custo" de "custo zero"; o lucro sai igual ao preço.
-  Dispositivo traz o custo como está no banco (nulo aparece como "—").
-- **Opções sem efeito** (`src/types/catalogo.ts`): `tamanhoFonte` tem controle em
-  `ConfiguracaoTemplates.tsx:754-769`, mas não é aplicado em lugar nenhum; `layoutGrid`, `mostrarRodape`,
-  `mostrarIMEI` e `mostrarNumeroSerie` existem só no tipo.
+  não dá para distinguir "sem custo" de "custo zero". No computador (desde a F3), custo 0 de produto e
+  peça vale como DESCONHECIDO (`montarMapaCustos` com `zeroEhDesconhecido`): o cartão mostra "—" no Custo
+  e no Lucro, nunca lucro igual ao preço. Efeito colateral: um produto que de fato custa R$ 0,00 também
+  aparece como "—". Resolver de vez exige o hook devolver `null` (fora desta trilha). Dispositivo traz o
+  custo como está no banco (nulo aparece como "—", 0 aparece como R$ 0,00).
+- **Opções sem efeito** (`src/types/catalogo.ts`): `tamanhoFonte` ("Tamanho da fonte") e `itensPerPage`
+  ("Itens por página no PDF") têm controle na aba Opções, mas nenhum dos dois é lido em lugar nenhum (nem
+  pelo catálogo online nem pelo PDF). No computador (F3) os dois controles ficam escondidos; no celular e
+  no tablet continuam como estão. `layoutGrid`, `mostrarIMEI` e `mostrarNumeroSerie` existem só no tipo;
+  `mostrarRodape` não tem controle, mas o PDF o lê (padrão: ligado).
+- **Cores secundária e destaque do template não aparecem no catálogo online** (`CatalogoOnline.tsx:61-62`
+  as calcula e não usa); o online usa primária, cabeçalho, fundo e texto. O texto do rodapé só sai no PDF.

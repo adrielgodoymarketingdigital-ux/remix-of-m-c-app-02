@@ -306,6 +306,22 @@ test("lucro null sem preço ou com custo desconhecido", () => {
   assert.equal(lucroDoItem({ preco: 50 }, Number.NaN), null);
 });
 
+test("produto e peça: custo 0 (vazio no useProdutos) vira desconhecido; dispositivo mantém o 0", () => {
+  const m = montarMapaCustos([
+    { id: "p1", custo: 0, zeroEhDesconhecido: true },
+    { id: "x1", custo: 0, zeroEhDesconhecido: true },
+    { id: "p2", custo: 12.5, zeroEhDesconhecido: true },
+    { id: "d1", custo: 0 },
+  ]);
+  assert.equal(m.get("p1"), null);
+  assert.equal(m.get("x1"), null);
+  assert.equal(m.get("p2"), 12.5);
+  assert.equal(m.get("d1"), 0);
+  assert.equal(lucroDoItem({ preco: 49.9 }, m.get("p1")), null); // "—", nunca lucro = preço
+  assert.equal(lucroDoItem({ preco: 49.9 }, m.get("p2")), 37.4);
+  assert.equal(lucroDoItem({ preco: 900 }, m.get("d1")), 900);
+});
+
 test("mapa de custos separado do item; inválido vira null", () => {
   const m = montarMapaCustos([{ id: "p1", custo: 25 }, { id: "p2", custo: null }, { id: "d1" }, { id: "x", custo: Number.NaN }]);
   assert.equal(m.get("p1"), 25);

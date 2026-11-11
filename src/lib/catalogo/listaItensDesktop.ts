@@ -319,11 +319,19 @@ export function precoEfetivo(item: Pick<ItemDaLista, "preco" | "preco_promociona
 /** id → custo. Montado à parte, nunca dentro do ItemCatalogo. */
 export type MapaCustos = ReadonlyMap<string, number | null | undefined>;
 
-export function montarMapaCustos(linhas: ReadonlyArray<{ id: string; custo?: number | null }>): Map<string, number | null> {
+/**
+ * `zeroEhDesconhecido`: produto e peça vêm do useProdutos com `Number(p.custo || 0)`, então custo
+ * vazio chega como 0 e não dá para separar de "custo zero". Nesses, 0 vale como DESCONHECIDO
+ * ("—" no Custo e no Lucro, nunca lucro igual ao preço). Dispositivo traz o custo como está no banco.
+ */
+export function montarMapaCustos(
+  linhas: ReadonlyArray<{ id: string; custo?: number | null; zeroEhDesconhecido?: boolean }>,
+): Map<string, number | null> {
   const mapa = new Map<string, number | null>();
   for (const l of linhas) {
     const c = l.custo;
-    mapa.set(l.id, c == null || !Number.isFinite(c) ? null : c);
+    const invalido = c == null || !Number.isFinite(c) || (l.zeroEhDesconhecido === true && c === 0);
+    mapa.set(l.id, invalido ? null : c);
   }
   return mapa;
 }

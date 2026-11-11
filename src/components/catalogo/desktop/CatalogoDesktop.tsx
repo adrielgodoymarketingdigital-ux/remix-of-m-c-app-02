@@ -2,19 +2,16 @@
 // + Landing Page com o módulo) e o Salvar único (catalogo_config + link + publicação).
 // Recebe o MESMO estado e as MESMAS funções da página (CatalogoDispositivos); celular e tablet
 // seguem com o JSX antigo da página, intocado.
-// F1: o conteúdo de cada passo reaproveita os componentes de hoje, sem alterá-los. As fases
-// F2 (Itens), F3 (Aparência) e F4 (Compartilhar) trocam esses conteúdos depois.
+// F2 trocou o passo Itens e a F3 o passo Aparência; Compartilhar (F4) e a Landing Page ainda usam
+// os componentes de hoje.
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
-import { FileDown, Globe, Loader2, Monitor, Pencil, Save, Smartphone, Tablet } from "lucide-react";
+import { FileDown, Globe, Loader2, Pencil, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { CatalogoOnline } from "@/components/catalogo/CatalogoOnline";
-import { ConfiguracaoTemplates } from "@/components/catalogo/ConfiguracaoTemplates";
 import { GerenciadorLinkLandingPage } from "@/components/catalogo/GerenciadorLinkLandingPage";
 import { ConfiguracaoLandingPage as ConfigLPComponent } from "@/components/catalogo/ConfiguracaoLandingPage";
 import { LandingPagePreview } from "@/components/catalogo/LandingPagePreview";
@@ -29,12 +26,14 @@ import type { ItemCatalogo } from "@/types/catalogo-item";
 import type { ConfiguracaoLoja } from "@/types/configuracao-loja";
 import type { Dispositivo } from "@/types/dispositivo";
 import type { ItemEstoque } from "@/types/produto";
+import { AparenciaCatalogoDesktop } from "./AparenciaCatalogoDesktop";
 import { BarraSalvarCatalogo } from "./BarraSalvarCatalogo";
 import { CabecalhoCatalogoDesktop, type PassoCatalogo } from "./CabecalhoCatalogoDesktop";
 import { ItensCatalogoDesktop } from "./ItensCatalogoDesktop";
 import { LinkCatalogoDesktop } from "./LinkCatalogoDesktop";
+import { PreviaCatalogoDesktop, SeletorDispositivoPrevia, type DispositivoPrevia } from "./PreviaCatalogoDesktop";
 
-export type DispositivoPrevia = "mobile" | "tablet" | "desktop";
+export type { DispositivoPrevia };
 
 type DadosItem = { fotos: string[]; preco: number | null; precoPromocional: number | null };
 
@@ -178,7 +177,8 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
     () =>
       montarMapaCustos([
         ...p.dispositivos.map((d) => ({ id: d.id, custo: d.custo })),
-        ...p.produtosPecas.map((i) => ({ id: i.id, custo: i.custo })),
+        // Produto/peça: custo 0 é o vazio do useProdutos → desconhecido ("—").
+        ...p.produtosPecas.map((i) => ({ id: i.id, custo: i.custo, zeroEhDesconhecido: true })),
       ]),
     [p.dispositivos, p.produtosPecas],
   );
@@ -244,18 +244,14 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
 
             {/* 2. Aparência */}
             <TabsContent value="aparencia" className="mt-0">
-              <div className="grid items-start gap-5 xl:grid-cols-2">
-                <Card className="rounded-2xl">
-                  <CardHeader>
-                    <CardTitle className="text-lg">{t("aparencia.titulo")}</CardTitle>
-                    <CardDescription>{t("aparencia.descricao")}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ConfiguracaoTemplates config={p.configCatalogo} onConfigChange={p.setConfigCatalogo} />
-                  </CardContent>
-                </Card>
-                <PreviaCatalogo {...p} titulo={t("previa.titulo")} descricao={t("previa.descricao")} alturaMaxima="max-h-[600px]" />
-              </div>
+              <AparenciaCatalogoDesktop
+                config={p.configCatalogo}
+                onConfigChange={p.setConfigCatalogo}
+                itensPrevia={p.itensSelecionados.slice(0, 6)}
+                configLoja={p.configLoja}
+                previewDevice={p.previewDevice}
+                setPreviewDevice={p.setPreviewDevice}
+              />
             </TabsContent>
 
             {/* 3. Compartilhar */}
@@ -286,11 +282,15 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
                   </CardContent>
                 </Card>
               </div>
-              <PreviaCatalogo
-                {...p}
+              <PreviaCatalogoDesktop
+                itens={p.itensSelecionados.slice(0, 6)}
+                configLoja={p.configLoja}
+                config={p.configCatalogo}
+                dispositivo={p.previewDevice}
+                onDispositivo={p.setPreviewDevice}
                 titulo={t("compartilhar.previaTitulo")}
                 descricao={t("compartilhar.previaDescricao")}
-                alturaMaxima="max-h-[500px]"
+                altura={500}
               />
             </TabsContent>
 
@@ -363,56 +363,5 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
       </Tabs>
 
     </main>
-  );
-}
-
-function SeletorDispositivoPrevia({
-  valor,
-  onChange,
-  compacto = false,
-}: {
-  valor: DispositivoPrevia;
-  onChange: (v: DispositivoPrevia) => void;
-  compacto?: boolean;
-}) {
-  const { t } = useTranslation("catalogo", { keyPrefix: "telaDesktop.previa" });
-  const px = compacto ? "px-2" : "px-3";
-  return (
-    <ToggleGroup type="single" value={valor} onValueChange={(v) => v && onChange(v as DispositivoPrevia)} className="rounded-lg border p-1">
-      <ToggleGroupItem value="desktop" aria-label={t("computador")} title={t("computador")} className={px}>
-        <Monitor className="h-4 w-4" />
-      </ToggleGroupItem>
-      <ToggleGroupItem value="tablet" aria-label={t("tablet")} title={t("tablet")} className={px}>
-        <Tablet className="h-4 w-4" />
-      </ToggleGroupItem>
-      <ToggleGroupItem value="mobile" aria-label={t("celular")} title={t("celular")} className={px}>
-        <Smartphone className="h-4 w-4" />
-      </ToggleGroupItem>
-    </ToggleGroup>
-  );
-}
-
-/** A prévia de hoje (6 primeiros itens no CatalogoOnline, largura por aparelho). */
-function PreviaCatalogo(
-  p: CatalogoDesktopProps & { titulo: string; descricao: string; alturaMaxima: "max-h-[600px]" | "max-h-[500px]" },
-) {
-  return (
-    <Card className="overflow-hidden rounded-2xl">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div>
-          <CardTitle className="text-lg">{p.titulo}</CardTitle>
-          <CardDescription>{p.descricao}</CardDescription>
-        </div>
-        <SeletorDispositivoPrevia valor={p.previewDevice} onChange={p.setPreviewDevice} />
-      </CardHeader>
-      <CardContent className="overflow-hidden bg-muted/30 p-0">
-        <div
-          className={`mx-auto box-border overflow-y-auto overflow-x-hidden border-x bg-background transition-all duration-300 ${p.alturaMaxima}`}
-          style={{ width: LARGURA_PREVIA[p.previewDevice], maxWidth: "100%" }}
-        >
-          <CatalogoOnline itens={p.itensSelecionados.slice(0, 6)} configuracaoLoja={p.configLoja} config={p.configCatalogo} />
-        </div>
-      </CardContent>
-    </Card>
   );
 }

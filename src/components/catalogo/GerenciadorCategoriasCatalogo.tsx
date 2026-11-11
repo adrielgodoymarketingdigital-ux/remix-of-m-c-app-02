@@ -26,18 +26,14 @@ export function GerenciadorCategoriasCatalogo({
 }: GerenciadorCategoriasCatalogoProps) {
   const [dialogAberto, setDialogAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
-  // Nova chave a cada abertura: o formulário do diálogo nasce dos dados da categoria.
-  const [aberturas, setAberturas] = useState(0);
 
   const abrirDialogNovo = () => {
     setEditandoId(null);
-    setAberturas((n) => n + 1);
     setDialogAberto(true);
   };
 
   const abrirDialogEditar = (cat: CategoriaCatalogo) => {
     setEditandoId(cat.id);
-    setAberturas((n) => n + 1);
     setDialogAberto(true);
   };
 
@@ -155,7 +151,6 @@ export function GerenciadorCategoriasCatalogo({
       )}
 
       <DialogCategoriaCatalogo
-        key={aberturas}
         open={dialogAberto}
         onOpenChange={setDialogAberto}
         categoria={editandoId ? categorias.find((c) => c.id === editandoId) ?? null : null}
