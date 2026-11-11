@@ -2,11 +2,11 @@
 // + Landing Page com o módulo) e o Salvar único (catalogo_config + link + publicação).
 // Recebe o MESMO estado e as MESMAS funções da página (CatalogoDispositivos); celular e tablet
 // seguem com o JSX antigo da página, intocado.
-// F2 trocou o passo Itens e a F3 o passo Aparência; Compartilhar (F4) e a Landing Page ainda usam
-// os componentes de hoje.
+// F2 trocou o passo Itens, a F3 o Aparência e a F4 o Compartilhar; a Landing Page usa os componentes
+// de hoje (só a casca é nova), com o salvar próprio.
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
-import { FileDown, Globe, Loader2, Pencil, Save } from "lucide-react";
+import { Globe, Loader2, Pencil, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -30,8 +30,8 @@ import { AparenciaCatalogoDesktop } from "./AparenciaCatalogoDesktop";
 import { BarraSalvarCatalogo } from "./BarraSalvarCatalogo";
 import { CabecalhoCatalogoDesktop, type PassoCatalogo } from "./CabecalhoCatalogoDesktop";
 import { ItensCatalogoDesktop } from "./ItensCatalogoDesktop";
-import { LinkCatalogoDesktop } from "./LinkCatalogoDesktop";
-import { PreviaCatalogoDesktop, SeletorDispositivoPrevia, type DispositivoPrevia } from "./PreviaCatalogoDesktop";
+import { CompartilharCatalogoDesktop } from "./CompartilharCatalogoDesktop";
+import { SeletorDispositivoPrevia, type DispositivoPrevia } from "./PreviaCatalogoDesktop";
 
 export type { DispositivoPrevia };
 
@@ -255,89 +255,75 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
             </TabsContent>
 
             {/* 3. Compartilhar */}
-            <TabsContent value="compartilhar" className="mt-0 space-y-5">
-              <div className="grid items-start gap-5 xl:grid-cols-2">
-                <LinkCatalogoDesktop link={link} />
-                <Card className="rounded-2xl">
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <FileDown className="h-5 w-5 text-primary" aria-hidden="true" />
-                      <CardTitle className="text-lg">{t("compartilhar.pdfTitulo")}</CardTitle>
-                    </div>
-                    <CardDescription>{t("compartilhar.pdfDescricao")}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button
-                      onClick={p.onGerarPDF}
-                      disabled={p.gerandoPDF}
-                      className="h-11 w-full rounded-xl font-semibold"
-                    >
-                      {p.gerandoPDF ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <FileDown className="mr-2 h-4 w-4" aria-hidden="true" />
-                      )}
-                      {p.gerandoPDF ? t("compartilhar.gerandoPdf") : t("compartilhar.baixarPdf")}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-              <PreviaCatalogoDesktop
-                itens={p.itensSelecionados.slice(0, 6)}
+            <TabsContent value="compartilhar" className="mt-0">
+              <CompartilharCatalogoDesktop
+                link={link}
+                temLandingPage={p.temAcessoLandingPage}
+                itensCatalogo={p.itensCatalogo}
+                selecionados={p.selecionados}
+                onGerarPDF={p.onGerarPDF}
+                gerandoPDF={p.gerandoPDF}
+                itensPrevia={p.itensSelecionados.slice(0, 6)}
                 configLoja={p.configLoja}
                 config={p.configCatalogo}
-                dispositivo={p.previewDevice}
-                onDispositivo={p.setPreviewDevice}
-                titulo={t("compartilhar.previaTitulo")}
-                descricao={t("compartilhar.previaDescricao")}
-                altura={500}
+                previewDevice={p.previewDevice}
+                setPreviewDevice={p.setPreviewDevice}
               />
             </TabsContent>
 
             {/* 4. Landing Page: conteúdo de hoje, com o salvar próprio (não passa pelo Salvar único). */}
             {p.temAcessoLandingPage && (
               <TabsContent value="landingpage" className="mt-0">
-                <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-                  <div className="space-y-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Globe className="h-5 w-5" />
-                          Configurar Landing Page
-                        </CardTitle>
-                        <CardDescription>Personalize sua landing page profissional</CardDescription>
+                {/* Casca no padrão dos outros passos; os componentes da LP são os de sempre. */}
+                <div className="grid items-start gap-5 xl:grid-cols-[400px_minmax(0,1fr)]">
+                  <div className="min-w-0 space-y-5">
+                    <Card className="rounded-2xl">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-start gap-3">
+                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
+                            <Globe className="h-5 w-5" aria-hidden="true" />
+                          </div>
+                          <div className="min-w-0">
+                            <CardTitle className="text-lg">{t("landingPage.titulo")}</CardTitle>
+                            <CardDescription>{t("landingPage.descricao")}</CardDescription>
+                          </div>
+                        </div>
                       </CardHeader>
                       <CardContent>
                         <ConfigLPComponent config={p.configLP} onConfigChange={p.onConfigLPChange} dispositivos={dispositivosDisponiveis} />
                       </CardContent>
                     </Card>
 
-                    <Button onClick={p.onSalvarLP} disabled={p.salvandoLP || !p.lpAlterada} className="w-full gap-2" size="lg">
-                      {p.salvandoLP ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      {p.lpAlterada ? "Salvar Alterações" : "Tudo salvo"}
-                    </Button>
+                    <div className="space-y-2">
+                      <Button onClick={p.onSalvarLP} disabled={p.salvandoLP || !p.lpAlterada} className="h-11 w-full gap-2 rounded-xl font-semibold">
+                        {p.salvandoLP ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        {p.lpAlterada ? t("landingPage.salvarAlteracoes") : t("landingPage.tudoSalvo")}
+                      </Button>
+                      <p className="text-center text-xs text-muted-foreground">{t("landingPage.salvarProprio")}</p>
+                    </div>
 
                     <GerenciadorLinkLandingPage configLP={p.configLP} onConfigLPChange={p.setConfigLP} />
                   </div>
 
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                      <div>
-                        <CardTitle>Preview da Landing Page</CardTitle>
-                        <CardDescription>Acesse em /lp/seu-slug</CardDescription>
+                  <Card className="min-w-0 overflow-hidden rounded-2xl">
+                    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-4">
+                      <div className="min-w-0">
+                        <CardTitle className="text-lg">{t("landingPage.previaTitulo")}</CardTitle>
+                        <CardDescription>{t("landingPage.previaDescricao")}</CardDescription>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                           <Pencil className="h-4 w-4 text-muted-foreground" />
                           <Label htmlFor="modo-edicao-lp-desktop" className="text-sm">
-                            Editar
+                            {t("landingPage.editar")}
                           </Label>
                           <Switch id="modo-edicao-lp-desktop" checked={p.modoEdicao} onCheckedChange={p.setModoEdicao} />
                         </div>
                         <SeletorDispositivoPrevia valor={p.previewDevice} onChange={p.setPreviewDevice} compacto />
                       </div>
                     </CardHeader>
-                    <CardContent className="overflow-hidden bg-muted/30 p-0">
+                    {/* transform: o botão flutuante (position: fixed) da LP fica dentro da prévia, não no canto da tela. */}
+                    <CardContent className="overflow-hidden border-t bg-muted/40 p-0 [transform:translateZ(0)] dark:bg-muted/20">
                       <div
                         className="mx-auto box-border max-h-[600px] overflow-y-auto overflow-x-hidden border-x bg-background transition-all duration-300"
                         style={{ width: LARGURA_PREVIA[p.previewDevice], maxWidth: "100%" }}
