@@ -1,10 +1,12 @@
 // Grade dos templates do Catálogo no computador (passo Aparência → Templates).
 // Os templates e as cores vêm de TEMPLATES_PADRAO; ids e nomes salvos não mudam (o nome só é
 // traduzido na tela, com o do template como reserva). A miniatura é desenhada em CSS.
+import type { KeyboardEvent } from "react";
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TEMPLATES_PADRAO, type TemplatesCatalogo } from "@/types/catalogo";
 import { coresDoTemplate, templateEmUso } from "@/lib/catalogo/resumoAparencia";
+import { proximoIndiceRadio } from "@/lib/catalogo/navegacaoRadio";
 import { cn } from "@/lib/utils";
 
 /** Miniatura: degradê das cores do template + um celular desenhado com a "tela" do catálogo. */
@@ -56,10 +58,21 @@ export function GradeTemplatesDesktop({ templateId, onEscolher }: GradeTemplates
   // Mesma regra do CatalogoOnline: id desconhecido usa o primeiro template.
   const emUso = templateEmUso(TEMPLATES_PADRAO, templateId).id;
 
+  // Padrão "radio": um só ponto de Tab (o escolhido); as setas andam e escolhem.
+  const teclado = (e: KeyboardEvent<HTMLDivElement>) => {
+    const atual = TEMPLATES_PADRAO.findIndex((tp) => tp.id === emUso);
+    const proximo = proximoIndiceRadio(e.key, atual, TEMPLATES_PADRAO.length);
+    if (proximo === null) return;
+    e.preventDefault();
+    const id = TEMPLATES_PADRAO[proximo].id;
+    onEscolher(id);
+    e.currentTarget.querySelector<HTMLButtonElement>(`[data-template="${id}"]`)?.focus();
+  };
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">{t("escolhaTemplate")}</p>
-      <div role="radiogroup" aria-label={t("escolhaTemplate")} className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-2">
+      <div role="radiogroup" aria-label={t("escolhaTemplate")} onKeyDown={teclado} className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-2">
         {TEMPLATES_PADRAO.map((template) => {
           const ativo = template.id === emUso;
           return (
@@ -68,11 +81,12 @@ export function GradeTemplatesDesktop({ templateId, onEscolher }: GradeTemplates
               type="button"
               role="radio"
               aria-checked={ativo}
+              tabIndex={ativo ? 0 : -1}
               data-template={template.id}
               onClick={() => onEscolher(template.id)}
               className={cn(
                 "relative flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-all",
-                "hover:border-primary/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "hover:border-primary/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 ativo ? "border-primary ring-2 ring-primary/25" : "border-border",
               )}
             >
@@ -80,7 +94,7 @@ export function GradeTemplatesDesktop({ templateId, onEscolher }: GradeTemplates
               <div className="min-w-0 flex-1 space-y-1.5 pr-5">
                 <p className="break-words text-sm font-semibold leading-tight">{t(`templates.${template.id}.nome`, { defaultValue: template.nome })}</p>
                 <BolinhasCores cores={coresDoTemplate(template)} />
-                <p className="line-clamp-2 text-xs leading-4 text-muted-foreground">
+                <p className="text-xs leading-4 text-muted-foreground">
                   {t(`templates.${template.id}.descricao`, { defaultValue: template.descricao })}
                 </p>
               </div>

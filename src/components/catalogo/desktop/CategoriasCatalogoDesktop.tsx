@@ -80,7 +80,8 @@ export function CategoriasCatalogoDesktop(p: CategoriasCatalogoDesktopProps) {
         </Button>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-1" role="listbox" aria-label={t("titulo")}>
+      {/* Grupo de botões de alternar (aria-pressed): cada cartão tem também o botão de ações, então não é listbox. */}
+      <div className="flex gap-3 overflow-x-auto p-1" role="group" aria-label={t("titulo")}>
         <CartaoCategoria
           ativo={p.ativa === TODAS_AS_CATEGORIAS}
           onClick={() => p.onAtivar(TODAS_AS_CATEGORIAS)}
@@ -172,7 +173,13 @@ function CartaoCategoria({
         ativo ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card hover:border-primary/40 hover:bg-muted/40",
       )}
     >
-      <button type="button" role="option" aria-selected={ativo} onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+      <button
+        type="button"
+        aria-pressed={ativo}
+        onClick={onClick}
+        title={nome}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
         <span
           className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", !hex && "bg-muted text-muted-foreground")}
           style={hex ? { backgroundColor: `color-mix(in srgb, ${hex} 14%, transparent)`, color: hex } : undefined}

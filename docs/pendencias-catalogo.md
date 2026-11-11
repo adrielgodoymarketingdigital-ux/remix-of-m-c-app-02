@@ -1,120 +1,104 @@
 # Pendências do Catálogo (fora da trilha do redesenho)
 
-Achados na leitura de 2026-11-10 (branch `feat/catalogo-tela`, base origin/main `47e63e2`).
-Nada aqui foi corrigido. Cada item precisa de uma trilha própria, com aprovação.
-As linhas são as do commit `47e63e2`.
+Achados durante o redesenho da tela do Catálogo no computador (branch `feat/catalogo-tela`, 2026-11-10/11).
+**Nada aqui foi corrigido**, a não ser onde está escrito "No computador". Cada item precisa de uma trilha
+própria, com aprovação. As linhas são as do fim da trilha (F5, sobre origin/main `338fc2f`).
+
+Formato de cada item: **sintoma** (o que o lojista vê), depois a tabela arquivo · linha · o que acontece.
 
 ---
 
-## 1. Funcionário e filial: gravação com `user.id` cru e sucesso com 0 linhas
+## 1. Funcionário e filial gravam com o próprio `user.id` e recebem "sucesso" com 0 linhas
 
 **Sintoma:** o funcionário (e o gerente de filial, que tem `user.id` próprio) abre o Catálogo e vê a
-configuração padrão, não a da loja. Quando clica em Salvar, aparece "salvo com sucesso", mas nada é gravado:
-o `update` filtra `user_id = <id do funcionário>` e `empresa_id IS NULL`, não acha linha e o Supabase
-não devolve erro (sem `.select()`, não há contagem de linhas para conferir).
+configuração padrão, não a da loja. No celular, ao salvar aparece "salvo com sucesso", mas nada é gravado.
+No computador o Salvar único confere as linhas gravadas e mostra "Sua conta não tem permissão para alterar
+o catálogo da loja." (`src/lib/catalogo/gravacaoCatalogoDesktop.ts:79-81`), mas a leitura continua errada.
 A RLS já permite que o funcionário grave a linha do dono (`is_funcionario_of`, migration
-`20260606000001_fix_configuracoes_loja_update_funcionario.sql`). O problema está só no filtro do app.
-O `useConfiguracaoLoja` já troca funcionário por dono (`src/hooks/useConfiguracaoLoja.ts:175-188`); a página não usa essa troca.
+`20260606000001_fix_configuracoes_loja_update_funcionario.sql`); o problema está só no filtro do app.
+O `useConfiguracaoLoja` já resolve funcionário → dono (`src/hooks/useConfiguracaoLoja.ts:175-188`).
 
-| Arquivo | Linhas | O que faz |
+| Arquivo | Linha | O que acontece |
 |---|---|---|
-| `src/pages/CatalogoDispositivos.tsx` | 63-71 | lê `catalogo_config` e `landing_page_config` com `user.id` cru |
-| `src/pages/CatalogoDispositivos.tsx` | 100-113 | salvar da LP: `update` com `user.id` cru + toast de sucesso |
-| `src/pages/CatalogoDispositivos.tsx` | 125-135 | salvar do catálogo: `update` com `user.id` cru + toast de sucesso |
-| `src/pages/CatalogoDispositivos.tsx` | 35 | `useConfiguracaoLoja()` sem filial: logo, WhatsApp e nome são sempre os da matriz |
-| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 56-64 | lê link e publicação com `user.id` cru |
-| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 116-124 | "Gerar automático" lê o nome da loja com `user.id` cru |
-| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 167-194 | salvar link/publicação/config com `user.id` cru + toast de sucesso |
-| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 94-99 | "link em uso" compara com `neq user_id` do funcionário: o link da própria loja aparece como "em uso" |
-| `src/components/catalogo/GerenciadorLinkLandingPage.tsx` | 64-71, 112-119 | leituras com `user.id` cru |
-| `src/components/catalogo/GerenciadorLinkLandingPage.tsx` | 152-170 | salvar da LP com `user.id` cru + toast de sucesso |
+| `src/pages/CatalogoDispositivos.tsx` | 67-75 | lê `catalogo_config` e `landing_page_config` com `user.id` cru |
+| `src/pages/CatalogoDispositivos.tsx` | 104-117 | salvar da LP: `update` com `user.id` cru + toast de sucesso sem conferir linhas |
+| `src/pages/CatalogoDispositivos.tsx` | 129-139 | salvar do catálogo (celular): idem |
+| `src/pages/CatalogoDispositivos.tsx` | 38 | `useConfiguracaoLoja()` sem filial: logo, WhatsApp e nome são sempre os da matriz |
+| `src/hooks/useLinkCatalogo.ts` | 67-72, 149-154 | (computador) lê e grava com `user.id` cru; com 0 linhas mostra o erro de permissão |
+| `src/hooks/useLinkCatalogo.ts` | 112-118 | (computador) "link em uso" compara com `neq user_id` do funcionário: o link da própria loja aparece como "em uso" |
+| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 56-62 | lê link e publicação com `user.id` cru |
+| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 91-98 | "link em uso" com `neq user_id` do funcionário (mesmo efeito acima) |
+| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 116-122 | "Gerar automático" lê o nome da loja com `user.id` cru |
+| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 167-191 | salvar link/publicação/config com `user.id` cru + toast de sucesso |
+| `src/components/catalogo/GerenciadorLinkLandingPage.tsx` | 64-70, 112-118 | leituras com `user.id` cru |
+| `src/components/catalogo/GerenciadorLinkLandingPage.tsx` | 152-167 | salvar da LP com `user.id` cru + toast de sucesso |
 
 **Relacionado (multiempresa):** as views públicas juntam `configuracoes_loja` por `user_id` sem
-`empresa_id` (`supabase/migrations/20260707183409_exibir_no_catalogo.sql:31-33, 52-55, 73-76`).
-O link público mostra os itens de todas as filiais, enquanto a tela, aberta numa filial, mostra só os
-itens daquela filial (`useDispositivos`/`useProdutos` filtram por `empresaFiltro`).
+`empresa_id` (`supabase/migrations/20260707183409_exibir_no_catalogo.sql:31, 52, 73`). O link público mostra
+os itens de todas as filiais, enquanto a tela, aberta numa filial, mostra só os itens daquela filial
+(`useDispositivos`/`useProdutos` filtram por `empresaFiltro`).
 
-## 2. Preço promocional de produto e peça é descartado
+## 2. Preço promocional de produto e peça é descartado sem aviso
 
-**Sintoma:** no modo de edição, o diálogo de fotos e preço deixa aplicar desconto em produto e peça e mostra
-a prévia com o preço riscado, mas, ao salvar, o desconto some sem aviso.
+**Sintoma:** no modo de edição, o diálogo de fotos e preço deixa aplicar desconto em produto e peça e mostra a
+prévia com o preço riscado; ao salvar, o desconto some.
 
-| Arquivo | Linhas | O que faz |
+| Arquivo | Linha | O que acontece |
 |---|---|---|
-| `src/pages/CatalogoDispositivos.tsx` | 257-278 | `produtos` e `pecas` recebem só `fotos` e `preco`; `precoPromocional` é ignorado |
+| `src/pages/CatalogoDispositivos.tsx` | 269-291 | `produtos` e `pecas` recebem só `fotos` e `preco`; `precoPromocional` é ignorado |
 | `src/types/catalogo-item.ts` | 85 | `produtoParaItemCatalogo` sempre põe `preco_promocional: null` |
-| `src/components/catalogo/DialogEditarDispositivoCatalogo.tsx` | 292-400 | aba Preço com desconto aparece para todos os tipos |
+| `src/components/catalogo/DialogEditarDispositivoCatalogo.tsx` | 292 | aba Preço (com desconto) aparece para todos os tipos |
 
-**Atenção:** as tabelas `produtos` e `pecas` **não têm** a coluna `preco_promocional` (em
-`src/integrations/supabase/types.ts` ela só existe em `dispositivos` e `dispositivos_catalogo`).
-Corrigir de verdade exige migration (manual) e mudança nas views públicas; a alternativa sem banco é
-esconder o desconto no diálogo para produto e peça.
+As tabelas `produtos` e `pecas` **não têm** a coluna `preco_promocional`. Corrigir de verdade exige migration
+(manual) e mudança nas views públicas; a alternativa sem banco é esconder o desconto para produto e peça.
 
 ## 3. Foto apagada do storage antes do Salvar
 
-**Sintoma:** no diálogo de edição, clicar no X de uma foto apaga o arquivo (e a miniatura) do storage
-na hora. Se o lojista clicar em Cancelar, o item continua apontando para a foto, que já não existe:
-fica imagem quebrada no catálogo, no link público e na tela de Dispositivos/Produtos.
+**Sintoma:** no diálogo de edição, o X de uma foto apaga o arquivo do storage na hora. Se o lojista clicar em
+Cancelar, o item continua apontando para a foto que já não existe: imagem quebrada no catálogo, no link
+público e nas telas de Dispositivos/Produtos.
 
-| Arquivo | Linhas | O que faz |
+| Arquivo | Linha | O que acontece |
 |---|---|---|
-| `src/components/catalogo/DialogEditarDispositivoCatalogo.tsx` | 146-166 | `handleRemove` chama `removerFotoDispositivo` (linha 149) antes do Salvar |
-| `src/components/catalogo/DialogEditarDispositivoCatalogo.tsx` | 403-406 | Cancelar só fecha o diálogo |
-
-Do mesmo jeito, fotos enviadas e depois canceladas ficam no storage sem dono (linhas 99-144).
+| `src/components/catalogo/DialogEditarDispositivoCatalogo.tsx` | 146-149 | `handleRemove` chama `removerFotoDispositivo` antes do Salvar |
+| `src/components/catalogo/DialogEditarDispositivoCatalogo.tsx` | 405 | Cancelar só fecha o diálogo |
+| `src/components/catalogo/DialogEditarDispositivoCatalogo.tsx` | 99 | fotos enviadas e depois canceladas ficam no storage sem dono |
 
 ## 4. Limite do plano lê uma chave que ninguém grava
 
-**Sintoma:** o limite `dispositivos_catalogo` do plano nunca é aplicado: a contagem de "usados" é
-sempre 0.
+**Sintoma:** o limite `dispositivos_catalogo` do plano nunca é aplicado: a contagem de "usados" é sempre 0.
 
-| Arquivo | Linhas | O que faz |
+| Arquivo | Linha | O que acontece |
 |---|---|---|
-| `src/hooks/useAssinatura.ts` | 719-734 | conta `catalogo_config.dispositivos_selecionados`, chave antiga; hoje a seleção é gravada em `itensSelecionadosIds` |
-| `src/hooks/useAssinatura.ts` | 721-724 | também filtra só `user_id` (sem `empresa_id`) e usa `maybeSingle`: com filial pode dar erro de várias linhas |
+| `src/hooks/useAssinatura.ts` | 727-728 | conta `catalogo_config.dispositivos_selecionados` (chave antiga); a seleção hoje é `itensSelecionadosIds` |
+| `src/hooks/useAssinatura.ts` | 721 | filtra só `user_id` (sem `empresa_id`) com `maybeSingle`: com filial pode dar erro de várias linhas |
 
-Antes de corrigir: decidir se o limite conta a seleção, os itens visíveis (seleção vazia = todos)
-ou só dispositivos. Ativar a contagem agora pode bloquear lojas que hoje passam do limite sem saber.
+Antes de corrigir: decidir se o limite conta a seleção, os itens visíveis (seleção vazia = todos) ou só
+dispositivos. Ativar a contagem agora pode bloquear lojas que hoje passam do limite sem saber.
 
-## 5. Link da Landing Page × link do catálogo
+## 5. Link da Landing Page e link do catálogo são o mesmo
 
-**Sintoma:** os dois usam a mesma coluna `catalogo_slug`. Mudar o link na aba Landing Page muda o link
-do catálogo (`/c/...`) e vice-versa; links já enviados a clientes param de funcionar.
+**Sintoma:** os dois usam a coluna `catalogo_slug`. Mudar o link na aba Landing Page muda o do catálogo
+(`/c/...`) e vice-versa; links já enviados a clientes param de funcionar. No computador, o cartão do link
+avisa quem tem a LP ("Este é o mesmo link da sua Landing Page: alterá-lo muda os dois.").
 
-| Arquivo | Linhas | O que faz |
+| Arquivo | Linha | O que acontece |
 |---|---|---|
-| `src/components/catalogo/GerenciadorLinkLandingPage.tsx` | 155-163 | grava `catalogo_slug` junto com `landing_page_config` e `landing_page_ativa` |
-| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 170-178 | grava o mesmo `catalogo_slug` |
+| `src/components/catalogo/GerenciadorLinkLandingPage.tsx` | 157-158 | grava `catalogo_slug` junto com a configuração da LP |
+| `src/components/catalogo/GerenciadorLinkCatalogo.tsx` | 172-174 | grava o mesmo `catalogo_slug` |
 | `src/App.tsx` | 244-245 | `/c/:slug` e `/lp/:slug` usam o mesmo valor |
 
 ---
 
 ## Outros achados (registrar, decidir depois)
 
-- **PDF com lista vazia** (`src/pages/CatalogoDispositivos.tsx:214`): o PDF recebe só dispositivos
-  (sem produtos nem peças) e, com a seleção vazia ("todos"), recebe nenhum. É da trilha do PDF
-  (`feat/catalogo-pdf`); a F1 do redesenho só começa depois dela na main.
-- **Tela do dono mostra itens ocultos** (`src/pages/CatalogoDispositivos.tsx:190-193`): a prévia
-  online não filtra `exibir_no_catalogo`, mas o link público filtra (views). O redesenho do computador
-  vai filtrar; o celular continua como está.
-- **Seleção volta a "todos" sozinha** (`src/lib/catalogo-selection.ts:24-29`): se metade ou mais dos
-  itens marcados sumiu (vendidos/apagados), a seleção inteira é descartada e o catálogo passa a
-  mostrar tudo. No computador (F2) há um aviso; no celular e no tablet, nenhum.
-- **Limpeza da seleção depende da ordem de carregamento** (`src/pages/CatalogoDispositivos.tsx:170-192`,
-  efeito com `[itensCatalogo]`): se os itens chegam ANTES do `catalogo_config`, a limpeza não roda para
-  a seleção salva. A tela fica com ids que não existem mais ("1 de 3 marcados"), enquanto o link público
-  (que sempre limpa) mostra outra coisa. No computador a F2 roda a mesma limpeza sempre que aparece um
-  id assim (`CatalogoDesktop.tsx`); no celular e no tablet continua dependendo da ordem.
-- **Custo vazio de produto e peça vira R$ 0,00** (`src/hooks/useProdutos.ts`, `custo: Number(p.custo || 0)`):
-  não dá para distinguir "sem custo" de "custo zero". No computador (desde a F3), custo 0 de produto e
-  peça vale como DESCONHECIDO (`montarMapaCustos` com `zeroEhDesconhecido`): o cartão mostra "—" no Custo
-  e no Lucro, nunca lucro igual ao preço. Efeito colateral: um produto que de fato custa R$ 0,00 também
-  aparece como "—". Resolver de vez exige o hook devolver `null` (fora desta trilha). Dispositivo traz o
-  custo como está no banco (nulo aparece como "—", 0 aparece como R$ 0,00).
-- **Opções sem efeito** (`src/types/catalogo.ts`): `tamanhoFonte` ("Tamanho da fonte") e `itensPerPage`
-  ("Itens por página no PDF") têm controle na aba Opções, mas nenhum dos dois é lido em lugar nenhum (nem
-  pelo catálogo online nem pelo PDF). No computador (F3) os dois controles ficam escondidos; no celular e
-  no tablet continuam como estão. `layoutGrid`, `mostrarIMEI` e `mostrarNumeroSerie` existem só no tipo;
-  `mostrarRodape` não tem controle, mas o PDF o lê (padrão: ligado).
-- **Cores secundária e destaque do template não aparecem no catálogo online** (`CatalogoOnline.tsx:61-62`
-  as calcula e não usa); o online usa primária, cabeçalho, fundo e texto. O texto do rodapé só sai no PDF.
+| Assunto | Arquivo · linha | Sintoma |
+|---|---|---|
+| Prévia do celular mostra itens ocultos | `src/pages/CatalogoDispositivos.tsx:194-197` | a prévia da aba Online (celular/tablet) usa `itensSelecionados` sem filtrar `exibir_no_catalogo`; o link público filtra. **No computador** (F5) a prévia usa a regra do link (`apareceNoPublico`). |
+| Seleção volta a "todos" sozinha | `src/lib/catalogo-selection.ts:28-30` | se metade ou mais dos itens marcados sumiu (vendidos/apagados), a seleção inteira é descartada. **No computador** há um aviso; no celular e no tablet, nenhum. |
+| Limpeza da seleção depende da ordem de carregamento | `src/pages/CatalogoDispositivos.tsx:170-192` | o efeito só roda quando `itensCatalogo` muda; se os itens chegam antes do `catalogo_config`, a tela fica com ids que não existem ("1 de 3 marcados"). **No computador** a mesma limpeza roda sempre (`src/components/catalogo/desktop/CatalogoDesktop.tsx:156-171`). |
+| Custo vazio de produto e peça vira R$ 0,00 | `src/hooks/useProdutos.ts:85, 102` | `Number(p.custo \|\| 0)` não distingue "sem custo" de "custo zero". **No computador** custo 0 de produto/peça vale como desconhecido ("—" em Custo e Lucro); efeito colateral: produto que custa R$ 0,00 de verdade também aparece "—". Resolver de vez: o hook devolver `null`. |
+| Opções sem efeito | `src/components/catalogo/PainelOpcoesCatalogo.tsx:140, 190` | "Tamanho da fonte" (`tamanhoFonte`) e "Itens por página no PDF" (`itensPerPage`) não são lidos em lugar nenhum. **No computador** ficam escondidos; no celular e no tablet continuam. `layoutGrid`, `mostrarIMEI` e `mostrarNumeroSerie` existem só no tipo; `mostrarRodape` não tem controle, mas o PDF o lê. |
+| Cores secundária e destaque sem uso no online | `src/components/catalogo/CatalogoOnline.tsx:61-62` | calculadas e não usadas; o online usa primária, cabeçalho, fundo e texto. O texto do rodapé só sai no PDF. |
+| Botão "Salvar e Salvar Landing Page" | `src/components/catalogo/GerenciadorLinkLandingPage.tsx:387` | com a LP não publicada o texto fica "Salvar e Salvar Landing Page" (aparece no celular e no computador). |
+| Controles da LP sem nome acessível | `src/components/catalogo/ConfiguracaoLandingPage.tsx:148, 247, 275`; `src/components/catalogo/GerenciadorLinkLandingPage.tsx:315, 331-357`; `src/components/catalogo/LandingPagePreview.tsx:112` | chaves (Switch) sem rótulo ligado, botões só com ícone sem `aria-label` (copiar/abrir/compartilhar o link da LP) e o link flutuante do WhatsApp sem texto: o leitor de tela anuncia só "botão"/"chave". |

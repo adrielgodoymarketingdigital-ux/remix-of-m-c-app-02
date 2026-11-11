@@ -54,26 +54,6 @@ export function temAlteracoes(assinaturaOriginal: string | null | undefined, atu
   return assinaturaOriginal !== assinaturaEstado(atual);
 }
 
-/**
- * Quais partes mudaram (para o aviso e para depuração): "slug", "ativo" e, dentro do
- * catálogo, as chaves de primeiro nível ("catalogo.textos", "catalogo.templateId"...).
- * Em ordem alfabética.
- */
-export function partesAlteradas(original: EstadoSalvavelCatalogo, atual: EstadoSalvavelCatalogo): string[] {
-  const a = JSON.parse(assinaturaEstado(original)) as Record<string, unknown>;
-  const b = JSON.parse(assinaturaEstado(atual)) as Record<string, unknown>;
-  const partes: string[] = [];
-  if (a.slug !== b.slug) partes.push("slug");
-  if (a.ativo !== b.ativo) partes.push("ativo");
-  const ca = (a.catalogo ?? {}) as Record<string, unknown>;
-  const cb = (b.catalogo ?? {}) as Record<string, unknown>;
-  const chaves = new Set([...Object.keys(ca), ...Object.keys(cb)]);
-  for (const chave of chaves) {
-    if (JSON.stringify(ca[chave]) !== JSON.stringify(cb[chave])) partes.push(`catalogo.${chave}`);
-  }
-  return partes.sort();
-}
-
 /** Estado do botão Salvar: chave de texto para a tela traduzir. */
 export type EstadoBotaoSalvar = "salvando" | "salvar" | "tudo_salvo";
 

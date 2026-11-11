@@ -35,6 +35,7 @@ import {
   type MapaCustos,
   type OrdemItens,
 } from "@/lib/catalogo/listaItensDesktop";
+import { proximoIndiceRadio } from "@/lib/catalogo/navegacaoRadio";
 import type { CategoriaCatalogo } from "@/types/catalogo";
 import type { ItemCatalogo } from "@/types/catalogo-item";
 import { cn } from "@/lib/utils";
@@ -277,7 +278,20 @@ export function ItensCatalogoDesktop(p: ItensCatalogoDesktopProps) {
                 </Button>
               </PopoverContent>
             </Popover>
-            <div className="flex rounded-xl bg-white p-1 dark:bg-slate-900" role="radiogroup" aria-label={t("banner.visualizacao")}>
+            <div
+              className="flex rounded-xl bg-white p-1 dark:bg-slate-900"
+              role="radiogroup"
+              aria-label={t("banner.visualizacao")}
+              onKeyDown={(e) => {
+                // Padrão "radio": um só ponto de Tab; as setas trocam grade/lista.
+                const modos = ["grade", "lista"] as const;
+                const proximo = proximoIndiceRadio(e.key, modos.indexOf(modo), modos.length);
+                if (proximo === null) return;
+                e.preventDefault();
+                setModo(modos[proximo]);
+                e.currentTarget.querySelector<HTMLButtonElement>(`[data-modo="${modos[proximo]}"]`)?.focus();
+              }}
+            >
               {(["grade", "lista"] as const).map((m) => {
                 const Icone = m === "grade" ? LayoutGrid : List;
                 return (
@@ -286,11 +300,14 @@ export function ItensCatalogoDesktop(p: ItensCatalogoDesktopProps) {
                     type="button"
                     role="radio"
                     aria-checked={modo === m}
+                    tabIndex={modo === m ? 0 : -1}
+                    data-modo={m}
                     aria-label={t(`banner.${m}`)}
                     title={t(`banner.${m}`)}
                     onClick={() => setModo(m)}
                     className={cn(
                       "grid h-9 w-9 place-items-center rounded-lg transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#061d45]",
                       modo === m ? "btn-primary-gradient text-white" : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800",
                     )}
                   >

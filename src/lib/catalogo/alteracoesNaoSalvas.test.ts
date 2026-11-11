@@ -6,7 +6,6 @@ import {
   assinaturaEstado,
   canonico,
   estadoBotaoSalvar,
-  partesAlteradas,
   podeSalvar,
   temAlteracoes,
   type EstadoSalvavelCatalogo,
@@ -89,14 +88,6 @@ test("link e publicação entram no mesmo Salvar", () => {
 test("original ausente (ainda carregando) = sem alterações", () => {
   assert.equal(temAlteracoes(null, estado()), false);
   assert.equal(temAlteracoes(undefined, estado()), false);
-});
-
-test("partesAlteradas lista o que mudou, em ordem", () => {
-  const original = estado();
-  const atual = estado((c) => { c.templateId = "escuro"; c.textos.textoPreco = "Por"; }, { ativo: false });
-  assert.deepEqual(partesAlteradas(original, atual), ["ativo", "catalogo.templateId", "catalogo.textos"]);
-  assert.deepEqual(partesAlteradas(original, estado()), []);
-  assert.deepEqual(partesAlteradas(original, estado((c) => { c.corPrimariaPersonalizada = "#123456"; })), ["catalogo.corPrimariaPersonalizada"]);
 });
 
 test("canonico: ordena chaves, tira ausentes e não mexe em primitivos", () => {

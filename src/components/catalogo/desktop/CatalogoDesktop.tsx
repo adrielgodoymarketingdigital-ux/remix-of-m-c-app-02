@@ -19,7 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useLinkCatalogo, type ResultadoSalvarCatalogo } from "@/hooks/useLinkCatalogo";
 import { assinaturaEstado, temAlteracoes } from "@/lib/catalogo/alteracoesNaoSalvas";
-import { montarMapaCustos, visibilidadeCustoLucro } from "@/lib/catalogo/listaItensDesktop";
+import { apareceNoPublico, montarMapaCustos, visibilidadeCustoLucro } from "@/lib/catalogo/listaItensDesktop";
 import { sanitizarCategoriasCatalogo, sanitizarSelecaoCatalogo } from "@/lib/catalogo-selection";
 import { CONFIG_PADRAO, type ConfiguracaoCatalogo, type ConfiguracaoLandingPage } from "@/types/catalogo";
 import type { ItemCatalogo } from "@/types/catalogo-item";
@@ -202,6 +202,13 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
     return r.resetarSelecao ? { salvos: new Set(ids).size, sumiram: r.idsInvalidos.length } : null;
   }, [link.carregado, link.configSalva, idsDisponiveis]);
 
+  // Prévia pública (Aparência e Compartilhar): só o que o link público mostra. Os itens ocultos pelo
+  // olho ficam de fora, como nas views públicas (os vendidos já saem da lista na página).
+  const itensPrevia = useMemo(
+    () => p.itensSelecionados.filter((i) => apareceNoPublico(i, p.selecionados)).slice(0, 6),
+    [p.itensSelecionados, p.selecionados],
+  );
+
   // Mesmo valor que a aba Online antiga passava às categorias.
   const itensParaCategorias = p.selecionados.length > 0 ? p.itensSelecionados : p.itensCatalogo;
   const dispositivosDisponiveis = p.dispositivos.filter((d) => !d.vendido);
@@ -247,7 +254,7 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
               <AparenciaCatalogoDesktop
                 config={p.configCatalogo}
                 onConfigChange={p.setConfigCatalogo}
-                itensPrevia={p.itensSelecionados.slice(0, 6)}
+                itensPrevia={itensPrevia}
                 configLoja={p.configLoja}
                 previewDevice={p.previewDevice}
                 setPreviewDevice={p.setPreviewDevice}
@@ -263,7 +270,7 @@ export function CatalogoDesktop(p: CatalogoDesktopProps) {
                 selecionados={p.selecionados}
                 onGerarPDF={p.onGerarPDF}
                 gerandoPDF={p.gerandoPDF}
-                itensPrevia={p.itensSelecionados.slice(0, 6)}
+                itensPrevia={itensPrevia}
                 configLoja={p.configLoja}
                 config={p.configCatalogo}
                 previewDevice={p.previewDevice}
