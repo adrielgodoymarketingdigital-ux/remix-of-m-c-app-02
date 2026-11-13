@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { ReciboVendaNovo } from "@/components/vendas/recibo-novo/ReciboVendaNovo";
 import { cssReciboVendaNovo } from "@/components/vendas/recibo-novo/cssReciboVendaNovo";
 import { carregarReciboVenda } from "@/lib/vendas/carregarReciboVenda";
-import { entradaDasLinhas, montarReciboVenda, type ReciboVendaModelo } from "@/lib/vendas/reciboVendaModelo";
+import { entradaDasLinhas, montarReciboVenda as montarSemPersonalizacao, type EntradaReciboVenda, type ReciboVendaModelo } from "@/lib/vendas/reciboVendaModelo";
+import { RECIBO_VENDA_CONFIG_PADRAO } from "@/lib/vendas/reciboVendaConfig";
 import { CENARIOS, type CenarioRecibo } from "./cenarios";
 
 declare global {
@@ -16,6 +17,20 @@ const params = new URLSearchParams(window.location.search);
 const idCenario = params.get("cenario");
 const impressao = params.get("impressao") === "1";
 const fonteSupabase = params.get("fonte") === "supabase";
+
+/**
+ * ?config= personalização da loja (prova da fase 4): ausente = como sempre (sem o 2º argumento);
+ * null | vazio ({}) | padrao | JSON da config (URL-encoded).
+ */
+const configParam = params.get("config");
+const personalizacao: unknown =
+  configParam === null ? undefined
+  : configParam === "null" ? null
+  : configParam === "vazio" ? {}
+  : configParam === "padrao" ? RECIBO_VENDA_CONFIG_PADRAO
+  : JSON.parse(configParam);
+const montarReciboVenda = (e: EntradaReciboVenda): ReciboVendaModelo =>
+  personalizacao === undefined ? montarSemPersonalizacao(e) : montarSemPersonalizacao(e, personalizacao);
 
 window.__rvnBanco = Object.fromEntries(CENARIOS.filter((c) => c.banco).map((c) => [c.id, c.banco]));
 

@@ -1,7 +1,7 @@
 /**
  * Lógica da tela "Personalizar recibo de venda" que não depende de React:
- * agrupamento dos interruptores, contadores dos textos, detecção de
- * alterações e o que a prévia ainda não desenha. Testado com Deno em
+ * agrupamento dos interruptores, contadores dos textos e detecção de
+ * alterações. (A prévia desenha tudo desde a Fase 4: nada fica de fora.) Testado com Deno em
  * scripts/testes-recibo-venda-novo/reciboVendaConfigTela.test.ts.
  */
 import {
@@ -16,7 +16,6 @@ import {
   type TextosReciboVenda,
   VERSAO_RECIBO_VENDA_CONFIG,
 } from "./reciboVendaConfig.ts";
-import type { ReciboVendaModelo } from "./reciboVendaModelo.ts";
 
 // ── Interruptores agrupados ─────────────────────────────────────────────────
 
@@ -104,36 +103,4 @@ export function haAlteracoesReciboVendaConfig(salvo: unknown, rascunho: unknown)
 /** true quando o rascunho já é o padrão ("Restaurar padrão" não teria efeito). */
 export function rascunhoEhPadraoReciboVenda(rascunho: unknown): boolean {
   return !haAlteracoesReciboVendaConfig(RECIBO_VENDA_CONFIG_PADRAO, rascunho);
-}
-
-// ── Prévia ──────────────────────────────────────────────────────────────────
-
-export type ItemForaDaPrevia = "assinaturas" | "rodape" | "topo" | "observacoes" | "politicaTroca";
-
-/**
- * O que o ReciboVendaNovo de hoje ainda não desenha (chega na Fase 4):
- * assinaturas/rodapé desligados (o componente espera os blocos) e os blocos
- * de texto novos.
- */
-export function itensForaDaPrevia(m: ReciboVendaModelo): ItemForaDaPrevia[] {
-  const fora: ItemForaDaPrevia[] = [];
-  if (m.assinaturas === null) fora.push("assinaturas");
-  if (m.rodape === null) fora.push("rodape");
-  if (m.textos?.topo) fora.push("topo");
-  if (m.textos?.observacoes) fora.push("observacoes");
-  if (m.textos?.politicaTroca) fora.push("politicaTroca");
-  return fora;
-}
-
-/**
- * Modelo que o ReciboVendaNovo de hoje desenha sem quebrar: assinaturas e
- * rodapé desligados viram blocos vazios (a prévia os esconde por CSS).
- */
-export function modeloDesenhavelNaPrevia(m: ReciboVendaModelo): ReciboVendaModelo {
-  if (m.assinaturas !== null && m.rodape !== null) return m;
-  return {
-    ...m,
-    assinaturas: m.assinaturas ?? { vendedor: "", comprador: "" },
-    rodape: m.rodape ?? { agradecimento: "", frase: "", contatos: [] },
-  };
 }

@@ -8,9 +8,8 @@
  * - Só o dono edita (useReciboVendaConfig.podeEditar); os demais veem a
  *   prévia, com o motivo traduzido aqui.
  * - Um Salvar só; "Restaurar padrão" mexe só no rascunho.
- * - A prévia desenha o ReciboVendaNovo de hoje SEM alterá-lo: o modelo vem de
- *   montarReciboVenda(exemplo, rascunho); o que o componente ainda não sabe
- *   desenhar (assinaturas/rodapé desligados e os textos novos) fica num aviso.
+ * - A prévia desenha o mesmo ReciboVendaNovo da impressão, com o modelo de
+ *   montarReciboVenda(exemplo, rascunho): o que aparece é o que sai no A4.
  */
 import { useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -52,8 +51,6 @@ import {
   contarTextoRecibo,
   GRUPOS_INTERRUPTORES_RECIBO_VENDA,
   haAlteracoesReciboVendaConfig,
-  itensForaDaPrevia,
-  modeloDesenhavelNaPrevia,
   rascunhoEhPadraoReciboVenda,
   SEMPRE_APARECE_RECIBO_VENDA,
   textosPassandoDoLimite,
@@ -83,14 +80,6 @@ function termoDaLoja(config: ConfiguracaoLoja | null): EntradaReciboVenda["termo
 }
 
 const LARGURA_RECIBO = 850;
-// Intl.ListFormat ("a, b e c" / "a, b y c"): a lib do TypeScript do projeto ainda não declara.
-const ListFormat = (Intl as unknown as {
-  ListFormat?: new (idioma: string, opcoes: { style: "long"; type: "conjunction" }) => { format(itens: string[]): string };
-}).ListFormat;
-// Assinaturas/rodapé desligados: o componente de hoje ainda desenha os blocos (vazios); a prévia esconde.
-const CSS_PREVIA = `
-.prc-sem-assinaturas .rvn-assinaturas, .prc-sem-rodape .rvn-rodape { display: none !important; }
-`;
 
 const CAMPOS_EM_ORDEM: { campo: CampoTextoReciboVenda; linhas: number }[] = [
   { campo: "topo", linhas: 3 },
@@ -455,21 +444,10 @@ function Previa(p: {
   onExemplo: (e: IdExemploReciboVenda) => void;
   reduzida: boolean;
 }) {
-  const { t, i18n } = useTranslation("configuracoes");
+  const { t } = useTranslation("configuracoes");
   const id = useId();
   // Se o recibo quebrar ao desenhar este modelo: aviso; o próximo modelo tenta de novo (instância nova).
   const [falhou, setFalhou] = useState<{ modelo: ReciboVendaModelo | null; tentativa: number }>({ modelo: null, tentativa: 0 });
-  const fora = p.modelo ? itensForaDaPrevia(p.modelo) : [];
-  const nomesFora = fora.map((k) => t(`reciboVenda.itensForaDaPrevia.${k}`));
-  let lista = nomesFora.join(", ");
-  try {
-    if (ListFormat) lista = new ListFormat(i18n.language, { style: "long", type: "conjunction" }).format(nomesFora);
-  } catch {
-    // Idioma não suportado: fica a lista com vírgulas.
-  }
-
-  const desenhavel = p.modelo ? modeloDesenhavelNaPrevia(p.modelo) : null;
-  const classes = cn(p.modelo?.assinaturas === null && "prc-sem-assinaturas", p.modelo?.rodape === null && "prc-sem-rodape");
 
   let recibo: ReactNode;
   if (p.carregando) {
@@ -479,14 +457,14 @@ function Previa(p: {
         {t("reciboVenda.carregando")}
       </p>
     );
-  } else if (!desenhavel || falhou.modelo === p.modelo) {
+  } else if (!p.modelo || falhou.modelo === p.modelo) {
     recibo = <p className="text-sm text-muted-foreground">{t("reciboVenda.previaFalhou")}</p>;
   } else {
     const conteudo = (
-      <div className={classes} data-testid="previa-recibo">
+      <div data-testid="previa-recibo">
         <ReciboVendaNovoSeguro
           key={`${p.exemplo}-${falhou.tentativa}`}
-          modelo={desenhavel}
+          modelo={p.modelo}
           onFalha={() => setFalhou((f) => ({ modelo: p.modelo, tentativa: f.tentativa + 1 }))}
         />
       </div>
@@ -496,7 +474,7 @@ function Previa(p: {
 
   return (
     <section aria-labelledby={`${id}-titulo`} className="space-y-3">
-      <style>{cssReciboVendaNovo() + CSS_PREVIA}</style>
+      <style>{cssReciboVendaNovo()}</style>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h3 id={`${id}-titulo`} className="text-base font-bold">
@@ -522,13 +500,6 @@ function Previa(p: {
           </Select>
         </div>
       </div>
-
-      {fora.length > 0 && !p.carregando && (
-        <p className="flex items-start gap-2 rounded-lg border border-dashed bg-background px-3 py-2 text-xs text-muted-foreground" data-testid="aviso-fora-da-previa">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>{t("reciboVenda.foraDaPrevia", { itens: lista })}</span>
-        </p>
-      )}
 
       {recibo}
     </section>

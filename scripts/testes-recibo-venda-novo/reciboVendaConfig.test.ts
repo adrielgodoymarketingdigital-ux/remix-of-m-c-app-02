@@ -351,3 +351,34 @@ Deno.test("config com tudo mudado continua diferente do padrão (sanidade)", () 
   assert(!ehReciboVendaConfigPadrao(cfg));
   assertNotEquals(montarReciboVenda(COMPLETO.entrada, cfg), montarReciboVenda(COMPLETO.entrada));
 });
+
+// ── Fase 4: cupom some junto com os descontos ───────────────────────────────
+
+Deno.test("fase 4: descontos desligados tiram desconto E cupom; subtotal fica; total continua líquido", () => {
+  const cenario = CENARIOS.find((c) => c.id === "desconto")!;
+  const antes = montarReciboVenda(cenario.entrada);
+  assertEquals(antes.resumo.map((l) => l.rotulo), ["Subtotal", "Desconto", "Cupom (BEMVINDO)"]);
+  const depois = montarReciboVenda(cenario.entrada, { mostrar: { descontos: false } });
+  assertEquals(depois.resumo, [antes.resumo[0]]);
+  assertEquals(depois.faixaTotal, antes.faixaTotal);
+  assertEquals(depois.pagamento, antes.pagamento);
+  assertEquals(depois.itens, antes.itens);
+});
+
+Deno.test("fase 4: com descontos desligados nenhuma linha que não seja desconto/cupom some, em todos os cenários", () => {
+  for (const c of CENARIOS) {
+    const antes = montarReciboVenda(c.entrada);
+    const depois = montarReciboVenda(c.entrada, { mostrar: { descontos: false } });
+    const esperado = antes.resumo.filter((l) => !(l.rotulo === "Desconto" || l.rotulo.startsWith("Cupom")));
+    assertEquals(depois.resumo, esperado, c.id);
+    assertEquals(depois.faixaTotal, antes.faixaTotal, c.id);
+  }
+});
+
+Deno.test("fase 4: só cupom (sem desconto manual) também some", () => {
+  const cenario = CENARIOS.find((c) => c.id === "desconto")!;
+  const soCupom = { ...cenario.entrada, descontoManual: 0 };
+  const antes = montarReciboVenda(soCupom);
+  assertEquals(antes.resumo.map((l) => l.rotulo), ["Subtotal", "Cupom (BEMVINDO)"]);
+  assertEquals(montarReciboVenda(soCupom, { mostrar: { descontos: false } }).resumo.map((l) => l.rotulo), ["Subtotal"]);
+});

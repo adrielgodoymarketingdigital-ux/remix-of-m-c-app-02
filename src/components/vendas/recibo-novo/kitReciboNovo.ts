@@ -35,14 +35,32 @@ function termoDaLoja(config: ConfiguracaoLoja): EntradaReciboVenda["termo"] {
 
 const contexto = (loja: ConfiguracaoLoja) => ({ loja: loja as LojaReciboEntrada, termo: termoDaLoja(loja), origemApp: window.location.origin });
 
+/**
+ * Monta com a personalização da loja (recibo_venda_config da MESMA linha de
+ * configuracoes_loja já lida para loja/logo/termo: nenhuma consulta a mais).
+ * Vale a configuração ATUAL, também na reimpressão. Coluna ausente, nula ou
+ * inválida = padrão (normalizarReciboVendaConfig); se aplicar a personalização
+ * falhar, sai o recibo novo de sempre, nunca o antigo por causa dela.
+ */
+function montarComPersonalizacao(entrada: EntradaReciboVenda, loja: ConfiguracaoLoja): ReciboVendaModelo {
+  const personalizacao = loja.recibo_venda_config;
+  if (personalizacao === undefined || personalizacao === null) return montarReciboVenda(entrada);
+  try {
+    return montarReciboVenda(entrada, personalizacao);
+  } catch (erro) {
+    console.error("[recibo novo] personalização da loja ignorada (falha ao aplicar)", erro);
+    return montarReciboVenda(entrada);
+  }
+}
+
 /** Recibo reaberto (Vendas, Dispositivos vendidos). */
 export function montarReciboReaberto(dados: DadosVendaCarregados, loja: ConfiguracaoLoja): ReciboVendaModelo {
-  return montarReciboVenda(entradaDasLinhas(dados, contexto(loja)));
+  return montarComPersonalizacao(entradaDasLinhas(dados, contexto(loja)), loja);
 }
 
 /** Recibo logo após o PDV: dados do PDV completados pelo que a finalização gravou (banco null = só o PDV). */
 export function montarReciboPDV(dados: DadosPDVParaRecibo, banco: DadosVendaCarregados | null, loja: ConfiguracaoLoja): ReciboVendaModelo {
-  return montarReciboVenda(entradaDoPDV(dados, { ...contexto(loja), ...(banco ? extrasDoBanco(banco) : {}) }));
+  return montarComPersonalizacao(entradaDoPDV(dados, { ...contexto(loja), ...(banco ? extrasDoBanco(banco) : {}) }), loja);
 }
 
 export type KitReciboNovo = typeof import("./kitReciboNovo");

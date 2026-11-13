@@ -6,8 +6,6 @@ import {
   contarTextoRecibo,
   GRUPOS_INTERRUPTORES_RECIBO_VENDA,
   haAlteracoesReciboVendaConfig,
-  itensForaDaPrevia,
-  modeloDesenhavelNaPrevia,
   rascunhoEhPadraoReciboVenda,
   SEMPRE_APARECE_RECIBO_VENDA,
   textosPassandoDoLimite,
@@ -189,41 +187,15 @@ Deno.test("exemplos: modelo novo a cada chamada (a prévia não compartilha obje
 
 // ── Prévia ──────────────────────────────────────────────────────────────────
 
-Deno.test("prévia: sem personalização nada fica fora e o modelo vai igual", () => {
-  for (const id of EXEMPLOS_RECIBO_VENDA) {
-    const modelo = montarReciboVenda(entradaExemploRecibo(id), reciboVendaConfigPadrao());
-    assertEquals(itensForaDaPrevia(modelo), []);
-    assert(modeloDesenhavelNaPrevia(modelo) === modelo);
-  }
-});
-
-Deno.test("prévia: assinaturas/rodapé desligados e textos novos ficam no aviso", () => {
+Deno.test("prévia (fase 4): nada fica de fora; a lógica da tela não tem mais 'fora da prévia'", async () => {
+  const tela = await import("../../src/lib/vendas/reciboVendaConfigTela.ts");
+  assertFalse("itensForaDaPrevia" in tela);
+  assertFalse("modeloDesenhavelNaPrevia" in tela);
+  // O modelo com tudo desligado e textos vai direto ao componente (que trata nulos desde a fase 4).
   const cfg = tudoDesligado();
   cfg.textos.topo = "Topo";
-  cfg.textos.observacoes = "Obs";
-  cfg.textos.politica_troca = "Política";
-  for (const id of EXEMPLOS_RECIBO_VENDA) {
-    const modelo = montarReciboVenda(entradaExemploRecibo(id), cfg);
-    assertEquals(itensForaDaPrevia(modelo), ["assinaturas", "rodape", "topo", "observacoes", "politicaTroca"], id);
-  }
-  const soAgradecimento = reciboVendaConfigPadrao();
-  soAgradecimento.textos.agradecimento = "Valeu!";
-  assertEquals(itensForaDaPrevia(montarReciboVenda(entradaExemploRecibo("simples"), soAgradecimento)), []);
-});
-
-Deno.test("prévia: modelo desenhável nunca tem assinaturas/rodapé nulos e não muda o resto", () => {
-  for (const id of EXEMPLOS_RECIBO_VENDA) {
-    const modelo = montarReciboVenda(entradaExemploRecibo(id), tudoDesligado());
-    assertEquals(modelo.assinaturas, null);
-    assertEquals(modelo.rodape, null);
-    const d = modeloDesenhavelNaPrevia(modelo);
-    assertEquals(d.assinaturas, { vendedor: "", comprador: "" });
-    assertEquals(d.rodape, { agradecimento: "", frase: "", contatos: [] });
-    const { assinaturas: _a, rodape: _r, ...resto } = d;
-    const { assinaturas: _a2, rodape: _r2, ...restoOriginal } = modelo;
-    assertEquals(resto, restoOriginal);
-    assertEquals(modelo.assinaturas, null, "não altera o modelo recebido");
-  }
+  const m = montarReciboVenda(entradaExemploRecibo("com-troca"), cfg);
+  assertEquals([m.assinaturas, m.rodape, m.textos?.topo], [null, null, "Topo"]);
 });
 
 // ── Textos pt-BR / es ───────────────────────────────────────────────────────
@@ -245,7 +217,8 @@ for (const [idioma, textos] of [["pt-BR", rv(configuracoesPtBR)], ["es", rv(conf
       assert(t.dicasCampos[k]?.trim(), `dicasCampos.${k}`);
     }
     for (const e of EXEMPLOS_RECIBO_VENDA) assert(t.exemplos[e]?.trim(), `exemplos.${e}`);
-    for (const k of ["assinaturas", "rodape", "topo", "observacoes", "politicaTroca"]) assert(t.itensForaDaPrevia[k]?.trim(), k);
+    assertEquals(t.itensForaDaPrevia, undefined, "aviso da prévia removido na fase 4");
+    assertEquals((textos as Record<string, unknown>).foraDaPrevia, undefined);
     for (const m of Object.keys(MENSAGENS_PERMISSAO_CONFIG_RECIBO)) {
       if (m === "ok") continue;
       assert(t.permissao[m]?.trim(), `permissao.${m}`);

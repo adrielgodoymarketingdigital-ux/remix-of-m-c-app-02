@@ -281,6 +281,36 @@ html, body { margin: 0; padding: 0; background: #ffffff; }
 .rvn-garantia-texto { font-size: 10.5px; line-height: 1.5; white-space: pre-line; color: #26324a; overflow-wrap: anywhere; column-count: 2; column-gap: 26px; }
 
 /* Assinaturas */
+/* Textos do lojista (personalização): texto puro, quebras de linha mantidas.
+   Bloco curto não parte entre páginas; longo pode partir, com o título junto do texto. */
+.rvn-texto-topo {
+  margin: -6px 0 16px;
+  padding: 10px 16px;
+  border-left: 4px solid var(--rvn-azul);
+  border-radius: 0 10px 10px 0;
+  background: var(--rvn-palido);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.rvn-textos { display: grid; gap: 10px; margin: 14px 0; break-after: avoid; page-break-after: avoid; }
+.rvn-bloco-texto { border: 1px solid var(--rvn-linha); border-radius: 12px; padding: 12px 18px 14px; min-width: 0; }
+.rvn-bloco-texto--curto { break-inside: avoid; page-break-inside: avoid; }
+.rvn-bloco-texto-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--rvn-navy);
+  break-after: avoid;
+  page-break-after: avoid;
+}
+.rvn-bloco-texto-titulo .rvn-icone { width: 18px; height: 18px; color: var(--rvn-azul); }
+.rvn-bloco-texto-corpo { font-size: 12px; line-height: 1.5; color: #26324a; white-space: pre-line; overflow-wrap: anywhere; orphans: 3; widows: 3; }
+
 .rvn-assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; break-inside: avoid; page-break-inside: avoid; }
 .rvn-assinatura { border: 1px solid var(--rvn-linha); border-radius: 12px; padding: 26px 20px 12px; display: flex; gap: 14px; align-items: flex-end; }
 .rvn-assinatura .rvn-icone { width: 26px; height: 26px; color: var(--rvn-navy); margin-bottom: 18px; }
@@ -302,6 +332,9 @@ html, body { margin: 0; padding: 0; background: #ffffff; }
   page-break-inside: avoid;
 }
 .rvn-rodape-esq { display: flex; align-items: center; gap: 14px; min-width: 0; }
+/* Agradecimento/frase do lojista (personalização): texto longo quebra dentro do rodapé e a frase mantém a quebra de linha. */
+.rvn-rodape-esq > div { min-width: 0; }
+.rvn-rodape-esq .rvn-rodape-titulo, .rvn-rodape-esq .rvn-muted { overflow-wrap: anywhere; white-space: pre-line; }
 .rvn-rodape-esq > .rvn-icone { width: 32px; height: 32px; color: var(--rvn-azul); }
 .rvn-rodape-titulo { font-weight: 800; font-size: 15px; }
 .rvn-rodape-contatos { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: flex-end; font-size: 12px; }
@@ -352,6 +385,9 @@ html, body { margin: 0; padding: 0; background: #ffffff; }
   .rvn-garantia > .rvn-icone { display: none; }
   .rvn-garantia-texto { column-count: 1; }
   .rvn-rodape-contatos { justify-content: flex-start; }
+  .rvn-texto-topo { margin: 0 0 12px; padding: 8px 12px; font-size: 12px; }
+  .rvn-bloco-texto { padding: 10px 12px 12px; }
+  .rvn-bloco-texto-corpo { font-size: 11px; }
 }
 
 /* Impressão: cores fiéis, sem sombra nem cantos externos, blocos inteiros e
@@ -440,6 +476,12 @@ html, body { margin: 0; padding: 0; background: #ffffff; }
   .rvn-rodape-titulo { font-size: 12px; }
   .rvn-rodape-contatos { font-size: 10px; }
   .rvn-rodape-contatos .rvn-icone { width: 14px; height: 14px; }
+  .rvn-texto-topo { margin: 0 0 8px; padding: 5px 12px; font-size: 10.5px; line-height: 1.35; border-left-width: 3px; }
+  .rvn-textos { margin: 7px 0; gap: 6px; }
+  .rvn-bloco-texto { padding: 6px 12px 7px; border-radius: 9px; }
+  .rvn-bloco-texto-titulo { font-size: 12px; margin-bottom: 3px; gap: 8px; }
+  .rvn-bloco-texto-titulo .rvn-icone { width: 14px; height: 14px; }
+  .rvn-bloco-texto-corpo { font-size: 9.5px; line-height: 1.35; }
 }
 `;
 }

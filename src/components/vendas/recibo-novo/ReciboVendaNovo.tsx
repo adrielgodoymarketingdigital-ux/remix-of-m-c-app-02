@@ -5,8 +5,10 @@
  * (lucide-react e IconesRedesSociais) e QR com qrcode.react — nada externo,
  * para imprimir e gerar PDF sem rede. Foto ou logo que não carrega some.
  *
- * Ainda não é usado em nenhuma tela (etapa 2): PDV, Vendas e Dispositivos
- * seguem com os recibos de sempre.
+ * Personalização da loja (configuracoes_loja.recibo_venda_config) já vem
+ * aplicada no modelo: blocos desligados chegam nulos/vazios e os textos do
+ * lojista em `modelo.textos` (só existe quando há texto; sem ele o HTML é o
+ * de sempre). Texto do lojista é sempre texto do React, nunca HTML.
  */
 import { useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
@@ -25,8 +27,10 @@ import {
   MapPin,
   PenLine,
   Phone,
+  RefreshCcw,
   ShieldCheck,
   ShoppingCart,
+  StickyNote,
   Store,
   User,
 } from "lucide-react";
@@ -79,6 +83,24 @@ function ChipForma({ forma }: { forma: FormaRecibo }) {
   );
 }
 
+/** Bloco curto não se parte entre páginas; longo pode quebrar (o título fica com o texto). */
+const BLOCO_CURTO_CARACTERES = 500;
+const BLOCO_CURTO_LINHAS = 8;
+const ehBlocoCurto = (texto: string) => texto.length <= BLOCO_CURTO_CARACTERES && texto.split("\n").length <= BLOCO_CURTO_LINHAS;
+
+/** Texto do lojista: só texto do React (nada é interpretado), quebras de linha mantidas pelo CSS. */
+function BlocoTexto({ icone, titulo, texto }: { icone: ReactNode; titulo: string; texto: string }) {
+  return (
+    <div className={ehBlocoCurto(texto) ? "rvn-bloco-texto rvn-bloco-texto--curto" : "rvn-bloco-texto"}>
+      <div className="rvn-bloco-texto-titulo">
+        {icone}
+        <span>{titulo}</span>
+      </div>
+      <div className="rvn-bloco-texto-corpo">{texto}</div>
+    </div>
+  );
+}
+
 export interface ReciboVendaNovoProps {
   modelo: ReciboVendaModelo;
 }
@@ -91,6 +113,9 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
 
   const logoOk = fotoOk(m.cabecalho.logoUrl);
   const colunaFoto = m.itens.some((i) => fotoOk(i.fotoUrl));
+  // Valor unitário desligado na personalização: a coluna inteira sai.
+  const colunaUnit = m.itens.some((i) => i.valorUnitario !== null);
+  const textos = m.textos;
   const fotoTroca = m.troca && fotoOk(m.troca.fotoUrl) ? m.troca.fotoUrl : null;
   const cancelada = m.situacao.tipo === "cancelada";
 
@@ -167,6 +192,10 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
           </div>
         </section>
 
+        {textos?.topo && (
+          <section className={ehBlocoCurto(textos.topo) ? "rvn-texto-topo rvn-bloco-texto--curto" : "rvn-texto-topo"}>{textos.topo}</section>
+        )}
+
         <section className="rvn-painel rvn-pessoas">
           <div className="rvn-pessoa">
             <div className="rvn-pessoa-icone">
@@ -205,7 +234,7 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
                 {colunaFoto && <th className="rvn-col-foto" aria-label="Foto" />}
                 <th>Produto / Serviço</th>
                 <th className="rvn-col-qtd">Qtde</th>
-                <th className="rvn-col-valor rvn-col-unit">Valor unit.</th>
+                {colunaUnit && <th className="rvn-col-valor rvn-col-unit">Valor unit.</th>}
                 <th className="rvn-col-valor">Total</th>
               </tr>
             </thead>
@@ -228,7 +257,7 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
                     {item.etiqueta && <span className="rvn-etiqueta">{item.etiqueta}</span>}
                   </td>
                   <td className="rvn-col-qtd">{item.quantidade}</td>
-                  <td className="rvn-col-valor rvn-col-unit">{item.valorUnitario}</td>
+                  {colunaUnit && <td className="rvn-col-valor rvn-col-unit">{item.valorUnitario}</td>}
                   <td className="rvn-col-valor rvn-negrito">{item.total}</td>
                 </tr>
               ))}
@@ -356,38 +385,51 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
           </section>
         ))}
 
-        <section className="rvn-assinaturas">
-          {[
-            { nome: m.assinaturas.vendedor, rotulo: "Assinatura do Vendedor" },
-            { nome: m.assinaturas.comprador, rotulo: "Assinatura do Comprador" },
-          ].map((a) => (
-            <div key={a.rotulo} className="rvn-assinatura">
-              <PenLine className={ICONE} aria-hidden />
-              <div className="rvn-assinatura-campo">
-                <div className="rvn-assinatura-linha" />
-                <div className="rvn-assinatura-nome">{a.nome}</div>
-                <div className="rvn-assinatura-rotulo">{a.rotulo}</div>
+        {(textos?.observacoes || textos?.politicaTroca) && (
+          <section className="rvn-textos">
+            {textos.observacoes && <BlocoTexto icone={<StickyNote className={ICONE} aria-hidden />} titulo="Observações" texto={textos.observacoes} />}
+            {textos.politicaTroca && (
+              <BlocoTexto icone={<RefreshCcw className={ICONE} aria-hidden />} titulo="Política de troca e devolução" texto={textos.politicaTroca} />
+            )}
+          </section>
+        )}
+
+        {m.assinaturas && (
+          <section className="rvn-assinaturas">
+            {[
+              { nome: m.assinaturas.vendedor, rotulo: "Assinatura do Vendedor" },
+              { nome: m.assinaturas.comprador, rotulo: "Assinatura do Comprador" },
+            ].map((a) => (
+              <div key={a.rotulo} className="rvn-assinatura">
+                <PenLine className={ICONE} aria-hidden />
+                <div className="rvn-assinatura-campo">
+                  <div className="rvn-assinatura-linha" />
+                  <div className="rvn-assinatura-nome">{a.nome}</div>
+                  <div className="rvn-assinatura-rotulo">{a.rotulo}</div>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {m.rodape && (
+          <footer className="rvn-rodape">
+            <div className="rvn-rodape-esq">
+              <Handshake className={ICONE} aria-hidden />
+              <div>
+                <div className="rvn-rodape-titulo">{m.rodape.agradecimento}</div>
+                <div className="rvn-muted">{m.rodape.frase}</div>
               </div>
             </div>
-          ))}
-        </section>
-
-        <footer className="rvn-rodape">
-          <div className="rvn-rodape-esq">
-            <Handshake className={ICONE} aria-hidden />
-            <div>
-              <div className="rvn-rodape-titulo">{m.rodape.agradecimento}</div>
-              <div className="rvn-muted">{m.rodape.frase}</div>
-            </div>
-          </div>
-          {m.rodape.contatos.length > 0 && (
-            <div className="rvn-rodape-contatos">
-              {m.rodape.contatos.map((c) => (
-                <Contato key={c.tipo} c={c} />
-              ))}
-            </div>
-          )}
-        </footer>
+            {m.rodape.contatos.length > 0 && (
+              <div className="rvn-rodape-contatos">
+                {m.rodape.contatos.map((c) => (
+                  <Contato key={c.tipo} c={c} />
+                ))}
+              </div>
+            )}
+          </footer>
+        )}
       </main>
     </div>
   );
