@@ -1016,6 +1016,7 @@ export type Database = {
           nome_loja: string
           numero: string | null
           razao_social: string | null
+          recibo_venda_config: Json | null
           site: string | null
           telefone: string | null
           termo_garantia_config: Json | null
@@ -1063,6 +1064,7 @@ export type Database = {
           nome_loja: string
           numero?: string | null
           razao_social?: string | null
+          recibo_venda_config?: Json | null
           site?: string | null
           telefone?: string | null
           termo_garantia_config?: Json | null
@@ -1110,6 +1112,7 @@ export type Database = {
           nome_loja?: string
           numero?: string | null
           razao_social?: string | null
+          recibo_venda_config?: Json | null
           site?: string | null
           telefone?: string | null
           termo_garantia_config?: Json | null

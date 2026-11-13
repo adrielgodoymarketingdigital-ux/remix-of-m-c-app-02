@@ -228,6 +228,12 @@ export interface ConfiguracaoLoja {
   /** Data URI PNG da assinatura da loja — só usada quando usar_assinatura_loja = true. */
   assinatura_loja?: string | null;
   usar_assinatura_loja?: boolean;
+  /**
+   * Personalização do recibo de venda A4 (jsonb; null/ausente = padrão).
+   * Vem do banco sem garantia de formato: sempre passar por
+   * normalizarReciboVendaConfig (src/lib/vendas/reciboVendaConfig.ts) antes de usar.
+   */
+  recibo_venda_config?: unknown;
   created_at: string;
   updated_at: string;
 }

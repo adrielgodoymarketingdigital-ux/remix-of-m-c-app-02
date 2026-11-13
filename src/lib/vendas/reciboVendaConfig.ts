@@ -134,6 +134,8 @@ export function reciboVendaConfigPadrao(): ReciboVendaConfig {
 // deno-lint-ignore no-control-regex
 const CONTROLES = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F-\u009F\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
 
+const SURROGATE_SOLTO = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
 /** Caracteres como a pessoa vê (emoji com modificador conta 1); sem Intl.Segmenter, por code point. */
 function caracteresVisiveis(texto: string): string[] {
   const Segmenter = (Intl as unknown as { Segmenter?: new (l?: string, o?: { granularity: "grapheme" }) => { segment(t: string): Iterable<{ segment: string }> } }).Segmenter;
@@ -157,6 +159,9 @@ export function limparTextoRecibo(texto: unknown, maxCaracteres: number, maxLinh
   if (limiteCar === 0 || limiteLin === 0) return "";
 
   const linhas = texto
+    // Metade de emoji solta (surrogate sem par) não é Unicode válido e o jsonb
+    // do Postgres recusa: sai antes de tudo.
+    .replace(SURROGATE_SOLTO, "")
     .normalize("NFC")
     .replace(/\r\n?|\u2028|\u2029|\u0085/g, "\n")
     .replace(/\t/g, " ")
