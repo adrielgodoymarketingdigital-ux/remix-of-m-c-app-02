@@ -1,0 +1,1608 @@
+{
+ "item-unico": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3ELoja%3Ctspan%20fill%3D%22%231f63f0%22%3EExemplo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000101",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": "000.000.000-00",
+   "telefone": "(11) 90000-1111",
+   "endereco": null,
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": "Vendedor Teste",
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 17",
+    "detalhes": [
+     "Cor: Preto | 256 GB",
+     "Condição: Usado",
+     "IMEI: 350000000000017"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 4.900,00",
+    "total": "R$ 4.900,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%231f2430%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%235b3df5%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": true,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 4.900,00"
+   }
+  ],
+  "troca": null,
+  "faixaTotal": {
+   "rotulo": "TOTAL DA VENDA",
+   "valor": "R$ 4.900,00",
+   "valorCentavos": 490000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "PIX",
+     "valor": null,
+     "detalhe": null,
+     "tom": "pago",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Apple iPhone 17",
+    "texto": "Loja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Apple iPhone 17\nIMEI: 350000000000017\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 4.900,00\n\n2. GARANTIA CONTRATUAL (3 meses)\n   • Garantia de 3 meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Vendedor Teste",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "varios-itens": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3ELoja%3Ctspan%20fill%3D%22%231f63f0%22%3EExemplo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000101",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": "000.000.000-00",
+   "telefone": "(11) 90000-1111",
+   "endereco": null,
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": "Vendedor Teste",
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 17",
+    "detalhes": [
+     "Cor: Preto | 256 GB",
+     "Condição: Usado",
+     "IMEI: 350000000000017"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 4.900,00",
+    "total": "R$ 4.900,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%231f2430%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%235b3df5%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+   },
+   {
+    "numero": 2,
+    "nome": "Capinha Silicone",
+    "detalhes": [],
+    "etiqueta": null,
+    "quantidade": 2,
+    "valorUnitario": "R$ 45,00",
+    "total": "R$ 90,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2230%22%20y%3D%2210%22%20width%3D%2260%22%20height%3D%22100%22%20rx%3D%2212%22%20fill%3D%22%23e2483d%22%2F%3E%3Ccircle%20cx%3D%2248%22%20cy%3D%2228%22%20r%3D%229%22%20fill%3D%22%23fff%22%20fill-opacity%3D%22.5%22%2F%3E%3C%2Fsvg%3E"
+   },
+   {
+    "numero": 3,
+    "nome": "Película de Vidro 3D",
+    "detalhes": [],
+    "etiqueta": null,
+    "quantidade": 1,
+    "valorUnitario": "R$ 30,00",
+    "total": "R$ 30,00",
+    "fotoUrl": null
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (3 itens)",
+  "mostrarFotoItens": true,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 5.020,00"
+   }
+  ],
+  "troca": null,
+  "faixaTotal": {
+   "rotulo": "TOTAL DA VENDA",
+   "valor": "R$ 5.020,00",
+   "valorCentavos": 502000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "Débito",
+     "valor": null,
+     "detalhe": null,
+     "tom": "pago",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Apple iPhone 17",
+    "texto": "Loja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Apple iPhone 17\nIMEI: 350000000000017\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 4.900,00\n\n2. GARANTIA CONTRATUAL (1 ano)\n   • Garantia de 1 ano a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Vendedor Teste",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "com-troca": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3ELoja%3Ctspan%20fill%3D%22%231f63f0%22%3EExemplo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000101",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": "000.000.000-00",
+   "telefone": "(11) 90000-1111",
+   "endereco": null,
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": "Vendedor Teste",
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 17",
+    "detalhes": [
+     "Cor: Preto | 256 GB",
+     "Condição: Usado",
+     "IMEI: 350000000000017"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 4.900,00",
+    "total": "R$ 4.900,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%231f2430%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%235b3df5%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": true,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 4.900,00"
+   }
+  ],
+  "troca": {
+   "titulo": "TROCA DE APARELHO",
+   "aparelhoTitulo": "Aparelho recebido na troca",
+   "aparelhoDescricao": "Apple iPhone 13 Pro Max 256 GB Grafite",
+   "imei": "350000000000013",
+   "linhas": [
+    {
+     "rotulo": "Total da venda",
+     "valor": "R$ 4.900,00"
+    },
+    {
+     "rotulo": "Valor da troca",
+     "valor": "R$ 2.000,00",
+     "negativo": true
+    },
+    {
+     "rotulo": "Valor pago pelo cliente (PIX)",
+     "valor": "R$ 2.900,00",
+     "destaque": true
+    }
+   ],
+   "observacao": null,
+   "cancelada": false,
+   "condicao": "Usado",
+   "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%232a2f3a%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%231e7bff%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+  },
+  "faixaTotal": {
+   "rotulo": "VALOR PAGO PELO CLIENTE",
+   "valor": "R$ 2.900,00",
+   "valorCentavos": 290000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "PIX",
+     "valor": null,
+     "detalhe": null,
+     "tom": "pago",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Apple iPhone 17",
+    "texto": "Loja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Apple iPhone 17\nIMEI: 350000000000017\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 4.900,00\n\n2. GARANTIA CONTRATUAL (3 meses)\n   • Garantia de 3 meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Vendedor Teste",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "a-receber-4x": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3ELoja%3Ctspan%20fill%3D%22%231f63f0%22%3EExemplo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000102",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": "000.000.000-00",
+   "telefone": "(11) 90000-1111",
+   "endereco": "Rua Inventada, 50 - Bairro Teste",
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": "Vendedor Teste",
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 15",
+    "detalhes": [
+     "Cor: Azul | 128 GB",
+     "Condição: Semi Novo",
+     "IMEI: 350000000000015"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 5.000,00",
+    "total": "R$ 5.000,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%231f2430%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%235b3df5%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": true,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 5.000,00"
+   },
+   {
+    "rotulo": "Desconto",
+    "valor": "R$ 100,00",
+    "negativo": true
+   }
+  ],
+  "troca": {
+   "titulo": "TROCA DE APARELHO",
+   "aparelhoTitulo": "Aparelho recebido na troca",
+   "aparelhoDescricao": "Apple iPhone 13 Pro Max 256 GB Grafite",
+   "imei": "350000000000013",
+   "linhas": [
+    {
+     "rotulo": "Total da venda",
+     "valor": "R$ 4.900,00"
+    },
+    {
+     "rotulo": "Valor da troca",
+     "valor": "R$ 2.000,00",
+     "negativo": true
+    },
+    {
+     "rotulo": "Valor a pagar (A Receber)",
+     "valor": "R$ 2.900,00",
+     "destaque": true
+    }
+   ],
+   "observacao": null,
+   "cancelada": false,
+   "condicao": "Usado",
+   "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%232a2f3a%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%231e7bff%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+  },
+  "faixaTotal": {
+   "rotulo": "VALOR A PAGAR",
+   "valor": "R$ 2.900,00",
+   "valorCentavos": 290000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "A Receber",
+     "valor": null,
+     "detalhe": "4 parcelas",
+     "tom": "pendente",
+     "parcelas": [
+      {
+       "numero": 1,
+       "valor": "R$ 725,00",
+       "vencimento": "24/11/2026"
+      },
+      {
+       "numero": 2,
+       "valor": "R$ 725,00",
+       "vencimento": "24/12/2026"
+      },
+      {
+       "numero": 3,
+       "valor": "R$ 725,00",
+       "vencimento": "24/01/2027"
+      },
+      {
+       "numero": 4,
+       "valor": "R$ 725,00",
+       "vencimento": "24/02/2027"
+      }
+     ]
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Apple iPhone 15",
+    "texto": "Loja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Apple iPhone 15\nIMEI: 350000000000015\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 5.000,00\n\n2. GARANTIA CONTRATUAL (6 meses)\n   • Garantia de 6 meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Vendedor Teste",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "credito-parcelado": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3ELoja%3Ctspan%20fill%3D%22%231f63f0%22%3EExemplo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000101",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": "000.000.000-00",
+   "telefone": "(11) 90000-1111",
+   "endereco": null,
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": "Vendedor Teste",
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 17",
+    "detalhes": [
+     "Cor: Preto | 256 GB",
+     "Condição: Usado",
+     "IMEI: 350000000000017"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 3.000,00",
+    "total": "R$ 3.000,00",
+    "fotoUrl": null
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": false,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 3.000,00"
+   }
+  ],
+  "troca": null,
+  "faixaTotal": {
+   "rotulo": "TOTAL DA VENDA",
+   "valor": "R$ 3.000,00",
+   "valorCentavos": 300000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "Crédito Parcelado",
+     "valor": null,
+     "detalhe": "3× de R$ 1.000,00",
+     "tom": "pago",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE VENDA",
+    "produto": "Apple iPhone 17",
+    "texto": "DECLARAÇÃO DE VENDA SEM GARANTIA CONTRATUAL\n\nLoja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Apple iPhone 17\nIMEI: 350000000000017\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 3.000,00\n\nAVISO: Este produto é vendido sem garantia contratual adicional.\nA garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme a legislação.\nO cliente declara estar ciente das condições do equipamento."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Vendedor Teste",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "pagamento-duplo": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3ELoja%3Ctspan%20fill%3D%22%231f63f0%22%3EExemplo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000102",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": "000.000.000-00",
+   "telefone": null,
+   "endereco": null,
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": "Vendedor Teste",
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 15",
+    "detalhes": [
+     "Cor: Azul | 128 GB",
+     "Condição: Semi Novo",
+     "IMEI: 350000000000015"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 1.800,00",
+    "total": "R$ 1.800,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%231f2430%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%235b3df5%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+   },
+   {
+    "numero": 2,
+    "nome": "Película 3D",
+    "detalhes": [
+     "SKU: PEL-3D"
+    ],
+    "etiqueta": null,
+    "quantidade": 1,
+    "valorUnitario": "R$ 100,00",
+    "total": "R$ 100,00",
+    "fotoUrl": null
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (2 itens)",
+  "mostrarFotoItens": true,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 1.900,00"
+   }
+  ],
+  "troca": null,
+  "faixaTotal": {
+   "rotulo": "VALOR A PAGAR",
+   "valor": "R$ 1.900,00",
+   "valorCentavos": 190000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "PIX",
+     "valor": "R$ 1.200,00",
+     "detalhe": null,
+     "tom": "pago",
+     "parcelas": []
+    },
+    {
+     "nome": "A Receber",
+     "valor": "R$ 700,00",
+     "detalhe": "2 parcelas",
+     "tom": "pendente",
+     "parcelas": [
+      {
+       "numero": 1,
+       "valor": "R$ 350,00",
+       "vencimento": "10/11/2026"
+      },
+      {
+       "numero": 2,
+       "valor": "R$ 350,00",
+       "vencimento": "10/12/2026"
+      }
+     ]
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Apple iPhone 15",
+    "texto": "Loja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Apple iPhone 15\nIMEI: 350000000000015\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 1.800,00\n\n2. GARANTIA CONTRATUAL (3 meses)\n   • Garantia de 3 meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Vendedor Teste",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "desconto": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3ELoja%3Ctspan%20fill%3D%22%231f63f0%22%3EExemplo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000101",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": "000.000.000-00",
+   "telefone": "(11) 90000-1111",
+   "endereco": null,
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": "Vendedor Teste",
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Samsung Galaxy S23",
+    "detalhes": [
+     "Cor: Verde | 128 GB",
+     "Condição: Semi Novo",
+     "IMEI: 350000000000023"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 2.500,00",
+    "total": "R$ 2.500,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%23cfd6cf%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%232aa772%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": true,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 2.500,00"
+   },
+   {
+    "rotulo": "Desconto",
+    "valor": "R$ 150,00",
+    "negativo": true
+   },
+   {
+    "rotulo": "Cupom (BEMVINDO)",
+    "valor": "R$ 50,00",
+    "negativo": true
+   }
+  ],
+  "troca": null,
+  "faixaTotal": {
+   "rotulo": "TOTAL DA VENDA",
+   "valor": "R$ 2.300,00",
+   "valorCentavos": 230000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "Dinheiro",
+     "valor": null,
+     "detalhe": null,
+     "tom": "pago",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Samsung Galaxy S23",
+    "texto": "Loja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Samsung Galaxy S23\nIMEI: 350000000000023\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 2.500,00\n\n2. GARANTIA CONTRATUAL (3 meses)\n   • Garantia de 3 meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Vendedor Teste",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "sem-logo": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": null,
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000101",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": "000.000.000-00",
+   "telefone": "(11) 90000-1111",
+   "endereco": null,
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": "Vendedor Teste",
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 17",
+    "detalhes": [
+     "Cor: Preto | 256 GB",
+     "Condição: Usado",
+     "IMEI: 350000000000017"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 4.900,00",
+    "total": "R$ 4.900,00",
+    "fotoUrl": null
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": false,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 4.900,00"
+   }
+  ],
+  "troca": null,
+  "faixaTotal": {
+   "rotulo": "TOTAL DA VENDA",
+   "valor": "R$ 4.900,00",
+   "valorCentavos": 490000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "PIX",
+     "valor": null,
+     "detalhe": null,
+     "tom": "pago",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Apple iPhone 17",
+    "texto": "Loja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Apple iPhone 17\nIMEI: 350000000000017\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 4.900,00\n\n2. GARANTIA CONTRATUAL (3 meses)\n   • Garantia de 3 meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Vendedor Teste",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "sem-redes": {
+  "cabecalho": {
+   "nomeLoja": "Loja Simples",
+   "logoUrl": null,
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Cidade Teste/SP"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojasimples.test"
+    }
+   ]
+  },
+  "qr": null,
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000101",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Consumidor Final",
+   "cpf": null,
+   "telefone": null,
+   "endereco": null,
+   "consumidorFinal": true
+  },
+  "loja": {
+   "nome": "Loja Simples",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": null,
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 17",
+    "detalhes": [
+     "Cor: Preto | 256 GB",
+     "Condição: Usado",
+     "IMEI: 350000000000017"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 4.900,00",
+    "total": "R$ 4.900,00",
+    "fotoUrl": null
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": false,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 4.900,00"
+   }
+  ],
+  "troca": null,
+  "faixaTotal": {
+   "rotulo": "TOTAL DA VENDA",
+   "valor": "R$ 4.900,00",
+   "valorCentavos": 490000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "PIX",
+     "valor": null,
+     "detalhe": null,
+     "tom": "pago",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Apple iPhone 17",
+    "texto": "Loja: Loja Simples\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente\n\nPRODUTO\nAparelho: Apple iPhone 17\nIMEI: 350000000000017\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 4.900,00\n\n2. GARANTIA CONTRATUAL (3 meses)\n   • Garantia de 3 meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Loja Simples",
+   "comprador": "Comprador"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Simples!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": []
+  }
+ },
+ "cancelada": {
+  "cabecalho": {
+   "nomeLoja": "Loja Exemplo Celulares",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3ELoja%3Ctspan%20fill%3D%22%231f63f0%22%3EExemplo%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(11) 3000-0000"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "email",
+     "texto": "contato@lojaexemplo.test"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/lojaexemplo",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "facebook",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000102",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "cancelada",
+   "rotulo": "VENDA CANCELADA",
+   "frase": "Cancelada em 25/10/2026 · Motivo: Cliente desistiu da compra"
+  },
+  "cliente": {
+   "nome": "Cliente Teste da Silva",
+   "cpf": null,
+   "telefone": null,
+   "endereco": null,
+   "consumidorFinal": false
+  },
+  "loja": {
+   "nome": "Loja Exemplo Celulares",
+   "cnpj": "00.000.000/0001-00"
+  },
+  "vendedor": null,
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 15",
+    "detalhes": [
+     "Cor: Azul | 128 GB",
+     "Condição: Semi Novo",
+     "IMEI: 350000000000015"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 4.900,00",
+    "total": "R$ 4.900,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%231f2430%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%235b3df5%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": true,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 4.900,00"
+   }
+  ],
+  "troca": {
+   "titulo": "TROCA DE APARELHO (CANCELADA)",
+   "aparelhoTitulo": "Aparelho recebido na troca",
+   "aparelhoDescricao": "Apple iPhone 13 Pro Max 256 GB Grafite",
+   "imei": "350000000000013",
+   "linhas": [
+    {
+     "rotulo": "Total da venda",
+     "valor": "R$ 4.900,00"
+    },
+    {
+     "rotulo": "Valor da troca",
+     "valor": "R$ 2.000,00",
+     "negativo": true
+    },
+    {
+     "rotulo": "Valor pago pelo cliente (PIX)",
+     "valor": "R$ 2.900,00",
+     "destaque": true
+    }
+   ],
+   "observacao": "Troca cancelada junto com a venda.",
+   "cancelada": true,
+   "condicao": "Usado",
+   "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%232a2f3a%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%231e7bff%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+  },
+  "faixaTotal": {
+   "rotulo": "VALOR PAGO PELO CLIENTE",
+   "valor": "R$ 2.900,00",
+   "valorCentavos": 290000,
+   "cancelada": true
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "PIX",
+     "valor": null,
+     "detalhe": null,
+     "tom": "pago",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE GARANTIA",
+    "produto": "Apple iPhone 15",
+    "texto": "Loja: Loja Exemplo Celulares\nCNPJ: 00.000.000/0001-00\n\nCOMPRADOR\nNome: Cliente Teste da Silva\n\nPRODUTO\nAparelho: Apple iPhone 15\nIMEI: 350000000000015\nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 4.900,00\n\n2. GARANTIA CONTRATUAL (3 meses)\n   • Garantia de 3 meses a partir da data desta venda, já incluindo o prazo mínimo de garantia legal previsto no CDC (Art. 26, II).\n   • Cobre defeitos de fabricação, excluindo mau uso, quedas ou oxidação.\n\n3. DIREITOS DO CONSUMIDOR\n   • Vício do produto: substituição, devolução ou abatimento (Art. 18 CDC).\n   • Prazo suspenso durante reparo (Art. 26, §2º CDC).\n   • Conserve este documento como comprovante.\n\n4. EXCLUSÕES\n   • Quedas, impactos, contato com líquidos, uso inadequado.\n   • Violação de lacres ou reparo por terceiros não autorizados.\n   • Desgaste natural de uso.\n\nPara acionamento da garantia, apresente este termo na loja."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "Loja Exemplo Celulares",
+   "comprador": "Cliente Teste da Silva"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a Loja Exemplo Celulares!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(11) 90000-0000"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@lojaexemplo"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.lojaexemplo.test"
+    }
+   ]
+  }
+ },
+ "modelo": {
+  "cabecalho": {
+   "nomeLoja": "iFix Pro",
+   "logoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%2290%22%20viewBox%3D%220%200%20260%2090%22%3E%3Crect%20width%3D%22260%22%20height%3D%2290%22%20fill%3D%22%23ffffff%22%2F%3E%3Ctext%20x%3D%2220%22%20y%3D%2258%22%20font-family%3D%22Arial%22%20font-size%3D%2240%22%20font-weight%3D%22800%22%20textLength%3D%22220%22%20lengthAdjust%3D%22spacingAndGlyphs%22%20fill%3D%22%230b1429%22%3EiFix%3Ctspan%20fill%3D%22%231f63f0%22%3EPro%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E",
+   "contatos": [
+    {
+     "tipo": "endereco",
+     "texto": "Rua das Tecnologias, 123 - Centro - Araraquara/SP - CEP: 14801-320"
+    },
+    {
+     "tipo": "telefone",
+     "texto": "(98) 3724-2121"
+    },
+    {
+     "tipo": "whatsapp",
+     "texto": "(98) 3723-6221"
+    },
+    {
+     "tipo": "email",
+     "texto": "ifixproararaoficial@gmail.com"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.ifixpro.com.br"
+    }
+   ]
+  },
+  "qr": {
+   "url": "https://instagram.com/ifixpro",
+   "legenda": "ACESSE NOSSAS REDES SOCIAIS",
+   "origem": "instagram",
+   "redes": [
+    "instagram",
+    "whatsapp"
+   ]
+  },
+  "titulo": {
+   "texto": "RECIBO DE VENDA",
+   "numero": "VD-000012",
+   "dataHora": "24/10/2026 às 18:55"
+  },
+  "situacao": {
+   "tipo": "finalizada",
+   "rotulo": "VENDA FINALIZADA",
+   "frase": "Obrigado pela sua confiança!"
+  },
+  "cliente": {
+   "nome": "Consumidor Final",
+   "cpf": null,
+   "telefone": null,
+   "endereco": null,
+   "consumidorFinal": true
+  },
+  "loja": {
+   "nome": "iFix Pro",
+   "cnpj": "56.042.168/0001-14"
+  },
+  "vendedor": null,
+  "itens": [
+   {
+    "numero": 1,
+    "nome": "Apple iPhone 17",
+    "detalhes": [
+     "Cor: Preto | 256 GB",
+     "Condição: Usado"
+    ],
+    "etiqueta": "Produto vendido",
+    "quantidade": 1,
+    "valorUnitario": "R$ 4.900,00",
+    "total": "R$ 4.900,00",
+    "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%231f2430%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%235b3df5%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+   }
+  ],
+  "tituloItens": "ITENS DA VENDA (1 item)",
+  "mostrarFotoItens": true,
+  "resumo": [
+   {
+    "rotulo": "Subtotal",
+    "valor": "R$ 4.900,00"
+   }
+  ],
+  "troca": {
+   "titulo": "TROCA DE APARELHO",
+   "aparelhoTitulo": "Aparelho recebido na troca",
+   "aparelhoDescricao": "Apple iPhone 13 Pro Max",
+   "imei": "36719919110001131",
+   "linhas": [
+    {
+     "rotulo": "Total da venda",
+     "valor": "R$ 4.900,00"
+    },
+    {
+     "rotulo": "Valor da troca",
+     "valor": "R$ 2.000,00",
+     "negativo": true
+    },
+    {
+     "rotulo": "Valor a pagar (A Receber)",
+     "valor": "R$ 2.900,00",
+     "destaque": true
+    }
+   ],
+   "observacao": null,
+   "cancelada": false,
+   "condicao": "Usado",
+   "fotoUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%3Crect%20x%3D%2234%22%20y%3D%226%22%20width%3D%2252%22%20height%3D%22108%22%20rx%3D%2210%22%20fill%3D%22%232a2f3a%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2212%22%20width%3D%2244%22%20height%3D%2296%22%20rx%3D%227%22%20fill%3D%22%231e7bff%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2240%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.25%22%2F%3E%3Ccircle%20cx%3D%2260%22%20cy%3D%2272%22%20r%3D%2214%22%20fill%3D%22%23ffffff%22%20fill-opacity%3D%22.18%22%2F%3E%3C%2Fsvg%3E"
+  },
+  "faixaTotal": {
+   "rotulo": "VALOR A PAGAR",
+   "valor": "R$ 2.900,00",
+   "valorCentavos": 290000,
+   "cancelada": false
+  },
+  "pagamento": {
+   "formas": [
+    {
+     "nome": "A Receber",
+     "valor": null,
+     "detalhe": null,
+     "tom": "pendente",
+     "parcelas": []
+    }
+   ],
+   "observacao": null
+  },
+  "garantias": [
+   {
+    "titulo": "TERMO DE VENDA",
+    "produto": "Apple iPhone 17",
+    "texto": "DECLARAÇÃO DE VENDA SEM GARANTIA CONTRATUAL\n\nLoja: iFix Pro\nCNPJ: 56.042.168/0001-14\n\nCOMPRADOR\nNome: Cliente\n\nPRODUTO\nAparelho: Apple iPhone 17\nIMEI: \nData da venda: 24/10/2026 às 18:55\nValor do produto: R$ 4.900,00\n\nAVISO: Este produto é vendido sem garantia contratual adicional.\nA garantia legal de 90 dias prevista no CDC (Art. 26, II) se aplica conforme a legislação.\nO cliente declara estar ciente das condições do equipamento."
+   }
+  ],
+  "assinaturas": {
+   "vendedor": "iFix Pro",
+   "comprador": "Comprador"
+  },
+  "rodape": {
+   "agradecimento": "Obrigado por escolher a iFix Pro!",
+   "frase": "Qualquer dúvida, entre em contato pelos nossos canais.",
+   "contatos": [
+    {
+     "tipo": "whatsapp",
+     "texto": "(98) 3723-6221"
+    },
+    {
+     "tipo": "instagram",
+     "texto": "@ifixpro"
+    },
+    {
+     "tipo": "site",
+     "texto": "www.ifixpro.com.br"
+    }
+   ]
+  }
+ }
+}

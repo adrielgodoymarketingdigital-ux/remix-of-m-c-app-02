@@ -16,7 +16,7 @@ import {
   type ExtrasPDVParaRecibo,
   type LinhaVendaRecibo,
   type LojaReciboEntrada,
-} from "@/lib/vendas/reciboVendaModelo";
+} from "../../lib/vendas/reciboVendaModelo.ts";
 
 const svg = (conteudo: string, w = 120, h = 120) =>
   `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${conteudo}</svg>`)}`;

@@ -33,6 +33,7 @@ import {
 import { nomeFormaPagamento } from "../formaPagamento.ts";
 import { MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO } from "../vendasFinanceiras.ts";
 import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "../termo-garantia-utils.ts";
+import { ehReciboVendaConfigPadrao, normalizarReciboVendaConfig, type ReciboVendaConfig } from "./reciboVendaConfig.ts";
 
 // ── Entrada ─────────────────────────────────────────────────────────────────
 
@@ -180,7 +181,8 @@ export interface ItemRecibo {
   /** Etiqueta "Produto vendido" (aparelhos). */
   etiqueta: string | null;
   quantidade: number;
-  valorUnitario: string;
+  /** null = coluna desligada na personalização do recibo. */
+  valorUnitario: string | null;
   total: string;
   fotoUrl: string | null;
 }
@@ -225,8 +227,24 @@ export interface ReciboVendaModelo {
   faixaTotal: { rotulo: string; valor: string; valorCentavos: number; cancelada: boolean };
   pagamento: { formas: FormaRecibo[]; observacao: string | null };
   garantias: { titulo: string; produto: string; texto: string }[];
-  assinaturas: { vendedor: string; comprador: string };
-  rodape: { agradecimento: string; frase: string; contatos: ContatoRecibo[] };
+  /** null = assinaturas desligadas na personalização do recibo. */
+  assinaturas: { vendedor: string; comprador: string } | null;
+  /** null = rodapé desligado na personalização do recibo. */
+  rodape: { agradecimento: string; frase: string; contatos: ContatoRecibo[] } | null;
+  /**
+   * Textos do lojista (blocos novos). Só existe quando algum foi preenchido:
+   * sem personalização o modelo fica idêntico ao de sempre.
+   */
+  textos?: TextosModeloRecibo;
+}
+
+export interface TextosModeloRecibo {
+  /** Abaixo do título. */
+  topo: string | null;
+  /** Antes das assinaturas. */
+  observacoes: string | null;
+  /** Política de troca e devolução. */
+  politicaTroca: string | null;
 }
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
@@ -490,7 +508,79 @@ function montarForma(f: FormaReciboEntrada, valorC: number, mostrarValor: boolea
   };
 }
 
-export function montarReciboVenda(e: EntradaReciboVenda): ReciboVendaModelo {
+/**
+ * Recibo pronto para desenhar. `config` é a personalização da loja
+ * (configuracoes_loja.recibo_venda_config) crua: passa por
+ * normalizarReciboVendaConfig. Ausente, nula, {} ou padrão = recibo de sempre.
+ */
+export function montarReciboVenda(e: EntradaReciboVenda, config?: unknown): ReciboVendaModelo {
+  const modelo = montarReciboVendaSemConfig(e);
+  const cfg = normalizarReciboVendaConfig(config);
+  return ehReciboVendaConfigPadrao(cfg) ? modelo : aplicarConfigRecibo(modelo, cfg);
+}
+
+/**
+ * Aplica a personalização sobre o recibo já montado. Interruptor desligado =
+ * só o seu campo some (nulo/vazio); o que nunca se esconde (número, data,
+ * itens com nome/quantidade/total, total, forma de pagamento, selo de
+ * cancelada) não é tocado. Textos: os blocos novos vão para `textos`; os que
+ * trocam texto fixo só trocam quando preenchidos.
+ */
+export function aplicarConfigRecibo(m: ReciboVendaModelo, cfg: ReciboVendaConfig): ReciboVendaModelo {
+  const v = cfg.mostrar;
+  const t = cfg.textos;
+  const r: ReciboVendaModelo = { ...m };
+
+  if (!v.logo || !v.contatos_cabecalho) {
+    r.cabecalho = {
+      ...m.cabecalho,
+      logoUrl: v.logo ? m.cabecalho.logoUrl : null,
+      contatos: v.contatos_cabecalho ? m.cabecalho.contatos : [],
+    };
+  }
+  if (!v.qr) r.qr = null;
+  if (!v.cliente_cpf || !v.cliente_telefone || !v.cliente_endereco) {
+    r.cliente = {
+      ...m.cliente,
+      cpf: v.cliente_cpf ? m.cliente.cpf : null,
+      telefone: v.cliente_telefone ? m.cliente.telefone : null,
+      endereco: v.cliente_endereco ? m.cliente.endereco : null,
+    };
+  }
+  if (!v.loja_cnpj) r.loja = { ...m.loja, cnpj: null };
+  if (!v.vendedor) r.vendedor = null;
+  if (!v.fotos_itens || !v.detalhes_aparelho || !v.valor_unitario) {
+    // Aparelho = item com a etiqueta "Produto vendido" (produto/peça mostram só o SKU).
+    r.itens = m.itens.map((i) => ({
+      ...i,
+      fotoUrl: v.fotos_itens ? i.fotoUrl : null,
+      detalhes: v.detalhes_aparelho || i.etiqueta === null ? i.detalhes : [],
+      valorUnitario: v.valor_unitario ? i.valorUnitario : null,
+    }));
+    if (!v.fotos_itens) r.mostrarFotoItens = false;
+  }
+  if (!v.descontos) r.resumo = m.resumo.filter((l) => !l.negativo);
+  if (!v.troca) r.troca = null;
+  if (!v.parcelas) r.pagamento = { ...m.pagamento, formas: m.pagamento.formas.map((f) => ({ ...f, parcelas: [] })) };
+  if (!v.garantias) r.garantias = [];
+  if (!v.assinaturas) r.assinaturas = null;
+  // Vendedor escondido também sai da assinatura (fica o nome da loja, como venda sem vendedor).
+  else if (!v.vendedor && m.assinaturas) r.assinaturas = { ...m.assinaturas, vendedor: m.loja.nome };
+  if (!v.rodape) r.rodape = null;
+  else if (m.rodape && (t.agradecimento || t.frase_rodape)) {
+    r.rodape = {
+      ...m.rodape,
+      agradecimento: t.agradecimento || m.rodape.agradecimento,
+      frase: t.frase_rodape || m.rodape.frase,
+    };
+  }
+  if (t.topo || t.observacoes || t.politica_troca) {
+    r.textos = { topo: t.topo || null, observacoes: t.observacoes || null, politicaTroca: t.politica_troca || null };
+  }
+  return r;
+}
+
+function montarReciboVendaSemConfig(e: EntradaReciboVenda): ReciboVendaModelo {
   const loja = e.loja ?? {};
   const nomeLoja = limpo(loja.nome_loja) || "Loja";
   const insta = linkInstagram(loja.instagram);
