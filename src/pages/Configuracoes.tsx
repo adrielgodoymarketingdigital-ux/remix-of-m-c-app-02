@@ -4,6 +4,7 @@ import { UploadLogoLoja } from "@/components/configuracoes/UploadLogoLoja";
 import { AssinaturaLojaConfig } from "@/components/configuracoes/AssinaturaLojaConfig";
 import { CardProgressoPerfil, CardStatusPerfil } from "@/components/configuracoes/ProgressoPerfil";
 import { PreviewRecibo } from "@/components/configuracoes/PreviewRecibo";
+import { AtalhoPersonalizarReciboVenda } from "@/components/vendas/recibo-config/AcessoPersonalizarReciboVenda";
 import { SeletorTema } from "@/components/configuracoes/SeletorTema";
 import { SeletorIdioma } from "@/components/configuracoes/SeletorIdioma";
 import { PersonalizacaoCores } from "@/components/configuracoes/PersonalizacaoCores";
@@ -250,6 +251,8 @@ export default function Configuracoes() {
                 </TabsContent>
 
                 <TabsContent value="preview" className="space-y-4 mt-0">
+                  {/* Só para quem vê o recibo novo (useReciboVendaNovoVisivel); para os demais, nada muda. */}
+                  <AtalhoPersonalizarReciboVenda />
                   <PreviewRecibo configuracao={config} />
                 </TabsContent>
 

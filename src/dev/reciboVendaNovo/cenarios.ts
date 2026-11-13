@@ -1,6 +1,7 @@
 /**
  * Cenários da página de teste do recibo novo (só desenvolvimento:
- * dev/recibo-venda-novo.html, fora do build). Dados 100% fictícios.
+ * dev/recibo-venda-novo.html, fora do build). Dados 100% fictícios; a venda de
+ * exemplo (loja, fotos, iPhone, cliente, troca) vem de src/lib/vendas/reciboVendaExemplo.ts.
  *
  * Cada cenário monta a entrada por um dos adaptadores reais: entradaDoPDV
  * (recibo logo após o PDV) ou entradaDasLinhas (recibo reaberto). Os cenários
@@ -17,43 +18,25 @@ import {
   type LinhaVendaRecibo,
   type LojaReciboEntrada,
 } from "../../lib/vendas/reciboVendaModelo.ts";
+import {
+  CLIENTE_EXEMPLO,
+  DATA_EXEMPLO,
+  FOTO_CAPINHA,
+  FOTO_IPHONE_13,
+  FOTO_IPHONE_17,
+  fotoCelular,
+  ITEM_IPHONE_17,
+  LOJA_EXEMPLO,
+  logoExemplo,
+  ORIGEM_EXEMPLO,
+  TROCA_EXEMPLO,
+} from "../../lib/vendas/reciboVendaExemplo.ts";
 
-const svg = (conteudo: string, w = 120, h = 120) =>
-  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${conteudo}</svg>`)}`;
+export { FOTO_IPHONE_13, FOTO_IPHONE_17 } from "../../lib/vendas/reciboVendaExemplo.ts";
 
-/** Celular desenhado (foto fictícia, sem rede). */
-const fotoCelular = (corTela: string, corCorpo = "#1f2430") =>
-  svg(
-    `<rect x="34" y="6" width="52" height="108" rx="10" fill="${corCorpo}"/>` +
-      `<rect x="38" y="12" width="44" height="96" rx="7" fill="${corTela}"/>` +
-      `<circle cx="60" cy="40" r="14" fill="#ffffff" fill-opacity=".25"/>` +
-      `<circle cx="60" cy="72" r="14" fill="#ffffff" fill-opacity=".18"/>`,
-  );
-const fotoCapinha = svg(`<rect x="30" y="10" width="60" height="100" rx="12" fill="#e2483d"/><circle cx="48" cy="28" r="9" fill="#fff" fill-opacity=".5"/>`);
-
-export const FOTO_IPHONE_17 = fotoCelular("#5b3df5");
-export const FOTO_IPHONE_13 = fotoCelular("#1e7bff", "#2a2f3a");
-
-const logo = (texto: string, destaque: string) =>
-  svg(
-    `<rect width="260" height="90" fill="#ffffff"/>` +
-      `<text x="20" y="58" font-family="Arial" font-size="40" font-weight="800" textLength="220" lengthAdjust="spacingAndGlyphs" fill="#0b1429">${texto}<tspan fill="#1f63f0">${destaque}</tspan></text>`,
-    260,
-    90,
-  );
-
-export const LOJA_COMPLETA: LojaReciboEntrada = {
-  nome_loja: "Loja Exemplo Celulares",
-  logo_url: logo("Loja", "Exemplo"),
-  cnpj: "00.000.000/0001-00",
-  endereco: "Rua Fictícia, 100 - Centro - Cidade Teste/SP - CEP: 00000-000",
-  telefone: "(11) 3000-0000",
-  whatsapp: "(11) 90000-0000",
-  email: "contato@lojaexemplo.test",
-  site: "www.lojaexemplo.test",
-  instagram: "@lojaexemplo",
-  facebook: "lojaexemplo",
-};
+const fotoCapinha = FOTO_CAPINHA;
+const logo = logoExemplo;
+export const LOJA_COMPLETA: LojaReciboEntrada = LOJA_EXEMPLO;
 
 const LOJA_MODELO: LojaReciboEntrada = {
   nome_loja: "iFix Pro",
@@ -67,8 +50,8 @@ const LOJA_MODELO: LojaReciboEntrada = {
   instagram: "@ifixpro",
 };
 
-const DATA = "2026-10-24T21:55:00.000Z"; // 24/10/2026 18:55 em Brasília
-const ORIGEM = "https://appmec.in";
+const DATA = DATA_EXEMPLO; // 24/10/2026 18:55 em Brasília
+const ORIGEM = ORIGEM_EXEMPLO;
 
 const TERMO = {
   config: null,
@@ -94,22 +77,9 @@ const basePDV = (over: Partial<DadosReciboPDV>): DadosReciboPDV => ({
   ...over,
 });
 
-const iphone17 = {
-  id: "item-1",
-  tipo: "dispositivo" as const,
-  nome: "Apple iPhone 17",
-  preco: 4900,
-  custo: 0,
-  quantidade: 1,
-  estoque: 1,
-  cor: "Preto",
-  capacidade_gb: 256,
-  condicao: "usado",
-  imei_dispositivo: "350000000000017",
-  tempo_garantia: 3,
-};
+const iphone17 = ITEM_IPHONE_17;
 
-const clienteTeste = { id: "c1", nome: "Cliente Teste da Silva", cpf: "000.000.000-00", telefone: "(11) 90000-1111" } as DadosReciboPDV["cliente"];
+const clienteTeste = CLIENTE_EXEMPLO as DadosReciboPDV["cliente"];
 
 // ── Recibo reaberto (linhas de `vendas`) ────────────────────────────────────
 
@@ -188,15 +158,7 @@ const linhasAReceber4x = [1, 2, 3, 4].map((k) =>
   }),
 );
 
-const trocaIphone13 = {
-  aparelho: { marca: "Apple", modelo: "iPhone 13 Pro Max", capacidadeGb: 256, cor: "Grafite", imei: "350000000000013" },
-  valorEntrada: 2000,
-  cancelada: false,
-  valorDevolvido: 0,
-  formaDevolucao: null,
-  condicao: "usado",
-  fotoUrl: FOTO_IPHONE_13,
-};
+const trocaIphone13 = TROCA_EXEMPLO;
 
 export const CENARIOS: CenarioRecibo[] = [
   {

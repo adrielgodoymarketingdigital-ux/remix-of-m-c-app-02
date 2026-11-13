@@ -24,6 +24,7 @@ import { buscarMatrizId } from "@/lib/multiempresas/identidadeGravacao";
 import { ShoppingCart, Plus, Layout, Settings, CreditCard, DollarSign, History, XCircle, Info, ShoppingBag, Smartphone, Settings2, Banknote, QrCode, Clock, ArrowDownCircle, UserRound, ShieldCheck } from "lucide-react";
 import { DialogSelecionarItem, ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { DialogConfiguracaoLayoutPDV } from "@/components/pdv/DialogConfiguracaoLayoutPDV";
+import { DialogPersonalizarReciboVendaSobDemanda, ItemMenuPersonalizarReciboVenda } from "@/components/vendas/recibo-config/AcessoPersonalizarReciboVenda";
 import { DialogAberturaCaixa } from "@/components/pdv/DialogAberturaCaixa";
 import { DialogFechamentoCaixa } from "@/components/pdv/DialogFechamentoCaixa";
 import { DialogHistoricoCaixas } from "@/components/pdv/DialogHistoricoCaixas";
@@ -170,6 +171,7 @@ const PDV = () => {
   const [dialogItemAberto, setDialogItemAberto] = useState(false);
   const [dialogReciboAberto, setDialogReciboAberto] = useState(false);
   const [dialogLayoutAberto, setDialogLayoutAberto] = useState(false);
+  const [dialogReciboConfigAberto, setDialogReciboConfigAberto] = useState(false);
   const [dialogTaxasCartaoAberto, setDialogTaxasCartaoAberto] = useState(false);
   const [dialogAberturaCaixaAberto, setDialogAberturaCaixaAberto] = useState(false);
   const [dialogFechamentoCaixaAberto, setDialogFechamentoCaixaAberto] = useState(false);
@@ -1180,6 +1182,8 @@ const PDV = () => {
                 <Layout className="h-4 w-4 mr-2" />
                 {t("pagina.atalhos.layoutImpressao")}
               </DropdownMenuItem>
+              {/* Só para quem vê o recibo novo (useReciboVendaNovoVisivel); para os demais, nada muda. */}
+              <ItemMenuPersonalizarReciboVenda onAbrir={() => setDialogReciboConfigAberto(true)} />
               <DropdownMenuItem onClick={() => setDialogTaxasCartaoAberto(true)}>
                 <CreditCard className="h-4 w-4 mr-2" />
                 {t("pagina.atalhos.taxasCartao")}
@@ -1683,6 +1687,8 @@ const PDV = () => {
         open={dialogLayoutAberto}
         onOpenChange={setDialogLayoutAberto}
       />
+
+      <DialogPersonalizarReciboVendaSobDemanda open={dialogReciboConfigAberto} onOpenChange={setDialogReciboConfigAberto} />
 
       <Dialog open={dialogTaxasCartaoAberto} onOpenChange={setDialogTaxasCartaoAberto}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

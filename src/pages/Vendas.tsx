@@ -32,6 +32,7 @@ import { useFormatadores } from "@/hooks/useFormatadores";
 import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DialogConfiguracaoLayoutVendas } from "@/components/vendas/DialogConfiguracaoLayoutVendas";
+import { DialogPersonalizarReciboVendaSobDemanda, ItemMenuPersonalizarReciboVenda } from "@/components/vendas/recibo-config/AcessoPersonalizarReciboVenda";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 
 const VALORES_MESES = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"] as const;
@@ -57,6 +58,7 @@ export default function Vendas() {
   const nomesMeses = t("pagina.meses", { returnObjects: true }) as readonly string[];
   const MESES = VALORES_MESES.map((value, i) => ({ value, label: nomesMeses[i] }));
   const [dialogLayoutAberto, setDialogLayoutAberto] = useState(false);
+  const [dialogReciboConfigAberto, setDialogReciboConfigAberto] = useState(false);
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState<string>("todos");
@@ -184,6 +186,8 @@ export default function Vendas() {
                     <Layout className="h-4 w-4 mr-2" />
                     {t("pagina.layoutImpressao")}
                   </DropdownMenuItem>
+                  {/* Só para quem vê o recibo novo (useReciboVendaNovoVisivel); para os demais, nada muda. */}
+                  <ItemMenuPersonalizarReciboVenda onAbrir={() => setDialogReciboConfigAberto(true)} />
                 </DropdownMenuContent>
               </DropdownMenu>
               <IlustracaoVendas />
@@ -552,6 +556,8 @@ export default function Vendas() {
         open={dialogLayoutAberto}
         onOpenChange={setDialogLayoutAberto}
       />
+
+      <DialogPersonalizarReciboVendaSobDemanda open={dialogReciboConfigAberto} onOpenChange={setDialogReciboConfigAberto} />
     </AppLayout>
   );
 }

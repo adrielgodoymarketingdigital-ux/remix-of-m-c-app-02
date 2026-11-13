@@ -183,6 +183,11 @@ export function limparTextoRecibo(texto: unknown, maxCaracteres: number, maxLinh
   return resultado;
 }
 
+/** Quantos caracteres a pessoa vê (o mesmo critério do corte de limparTextoRecibo). */
+export function contarCaracteresVisiveis(texto: string): number {
+  return caracteresVisiveis(texto).length;
+}
+
 // ── Normalização ────────────────────────────────────────────────────────────
 
 const objetoSimples = (v: unknown): v is Record<string, unknown> =>
