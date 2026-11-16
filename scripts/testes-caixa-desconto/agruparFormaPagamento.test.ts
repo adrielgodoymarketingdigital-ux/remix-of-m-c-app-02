@@ -1,4 +1,4 @@
-// deno test --no-check --config scripts/testes-caixa-desconto/deno.json scripts/testes-caixa-desconto/
+// deno test --no-check --allow-read=src --config scripts/testes-caixa-desconto/deno.json scripts/testes-caixa-desconto/
 // Desconto no caixa (Fase 1): agruparVendasPorFormaPagamento abate o desconto
 // da 1ª forma; valorLiquidoVenda/descontoDaVenda. Dados fictícios; sem rede.
 // As linhas imitam o que o PDV grava: vendas.total BRUTO, desconto em

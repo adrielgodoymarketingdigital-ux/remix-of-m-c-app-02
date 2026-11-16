@@ -56,4 +56,32 @@ Os itens abaixo ficam FORA da trilha principal e precisam de decisão própria.
 - `src/hooks/useVendas.ts:~1063-1155`: ao editar o `total` de uma venda, soma a
   diferença (bruto novo − bruto antigo) nos totais do caixa fechado e no `saldo_final`
   (se dinheiro). Coerente com as duas bases enquanto o desconto não for editado.
-  Conferir na Fase 2 se a edição pode mudar o desconto.
+  Sem alteração na Fase 2; conferir se a edição pode mudar o desconto.
+
+## (g) Dados antigos: só caixas fechados ANTES da data de corte
+
+Decisão (2026-11-16): a migration de dados antigos (separada, depois da Fase 2)
+corrige SOMENTE caixas fechados antes de uma **data de corte = o horário em que a
+Fase 2 entrar no ar**. Caixas fechados depois do deploy já gravaram os totais com o
+desconto abatido; corrigi-los de novo abateria o desconto duas vezes.
+
+- Registrar o horário exato do deploy da Fase 2 (data/hora em UTC) para usar na
+  migration como `data_fechamento < '<corte>'`.
+- Caixa ABERTO no momento do deploy e fechado depois: já fecha com a conta nova
+  (o fechamento recalcula tudo desde a abertura) → fica fora da correção.
+- Por diferença, nunca recalculando tudo (a 20260707165244 recalculou e zeraria
+  vendas avulsas e OS); `saldo_final` não é tocado.
+- `alterarDataVenda` (item d) só muda junto com essa migration.
+
+## (h) Fase 2 — outros lugares que somam caixa por conta própria (sem alteração)
+
+- `src/lib/vendas/alterarDataVenda.ts` / `.core.ts`: usa o agrupador, mas
+  `COLUNAS_LINHA` não pede o desconto → continua movendo o BRUTO entre caixas
+  fechados. Fica para a fase dos dados antigos (item d/g).
+- `src/hooks/useVendas.ts:~1113-1158`: item (f).
+- `src/lib/caixa/ajustarCaixasFechadosOS.ts` e `servicosCaixa.ts`: só OS
+  (`ordens_servico`), não lê `vendas` → desconto de venda não se aplica.
+- `src/components/financeiro/SecaoVendasPorFormaPagamento.tsx`: corrigida na Fase 2,
+  mas (já antes) não tira as linhas "utilizado na OS" como o caixa tira. Pré-existente.
+- Vendido por funcionário: com `valorLiquidoVenda`, linha com total NEGATIVO passa a
+  contar 0 (antes contava negativo). Sem desconto e total ≥ 0 é idêntico.

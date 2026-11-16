@@ -23,6 +23,7 @@ import {
 import { TOTAIS_DEVOLUCOES_ZERO, type TotaisDevolucoesTroca } from "@/lib/caixa/devolucoesTroca";
 import { carregarDevolucoesDoCaixa } from "@/lib/caixa/carregarDevolucoesTroca";
 import { mapaStatusContaPorOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
+import { agregarVendasPorFuncionario, COLUNAS_VENDAS_CAIXA, SEM_FUNCIONARIO, somarVendasNoCaixa } from "@/lib/caixa/vendasDoCaixa";
 
 interface ResumoFechamento {
   total_dinheiro: number;
@@ -90,7 +91,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
       let query = supabase
         .from("vendas")
-        .select("forma_pagamento, total, funcionario_id, observacoes, segunda_forma_pagamento, valor_segunda_forma, valor_troca")
+        .select(`${COLUNAS_VENDAS_CAIXA}, funcionario_id` as const)
         .eq("user_id", userIdVendas)
         .gte("data", caixa.data_abertura)
         .lte("data", new Date().toISOString())
@@ -109,22 +110,13 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         (v: { observacoes?: string | null }) => !isVendaDeItemOS(v.observacoes),
       );
 
-      const formasCartao = ["debito", "credito", "credito_parcelado"];
-
-      // Usa o mesmo agrupador do fechamento real (useCaixa.ts), que rateia corretamente
-      // vendas com 2 formas de pagamento e ignora o registro auxiliar do split
-      const breakdown = agruparVendasPorFormaPagamento(vendas ?? []);
-      let total_dinheiro = 0;
-      let total_pix = 0;
-      let total_cartao = 0;
-      let total_a_receber = 0;
-
-      for (const item of breakdown) {
-        if (item.chave === "dinheiro") total_dinheiro += item.total;
-        else if (item.chave === "pix") total_pix += item.total;
-        else if (formasCartao.includes(item.chave)) total_cartao += item.total;
-        else if (item.chave === "a_receber" || item.chave === "a_prazo") total_a_receber += item.total;
-      }
+      // Mesma soma do fechamento real (useCaixa.ts → somarVendasNoCaixa): rateia o
+      // pagamento duplo, ignora o registro auxiliar e abate o desconto da 1ª forma.
+      const somaVendas = somarVendasNoCaixa(vendas ?? []);
+      let total_dinheiro = somaVendas.total_dinheiro;
+      let total_pix = somaVendas.total_pix;
+      let total_cartao = somaVendas.total_cartao;
+      let total_a_receber = somaVendas.total_a_receber;
 
       // Buscar vendas avulsas do período
       const { data: vendasAvulsasPreview } = await supabase
@@ -155,22 +147,12 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       const breakdownCompleto = agruparVendasPorFormaPagamento([...(vendas ?? []), ...vendasAvulsasComoVenda], nomesForma.curto);
       const total_vendido = breakdownCompleto.reduce((acc, item) => acc + item.total, 0);
 
-      // Agregar por funcionário (ignora o registro auxiliar do split de pagamento,
-      // que duplicaria o valor do mesmo vendedor)
-      const mapaFunc: Record<string, { total: number; quantidade: number }> = {};
-
-      for (const venda of vendas ?? []) {
-        if (venda.observacoes === "pagamento_duplo_secundario") continue;
-        const valor = Number(venda.total) || 0;
-
-        const fid = venda.funcionario_id ?? "__sem_funcionario__";
-        if (!mapaFunc[fid]) mapaFunc[fid] = { total: 0, quantidade: 0 };
-        mapaFunc[fid].total += valor;
-        mapaFunc[fid].quantidade += 1;
-      }
+      // Agregar por funcionário: valor líquido (total − desconto; a troca não sai),
+      // ignorando o registro auxiliar do split de pagamento.
+      const mapaFunc = agregarVendasPorFuncionario(vendas ?? []);
 
       // Buscar nomes dos funcionários
-      const funcionarioIds = Object.keys(mapaFunc).filter(id => id !== "__sem_funcionario__");
+      const funcionarioIds = Object.keys(mapaFunc).filter(id => id !== SEM_FUNCIONARIO);
       const nomesMap: Record<string, string> = {};
       if (funcionarioIds.length > 0) {
         const { data: funcs } = await supabase
@@ -184,8 +166,8 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
 
       const breakdownFunc: VendaFuncionario[] = Object.entries(mapaFunc)
         .map(([fid, dados]) => ({
-          funcionario_id: fid === "__sem_funcionario__" ? null : fid,
-          nome: fid === "__sem_funcionario__" ? tAgora("caixa.fechamento.semVendedor") : (nomesMap[fid] || tAgora("caixa.fechamento.desconhecido")),
+          funcionario_id: fid === SEM_FUNCIONARIO ? null : fid,
+          nome: fid === SEM_FUNCIONARIO ? tAgora("caixa.fechamento.semVendedor") : (nomesMap[fid] || tAgora("caixa.fechamento.desconhecido")),
           total: dados.total,
           quantidade: dados.quantidade,
         }))

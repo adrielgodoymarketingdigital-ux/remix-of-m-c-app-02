@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Caixa } from "@/types/caixa";
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
-import { agruparVendasPorFormaPagamento, BreakdownFormaPagamento, calcularDinheiroEsperado } from "@/lib/formaPagamento";
+import { BreakdownFormaPagamento, calcularDinheiroEsperado } from "@/lib/formaPagamento";
+import { COLUNAS_VENDAS_CAIXA, somarVendasNoCaixa } from "@/lib/caixa/vendasDoCaixa";
 import {
   agregarServicosNoCaixa,
   derivarEventosRecebimentoOS,
@@ -139,7 +140,7 @@ export function useCaixa() {
     const userIdVendas = caixa.proprietario_id ?? lojaUserIdRef.current ?? caixa.user_id;
     let vendasQuery = supabase
       .from("vendas")
-      .select("forma_pagamento, total, observacoes, segunda_forma_pagamento, valor_segunda_forma, valor_troca")
+      .select(COLUNAS_VENDAS_CAIXA)
       .eq("user_id", userIdVendas)
       .gte("data", caixa.data_abertura)
       .lte("data", new Date().toISOString())
@@ -173,21 +174,15 @@ export function useCaixa() {
 
     const formasCartao = ["debito", "credito", "credito_parcelado"];
 
-    // Usa o mesmo agrupador do preview de fechamento de caixa, que já rateia
-    // corretamente vendas com 2 formas de pagamento (evita contar o valor 2x)
-    const breakdown = agruparVendasPorFormaPagamento(vendas ?? []);
+    // Mesma soma da prévia do fechamento (somarVendasNoCaixa): rateia o pagamento
+    // duplo (sem contar 2x) e abate o desconto da 1ª forma (vendas.total é bruto).
+    const somaVendas = somarVendasNoCaixa(vendas ?? []);
+    const breakdown = somaVendas.breakdown;
 
-    let total_dinheiro = 0;
-    let total_pix = 0;
-    let total_cartao = 0;
-    let total_a_receber = 0;
-
-    for (const item of breakdown) {
-      if (item.chave === "dinheiro") total_dinheiro += item.total;
-      else if (item.chave === "pix") total_pix += item.total;
-      else if (formasCartao.includes(item.chave)) total_cartao += item.total;
-      else if (item.chave === "a_receber" || item.chave === "a_prazo") total_a_receber += item.total;
-    }
+    let total_dinheiro = somaVendas.total_dinheiro;
+    let total_pix = somaVendas.total_pix;
+    let total_cartao = somaVendas.total_cartao;
+    let total_a_receber = somaVendas.total_a_receber;
 
     (vendasAvulsas || []).forEach((v: any) => {
       const forma = v.forma_pagamento;

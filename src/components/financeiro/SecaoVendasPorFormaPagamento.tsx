@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIdentidade, applyEmpresaFilter } from "@/hooks/useResolvedUserId";
 import { formatCurrency } from "@/lib/formatters";
 import { agruparVendasPorFormaPagamento, CORES_BADGE_FORMA_PAGAMENTO, BreakdownFormaPagamento } from "@/lib/formaPagamento";
+import { COLUNAS_VENDAS_CAIXA } from "@/lib/caixa/vendasDoCaixa";
 import { FiltrosPeriodo } from "./FiltroPeriodoAvancado";
 import { limitesDiaBrasilia } from "@/lib/dataBrasilia";
 import { TOTAIS_DEVOLUCOES_ZERO, type TotaisDevolucoesTroca } from "@/lib/caixa/devolucoesTroca";
@@ -31,7 +32,8 @@ export function SecaoVendasPorFormaPagamento({ filtros }: SecaoVendasPorFormaPag
     try {
       let query = supabase
         .from("vendas")
-        .select("forma_pagamento, total, observacoes, segunda_forma_pagamento, valor_segunda_forma, valor_troca, grupo_venda")
+        // Mesmas colunas do caixa (com o desconto, abatido da 1ª forma pelo agrupador).
+        .select(`${COLUNAS_VENDAS_CAIXA}, grupo_venda` as const)
         .eq("user_id", userId)
         .or("cancelada.is.null,cancelada.eq.false");
 
