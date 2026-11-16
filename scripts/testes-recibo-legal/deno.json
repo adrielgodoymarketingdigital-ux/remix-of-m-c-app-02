@@ -5,5 +5,8 @@
     "jspdf": "./jspdfDeno.ts"
   },
   "nodeModulesDir": "manual",
-  "unstable": ["sloppy-imports"]
+  "unstable": [
+    "sloppy-imports"
+  ],
+  "lock": false
 }

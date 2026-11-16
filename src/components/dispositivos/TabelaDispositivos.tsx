@@ -28,14 +28,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Edit, Trash2, ShoppingCart, FileText, Download, Loader2, ImageIcon, Lock } from "lucide-react";
+import { Edit, Trash2, ShoppingCart, FileText, FilePlus2, Download, Loader2, ImageIcon, Lock } from "lucide-react";
 import { Dispositivo } from "@/types/dispositivo";
 import { formatCurrency } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
-import { buscarConfiguracaoLojaPorEmpresa } from "@/hooks/useConfiguracaoLoja";
+import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { BadgeSaudeBateria } from "@/components/dispositivos/BadgeSaudeBateria";
@@ -65,7 +64,7 @@ export function TabelaDispositivos({
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [recibosStatus, setRecibosStatus] = useState<Record<string, { temRecibo: boolean; compraId: string | null }>>({});
-  const [gerandoRecibo, setGerandoRecibo] = useState<string | null>(null);
+  const { gerar: gerarRecibo, gerando: gerandoReciboDe, t } = useGerarReciboLegal();
   const { toast } = useToast();
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
 
@@ -95,6 +94,8 @@ export function TabelaDispositivos({
     verificarRecibos();
   }, [dispositivos]);
 
+  // Sempre um recibo NOVO, lido do banco com as fotos e anexos atuais da compra
+  // (o anterior fica guardado no storage). Abre o PDF novo, como antes.
   const handleGerarReciboLegal = async (dispositivo: Dispositivo) => {
     const status = recibosStatus[dispositivo.id];
     if (!status?.compraId) {
@@ -105,110 +106,13 @@ export function TabelaDispositivos({
       });
       return;
     }
-
-    setGerandoRecibo(dispositivo.id);
-    try {
-      const config = await buscarConfiguracaoLojaPorEmpresa(dispositivo.empresa_id);
-      const camposFaltando: string[] = [];
-      if (!config?.nome_loja) camposFaltando.push("Nome da loja");
-      if (!config?.razao_social) camposFaltando.push("Razão social");
-      if (!config?.cnpj) camposFaltando.push("CNPJ");
-      if (!config?.endereco) camposFaltando.push("Endereço");
-      if (!config?.telefone) camposFaltando.push("Telefone");
-      if (camposFaltando.length > 0) {
-        toast({
-          title: "Dados da loja incompletos",
-          description: `Por favor, complete os seguintes campos nas configurações: ${camposFaltando.join(", ")}`,
-          variant: "destructive",
-        });
-        setGerandoRecibo(null);
-        return;
-      }
-
-      const { data: compra, error: compraError } = await supabase
-        .from("compras_dispositivos")
-        .select("*, origem_pessoas(*)")
-        .eq("id", status.compraId)
-        .single();
-
-      if (compraError || !compra) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível encontrar os dados da compra",
-          variant: "destructive",
-        });
-        setGerandoRecibo(null);
-        return;
-      }
-
-      if (!compra.origem_pessoas?.nome || !compra.origem_pessoas?.cpf_cnpj) {
-        toast({
-          title: "Dados do vendedor incompletos",
-          description: "Por favor, complete os dados do vendedor (Nome e CPF/CNPJ)",
-          variant: "destructive",
-        });
-        setGerandoRecibo(null);
-        return;
-      }
-
-      toast({
-        title: "Gerando recibo...",
-        description: "Por favor, aguarde",
-      });
-
-      const pdf = await gerarReciboLegalPDF({
-        loja: config!,
-        vendedor: compra.origem_pessoas as any,
-        dispositivo: {
-          tipo: dispositivo.tipo,
-          marca: dispositivo.marca,
-          modelo: dispositivo.modelo,
-          cor: dispositivo.cor,
-          imei: dispositivo.imei,
-          numero_serie: dispositivo.numero_serie,
-          capacidade_gb: dispositivo.capacidade_gb,
-          condicao: dispositivo.condicao,
-          checklist: (dispositivo.checklist as any)?.entrada,
-        },
-        compra: compra as any,
-      });
-
-      const pdfUrl = await salvarReciboStorage(pdf, status.compraId);
-
-      if (!pdfUrl) {
-        throw new Error("Erro ao salvar PDF no storage");
-      }
-
-      const { error: updateError } = await supabase
-        .from("compras_dispositivos")
-        .update({ termo_pdf_url: pdfUrl })
-        .eq("id", status.compraId);
-
-      if (updateError) {
-        throw updateError;
-      }
-
+    await gerarRecibo(status.compraId, (resultado) => {
       setRecibosStatus(prev => ({
         ...prev,
         [dispositivo.id]: { ...prev[dispositivo.id], temRecibo: true }
       }));
-
-      toast({
-        title: "Sucesso!",
-        description: "Recibo legal gerado com sucesso",
-      });
-
-      window.open(pdfUrl, "_blank");
-    } catch (error) {
-      console.error("Erro ao gerar recibo:", error);
-      toast({
-        title: "Erro ao gerar recibo",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
-    } finally {
-      setGerandoRecibo(null);
-    }
+      window.open(resultado.url, "_blank");
+    });
   };
 
   const handleBaixarRecibo = async (dispositivo: Dispositivo) => {
@@ -530,39 +434,65 @@ export function TabelaDispositivos({
                 <div className="flex items-center justify-center gap-2">
                   {dispositivo.origem_tipo === 'terceiro' && recibosStatus[dispositivo.id] && (
                     <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          {recibosStatus[dispositivo.id].temRecibo ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleBaixarRecibo(dispositivo)}
-                              disabled={gerandoRecibo === dispositivo.id}
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          ) : (
+                      {recibosStatus[dispositivo.id].temRecibo ? (
+                        <>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleBaixarRecibo(dispositivo)}
+                                disabled={gerandoReciboDe(recibosStatus[dispositivo.id].compraId)}
+                                className="text-green-600 hover:text-green-700"
+                                aria-label="Baixar Recibo Legal"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Baixar Recibo Legal</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleGerarReciboLegal(dispositivo)}
+                                disabled={gerandoReciboDe(recibosStatus[dispositivo.id].compraId)}
+                                aria-label={t("reciboLegal.gerarNovoFotos")}
+                                data-testid="recibo-gerar"
+                              >
+                                {gerandoReciboDe(recibosStatus[dispositivo.id].compraId) ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <FilePlus2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {gerandoReciboDe(recibosStatus[dispositivo.id].compraId) ? t("reciboLegal.gerandoBotao") : t("reciboLegal.gerarNovoFotos")}
+                            </TooltipContent>
+                          </Tooltip>
+                        </>
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleGerarReciboLegal(dispositivo)}
-                              disabled={gerandoRecibo === dispositivo.id}
+                              disabled={gerandoReciboDe(recibosStatus[dispositivo.id].compraId)}
+                              data-testid="recibo-gerar"
                             >
-                              {gerandoRecibo === dispositivo.id ? (
+                              {gerandoReciboDe(recibosStatus[dispositivo.id].compraId) ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <FileText className="h-4 w-4" />
                               )}
                             </Button>
-                          )}
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {recibosStatus[dispositivo.id].temRecibo 
-                            ? "Baixar Recibo Legal" 
-                            : "Gerar Recibo Legal"}
-                        </TooltipContent>
-                      </Tooltip>
+                          </TooltipTrigger>
+                          <TooltipContent>Gerar Recibo Legal</TooltipContent>
+                        </Tooltip>
+                      )}
                     </TooltipProvider>
                   )}
                   <Button

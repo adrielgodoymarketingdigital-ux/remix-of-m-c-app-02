@@ -14,18 +14,16 @@ import {
 } from "@/components/ui/carousel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CompraDispositivo, OrigemPessoa } from "@/types/origem";
+import { CompraDispositivo } from "@/types/origem";
 import { formatCurrency, parseDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileText, User, Smartphone, DollarSign, Download, Loader2, Images, ImageOff } from "lucide-react";
+import { FileText, FilePlus2, User, Smartphone, DollarSign, Download, Loader2, Images, ImageOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
-import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
+import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
 import { useQuery } from "@tanstack/react-query";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import {
@@ -77,16 +75,20 @@ interface DialogVisualizacaoCompraProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   compra: CompraDispositivo | null;
+  /** Depois de gerar um recibo novo: recarrega a lista. */
+  onReciboGerado?: () => void;
 }
 
 export function DialogVisualizacaoCompra({
   open,
   onOpenChange,
   compra,
+  onReciboGerado,
 }: DialogVisualizacaoCompraProps) {
-  const { toast } = useToast();
   const { podeVerCustos } = useFuncionarioPermissoes();
-  const [gerandoPDF, setGerandoPDF] = useState(false);
+  const { gerar, gerando, t } = useGerarReciboLegal();
+  // Link do recibo gerado agora (vale só para a compra em que foi gerado).
+  const [termoGerado, setTermoGerado] = useState<{ compraId: string; url: string } | null>(null);
 
   const { data: dispositivosDaCompra, isLoading: carregandoDispositivos } = useQuery({
     queryKey: ["compra-dispositivos", compra?.id, compra?.dispositivo_id],
@@ -134,184 +136,22 @@ export function DialogVisualizacaoCompra({
   if (!compra) return null;
 
   const listaDispositivos = dispositivosDaCompra ?? [];
+  const termoPdfUrl = termoGerado?.compraId === compra.id ? termoGerado.url : compra.termo_pdf_url;
+  const gerandoPDF = gerando(compra.id);
   const resumo = totalDaCompra(listaDispositivos);
 
+  // Sempre um recibo NOVO, lido do banco com as fotos e anexos atuais. O link novo
+  // fica no estado local (o objeto da prop não é alterado) e a lista recarrega.
   const handleGerarRecibo = async () => {
-    if (!compra) return;
-
-    setGerandoPDF(true);
-    try {
-      // Buscar configuração da loja (da filial da compra, com fallback para a matriz)
-      const config = await buscarConfiguracaoLojaPorEmpresa(compra.empresa_id);
-
-      if (!config) {
-        toast({
-          title: "Erro ao buscar configuração",
-          description: "Não foi possível encontrar as configurações da loja. Configure os dados da loja primeiro.",
-          variant: "destructive",
-        });
-        setGerandoPDF(false);
-        return;
-      }
-
-      // Validar campos obrigatórios da loja
-      // Usar validação robusta para recibos
-      const validacao = validarConfiguracaoParaRecibos(config);
-
-      if (!validacao.valido) {
-        toast({
-          title: "Dados da loja incompletos",
-          description: `Por favor, complete os seguintes campos nas configurações: ${validacao.camposFaltando.join(", ")}. Clique para configurar.`,
-          variant: "destructive",
-        });
-        setGerandoPDF(false);
-        return;
-      }
-
-      // Buscar dados da pessoa (compra "terceiro") ou usar fornecedor (compra "fornecedor")
-      let pessoaData: Partial<OrigemPessoa> & { nome: string };
-
-      if (compra.pessoa_id) {
-        const { data, error: pessoaError } = await supabase
-          .from('origem_pessoas')
-          .select('*')
-          .eq('id', compra.pessoa_id)
-          .single();
-
-        if (pessoaError || !data) {
-          toast({
-            title: "Erro ao buscar vendedor",
-            description: "Não foi possível encontrar os dados do vendedor",
-            variant: "destructive",
-          });
-          setGerandoPDF(false);
-          return;
-        }
-
-        pessoaData = data;
-      } else if (compra.fornecedor_id) {
-        pessoaData = {
-          nome: compra.fornecedores?.nome || 'Fornecedor não identificado',
-          cpf_cnpj: '',
-          endereco: '',
-          telefone: '',
-        };
-      } else {
-        toast({
-          title: "Erro",
-          description: "Compra sem pessoa ou fornecedor associado",
-          variant: "destructive",
-        });
-        setGerandoPDF(false);
-        return;
-      }
-
-      // Validar campos obrigatórios do vendedor
-      if (!pessoaData.nome) {
-        toast({
-          title: "Dados do vendedor incompletos",
-          description: "Por favor, complete o nome do vendedor",
-          variant: "destructive",
-        });
-        setGerandoPDF(false);
-        return;
-      }
-
-      // Buscar dados do dispositivo
-      const { data: dispositivo, error: dispositivoError } = await supabase
-        .from('dispositivos')
-        .select('*')
-        .eq('id', compra.dispositivo_id)
-        .single();
-
-      if (dispositivoError || !dispositivo) {
-        toast({
-          title: "Erro ao buscar dispositivo",
-          description: "Não foi possível encontrar os dados do dispositivo",
-          variant: "destructive",
-        });
-        setGerandoPDF(false);
-        return;
-      }
-
-      // Validar campos obrigatórios do dispositivo
-      const camposFaltandoDispositivo: string[] = [];
-      if (!dispositivo.marca) camposFaltandoDispositivo.push("Marca");
-      if (!dispositivo.modelo) camposFaltandoDispositivo.push("Modelo");
-      if (!dispositivo.tipo) camposFaltandoDispositivo.push("Tipo");
-
-      if (camposFaltandoDispositivo.length > 0) {
-        toast({
-          title: "Dados do dispositivo incompletos",
-          description: `Por favor, complete os seguintes campos: ${camposFaltandoDispositivo.join(", ")}`,
-          variant: "destructive",
-        });
-        setGerandoPDF(false);
-        return;
-      }
-
-      // Gerar PDF
-      const pdf = await gerarReciboLegalPDF({
-        loja: {
-          nome_loja: config.nome_loja,
-          razao_social: config.razao_social,
-          cnpj: config.cnpj,
-          endereco: config.endereco,
-          telefone: config.telefone,
-        },
-        vendedor: pessoaData,
-        dispositivo: {
-          tipo: dispositivo.tipo,
-          marca: dispositivo.marca,
-          modelo: dispositivo.modelo,
-          cor: dispositivo.cor,
-          imei: dispositivo.imei,
-          numero_serie: dispositivo.numero_serie,
-          capacidade_gb: dispositivo.capacidade_gb,
-          condicao: dispositivo.condicao,
-          checklist: dispositivo.checklist as Record<string, boolean> | undefined,
-        },
-        compra: compra,
-      });
-
-      // Salvar no storage
-      const pdfUrl = await salvarReciboStorage(pdf, compra.id);
-
-      // Atualizar registro da compra
-      const { error: updateError } = await supabase
-        .from('compras_dispositivos')
-        .update({ termo_pdf_url: pdfUrl })
-        .eq('id', compra.id);
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: "Sucesso!",
-        description: "Recibo legal gerado com sucesso",
-      });
-
-      // Baixar PDF usando método robusto
+    await gerar(compra.id, async (resultado) => {
+      setTermoGerado({ compraId: compra.id, url: resultado.url });
+      onReciboGerado?.();
       await downloadPDFRobust({
-        url: pdfUrl,
+        url: resultado.url,
         filename: `recibo-legal-${compra.id}.pdf`,
-        onRetry: () => handleGerarRecibo()
+        onRetry: () => downloadPDFRobust({ url: resultado.url, filename: `recibo-legal-${compra.id}.pdf` }),
       });
-
-      // Atualizar compra local
-      if (compra) {
-        compra.termo_pdf_url = pdfUrl;
-      }
-    } catch (error) {
-      console.error('Erro ao gerar recibo:', error);
-      const mensagem = error instanceof Error ? error.message : 'Erro ao gerar recibo legal';
-      toast({
-        title: "Erro ao gerar recibo",
-        description: mensagem,
-        variant: "destructive",
-      });
-    } finally {
-      setGerandoPDF(false);
-    }
+    });
   };
 
   const formatarFormaPagamento = (forma: string) => {
@@ -333,21 +173,44 @@ export function DialogVisualizacaoCompra({
       <DialogHeader>
         <div className="flex items-center justify-between">
           <DialogTitle>Detalhes da Compra</DialogTitle>
-          {compra.termo_pdf_url ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(compra.termo_pdf_url!, '_blank')}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Baixar Recibo Legal
-            </Button>
+          {termoPdfUrl ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(termoPdfUrl, '_blank')}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Baixar Recibo Legal
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGerarRecibo}
+                disabled={gerandoPDF}
+                title={t("reciboLegal.gerarNovoFotos")}
+                data-testid="recibo-gerar"
+              >
+                {gerandoPDF ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t("reciboLegal.gerandoBotao")}
+                  </>
+                ) : (
+                  <>
+                    <FilePlus2 className="h-4 w-4 mr-2" />
+                    {t("reciboLegal.gerarNovo")}
+                  </>
+                )}
+              </Button>
+            </div>
           ) : (
             <Button
               variant="outline"
               size="sm"
               onClick={handleGerarRecibo}
               disabled={gerandoPDF}
+              data-testid="recibo-gerar"
             >
               {gerandoPDF ? (
                 <>
@@ -585,7 +448,7 @@ export function DialogVisualizacaoCompra({
           )}
 
           {/* Termo PDF */}
-          {compra.termo_pdf_url && (
+          {termoPdfUrl && (
             <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-green-600" />
@@ -595,7 +458,7 @@ export function DialogVisualizacaoCompra({
                 </div>
               </div>
               <Button variant="outline" size="sm" asChild>
-                <a href={compra.termo_pdf_url} target="_blank" rel="noopener noreferrer">
+                <a href={termoPdfUrl} target="_blank" rel="noopener noreferrer">
                   Abrir PDF
                 </a>
               </Button>

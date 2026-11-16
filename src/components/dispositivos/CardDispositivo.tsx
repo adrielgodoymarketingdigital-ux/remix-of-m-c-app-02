@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ShoppingCart, Pencil, Trash2, ImageIcon, FileText, Download, Loader2, Lock, Smartphone, Eye, EyeOff, MoreVertical } from "lucide-react";
+import { ShoppingCart, Pencil, Trash2, ImageIcon, FileText, FilePlus2, Download, Loader2, Lock, Smartphone, Eye, EyeOff, MoreVertical } from "lucide-react";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { Dispositivo } from "@/types/dispositivo";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
@@ -24,8 +24,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
-import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
+import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
 import { useNavigate } from "react-router-dom";
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -70,7 +69,8 @@ export function CardDispositivo({
   const { podeVerCustos, podeVerLucros } = useFuncionarioPermissoes();
   const [temRecibo, setTemRecibo] = useState(false);
   const [compraId, setCompraId] = useState<string | null>(null);
-  const [gerandoRecibo, setGerandoRecibo] = useState(false);
+  const { gerar: gerarRecibo, gerando: gerandoReciboDe, t } = useGerarReciboLegal();
+  const gerandoRecibo = gerandoReciboDe(compraId);
   const [exibirNoCatalogo, setExibirNoCatalogo] = useState(dispositivo.exibir_no_catalogo !== false);
   const [atualizandoCatalogo, setAtualizandoCatalogo] = useState(false);
   // Confirmação de exclusão controlada (compartilhada entre o layout desktop
@@ -102,6 +102,8 @@ export function CardDispositivo({
     verificarRecibo();
   }, [dispositivo.id, dispositivo.origem_tipo]);
 
+  // Sempre um recibo NOVO, lido do banco com as fotos e anexos atuais da compra
+  // (o anterior fica guardado no storage). Abre o PDF novo, como antes.
   const handleGerarReciboLegal = async () => {
     if (!compraId) {
       toast({
@@ -111,109 +113,10 @@ export function CardDispositivo({
       });
       return;
     }
-
-    setGerandoRecibo(true);
-    try {
-      // Validar configuração da loja (da filial do dispositivo, com fallback para a matriz)
-      const config = await buscarConfiguracaoLojaPorEmpresa(dispositivo.empresa_id);
-      const validacao = validarConfiguracaoParaRecibos(config);
-      if (!validacao.valido) {
-        toast({
-          title: "Dados da loja incompletos",
-          description: `Complete os seguintes campos: ${validacao.camposFaltando.join(", ")}. Acesse Configurações para preencher.`,
-          variant: "destructive",
-        });
-        setGerandoRecibo(false);
-        return;
-      }
-
-      // Buscar dados da compra
-      const { data: compra, error: compraError } = await supabase
-        .from("compras_dispositivos")
-        .select("*, origem_pessoas(*)")
-        .eq("id", compraId)
-        .single();
-
-      if (compraError || !compra) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível encontrar os dados da compra",
-          variant: "destructive",
-        });
-        setGerandoRecibo(false);
-        return;
-      }
-
-      // Validar vendedor
-      if (!compra.origem_pessoas?.nome || !compra.origem_pessoas?.cpf_cnpj) {
-        toast({
-          title: "Dados do vendedor incompletos",
-          description: "Por favor, complete os dados do vendedor (Nome e CPF/CNPJ)",
-          variant: "destructive",
-        });
-        setGerandoRecibo(false);
-        return;
-      }
-
-      // Gerar PDF
-      toast({
-        title: "Gerando recibo...",
-        description: "Por favor, aguarde",
-      });
-
-      const pdf = await gerarReciboLegalPDF({
-        loja: config!,
-        vendedor: compra.origem_pessoas as any,
-        dispositivo: {
-          tipo: dispositivo.tipo,
-          marca: dispositivo.marca,
-          modelo: dispositivo.modelo,
-          cor: dispositivo.cor,
-          imei: dispositivo.imei,
-          numero_serie: dispositivo.numero_serie,
-          capacidade_gb: dispositivo.capacidade_gb,
-          condicao: dispositivo.condicao,
-          checklist: (dispositivo.checklist as any)?.entrada,
-        },
-        compra: compra as any,
-      });
-
-      // Salvar no storage
-      const pdfUrl = await salvarReciboStorage(pdf, compraId);
-
-      if (!pdfUrl) {
-        throw new Error("Erro ao salvar PDF no storage");
-      }
-
-      // Atualizar registro da compra
-      const { error: updateError } = await supabase
-        .from("compras_dispositivos")
-        .update({ termo_pdf_url: pdfUrl })
-        .eq("id", compraId);
-
-      if (updateError) {
-        throw updateError;
-      }
-
+    await gerarRecibo(compraId, (resultado) => {
       setTemRecibo(true);
-
-      toast({
-        title: "Sucesso!",
-        description: "Recibo legal gerado com sucesso",
-      });
-
-      // Abrir PDF em nova aba
-      window.open(pdfUrl, "_blank");
-    } catch (error) {
-      console.error("Erro ao gerar recibo:", error);
-      toast({
-        title: "Erro ao gerar recibo",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
-    } finally {
-      setGerandoRecibo(false);
-    }
+      window.open(resultado.url, "_blank");
+    });
   };
 
   const [dialogGarantiaAberto, setDialogGarantiaAberto] = useState(false);
@@ -442,12 +345,22 @@ export function CardDispositivo({
               </DropdownMenuItem>
               {dispositivo.origem_tipo === 'terceiro' && compraId && (
                 temRecibo ? (
-                  <DropdownMenuItem onClick={handleBaixarRecibo}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Ver Recibo Legal
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem onClick={handleBaixarRecibo}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Ver Recibo Legal
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleGerarReciboLegal} disabled={gerandoRecibo} data-testid="recibo-gerar">
+                      {gerandoRecibo ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <FilePlus2 className="h-4 w-4 mr-2" />
+                      )}
+                      {gerandoRecibo ? t("reciboLegal.gerandoBotao") : t("reciboLegal.gerarNovo")}
+                    </DropdownMenuItem>
+                  </>
                 ) : (
-                  <DropdownMenuItem onClick={handleGerarReciboLegal} disabled={gerandoRecibo}>
+                  <DropdownMenuItem onClick={handleGerarReciboLegal} disabled={gerandoRecibo} data-testid="recibo-gerar">
                     {gerandoRecibo ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
@@ -627,12 +540,22 @@ export function CardDispositivo({
         </DropdownMenuItem>
         {dispositivo.origem_tipo === 'terceiro' && compraId && (
           temRecibo ? (
-            <DropdownMenuItem onClick={handleBaixarRecibo}>
-              <Download className="h-4 w-4 mr-2" />
-              Ver Recibo Legal
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem onClick={handleBaixarRecibo}>
+                <Download className="h-4 w-4 mr-2" />
+                Ver Recibo Legal
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGerarReciboLegal} disabled={gerandoRecibo} data-testid="recibo-gerar">
+                {gerandoRecibo ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FilePlus2 className="h-4 w-4 mr-2" />
+                )}
+                {gerandoRecibo ? t("reciboLegal.gerandoBotao") : t("reciboLegal.gerarNovo")}
+              </DropdownMenuItem>
+            </>
           ) : (
-            <DropdownMenuItem onClick={handleGerarReciboLegal} disabled={gerandoRecibo}>
+            <DropdownMenuItem onClick={handleGerarReciboLegal} disabled={gerandoRecibo} data-testid="recibo-gerar">
               {gerandoRecibo ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (

@@ -21,6 +21,8 @@ import { DialogVisualizacaoCompra } from "@/components/origem/DialogVisualizacao
 import { DialogCadastroDispositivo } from "@/components/dispositivos/DialogCadastroDispositivo";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
+import { carregarImagensRecibo } from "@/lib/origem/carregarImagensRecibo";
+import { imagensParaGerador } from "@/lib/origem/gerarEBaixarReciboLegal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/formatters";
@@ -256,7 +258,14 @@ export default function OrigemDispositivos() {
             },
           };
 
-          const pdf = await gerarReciboLegalPDF(dadosRecibo);
+          // Imagens baixadas e reduzidas antes (fetch assíncrono, uma por vez): o PDF não
+          // baixa nada por URL e a foto que falhar vira o quadro cinza, sem travar.
+          const imagens = await carregarImagensRecibo({
+            fotos: dados.fotos ?? [],
+            documentoFrente: dados.documento_vendedor_frente ?? null,
+            documentoVerso: dados.documento_vendedor_verso ?? null,
+          });
+          const pdf = await gerarReciboLegalPDF({ ...dadosRecibo, imagens: imagensParaGerador(imagens) });
           const pdfUrl = await salvarReciboStorage(pdf, compra.id);
           await supabase.from('compras_dispositivos').update({ termo_pdf_url: pdfUrl }).eq('id', compra.id);
 
@@ -455,6 +464,7 @@ export default function OrigemDispositivos() {
                 onExcluir={excluirCompra}
                 onEditarDispositivo={handleEditarDispositivo}
                 onExcluirDispositivo={handleExcluirDispositivo}
+                onReciboGerado={carregarCompras}
               />
             </div>
           ) : isDesktop ? (
@@ -504,6 +514,7 @@ export default function OrigemDispositivos() {
                 onExcluir={excluirCompra}
                 onEditarDispositivo={handleEditarDispositivo}
                 onExcluirDispositivo={handleExcluirDispositivo}
+                onReciboGerado={carregarCompras}
               />
             </div>
           ) : (
@@ -614,6 +625,7 @@ export default function OrigemDispositivos() {
                 onExcluir={excluirCompra}
                 onEditarDispositivo={handleEditarDispositivo}
                 onExcluirDispositivo={handleExcluirDispositivo}
+                onReciboGerado={carregarCompras}
               />
             </div>
           )}
@@ -643,6 +655,7 @@ export default function OrigemDispositivos() {
               if (!open) setCompraSelecionada(null);
             }}
             compra={compraSelecionada}
+            onReciboGerado={carregarCompras}
           />
 
           <DialogCadastroDispositivo

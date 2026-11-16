@@ -36,6 +36,7 @@ import { useFornecedores } from "@/hooks/useFornecedores";
 import { Loader2, AlertTriangle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { UploadFotosCompra } from "./UploadFotosCompra";
+import { useTranslation } from "react-i18next";
 import { DialogCadastroPessoa } from "./DialogCadastroPessoa";
 
 const formSchema = z.object({
@@ -79,6 +80,7 @@ export function DialogEditarCompra({
   compra,
 }: DialogEditarCompraProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useTranslation("comum");
   const [fotos, setFotos] = useState<string[]>([]);
   const [dialogEditarPessoaAberto, setDialogEditarPessoaAberto] = useState(false);
 
@@ -175,7 +177,7 @@ export function DialogEditarCompra({
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Esta compra já tem um termo em PDF gerado. Editar os dados aqui não atualiza o PDF automaticamente.
+              {t("reciboLegal.avisoEdicao")}
             </AlertDescription>
           </Alert>
         )}

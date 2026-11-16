@@ -27,6 +27,8 @@ import {
   Edit,
   Trash2,
   FileText,
+  FilePlus2,
+  Loader2,
   ChevronRight,
 } from "lucide-react";
 import { CompraDispositivo } from "@/types/origem";
@@ -34,6 +36,7 @@ import { descreverAparelhoEncontrado, type AparelhoEncontrado } from "@/lib/orig
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
+import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
 
 interface ListaComprasMobileProps {
   compras: CompraDispositivo[];
@@ -45,6 +48,8 @@ interface ListaComprasMobileProps {
   onExcluirDispositivo?: (dispositivoId: string) => void;
   /** Busca ativa: aparelho secundário que bateu, por id da compra (o principal não aparece aqui). */
   aparelhosEncontrados?: Record<string, AparelhoEncontrado>;
+  /** Depois de gerar um recibo novo: recarrega a lista (o link novo aparece sem recarregar a página). */
+  onReciboGerado?: () => void;
 }
 
 const FORMA_PAGAMENTO_LABEL: Record<string, string> = {
@@ -71,9 +76,19 @@ export function ListaComprasMobile({
   onEditarDispositivo,
   onExcluirDispositivo,
   aparelhosEncontrados,
+  onReciboGerado,
 }: ListaComprasMobileProps) {
   const [compraParaExcluir, setCompraParaExcluir] = useState<CompraDispositivo | null>(null);
   const [dispositivoParaExcluir, setDispositivoParaExcluir] = useState<string | null>(null);
+  const { gerar, gerando, t } = useGerarReciboLegal();
+
+  // Sempre um recibo NOVO, lido do banco com as fotos atuais (o anterior fica guardado).
+  const gerarNovoRecibo = async (compraId: string) => {
+    await gerar(compraId, async (resultado) => {
+      onReciboGerado?.();
+      await downloadPDFRobust({ url: resultado.url, filename: `recibo-legal-${compraId}.pdf` });
+    });
+  };
 
   if (loading) {
     return (
@@ -187,9 +202,17 @@ export function ListaComprasMobile({
                           }
                         >
                           <FileText className="h-4 w-4 mr-2" />
-                          Baixar recibo
+                          {t("reciboLegal.baixarAtual")}
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem
+                        onClick={() => gerarNovoRecibo(compra.id)}
+                        disabled={gerando(compra.id)}
+                        data-testid="recibo-gerar"
+                      >
+                        {gerando(compra.id) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FilePlus2 className="h-4 w-4 mr-2" />}
+                        {gerando(compra.id) ? t("reciboLegal.gerandoBotao") : compra.termo_pdf_url ? t("reciboLegal.gerarNovoFotos") : t("reciboLegal.gerar")}
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       {onEditarDispositivo && (
                         <DropdownMenuItem onClick={() => onEditarDispositivo(compra.dispositivo_id)}>

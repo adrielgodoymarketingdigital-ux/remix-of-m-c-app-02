@@ -234,6 +234,35 @@ const comum = {
       porPaginaRotulo: "Orçamentos por página",
     },
   },
+  // Recibo Legal de compra (Origem de Dispositivos e Dispositivos): gerar de novo com as fotos atuais.
+  reciboLegal: {
+    gerando: "Gerando recibo...",
+    gerandoBotao: "Gerando...",
+    gerado: "Recibo gerado",
+    falhasFotos_zero: "Todas as fotos carregaram",
+    falhasFotos_one: "{{count}} de {{total}} fotos não carregou",
+    falhasFotos_other: "{{count}} de {{total}} fotos não carregaram",
+    falhasDocumentos_zero: "Os documentos carregaram",
+    falhasDocumentos_one: "{{count}} de {{total}} imagens do documento não carregou",
+    falhasDocumentos_other: "{{count}} de {{total}} imagens do documento não carregaram",
+    fotosIgnoradas: "Só as {{max}} primeiras fotos entram no recibo",
+    anteriorGuardado: "O recibo anterior continua guardado",
+    gerar: "Gerar recibo",
+    gerarNovo: "Gerar novo recibo",
+    gerarNovoFotos: "Gerar novo recibo (fotos atuais)",
+    baixarAtual: "Baixar recibo atual",
+    avisoEdicao: "O PDF já gerado não muda sozinho. Depois de salvar, use Gerar novo recibo para incluir as fotos atuais.",
+    configurar: "Configurar",
+    erro: "Não foi possível gerar o recibo",
+    erros: {
+      compra_nao_encontrada: "Compra não encontrada",
+      dispositivo_nao_encontrado: "Dispositivo da compra não encontrado",
+      dispositivo_incompleto: "Complete os dados do dispositivo: {{campos}}",
+      sem_vendedor: "Compra sem pessoa ou fornecedor associado",
+      loja_incompleta: "Complete os dados da loja antes de gerar recibos. Faltam: {{campos}}",
+      termo_nao_atualizado: "O recibo foi salvo, mas não foi possível vinculá-lo à compra. O recibo anterior continua valendo.",
+    },
+  },
 } as const;
 
 export default comum;

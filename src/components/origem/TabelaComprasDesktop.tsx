@@ -36,7 +36,9 @@ import {
   Copy,
   Edit,
   Eye,
+  FilePlus2,
   FileText,
+  Loader2,
   ShoppingCart,
   Trash2,
 } from "lucide-react";
@@ -45,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/formatters";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
+import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
 import { avatarFornecedor } from "@/components/fornecedores/avatarFornecedor";
 import { CompraDispositivo } from "@/types/origem";
 import { descreverAparelhoEncontrado, type AparelhoEncontrado } from "@/lib/origem/buscaCompras";
@@ -78,6 +81,8 @@ interface TabelaComprasDesktopProps {
   onExcluir: (id: string) => Promise<void>;
   onEditarDispositivo: (dispositivoId: string) => void;
   onExcluirDispositivo: (dispositivoId: string) => void;
+  /** Depois de gerar um recibo novo: recarrega a lista (o link novo aparece sem recarregar a página). */
+  onReciboGerado?: () => void;
 }
 
 const COR_PAGAMENTO: Record<string, string> = {
@@ -185,7 +190,16 @@ export function TabelaComprasDesktop({
   onExcluir,
   onEditarDispositivo,
   onExcluirDispositivo,
+  onReciboGerado,
 }: TabelaComprasDesktopProps) {
+  const { gerar, gerando, t } = useGerarReciboLegal();
+  // Sempre um recibo NOVO, lido do banco com as fotos atuais (o anterior fica guardado).
+  const gerarNovoRecibo = async (compraId: string) => {
+    await gerar(compraId, async (resultado) => {
+      onReciboGerado?.();
+      await baixarRecibo(resultado.url, compraId);
+    });
+  };
   const paginaAtual = useMemo(() => paginar(compras, pagina, COMPRAS_POR_PAGINA), [compras, pagina]);
   const idsDaPagina = paginaAtual.itens.map((c) => c.id);
   const marcadasNaPagina = idsDaPagina.filter((id) => selecionadas.has(id)).length;
@@ -332,20 +346,33 @@ export function TabelaComprasDesktop({
                       </Badge>
                     </TableCell>
                     <TableCell className="px-1 text-center">
-                      {compra.termo_pdf_url ? (
+                      {/* Dois botões de 24px cabem nos 48px da coluna sem mudar a largura da tabela. */}
+                      <div className="flex items-center justify-center">
+                        {compra.termo_pdf_url && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => baixarRecibo(compra.termo_pdf_url!, compra.id)}
+                            title={t("reciboLegal.baixarAtual")}
+                            aria-label={`${t("reciboLegal.baixarAtual")}: ${descricao}`}
+                          >
+                            <FileText className="h-4 w-4 text-green-600" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
-                          onClick={() => baixarRecibo(compra.termo_pdf_url!, compra.id)}
-                          title="Baixar Recibo Legal"
-                          aria-label={`Baixar o recibo legal da compra ${descricao}`}
+                          className="h-6 w-6"
+                          onClick={() => gerarNovoRecibo(compra.id)}
+                          disabled={gerando(compra.id)}
+                          title={gerando(compra.id) ? t("reciboLegal.gerandoBotao") : compra.termo_pdf_url ? t("reciboLegal.gerarNovoFotos") : t("reciboLegal.gerar")}
+                          aria-label={`${gerando(compra.id) ? t("reciboLegal.gerandoBotao") : compra.termo_pdf_url ? t("reciboLegal.gerarNovoFotos") : t("reciboLegal.gerar")}: ${descricao}`}
+                          data-testid="recibo-gerar"
                         >
-                          <FileText className="h-4 w-4 text-green-600" />
+                          {gerando(compra.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}
                         </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
+                      </div>
                     </TableCell>
                     <TableCell className="sticky right-[84px] border-l bg-card px-1.5">
                       <div className="flex items-center justify-center gap-0.5">

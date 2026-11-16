@@ -20,16 +20,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Eye, FileText, Edit, Trash2, Loader2 } from "lucide-react";
+import { Eye, FileText, FilePlus2, Edit, Trash2, Loader2 } from "lucide-react";
 import { CompraDispositivo } from "@/types/origem";
 import { descreverAparelhoEncontrado, type AparelhoEncontrado } from "@/lib/origem/buscaCompras";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { toast } from "sonner";
-import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
-import { supabase } from "@/integrations/supabase/client";
-import { buscarConfiguracaoLojaPorEmpresa, validarConfiguracaoParaRecibos } from "@/hooks/useConfiguracaoLoja";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
+import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
 
 interface TabelaComprasProps {
   compras: CompraDispositivo[];
@@ -41,6 +39,8 @@ interface TabelaComprasProps {
   onExcluirDispositivo?: (dispositivoId: string) => void;
   /** Busca ativa: aparelho secundário que bateu, por id da compra (o principal não aparece aqui). */
   aparelhosEncontrados?: Record<string, AparelhoEncontrado>;
+  /** Depois de gerar um recibo novo: recarrega a lista (o link novo aparece sem recarregar a página). */
+  onReciboGerado?: () => void;
 }
 
 export function TabelaCompras({
@@ -52,104 +52,21 @@ export function TabelaCompras({
   onEditarDispositivo,
   onExcluirDispositivo,
   aparelhosEncontrados,
+  onReciboGerado,
 }: TabelaComprasProps) {
   const [compraParaExcluir, setCompraParaExcluir] = useState<string | null>(null);
-  const [gerandoRecibo, setGerandoRecibo] = useState<Record<string, boolean>>({});
+  const { gerar, gerando, t } = useGerarReciboLegal();
 
+  // Sempre um recibo NOVO, lido do banco com as fotos atuais (o anterior fica guardado).
   const handleGerarRecibo = async (compra: CompraDispositivo) => {
-    try {
-      setGerandoRecibo(prev => ({ ...prev, [compra.id]: true }));
-
-      const config = await buscarConfiguracaoLojaPorEmpresa(compra.empresa_id);
-
-      // Validar configuração da loja
-      if (!config) {
-        toast.error("Configure os dados da loja primeiro");
-        return;
-      }
-
-      // Usar validação robusta para recibos
-      const validacao = validarConfiguracaoParaRecibos(config);
-
-      if (!validacao.valido) {
-        toast.error(
-          `Complete os dados da loja antes de gerar recibos. Faltam: ${validacao.camposFaltando.join(", ")}`,
-          {
-            action: {
-              label: "Configurar",
-              onClick: () => window.location.href = "/configuracoes"
-            }
-          }
-        );
-        return;
-      }
-
-      // Buscar dados completos da pessoa/fornecedor
-      const vendedor = compra.origem_pessoas || {
-        nome: compra.fornecedores?.nome || 'Vendedor não identificado',
-        cpf_cnpj: '',
-        endereco: '',
-        telefone: '',
-      };
-
-      // Buscar dados completos do dispositivo
-      const { data: dispositivo, error: errorDispositivo } = await supabase
-        .from('dispositivos')
-        .select('*')
-        .eq('id', compra.dispositivo_id)
-        .single();
-
-      if (errorDispositivo || !dispositivo) {
-        toast.error("Erro ao buscar dados do dispositivo");
-        return;
-      }
-
-      // Gerar PDF
-      toast.loading("Gerando recibo legal...");
-      const pdf = await gerarReciboLegalPDF({
-        loja: config as any,
-        vendedor: vendedor as any,
-        dispositivo: {
-          tipo: dispositivo.tipo,
-          marca: dispositivo.marca,
-          modelo: dispositivo.modelo,
-          cor: dispositivo.cor,
-          imei: dispositivo.imei,
-          numero_serie: dispositivo.numero_serie,
-          capacidade_gb: dispositivo.capacidade_gb,
-          condicao: dispositivo.condicao,
-          checklist: (dispositivo.checklist as any)?.entrada,
-        },
-        compra: compra as any,
-      });
-
-      // Salvar no storage
-      const pdfUrl = await salvarReciboStorage(pdf, compra.id);
-
-      // Atualizar banco de dados
-      const { error: errorUpdate } = await supabase
-        .from('compras_dispositivos')
-        .update({ termo_pdf_url: pdfUrl })
-        .eq('id', compra.id);
-
-      if (errorUpdate) throw errorUpdate;
-
-      toast.dismiss();
-      toast.success("Recibo gerado com sucesso!");
-
-      // Baixar PDF usando método robusto
+    await gerar(compra.id, async (resultado) => {
+      onReciboGerado?.();
       await downloadPDFRobust({
-        url: pdfUrl,
+        url: resultado.url,
         filename: `recibo-legal-${compra.id}.pdf`,
-        onRetry: () => handleGerarRecibo(compra)
+        onRetry: () => handleBaixarRecibo(resultado.url, compra.id),
       });
-    } catch (error: any) {
-      console.error("Erro ao gerar recibo:", error);
-      toast.dismiss();
-      toast.error(error.message || "Erro ao gerar recibo");
-    } finally {
-      setGerandoRecibo(prev => ({ ...prev, [compra.id]: false }));
-    }
+    });
   };
 
   const handleBaixarRecibo = async (url: string, compraId: string) => {
@@ -266,18 +183,30 @@ export function TabelaCompras({
                 </Badge>
               </TableCell>
               <TableCell className="text-center">
-                {compra.termo_pdf_url ? (
+                <div className="flex items-center justify-center gap-0.5">
+                  {compra.termo_pdf_url && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleBaixarRecibo(compra.termo_pdf_url!, compra.id)}
+                      title={t("reciboLegal.baixarAtual")}
+                      aria-label={t("reciboLegal.baixarAtual")}
+                    >
+                      <FileText className="h-4 w-4 text-green-600" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleBaixarRecibo(compra.termo_pdf_url!, compra.id)}
-                    title="Baixar Recibo Legal"
+                    onClick={() => handleGerarRecibo(compra)}
+                    disabled={gerando(compra.id)}
+                    title={gerando(compra.id) ? t("reciboLegal.gerandoBotao") : compra.termo_pdf_url ? t("reciboLegal.gerarNovoFotos") : t("reciboLegal.gerar")}
+                    aria-label={gerando(compra.id) ? t("reciboLegal.gerandoBotao") : compra.termo_pdf_url ? t("reciboLegal.gerarNovoFotos") : t("reciboLegal.gerar")}
+                    data-testid="recibo-gerar"
                   >
-                    <FileText className="h-4 w-4 text-green-600" />
+                    {gerando(compra.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />}
                   </Button>
-                ) : (
-                  <span className="text-xs text-muted-foreground">-</span>
-                )}
+                </div>
               </TableCell>
               <TableCell className="text-center">
                 <div className="flex items-center justify-center gap-1">
