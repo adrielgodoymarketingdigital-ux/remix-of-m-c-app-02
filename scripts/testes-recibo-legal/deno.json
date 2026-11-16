@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "@/integrations/supabase/client": "./supabaseStub.ts",
+    "@/": "../../src/",
+    "jspdf": "./jspdfDeno.ts"
+  },
+  "nodeModulesDir": "manual",
+  "unstable": ["sloppy-imports"]
+}

@@ -3,6 +3,7 @@ import { CompraDispositivo, OrigemPessoa } from '@/types/origem';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { ehUrlPdf } from '@/lib/origem/imagensRecibo';
 
 interface DadosLoja {
   nome_loja: string;
@@ -36,11 +37,24 @@ interface DadosDispositivo {
   checklist?: Record<string, boolean>;
 }
 
+/**
+ * Imagens já baixadas e convertidas (data URL JPEG) por carregarImagensRecibo.
+ * null numa posição = imagem que não carregou (sai o quadro cinza). Quando
+ * este parâmetro vem, o gerador não baixa nada por URL.
+ */
+export interface ImagensPreparadasRecibo {
+  fotos: (string | null)[];
+  documentoFrente?: string | null;
+  documentoVerso?: string | null;
+}
+
 interface DadosReciboCompleto {
   loja: DadosLoja;
   vendedor: Partial<OrigemPessoa> & { nome: string };
   dispositivo: DadosDispositivo;
   compra: Partial<CompraDispositivo>;
+  /** Opcional. Sem ele, o PDF sai exatamente como antes (imagens pela URL). */
+  imagens?: ImagensPreparadasRecibo;
 }
 
 // Função para formatar data/hora no horário de Brasília
@@ -337,6 +351,11 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
   let secaoAtual = 6;
   const documentoFrente = dados.compra.documento_vendedor_frente;
   const documentoVerso = dados.compra.documento_vendedor_verso;
+  const imagens = dados.imagens;
+  // Sem imagens preparadas mantém a regra antiga (endsWith, que não acerta URL assinada com ?token).
+  const ehPdf = (url: string) => (imagens ? ehUrlPdf(url) : url.toLowerCase().endsWith('.pdf'));
+  const fonteFrente = imagens ? imagens.documentoFrente ?? null : documentoFrente;
+  const fonteVerso = imagens ? imagens.documentoVerso ?? null : documentoVerso;
   
   if (documentoFrente || documentoVerso) {
     verificarNovaPagina(60);
@@ -350,14 +369,15 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
     const alturaDoc = 50;
     
     // Documento frente
-    if (documentoFrente && !documentoFrente.toLowerCase().endsWith('.pdf')) {
+    if (documentoFrente && !ehPdf(documentoFrente)) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.text('Frente:', margemEsquerda, yPos);
       yPos += 3;
       
       try {
-        adicionarImagemProporcional(documentoFrente, 'JPEG', margemEsquerda, yPos, larguraDoc, alturaDoc);
+        if (!fonteFrente) throw new Error('Documento frente não carregou');
+        adicionarImagemProporcional(fonteFrente, 'JPEG', margemEsquerda, yPos, larguraDoc, alturaDoc);
       } catch (error) {
         console.warn('Erro ao adicionar documento frente:', error);
         doc.setDrawColor(200);
@@ -367,7 +387,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
         doc.text('Documento Frente', margemEsquerda + larguraDoc/2, yPos + alturaDoc/2, { align: 'center' });
       }
       yPos += alturaDoc + 5;
-    } else if (documentoFrente && documentoFrente.toLowerCase().endsWith('.pdf')) {
+    } else if (documentoFrente && ehPdf(documentoFrente)) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.text('Frente: [Arquivo PDF - Ver anexo]', margemEsquerda, yPos);
@@ -375,7 +395,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
     }
     
     // Documento verso
-    if (documentoVerso && !documentoVerso.toLowerCase().endsWith('.pdf')) {
+    if (documentoVerso && !ehPdf(documentoVerso)) {
       verificarNovaPagina(60);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
@@ -383,7 +403,8 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       yPos += 3;
       
       try {
-        adicionarImagemProporcional(documentoVerso, 'JPEG', margemEsquerda, yPos, larguraDoc, alturaDoc);
+        if (!fonteVerso) throw new Error('Documento verso não carregou');
+        adicionarImagemProporcional(fonteVerso, 'JPEG', margemEsquerda, yPos, larguraDoc, alturaDoc);
       } catch (error) {
         console.warn('Erro ao adicionar documento verso:', error);
         doc.setDrawColor(200);
@@ -393,7 +414,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
         doc.text('Documento Verso', margemEsquerda + larguraDoc/2, yPos + alturaDoc/2, { align: 'center' });
       }
       yPos += alturaDoc + 5;
-    } else if (documentoVerso && documentoVerso.toLowerCase().endsWith('.pdf')) {
+    } else if (documentoVerso && ehPdf(documentoVerso)) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.text('Verso: [Arquivo PDF - Ver anexo]', margemEsquerda, yPos);
@@ -409,7 +430,8 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
   }
 
   // ===== SEÇÃO: FOTOS DO DISPOSITIVO (se houver) =====
-  const fotos = dados.compra.fotos as string[] | undefined;
+  // Com imagens preparadas, uma posição por foto (null = não carregou); sem, as URLs da compra.
+  const fotos: (string | null)[] | undefined = imagens ? imagens.fotos : (dados.compra.fotos as string[] | undefined);
   
   if (fotos && fotos.length > 0) {
     verificarNovaPagina(80);
@@ -437,7 +459,9 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       
       try {
         // Adiciona a imagem ao PDF, mantendo a proporção original dentro da célula
-        adicionarImagemProporcional(fotos[i], 'JPEG', xFoto, yPos, larguraFoto, alturaFoto);
+        const fonteFoto = fotos[i];
+        if (!fonteFoto) throw new Error(`Foto ${i + 1} não carregou`);
+        adicionarImagemProporcional(fonteFoto, 'JPEG', xFoto, yPos, larguraFoto, alturaFoto);
       } catch (error) {
         console.warn(`Erro ao adicionar foto ${i + 1}:`, error);
         // Se falhar, desenha um placeholder
