@@ -18,6 +18,44 @@ export interface VendaFormaPagamento {
   valor_segunda_forma?: number | null;
   /** Aparelho recebido na troca (pagamento em espécie): não entra em nenhuma forma. NULL = sem troca. */
   valor_troca?: number | null;
+  /** Desconto manual da linha (vendas.total é BRUTO). Ausente/nulo = 0. */
+  valor_desconto_manual?: number | null;
+  /** Desconto de cupom da linha. Ausente/nulo = 0. */
+  valor_desconto_cupom?: number | null;
+}
+
+/** Linha mínima para o valor líquido (total bruto menos descontos). */
+export interface VendaComDesconto {
+  total: number | string | null | undefined;
+  valor_desconto_manual?: number | string | null;
+  valor_desconto_cupom?: number | string | null;
+}
+
+/** Número finito e positivo; qualquer outra coisa (nulo, NaN, negativo, lixo) = 0. */
+const positivoOuZero = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+/**
+ * Desconto da linha (manual + cupom), limitado entre 0 e o total bruto da
+ * linha: desconto negativo, NaN ou nulo vira 0; maior que o total vira o total.
+ */
+export function descontoDaVenda(venda: VendaComDesconto): number {
+  const desconto = positivoOuZero(venda.valor_desconto_manual) + positivoOuZero(venda.valor_desconto_cupom);
+  if (desconto <= 0) return 0;
+  return Math.min(desconto, positivoOuZero(venda.total));
+}
+
+/**
+ * Valor líquido da linha (total bruto − desconto), nunca negativo. Não abate
+ * troca nem 2ª forma. Sem desconto e com total ≥ 0 devolve o próprio total.
+ * Para o agregado por funcionário do fechamento (ainda não ligado nas telas).
+ */
+export function valorLiquidoVenda(venda: VendaComDesconto): number {
+  const bruto = Number(venda.total) || 0;
+  const desconto = descontoDaVenda(venda);
+  return Math.max(0, desconto > 0 ? bruto - desconto : bruto);
 }
 
 export interface BreakdownFormaPagamento {
@@ -90,8 +128,12 @@ export function agruparVendasPorFormaPagamento(
     // 2ª forma do registro principal correspondente (via valor_segunda_forma). Ignorar aqui.
     if (venda.observacoes === MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO) continue;
 
-    // A troca abate só a 1ª forma: a 2ª forma é um valor informado à parte.
-    const totalVenda = (Number(venda.total) || 0) - (Number(venda.valor_troca) || 0);
+    // Desconto e troca abatem só a 1ª forma: a 2ª forma é um valor informado à parte
+    // (o que o cliente de fato pagou nela). vendas.total é BRUTO (ver PDV.tsx).
+    // Sem desconto a conta é exatamente a de antes (mesmos bits): não subtrai 0.
+    const bruto = Number(venda.total) || 0;
+    const desconto = descontoDaVenda(venda);
+    const totalVenda = (desconto > 0 ? bruto - desconto : bruto) - (Number(venda.valor_troca) || 0);
     const valorSegunda = Number(venda.valor_segunda_forma) || 0;
 
     if (venda.segunda_forma_pagamento && valorSegunda > 0) {
