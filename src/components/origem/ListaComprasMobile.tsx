@@ -37,6 +37,7 @@ import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { formatDate } from "@/lib/formatters";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
 import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
+import { REGRAS_LISTA_COMPRAS } from "@/lib/origem/regrasReciboLegal";
 
 interface ListaComprasMobileProps {
   compras: CompraDispositivo[];
@@ -84,9 +85,13 @@ export function ListaComprasMobile({
 
   // Sempre um recibo NOVO, lido do banco com as fotos atuais (o anterior fica guardado).
   const gerarNovoRecibo = async (compraId: string) => {
-    await gerar(compraId, async (resultado) => {
-      onReciboGerado?.();
-      await downloadPDFRobust({ url: resultado.url, filename: `recibo-legal-${compraId}.pdf` });
+    // Mesma validação da TabelaCompras (a lista do celular não gerava antes).
+    await gerar(compraId, {
+      regras: REGRAS_LISTA_COMPRAS,
+      depois: async (resultado) => {
+        onReciboGerado?.();
+        await downloadPDFRobust({ url: resultado.url, filename: `recibo-legal-${compraId}.pdf` });
+      },
     });
   };
 

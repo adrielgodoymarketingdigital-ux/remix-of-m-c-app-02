@@ -22,7 +22,8 @@ import { DialogCadastroDispositivo } from "@/components/dispositivos/DialogCadas
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
 import { carregarImagensRecibo } from "@/lib/origem/carregarImagensRecibo";
-import { imagensParaGerador } from "@/lib/origem/gerarEBaixarReciboLegal";
+import { avisosDasImagens, imagensComProblema, imagensParaGerador, resumoDasImagens } from "@/lib/origem/gerarEBaixarReciboLegal";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/formatters";
@@ -84,6 +85,7 @@ export default function OrigemDispositivos() {
   const [paginaDesktop, setPaginaDesktop] = useState(1);
   const [selecionadasDesktop, setSelecionadasDesktop] = useState<Set<string>>(() => new Set());
 
+  const { t } = useTranslation("comum");
   const { compras, loading, criarCompra, atualizarCompra, excluirCompra, carregarCompras } = useComprasDispositivos();
   const { pessoas } = useOrigemPessoas();
   const { dispositivos, excluirDispositivo, atualizarDispositivo } = useDispositivos();
@@ -271,8 +273,15 @@ export default function OrigemDispositivos() {
 
           pdf.save(`recibo-compra-${compra.id}.pdf`);
 
+          // Mesma mensagem de sempre; com foto que não carregou (ou mais de 5), vira alerta com o resumo.
+          const resumo = resumoDasImagens(imagens);
+          const avisos = avisosDasImagens(resumo).map((a) => t(a.chave, a.valores)).join(" · ");
           toast.dismiss();
-          toast.success("Compra registrada e recibo gerado com sucesso!");
+          if (imagensComProblema(resumo)) {
+            toast.warning("Compra registrada e recibo gerado com sucesso!", { description: avisos, duration: 10000 });
+          } else {
+            toast.success("Compra registrada e recibo gerado com sucesso!");
+          }
         }
       }
     } catch (error) {

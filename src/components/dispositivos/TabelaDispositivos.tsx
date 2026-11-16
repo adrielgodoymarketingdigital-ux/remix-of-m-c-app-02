@@ -35,6 +35,7 @@ import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
+import { REGRAS_LISTA_DISPOSITIVOS } from "@/lib/origem/regrasReciboLegal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { BadgeSaudeBateria } from "@/components/dispositivos/BadgeSaudeBateria";
@@ -106,12 +107,17 @@ export function TabelaDispositivos({
       });
       return;
     }
-    await gerarRecibo(status.compraId, (resultado) => {
-      setRecibosStatus(prev => ({
-        ...prev,
-        [dispositivo.id]: { ...prev[dispositivo.id], temRecibo: true }
-      }));
-      window.open(resultado.url, "_blank");
+    await gerarRecibo(status.compraId, {
+      regras: REGRAS_LISTA_DISPOSITIVOS,
+      // Bloqueios no toast do shadcn, com os mesmos textos de antes.
+      aoBloquear: (falha) => toast({ title: falha.titulo, description: falha.descricao, variant: "destructive" }),
+      depois: (resultado) => {
+        setRecibosStatus(prev => ({
+          ...prev,
+          [dispositivo.id]: { ...prev[dispositivo.id], temRecibo: true }
+        }));
+        window.open(resultado.url, "_blank");
+      },
     });
   };
 

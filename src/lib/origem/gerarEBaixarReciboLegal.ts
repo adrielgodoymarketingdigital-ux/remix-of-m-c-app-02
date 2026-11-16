@@ -1,14 +1,26 @@
 // Orquestrador ÚNICO do "Gerar recibo legal" (Origem de Dispositivos e Dispositivos).
-// Ordem: compra atual do banco → dados da loja → imagens atuais (uma por vez) →
-// PDF com as imagens preparadas → storage (arquivo NOVO; o antigo fica intacto) →
-// termo_pdf_url aponta para o novo. Se algo falhar antes de salvar, nada é gravado
-// e o termo_pdf_url antigo continua. As dependências entram por parâmetro (testes
-// em Deno); as reais ficam em dependenciasReciboLegal.ts.
+// Ordem: compra atual do banco → loja e vendedor validados pelas REGRAS DO PONTO que
+// chamou (regrasReciboLegal.ts, iguais às da origin/main em cada tela) → imagens
+// atuais (uma por vez) → PDF com as imagens preparadas → storage (arquivo NOVO; o
+// antigo fica intacto) → termo_pdf_url aponta para o novo. Se algo falhar antes de
+// salvar, nada é gravado e o termo_pdf_url antigo continua. As dependências entram
+// por parâmetro (testes em Deno); as reais ficam em dependenciasReciboLegal.ts.
 import type { gerarReciboLegalPDF, ImagensPreparadasRecibo } from "@/lib/gerarReciboLegalPDF";
 import type { ImagensReciboPreparadas, EntradaImagensRecibo } from "./carregarImagensRecibo";
 import type { DadosCompraParaRecibo } from "./buscarCompraParaRecibo";
 import { MAX_FOTOS_RECIBO, type ResumoFalhas } from "./imagensRecibo";
 import { ErroReciboLegal } from "./erroReciboLegal";
+import type { FalhaRecibo, RegrasReciboLegal } from "./regrasReciboLegal";
+
+/** Bloqueio com a mensagem exata da tela (loja/vendedor/dispositivo incompletos, compra não encontrada...). */
+export class BloqueioReciboLegal extends Error {
+  readonly falha: FalhaRecibo;
+  constructor(falha: FalhaRecibo) {
+    super(falha.descricao ? `${falha.titulo}: ${falha.descricao}` : falha.titulo);
+    this.name = "BloqueioReciboLegal";
+    this.falha = falha;
+  }
+}
 
 type GerarPdf = typeof gerarReciboLegalPDF;
 type DadosLoja = Parameters<GerarPdf>[0]["loja"];
@@ -38,7 +50,6 @@ export interface LojaParaRecibo {
 export interface DependenciasReciboLegal {
   buscarCompra: (compraId: string) => Promise<DadosCompraParaRecibo>;
   buscarLoja: (empresaId: string | null) => Promise<LojaParaRecibo | null>;
-  validarLoja: (loja: LojaParaRecibo | null) => { valido: boolean; camposFaltando: string[] };
   carregarImagens: (entrada: EntradaImagensRecibo) => Promise<ImagensReciboPreparadas>;
   gerarPdf: GerarPdf;
   salvar: (pdf: PdfGerado, compraId: string) => Promise<string>;
@@ -67,7 +78,17 @@ export interface AvisoReciboLegal {
 
 const texto = (v: string | null | undefined) => (v ?? undefined) || undefined;
 
-function lojaParaPdf(loja: LojaParaRecibo): DadosLoja {
+function lojaParaPdf(loja: LojaParaRecibo, campos: RegrasReciboLegal["lojaNoPdf"]): DadosLoja {
+  if (campos === "basica") {
+    // Os 5 campos que o diálogo de detalhes mandava (sem endereço por partes nem cidade).
+    return {
+      nome_loja: loja.nome_loja ?? "",
+      razao_social: texto(loja.razao_social),
+      cnpj: texto(loja.cnpj),
+      endereco: texto(loja.endereco),
+      telefone: texto(loja.telefone),
+    };
+  }
   return {
     nome_loja: loja.nome_loja ?? "",
     razao_social: texto(loja.razao_social),
@@ -97,28 +118,30 @@ export function imagensParaGerador(prep: ImagensReciboPreparadas): ImagensPrepar
   };
 }
 
-async function executar(compraId: string, deps: DependenciasReciboLegal): Promise<ResultadoReciboLegal> {
+async function executar(compraId: string, deps: DependenciasReciboLegal, regras: RegrasReciboLegal): Promise<ResultadoReciboLegal> {
   // 1) Tudo lido do banco agora — nunca do objeto da lista.
-  const { compra, dispositivo } = await deps.buscarCompra(compraId);
+  let dados: Awaited<ReturnType<DependenciasReciboLegal["buscarCompra"]>>;
+  try {
+    dados = await deps.buscarCompra(compraId);
+  } catch (erro) {
+    if (erro instanceof ErroReciboLegal && erro.codigo === "compra_nao_encontrada") throw new BloqueioReciboLegal(regras.falhaCompraNaoEncontrada);
+    if (erro instanceof ErroReciboLegal && erro.codigo === "dispositivo_nao_encontrado") throw new BloqueioReciboLegal(regras.falhaDispositivoNaoEncontrado);
+    throw erro;
+  }
+  const { compra, dispositivo } = dados;
 
-  const faltaDispositivo = [
-    !dispositivo.marca && "Marca",
-    !dispositivo.modelo && "Modelo",
-    !dispositivo.tipo && "Tipo",
-  ].filter((c): c is string => !!c);
-  if (faltaDispositivo.length) throw new ErroReciboLegal("dispositivo_incompleto", faltaDispositivo);
+  // Mesma ordem das telas: loja, depois vendedor, depois dispositivo (só o diálogo de detalhes valida).
+  const empresaId = regras.empresaDa === "dispositivo" ? dispositivo.empresa_id ?? null : compra.empresa_id ?? null;
+  const loja = await deps.buscarLoja(empresaId);
+  const falhaLoja = regras.validarLoja(loja);
+  if (falhaLoja || !loja) throw new BloqueioReciboLegal(falhaLoja ?? regras.falhaInesperada(undefined));
 
-  const pessoa = compra.pessoa_id ? compra.origem_pessoas : null;
-  const vendedor = pessoa?.nome
-    ? { ...pessoa, nome: pessoa.nome }
-    : compra.fornecedor_id
-      ? { nome: compra.fornecedores?.nome || "Fornecedor não identificado", cpf_cnpj: "", endereco: "", telefone: "" }
-      : null;
-  if (!vendedor) throw new ErroReciboLegal("sem_vendedor");
+  const resolvido = regras.resolverVendedor(compra);
+  if ("falha" in resolvido) throw new BloqueioReciboLegal(resolvido.falha);
+  const vendedor = resolvido.vendedor;
 
-  const loja = await deps.buscarLoja(compra.empresa_id ?? dispositivo.empresa_id ?? null);
-  const validacao = deps.validarLoja(loja);
-  if (!loja || !validacao.valido) throw new ErroReciboLegal("loja_incompleta", validacao.camposFaltando);
+  const falhaDispositivo = regras.validarDispositivo(dispositivo);
+  if (falhaDispositivo) throw new BloqueioReciboLegal(falhaDispositivo);
 
   // 2) Imagens atuais, uma por vez; falha de uma não derruba o recibo.
   const imagens = await deps.carregarImagens({
@@ -129,7 +152,7 @@ async function executar(compraId: string, deps: DependenciasReciboLegal): Promis
 
   const checklist = (dispositivo.checklist as { entrada?: Record<string, boolean> } | null)?.entrada;
   const pdf = await deps.gerarPdf({
-    loja: lojaParaPdf(loja),
+    loja: lojaParaPdf(loja, regras.lojaNoPdf),
     vendedor,
     dispositivo: {
       tipo: dispositivo.tipo ?? "",
@@ -154,7 +177,7 @@ async function executar(compraId: string, deps: DependenciasReciboLegal): Promis
   return {
     url,
     tinhaReciboAnterior: !!compra.termo_pdf_url,
-    resumoImagens: { fotos: imagens.resumoFotos, documentos: imagens.resumoDocumentos, fotosIgnoradas: imagens.fotosIgnoradas },
+    resumoImagens: resumoDasImagens(imagens),
   };
 }
 
@@ -164,10 +187,14 @@ const emAndamento = new Map<string, Promise<ResultadoReciboLegal>>();
  * Gera um recibo NOVO com as fotos e anexos atuais da compra. Clique duplo (ou
  * duas telas ao mesmo tempo) para a mesma compra recebe a mesma promessa: um PDF só.
  */
-export function gerarEBaixarReciboLegal(compraId: string, deps: DependenciasReciboLegal): Promise<ResultadoReciboLegal> {
+export function gerarEBaixarReciboLegal(
+  compraId: string,
+  deps: DependenciasReciboLegal,
+  regras: RegrasReciboLegal,
+): Promise<ResultadoReciboLegal> {
   const atual = emAndamento.get(compraId);
   if (atual) return atual;
-  const promessa = executar(compraId, deps).finally(() => emAndamento.delete(compraId));
+  const promessa = executar(compraId, deps, regras).finally(() => emAndamento.delete(compraId));
   emAndamento.set(compraId, promessa);
   return promessa;
 }
@@ -176,19 +203,33 @@ export function reciboLegalEmAndamento(compraId: string): boolean {
   return emAndamento.has(compraId);
 }
 
-/** Avisos do resultado, na ordem em que aparecem. Chaves de reciboLegal no namespace "comum". */
-export function avisosDoRecibo(r: ResultadoReciboLegal): AvisoReciboLegal[] {
+/** Resumo das imagens preparadas (o mesmo formato do resultado do orquestrador). */
+export function resumoDasImagens(prep: ImagensReciboPreparadas): ResumoImagensRecibo {
+  return { fotos: prep.resumoFotos, documentos: prep.resumoDocumentos, fotosIgnoradas: prep.fotosIgnoradas };
+}
+
+/** Avisos só das imagens (fotos que falharam, mais de 5, documentos). Usado também no cadastro. */
+export function avisosDasImagens(resumo: ResumoImagensRecibo): AvisoReciboLegal[] {
   const avisos: AvisoReciboLegal[] = [];
-  const { fotos, documentos, fotosIgnoradas } = r.resumoImagens;
+  const { fotos, documentos, fotosIgnoradas } = resumo;
   if (fotos.falhas > 0) avisos.push({ chave: "reciboLegal.falhasFotos", valores: { count: fotos.falhas, total: fotos.total } });
   if (fotosIgnoradas > 0) avisos.push({ chave: "reciboLegal.fotosIgnoradas", valores: { max: MAX_FOTOS_RECIBO } });
   if (documentos.falhas > 0) avisos.push({ chave: "reciboLegal.falhasDocumentos", valores: { count: documentos.falhas, total: documentos.total } });
+  return avisos;
+}
+
+/** Avisos do resultado, na ordem em que aparecem. Chaves de reciboLegal no namespace "comum". */
+export function avisosDoRecibo(r: ResultadoReciboLegal): AvisoReciboLegal[] {
+  const avisos = avisosDasImagens(r.resumoImagens);
   if (r.tinhaReciboAnterior) avisos.push({ chave: "reciboLegal.anteriorGuardado" });
   return avisos;
 }
 
 /** true quando algum aviso é de problema (pede toast de alerta, não de sucesso). */
+export function imagensComProblema(resumo: ResumoImagensRecibo): boolean {
+  return resumo.fotos.falhas > 0 || resumo.documentos.falhas > 0 || resumo.fotosIgnoradas > 0;
+}
+
 export function reciboComProblema(r: ResultadoReciboLegal): boolean {
-  const { fotos, documentos, fotosIgnoradas } = r.resumoImagens;
-  return fotos.falhas > 0 || documentos.falhas > 0 || fotosIgnoradas > 0;
+  return imagensComProblema(r.resumoImagens);
 }

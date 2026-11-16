@@ -48,6 +48,7 @@ import { formatDate } from "@/lib/formatters";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
+import { REGRAS_LISTA_COMPRAS } from "@/lib/origem/regrasReciboLegal";
 import { avatarFornecedor } from "@/components/fornecedores/avatarFornecedor";
 import { CompraDispositivo } from "@/types/origem";
 import { descreverAparelhoEncontrado, type AparelhoEncontrado } from "@/lib/origem/buscaCompras";
@@ -195,9 +196,13 @@ export function TabelaComprasDesktop({
   const { gerar, gerando, t } = useGerarReciboLegal();
   // Sempre um recibo NOVO, lido do banco com as fotos atuais (o anterior fica guardado).
   const gerarNovoRecibo = async (compraId: string) => {
-    await gerar(compraId, async (resultado) => {
-      onReciboGerado?.();
-      await baixarRecibo(resultado.url, compraId);
+    // Mesma validação da TabelaCompras (a tabela do computador não gerava antes).
+    await gerar(compraId, {
+      regras: REGRAS_LISTA_COMPRAS,
+      depois: async (resultado) => {
+        onReciboGerado?.();
+        await baixarRecibo(resultado.url, compraId);
+      },
     });
   };
   const paginaAtual = useMemo(() => paginar(compras, pagina, COMPRAS_POR_PAGINA), [compras, pagina]);

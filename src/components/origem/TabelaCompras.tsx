@@ -28,6 +28,7 @@ import { ValorMonetario } from "@/components/ui/valor-monetario";
 import { toast } from "sonner";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
 import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
+import { REGRAS_LISTA_COMPRAS } from "@/lib/origem/regrasReciboLegal";
 
 interface TabelaComprasProps {
   compras: CompraDispositivo[];
@@ -59,13 +60,16 @@ export function TabelaCompras({
 
   // Sempre um recibo NOVO, lido do banco com as fotos atuais (o anterior fica guardado).
   const handleGerarRecibo = async (compra: CompraDispositivo) => {
-    await gerar(compra.id, async (resultado) => {
-      onReciboGerado?.();
-      await downloadPDFRobust({
-        url: resultado.url,
-        filename: `recibo-legal-${compra.id}.pdf`,
-        onRetry: () => handleBaixarRecibo(resultado.url, compra.id),
-      });
+    await gerar(compra.id, {
+      regras: REGRAS_LISTA_COMPRAS,
+      depois: async (resultado) => {
+        onReciboGerado?.();
+        await downloadPDFRobust({
+          url: resultado.url,
+          filename: `recibo-legal-${compra.id}.pdf`,
+          onRetry: () => handleBaixarRecibo(resultado.url, compra.id),
+        });
+      },
     });
   };
 

@@ -5,6 +5,7 @@ import { assert, assertEquals, assertNotEquals, assertRejects } from "jsr:@std/a
 import { fromFileUrl, join } from "jsr:@std/path@1";
 import {
   avisosDoRecibo,
+  BloqueioReciboLegal,
   gerarEBaixarReciboLegal,
   reciboComProblema,
   reciboLegalEmAndamento,
@@ -13,6 +14,11 @@ import {
 import { buscarCompraParaRecibo } from "../../src/lib/origem/buscarCompraParaRecibo.ts";
 import { carregarImagensRecibo } from "../../src/lib/origem/carregarImagensRecibo.ts";
 import { ErroReciboLegal } from "../../src/lib/origem/erroReciboLegal.ts";
+import { REGRAS_DETALHES_COMPRA } from "../../src/lib/origem/regrasReciboLegal.ts";
+
+// Testes gerais do orquestrador usam a regra do diálogo de detalhes (a que valida
+// loja, vendedor E dispositivo). A matriz por ponto está em regrasReciboLegal.test.ts.
+const R = REGRAS_DETALHES_COMPRA;
 import { gerarReciboLegalPDF } from "../../src/lib/gerarReciboLegalPDF.ts";
 import comumPtBR from "../../src/locales/pt-BR/comum.ts";
 import comumEs from "../../src/locales/es/comum.ts";
@@ -61,7 +67,10 @@ function rede() {
   return { pedidos, opcoes: { fetchFn, decodificar } };
 }
 
-const LOJA = { nome_loja: "Loja Teste Ficticia", razao_social: "Loja Teste LTDA", cnpj: "00.000.000/0001-00", telefone: "(11) 90000-0000", cidade: "Cidade Teste", estado: "SP" };
+const LOJA = {
+  nome_loja: "Loja Teste Ficticia", razao_social: "Loja Teste LTDA", cnpj: "00.000.000/0001-00", telefone: "(11) 90000-0000",
+  email: "loja@teste.invalid", cep: "00000-000", logradouro: "Rua Teste", numero: "1", bairro: "Centro", cidade: "Cidade Teste", estado: "SP",
+};
 const DISPOSITIVO = { id: "d1", empresa_id: null, tipo: "celular", marca: "Marca X", modelo: "Modelo Y", condicao: "usado", checklist: { entrada: { tela: true } } };
 const PESSOA = { id: "p1", nome: "Fulano de Teste", tipo: "fisica", cpf_cnpj: "000.000.000-00" };
 
@@ -92,7 +101,6 @@ function montar(compra: Linha, extra: Partial<DependenciasReciboLegal> & { linha
   const deps: DependenciasReciboLegal = {
     buscarCompra: (id) => buscarCompraParaRecibo(id, banco.cliente),
     buscarLoja: async () => LOJA,
-    validarLoja: (l) => ({ valido: !!l?.nome_loja, camposFaltando: l?.nome_loja ? [] : ["Nome da loja"] }),
     carregarImagens: (e) => { chamadas.carregar.push({ fotos: e.fotos }); return carregarImagensRecibo(e, r.opcoes); },
     gerarPdf: async (d) => { chamadas.gerar++; return gerarReciboLegalPDF(d); },
     salvar: async (pdf, compraId) => { chamadas.salvar++; pdfs.push(pdf.output()); return `https://storage.falso/termos-compra/u/recibo-legal-${compraId}-${++n}.pdf?token=t`; },
@@ -119,7 +127,7 @@ const silenciar = async <T>(fn: () => Promise<T>) => {
 Deno.test("gera NOVO recibo mesmo com termo_pdf_url antigo, com as fotos atuais do banco", async () => {
   const fotosBanco = ["https://img/f1.png", "https://img/f2.png", "https://img/f3.png"];
   const m = montar(compraBanco({ termo_pdf_url: "https://storage.falso/antigo.pdf", fotos: fotosBanco }));
-  const r = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps));
+  const r = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps, R));
   assert(r.url.includes("recibo-legal-c1-1.pdf"));
   assertEquals(m.banco.tabelas.compras_dispositivos[0].termo_pdf_url, r.url);
   assertEquals(r.tinhaReciboAnterior, true);
@@ -133,7 +141,7 @@ Deno.test("lê a compra do banco: fotos da lista em memória não importam", asy
   const m = montar(compraBanco({ fotos: ["https://img/nova.png"] }));
   // A lista em memória teria 0 fotos; o orquestrador só recebe o id.
   const listaEmMemoria = compraBanco({ fotos: [] });
-  const r = await silenciar(() => gerarEBaixarReciboLegal(String(listaEmMemoria.id), m.deps));
+  const r = await silenciar(() => gerarEBaixarReciboLegal(String(listaEmMemoria.id), m.deps, R));
   assertEquals(m.banco.leituras, ["compras_dispositivos", "dispositivos"]);
   assertEquals(m.chamadas.carregar[0].fotos, ["https://img/nova.png"]);
   assertEquals(contarImagens(m.pdfs[0]), 1);
@@ -163,32 +171,33 @@ Deno.test("falha ANTES de salvar não grava nada e mantém o termo_pdf_url antig
   ];
   for (const [nome, deps, extraCompra] of casos) {
     const m = montar(compraBanco({ termo_pdf_url: antigo, fotos: ["https://img/a.png"], ...extraCompra }), deps);
-    await assertRejects(() => silenciar(() => gerarEBaixarReciboLegal("c1", m.deps)), Error, undefined, nome);
+    await assertRejects(() => silenciar(() => gerarEBaixarReciboLegal("c1", m.deps, R)), Error, undefined, nome);
     assertEquals(m.chamadas.salvar, 0, nome);
     assertEquals(m.chamadas.atualizar, 0, nome);
     assertEquals(m.banco.tabelas.compras_dispositivos[0].termo_pdf_url, antigo, nome);
   }
   const semDisp = montar(compraBanco({ termo_pdf_url: antigo }));
   semDisp.banco.tabelas.dispositivos.length = 0;
-  const e = await assertRejects(() => gerarEBaixarReciboLegal("c1", semDisp.deps), ErroReciboLegal);
-  assertEquals(e.codigo, "dispositivo_nao_encontrado");
+  const e = await assertRejects(() => gerarEBaixarReciboLegal("c1", semDisp.deps, R), BloqueioReciboLegal);
+  assertEquals(e.falha, R.falhaDispositivoNaoEncontrado);
   assertEquals(semDisp.chamadas.salvar, 0);
   const incompleto = montar(compraBanco());
   incompleto.banco.tabelas.dispositivos[0] = { ...DISPOSITIVO, marca: null, tipo: "" };
-  const e2 = await assertRejects(() => gerarEBaixarReciboLegal("c1", incompleto.deps), ErroReciboLegal);
-  assertEquals([e2.codigo, e2.campos], ["dispositivo_incompleto", ["Marca", "Tipo"]]);
+  const e2 = await assertRejects(() => gerarEBaixarReciboLegal("c1", incompleto.deps, R), BloqueioReciboLegal);
+  assertEquals(e2.falha, { titulo: "Dados do dispositivo incompletos", descricao: "Por favor, complete os seguintes campos: Marca, Tipo" });
   incompleto.banco.tabelas.dispositivos[0] = DISPOSITIVO;
 });
 
-Deno.test("loja incompleta devolve os campos que faltam", async () => {
-  const m = montar(compraBanco(), { buscarLoja: async () => ({ nome_loja: "" }) });
-  const e = await assertRejects(() => gerarEBaixarReciboLegal("c1", m.deps), ErroReciboLegal);
-  assertEquals([e.codigo, e.campos], ["loja_incompleta", ["Nome da loja"]]);
+Deno.test("loja incompleta bloqueia com a mensagem da tela", async () => {
+  const m = montar(compraBanco(), { buscarLoja: async () => ({ ...LOJA, nome_loja: "" }) });
+  const e = await assertRejects(() => gerarEBaixarReciboLegal("c1", m.deps, R), BloqueioReciboLegal);
+  assertEquals(e.falha, { titulo: "Dados da loja incompletos", descricao: "Por favor, complete os seguintes campos nas configurações: Nome da loja. Clique para configurar." });
+  assertEquals(m.chamadas.carregar.length, 0, "nem baixa imagens");
 });
 
 Deno.test("0 linhas atualizadas vira erro termo_nao_atualizado", async () => {
   const m = montar(compraBanco(), { linhasAtualizadas: 0 });
-  const e = await assertRejects(() => silenciar(() => gerarEBaixarReciboLegal("c1", m.deps)), ErroReciboLegal);
+  const e = await assertRejects(() => silenciar(() => gerarEBaixarReciboLegal("c1", m.deps, R)), ErroReciboLegal);
   assertEquals(e.codigo, "termo_nao_atualizado");
   assertEquals(m.chamadas.salvar, 1);
   assertEquals(m.banco.tabelas.compras_dispositivos[0].termo_pdf_url, null);
@@ -196,7 +205,7 @@ Deno.test("0 linhas atualizadas vira erro termo_nao_atualizado", async () => {
 
 Deno.test("fotos que falham viram resumo e o PDF sai mesmo assim", async () => {
   const m = montar(compraBanco({ fotos: ["https://img/ok1.png", "https://img/404", "https://img/ok2.png", "https://img/404?b"] }));
-  const r = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps));
+  const r = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps, R));
   assertEquals(m.chamadas.salvar, 1);
   assertEquals(contarImagens(m.pdfs[0]), 2);
   assert(m.pdfs[0].includes("(Foto 2)") && m.pdfs[0].includes("(Foto 4)"));
@@ -208,7 +217,7 @@ Deno.test("fotos que falham viram resumo e o PDF sai mesmo assim", async () => {
 Deno.test("mais de 5 fotos: só as 5 primeiras entram e há aviso", async () => {
   const fotos = Array.from({ length: 7 }, (_, i) => `https://img/f${i}.png`);
   const m = montar(compraBanco({ fotos }));
-  const r = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps));
+  const r = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps, R));
   assertEquals(contarImagens(m.pdfs[0]), 5);
   assertEquals(m.pedidos.length, 5);
   assertEquals(r.resumoImagens.fotosIgnoradas, 2);
@@ -221,7 +230,7 @@ Deno.test("documentos: PDF com ?token vira texto, imagem que falha vira aviso", 
     documento_vendedor_frente: "https://img/sign/rg.pdf?token=x",
     documento_vendedor_verso: "https://img/404",
   }));
-  const r = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps));
+  const r = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps, R));
   assert(m.pdfs[0].includes("Frente: [Arquivo PDF - Ver anexo]"));
   assert(m.pdfs[0].includes("(Documento Verso)"));
   assertEquals(avisosDoRecibo(r), [{ chave: "reciboLegal.falhasDocumentos", valores: { count: 1, total: 1 } }]);
@@ -229,14 +238,14 @@ Deno.test("documentos: PDF com ?token vira texto, imagem que falha vira aviso", 
 
 Deno.test("clique duplo: duas chamadas juntas geram UM recibo", async () => {
   const m = montar(compraBanco({ fotos: ["https://img/a.png"] }));
-  const [a, b] = await silenciar(() => Promise.all([gerarEBaixarReciboLegal("c1", m.deps), gerarEBaixarReciboLegal("c1", m.deps)]));
+  const [a, b] = await silenciar(() => Promise.all([gerarEBaixarReciboLegal("c1", m.deps, R), gerarEBaixarReciboLegal("c1", m.deps, R)]));
   assertEquals(a, b);
   assertEquals(m.chamadas.gerar, 1);
   assertEquals(m.chamadas.salvar, 1);
   assertEquals(m.chamadas.atualizar, 1);
   assertEquals(reciboLegalEmAndamento("c1"), false);
   // Depois de terminar, um clique novo gera outro arquivo.
-  const c = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps));
+  const c = await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps, R));
   assertNotEquals(c.url, a.url);
   assertEquals(m.chamadas.salvar, 2);
   assertEquals(c.tinhaReciboAnterior, true);
@@ -244,8 +253,8 @@ Deno.test("clique duplo: duas chamadas juntas geram UM recibo", async () => {
 
 Deno.test("clique duplo durante uma falha também não repete; depois libera", async () => {
   const m = montar(compraBanco(), { gerarPdf: async () => { throw new Error("falhou"); } });
-  const p1 = gerarEBaixarReciboLegal("c1", m.deps);
-  const p2 = gerarEBaixarReciboLegal("c1", m.deps);
+  const p1 = gerarEBaixarReciboLegal("c1", m.deps, R);
+  const p2 = gerarEBaixarReciboLegal("c1", m.deps, R);
   assertEquals(p1, p2);
   await assertRejects(() => p1);
   assertEquals(reciboLegalEmAndamento("c1"), false);
@@ -253,7 +262,7 @@ Deno.test("clique duplo durante uma falha também não repete; depois libera", a
 
 Deno.test("fornecedor sem pessoa: vendedor é o fornecedor", async () => {
   const m = montar(compraBanco({ pessoa_id: null, origem_pessoas: null, fornecedor_id: "f1", fornecedores: { nome: "Fornecedor Teste" } }));
-  await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps));
+  await silenciar(() => gerarEBaixarReciboLegal("c1", m.deps, R));
   assert(m.pdfs[0].includes("Nome: Fornecedor Teste"));
 });
 
@@ -281,7 +290,7 @@ Deno.test("recibo SEM fotos pelo orquestrador = PDF do gerador da origin/main", 
   });
   let dadosUsados: Parameters<typeof gerarReciboLegalPDF>[0] | null = null;
   const m = montar(compra, { gerarPdf: async (d) => { dadosUsados = d; return gerarReciboLegalPDF(d); } });
-  await gerarEBaixarReciboLegal("c1", m.deps);
+  await gerarEBaixarReciboLegal("c1", m.deps, R);
   const { imagens: _imagens, ...semImagens } = dadosUsados!;
   const antes = normalizar((await referencia(semImagens)).output());
   assertEquals(normalizar(m.pdfs[0]), antes);
@@ -296,8 +305,8 @@ Deno.test("textos: todas as chaves de aviso e de erro existem em pt-BR e es", ()
     "reciboLegal.falhasFotos_zero", "reciboLegal.falhasFotos_one", "reciboLegal.falhasFotos_other",
     "reciboLegal.falhasDocumentos_one", "reciboLegal.falhasDocumentos_other",
     "reciboLegal.fotosIgnoradas", "reciboLegal.anteriorGuardado", "reciboLegal.avisoEdicao",
-    "reciboLegal.gerar", "reciboLegal.gerarNovo", "reciboLegal.gerarNovoFotos", "reciboLegal.baixarAtual", "reciboLegal.erro",
-    ...["compra_nao_encontrada", "dispositivo_nao_encontrado", "dispositivo_incompleto", "sem_vendedor", "loja_incompleta", "termo_nao_atualizado"].map((c) => `reciboLegal.erros.${c}`),
+    "reciboLegal.gerar", "reciboLegal.gerarNovo", "reciboLegal.gerarNovoFotos", "reciboLegal.baixarAtual",
+    "reciboLegal.erros.termo_nao_atualizado",
   ];
   for (const [nome, textos] of [["pt-BR", comumPtBR], ["es", comumEs]] as const) {
     for (const c of chaves) assert(typeof pegar(textos as unknown as Arvore, c) === "string" && (pegar(textos as unknown as Arvore, c) as string).length > 0, `${nome}: ${c}`);

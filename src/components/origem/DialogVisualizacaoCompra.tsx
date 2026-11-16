@@ -24,6 +24,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDFRobust } from "@/lib/downloadPDF";
 import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
+import { useToast } from "@/hooks/use-toast";
+import { REGRAS_DETALHES_COMPRA } from "@/lib/origem/regrasReciboLegal";
 import { useQuery } from "@tanstack/react-query";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import {
@@ -87,6 +89,7 @@ export function DialogVisualizacaoCompra({
 }: DialogVisualizacaoCompraProps) {
   const { podeVerCustos } = useFuncionarioPermissoes();
   const { gerar, gerando, t } = useGerarReciboLegal();
+  const { toast } = useToast();
   // Link do recibo gerado agora (vale só para a compra em que foi gerado).
   const [termoGerado, setTermoGerado] = useState<{ compraId: string; url: string } | null>(null);
 
@@ -143,14 +146,19 @@ export function DialogVisualizacaoCompra({
   // Sempre um recibo NOVO, lido do banco com as fotos e anexos atuais. O link novo
   // fica no estado local (o objeto da prop não é alterado) e a lista recarrega.
   const handleGerarRecibo = async () => {
-    await gerar(compra.id, async (resultado) => {
-      setTermoGerado({ compraId: compra.id, url: resultado.url });
-      onReciboGerado?.();
-      await downloadPDFRobust({
-        url: resultado.url,
-        filename: `recibo-legal-${compra.id}.pdf`,
-        onRetry: () => downloadPDFRobust({ url: resultado.url, filename: `recibo-legal-${compra.id}.pdf` }),
-      });
+    await gerar(compra.id, {
+      regras: REGRAS_DETALHES_COMPRA,
+      // Bloqueios no toast do shadcn, com os mesmos textos de antes.
+      aoBloquear: (falha) => toast({ title: falha.titulo, description: falha.descricao, variant: "destructive" }),
+      depois: async (resultado) => {
+        setTermoGerado({ compraId: compra.id, url: resultado.url });
+        onReciboGerado?.();
+        await downloadPDFRobust({
+          url: resultado.url,
+          filename: `recibo-legal-${compra.id}.pdf`,
+          onRetry: () => downloadPDFRobust({ url: resultado.url, filename: `recibo-legal-${compra.id}.pdf` }),
+        });
+      },
     });
   };
 

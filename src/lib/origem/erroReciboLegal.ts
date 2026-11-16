@@ -1,11 +1,9 @@
-// Erro com código do Recibo Legal: a tela traduz pelo código (chave
-// reciboLegal.erros.<codigo> do namespace "comum").
+// Erro com código do Recibo Legal. compra/dispositivo não encontrados viram a mensagem
+// de cada tela (regrasReciboLegal.ts); termo_nao_atualizado é traduzido pela chave
+// reciboLegal.erros.termo_nao_atualizado do namespace "comum".
 export type CodigoErroReciboLegal =
   | "compra_nao_encontrada"
   | "dispositivo_nao_encontrado"
-  | "dispositivo_incompleto"
-  | "sem_vendedor"
-  | "loja_incompleta"
   | "termo_nao_atualizado";
 
 export class ErroReciboLegal extends Error {

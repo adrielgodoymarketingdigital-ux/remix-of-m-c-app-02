@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
+import { REGRAS_CARTAO_DISPOSITIVO } from "@/lib/origem/regrasReciboLegal";
 import { useNavigate } from "react-router-dom";
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -113,9 +114,14 @@ export function CardDispositivo({
       });
       return;
     }
-    await gerarRecibo(compraId, (resultado) => {
-      setTemRecibo(true);
-      window.open(resultado.url, "_blank");
+    await gerarRecibo(compraId, {
+      regras: REGRAS_CARTAO_DISPOSITIVO,
+      // Bloqueios no toast do shadcn, com os mesmos textos de antes.
+      aoBloquear: (falha) => toast({ title: falha.titulo, description: falha.descricao, variant: "destructive" }),
+      depois: (resultado) => {
+        setTemRecibo(true);
+        window.open(resultado.url, "_blank");
+      },
     });
   };
 
