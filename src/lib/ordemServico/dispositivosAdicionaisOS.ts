@@ -211,9 +211,26 @@ export function seloAdicionais(quantidade: number): string {
   return `+${quantidade} ${quantidade === 1 ? "aparelho" : "aparelhos"}`;
 }
 
+/** Tira espaços e hífens (inclusive no meio): "C02 X-1" -> "c02x1". */
+const compactarSerie = (t: string) => t.replace(/[\s-]/g, "");
+
 /**
- * Busca da lista nos adicionais: IMEI, modelo e marca — os mesmos campos que a
- * busca usa no dispositivo 1 (número de série fica de fora, como no 1º).
+ * Número de série na busca da lista: por trecho, sem diferenciar maiúsculas.
+ * `termo` já vem aparado e em minúsculas. Também acha ignorando espaços e
+ * hífens dos dois lados ("c02x1" acha "C02-X1" e vice-versa), mas só quando
+ * sobra algo do termo: "-" ou " " sozinhos nunca casam com toda série.
+ */
+export function serieCorrespondeBusca(serie: string | null | undefined, termo: string): boolean {
+  if (!termo || !serie) return false;
+  const s = serie.toLowerCase();
+  if (s.includes(termo)) return true;
+  const termoCompacto = compactarSerie(termo);
+  return termoCompacto.length > 0 && compactarSerie(s).includes(termoCompacto);
+}
+
+/**
+ * Busca da lista nos adicionais: IMEI, modelo, marca e número de série — os
+ * mesmos campos de aparelho que a busca usa no dispositivo 1.
  * `termo` já em minúsculas.
  */
 export function adicionaisCorrespondemBusca(
@@ -224,7 +241,8 @@ export function adicionaisCorrespondemBusca(
   return adicionais.some((a) =>
     (a.dispositivo_imei?.toLowerCase() || "").includes(termo) ||
     (a.dispositivo_modelo?.toLowerCase() || "").includes(termo) ||
-    (a.dispositivo_marca?.toLowerCase() || "").includes(termo),
+    (a.dispositivo_marca?.toLowerCase() || "").includes(termo) ||
+    serieCorrespondeBusca(a.dispositivo_numero_serie, termo),
   );
 }
 

@@ -11,7 +11,7 @@ import type { OrdemServico } from "@/hooks/useOrdensServico";
 import { BotoesAcaoOrdem } from "./BotoesAcaoOrdem";
 import { SeloDispositivosAdicionais } from "./SeloDispositivosAdicionais";
 import { useAdicionaisPorOS } from "@/contexts/AdicionaisPorOSContext";
-import { adicionaisCorrespondemBusca } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { adicionaisCorrespondemBusca, serieCorrespondeBusca } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 
 interface KanbanTempoAbertoProps {
   ordens: OrdemServico[];
@@ -193,6 +193,7 @@ export function KanbanTempoAberto({
           ]
             .filter(Boolean)
             .some((valor) => valor?.toLowerCase().includes(busca)) ||
+            serieCorrespondeBusca(ordem.dispositivo_numero_serie, busca) ||
             adicionaisCorrespondemBusca(adicionaisPorOs[ordem.id], busca);
         })
         .sort((a, b) => b.dias - a.dias);
