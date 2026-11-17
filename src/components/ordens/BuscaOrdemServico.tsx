@@ -158,7 +158,7 @@ export const BuscaOrdemServico = ({
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground shrink-0" />
           <Input
-            placeholder="Buscar por nome, IMEI, modelo ou nº da OS"
+            placeholder="Buscar por nome, IMEI, nº de série, modelo ou nº da OS"
             value={busca}
             onChange={(e) => onBuscaChange(e.target.value)}
             className="h-11 pl-10 rounded-xl bg-muted/30 border-border/50"
