@@ -251,7 +251,7 @@ export default function Configuracoes() {
                 </TabsContent>
 
                 <TabsContent value="preview" className="space-y-4 mt-0">
-                  {/* Só para quem vê o recibo novo (useReciboVendaNovoVisivel); para os demais, nada muda. */}
+                  {/* Só admin e dono da loja (useTelaPersonalizarReciboVisivel); para os demais, nada muda. */}
                   <AtalhoPersonalizarReciboVenda />
                   <PreviewRecibo configuracao={config} />
                 </TabsContent>

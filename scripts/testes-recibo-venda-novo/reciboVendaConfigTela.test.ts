@@ -3,7 +3,9 @@
 // Rodar: deno test -A --no-check scripts/testes-recibo-venda-novo/
 import { assert, assertEquals, assertFalse } from "jsr:@std/assert@1";
 import {
+  avisoAtivacaoReciboVenda,
   contarTextoRecibo,
+  haOQueSalvarReciboVenda,
   GRUPOS_INTERRUPTORES_RECIBO_VENDA,
   haAlteracoesReciboVendaConfig,
   rascunhoEhPadraoReciboVenda,
@@ -232,7 +234,7 @@ Deno.test("textos pt-BR: motivos de permissão iguais aos da lógica pura; aviso
     if (m === "ok") continue;
     assertEquals((t.permissao as Record<string, string>)[m], msg, m);
   }
-  assertEquals(t.aviso, "Vale para recibo A4 novo, inclusive reimpressões. O recibo 80mm/58mm não muda.");
+  assertEquals(t.aviso, "Vale para o recibo de venda A4, inclusive reimpressões.");
   assertEquals(t.titulo, "Personalizar recibo de venda");
 });
 
@@ -245,4 +247,53 @@ Deno.test("textos es: termos pedidos e glossário (usted, sem vosotros)", () => 
   assertEquals(t.restaurar, "Restaurar estándar");
   const tudo = JSON.stringify(t);
   for (const proibido of [/vosotros/i, /\btú\b/i, /\bpieza/i, /\bmóvil/i, /\bordenador/i]) assertFalse(proibido.test(tudo), String(proibido));
+});
+
+// ── Ativação (opt-in por loja) ──────────────────────────────────────────────
+
+Deno.test("ativação: os 4 estados do aviso", () => {
+  const mudado = { mostrar: { qr: false } };
+  assertEquals(avisoAtivacaoReciboVenda({ personalizado: false, rascunho: reciboVendaConfigPadrao() }), "inativo_padrao");
+  assertEquals(avisoAtivacaoReciboVenda({ personalizado: false, rascunho: mudado }), "ativa_ao_salvar");
+  assertEquals(avisoAtivacaoReciboVenda({ personalizado: true, rascunho: mudado }), "ativo");
+  assertEquals(avisoAtivacaoReciboVenda({ personalizado: true, rascunho: reciboVendaConfigPadrao() }), "volta_ao_de_sempre");
+  // Só espaços num texto = padrão (salvar grava NULL).
+  assertEquals(avisoAtivacaoReciboVenda({ personalizado: true, rascunho: { textos: { topo: "   " } } }), "volta_ao_de_sempre");
+});
+
+Deno.test("o que salvar: alteração normal; padrão sobre personalização vazia também (sai do recibo novo)", () => {
+  const padrao = reciboVendaConfigPadrao();
+  const mudado = { ...padrao, mostrar: { ...padrao.mostrar, qr: false } };
+  assertFalse(haOQueSalvarReciboVenda({ salvo: padrao, rascunho: padrao, personalizado: false }), "sem personalização e sem mudança");
+  assert(haOQueSalvarReciboVenda({ salvo: padrao, rascunho: mudado, personalizado: false }), "ativar");
+  assertFalse(haOQueSalvarReciboVenda({ salvo: mudado, rascunho: mudado, personalizado: true }), "nada mudou");
+  assert(haOQueSalvarReciboVenda({ salvo: mudado, rascunho: padrao, personalizado: true }), "restaurar padrão e salvar");
+  // Linha com {} (equivale ao padrão): o rascunho abre igual ao salvo, mas salvar grava NULL.
+  assert(haOQueSalvarReciboVenda({ salvo: padrao, rascunho: padrao, personalizado: true }), "{} salvo → pode limpar");
+});
+
+for (const [idioma, textos] of [["pt-BR", rv(configuracoesPtBR)], ["es", rv(configuracoesEs)]] as const) {
+  Deno.test(`textos ${idioma}: os 4 avisos de ativação existem e falam do 80/58 mm`, () => {
+    const a = (textos as Record<string, Record<string, string>>).ativacao;
+    for (const k of ["inativo_padrao", "ativa_ao_salvar", "ativo", "volta_ao_de_sempre"]) {
+      assert(a[k]?.trim(), `ativacao.${k}`);
+      assert(a[k].includes("80 mm") && a[k].includes("58 mm"), `ativacao.${k}: 80 mm e 58 mm`);
+    }
+  });
+}
+
+Deno.test("textos pt-BR: aviso pedido literal e volta ao recibo de sempre", () => {
+  const a = (rv(configuracoesPtBR) as Record<string, Record<string, string>>).ativacao;
+  assert(a.ativa_ao_salvar.startsWith("Ao salvar, o seu recibo A4 passa a usar este layout. O recibo de 80 mm e 58 mm não muda."));
+  assert(a.volta_ao_de_sempre.includes("volta a ser o recibo de sempre"));
+  assert(a.ativo.includes("Restaurar padrão"));
+  assert(a.inativo_padrao.includes("feche sem salvar"));
+});
+
+Deno.test("textos es: avisos de ativação em usted e com o rótulo do botão", () => {
+  const a = (rv(configuracoesEs) as Record<string, Record<string, string>>).ativacao;
+  assert(a.ativa_ao_salvar.startsWith("Al guardar, su recibo A4 pasa a usar este diseño."));
+  assert(a.ativo.includes("Restaurar estándar"), "mesmo rótulo do botão");
+  assert(a.inativo_padrao.includes("cierre sin guardar"));
+  for (const proibido of [/vosotros/i, /\btú\b/i, /\btu recibo/i, /\bcierra\b/i, /\bguarda\b/i]) assertFalse(proibido.test(JSON.stringify(a)), String(proibido));
 });

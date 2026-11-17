@@ -1182,7 +1182,7 @@ const PDV = () => {
                 <Layout className="h-4 w-4 mr-2" />
                 {t("pagina.atalhos.layoutImpressao")}
               </DropdownMenuItem>
-              {/* Só para quem vê o recibo novo (useReciboVendaNovoVisivel); para os demais, nada muda. */}
+              {/* Só admin e dono da loja (useTelaPersonalizarReciboVisivel); para os demais, nada muda. */}
               <ItemMenuPersonalizarReciboVenda onAbrir={() => setDialogReciboConfigAberto(true)} />
               <DropdownMenuItem onClick={() => setDialogTaxasCartaoAberto(true)}>
                 <CreditCard className="h-4 w-4 mr-2" />

@@ -391,7 +391,7 @@ const configuracoes: Traducao<typeof configuracoesPtBR> = {
   reciboVenda: {
     abrir: "Personalizar recibo de venta",
     titulo: "Personalizar recibo de venta",
-    aviso: "Se aplica al nuevo recibo A4, incluidas las reimpresiones. El recibo de 80 mm/58 mm no cambia.",
+    aviso: "Se aplica al recibo de venta A4, incluidas las reimpresiones.",
     abasRotulo: "Editar el recibo o ver la vista previa",
     abaEditar: "Editar",
     abaPrevia: "Vista previa",
@@ -485,6 +485,16 @@ const configuracoes: Traducao<typeof configuracoesPtBR> = {
     salvar: "Guardar",
     salvando: "Guardando…",
     restaurar: "Restaurar estándar",
+    ativacao: {
+      inativo_padrao:
+        "Hoy su tienda usa el recibo de siempre. Al guardar una personalización, su recibo A4 pasa a usar este diseño. El recibo de 80 mm y 58 mm no cambia. Para solo ver la vista previa, cierre sin guardar.",
+      ativa_ao_salvar:
+        "Al guardar, su recibo A4 pasa a usar este diseño. El recibo de 80 mm y 58 mm no cambia. Para solo ver la vista previa, cierre sin guardar.",
+      ativo:
+        "Su recibo A4 ya usa este diseño. El recibo de 80 mm y 58 mm no cambia. Para volver al recibo de siempre, use \"Restaurar estándar\" y guarde.",
+      volta_ao_de_sempre:
+        "Al guardar, se borra la personalización y su recibo A4 vuelve a ser el recibo de siempre, sin este diseño. El recibo de 80 mm y 58 mm no cambia.",
+    },
     permissao: {
       carregando: "Cargando…",
       funcionario: "El recibo lo configura el propietario de la tienda. Usted puede ver la vista previa, pero no modificarla.",

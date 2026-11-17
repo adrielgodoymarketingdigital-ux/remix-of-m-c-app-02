@@ -175,9 +175,10 @@ export function DialogReimprimirReciboVenda({
 }: DialogReimprimirReciboVendaProps) {
   const { config: configLoja, refetch } = useConfiguracaoLoja(venda?.empresa_id);
 
-  // Recibo novo (A4, modo recibo), só para quem a regra libera; falhou → recibo antigo.
+  // Recibo novo (A4, modo recibo): admin, ou loja que salvou uma personalização
+  // (lida na mesma configLoja acima, sem consulta a mais); carregando/falhou → recibo antigo.
   // No iOS instalado o recibo sai pelo PDF próprio: nem carrega (o A4 não espera).
-  const reciboNovoVisivel = useReciboVendaNovoVisivel();
+  const reciboNovoVisivel = useReciboVendaNovoVisivel(configLoja);
   const reciboNovoAtivo = reciboNovoVisivel && open && modo === "recibo" && !iosInstalado(detectarContextoImpressaoMobile());
   const reciboNovoRef = useRef<HTMLDivElement>(null);
   const reciboNovo = useModeloReciboNovoReaberto({ ativo: reciboNovoAtivo, vendaId: venda?.id, grupoVenda: grupoVendaId, loja: configLoja });

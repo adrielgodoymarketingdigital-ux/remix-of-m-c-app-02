@@ -53,6 +53,9 @@ const PERFIL = process.env.PERFIL ?? "dono";
 const DONO_ID = "00000000-0000-4000-8000-0000000000bb";
 // FALHA=kit (o chunk do recibo novo não carrega) | FALHA=banco (a leitura da venda do recibo novo dá erro 500).
 const FALHA = process.env.FALHA ?? "";
+// CONFIG_RECIBO=<json>: a loja salvou uma personalização (configuracoes_loja.recibo_venda_config).
+// Sem a variável, a linha fica como o cenário define (sem a coluna = loja que nunca personalizou).
+const CONFIG_RECIBO = process.env.CONFIG_RECIBO ? JSON.parse(process.env.CONFIG_RECIBO) : undefined;
 
 function tabelasDoPerfil(base) {
   if (PERFIL !== "funcionario") return base;
@@ -191,6 +194,7 @@ for (const tela of so("SO_TELA", ["1280", "390", "390ios"])) {
 async function rodarCaso(tela, lugar, cenario, falhasCaso) {
   const falharCaso = (m) => falhasCaso.push(m);
   const tabelas = { ...tabelasDoPerfil(TABELAS[cenario]), user_roles: ADMIN ? [{ user_id: USUARIO.id, role: "admin" }] : [] };
+  if (CONFIG_RECIBO !== undefined) tabelas.configuracoes_loja = tabelas.configuracoes_loja.map((c) => ({ ...c, recibo_venda_config: CONFIG_RECIBO }));
   const registro = [];
   const ctx = await prepararContexto(navegador, tela, tabelas, registro);
   try {

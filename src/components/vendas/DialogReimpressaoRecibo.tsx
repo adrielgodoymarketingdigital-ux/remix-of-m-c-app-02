@@ -101,8 +101,9 @@ export function DialogReimpressaoRecibo({
   const { config: configLoja } = useConfiguracaoLoja(venda?.empresa_id);
   const { toast } = useToast();
 
-  // Recibo novo (A4), só para quem a regra libera; falhou → recibo antigo.
-  const reciboNovoVisivel = useReciboVendaNovoVisivel();
+  // Recibo novo (A4): admin, ou loja que salvou uma personalização (lida na
+  // mesma configLoja acima, sem consulta a mais); carregando/falhou → recibo antigo.
+  const reciboNovoVisivel = useReciboVendaNovoVisivel(configLoja);
   const reciboNovoRef = useRef<HTMLDivElement>(null);
   const reciboNovo = useModeloReciboNovoReaberto({ ativo: reciboNovoVisivel && open, vendaId: venda?.id, grupoVenda: venda?.grupo_venda, loja: configLoja });
   const [modeloQueFalhou, setModeloQueFalhou] = useState<ReciboVendaModelo | null>(null);

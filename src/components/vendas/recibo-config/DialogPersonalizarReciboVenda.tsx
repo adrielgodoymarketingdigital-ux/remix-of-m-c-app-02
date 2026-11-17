@@ -1,19 +1,22 @@
 /**
  * Diálogo "Personalizar recibo de venda": interruptores e textos do recibo de
  * venda A4 (novo), com prévia ao vivo. Carregado sob demanda
- * (AcessoPersonalizarReciboVenda) e só para quem vê o recibo novo.
+ * (AcessoPersonalizarReciboVenda), só para admin e dono da loja.
  *
  * - Editor à esquerda e prévia à direita no computador (>= 1024px); abas
  *   "Editar" / "Prévia" abaixo disso.
  * - Só o dono edita (useReciboVendaConfig.podeEditar); os demais veem a
  *   prévia, com o motivo traduzido aqui.
  * - Um Salvar só; "Restaurar padrão" mexe só no rascunho.
+ * - Opt-in: a loja só passa a imprimir o recibo novo A4 depois de salvar uma
+ *   personalização; salvar o padrão grava NULL e ela volta ao recibo de
+ *   sempre. O aviso de ativação (avisoAtivacaoReciboVenda) diz isso na tela.
  * - A prévia desenha o mesmo ReciboVendaNovo da impressão, com o modelo de
  *   montarReciboVenda(exemplo, rascunho): o que aparece é o que sai no A4.
  */
 import { useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Info, Loader2, Lock, RotateCcw } from "lucide-react";
+import { AlertTriangle, Check, Info, Loader2, Lock, RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -48,9 +51,11 @@ import {
   reciboVendaConfigPadrao,
 } from "@/lib/vendas/reciboVendaConfig";
 import {
+  avisoAtivacaoReciboVenda,
   contarTextoRecibo,
   GRUPOS_INTERRUPTORES_RECIBO_VENDA,
   haAlteracoesReciboVendaConfig,
+  haOQueSalvarReciboVenda,
   rascunhoEhPadraoReciboVenda,
   SEMPRE_APARECE_RECIBO_VENDA,
   textosPassandoDoLimite,
@@ -99,7 +104,7 @@ export default function DialogPersonalizarReciboVenda({ open, onOpenChange }: Di
   const { isProprietario, empresaAtiva } = useEmpresa();
   // Mesma loja que a tela de Configurações edita (null = matriz).
   const empresaId = isProprietario ? empresaAtiva : null;
-  const { reciboConfig, configLoja, carregando, podeEditar, motivo, salvando, salvar } = useReciboVendaConfig(empresaId);
+  const { reciboConfig, personalizado, configLoja, carregando, podeEditar, motivo, salvando, salvar } = useReciboVendaConfig(empresaId);
 
   const [base, setBase] = useState<ReciboVendaConfig>(reciboVendaConfigPadrao);
   const [rascunho, setRascunho] = useState<ReciboVendaConfig>(reciboVendaConfigPadrao);
@@ -135,7 +140,8 @@ export default function DialogPersonalizarReciboVenda({ open, onOpenChange }: Di
 
   const alterado = podeEditar && iniciado && haAlteracoesReciboVendaConfig(base, rascunho);
   const passaram = textosPassandoDoLimite(rascunho);
-  const podeSalvar = podeEditar && alterado && passaram.length === 0 && !salvando;
+  const temOQueSalvar = podeEditar && iniciado && haOQueSalvarReciboVenda({ salvo: base, rascunho, personalizado });
+  const podeSalvar = temOQueSalvar && passaram.length === 0 && !salvando;
   const podeRestaurar = podeEditar && iniciado && !rascunhoEhPadraoReciboVenda(rascunho) && !salvando;
 
   const mudarInterruptor = (k: InterruptorReciboVenda, v: boolean) => setRascunho((r) => ({ ...r, mostrar: { ...r.mostrar, [k]: v } }));
@@ -178,6 +184,8 @@ export default function DialogPersonalizarReciboVenda({ open, onOpenChange }: Di
 
   const somenteLeitura = !podeEditar;
   const avisoPermissao = !carregando && somenteLeitura ? t(`reciboVenda.permissao.${motivo}`) : null;
+  // Só para quem pode salvar: o que o Salvar faz com o recibo A4 da loja.
+  const avisoAtivacao = !carregando && podeEditar && iniciado ? avisoAtivacaoReciboVenda({ personalizado, rascunho }) : null;
 
   const editor = (
     <Editor
@@ -218,6 +226,27 @@ export default function DialogPersonalizarReciboVenda({ open, onOpenChange }: Di
               <span>{t("reciboVenda.aviso")}</span>
             </DialogDescription>
           </DialogHeader>
+
+          {avisoAtivacao && (
+            <div
+              role="status"
+              data-testid="aviso-ativacao-recibo"
+              data-estado={avisoAtivacao}
+              className={cn(
+                "mx-4 mt-3 flex shrink-0 items-start gap-2 rounded-lg border px-3 py-2 text-[13px] sm:mx-6",
+                avisoAtivacao === "volta_ao_de_sempre"
+                  ? "border-amber-500/40 bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
+                  : "border-primary/25 bg-primary/5 text-foreground",
+              )}
+            >
+              {avisoAtivacao === "volta_ao_de_sempre" ? (
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              ) : (
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              )}
+              <span>{t(`reciboVenda.ativacao.${avisoAtivacao}`)}</span>
+            </div>
+          )}
 
           {avisoPermissao && (
             <div

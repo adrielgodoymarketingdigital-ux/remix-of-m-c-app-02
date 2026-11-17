@@ -1,21 +1,22 @@
 /**
  * Por onde se abre "Personalizar recibo de venda": item nos menus do PDV e de
- * Vendas e atalho na aba Prévia de Configurações. Tudo atrás da mesma regra do
- * recibo novo (useReciboVendaNovoVisivel): quem não vê o recibo novo não vê
- * nenhum item e não baixa o diálogo (chunk carregado só ao abrir).
+ * Vendas e atalho na aba Prévia de Configurações. Regra em
+ * useTelaPersonalizarReciboVisivel (lib/vendas/visibilidadeReciboNovo.ts):
+ * admin e dono da loja; funcionário e gerente de filial não veem nada. O
+ * diálogo só é baixado (chunk próprio) ao abrir.
  */
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ReceiptText } from "lucide-react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useReciboVendaNovoVisivel } from "@/hooks/useReciboVendaNovoVisivel";
+import { useTelaPersonalizarReciboVisivel } from "@/hooks/useReciboVendaNovoVisivel";
 
 const DialogPersonalizarReciboVenda = lazy(() => import("./DialogPersonalizarReciboVenda"));
 
 /** Item de menu (dentro de um DropdownMenuContent). */
 export function ItemMenuPersonalizarReciboVenda({ onAbrir }: { onAbrir: () => void }) {
-  const visivel = useReciboVendaNovoVisivel();
+  const visivel = useTelaPersonalizarReciboVisivel();
   const { t } = useTranslation("configuracoes");
   if (!visivel) return null;
   return (
@@ -26,14 +27,23 @@ export function ItemMenuPersonalizarReciboVenda({ onAbrir }: { onAbrir: () => vo
   );
 }
 
-/** O diálogo, montado só depois da primeira abertura (e mantido para a animação e o foco ao fechar). */
+/**
+ * O diálogo, montado só depois da primeira abertura (e mantido para a animação
+ * e o foco ao fechar). Fechado e nunca aberto, não renderiza nada nem consulta
+ * a regra (as páginas que o incluem ficam como eram).
+ */
 export function DialogPersonalizarReciboVendaSobDemanda({ open, onOpenChange }: { open: boolean; onOpenChange: (aberto: boolean) => void }) {
-  const visivel = useReciboVendaNovoVisivel();
   const [montado, setMontado] = useState(false);
   useEffect(() => {
     if (open) setMontado(true);
   }, [open]);
-  if (!visivel || !(open || montado)) return null;
+  if (!(open || montado)) return null;
+  return <DialogSeVisivel open={open} onOpenChange={onOpenChange} />;
+}
+
+function DialogSeVisivel({ open, onOpenChange }: { open: boolean; onOpenChange: (aberto: boolean) => void }) {
+  const visivel = useTelaPersonalizarReciboVisivel();
+  if (!visivel) return null;
   return (
     <Suspense fallback={null}>
       <DialogPersonalizarReciboVenda open={open} onOpenChange={onOpenChange} />
@@ -43,7 +53,7 @@ export function DialogPersonalizarReciboVendaSobDemanda({ open, onOpenChange }: 
 
 /** Atalho na aba Prévia de Configurações. */
 export function AtalhoPersonalizarReciboVenda() {
-  const visivel = useReciboVendaNovoVisivel();
+  const visivel = useTelaPersonalizarReciboVisivel();
   const { t } = useTranslation("configuracoes");
   const [aberto, setAberto] = useState(false);
   if (!visivel) return null;

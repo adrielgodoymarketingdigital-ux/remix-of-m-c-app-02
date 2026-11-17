@@ -104,3 +104,35 @@ export function haAlteracoesReciboVendaConfig(salvo: unknown, rascunho: unknown)
 export function rascunhoEhPadraoReciboVenda(rascunho: unknown): boolean {
   return !haAlteracoesReciboVendaConfig(RECIBO_VENDA_CONFIG_PADRAO, rascunho);
 }
+
+// ── Ativação (opt-in por loja) ──────────────────────────────────────────────
+
+/**
+ * Aviso do diálogo sobre o que o Salvar faz com o recibo A4 da loja (o recibo
+ * novo só vale para quem salvou uma personalização; o padrão é gravado como
+ * NULL, ver visibilidadeReciboNovo.ts):
+ *  - "inativo_padrao": loja no recibo de sempre e rascunho padrão (Salvar
+ *    desligado; mudar algo e salvar ativa);
+ *  - "ativa_ao_salvar": loja no recibo de sempre e rascunho mudado;
+ *  - "ativo": loja já personalizada e rascunho não padrão;
+ *  - "volta_ao_de_sempre": loja personalizada e rascunho padrão (Salvar grava
+ *    NULL e a loja volta ao recibo de sempre).
+ */
+export type AvisoAtivacaoReciboVenda = "inativo_padrao" | "ativa_ao_salvar" | "ativo" | "volta_ao_de_sempre";
+
+export function avisoAtivacaoReciboVenda(p: { personalizado: boolean; rascunho: unknown }): AvisoAtivacaoReciboVenda {
+  const padrao = rascunhoEhPadraoReciboVenda(p.rascunho);
+  if (!p.personalizado) return padrao ? "inativo_padrao" : "ativa_ao_salvar";
+  return padrao ? "volta_ao_de_sempre" : "ativo";
+}
+
+/**
+ * true quando Salvar tem o que gravar: o rascunho difere do salvo, ou a linha
+ * tem uma personalização que equivale ao padrão (ex.: `{}` gravado fora da
+ * tela) e o rascunho é o padrão — salvar grava NULL e a loja volta ao recibo
+ * de sempre, em vez de ficar presa no recibo novo sem poder sair.
+ */
+export function haOQueSalvarReciboVenda(p: { salvo: unknown; rascunho: unknown; personalizado: boolean }): boolean {
+  if (haAlteracoesReciboVendaConfig(p.salvo, p.rascunho)) return true;
+  return p.personalizado && rascunhoEhPadraoReciboVenda(p.rascunho);
+}

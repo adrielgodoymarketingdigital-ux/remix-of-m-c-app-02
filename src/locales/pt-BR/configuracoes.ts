@@ -395,12 +395,12 @@ const configuracoes = {
     },
   },
   // Diálogo "Personalizar recibo de venda" (components/vendas/recibo-config). Abre pelo PDV,
-  // por Vendas e pela aba Prévia; só aparece para quem vê o recibo novo (useReciboVendaNovoVisivel).
+  // por Vendas e pela aba Prévia; só para admin e dono da loja (useTelaPersonalizarReciboVisivel).
   // O conteúdo do recibo (prévia) continua em pt-BR, como o recibo impresso.
   reciboVenda: {
     abrir: "Personalizar recibo de venda",
     titulo: "Personalizar recibo de venda",
-    aviso: "Vale para recibo A4 novo, inclusive reimpressões. O recibo 80mm/58mm não muda.",
+    aviso: "Vale para o recibo de venda A4, inclusive reimpressões.",
     abasRotulo: "Editar o recibo ou ver a prévia",
     abaEditar: "Editar",
     abaPrevia: "Prévia",
@@ -494,6 +494,17 @@ const configuracoes = {
     salvar: "Salvar",
     salvando: "Salvando…",
     restaurar: "Restaurar padrão",
+    // Opt-in por loja: o recibo A4 só muda depois de salvar uma personalização (avisoAtivacaoReciboVenda).
+    ativacao: {
+      inativo_padrao:
+        "Hoje a sua loja usa o recibo de sempre. Ao salvar uma personalização, o seu recibo A4 passa a usar este layout. O recibo de 80 mm e 58 mm não muda. Para só ver a prévia, feche sem salvar.",
+      ativa_ao_salvar:
+        "Ao salvar, o seu recibo A4 passa a usar este layout. O recibo de 80 mm e 58 mm não muda. Para só ver a prévia, feche sem salvar.",
+      ativo:
+        "O seu recibo A4 já usa este layout. O recibo de 80 mm e 58 mm não muda. Para voltar ao recibo de sempre, use \"Restaurar padrão\" e salve.",
+      volta_ao_de_sempre:
+        "Ao salvar, a personalização é apagada e o seu recibo A4 volta a ser o recibo de sempre, sem este layout. O recibo de 80 mm e 58 mm não muda.",
+    },
     permissao: {
       carregando: "Carregando…",
       funcionario: "O recibo é configurado pelo proprietário da loja. Você pode ver a prévia, mas não alterar.",

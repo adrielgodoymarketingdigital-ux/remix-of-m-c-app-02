@@ -4,16 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
-import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
-import { useIdentidade } from "@/hooks/useResolvedUserId";
+import { usePapelLojaRecibo } from "@/hooks/useReciboVendaNovoVisivel";
 import { normalizarReciboVendaConfig, type ReciboVendaConfig } from "@/lib/vendas/reciboVendaConfig";
 import {
   decidirPermissaoConfigRecibo,
   interpretarResultadoGravacao,
   mensagemErroGravacaoReciboVendaConfig,
   prepararGravacaoReciboVendaConfig,
-  type PapelConfigRecibo,
 } from "@/lib/vendas/reciboVendaConfigGravacao";
+import { lojaPersonalizouReciboVenda } from "@/lib/vendas/visibilidadeReciboNovo";
 
 export type ResultadoSalvarReciboVendaConfig = { ok: true } | { ok: false; erro: string };
 
@@ -32,11 +31,7 @@ export type ResultadoSalvarReciboVendaConfig = { ok: true } | { ok: false; erro:
 export function useReciboVendaConfig(empresaId?: string | null) {
   const { toast } = useToast();
   const { config: linha, loading: carregandoConfig, refetch } = useConfiguracaoLoja(empresaId);
-  const { isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
-  const { isGerenteFilial, carregando: carregandoIdentidade } = useIdentidade();
-
-  const papel: PapelConfigRecibo | null =
-    carregandoPermissoes || carregandoIdentidade ? null : isGerenteFilial ? "gerente" : isFuncionario ? "funcionario" : "dono";
+  const papel = usePapelLojaRecibo();
 
   const permissao = decidirPermissaoConfigRecibo({
     papel,
@@ -84,6 +79,11 @@ export function useReciboVendaConfig(empresaId?: string | null) {
   return {
     /** Config normalizada (sempre completa; padrão quando a coluna é NULL ou não existe). */
     reciboConfig,
+    /**
+     * true quando a linha carregada já tem personalização salva (a loja usa o
+     * recibo novo A4); false = recibo de sempre. Mesma regra da impressão.
+     */
+    personalizado: lojaPersonalizouReciboVenda(linha),
     /** Linha de configuracoes_loja carregada (para a prévia: nome, logo, contatos). */
     configLoja: linha,
     carregando: carregandoConfig || papel === null,

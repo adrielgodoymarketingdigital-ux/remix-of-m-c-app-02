@@ -152,8 +152,9 @@ export function DialogReciboPDV({
   const { config: configLoja } = useConfiguracaoLoja(dados?.empresaId);
   const { toast } = useToast();
 
-  // Recibo novo (A4), só para quem a regra libera; falhou → recibo antigo.
-  const reciboNovoVisivel = useReciboVendaNovoVisivel();
+  // Recibo novo (A4): admin, ou loja que salvou uma personalização (lida na
+  // mesma configLoja acima, sem consulta a mais); carregando/falhou → recibo antigo.
+  const reciboNovoVisivel = useReciboVendaNovoVisivel(configLoja);
   const reciboNovoRef = useRef<HTMLDivElement>(null);
   const reciboNovo = useModeloReciboNovoPDV({ ativo: reciboNovoVisivel && open, dados, loja: configLoja });
   const [modeloQueFalhou, setModeloQueFalhou] = useState<ReciboVendaModelo | null>(null);

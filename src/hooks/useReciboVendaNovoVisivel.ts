@@ -1,14 +1,42 @@
 import { useIsAdminMecApp } from "@/hooks/useCompatibilidadePelicula";
-import { RECIBO_VENDA_NOVO_PARA_TODOS, reciboVendaNovoVisivelPara } from "@/lib/vendas/visibilidadeReciboNovo";
+import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
+import { useIdentidade } from "@/hooks/useResolvedUserId";
+import {
+  type PapelLojaRecibo,
+  reciboVendaNovoVisivelPara,
+  telaPersonalizarReciboVisivelPara,
+} from "@/lib/vendas/visibilidadeReciboNovo";
 
 /**
- * true para quem recebe o recibo de venda no layout novo. Hoje: liberado a
- * todos — a consulta de admin nem é feita (enabled: false). Se a regra voltar
- * a só admin, usa o mesmo cache de admin do menu e, enquanto carrega, devolve
- * false (o recibo fica como sempre foi). Para mudar quem vê, mexa em
- * src/lib/vendas/visibilidadeReciboNovo.ts, não aqui.
+ * Para mudar quem vê, mexa em src/lib/vendas/visibilidadeReciboNovo.ts (regra
+ * e freio de emergência), não aqui.
  */
-export function useReciboVendaNovoVisivel(): boolean {
-  const { data: isAdmin } = useIsAdminMecApp({ enabled: !RECIBO_VENDA_NOVO_PARA_TODOS });
-  return reciboVendaNovoVisivelPara({ isAdmin: isAdmin === true });
+
+/**
+ * true para usar o recibo de venda novo (A4). `loja` é a linha de
+ * configuracoes_loja que o diálogo de recibo JÁ leu (useConfiguracaoLoja):
+ * nenhuma consulta a mais. Admin vem do mesmo cache do menu. Enquanto algo
+ * carrega ou falha → false (o recibo fica como sempre foi).
+ */
+export function useReciboVendaNovoVisivel(loja: { recibo_venda_config?: unknown } | null | undefined): boolean {
+  const { data: isAdmin } = useIsAdminMecApp();
+  return reciboVendaNovoVisivelPara({ isAdmin: isAdmin === true, loja });
+}
+
+/**
+ * Papel do usuário na loja (mesmas fontes em cache do resto do app):
+ * gerente de filial > funcionário > dono. null = ainda carregando.
+ */
+export function usePapelLojaRecibo(): PapelLojaRecibo | null {
+  const { isFuncionario, carregando: carregandoPermissoes } = useFuncionarioPermissoes();
+  const { isGerenteFilial, carregando: carregandoIdentidade } = useIdentidade();
+  if (carregandoPermissoes || carregandoIdentidade) return null;
+  return isGerenteFilial ? "gerente" : isFuncionario ? "funcionario" : "dono";
+}
+
+/** true para mostrar "Personalizar recibo de venda" (admin ou dono; carregando = false). */
+export function useTelaPersonalizarReciboVisivel(): boolean {
+  const { data: isAdmin } = useIsAdminMecApp();
+  const papel = usePapelLojaRecibo();
+  return telaPersonalizarReciboVisivelPara({ isAdmin: isAdmin === true, papel });
 }
