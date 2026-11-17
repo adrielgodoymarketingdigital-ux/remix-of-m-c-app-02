@@ -10,7 +10,11 @@ import { useResolvedUserId, useEmpresaInfo, useIdentidadeLeitura } from "./useRe
 import { useFuncionarioPermissoes } from "./useFuncionarioPermissoes";
 import { resolverEmpresaGravacaoSegura } from "@/lib/multiempresas/identidadeGravacao";
 import { excluirContaPorId } from "@/lib/contas/excluirContaPorId";
-import { proximaDataRecorrente } from "@/lib/contas/recorrencia";
+import {
+  gerarProximaRecorrente,
+  avisoDaProximaRecorrente,
+  type AvisoProximaRecorrente,
+} from "@/lib/contas/gerarProximaRecorrente";
 import { cancelarParcelaDaContaExcluida } from "@/lib/vendas/estornoParcelaSecundaria";
 import { valorAReceberSemConta } from "@/lib/vendas/trocaPDV";
 import {
@@ -199,6 +203,26 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
     if (carregar) await carregarContas();
   }, [carregar, carregarContas]);
 
+  // Próxima conta recorrente depois de uma quitação (função única para todos os
+  // caminhos). Conta não recorrente: nenhuma chamada ao banco. Devolve o aviso
+  // para o chamador mostrar por último (TOAST_LIMIT = 1: o último toast fica).
+  const proximaRecorrente = async (p: {
+    contaId: string;
+    recorrente: boolean | null | undefined;
+    nome: string;
+    targetUserId: string;
+    quitadaAntes?: boolean;
+  }): Promise<AvisoProximaRecorrente | null> => {
+    const resultado = await gerarProximaRecorrente(supabase, {
+      contaId: p.contaId,
+      recorrenteLocal: p.recorrente,
+      targetUserId: p.targetUserId,
+      quitadaAntes: p.quitadaAntes,
+    });
+    if (resultado.status === "erro") console.error("Erro ao criar conta recorrente:", resultado.mensagem);
+    return avisoDaProximaRecorrente(resultado, p.nome);
+  };
+
   const criarConta = async (dados: FormularioConta) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -264,6 +288,16 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
         window.dispatchEvent(new CustomEvent("conta-atualizada"));
       }
 
+      // Cadastrada já paga: o gatilho quitou a conta; recorrente gera a próxima.
+      const avisoRecorrente = pagamento
+        ? await proximaRecorrente({
+            contaId: contaCriada.id,
+            recorrente: dados.recorrente,
+            nome: dados.nome,
+            targetUserId,
+          })
+        : null;
+
       toast({
         title: "Conta cadastrada",
         description: !pagamento
@@ -274,6 +308,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
       });
 
       await recarregar();
+      if (avisoRecorrente) toast(avisoRecorrente);
       return true;
     } catch (error) {
       console.error("Erro ao cadastrar conta:", error);
@@ -298,7 +333,8 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
     });
   };
 
-  const atualizarConta = async (id: string, dados: Partial<FormularioConta>) => {
+  // contaInformada: a conta vinda de fora da lista do hook (ficha do fornecedor).
+  const atualizarConta = async (id: string, dados: Partial<FormularioConta>, contaInformada?: Conta) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
@@ -361,12 +397,26 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
         }
       }
 
+      // Mudou para pago/recebido: recorrente gera a próxima (já quitada antes = nada).
+      const contaAntes = contaInformada ?? contas.find((c) => c.id === id);
+      const avisoRecorrente =
+        dados.status === "pago" || dados.status === "recebido"
+          ? await proximaRecorrente({
+              contaId: id,
+              recorrente: dados.recorrente ?? contaAntes?.recorrente,
+              nome: dados.nome ?? contaAntes?.nome ?? "",
+              targetUserId,
+              quitadaAntes: contaAntes?.status === "pago" || contaAntes?.status === "recebido",
+            })
+          : null;
+
       toast({
         title: "Conta atualizada",
         description: "A conta foi atualizada com sucesso.",
       });
 
       await recarregar();
+      if (avisoRecorrente) toast(avisoRecorrente);
       return true;
     } catch (error) {
       console.error("Erro ao atualizar conta:", error);
@@ -455,10 +505,12 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
 
   // Registra um recebimento/pagamento parcial numa conta do modelo novo.
   // O trigger sync_conta_from_pagamentos recalcula valor_pago/status.
+  // contaInformada: a conta vinda de fora da lista do hook (ficha do fornecedor).
   const registrarPagamentoParcial = async (
     contaId: string,
     dados: { valor: number; forma?: string; data: string; observacao?: string },
-  ): Promise<{ ok: boolean; quitou: boolean }> => {
+    contaInformada?: Conta,
+  ): Promise<{ ok: boolean; quitou: boolean; avisoRecorrente?: AvisoProximaRecorrente | null }> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { ok: false, quitou: false };
@@ -499,13 +551,27 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
         avisarCustoNaoConfirmado(resultado);
       }
 
+      // Quitou de verdade (status relido do banco): recorrente gera a próxima.
+      const contaLocal = contaInformada ?? contas.find((c) => c.id === contaId);
+      const avisoRecorrente = quitou
+        ? await proximaRecorrente({
+            contaId,
+            recorrente: contaLocal?.recorrente,
+            nome: contaLocal?.nome ?? "",
+            targetUserId,
+            quitadaAntes: Number(conta.valor_pago || 0) >= Number(conta.valor) - 0.005,
+          })
+        : null;
+
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
       await recarregar();
       toast({
         title: quitou ? "Conta quitada" : "Recebimento registrado",
         description: quitou ? "O saldo foi zerado." : "Pagamento parcial registrado. O saldo foi atualizado.",
       });
-      return { ok: true, quitou };
+      if (avisoRecorrente) toast(avisoRecorrente);
+      // avisoRecorrente só quando há aviso (retorno da conta não recorrente fica igual ao de antes).
+      return avisoRecorrente ? { ok: true, quitou, avisoRecorrente } : { ok: true, quitou };
     } catch (error) {
       console.error("Erro ao registrar pagamento parcial:", error);
       toast({
@@ -584,81 +650,21 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
         forma: formaPagamento,
         data: dataBrasiliaISO(),
         observacao: "Quitação",
-      });
+      }, contaAlvo);
       return res.ok;
     }
 
     const status = tipo === 'pagar' ? 'pago' : 'recebido';
     const hoje = dataBrasiliaISO();
+    // A próxima recorrente é gerada dentro de atualizarConta (função única).
     const sucesso = await atualizarConta(id, {
       status,
       data_pagamento: hoje,
       ...(formaPagamento ? { forma_pagamento: formaPagamento } : {}),
-    });
+    }, contaAlvo);
 
     if (sucesso) {
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
-      const conta = contaInformada ?? contas.find(c => c.id === id);
-      if (conta?.recorrente) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const targetUserId = resolvedUserIdFromContext ?? user.id;
-            // Direto do texto da data, sem fuso (antes nascia 1 dia antes no Brasil).
-            const proxima = proximaDataRecorrente(conta.data);
-            const proximaData = proxima.data;
-
-            // "Já existe a próxima?" aceita também o dia anterior: o código antigo
-            // gerava 1 dia antes, e essas contas não podem ser duplicadas agora.
-            // (Não olha o mês inteiro: há lojas com duas recorrentes de mesmo nome
-            // em dias diferentes do mês.)
-            // Mesma filial: duas filiais do mesmo dono podem ter a mesma conta no
-            // mesmo dia. Sem filial também conta, porque o código antigo gerava a
-            // próxima sem empresa_id.
-            let consultaExistente = supabase
-              .from("contas")
-              .select("id")
-              .eq("user_id", targetUserId)
-              .eq("nome", conta.nome)
-              .gte("data", proxima.diaAnterior)
-              .lte("data", proxima.data)
-              .eq("recorrente", true);
-            consultaExistente = conta.empresa_id
-              ? consultaExistente.or(`empresa_id.eq.${conta.empresa_id},empresa_id.is.null`)
-              : consultaExistente.is("empresa_id", null);
-            const { data: existentes } = await consultaExistente.limit(1);
-
-            if (!existentes || existentes.length === 0) {
-              await supabase.from("contas").insert({
-                nome: conta.nome,
-                tipo: conta.tipo,
-                valor: conta.valor,
-                data: proximaData,
-                status: "pendente",
-                recorrente: true,
-                categoria: conta.categoria || null,
-                descricao: conta.descricao || null,
-                fornecedor_id: conta.fornecedor_id || null,
-                // Mesma filial da conta paga (antes ia sem empresa_id e, na
-                // filial, a próxima aparecia na matriz).
-                empresa_id: conta.empresa_id ?? null,
-                user_id: targetUserId,
-                // Só envia quando marcada (default da coluna é false).
-                ...(conta.compra_estoque ? { compra_estoque: true } : {}),
-              });
-
-              toast({
-                title: "Conta recorrente gerada",
-                description: `A próxima parcela de "${conta.nome}" foi criada para ${new Date(proxima.ano, proxima.mes - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.`,
-              });
-
-              await recarregar();
-            }
-          }
-        } catch (error) {
-          console.error("Erro ao criar conta recorrente:", error);
-        }
-      }
     }
 
     return sucesso;
@@ -677,12 +683,27 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
       const hoje = dataBrasiliaISO();
       let parcelasSemCusto = 0;
 
+      // Próximas recorrentes das contas antigas baixadas em massa: uma por conta,
+      // cada uma independente (uma falha não impede as outras).
+      let recorrentesGeradas = 0;
+      const recorrentesComErro: string[] = [];
+      const gerarProximasDe = async (ids: string[]) => {
+        for (const conta of contasParaBaixa) {
+          if (!ids.includes(conta.id) || conta.recorrente !== true) continue;
+          const aviso = await proximaRecorrente({ contaId: conta.id, recorrente: conta.recorrente, nome: conta.nome, targetUserId });
+          if (aviso?.variant === "destructive") recorrentesComErro.push(conta.nome);
+          else if (aviso) recorrentesGeradas++;
+        }
+      };
+
       // Contas do modelo novo: quitar = 1 linha de "Quitação" (= saldo) por conta.
       const contasHistorico = contasParaBaixa.filter(c => c.usa_historico_pagamentos && !c.id.startsWith("venda_"));
       for (const conta of contasHistorico) {
         const saldo = Math.max(Number(conta.valor) - Number(conta.valor_pago || 0), 0);
         if (saldo > 0.005) {
-          await registrarPagamentoParcial(conta.id, { valor: saldo, data: hoje, observacao: "Quitação" });
+          const r = await registrarPagamentoParcial(conta.id, { valor: saldo, data: hoje, observacao: "Quitação" }, conta);
+          if (r.avisoRecorrente?.variant === "destructive") recorrentesComErro.push(conta.nome);
+          else if (r.avisoRecorrente) recorrentesGeradas++;
         }
       }
 
@@ -699,6 +720,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
           .in("id", contasReaisPagar)
           .eq("user_id", targetUserId);
         if (error) throw error;
+        await gerarProximasDe(contasReaisPagar);
       }
 
       if (contasReaisReceber.length > 0) {
@@ -722,6 +744,7 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
             if (resultado?.status === "custo_nao_confirmado") parcelasSemCusto++;
           }
         }
+        await gerarProximasDe(contasReaisReceber);
       }
 
       // Marcar vendas virtuais como recebidas
@@ -750,8 +773,17 @@ export function useContas(filtros?: { inicio?: Date; fim?: Date }, opcoes?: { ca
 
       toast({
         title: "Baixa realizada",
-        description: `${contasParaBaixa.length} conta(s) marcada(s) como paga(s)/recebida(s).`,
+        description:
+          `${contasParaBaixa.length} conta(s) marcada(s) como paga(s)/recebida(s).` +
+          (recorrentesGeradas > 0 ? ` ${recorrentesGeradas} conta(s) recorrente(s) gerada(s) para o mês seguinte.` : ""),
       });
+      if (recorrentesComErro.length > 0) {
+        toast({
+          title: "Próxima conta recorrente não foi gerada",
+          description: `A baixa foi registrada, mas não foi possível criar a próxima parcela de: ${recorrentesComErro.join(", ")}. Cadastre-as manualmente.`,
+          variant: "destructive",
+        });
+      }
 
       window.dispatchEvent(new CustomEvent("conta-atualizada"));
       await recarregar();

@@ -106,7 +106,8 @@ export function DialogFichaFornecedor({ fornecedor, onOpenChange }: DialogFichaF
     contaId: string,
     dados: { valor: number; forma?: string; data: string; observacao?: string },
   ) => {
-    const r = await registrarPagamentoParcial(contaId, dados);
+    // A conta da ficha (fora da lista do hook): sem ela, a próxima recorrente não é gerada.
+    const r = await registrarPagamentoParcial(contaId, dados, contas.find((c) => c.id === contaId));
     await atualizarFicha();
     return r;
   };
