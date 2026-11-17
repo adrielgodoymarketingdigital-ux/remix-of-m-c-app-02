@@ -189,13 +189,12 @@ Deno.test("seloAdicionais e tituloDispositivo", () => {
   assertStrictEquals(tituloDispositivo(1), "Dispositivo 1");
 });
 
-Deno.test("adicionaisCorrespondemBusca: IMEI, modelo, marca e número de série", () => {
+Deno.test("adicionaisCorrespondemBusca: IMEI, modelo e marca; número de série NÃO", () => {
   const ad = [{ id: "a", os_id: OS, ordem: 2, dispositivo_marca: "Samsung", dispositivo_modelo: "Galaxy A54", dispositivo_imei: "356789012345678", dispositivo_numero_serie: "RX8ZZ" }];
   assertStrictEquals(adicionaisCorrespondemBusca(ad, "35678901"), true);
   assertStrictEquals(adicionaisCorrespondemBusca(ad, "a54"), true);
   assertStrictEquals(adicionaisCorrespondemBusca(ad, "samsung"), true);
-  assertStrictEquals(adicionaisCorrespondemBusca(ad, "rx8zz"), true);
-  assertStrictEquals(adicionaisCorrespondemBusca(ad, "zz9"), false);
+  assertStrictEquals(adicionaisCorrespondemBusca(ad, "rx8zz"), false);
   assertStrictEquals(adicionaisCorrespondemBusca(ad, ""), false);
   assertStrictEquals(adicionaisCorrespondemBusca(undefined, "a54"), false);
   assertStrictEquals(adicionaisCorrespondemBusca([], "a54"), false);

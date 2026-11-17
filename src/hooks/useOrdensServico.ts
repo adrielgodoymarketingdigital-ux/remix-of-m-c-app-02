@@ -13,8 +13,7 @@ import { ajustarCaixasFechadosOS } from "@/lib/caixa/ajustarCaixasFechadosOS";
 import { estornarEstoqueOS, ItemOSEstoque } from "@/lib/ordemServico/estoqueItensOS";
 import { quitarContaReceberDaOS, lerContaDaOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
 import { lucroLinhaServico, totaisPecasOS } from "@/lib/ordemServico/totaisPecasOS";
-import { type AdicionaisPorOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
-import { filtrarOSPorBusca } from "@/lib/ordemServico/buscaListaOS";
+import { adicionaisCorrespondemBusca, type AdicionaisPorOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { buscarResumoAdicionaisLoja, precarregarDispositivosAdicionaisOS } from "./useOsDispositivosAdicionais";
 import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 
@@ -115,7 +114,29 @@ export const useOrdensServico = (mostrarOsFiliais = false) => {
   const ordens = useMemo(() => {
     let resultado = ordensBase;
 
-    resultado = filtrarOSPorBusca(resultado, busca, adicionaisPorOs);
+    const termo = busca.trim().toLowerCase();
+    if (termo) {
+      resultado = resultado.filter((o: any) => {
+        const nome = o.cliente?.nome?.toLowerCase() || '';
+        const cpf = o.cliente?.cpf?.toLowerCase() || '';
+        const imei = o.dispositivo_imei?.toLowerCase() || '';
+        const modelo = o.dispositivo_modelo?.toLowerCase() || '';
+        const marca = o.dispositivo_marca?.toLowerCase() || '';
+        const numeroOs = o.numero_os?.toLowerCase() || '';
+        const defeito = o.defeito_relatado?.toLowerCase() || '';
+
+        return (
+          nome.includes(termo) ||
+          cpf.includes(termo) ||
+          imei.includes(termo) ||
+          modelo.includes(termo) ||
+          marca.includes(termo) ||
+          numeroOs.includes(termo) ||
+          defeito.includes(termo) ||
+          adicionaisCorrespondemBusca(adicionaisPorOs[o.id], termo)
+        );
+      });
+    }
 
     if (origemFiltro !== "todos") {
       resultado = resultado.filter((o: any) => (o.origem_cliente || "") === origemFiltro);
