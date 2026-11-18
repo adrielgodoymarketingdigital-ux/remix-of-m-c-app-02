@@ -391,6 +391,7 @@ const pdv = {
       sucesso: "Caixa fechado com sucesso!",
       erro: "Erro ao fechar caixa",
       falha: "Falha ao fechar caixa",
+      jaFechado: "Este caixa já foi fechado em outro aparelho ou aba.",
     },
     historico: {
       titulo: "Histórico de Caixas",

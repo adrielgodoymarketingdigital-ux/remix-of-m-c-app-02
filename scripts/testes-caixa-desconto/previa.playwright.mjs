@@ -118,6 +118,12 @@ async function rodarCaso(cenario, lang, tema, tela) {
     if (url.hostname.endsWith(".supabase.co")) {
       if (url.pathname.startsWith("/auth/v1/user")) return rota.fulfill({ status: 200, json: SESSAO.user });
       if (url.pathname.startsWith("/auth/v1/token")) return rota.fulfill({ status: 200, json: SESSAO });
+      // Hora do servidor (Fase 1 do relógio). MODO_RPC=ausente simula a migration ainda não aplicada.
+      if (url.pathname === "/rest/v1/rpc/agora_servidor") {
+        return process.env.MODO_RPC === "ausente"
+          ? rota.fulfill({ status: 404, json: { code: "PGRST202", message: "função não encontrada" } })
+          : rota.fulfill({ status: 200, json: AGORA });
+      }
       const m = url.pathname.match(/\/rest\/v1\/([a-z_]+)/);
       if (m && req.method() === "GET") {
         leituras.push(`${m[1]}?select=${url.searchParams.get("select")}`);
@@ -131,7 +137,7 @@ async function rodarCaso(cenario, lang, tema, tela) {
       if (m && m[1] === "caixas" && req.method() === "PATCH") {
         // O fechamento real: guarda o corpo e responde como o banco. Nada é gravado em lugar nenhum.
         patches.push({ filtro: url.search, corpo: req.postDataJSON() });
-        return rota.fulfill({ status: 204, body: "" });
+        return rota.fulfill({ status: 200, json: [{ id: "caixa-ficticio-1" }] });
       }
       falhar(`requisição ao Supabase não simulada: ${req.method()} ${url.pathname}`);
       return rota.fulfill({ status: 404, json: {} });

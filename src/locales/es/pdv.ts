@@ -377,6 +377,7 @@ const pdv: Traducao<typeof pdvPtBR> = {
       sucesso: "¡Caja cerrada con éxito!",
       erro: "Error al cerrar la caja",
       falha: "No se pudo cerrar la caja",
+      jaFechado: "Esta caja ya se cerró en otro equipo o pestaña.",
     },
     historico: {
       titulo: "Historial de cajas",

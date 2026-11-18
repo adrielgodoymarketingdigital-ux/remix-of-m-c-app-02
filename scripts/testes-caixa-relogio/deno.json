@@ -1,0 +1,12 @@
+{
+  "lock": false,
+  "imports": {
+    "react": "./falsos/react.ts",
+    "@/integrations/supabase/client": "./falsos/supabase.ts",
+    "@/hooks/useFuncionarioPermissoes": "./falsos/permissoes.ts",
+    "../../src/hooks/useFuncionarioPermissoes": "./falsos/permissoes.ts",
+    "@/lib/i18n/instancia": "./falsos/i18n.ts",
+    "@/": "../../src/"
+  },
+  "unstable": ["sloppy-imports"]
+}

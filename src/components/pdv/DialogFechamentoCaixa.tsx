@@ -24,6 +24,8 @@ import { TOTAIS_DEVOLUCOES_ZERO, type TotaisDevolucoesTroca } from "@/lib/caixa/
 import { carregarDevolucoesDoCaixa } from "@/lib/caixa/carregarDevolucoesTroca";
 import { mapaStatusContaPorOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
 import { agregarVendasPorFuncionario, COLUNAS_VENDAS_CAIXA, SEM_FUNCIONARIO, somarVendasNoCaixa } from "@/lib/caixa/vendasDoCaixa";
+import { limiteSuperiorDaSoma } from "@/lib/caixa/janelaFechamento";
+import { relogioServidor } from "@/lib/horaBrasilia/relogioServidor";
 
 interface ResumoFechamento {
   total_dinheiro: number;
@@ -86,6 +88,17 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
   const calcularResumoPreview = async () => {
     setCarregandoResumo(true);
     try {
+      // Mesma janela do fechamento real (useCaixa.ts). O status vem do banco: esta
+      // tela pode estar aberta num caixa que já foi fechado em outro aparelho.
+      await relogioServidor.sincronizar();
+      const agoraISO = relogioServidor.agoraISO();
+      const { data: caixaNoBanco } = await supabase
+        .from("caixas")
+        .select("status, data_fechamento")
+        .eq("id", caixa.id)
+        .maybeSingle();
+      const limiteSoma = limiteSuperiorDaSoma(caixaNoBanco, agoraISO);
+
       // proprietario_id = dono da loja (vendas salvas com esse user_id)
       // lojaUserId = fallback para caixas antigos sem proprietario_id (funcionários)
       const userIdVendas = caixa.proprietario_id ?? lojaUserId ?? caixa.user_id;
@@ -94,8 +107,9 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
         .select(`${COLUNAS_VENDAS_CAIXA}, funcionario_id` as const)
         .eq("user_id", userIdVendas)
         .gte("data", caixa.data_abertura)
-        .lte("data", new Date().toISOString())
         .or("cancelada.is.null,cancelada.eq.false");
+
+      if (limiteSoma) query = query.lte("data", limiteSoma);
 
       if (caixa.empresa_id) {
         query = query.eq("empresa_id", caixa.empresa_id);
@@ -119,13 +133,16 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       let total_a_receber = somaVendas.total_a_receber;
 
       // Buscar vendas avulsas do período
-      const { data: vendasAvulsasPreview } = await supabase
+      let vendasAvulsasQuery = supabase
         .from("vendas_avulsas")
         .select("valor, forma_pagamento")
         .eq("user_id", userIdVendas)
         .gte("created_at", caixa.data_abertura)
-        .lte("created_at", new Date().toISOString())
         .is("deleted_at", null);
+
+      if (limiteSoma) vendasAvulsasQuery = vendasAvulsasQuery.lte("created_at", limiteSoma);
+
+      const { data: vendasAvulsasPreview } = await vendasAvulsasQuery;
 
       const formasCartaoPreview = ["debito", "credito", "credito_parcelado"];
       (vendasAvulsasPreview || []).forEach((v: any) => {
@@ -181,7 +198,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
       // "Data no caixa" (coluna DATE, sem ambiguidade de fuso — não usar
       // data_saida, que é hora local sem timezone), valor via getValorFaturavelOS,
       // entrada e saldo tratados como eventos separados (cada um com a sua forma).
-      const janelaFimISO = new Date().toISOString();
+      const janelaFimISO = limiteSoma ?? agoraISO;
       const janelaIniData = String(caixa.data_abertura).slice(0, 10);
       const janelaFimData = janelaFimISO.slice(0, 10);
       let queryOs = supabase

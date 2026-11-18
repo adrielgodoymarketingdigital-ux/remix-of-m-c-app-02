@@ -12,6 +12,9 @@ import {
 } from "@/lib/caixa/servicosCaixa";
 import { carregarDevolucoesDoCaixa } from "@/lib/caixa/carregarDevolucoesTroca";
 import { mapaStatusContaPorOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
+import { limiteSuperiorDaSoma } from "@/lib/caixa/janelaFechamento";
+import { relogioServidor } from "@/lib/horaBrasilia/relogioServidor";
+import i18n from "@/lib/i18n/instancia";
 
 export function useCaixa() {
   const [caixaAtual, setCaixaAtual] = useState<Caixa | null>(null);
@@ -135,7 +138,13 @@ export function useCaixa() {
 
     const caixa = caixaData as Caixa;
 
-    // Buscar vendas do período (data_abertura até agora)
+    // Caixa aberto soma sem limite superior: o relógio do aparelho não corta
+    // lançamentos. Caixa fechado nunca passa do próprio data_fechamento.
+    await relogioServidor.sincronizar();
+    const agoraISO = relogioServidor.agoraISO();
+    const limiteSoma = limiteSuperiorDaSoma(caixa, agoraISO);
+
+    // Buscar vendas do período (desde data_abertura)
     // proprietario_id = dono da loja; usa ref para garantir valor atual
     const userIdVendas = caixa.proprietario_id ?? lojaUserIdRef.current ?? caixa.user_id;
     let vendasQuery = supabase
@@ -143,8 +152,9 @@ export function useCaixa() {
       .select(COLUNAS_VENDAS_CAIXA)
       .eq("user_id", userIdVendas)
       .gte("data", caixa.data_abertura)
-      .lte("data", new Date().toISOString())
       .or("cancelada.is.null,cancelada.eq.false");
+
+    if (limiteSoma) vendasQuery = vendasQuery.lte("data", limiteSoma);
 
     if (caixa.empresa_id) {
       vendasQuery = vendasQuery.eq("empresa_id", caixa.empresa_id);
@@ -162,13 +172,16 @@ export function useCaixa() {
     );
 
     // Vendas avulsas (tabela separada de vendas, sem empresa_id/cancelada — usa soft delete)
-    const { data: vendasAvulsas, error: vendasAvulsasError } = await supabase
+    let vendasAvulsasQuery = supabase
       .from("vendas_avulsas" as any)
       .select("valor, forma_pagamento")
       .eq("user_id", userIdVendas)
       .is("deleted_at", null)
-      .gte("created_at", caixa.data_abertura)
-      .lte("created_at", new Date().toISOString());
+      .gte("created_at", caixa.data_abertura);
+
+    if (limiteSoma) vendasAvulsasQuery = vendasAvulsasQuery.lte("created_at", limiteSoma);
+
+    const { data: vendasAvulsas, error: vendasAvulsasError } = await vendasAvulsasQuery;
 
     if (vendasAvulsasError) throw vendasAvulsasError;
 
@@ -215,7 +228,7 @@ export function useCaixa() {
     // Filtra por data_caixa (coluna DATE, sem ambiguidade de fuso) e não por
     // data_saida — data_saida é gravada como string de hora local sem timezone
     // e, lida como UTC, cai "antes" da abertura do caixa, escondendo a OS.
-    const janelaFimISO = new Date().toISOString();
+    const janelaFimISO = limiteSoma ?? agoraISO;
     const janelaIniData = String(caixa.data_abertura).slice(0, 10);
     const janelaFimData = janelaFimISO.slice(0, 10);
     let osQuery = supabase
@@ -298,8 +311,19 @@ export function useCaixa() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
 
+    // Hora do servidor atualizada antes da conta e da gravação do fechamento.
+    await relogioServidor.sincronizar({ forcar: true });
+
     const totais = await calcularTotaisDoCaixa(caixaId);
     if (!totais) return false;
+
+    // Fechado em outro aparelho ou aba: nada é recalculado nem regravado.
+    const avisarJaFechado = async () => {
+      await carregarCaixaAtual();
+      return new Error(i18n.t("caixa.fechamento.jaFechado", { ns: "pdv" }));
+    };
+    if (totais.caixa.status !== "aberto") throw await avisarJaFechado();
+
     const { caixa, breakdown, total_dinheiro, total_pix, total_cartao, total_a_receber, total_servicos, totalSangrias, totalSuprimentos, devolucoes } = totais;
     setUltimoBreakdownFormaPagamento(breakdown);
 
@@ -308,11 +332,12 @@ export function useCaixa() {
       ? saldoFinalContado
       : calcularDinheiroEsperado({ saldoInicial: caixa.saldo_inicial, totalDinheiro: total_dinheiro, suprimentos: totalSuprimentos, sangrias: totalSangrias, devolucoesDinheiro: devolucoes.dinheiro });
 
-    const { error: updateError } = await supabase
+    const { data: caixasFechados, error: updateError } = await supabase
       .from("caixas")
       .update({
         status: "fechado",
-        data_fechamento: new Date().toISOString(),
+        // Hora do servidor; o gatilho do banco tem a palavra final. Sem a migration, é a hora do aparelho, como antes.
+        data_fechamento: relogioServidor.agoraISO(),
         total_dinheiro,
         total_pix,
         total_cartao,
@@ -324,9 +349,12 @@ export function useCaixa() {
         total_devolucoes_troca: devolucoes.dinheiro,
         observacoes: observacoes || caixa.observacoes,
       })
-      .eq("id", caixaId);
+      .eq("id", caixaId)
+      .eq("status", "aberto")
+      .select("id");
 
     if (updateError) throw updateError;
+    if (!caixasFechados?.length) throw await avisarJaFechado();
 
     await carregarCaixaAtual();
     return true;
