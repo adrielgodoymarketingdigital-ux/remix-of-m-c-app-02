@@ -120,9 +120,10 @@ async function rodarCaso(cenario, lang, tema, tela) {
       if (url.pathname.startsWith("/auth/v1/token")) return rota.fulfill({ status: 200, json: SESSAO });
       // Hora do servidor (Fase 1 do relógio). MODO_RPC=ausente simula a migration ainda não aplicada.
       if (url.pathname === "/rest/v1/rpc/agora_servidor") {
-        return process.env.MODO_RPC === "ausente"
-          ? rota.fulfill({ status: 404, json: { code: "PGRST202", message: "função não encontrada" } })
-          : rota.fulfill({ status: 200, json: AGORA });
+        if (process.env.MODO_RPC === "ausente") return rota.fulfill({ status: 404, json: { code: "PGRST202", message: "função não encontrada" } });
+        // MODO_RPC=atrasado: o servidor está 1h à frente do aparelho (mostra o aviso de relógio).
+        const horaServidor = process.env.MODO_RPC === "atrasado" ? new Date(new Date(AGORA).getTime() + 3_600_000).toISOString() : AGORA;
+        return rota.fulfill({ status: 200, json: horaServidor });
       }
       const m = url.pathname.match(/\/rest\/v1\/([a-z_]+)/);
       if (m && req.method() === "GET") {

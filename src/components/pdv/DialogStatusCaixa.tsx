@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useFormatadores, type Formatadores } from "@/hooks/useFormatadores";
 import type { TFunction } from "i18next";
 import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
+import { formatarDataHoraDaConta, noFusoDaConta } from "@/lib/horaBrasilia/formatoBrasilia";
 import {
   Dialog,
   DialogContent,
@@ -48,13 +49,14 @@ function calcularTempoAberto(dataAbertura: string, t: TFunction): string {
 
 // Brasil: o toLocaleString de sempre ("26/10/2026, 08:00", com vírgula); outros idiomas/moedas: formatador central.
 function formatarDataHora(iso: string, fmt: Formatadores): string {
-  if (fmt.ctx.idioma !== "pt-BR" || fmt.ctx.moeda !== "BRL") return fmt.dataHora(iso);
+  if (fmt.ctx.idioma !== "pt-BR" || fmt.ctx.moeda !== "BRL") return formatarDataHoraDaConta(iso, fmt.ctx);
   return new Date(iso).toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: noFusoDaConta(fmt.ctx).fuso,
   });
 }
 

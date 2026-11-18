@@ -25,6 +25,7 @@ import { carregarDevolucoesDoCaixa } from "@/lib/caixa/carregarDevolucoesTroca";
 import { mapaStatusContaPorOS } from "@/lib/ordemServico/quitarContaReceberDaOS";
 import { agregarVendasPorFuncionario, COLUNAS_VENDAS_CAIXA, SEM_FUNCIONARIO, somarVendasNoCaixa } from "@/lib/caixa/vendasDoCaixa";
 import { limiteSuperiorDaSoma } from "@/lib/caixa/janelaFechamento";
+import { AvisoRelogioAparelho } from "@/components/pdv/AvisoRelogioAparelho";
 import { relogioServidor } from "@/lib/horaBrasilia/relogioServidor";
 
 interface ResumoFechamento {
@@ -340,6 +341,7 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
           <DialogTitle>{t("caixa.fechamento.titulo")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
+          <AvisoRelogioAparelho />
           {carregandoResumo ? (
             <p className="text-sm text-muted-foreground text-center py-4">{t("caixa.fechamento.calculando")}</p>
           ) : (

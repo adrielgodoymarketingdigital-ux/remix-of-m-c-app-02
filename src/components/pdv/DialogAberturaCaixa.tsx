@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Caixa } from "@/types/caixa";
 import { useTranslation } from "react-i18next";
 import { useFormatadores } from "@/hooks/useFormatadores";
+import { AvisoRelogioAparelho } from "@/components/pdv/AvisoRelogioAparelho";
 import i18n from "@/lib/i18n/instancia";
 
 interface DialogAberturaCaixaProps {
@@ -53,6 +54,7 @@ export function DialogAberturaCaixa({ open, onOpenChange, onCaixaAberto, abrirCa
           <DialogTitle>{t("caixa.abertura.titulo")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
+          <AvisoRelogioAparelho />
           <div className="space-y-2">
             <Label htmlFor="saldo-inicial">{t("caixa.abertura.saldoInicial", { simbolo: fmt.simboloMoeda })}</Label>
             <Input

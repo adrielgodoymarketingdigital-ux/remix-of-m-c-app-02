@@ -5,6 +5,7 @@ import { Caixa } from "@/types/caixa";
 import { useTranslation } from "react-i18next";
 import { useFormatadores } from "@/hooks/useFormatadores";
 import { useNomesFormaPagamento } from "@/hooks/useNomesFormaPagamento";
+import { formatarDataHoraDaConta } from "@/lib/horaBrasilia/formatoBrasilia";
 import { Badge } from "@/components/ui/badge";
 
 interface DialogHistoricoCaixasProps {
@@ -44,7 +45,7 @@ export function DialogHistoricoCaixas({ open, onOpenChange }: DialogHistoricoCai
     }
   };
 
-  const fmt = (iso: string) => formatadores.dataHora(iso);
+  const fmt = (iso: string) => formatarDataHoraDaConta(iso, formatadores.ctx);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -31,6 +31,8 @@ import { DialogHistoricoCaixas } from "@/components/pdv/DialogHistoricoCaixas";
 import { DialogStatusCaixa } from "@/components/pdv/DialogStatusCaixa";
 import { PagamentoDuplo } from "@/components/pdv/PagamentoDuplo";
 import { useCaixa } from "@/hooks/useCaixa";
+import { AvisoRelogioAparelho } from "@/components/pdv/AvisoRelogioAparelho";
+import { relogioServidor } from "@/lib/horaBrasilia/relogioServidor";
 import { Caixa } from "@/types/caixa";
 import {
   DropdownMenu,
@@ -100,7 +102,7 @@ import { ContextoEntradaTroca, ProgressoEntradaTroca, registrarEntradaTroca } fr
  * (contas a receber de venda a prazo) e não foi corrigido nesta entrega —
  * ver DIVIDA-TECNICA.md.
  */
-const agoraISO = (): string => new Date().toISOString();
+const agoraISO = (): string => relogioServidor.agoraISO();
 
 // Entrada da troca que não foi cadastrada depois da venda gravada: guardada no
 // navegador para o "Tentar novamente" sobreviver a recarregar a página.
@@ -539,6 +541,8 @@ const PDV = () => {
 
     setFinalizando(true);
     try {
+      await relogioServidor.sincronizar();
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -672,8 +676,7 @@ const PDV = () => {
             forma_pagamento: formaBanco as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber" | "outro",
             user_id: userIdParaVenda,
             empresa_id: empresaIdPDV,
-            // Campo data é obrigatório para filtros de comissão/relatórios por período
-            data: agoraISO(),
+            // `data` não é enviada: o banco grava a hora do servidor (default now()).
             data_prevista_recebimento: dataPrevisao,
             recebido: forma !== "a_receber",
             grupo_venda: grupoVendaId,
@@ -842,8 +845,7 @@ const PDV = () => {
               forma_pagamento: resolverFormaPagamentoBanco(segundaFormaPagamento) as "dinheiro" | "pix" | "debito" | "credito" | "credito_parcelado" | "a_receber" | "outro",
               user_id: userIdParaVenda,
               empresa_id: empresaIdPDV,
-              // Campo data obrigatório para filtros por período
-              data: agoraISO(),
+              // `data` não é enviada: o banco grava a hora do servidor (default now()).
               data_prevista_recebimento: dataPrevisaoSegunda,
               recebido: segundaFormaPagamento !== "a_receber",
               grupo_venda: grupoVendaId,
@@ -983,7 +985,8 @@ const PDV = () => {
                 formaDevolucao: valorDevolucao > 0 ? formaDevolucao : null,
               }
             : undefined,
-          data: agoraISO(),
+          // Hora gravada pelo banco na venda.
+          data: vendasRegistradas[0]?.data ?? agoraISO(),
           grupoVendaId: grupoVendaId,
           numeroVenda: vendasRegistradas[0]?.numero_venda ?? null,
           empresaId: empresaIdPDV,
@@ -1055,6 +1058,7 @@ const PDV = () => {
   return (
     <AppLayout>
       <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+        <AvisoRelogioAparelho className="mb-6" />
         {entradaPendente && (
           <Alert variant="destructive" className="mb-6">
             <AlertTitle>{t("pagina.entradaPendente.titulo")}</AlertTitle>

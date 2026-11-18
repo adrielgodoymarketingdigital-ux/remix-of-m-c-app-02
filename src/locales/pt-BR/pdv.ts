@@ -310,6 +310,15 @@ const pdv = {
       falha: "Falha ao abrir caixa",
     },
     erroDesconhecido: "Erro desconhecido",
+    relogio: {
+      titulo: "O relógio deste aparelho está diferente",
+      atrasado: "A hora deste aparelho está {{tempo}} atrasada.",
+      adiantado: "A hora deste aparelho está {{tempo}} adiantada.",
+      orientacao: "As vendas e o caixa continuam no horário certo. Ajuste a data, a hora e o fuso do aparelho, de preferência no modo automático.",
+      tempoMinutos: "{{minutos}} min",
+      tempoHoras: "{{horas}} h",
+      tempoHorasMinutos: "{{horas}} h {{minutos}} min",
+    },
     sangria: {
       titulo: "Sangria / Suprimento",
       sangria: "Sangria",

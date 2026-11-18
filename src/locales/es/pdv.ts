@@ -297,6 +297,15 @@ const pdv: Traducao<typeof pdvPtBR> = {
       falha: "No se pudo abrir la caja",
     },
     erroDesconhecido: "Error desconocido",
+    relogio: {
+      titulo: "El reloj de este equipo no coincide",
+      atrasado: "La hora de este equipo está {{tempo}} atrasada.",
+      adiantado: "La hora de este equipo está {{tempo}} adelantada.",
+      orientacao: "Las ventas y la caja siguen registrándose con la hora correcta. Ajuste la fecha, la hora y la zona horaria del equipo, de preferencia en modo automático.",
+      tempoMinutos: "{{minutos}} min",
+      tempoHoras: "{{horas}} h",
+      tempoHorasMinutos: "{{horas}} h {{minutos}} min",
+    },
     sangria: {
       titulo: "Retiro / Ingreso",
       sangria: "Retiro",

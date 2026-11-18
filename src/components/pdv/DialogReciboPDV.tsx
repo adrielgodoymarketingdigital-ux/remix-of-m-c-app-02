@@ -13,8 +13,8 @@ import { Printer, Copy, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useFormatadores } from "@/hooks/useFormatadores";
+import { formatarDataHoraRecibo } from "@/lib/horaBrasilia/formatoBrasilia";
 import { ItemVenda } from "@/components/pdv/DialogSelecionarItem";
 import { Cliente } from "@/types/cliente";
 import { Cupom } from "@/types/cupom";
@@ -149,6 +149,7 @@ export function DialogReciboPDV({
   dados,
 }: DialogReciboPDVProps) {
   const reciboRef = useRef<HTMLDivElement>(null);
+  const formatadoresConta = useFormatadores();
   const { config: configLoja } = useConfiguracaoLoja(dados?.empresaId);
   const { toast } = useToast();
 
@@ -407,7 +408,7 @@ export function DialogReciboPDV({
 
   if (!dados) return null;
 
-  const dataFormatada = format(new Date(dados.data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  const dataFormatada = formatarDataHoraRecibo(dados.data, formatadoresConta.ctx);
   const temDesconto = dados.descontoManual > 0 || dados.descontoCupom > 0;
   // Bloco da troca (null sem troca → recibo igual ao de antes).
   const nomePrimeiraForma = dados.nomeFormaPagamento || labelFormaPagamento[dados.formaPagamento] || dados.formaPagamento;
