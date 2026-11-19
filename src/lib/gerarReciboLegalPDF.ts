@@ -60,6 +60,10 @@ interface DadosReciboCompleto {
   imagens?: ImagensPreparadasRecibo;
 }
 
+// Parte do texto abaixo da linha de base (Helvetica desce ~0,21 em), em mm, com folga.
+const DESCIDA_TEXTO_7PT = 0.6;
+const DESCIDA_TEXTO_9PT = 0.8;
+
 // Função para formatar data/hora no horário de Brasília
 const formatarDataHoraBrasil = (dataISO: string, incluirSegundos = false): string => {
   try {
@@ -81,6 +85,18 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
   // Função para verificar nova página
   const verificarNovaPagina = (espacoNecessario: number = 20) => {
     if (yPos + espacoNecessario > 280) {
+      doc.addPage();
+      yPos = 20;
+    }
+  };
+
+  // Bloco de altura fixa: quebra a página (mesmo padrão acima) só quando o bloco
+  // passaria do fim FÍSICO da folha. Não usa os 280 mm do verificarNovaPagina de
+  // propósito: o recibo que hoje cabe na folha (ex.: "Data:" da 2ª assinatura em
+  // 296 mm) tem de sair idêntico; só o que hoje sai cortado vai para a página nova.
+  const alturaPagina = doc.internal.pageSize.getHeight();
+  const garantirQueCabeNaFolha = (alturaBloco: number) => {
+    if (yPos + alturaBloco > alturaPagina) {
       doc.addPage();
       yPos = 20;
     }
@@ -255,6 +271,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
     (texto) => doc.getTextWidth(texto),
     (texto, largura) => doc.splitTextToSize(texto, largura),
   ).forEach((linha) => {
+    garantirQueCabeNaFolha(DESCIDA_TEXTO_9PT);
     doc.text(linha, margemEsquerda, yPos);
     yPos += 5;
   });
@@ -533,9 +550,14 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
     
     const larguraAssinatura = 70;
     const alturaAssinatura = 35;
+    // Cada assinatura: rótulo, +4 imagem (35), +2 linha de IP/Data (texto 7 pt).
+    // O verificarNovaPagina(70) acima cobre o título + a 1ª (8 + 41,6 mm); a 2ª
+    // (até 106 mm do título) não cabia na reserva e agora é conferida aqui.
+    const alturaBlocoAssinatura = 4 + alturaAssinatura + 2 + DESCIDA_TEXTO_7PT;
     
     // Assinatura do Funcionário/Vendedor da loja
     if (dados.compra.assinatura_vendedor) {
+      garantirQueCabeNaFolha(alturaBlocoAssinatura);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.text('Funcionário Responsável:', margemEsquerda, yPos);
@@ -567,6 +589,7 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
     
     // Assinatura do Vendedor/Cliente
     if (dados.compra.assinatura_cliente) {
+      garantirQueCabeNaFolha(alturaBlocoAssinatura);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.text(`Vendedor do Dispositivo (${dados.vendedor.nome}):`, margemEsquerda, yPos);
