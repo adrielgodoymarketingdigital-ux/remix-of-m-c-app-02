@@ -198,3 +198,146 @@ function comImportant(css: string): string {
 }
 
 export const CSS_RECIBO_PERSONALIZADO = comImportant(CSS_BASE);
+
+/*
+ * ── Uma folha: compactação em níveis e agrupamento do fim (2 folhas) ──
+ * Só existem quando a regra (lib/ordemServico/compactacaoReciboPersonalizado)
+ * manda; no nível 0 sem agrupamento nada disto entra no recibo, que fica
+ * idêntico ao de sempre. Vão num <style> próprio DENTRO do recibo (acompanham a
+ * cópia do Android). O prefixo "html body" + a classe .osr-compacto deixa estas
+ * regras mais fortes que as do recibo (CSS_BASE, inclusive as de @media print)
+ * e que as do modo medição (CSS_MEDICAO_RECIBO_PERSONALIZADO). Cada <style> só
+ * alcança o recibo do PRÓPRIO nível (.osr-nivel-N): as cópias de medição de
+ * níveis diferentes convivem no mesmo documento.
+ * Mínimos (aprovados): texto 8 pt, títulos dos cartões 8 pt, termo 7,5 pt,
+ * ícones do checklist 3,2 mm, espaço entre cartões 1,5 mm, espaço interno ≥ 1 mm.
+ */
+const C = "{{C}}";
+
+const CSS_NIVEL_1 = `
+${C} { gap: 1.5mm; }
+${C} .osr-header { padding: 2mm 4mm; }
+${C} .osr-logo-box { min-height: 14mm; }
+${C} .osr-logo-box img { max-height: 12mm; }
+${C} .osr-linha-2, ${C} .osr-linha-defeito, ${C} .osr-linha-senha { gap: 1.5mm; }
+${C} .osr-card-header { padding: 1mm 3mm; }
+${C} .osr-card-body { padding: 1mm 3mm; }
+${C} .osr-campo { padding: 0.35mm 0; }
+${C} .osr-check-item { padding: 0.1mm 0; }
+${C} .osr-assinaturas { padding: 2mm 2mm 1.5mm; }
+${C} .osr-assinatura-linha { height: 7mm; }
+${C} .impressao-dispositivos-adicionais { gap: 1.5mm; }
+${C} .impressao-dispositivos-adicionais .impressao-block-header { padding: 1mm 3mm; }
+${C} .impressao-dispositivos-adicionais .impressao-block-content { padding: 1mm 3mm; }
+`;
+
+const CSS_NIVEL_2 = `
+${C} .osr-avarias .impressao-silhueta { max-width: 24mm; }
+${C} .impressao-dispositivos-adicionais .impressao-silhueta { max-width: 24mm; }
+`;
+
+const CSS_NIVEL_3 = `
+${C} { font-size: 8pt; }
+${C} .osr-titulo { font-size: 14pt; }
+${C} .osr-numero { font-size: 11pt; }
+${C} .osr-loja { font-size: 8pt; }
+${C} .osr-card-titulo { font-size: 8pt; }
+${C} .osr-card-header svg { width: 3.8mm; height: 3.8mm; }
+${C} .osr-valor-total { font-size: 14pt; }
+${C} .osr-senha-valor { font-size: 11pt; }
+${C} .osr-check-icone { width: 3.2mm; height: 3.2mm; }
+${C} .osr-marca { width: 3.4mm; height: 3.4mm; }
+${C} .osr-marca svg { width: 2.4mm; height: 2.4mm; }
+${C} .osr-termo { font-size: 7.5pt; }
+`;
+
+/** Agrupamento do fim (só no nível 0): blocos que não se partem nem se separam. Mesmo espaço do recibo (2,5 mm). */
+const CSS_AGRUPAMENTO = `
+${C} .osr-bloco-final, ${C} .osr-bloco-garantia {
+  display: flex; flex-direction: column; gap: 2.5mm; flex-shrink: 0;
+  break-inside: avoid; page-break-inside: avoid;
+}
+`;
+
+/**
+ * Sempre que há ajuste (qualquer nível ou o agrupamento): o desenho das avarias
+ * (SilhuetaComAvarias) usa classes do Tailwind, que o documento isolado do
+ * Android não leva — lá as marcações e a legenda saíam fora do lugar e o
+ * cartão ficava bem mais alto que o medido. Aqui vão as mesmas regras, com os
+ * mesmos valores do Tailwind (no computador nada muda). E a cópia do PDF do
+ * iPhone ganha o mesmo limite de 28 mm do desenho que a impressão já tem
+ * (index.css, @media print). No nível 0 sem agrupamento nada disto entra.
+ * A escala do desenho fica fora da cópia do iPhone: lá o Tailwind existe (é o
+ * documento principal) e o html2canvas desenha errado este transform escrito à
+ * mão — o cartão saía ~6 mm mais baixo e o corte da página caía no cartão seguinte.
+ */
+const CSS_DESENHO_AVARIAS = `
+${C}.osr-captura .impressao-silhueta { max-width: 28mm; }
+${C} .impressao-silhueta .relative { position: relative; }
+${C} .impressao-silhueta .absolute { position: absolute; }
+${C} .impressao-silhueta .border { border: 1px solid hsl(var(--border)); }
+${C} .impressao-silhueta .rounded-lg { border-radius: var(--radius); }
+${C} .impressao-silhueta .bg-muted\\/20 { background-color: hsl(var(--muted) / .2); }
+${C} .impressao-silhueta .p-2 { padding: .5rem; }
+${C} .impressao-silhueta .origin-top-left { transform-origin: top left; }
+${C}:not(.osr-captura) .impressao-silhueta .scale-\\[0\\.85\\] { transform: scale(.85); }
+${C} .impressao-silhueta .space-y-0\\.5 > * + * { margin-top: .125rem; }
+${C} .impressao-silhueta .w-full { width: 100%; }
+${C} .impressao-silhueta .h-full { height: 100%; }
+${C} .impressao-silhueta .w-2\\.5 { width: .625rem; }
+${C} .impressao-silhueta .h-2\\.5 { height: .625rem; }
+${C} .impressao-silhueta .w-1\\.5 { width: .375rem; }
+${C} .impressao-silhueta .h-1\\.5 { height: .375rem; }
+${C} .impressao-silhueta .rounded-full { border-radius: 9999px; }
+${C} .impressao-silhueta .opacity-80 { opacity: .8; }
+${C} .impressao-silhueta .border-2 { border: 2px solid rgb(255 255 255); }
+${C} .impressao-silhueta .flex { display: flex; }
+${C} .impressao-silhueta .flex-wrap { flex-wrap: wrap; }
+${C} .impressao-silhueta .items-center { align-items: center; }
+${C} .impressao-silhueta .justify-center { justify-content: center; }
+${C} .impressao-silhueta .gap-0\\.5 { gap: .125rem; }
+${C} .impressao-silhueta .mt-0\\.5 { margin-top: .125rem; }
+${C} .impressao-silhueta .text-\\[6px\\] { font-size: 6px; }
+${C} .impressao-silhueta .font-bold { font-weight: 700; }
+${C} .impressao-silhueta .text-white { color: rgb(255 255 255); }
+${C} .impressao-silhueta .leading-none { line-height: 1; }
+${C} .impressao-silhueta .bg-red-500 { background-color: rgb(239 68 68); }
+${C} .impressao-silhueta .bg-orange-500 { background-color: rgb(249 115 22); }
+${C} .impressao-silhueta .bg-yellow-500 { background-color: rgb(234 179 8); }
+${C} .impressao-silhueta .bg-purple-500 { background-color: rgb(168 85 247); }
+${C} .impressao-silhueta .bg-blue-500 { background-color: rgb(59 130 246); }
+`;
+
+const CSS_POR_NIVEL = [CSS_NIVEL_1, CSS_NIVEL_2, CSS_NIVEL_3];
+
+/**
+ * CSS dos ajustes de uma folha. "" = recibo de sempre (nível 0 sem agrupamento):
+ * nesse caso o recibo não ganha <style> nem classe nova.
+ */
+export function cssAjustesReciboPersonalizado(nivel: number, agrupado: boolean): string {
+  const n = Number.isInteger(nivel) ? Math.max(0, Math.min(CSS_POR_NIVEL.length, nivel)) : 0;
+  const partes = CSS_POR_NIVEL.slice(0, n);
+  if (agrupado) partes.push(CSS_AGRUPAMENTO);
+  if (!partes.length) return "";
+  partes.unshift(CSS_DESENHO_AVARIAS);
+  return comImportant(partes.join("")).split(C).join(`html body ${R}.osr-compacto.osr-nivel-${n}`);
+}
+
+/**
+ * Modo MEDIÇÃO: cópias escondidas (fora da área de impressão) medidas na tela
+ * com as medidas da IMPRESSÃO — as regras de @media print do recibo e as de
+ * index.css (@media print) que alcançam o recibo personalizado. Só vale com
+ * .osr-medicao, que existe apenas nessas cópias. Fica fora do recibo (num
+ * <style> da área de medição), mais fraco que .osr-compacto.
+ */
+const M = `html ${R}.osr-medicao`;
+export const CSS_MEDICAO_RECIBO_PERSONALIZADO = comImportant(`
+${M} {
+  width: 194mm; max-width: 194mm; min-height: 0; height: auto; max-height: none;
+  overflow: visible; padding: 0; margin: 0; font-size: 9pt; font-weight: 400;
+}
+${M} .osr-assinaturas { margin-top: 0; }
+${M} .impressao-silhueta { max-width: 28mm; }
+${M} .impressao-checklist-item { padding: 0.3mm 0.5mm; }
+${M} .impressao-grid-adaptativo { margin-bottom: 1.5mm; }
+`);

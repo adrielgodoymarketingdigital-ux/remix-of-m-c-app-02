@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import {
   Check,
   ClipboardCheck,
@@ -38,7 +38,8 @@ import servicosPtBR from "@/locales/pt-BR/servicos";
 import { SilhuetaComAvarias } from "../SilhuetaComAvarias";
 import { PatternLockVisualizacao } from "../PatternLockVisualizacao";
 import { DispositivosAdicionaisImpressao } from "../DispositivosAdicionaisImpressao";
-import { CSS_RECIBO_PERSONALIZADO } from "./cssReciboPersonalizado";
+import { CSS_RECIBO_PERSONALIZADO, cssAjustesReciboPersonalizado } from "./cssReciboPersonalizado";
+import type { AgrupamentoFinal, NivelCompactacao } from "@/lib/ordemServico/compactacaoReciboPersonalizado";
 
 /**
  * Recibo A4 PERSONALIZADO da OS (layout_os_config.modelo_recibo_a4 = 'personalizado').
@@ -56,6 +57,14 @@ interface Props {
   adicionais?: DispositivoAdicionalOS[];
   /** Cópia escondida para o PDF do iPhone instalado (html2canvas): só ajustes de captura. */
   paraCaptura?: boolean;
+  /**
+   * Uma folha (lib/ordemServico/compactacaoReciboPersonalizado): nível de
+   * compactação e agrupamento do fim. Ausente ou nível 0 sem agrupamento =
+   * recibo de sempre (mesmo HTML).
+   */
+  compactacao?: { nivel: NivelCompactacao; agrupamento: AgrupamentoFinal };
+  /** Cópia escondida medida com as medidas da impressão (MedicaoReciboPersonalizado). */
+  medicao?: boolean;
 }
 
 const SEM_ADICIONAIS: DispositivoAdicionalOS[] = [];
@@ -70,6 +79,8 @@ export function ImpressaoA4Personalizado({
   fotosExcedentes,
   adicionais = SEM_ADICIONAIS,
   paraCaptura = false,
+  compactacao,
+  medicao = false,
 }: Props) {
   const [logoFalhou, setLogoFalhou] = useState(false);
   const temAdicionais = adicionais.length > 0;
@@ -222,252 +233,284 @@ export function ImpressaoA4Personalizado({
     </div>
   );
 
-  return (
-    <div className={`impressao-ordem-container os-recibo-personalizado${paraCaptura ? " osr-captura" : ""}`}>
-      <style>{CSS_RECIBO_PERSONALIZADO}</style>
-
-      {/* Cabeçalho */}
-      <div className="osr-header">
-        {(mostrarLogo || configuracaoLoja?.nome_loja) && (
-          <div className="osr-logo-box">
-            {mostrarLogo ? (
-              <img
-                src={configuracaoLoja?.logo_url}
-                alt="Logo"
-                crossOrigin="anonymous"
-                onError={() => setLogoFalhou(true)}
-              />
-            ) : (
-              <span className="osr-logo-nome">{configuracaoLoja?.nome_loja}</span>
-            )}
-          </div>
-        )}
-        <div className="osr-titulo-area">
-          <h1 className="osr-titulo">ORDEM DE SERVIÇO</h1>
-          <div className="osr-numero">#{ordem.numero_os}</div>
-          <div className="osr-data-status">
-            <span>{formatDate(ordem.created_at)}</span>
-            <span className="osr-status"><span className="osr-status-ponto" />{ordem.status}</span>
-          </div>
-        </div>
-        {configuracaoLoja && (
-          <div className="osr-loja">
-            {mostrarLogo && <div className="osr-loja-nome">{configuracaoLoja.nome_loja}</div>}
-            {configuracaoLoja.cnpj && <div>CNPJ: {configuracaoLoja.cnpj}</div>}
-            {endereco && (
-              <div className="osr-loja-linha"><MapPin /><span>{endereco}</span></div>
-            )}
-            {configuracaoLoja.telefone && (
-              <div className="osr-loja-linha"><Phone /><span>Tel: {formatPhone(configuracaoLoja.telefone)}</span></div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Cliente + Aparelho */}
-      <div className="osr-linha-2">
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <User />
-            <h2 className="osr-card-titulo">{TEXTOS.dadosCliente}</h2>
-          </div>
-          <div className="osr-card-body">
-            <Campo rotulo="Nome:" valor={ordem.cliente?.nome || "N/A"} />
-            <Campo rotulo="Tel:" valor={ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} />
-            <Campo rotulo="CPF:" valor={ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"} />
-          </div>
-        </div>
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <Smartphone />
-            <h2 className="osr-card-titulo">{doDispositivo1(TEXTOS.dadosAparelho)}</h2>
-          </div>
-          <div className="osr-card-body">
-            <Campo rotulo="Tipo/Marca:" valor={`${ordem.dispositivo_tipo} ${ordem.dispositivo_marca}`} />
-            <Campo rotulo="Modelo/Cor:" valor={`${ordem.dispositivo_modelo} (${ordem.dispositivo_cor || "N/A"})`} />
-            <Campo rotulo="IMEI/Série:" valor={ordem.dispositivo_imei || ordem.dispositivo_numero_serie || "N/A"} />
-          </div>
-        </div>
-      </div>
-
-      {/* Defeito + Valor */}
-      <div className="osr-linha-defeito">
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <Wrench />
-            <h2 className="osr-card-titulo">{doDispositivo1("Defeito Relatado")}</h2>
-          </div>
-          <div className="osr-card-body">
-            <p className="osr-texto">{ordem.defeito_relatado}</p>
-          </div>
-        </div>
-        <div className="osr-card osr-card-valor">
-          <div className="osr-card-header">
-            <DollarSign />
-            <h2 className="osr-card-titulo">Valor do Serviço</h2>
-          </div>
-          <div className="osr-card-body osr-valor-body">
-            {dados.desconto > 0 && dados.subtotal !== undefined && (
-              <>
-                <div className="osr-valor-linha"><span>Subtotal</span><span>{formatCurrency(dados.subtotal)}</span></div>
-                <div className="osr-valor-linha osr-valor-linha-desconto"><span>Desconto</span><span>- {formatCurrency(dados.desconto)}</span></div>
-              </>
-            )}
-            <div className="osr-valor-total">{formatCurrency(ordem.total || 0)}</div>
-          </div>
-        </div>
-      </div>
-
-      <DispositivosAdicionaisImpressao adicionais={adicionais} layoutConfig={layoutConfig} />
-
-      {/* Itens do Serviço */}
-      {temItens && (
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <Package />
-            <h2 className="osr-card-titulo">Itens do Serviço</h2>
-          </div>
-          <div className="osr-card-body">
-            {dados.servicos.length > 0 && (
-              <div className="osr-itens">
-                <div className="osr-itens-titulo">Serviços:</div>
-                {dados.servicos.map((servico, i) => (
-                  <div key={chaveLinhaServico(servico, i)} className="osr-item">
-                    <span className="osr-item-nome">• {nomeLinhaServicoComDispositivo(servico, adicionais)}</span>
-                    <span className="osr-item-valor">{formatCurrency(valorLinhaServico(servico))}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {dados.produtos.length > 0 && (
-              <div className="osr-itens">
-                <div className="osr-itens-titulo">Produtos/Peças:</div>
-                {dados.produtos.map((produto) => (
-                  <div key={produto.id} className="osr-item">
-                    <span className="osr-item-nome">• {produto.quantidade}x {produto.nome}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Custos Adicionais + Forma de Pagamento (lado a lado quando há os dois) */}
-      {cardCustos && cardPagamento ? (
-        <div className="osr-linha-2">
-          {cardCustos}
-          {cardPagamento}
-        </div>
-      ) : (
-        cardCustos || cardPagamento
-      )}
-
-      {/* Senha + Checklist de entrada */}
-      {cardSenha && cardChecklistEntrada ? (
-        <div className="osr-linha-senha">
-          {cardSenha}
-          {cardChecklistEntrada}
-        </div>
-      ) : (
-        cardSenha || cardChecklistEntrada
-      )}
-
-      {/* Checklist de saída + Avarias */}
-      {cardChecklistSaida && cardAvarias ? (
-        <div className="osr-linha-2">
-          {cardChecklistSaida}
-          {cardAvarias}
-        </div>
-      ) : (
-        cardChecklistSaida || cardAvarias
-      )}
-
-      {/* Observações internas (só quando a OS manda imprimir) */}
-      {dados.observacoesInternas && (
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <FileText />
-            <h2 className="osr-card-titulo">Observações Internas</h2>
-          </div>
-          <div className="osr-card-body">
-            <p className="osr-texto">{dados.observacoesInternas}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Fotos do aparelho (as mesmas miniaturas e o mesmo limite do recibo de sempre) */}
-      {fotos.length > 0 && (
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <IconeImagem />
-            <h2 className="osr-card-titulo">{TITULO_FOTOS}</h2>
-          </div>
-          <div className="osr-card-body">
-            <div className={`osr-fotos osr-fotos-${colunasFotosRecibo(fotos.length)}`}>
-              {fotos.map((foto, i) => (
-                <figure key={`${i}-${foto.legenda}`} className="osr-foto">
-                  <div className="osr-foto-caixa"><img src={foto.src} alt={foto.legenda} /></div>
-                  <figcaption>{foto.legenda}</figcaption>
-                </figure>
-              ))}
-            </div>
-            {(fotosExcedentes ?? 0) > 0 && <div className="osr-fotos-excedentes">{textoExcedentes(fotosExcedentes ?? 0)}</div>}
-          </div>
-        </div>
-      )}
-
-      {/* Termo de Garantia */}
-      {layoutConfig.mostrar_termos_condicoes && (
-        <div className="osr-card">
-          <div className="osr-card-header">
-            <ShieldCheck />
-            <h2 className="osr-card-titulo">Termo de Garantia do Serviço</h2>
-          </div>
-          <div className="osr-card-body">
-            <p className="osr-termo">{termoGarantia}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Assinaturas */}
-      {layoutConfig.mostrar_assinaturas && (
-        <div className="osr-assinaturas">
-          <div className="osr-assinatura">
-            {assinaturas?.tipo_assinatura_entrada === "digital" && assinaturas?.cliente_entrada ? (
-              <img src={assinaturas.cliente_entrada} alt="Assinatura do Cliente" className="osr-assinatura-imagem" />
-            ) : (
-              <div className="osr-assinatura-linha" />
-            )}
-            <span className="osr-assinatura-rotulo">Assinatura do Cliente (Entrada)</span>
-            <span className="osr-assinatura-data">
-              {assinaturas?.tipo_assinatura_entrada === "digital" && assinaturas?.data_assinatura_entrada
-                ? formatDate(assinaturas.data_assinatura_entrada)
-                : `${cidadeAssinatura}, ${formatDate(new Date())}`}
-            </span>
-          </div>
-          <div className="osr-assinatura">
-            {assinaturas?.tipo_assinatura_saida === "digital" && assinaturas?.cliente_saida ? (
-              <img src={assinaturas.cliente_saida} alt="Assinatura de Recebimento" className="osr-assinatura-imagem" />
-            ) : (
-              <div className="osr-assinatura-linha" />
-            )}
-            <span className="osr-assinatura-rotulo">Assinatura do Cliente (Saída)</span>
-            <span className="osr-assinatura-data">
-              {assinaturas?.tipo_assinatura_saida === "digital" && assinaturas?.data_assinatura_saida
-                ? formatDate(assinaturas.data_assinatura_saida)
-                : `${cidadeAssinatura}, ___/___/______`}
-            </span>
-          </div>
-          {assinaturaLoja && (
-            <div className="osr-assinatura">
-              <img src={assinaturaLoja} alt="Assinatura da Loja" className="osr-assinatura-imagem" />
-              <span className="osr-assinatura-rotulo">Assinatura da Loja</span>
-            </div>
+  // Blocos do recibo, na ordem. Renderizados um após o outro (o HTML é o de sempre);
+  // só o agrupamento do fim (2 folhas) os separa em grupos.
+  const blocosCorpo: ReactNode[] = [
+    // Cabeçalho
+    <div className="osr-header">
+      {(mostrarLogo || configuracaoLoja?.nome_loja) && (
+        <div className="osr-logo-box">
+          {mostrarLogo ? (
+            <img
+              src={configuracaoLoja?.logo_url}
+              alt="Logo"
+              crossOrigin="anonymous"
+              onError={() => setLogoFalhou(true)}
+            />
+          ) : (
+            <span className="osr-logo-nome">{configuracaoLoja?.nome_loja}</span>
           )}
         </div>
       )}
+      <div className="osr-titulo-area">
+        <h1 className="osr-titulo">ORDEM DE SERVIÇO</h1>
+        <div className="osr-numero">#{ordem.numero_os}</div>
+        <div className="osr-data-status">
+          <span>{formatDate(ordem.created_at)}</span>
+          <span className="osr-status"><span className="osr-status-ponto" />{ordem.status}</span>
+        </div>
+      </div>
+      {configuracaoLoja && (
+        <div className="osr-loja">
+          {mostrarLogo && <div className="osr-loja-nome">{configuracaoLoja.nome_loja}</div>}
+          {configuracaoLoja.cnpj && <div>CNPJ: {configuracaoLoja.cnpj}</div>}
+          {endereco && (
+            <div className="osr-loja-linha"><MapPin /><span>{endereco}</span></div>
+          )}
+          {configuracaoLoja.telefone && (
+            <div className="osr-loja-linha"><Phone /><span>Tel: {formatPhone(configuracaoLoja.telefone)}</span></div>
+          )}
+        </div>
+      )}
+    </div>,
+    // Cliente + Aparelho
+    <div className="osr-linha-2">
+      <div className="osr-card">
+        <div className="osr-card-header">
+          <User />
+          <h2 className="osr-card-titulo">{TEXTOS.dadosCliente}</h2>
+        </div>
+        <div className="osr-card-body">
+          <Campo rotulo="Nome:" valor={ordem.cliente?.nome || "N/A"} />
+          <Campo rotulo="Tel:" valor={ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} />
+          <Campo rotulo="CPF:" valor={ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"} />
+        </div>
+      </div>
+      <div className="osr-card">
+        <div className="osr-card-header">
+          <Smartphone />
+          <h2 className="osr-card-titulo">{doDispositivo1(TEXTOS.dadosAparelho)}</h2>
+        </div>
+        <div className="osr-card-body">
+          <Campo rotulo="Tipo/Marca:" valor={`${ordem.dispositivo_tipo} ${ordem.dispositivo_marca}`} />
+          <Campo rotulo="Modelo/Cor:" valor={`${ordem.dispositivo_modelo} (${ordem.dispositivo_cor || "N/A"})`} />
+          <Campo rotulo="IMEI/Série:" valor={ordem.dispositivo_imei || ordem.dispositivo_numero_serie || "N/A"} />
+        </div>
+      </div>
+    </div>,
+    // Defeito + Valor
+    <div className="osr-linha-defeito">
+      <div className="osr-card">
+        <div className="osr-card-header">
+          <Wrench />
+          <h2 className="osr-card-titulo">{doDispositivo1("Defeito Relatado")}</h2>
+        </div>
+        <div className="osr-card-body">
+          <p className="osr-texto">{ordem.defeito_relatado}</p>
+        </div>
+      </div>
+      <div className="osr-card osr-card-valor">
+        <div className="osr-card-header">
+          <DollarSign />
+          <h2 className="osr-card-titulo">Valor do Serviço</h2>
+        </div>
+        <div className="osr-card-body osr-valor-body">
+          {dados.desconto > 0 && dados.subtotal !== undefined && (
+            <>
+              <div className="osr-valor-linha"><span>Subtotal</span><span>{formatCurrency(dados.subtotal)}</span></div>
+              <div className="osr-valor-linha osr-valor-linha-desconto"><span>Desconto</span><span>- {formatCurrency(dados.desconto)}</span></div>
+            </>
+          )}
+          <div className="osr-valor-total">{formatCurrency(ordem.total || 0)}</div>
+        </div>
+      </div>
+    </div>,
+    adicionais.length > 0 && <DispositivosAdicionaisImpressao adicionais={adicionais} layoutConfig={layoutConfig} />,
+    // Itens do Serviço
+    temItens && (
+      <div className="osr-card">
+        <div className="osr-card-header">
+          <Package />
+          <h2 className="osr-card-titulo">Itens do Serviço</h2>
+        </div>
+        <div className="osr-card-body">
+          {dados.servicos.length > 0 && (
+            <div className="osr-itens">
+              <div className="osr-itens-titulo">Serviços:</div>
+              {dados.servicos.map((servico, i) => (
+                <div key={chaveLinhaServico(servico, i)} className="osr-item">
+                  <span className="osr-item-nome">• {nomeLinhaServicoComDispositivo(servico, adicionais)}</span>
+                  <span className="osr-item-valor">{formatCurrency(valorLinhaServico(servico))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {dados.produtos.length > 0 && (
+            <div className="osr-itens">
+              <div className="osr-itens-titulo">Produtos/Peças:</div>
+              {dados.produtos.map((produto) => (
+                <div key={produto.id} className="osr-item">
+                  <span className="osr-item-nome">• {produto.quantidade}x {produto.nome}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    ),
+    // Custos Adicionais + Forma de Pagamento (lado a lado quando há os dois)
+    cardCustos && cardPagamento ? (
+      <div className="osr-linha-2">
+        {cardCustos}
+        {cardPagamento}
+      </div>
+    ) : (
+      cardCustos || cardPagamento
+    ),
+    // Senha + Checklist de entrada
+    cardSenha && cardChecklistEntrada ? (
+      <div className="osr-linha-senha">
+        {cardSenha}
+        {cardChecklistEntrada}
+      </div>
+    ) : (
+      cardSenha || cardChecklistEntrada
+    ),
+    // Checklist de saída + Avarias
+    cardChecklistSaida && cardAvarias ? (
+      <div className="osr-linha-2">
+        {cardChecklistSaida}
+        {cardAvarias}
+      </div>
+    ) : (
+      cardChecklistSaida || cardAvarias
+    ),
+    // Observações internas (só quando a OS manda imprimir)
+    dados.observacoesInternas && (
+      <div className="osr-card">
+        <div className="osr-card-header">
+          <FileText />
+          <h2 className="osr-card-titulo">Observações Internas</h2>
+        </div>
+        <div className="osr-card-body">
+          <p className="osr-texto">{dados.observacoesInternas}</p>
+        </div>
+      </div>
+    ),
+    // Fotos do aparelho (as mesmas miniaturas e o mesmo limite do recibo de sempre)
+    fotos.length > 0 && (
+      <div className="osr-card">
+        <div className="osr-card-header">
+          <IconeImagem />
+          <h2 className="osr-card-titulo">{TITULO_FOTOS}</h2>
+        </div>
+        <div className="osr-card-body">
+          <div className={`osr-fotos osr-fotos-${colunasFotosRecibo(fotos.length)}`}>
+            {fotos.map((foto, i) => (
+              <figure key={`${i}-${foto.legenda}`} className="osr-foto">
+                <div className="osr-foto-caixa"><img src={foto.src} alt={foto.legenda} /></div>
+                <figcaption>{foto.legenda}</figcaption>
+              </figure>
+            ))}
+          </div>
+          {(fotosExcedentes ?? 0) > 0 && <div className="osr-fotos-excedentes">{textoExcedentes(fotosExcedentes ?? 0)}</div>}
+        </div>
+      </div>
+    ),
+  ];
+  const blocosFim: ReactNode[] = [
+    // Termo de Garantia
+    layoutConfig.mostrar_termos_condicoes && (
+      <div className="osr-card">
+        <div className="osr-card-header">
+          <ShieldCheck />
+          <h2 className="osr-card-titulo">Termo de Garantia do Serviço</h2>
+        </div>
+        <div className="osr-card-body">
+          <p className="osr-termo">{termoGarantia}</p>
+        </div>
+      </div>
+    ),
+    // Assinaturas
+    layoutConfig.mostrar_assinaturas && (
+      <div className="osr-assinaturas">
+        <div className="osr-assinatura">
+          {assinaturas?.tipo_assinatura_entrada === "digital" && assinaturas?.cliente_entrada ? (
+            <img src={assinaturas.cliente_entrada} alt="Assinatura do Cliente" className="osr-assinatura-imagem" />
+          ) : (
+            <div className="osr-assinatura-linha" />
+          )}
+          <span className="osr-assinatura-rotulo">Assinatura do Cliente (Entrada)</span>
+          <span className="osr-assinatura-data">
+            {assinaturas?.tipo_assinatura_entrada === "digital" && assinaturas?.data_assinatura_entrada
+              ? formatDate(assinaturas.data_assinatura_entrada)
+              : `${cidadeAssinatura}, ${formatDate(new Date())}`}
+          </span>
+        </div>
+        <div className="osr-assinatura">
+          {assinaturas?.tipo_assinatura_saida === "digital" && assinaturas?.cliente_saida ? (
+            <img src={assinaturas.cliente_saida} alt="Assinatura de Recebimento" className="osr-assinatura-imagem" />
+          ) : (
+            <div className="osr-assinatura-linha" />
+          )}
+          <span className="osr-assinatura-rotulo">Assinatura do Cliente (Saída)</span>
+          <span className="osr-assinatura-data">
+            {assinaturas?.tipo_assinatura_saida === "digital" && assinaturas?.data_assinatura_saida
+              ? formatDate(assinaturas.data_assinatura_saida)
+              : `${cidadeAssinatura}, ___/___/______`}
+          </span>
+        </div>
+        {assinaturaLoja && (
+          <div className="osr-assinatura">
+            <img src={assinaturaLoja} alt="Assinatura da Loja" className="osr-assinatura-imagem" />
+            <span className="osr-assinatura-rotulo">Assinatura da Loja</span>
+          </div>
+        )}
+      </div>
+    ),
+  ];
+
+  const nivel = compactacao?.nivel ?? 0;
+  const agrupamento = compactacao?.agrupamento ?? "nenhum";
+  const cssAjustes = cssAjustesReciboPersonalizado(nivel, agrupamento !== "nenhum");
+  // Só quando há ajuste: no nível 0 sem agrupamento a classe e o HTML são os de sempre.
+  const classeAjustes = cssAjustes ? ` osr-compacto osr-nivel-${nivel}` : "";
+
+  return (
+    <div className={`impressao-ordem-container os-recibo-personalizado${paraCaptura ? " osr-captura" : ""}${medicao ? " osr-medicao" : ""}${classeAjustes}`}>
+      <style>{CSS_RECIBO_PERSONALIZADO}</style>
+      {cssAjustes ? <style>{cssAjustes}</style> : null}
+
+      {renderizarBlocos(blocosCorpo, blocosFim, agrupamento)}
     </div>
+  );
+}
+
+/** Bloco que aparece no recibo (as condições dos blocos devolvem false/null/"" quando não há nada). */
+function visivel(bloco: ReactNode): boolean {
+  return bloco !== false && bloco !== null && bloco !== undefined && bloco !== "";
+}
+
+/**
+ * Os blocos um após o outro (recibo de sempre) ou, em 2 folhas, com o fim
+ * agrupado: "final" = termo + assinaturas juntos; "anteriorEFinal" = o bloco
+ * anterior também, para a folha 2 não ficar só com a garantia.
+ */
+function renderizarBlocos(corpo: ReactNode[], fim: ReactNode[], agrupamento: AgrupamentoFinal) {
+  const lista = (blocos: ReactNode[], prefixo: string) => blocos.map((b, i) => <Fragment key={`${prefixo}${i}`}>{b}</Fragment>);
+  if (agrupamento === "nenhum" || !fim.some(visivel)) return <>{lista(corpo, "c")}{lista(fim, "f")}</>;
+  const garantia = <div className="osr-bloco-garantia">{lista(fim, "f")}</div>;
+  let anterior = -1;
+  if (agrupamento === "anteriorEFinal") for (let i = corpo.length - 1; i >= 0 && anterior < 0; i--) if (visivel(corpo[i])) anterior = i;
+  if (anterior < 0) return <>{lista(corpo, "c")}{garantia}</>;
+  return (
+    <>
+      {lista(corpo.slice(0, anterior), "c")}
+      <div className="osr-bloco-final">
+        {corpo[anterior]}
+        {garantia}
+      </div>
+    </>
   );
 }
 

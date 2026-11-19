@@ -9,6 +9,8 @@ import { ImpressaoCupom80mm } from "./ImpressaoCupom80mm";
 import { ImpressaoA4Padrao } from "./ImpressaoA4Padrao";
 import { ImpressaoA4Tech } from "./ImpressaoA4Tech";
 import { ImpressaoA4Personalizado } from "./recibo-personalizado/ImpressaoA4Personalizado";
+import { MedicaoReciboPersonalizado } from "./recibo-personalizado/MedicaoReciboPersonalizado";
+import { decisaoMudaRecibo, type DecisaoCompactacao } from "@/lib/ordemServico/compactacaoReciboPersonalizado";
 import { usaReciboPersonalizado } from "@/lib/ordemServico/modeloReciboOS";
 import { gerarPDFReciboPersonalizado, imagemComoDataUrl, type ResultadoPDFPersonalizado } from "@/lib/ordemServico/pdfReciboPersonalizado";
 import { TEMPO_MAXIMO_PDF_PERSONALIZADO_MS } from "@/lib/ordemServico/paginasReciboPersonalizado";
@@ -426,6 +428,20 @@ export const ImpressaoOrdemServico = ({
     duasOsPorFolha: duasOsPorFolha,
   });
 
+  // ── Recibo personalizado em uma folha (lib/ordemServico/compactacaoReciboPersonalizado) ──
+  // Depois de fotos e adicionais prontos, cópias escondidas medem o recibo e a regra
+  // escolhe o nível de compactação (ou o agrupamento do fim, em 2 folhas). Até decidir,
+  // "Imprimir Agora" espera (no máximo TEMPO_MAXIMO_MEDICAO_MS). Nível 0 = recibo de sempre.
+  const chaveCompactacao = reciboPersonalizado && !aguardandoImpressao
+    ? `${fotosMontadas?.fotos.map((f) => f.legenda).join(",") ?? "-"}|${adicionais.length}`
+    : null;
+  const [compactacao, setCompactacao] = useState<{ chave: string; decisao: DecisaoCompactacao } | null>(null);
+  const decisaoCompactacao = chaveCompactacao && compactacao?.chave === chaveCompactacao ? compactacao.decisao : null;
+  const medindoCompactacao = !!chaveCompactacao && !decisaoCompactacao;
+  const compactacaoRecibo = decisaoMudaRecibo(decisaoCompactacao) && decisaoCompactacao
+    ? { nivel: decisaoCompactacao.nivel, agrupamento: decisaoCompactacao.agrupamento }
+    : undefined;
+
   // ── PDF do recibo personalizado no iPhone com o app instalado ──
   // Gerado AO ABRIR (html2canvas + jsPDF, a partir de uma cópia escondida do recibo
   // em modo captura), para o toque em "Imprimir Agora" ainda valer como gesto no
@@ -445,8 +461,8 @@ export const ImpressaoOrdemServico = ({
     return () => { ativo = false; };
   }, [pdfPersonalizadoIphone, urlLogoCaptura]);
   const [pdfPersonalizado, setPdfPersonalizado] = useState<{ chave: string; estado: "gerando" | "pronto" | "falhou"; arquivo?: Blob } | null>(null);
-  const chavePdfPersonalizado = pdfPersonalizadoIphone && !aguardandoImpressao && logoCaptura !== undefined
-    ? `${fotosMontadas?.fotos.map((f) => f.legenda).join(",") ?? "-"}|${logoCaptura ? "logo" : "nome"}`
+  const chavePdfPersonalizado = pdfPersonalizadoIphone && !aguardandoImpressao && logoCaptura !== undefined && !medindoCompactacao
+    ? `${fotosMontadas?.fotos.map((f) => f.legenda).join(",") ?? "-"}|${logoCaptura ? "logo" : "nome"}|${compactacaoRecibo ? `${compactacaoRecibo.nivel}-${compactacaoRecibo.agrupamento}` : "0"}`
     : null;
   useEffect(() => {
     if (!chavePdfPersonalizado) return;
@@ -482,7 +498,7 @@ export const ImpressaoOrdemServico = ({
   const pdfPersonalizadoPronto = pdfPersonalizado?.chave === chavePdfPersonalizado && pdfPersonalizado?.estado === "pronto" ? pdfPersonalizado.arquivo ?? null : null;
   const preparandoPdfPersonalizado = pdfPersonalizadoIphone && !aguardandoImpressao
     && (logoCaptura === undefined || pdfPersonalizado?.chave !== chavePdfPersonalizado || pdfPersonalizado?.estado === "gerando");
-  const aguardandoBotao = aguardandoImpressao || preparandoPdfPersonalizado;
+  const aguardandoBotao = aguardandoImpressao || medindoCompactacao || preparandoPdfPersonalizado;
   const escolherIncluirFotos = (incluir: boolean) => {
     setEscolhaFotos(incluir);
     salvarEscolhaFotos(incluir);
@@ -964,6 +980,7 @@ export const ImpressaoOrdemServico = ({
           termoGarantia={termoGarantia}
           {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
           adicionais={adicionais}
+          compactacao={compactacaoRecibo}
         />
       );
     }
@@ -1052,7 +1069,7 @@ export const ImpressaoOrdemServico = ({
               className="print-trigger-button"
               style={{ flex: 1, opacity: aguardandoBotao ? 0.6 : 1 }}
             >
-              {fotosAguardando ? "Carregando fotos…" : carregandoAdicionais ? "Carregando…" : preparandoPdfPersonalizado ? t("reciboOS.preparandoPdf") : confirmandoFalhas && falhasFotos > 0 ? textoBotaoSemFotos(falhasFotos) : "Imprimir Agora"}
+              {fotosAguardando ? "Carregando fotos…" : carregandoAdicionais || medindoCompactacao ? "Carregando…" : preparandoPdfPersonalizado ? t("reciboOS.preparandoPdf") : confirmandoFalhas && falhasFotos > 0 ? textoBotaoSemFotos(falhasFotos) : "Imprimir Agora"}
             </button>
             <button onClick={onFecharImpressao} className="print-close-button">
               {isStandalone ? "Voltar" : "Cancelar"}
@@ -1108,8 +1125,23 @@ export const ImpressaoOrdemServico = ({
             {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
             adicionais={adicionais}
             paraCaptura
+            compactacao={compactacaoRecibo}
           />
         </div>
+      )}
+
+      {/* Medição do recibo personalizado (área própria no <body>, fora da impressão). */}
+      {chaveCompactacao && medindoCompactacao && (
+        <MedicaoReciboPersonalizado
+          key={chaveCompactacao}
+          ordem={ordem}
+          configuracaoLoja={configuracaoLoja}
+          layoutConfig={layoutConfig}
+          termoGarantia={termoGarantia}
+          {...(fotosMontadas ? { fotosImpressao: fotosMontadas.fotos, fotosExcedentes: selecaoFotos.excedentes } : {})}
+          adicionais={adicionais}
+          onDecidir={(decisao) => setCompactacao({ chave: chaveCompactacao, decisao })}
+        />
       )}
     </>,
     portalEl
