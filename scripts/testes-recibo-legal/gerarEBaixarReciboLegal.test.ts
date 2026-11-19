@@ -77,7 +77,7 @@ const PESSOA = { id: "p1", nome: "Fulano de Teste", tipo: "fisica", cpf_cnpj: "0
 function compraBanco(extra: Linha = {}): Linha {
   return {
     id: "c1", dispositivo_id: "d1", pessoa_id: "p1", fornecedor_id: null, empresa_id: null,
-    data_compra: "2026-11-10T14:30:00", valor_pago: 900, forma_pagamento: "pix",
+    data_compra: "2026-11-10T14:30:00", created_at: "2026-11-10T17:30:00Z", valor_pago: 900, forma_pagamento: "pix",
     origem_pessoas: PESSOA, fornecedores: null,
     fotos: [], documento_vendedor_frente: null, documento_vendedor_verso: null,
     termo_pdf_url: null, ...extra,

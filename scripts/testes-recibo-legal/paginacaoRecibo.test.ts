@@ -91,7 +91,7 @@ const DISP = { tipo: "celular", marca: "Marca X", modelo: "Modelo Y", cor: "Pret
 const COM_IMEI2 = { ...DISP, imei2: "359876543210987" };
 const ASS = pngDataUrl(60, 20, [0, 0, 0]);
 // Sem assinatura_*_data: o gerador usa new Date() e o relógio fixo entra na prova.
-const COMPRA = { id: "00000000-0000-0000-0000-000000000009", data_compra: "2026-11-10T14:30:00", valor_pago: 900, forma_pagamento: "pix", condicao_aparelho: "usado", assinatura_vendedor: ASS, assinatura_cliente: ASS };
+const COMPRA = { id: "00000000-0000-0000-0000-000000000009", data_compra: "2026-11-10T14:30:00", created_at: "2026-11-10T17:30:00Z", valor_pago: 900, forma_pagamento: "pix", condicao_aparelho: "usado", assinatura_vendedor: ASS, assinatura_cliente: ASS };
 const COMPRA_SEM_ASS = { ...COMPRA, assinatura_vendedor: undefined, assinatura_cliente: undefined };
 const fotos = (n: number) => Array.from({ length: n }, (_, i) => pngDataUrl(40 + i, 30, [200, 50 * i, 0]));
 

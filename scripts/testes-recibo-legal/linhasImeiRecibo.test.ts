@@ -55,7 +55,7 @@ const LOJA = { razao_social: "Loja Teste LTDA", email: "loja@teste.invalid", nom
 const VENDEDOR = { nome: "Fulano de Teste", tipo: "fisica" as const, cpf_cnpj: "000.000.000-00", telefone: "(11) 91111-1111" };
 const DISP = { tipo: "celular", marca: "Marca X", modelo: "Modelo Y", cor: "Preto", capacidade_gb: 128, condicao: "usado", numero_serie: "SERIE-FICT-01" };
 // Sem assinatura_*_data: assim o gerador usa new Date() e o relógio fixo entra na prova.
-const COMPRA = { id: "00000000-0000-0000-0000-000000000009", data_compra: "2026-11-10T14:30:00", valor_pago: 900, forma_pagamento: "pix", condicao_aparelho: "usado", assinatura_vendedor: "x", assinatura_cliente: "x" };
+const COMPRA = { id: "00000000-0000-0000-0000-000000000009", data_compra: "2026-11-10T14:30:00", created_at: "2026-11-10T17:30:00Z", valor_pago: 900, forma_pagamento: "pix", condicao_aparelho: "usado", assinatura_vendedor: "x", assinatura_cliente: "x" };
 
 type Disp = Record<string, unknown>;
 async function gerar(fn: typeof gerarReciboLegalPDF, dispositivo: Disp): Promise<string> {
@@ -225,7 +225,7 @@ Deno.test("orquestrador: o imei2 do cadastro do aparelho chega ao PDF", async ()
   const capturados: Parameters<typeof gerarReciboLegalPDF>[0][] = [];
   const deps: DependenciasReciboLegal = {
     buscarCompra: async () => ({
-      compra: { id: "c-imei", dispositivo_id: "d-imei", pessoa_id: "p1", data_compra: "2026-11-10T14:30:00", valor_pago: 1, forma_pagamento: "pix", origem_pessoas: { id: "p1", nome: "Fulano", tipo: "fisica", cpf_cnpj: "000.000.000-00" }, fotos: [] } as never,
+      compra: { id: "c-imei", dispositivo_id: "d-imei", pessoa_id: "p1", data_compra: "2026-11-10T14:30:00", created_at: "2026-11-10T17:30:00Z", valor_pago: 1, forma_pagamento: "pix", origem_pessoas: { id: "p1", nome: "Fulano", tipo: "fisica", cpf_cnpj: "000.000.000-00" }, fotos: [] } as never,
       dispositivo: { id: "d-imei", tipo: "celular", marca: "M", modelo: "N", condicao: "usado", imei: "351234567890123", imei2: "359876543210987" },
     }),
     buscarLoja: async () => LOJA,
@@ -243,7 +243,7 @@ Deno.test("orquestrador: imei2 null no banco vira undefined (PDF como antes)", a
   const capturados: Parameters<typeof gerarReciboLegalPDF>[0][] = [];
   const deps: DependenciasReciboLegal = {
     buscarCompra: async () => ({
-      compra: { id: "c-imei-2", dispositivo_id: "d", pessoa_id: "p1", data_compra: "2026-11-10T14:30:00", valor_pago: 1, forma_pagamento: "pix", origem_pessoas: { id: "p1", nome: "Fulano", tipo: "fisica", cpf_cnpj: "000.000.000-00" }, fotos: [] } as never,
+      compra: { id: "c-imei-2", dispositivo_id: "d", pessoa_id: "p1", data_compra: "2026-11-10T14:30:00", created_at: "2026-11-10T17:30:00Z", valor_pago: 1, forma_pagamento: "pix", origem_pessoas: { id: "p1", nome: "Fulano", tipo: "fisica", cpf_cnpj: "000.000.000-00" }, fotos: [] } as never,
       dispositivo: { id: "d", tipo: "celular", marca: "M", modelo: "N", condicao: "usado", imei: "351234567890123", imei2: null },
     }),
     buscarLoja: async () => LOJA,

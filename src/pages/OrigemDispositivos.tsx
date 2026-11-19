@@ -21,6 +21,8 @@ import { DialogVisualizacaoCompra } from "@/components/origem/DialogVisualizacao
 import { DialogCadastroDispositivo } from "@/components/dispositivos/DialogCadastroDispositivo";
 import { CompraDispositivo, FormularioCompraDispositivo } from "@/types/origem";
 import { gerarReciboLegalPDF, salvarReciboStorage } from "@/lib/gerarReciboLegalPDF";
+import { relogioServidor } from "@/lib/horaBrasilia/relogioServidor";
+import { datasAssinaturaAposCadastro } from "@/lib/origem/datasReciboLegal";
 import { carregarImagensRecibo } from "@/lib/origem/carregarImagensRecibo";
 import { avisosDasImagens, imagensComProblema, imagensParaGerador, resumoDasImagens } from "@/lib/origem/gerarEBaixarReciboLegal";
 import { useTranslation } from "react-i18next";
@@ -254,10 +256,10 @@ export default function OrigemDispositivos() {
               documento_vendedor_verso: dados.documento_vendedor_verso,
               assinatura_vendedor: dados.assinatura_vendedor,
               assinatura_vendedor_ip: dados.assinatura_vendedor_ip,
-              assinatura_vendedor_data: dados.assinatura_vendedor ? new Date().toISOString() : undefined,
               assinatura_cliente: dados.assinatura_cliente,
               assinatura_cliente_ip: dados.assinatura_cliente_ip,
-              assinatura_cliente_data: dados.assinatura_cliente ? new Date().toISOString() : undefined,
+              // Datas gravadas na compra (as do banco); sem elas, a hora do servidor.
+              ...datasAssinaturaAposCadastro(dados, compra, relogioServidor.agoraISO()),
             },
           };
 

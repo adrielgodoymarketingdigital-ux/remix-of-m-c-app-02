@@ -1,10 +1,10 @@
 import jsPDF from 'jspdf';
 import { CompraDispositivo, OrigemPessoa } from '@/types/origem';
-import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { ehUrlPdf } from '@/lib/origem/imagensRecibo';
 import { linhasImeiRecibo, quebrarLinhasQueNaoCabem } from '@/lib/origem/linhasImeiRecibo';
+import { textoDataAssinaturaRecibo, textoDataCompraRecibo } from '@/lib/origem/datasReciboLegal';
+import { relogioServidor } from '@/lib/horaBrasilia/relogioServidor';
 
 interface DadosLoja {
   nome_loja: string;
@@ -64,17 +64,6 @@ interface DadosReciboCompleto {
 const DESCIDA_TEXTO_7PT = 0.6;
 const DESCIDA_TEXTO_9PT = 0.8;
 
-// Função para formatar data/hora no horário de Brasília
-const formatarDataHoraBrasil = (dataISO: string, incluirSegundos = false): string => {
-  try {
-    const data = parseISO(dataISO);
-    const formatoHora = incluirSegundos ? "dd/MM/yyyy 'às' HH:mm:ss" : "dd/MM/yyyy 'às' HH:mm";
-    return format(data, formatoHora, { locale: ptBR });
-  } catch {
-    return format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-  }
-};
-
 export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
   const doc = new jsPDF();
   const margemEsquerda = 15;
@@ -127,11 +116,11 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
     doc.addImage(imagem, formato, xCentralizado, yCentralizado, larguraFinal, alturaFinal);
   };
 
-  // Formatar data com hora (usando horário local do navegador)
-  const agora = new Date();
-  const dataCompra = dados.compra.data_compra 
-    ? formatarDataHoraBrasil(dados.compra.data_compra)
-    : format(agora, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  // Datas em Brasília, não no fuso do aparelho (datasReciboLegal.ts). "Agora" é a
+  // hora do servidor; se ele não responder, a do aparelho, como antes.
+  await relogioServidor.sincronizar();
+  const agoraISO = relogioServidor.agoraISO();
+  const dataCompra = textoDataCompraRecibo(dados.compra.data_compra, dados.compra.created_at, agoraISO);
 
   // Formatar valor monetário
   const formatarMoeda = (valor: number) => {
@@ -575,14 +564,9 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       if (dados.compra.assinatura_vendedor_ip) {
         doc.text(`IP: ${dados.compra.assinatura_vendedor_ip}`, margemEsquerda, yPos);
       }
-      if (dados.compra.assinatura_vendedor_data) {
-        const dataAssinatura = formatarDataHoraBrasil(dados.compra.assinatura_vendedor_data, true);
-        doc.text(`Data: ${dataAssinatura}`, margemEsquerda + 50, yPos);
-      } else {
-        // Se não tiver data salva, usa a data/hora atual
-        const dataAssinatura = format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR });
-        doc.text(`Data: ${dataAssinatura}`, margemEsquerda + 50, yPos);
-      }
+      // Sem data salva, vale a data/hora atual.
+      const dataAssinaturaVendedor = textoDataAssinaturaRecibo(dados.compra.assinatura_vendedor_data, agoraISO);
+      doc.text(`Data: ${dataAssinaturaVendedor}`, margemEsquerda + 50, yPos);
       doc.setTextColor(0);
       yPos += 8;
     }
@@ -607,14 +591,9 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
       if (dados.compra.assinatura_cliente_ip) {
         doc.text(`IP: ${dados.compra.assinatura_cliente_ip}`, margemEsquerda, yPos);
       }
-      if (dados.compra.assinatura_cliente_data) {
-        const dataAssinatura = formatarDataHoraBrasil(dados.compra.assinatura_cliente_data, true);
-        doc.text(`Data: ${dataAssinatura}`, margemEsquerda + 50, yPos);
-      } else {
-        // Se não tiver data salva, usa a data/hora atual
-        const dataAssinatura = format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR });
-        doc.text(`Data: ${dataAssinatura}`, margemEsquerda + 50, yPos);
-      }
+      // Sem data salva, vale a data/hora atual.
+      const dataAssinaturaCliente = textoDataAssinaturaRecibo(dados.compra.assinatura_cliente_data, agoraISO);
+      doc.text(`Data: ${dataAssinaturaCliente}`, margemEsquerda + 50, yPos);
       doc.setTextColor(0);
       yPos += 8;
     }

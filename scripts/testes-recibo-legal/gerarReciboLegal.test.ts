@@ -53,7 +53,7 @@ const ASSINATURA = pngDataUrl(60, 20, [0, 0, 0]);
 
 const BASE = {
   id: "00000000-0000-0000-0000-000000000001",
-  data_compra: "2026-11-10T14:30:00",
+  data_compra: "2026-11-10T14:30:00", created_at: "2026-11-10T17:30:00Z",
   valor_pago: 1234.5,
   forma_pagamento: "pix",
   condicao_aparelho: "usado",
@@ -62,7 +62,7 @@ const BASE = {
 
 const CENARIOS: Record<string, Record<string, unknown>> = {
   "sem fotos e sem documentos": { ...BASE },
-  "mínimo (sem observações)": { id: BASE.id, data_compra: BASE.data_compra, valor_pago: 10, forma_pagamento: "dinheiro" },
+  "mínimo (sem observações)": { id: BASE.id, data_compra: BASE.data_compra, created_at: BASE.created_at, valor_pago: 10, forma_pagamento: "dinheiro" },
   "com assinaturas (data URL)": {
     ...BASE,
     assinatura_vendedor: ASSINATURA,
