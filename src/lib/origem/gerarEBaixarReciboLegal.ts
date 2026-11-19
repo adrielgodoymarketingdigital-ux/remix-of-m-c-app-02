@@ -160,6 +160,7 @@ async function executar(compraId: string, deps: DependenciasReciboLegal, regras:
       modelo: dispositivo.modelo ?? "",
       cor: texto(dispositivo.cor),
       imei: texto(dispositivo.imei),
+      imei2: texto(dispositivo.imei2),
       numero_serie: texto(dispositivo.numero_serie),
       capacidade_gb: dispositivo.capacidade_gb ?? undefined,
       condicao: dispositivo.condicao ?? "",

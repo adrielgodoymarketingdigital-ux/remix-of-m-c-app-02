@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { ehUrlPdf } from '@/lib/origem/imagensRecibo';
+import { linhasImeiRecibo, quebrarLinhasQueNaoCabem } from '@/lib/origem/linhasImeiRecibo';
 
 interface DadosLoja {
   nome_loja: string;
@@ -31,6 +32,8 @@ interface DadosDispositivo {
   modelo: string;
   cor?: string;
   imei?: string;
+  /** Segundo IMEI (dual SIM). Vazio ou ausente = sai só o IMEI, como antes. */
+  imei2?: string;
   numero_serie?: string;
   capacidade_gb?: number;
   condicao: string;
@@ -244,11 +247,17 @@ export async function gerarReciboLegalPDF(dados: DadosReciboCompleto) {
     yPos += 5;
   }
   
-  // Linha 3: IMEI
-  if (dados.dispositivo.imei) {
-    doc.text(`IMEI: ${dados.dispositivo.imei}`, margemEsquerda, yPos);
+  // Linha 3: IMEI e IMEI 2 (aparelho dual SIM), uma linha cada; texto longo quebra
+  // para não sair da página. Sem IMEI 2, sai exatamente como antes.
+  quebrarLinhasQueNaoCabem(
+    linhasImeiRecibo(dados.dispositivo.imei, dados.dispositivo.imei2),
+    larguraUtil - 5,
+    (texto) => doc.getTextWidth(texto),
+    (texto, largura) => doc.splitTextToSize(texto, largura),
+  ).forEach((linha) => {
+    doc.text(linha, margemEsquerda, yPos);
     yPos += 5;
-  }
+  });
   
   // Linha 4: Número de Série
   if (dados.dispositivo.numero_serie) {

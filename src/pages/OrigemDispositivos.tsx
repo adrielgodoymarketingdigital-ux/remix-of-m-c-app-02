@@ -242,6 +242,7 @@ export default function OrigemDispositivos() {
               modelo: dispositivo.modelo,
               cor: dispositivo.cor,
               imei: dispositivo.imei,
+              imei2: dispositivo.imei2,
               numero_serie: dispositivo.numero_serie,
               capacidade_gb: dispositivo.capacidade_gb,
               condicao: dispositivo.condicao,

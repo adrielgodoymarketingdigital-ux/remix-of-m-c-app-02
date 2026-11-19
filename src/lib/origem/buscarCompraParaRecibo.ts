@@ -14,6 +14,8 @@ export interface DispositivoParaRecibo {
   modelo: string | null;
   cor?: string | null;
   imei?: string | null;
+  /** Vem no select("*") de dispositivos (coluna dispositivos.imei2). */
+  imei2?: string | null;
   numero_serie?: string | null;
   capacidade_gb?: number | null;
   condicao: string | null;
