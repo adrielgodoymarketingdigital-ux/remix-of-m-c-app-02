@@ -43,3 +43,5 @@ sem histórico de recibos, sem coluna nem tabela nova).
 - A URL antiga (assinada, 1 ano) continua abrindo o PDF antigo até expirar.
 - Se um dia for preciso limpar: listar `termos-compra/{user_id}/recibo-legal-{compraId}-*` e manter só o
   do `termo_pdf_url` atual — conferir antes se o "Começar do zero" (`_zerar_catalogo`) já cobre esse bucket.
+
+## 5. Data das assinaturas gravada com o relógio do aparelho; trocar pela hora do servidor, em worktree própria
