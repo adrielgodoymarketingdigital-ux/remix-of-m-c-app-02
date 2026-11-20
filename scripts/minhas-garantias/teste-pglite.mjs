@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { resolverTextoTermoDispositivo } from "../../src/lib/termo-garantia-utils.ts";
 import { TEXTO_PADRAO_COM_GARANTIA, TEXTO_PADRAO_SEM_GARANTIA } from "../../src/lib/garantias/textoPadrao.ts";
 import { juntarSecoes, modelosPadraoDoCodigo } from "./gerar-sql-copia.ts";
+import { BASE, TIPOS_GARANTIA, zerarCatalogoBase } from "./replica-minima.mjs";
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 const raiz = resolve(aqui, "../..");
@@ -25,56 +26,15 @@ const { PGlite } = require("@electric-sql/pglite");
 const ESTRUTURA = ler("supabase/migrations/20261120120000_minhas_garantias_estrutura.sql");
 const COPIA = ler("supabase/migrations/20261120120100_minhas_garantias_copia_dados.sql");
 const PREVIA = ler("scripts/minhas-garantias/2-previa-copia.sql");
-const TIPOS_GARANTIA = ler("supabase/migrations/20260617000001_create_tipos_garantia.sql");
 const CONFERIR = ler("scripts/minhas-garantias/0-conferir-producao.sql");
 const VERIF_ESTRUTURA = ler("scripts/minhas-garantias/1-verificar-estrutura.sql");
 const VERIF_COPIA = ler("scripts/minhas-garantias/3-verificar-copia.sql");
+const VALIDAR = ler("supabase/migrations/20261120120010_minhas_garantias_validar_constraints.sql");
+const INDICE_1 = ler("supabase/migrations/20261120120020_minhas_garantias_indice_vendas_garantia_id.sql");
+const INDICE_2 = ler("supabase/migrations/20261120120030_minhas_garantias_indice_vendas_garantia_texto_id.sql");
+const VERIF_1B = ler("scripts/minhas-garantias/1b-verificar-validacao-indices.sql");
 const ROLLBACK_1 = ler("scripts/minhas-garantias/rollback-1-estrutura.sql");
 const ROLLBACK_2 = ler("scripts/minhas-garantias/rollback-2-copia.sql");
-
-// _zerar_catalogo() como está em 20261102120000 (a última que a redefiniu no repositório).
-function zerarCatalogoBase() {
-  const f = ler("supabase/migrations/20261102120000_configuracao_estoque_baixo.sql");
-  const ini = f.indexOf("CREATE OR REPLACE FUNCTION public._zerar_catalogo()");
-  const fim = f.indexOf("$$;", ini) + 3;
-  return f.slice(ini, fim) + "\nREVOKE ALL ON FUNCTION public._zerar_catalogo() FROM PUBLIC, anon, authenticated;\n";
-}
-
-const BASE = `
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE service_role NOLOGIN BYPASSRLS;
-CREATE SCHEMA auth;
-GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
-CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
-  select coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
-    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'))::uuid $$;
-GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role;
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
--- Como o Supabase: tudo novo em public nasce com ALL para anon/authenticated.
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
-
-CREATE TABLE public.empresas (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), nome text NOT NULL DEFAULT 'x',
-  proprietario_id uuid, tipo text NOT NULL, ativa boolean DEFAULT true, created_at timestamptz DEFAULT now());
-CREATE TABLE public.empresa_usuarios (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), empresa_id uuid, gerente_id uuid, proprietario_id uuid);
-CREATE TABLE public.loja_funcionarios (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), funcionario_user_id uuid, loja_user_id uuid, ativo boolean DEFAULT true);
-CREATE OR REPLACE FUNCTION public.is_funcionario_of(owner_user_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (SELECT 1 FROM public.loja_funcionarios
-    WHERE funcionario_user_id = auth.uid() AND loja_user_id = owner_user_id AND ativo = true) $$;
-CREATE OR REPLACE FUNCTION public.update_updated_at_column() RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN NEW.updated_at = now(); RETURN NEW; END; $$;
-CREATE TABLE public.configuracoes_loja (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, empresa_id uuid,
-  termo_garantia_dispositivo_config jsonb, created_at timestamptz DEFAULT now());
-CREATE TABLE public.vendas (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL, empresa_id uuid, tempo_garantia integer);
-CREATE TABLE public.dispositivos (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL);
-`;
 
 // ── Pessoas e lojas (ids fictícios) ─────────────────────────────────────────
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -184,6 +144,7 @@ const ESPERADO = [
 ];
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
+const soComandosSql = (sql) => sql.split("\n").filter((l) => !l.trimStart().startsWith("--")).join("\n");
 async function como(db, papel, uid, fn) {
   return db.transaction(async (tx) => {
     await tx.exec(`SET LOCAL ROLE ${papel}`);
@@ -210,7 +171,7 @@ async function aplicar(db, sql) {
 }
 
 // ── Rodada completa (devolve nº de falhas) ──────────────────────────────────
-async function rodar({ estrutura, copia, previa, verbose }) {
+async function rodar({ estrutura, copia, previa, validar = VALIDAR, verbose }) {
   let falhas = 0;
   const ok = (cond, msg, extra) => {
     if (cond) { if (verbose) console.log("  ✓", msg); }
@@ -267,6 +228,48 @@ async function rodar({ estrutura, copia, previa, verbose }) {
   const verifE = await db.transaction(async (tx) => { await tx.exec("SET TRANSACTION READ ONLY"); return (await tx.query(VERIF_ESTRUTURA)).rows; })
     .catch((e) => e.message);
   ok(Array.isArray(verifE) && verifE.every((r) => r.ok === true), "1-verificar-estrutura: tudo ok (READ ONLY)", verifE);
+
+  // 2b) locks: ordem dos comandos, NOT VALID, validação e índices à parte
+  log("2b. Locks: vendas por último, constraints NOT VALID, validação e índices em arquivos próprios");
+  const pos = (t) => estrutura.indexOf(t);
+  const posUltima = (t) => estrutura.lastIndexOf(t);
+  ok(pos("SET LOCAL lock_timeout = '5s';") > 0 && pos("SET LOCAL lock_timeout = '5s';") < pos("CREATE TABLE"), "lock_timeout de 5 s antes do 1º comando");
+  ok(/SET LOCAL statement_timeout = '\d+s';/.test(estrutura), "statement_timeout definido");
+  const primeiraVendas = Math.min(...["ALTER TABLE public.vendas", "ALTER TABLE public.dispositivos"].map((t) => pos(t)).filter((i) => i >= 0));
+  ok(primeiraVendas > posUltima("CREATE POLICY") && primeiraVendas > pos("EXECUTE v_novo") && primeiraVendas > posUltima("CREATE INDEX"),
+    "vendas/dispositivos só depois de tabelas, policies, índices das tabelas novas e remendo da _zerar");
+  ok(!/CREATE\s+(UNIQUE\s+)?INDEX[^;]*ON\s+public\.(vendas|dispositivos)\b/i.test(estrutura), "nenhum índice em vendas/dispositivos dentro da estrutura");
+  const NOMES_CONSTRAINTS = ["vendas_garantia_id_fkey", "vendas_garantia_texto_id_fkey", "vendas_garantia_meses_check",
+    "vendas_garantia_nome_check", "vendas_garantia_copia_check", "dispositivos_garantia_padrao_id_fkey"];
+  const situacao = async () => (await db.query("SELECT conname, convalidated FROM pg_constraint WHERE conname = ANY($1) ORDER BY conname", [NOMES_CONSTRAINTS])).rows;
+  const antes = await situacao();
+  ok(antes.length === 6 && antes.every((r) => r.convalidated === false), "as 6 constraints existem e entram NOT VALID", antes);
+  ok(!!(await erro(db.query(`INSERT INTO public.vendas (user_id, garantia_meses) VALUES ('${U5}', 200)`))), "mesmo NOT VALID, linha nova com prazo 200 é recusada");
+  ok(!!(await erro(db.query(`INSERT INTO public.vendas (user_id, garantia_id) VALUES ('${U5}', gen_random_uuid())`))), "mesmo NOT VALID, linha nova com garantia inexistente é recusada");
+  await db.query(`INSERT INTO public.vendas (user_id, tempo_garantia) VALUES ('${U5}', 3), ('${U5}', NULL)`);
+  const v1 = await aplicar(db, validar); ok(v1 === null, "validação: 1ª execução sem erro", v1);
+  const v2 = await aplicar(db, validar); ok(v2 === null, "validação: 2ª execução sem erro (idempotente)", v2);
+  const depoisV = await situacao();
+  ok(depoisV.length === 6 && depoisV.every((r) => r.convalidated === true), "as 6 constraints validadas", depoisV);
+  const leitura1b = async () => db.transaction(async (tx) => { await tx.exec("SET TRANSACTION READ ONLY"); return (await tx.query(VERIF_1B)).rows; });
+  const r1b = await leitura1b();
+  ok(r1b.filter((r) => r.item.startsWith("constraint")).every((r) => r.ok) && r1b.filter((r) => r.item.startsWith("índice")).every((r) => !r.ok && r.valor === "ausente"),
+    "1b (READ ONLY) antes dos índices: constraints ok, índices 'ausente'", r1b.filter((r) => r.item.startsWith("índice")));
+  // O PGlite é usuário único e não executa CONCURRENTLY ("tuple concurrently updated");
+  // aqui roda o MESMO arquivo sem essa palavra. O CONCURRENTLY de verdade (sem
+  // travar INSERT) é provado em teste-lock-postgres.mjs, num Postgres real.
+  const semConcurrently = (sql) => sql.replace("CREATE INDEX CONCURRENTLY", "CREATE INDEX");
+  for (const [nome, sql] of [["garantia_id", INDICE_1], ["garantia_texto_id", INDICE_2]]) {
+    ok(sql.includes("CREATE INDEX CONCURRENTLY IF NOT EXISTS") && soComandosSql(sql).split(";").filter((x) => x.trim()).length === 1,
+      `índice ${nome}: arquivo com UM comando, CONCURRENTLY e IF NOT EXISTS`);
+    const i1 = await aplicar(db, semConcurrently(sql)); const i2 = await aplicar(db, semConcurrently(sql));
+    ok(i1 === null && i2 === null, `índice ${nome} CONCURRENTLY: 2 execuções sem erro`, { i1, i2 });
+  }
+  const r1bFim = await leitura1b();
+  ok(r1bFim.length === 8 && r1bFim.every((r) => r.ok), "1b depois dos índices: tudo ok", r1bFim.filter((r) => !r.ok));
+  const defIdx = (await db.query("SELECT indexdef FROM pg_indexes WHERE indexname IN ('idx_vendas_garantia_id','idx_vendas_garantia_texto_id') ORDER BY 1")).rows.map((r) => r.indexdef);
+  ok(defIdx.length === 2 && defIdx.every((d) => /WHERE \(garantia_(texto_)?id IS NOT NULL\)/.test(d)), "índices parciais certos", defIdx);
+  await db.query("DELETE FROM public.vendas");
 
   // 3) prévia (somente leitura) antes da cópia
   log("3. Prévia (somente leitura) antes da cópia");
@@ -387,7 +390,9 @@ async function rodar({ estrutura, copia, previa, verbose }) {
   log("8. Rollbacks de emergência");
   const rb = await novoBanco();
   const md5Antes = (await rb.query("SELECT md5(prosrc) AS m FROM pg_proc WHERE oid = 'public._zerar_catalogo()'::regprocedure")).rows[0].m;
-  await rb.exec(estrutura); await rb.exec(SEED); await rb.exec(copia);
+  await rb.exec(estrutura); await rb.exec(validar);
+  await rb.exec(INDICE_1.replace("CREATE INDEX CONCURRENTLY", "CREATE INDEX")); await rb.exec(INDICE_2.replace("CREATE INDEX CONCURRENTLY", "CREATE INDEX"));
+  await rb.exec(SEED); await rb.exec(copia);
   ok(!!(await aplicar(rb, ROLLBACK_1)), "rollback da estrutura recusa enquanto houver dados");
   ok((await aplicar(rb, ROLLBACK_2)) === null, "rollback da cópia sem erro");
   ok((await rb.query("SELECT count(*)::int AS n FROM public.garantias_loja")).rows[0].n === 0, "cópia desfeita");
@@ -410,6 +415,11 @@ async function rodar({ estrutura, copia, previa, verbose }) {
 
 // ── Mutantes: cada um tem que derrubar pelo menos um teste ──────────────────
 const MUTANTES = [
+  ["constraints validadas na hora (sem NOT VALID)", "e", (s) => s.replaceAll(" NOT VALID;", ";")],
+  ["sem lock_timeout", "e", (s) => s.replace("SET LOCAL lock_timeout = '5s';\n", "")],
+  ["índice de vendas de volta na estrutura", "e", (s) => s.replace("NOTIFY pgrst", "CREATE INDEX IF NOT EXISTS idx_vendas_garantia_id ON public.vendas (garantia_id) WHERE garantia_id IS NOT NULL;\nNOTIFY pgrst")],
+  ["vendas alterada no começo da transação", "e", (s) => s.replace("SET LOCAL statement_timeout = '30s';\n", "SET LOCAL statement_timeout = '30s';\nALTER TABLE public.vendas ADD COLUMN IF NOT EXISTS garantia_nome text;\n")],
+  ["validação não valida nada", "v", (s) => s.replace("EXECUTE format('ALTER TABLE %s VALIDATE CONSTRAINT %I', r.tabela, r.conname);", "NULL;")],
   ["gerente vê garantias de todas as lojas", "e", (s) => s.replace("      AND eu.empresa_id = garantias_loja.empresa_id\n", "")],
   ["texto congelado pode ser alterado", "e", (s) => s.replace("GRANT SELECT, INSERT ON TABLE public.garantias_textos_venda TO authenticated;", "GRANT SELECT, INSERT ON TABLE public.garantias_textos_venda TO authenticated;\nGRANT UPDATE ON TABLE public.garantias_textos_venda TO authenticated;")],
   ["remendo sem conferir 112 linhas", "e", (s) => s.replace("IF v_linhas <> 112 THEN", "IF false THEN")],
@@ -437,11 +447,12 @@ if (process.argv.includes("--mutantes")) {
   console.log("\n== Mutantes ==");
   for (const [nome, alvo, mutar] of MUTANTES) {
     const e = alvo === "e" ? mutar(ESTRUTURA) : ESTRUTURA;
+    const v = alvo === "v" ? mutar(VALIDAR) : VALIDAR;
     const c = alvo === "c" ? mutar(COPIA) : COPIA;
     const p = alvo === "c" ? mutar(PREVIA) : PREVIA;
-    if (e === ESTRUTURA && c === COPIA) { console.log(`  ? ${nome}: a mutação não mudou nada (ajustar o teste)`); mutantesVivos++; continue; }
+    if (e === ESTRUTURA && c === COPIA && v === VALIDAR) { console.log(`  ? ${nome}: a mutação não mudou nada (ajustar o teste)`); mutantesVivos++; continue; }
     let f;
-    try { f = await rodar({ estrutura: e, copia: c, previa: p, verbose: false }); } catch { f = 1; }
+    try { f = await rodar({ estrutura: e, copia: c, previa: p, validar: v, verbose: false }); } catch { f = 1; }
     console.log(`  ${f > 0 ? "✓ morto" : "✗ VIVO "} ${nome} (${f} falhas)`);
     if (f === 0) mutantesVivos++;
   }

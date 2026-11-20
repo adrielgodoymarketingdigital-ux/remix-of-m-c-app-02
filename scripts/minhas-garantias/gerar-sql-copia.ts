@@ -237,10 +237,10 @@ const AVISO_GERADO = "-- ARQUIVO GERADO por scripts/minhas-garantias/gerar-sql-c
 
 export function sqlMigration(): string {
   return `-- =====================================================================
--- "Minhas garantias" — FASE A, passo 2 de 2: CÓPIA DOS DADOS
+-- "Minhas garantias" — FASE A: CÓPIA DOS DADOS (último SQL que grava)
 ${AVISO_GERADO}
 --
--- Roda DEPOIS de 20261120120000_minhas_garantias_estrutura.sql.
+-- Roda DEPOIS da estrutura (20261120120000) e, de preferência, da validação e dos índices (…10, …20, …30).
 -- Quem aplica em produção é o Adriel, no SQL Editor. NUNCA \`supabase db push\`.
 -- Só INSERT em garantias_loja. Não lê nem altera vendas, não apaga nada, não
 -- mexe em tipos_garantia nem em configuracoes_loja (o app de hoje continua

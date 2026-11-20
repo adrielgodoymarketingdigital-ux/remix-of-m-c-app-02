@@ -2,6 +2,8 @@
 -- "Minhas garantias" — VERIFICAÇÃO DEPOIS DA ESTRUTURA. SOMENTE LEITURA.
 -- Rodar logo depois de 20261120120000_minhas_garantias_estrutura.sql.
 -- Tudo com ok = true → estrutura no lugar. Nenhum dado de cliente.
+-- As constraints de vendas/dispositivos podem estar NÃO validadas aqui (NOT VALID):
+-- a validação é o arquivo seguinte, conferida por 1b-verificar-validacao-indices.sql.
 -- =====================================================================
 SELECT * FROM (VALUES
   ('1. tabelas criadas com RLS ligada',
@@ -36,6 +38,13 @@ SELECT * FROM (VALUES
         AND column_name = 'garantia_padrao_id'),
      EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'dispositivos'
         AND column_name = 'garantia_padrao_id')),
+  ('7b. constraints novas existem (6); validadas ainda pode ser 0 (NOT VALID, normal aqui)',
+     (SELECT count(*) || ' existem, ' || count(*) FILTER (WHERE convalidated) || ' validadas' FROM pg_constraint
+       WHERE conname IN ('vendas_garantia_id_fkey', 'vendas_garantia_texto_id_fkey', 'vendas_garantia_meses_check',
+                         'vendas_garantia_nome_check', 'vendas_garantia_copia_check', 'dispositivos_garantia_padrao_id_fkey')),
+     (SELECT count(*) FROM pg_constraint
+       WHERE conname IN ('vendas_garantia_id_fkey', 'vendas_garantia_texto_id_fkey', 'vendas_garantia_meses_check',
+                         'vendas_garantia_nome_check', 'vendas_garantia_copia_check', 'dispositivos_garantia_padrao_id_fkey')) = 6),
   ('8. zerar: 114 linhas',
      (SELECT count(*)::text FROM public._zerar_catalogo()),
      (SELECT count(*) FROM public._zerar_catalogo()) = 114),

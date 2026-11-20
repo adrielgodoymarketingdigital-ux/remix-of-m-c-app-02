@@ -1,5 +1,5 @@
 -- =====================================================================
--- "Minhas garantias" — FASE A, passo 1 de 2: ESTRUTURA (só banco)
+-- "Minhas garantias" — FASE A: ESTRUTURA (só banco). 1º dos SQL que gravam.
 --
 -- Quem aplica em produção é o Adriel, no SQL Editor, um arquivo por vez.
 -- NUNCA `supabase db push`. Idempotente (pode rodar 2 vezes), numa transação
@@ -16,26 +16,32 @@
 --      por dono (md5). Fora de `vendas` porque useVendas/Relatorios/Exportação
 --      leem `vendas` com select("*").
 --        dono / funcionário do dono / gerente de filial do proprietário: lê e cria
---   3) vendas: garantia_id, garantia_nome, garantia_meses, garantia_texto_id
---      (nulas; NULL = venda antiga → recibo exatamente como hoje). Nesta fase
---      o app NÃO grava nem lê estas colunas.
---   4) dispositivos.garantia_padrao_id (nula; uso só na fase D).
---   5) _zerar_catalogo(): REMENDO da função ATUAL de produção (não é cópia):
+--   3) _zerar_catalogo(): REMENDO da função ATUAL de produção (não é cópia):
 --      lê a definição em vigor, confere que tem 112 linhas e a linha 1550
 --      (configuracao_estoque), e insere logo depois dela as 2 tabelas novas
 --      como MANTER (112 → 114). Se a função atual não for a esperada, ABORTA.
---   6) Autoverificação: qualquer coisa fora do esperado desfaz tudo.
+--   4) POR ÚLTIMO: dispositivos.garantia_padrao_id e vendas.garantia_id,
+--      garantia_nome, garantia_meses, garantia_texto_id (nulas; NULL = venda
+--      antiga → recibo como hoje; o app NÃO usa na fase A), com FKs e CHECKs
+--      NOT VALID (sem varrer a tabela). Sem índice aqui.
+--   5) Autoverificação (só catálogo): qualquer coisa fora do esperado desfaz tudo.
 --
 -- ANTES: rodar a consulta de leitura scripts/minhas-garantias/0-conferir-producao.sql.
 -- DEPOIS: scripts/minhas-garantias/1-verificar-estrutura.sql.
 -- ROLLBACK (NÃO RODE, só em emergência): scripts/minhas-garantias/rollback-1-estrutura.sql.
--- LOCKS: ADD COLUMN nulo sem default é só metadado; os FKs pegam lock curto
---   em vendas/dispositivos. lock_timeout 5 s: com fila, falha sem efeito.
+-- LOCKS: vendas e dispositivos são tocadas só no fim (passo 4) e o lock forte
+--   (ACCESS EXCLUSIVE) fica só até o COMMIT logo em seguida; nada ali varre a
+--   tabela (ADD COLUMN nulo sem default = metadado; constraints NOT VALID).
+--   lock_timeout 5 s: se uma venda em andamento segurar a tabela, a migration
+--   FALHA e desfaz tudo em até 5 s (rodar de novo depois). Enquanto espera,
+--   novos comandos em vendas fazem fila atrás dela por até esses 5 s.
+--   statement_timeout 30 s: nenhum comando aqui deveria passar de 1 s.
+-- PRÓXIMOS: 20261120120010 (validar), 20261120120020 e 20261120120030 (índices).
 -- =====================================================================
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '60s';
+SET LOCAL statement_timeout = '30s';
 
 -- ---------------------------------------------------------------------
 -- 1) Garantias da loja
@@ -162,62 +168,7 @@ CREATE POLICY "gerente de filial grava textos de garantia do proprietario"
                        WHERE eu.gerente_id = auth.uid() AND eu.proprietario_id = garantias_textos_venda.user_id));
 
 -- ---------------------------------------------------------------------
--- 3) Venda: cópia congelada (nome, prazo, texto) + id da garantia usada
--- ---------------------------------------------------------------------
-ALTER TABLE public.vendas ADD COLUMN IF NOT EXISTS garantia_id       uuid;
-ALTER TABLE public.vendas ADD COLUMN IF NOT EXISTS garantia_nome     text;
-ALTER TABLE public.vendas ADD COLUMN IF NOT EXISTS garantia_meses    integer;
-ALTER TABLE public.vendas ADD COLUMN IF NOT EXISTS garantia_texto_id uuid;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_id_fkey'
-                   AND conrelid = 'public.vendas'::regclass) THEN
-    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_id_fkey
-      FOREIGN KEY (garantia_id) REFERENCES public.garantias_loja (id) ON DELETE SET NULL;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_texto_id_fkey'
-                   AND conrelid = 'public.vendas'::regclass) THEN
-    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_texto_id_fkey
-      FOREIGN KEY (garantia_texto_id) REFERENCES public.garantias_textos_venda (id) ON DELETE RESTRICT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_meses_check'
-                   AND conrelid = 'public.vendas'::regclass) THEN
-    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_meses_check
-      CHECK (garantia_meses IS NULL OR garantia_meses BETWEEN 0 AND 120);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_nome_check'
-                   AND conrelid = 'public.vendas'::regclass) THEN
-    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_nome_check
-      CHECK (garantia_nome IS NULL OR char_length(garantia_nome) <= 80);
-  END IF;
-  -- cópia é tudo ou nada: texto congelado exige prazo congelado
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_copia_check'
-                   AND conrelid = 'public.vendas'::regclass) THEN
-    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_copia_check
-      CHECK (garantia_texto_id IS NULL OR garantia_meses IS NOT NULL);
-  END IF;
-END
-$$;
-CREATE INDEX IF NOT EXISTS idx_vendas_garantia_id ON public.vendas (garantia_id) WHERE garantia_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_vendas_garantia_texto_id ON public.vendas (garantia_texto_id) WHERE garantia_texto_id IS NOT NULL;
-
--- ---------------------------------------------------------------------
--- 4) Dispositivo: garantia sugerida na venda (uso só na fase D)
--- ---------------------------------------------------------------------
-ALTER TABLE public.dispositivos ADD COLUMN IF NOT EXISTS garantia_padrao_id uuid;
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'dispositivos_garantia_padrao_id_fkey'
-                   AND conrelid = 'public.dispositivos'::regclass) THEN
-    ALTER TABLE public.dispositivos ADD CONSTRAINT dispositivos_garantia_padrao_id_fkey
-      FOREIGN KEY (garantia_padrao_id) REFERENCES public.garantias_loja (id) ON DELETE SET NULL;
-  END IF;
-END
-$$;
-
--- ---------------------------------------------------------------------
--- 5) "Começar do zero": remendo da _zerar_catalogo() EM VIGOR
+-- 3) "Começar do zero": remendo da _zerar_catalogo() EM VIGOR
 --    Entra exatamente isto, logo depois da linha 1550:
 --      (1560, 'MANTER', NULL, 'public.garantias_loja',               'user_id = $1'),
 --      (1570, 'MANTER', NULL, 'public.garantias_textos_venda',       'user_id = $1'),
@@ -260,7 +211,68 @@ $remendo$;
 REVOKE ALL ON FUNCTION public._zerar_catalogo() FROM PUBLIC, anon, authenticated;
 
 -- ---------------------------------------------------------------------
--- 6) Autoverificação (qualquer falha desfaz a transação inteira)
+-- 4) Dispositivo e venda — POR ÚLTIMO, para segurar o lock o mínimo possível
+--    ADD COLUMN pede ACCESS EXCLUSIVE em dispositivos/vendas, que fica até o
+--    COMMIT; daqui para baixo só há comandos de catálogo (rápidos).
+--    FKs e CHECKs entram NOT VALID: não varrem a tabela agora (as linhas que
+--    já existem têm as colunas nulas). Valem para toda linha nova desde já.
+--    A varredura (VALIDATE CONSTRAINT, lock leve) é o arquivo seguinte:
+--    20261120120010_minhas_garantias_validar_constraints.sql.
+--    Os índices de vendas também saíram daqui (CREATE INDEX varre a tabela
+--    inteira segurando lock): 20261120120020 e 20261120120030, CONCURRENTLY.
+--    vendas.garantia_*: cópia congelada (nome, prazo, texto) + id da garantia;
+--    nulas = venda antiga → recibo exatamente como hoje (o app não usa na fase A).
+-- ---------------------------------------------------------------------
+ALTER TABLE public.dispositivos ADD COLUMN IF NOT EXISTS garantia_padrao_id uuid;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'dispositivos_garantia_padrao_id_fkey'
+                   AND conrelid = 'public.dispositivos'::regclass) THEN
+    ALTER TABLE public.dispositivos ADD CONSTRAINT dispositivos_garantia_padrao_id_fkey
+      FOREIGN KEY (garantia_padrao_id) REFERENCES public.garantias_loja (id) ON DELETE SET NULL NOT VALID;
+  END IF;
+END
+$$;
+
+ALTER TABLE public.vendas
+  ADD COLUMN IF NOT EXISTS garantia_id       uuid,
+  ADD COLUMN IF NOT EXISTS garantia_nome     text,
+  ADD COLUMN IF NOT EXISTS garantia_meses    integer,
+  ADD COLUMN IF NOT EXISTS garantia_texto_id uuid;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_id_fkey'
+                   AND conrelid = 'public.vendas'::regclass) THEN
+    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_id_fkey
+      FOREIGN KEY (garantia_id) REFERENCES public.garantias_loja (id) ON DELETE SET NULL NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_texto_id_fkey'
+                   AND conrelid = 'public.vendas'::regclass) THEN
+    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_texto_id_fkey
+      FOREIGN KEY (garantia_texto_id) REFERENCES public.garantias_textos_venda (id) ON DELETE RESTRICT NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_meses_check'
+                   AND conrelid = 'public.vendas'::regclass) THEN
+    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_meses_check
+      CHECK (garantia_meses IS NULL OR garantia_meses BETWEEN 0 AND 120) NOT VALID;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_nome_check'
+                   AND conrelid = 'public.vendas'::regclass) THEN
+    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_nome_check
+      CHECK (garantia_nome IS NULL OR char_length(garantia_nome) <= 80) NOT VALID;
+  END IF;
+  -- cópia é tudo ou nada: texto congelado exige prazo congelado
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'vendas_garantia_copia_check'
+                   AND conrelid = 'public.vendas'::regclass) THEN
+    ALTER TABLE public.vendas ADD CONSTRAINT vendas_garantia_copia_check
+      CHECK (garantia_texto_id IS NULL OR garantia_meses IS NOT NULL) NOT VALID;
+  END IF;
+END
+$$;
+
+-- ---------------------------------------------------------------------
+-- 5) Autoverificação (qualquer falha desfaz a transação inteira)
 -- ---------------------------------------------------------------------
 DO $$
 DECLARE
@@ -314,6 +326,11 @@ BEGIN
   IF (SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'vendas'
         AND column_name IN ('garantia_id', 'garantia_nome', 'garantia_meses', 'garantia_texto_id')) <> 4 THEN
     v_problemas := v_problemas || 'colunas de garantia em vendas ausentes'::text;
+  END IF;
+  IF (SELECT count(*) FROM pg_constraint WHERE conname IN (
+        'vendas_garantia_id_fkey', 'vendas_garantia_texto_id_fkey', 'vendas_garantia_meses_check',
+        'vendas_garantia_nome_check', 'vendas_garantia_copia_check', 'dispositivos_garantia_padrao_id_fkey')) <> 6 THEN
+    v_problemas := v_problemas || 'constraints de vendas/dispositivos ausentes'::text;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
                    AND table_name = 'dispositivos' AND column_name = 'garantia_padrao_id') THEN

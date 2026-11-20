@@ -6,7 +6,9 @@
 -- não ter nenhuma venda/aparelho usando garantia). Aborta se houver dado.
 --   1) _zerar_catalogo(): tira as 3 linhas que o remendo pôs (comentário +
 --      1560 + 1570), a partir da definição EM VIGOR — volta às 112 linhas;
---   2) apaga colunas de vendas/dispositivos e as 2 tabelas.
+--   2) apaga colunas de vendas/dispositivos (as constraints e os índices
+--      idx_vendas_garantia_id / idx_vendas_garantia_texto_id caem junto) e as 2 tabelas.
+--   DROP COLUMN pede lock forte em vendas: lock_timeout 5 s (falha sem travar).
 -- A ordem importa: sem o passo 1, o "Começar do zero" falharia procurando
 -- tabelas que não existem.
 -- =====================================================================
