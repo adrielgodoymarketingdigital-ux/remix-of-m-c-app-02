@@ -20,6 +20,7 @@ import {
 import { DialogConfiguracaoLayoutDispositivos } from "@/components/dispositivos/DialogConfiguracaoLayoutDispositivos";
 import { DialogConfiguracaoTermoGarantiaDispositivo } from "@/components/dispositivos/DialogConfiguracaoTermoGarantiaDispositivo";
 import { DialogGerenciarTiposGarantia } from "@/components/dispositivos/DialogGerenciarTiposGarantia";
+import { DialogMinhasGarantiasSobDemanda, ItemMenuMinhasGarantias } from "@/components/dispositivos/garantias/AcessoMinhasGarantias";
 import { useDispositivos } from "@/hooks/useDispositivos";
 import { useAssinatura } from "@/hooks/useAssinatura";
 import { textoUsoDispositivos } from "@/lib/assinatura/limiteDispositivosPeriodo";
@@ -53,6 +54,7 @@ export default function Dispositivos() {
   const [dialogLayoutDispositivos, setDialogLayoutDispositivos] = useState(false);
   const [dialogTermoGarantiaDispositivo, setDialogTermoGarantiaDispositivo] = useState(false);
   const [dialogTiposGarantia, setDialogTiposGarantia] = useState(false);
+  const [dialogMinhasGarantias, setDialogMinhasGarantias] = useState(false);
 
   const {
     dispositivos,
@@ -227,6 +229,8 @@ export default function Dispositivos() {
                     <ShieldCheck className="h-4 w-4 mr-2" />
                     Tipos de Garantia
                   </DropdownMenuItem>
+                  {/* Fase A de "Minhas garantias": só admin (visibilidadeMinhasGarantias.ts) */}
+                  <ItemMenuMinhasGarantias onAbrir={() => setDialogMinhasGarantias(true)} />
                 </DropdownMenuContent>
               </DropdownMenu>
               {abaAtiva === "estoque" && (
@@ -460,6 +464,8 @@ export default function Dispositivos() {
         open={dialogTiposGarantia}
         onOpenChange={setDialogTiposGarantia}
       />
+
+      <DialogMinhasGarantiasSobDemanda open={dialogMinhasGarantias} onOpenChange={setDialogMinhasGarantias} />
     </AppLayout>
   );
 }
