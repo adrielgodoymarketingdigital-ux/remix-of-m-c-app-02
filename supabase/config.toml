@@ -41,3 +41,8 @@ verify_jwt = true
 
 [functions.zerar-dados-storage]
 verify_jwt = true
+
+# CRM de leads do WhatsApp (fase 1): chamada só pelo n8n, autenticada pelo
+# header x-crm-secret (secret CRM_N8N_SECRET), não por JWT.
+[functions.crm-leads]
+verify_jwt = false
