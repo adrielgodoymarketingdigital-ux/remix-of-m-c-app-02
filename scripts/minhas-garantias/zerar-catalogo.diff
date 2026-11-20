@@ -1,0 +1,10 @@
+--- _zerar_catalogo() atual (112 linhas)
++++ _zerar_catalogo() depois da estrutura (114 linhas)
+@@ -100,4 +100,7 @@
+     -- estoque baixo (fase 2): limite da loja; configuração, fica sempre
+     (1550, 'MANTER', NULL, 'public.configuracao_estoque',         'user_id = $1'),
++    -- minhas garantias (fase A): configuração da loja e textos congelados (sem dado de cliente)
++    (1560, 'MANTER', NULL, 'public.garantias_loja',               'user_id = $1'),
++    (1570, 'MANTER', NULL, 'public.garantias_textos_venda',       'user_id = $1'),
+     -- ===== GLOBAL (sem dono) =====
+     (2000, 'GLOBAL', NULL, 'public.admin_alteracoes_correcoes',   NULL),
