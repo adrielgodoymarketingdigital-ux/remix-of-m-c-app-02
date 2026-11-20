@@ -5,6 +5,7 @@ import { TrendingUp, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PainelCadastrosMarketing } from '@/components/admin/marketing/PainelCadastrosMarketing';
 import { CardOrigensMarketing } from '@/components/admin/marketing/CardOrigensMarketing';
+import { CardFunilWhatsApp } from '@/components/admin/marketing/CardFunilWhatsApp';
 import type { PeriodoMarketing } from '@/lib/marketing/cadastrosPorDia';
 
 export default function AdminMarketing() {
@@ -35,6 +36,7 @@ export default function AdminMarketing() {
         <div className="space-y-6">
           <PainelCadastrosMarketing periodo={periodo} onPeriodoChange={setPeriodo} />
           <CardOrigensMarketing periodo={periodo} />
+          <CardFunilWhatsApp />
         </div>
       </main>
     </AppLayout>
