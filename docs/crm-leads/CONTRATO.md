@@ -1,4 +1,4 @@
-# CRM de leads do WhatsApp — contrato n8n → MecApp (fase 1)
+# CRM de leads do WhatsApp — contrato n8n → MecApp (fases 1 e 2A)
 
 Fase 1 = captura das conversas, ligação com o cadastro, opt-out, retenção e
 relatório. Follow-up e envio de mensagens são da fase 3 e **não existem** nesta
@@ -22,7 +22,8 @@ função. Números de exemplo são fictícios.
 - Também mandar `Content-Type: application/json`.
 - `verify_jwt = false`: não usa login nem chave anon. Sem CORS, porque só o
   servidor do n8n chama.
-- Limites: corpo de até 512 KB e até **200 itens por lote**.
+- Limites: corpo de até 512 KB e até **200 itens por lote** (`gasto_meta`:
+  até **100**).
 - A chave da Evolution e a da IA ficam só nas credenciais do n8n. Esta função
   não envia WhatsApp nem chama IA.
 
@@ -34,7 +35,7 @@ função. Números de exemplo são fictícios.
 | 400 | `{erro: "json_invalido" \| "acao_invalida" \| "itens_vazios" \| "dias_invalido" \| "dia_invalido"}` | **não** repetir; corrigir o workflow |
 | 401 | `{erro:"nao_autorizado"}` | não repetir; conferir a credencial |
 | 405 | `{erro:"metodo_invalido"}` | usar POST |
-| 413 | `{erro:"lote_grande", max_itens:200}` ou `{erro:"corpo_grande", max_bytes:524288}` | dividir o lote |
+| 413 | `{erro:"lote_grande", max_itens:200}` (`gasto_meta`: `max_itens:100`) ou `{erro:"corpo_grande", max_bytes:524288}` | dividir o lote |
 | 500 | `{erro:"interno", codigo:"<código do Postgres>"}` | repetir até 3x (30 s, 2 min, 10 min) |
 | 503 | `{erro:"nao_configurado"}` | secret ausente: avisar o admin |
 
@@ -151,6 +152,62 @@ registrados, rejeitadas}`.
 - `{"acao":"retencao"}` → `{ok, mensagens_apagadas, leads_limpos}`. Apaga as mensagens e o resumo de quem está há mais de 90 dias sem contato. **Sem pg_cron**: só esta chamada faz isso.
 - `{"acao":"relatorio","dia":"2026-11-20"}` → `{ok, relatorio:{dia, conversas_novas, vinculados_no_dia, opt_outs_no_dia, vinculos_ambiguos}}`. Só números. Sem `dia`, usa o dia de hoje em Brasília.
 
+### 4.7 `gasto_meta`: gasto da Meta por anúncio e dia (fase 2A)
+
+Um item por **anúncio e dia**, vindo do Insights da Marketing API no nível
+de anúncio. Só números e IDs: nada de nome, e-mail ou telefone.
+
+```json
+{
+  "acao": "gasto_meta",
+  "itens": [
+    {
+      "ad_id": "120000000000001",
+      "campaign_id": "120000000000900",
+      "data": "2026-11-20",
+      "gasto_centavos": 12345,
+      "impressoes": 8100,
+      "cliques": 140,
+      "conversas_meta": 9,
+      "moeda": "BRL"
+    }
+  ]
+}
+```
+
+| campo | obrigatório | regra |
+|---|---|---|
+| `ad_id` | sim | texto `^[A-Za-z0-9_.-]{1,64}$` (o `ad_id` do Insights) |
+| `campaign_id` | não | mesmo formato; **só informativo** (o banco não filtra por campanha) |
+| `data` | sim | `AAAA-MM-DD`, o **dia da conta de anúncios, em America/Sao_Paulo**; de 400 dias atrás até amanhã (Brasília) |
+| `gasto_centavos` | sim | inteiro de 0 a 100.000.000 (R$ 1 milhão por anúncio e dia). `spend` da Meta × 100, arredondado |
+| `impressoes`, `cliques` | não (0) | inteiros de 0 a 1.000.000.000 (`impressions`, `inline_link_clicks` ou `clicks`) |
+| `conversas_meta` | não (0) | inteiro de 0 a 10.000.000: `actions` com `action_type = onsite_conversion.messaging_conversation_started_7d` |
+| `moeda` | não (`BRL`) | 3 letras maiúsculas (`account_currency`). Só `BRL` entra no custo; outra moeda é guardada e ignorada |
+
+Resposta: `{ok, recebidos, inseridos, atualizados, rejeitadas:[{indice, erro}]}`.
+Erros por item: `nao_objeto`, `ad_id_invalido`, `campaign_id_invalido`,
+`data_invalida`, `data_fora_da_janela`, `gasto_invalido`, `impressoes_invalido`,
+`cliques_invalido`, `conversas_meta_invalido`, `moeda_invalida`,
+`duplicado_no_lote` (o mesmo `ad_id` + `data` duas vezes no lote: vale o 1º).
+Os itens bons do mesmo lote gravam.
+
+- **Idempotente.** Gravação por `(ad_id, data)`: reenviar o mesmo dia
+  **substitui** os números (conta como `atualizados`). Pode repetir à vontade.
+- **Dias com gasto zero DENTRO da janela de 3 dias têm que ser enviados**,
+  com `gasto_centavos: 0` (e os outros números em 0). Quando a Meta corrige
+  um dia para zero, ela deixa de devolver a linha. Sem o zero, o valor antigo
+  fica gravado. O workflow deve montar a lista "anúncios ativos × 3 dias" e
+  completar com zero o que a Meta não devolveu.
+- **Regra no funil.** Para cada anúncio e dia com linha (inclusive zero), o
+  gasto automático vale e o gasto informado à mão do mesmo anúncio e dia é
+  ignorado. O gasto informado geral (sem anúncio) é ignorado em todo dia que
+  tiver qualquer linha automática. Nunca se somam os dois.
+- **"atualizado há X min"**, no card, é a hora da **última sincronização**
+  (o último envio que gravou), não a hora em que a Meta fechou os números.
+  A Meta atrasa de minutos a horas e recalcula os últimos dias. Por isso a
+  janela de 3 dias.
+
 ## 5. Workflows do n8n (fase 1)
 
 1. **Captura.** Evento de mensagem da Evolution, recebida e enviada:
@@ -170,6 +227,17 @@ registrados, rejeitadas}`.
    - `POST retencao`;
    - `POST relatorio` com o dia anterior;
    - enviar os números para o WhatsApp do admin. Só números, nunca nome ou telefone.
+
+6. **Gasto da Meta por anúncio** (fase 2A; a cada 1–2 h):
+   - `GET /act_<conta>/insights` com `level=ad`, `time_increment=1`,
+     `time_range` = de 2 dias atrás até hoje (3 dias, fuso da conta =
+     America/Sao_Paulo), `fields=ad_id,campaign_id,spend,impressions,inline_link_clicks,actions,account_currency`;
+   - filtro só das campanhas Click-to-WhatsApp escolhidas pelo dono:
+     `filtering=[{"field":"campaign.id","operator":"IN","value":[<lista no workflow>]}]`;
+   - completar com zero os anúncios ativos dessas campanhas que não voltaram
+     num dos 3 dias (4.7);
+   - lotes de até 100 itens, `POST gasto_meta`;
+   - o token da Meta fica só na credencial do n8n.
 
 ## 6. Privacidade
 

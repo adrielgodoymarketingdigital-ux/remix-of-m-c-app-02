@@ -137,6 +137,77 @@ deno test --no-check --allow-read scripts/testes-crm-leads/                     
 deno run --allow-read --allow-write --allow-run --allow-env scripts/testes-crm-leads/mutantes-1d.ts   # 13 mutantes do card
 ```
 
+## Fase 2A: gasto da Meta por anúncio, automático (n8n)
+
+O n8n manda o gasto diário da Meta **por anúncio** (Insights nível ad) para a
+Edge Function `crm-leads`, ação `gasto_meta` (contrato em
+`docs/crm-leads/CONTRATO.md`, 4.7). O card do `/admin/marketing` passa a
+usar esse gasto no lugar do informado à mão.
+
+Migration `supabase/migrations/20261122120000_crm_leads_2a_gasto_meta_anuncio.sql`
+(**aditiva**):
+- tabela nova `crm_gasto_meta_anuncio`, com chave `(ad_id, data)`. Guarda
+  gasto, impressões, cliques, conversas contadas pela Meta, moeda,
+  `campaign_id` (só informativo) e `atualizado_em`. RLS ligada, sem política
+  e sem privilégio para anon/authenticated: só as funções leem e gravam;
+- `crm_gravar_gasto_meta` (só service_role, usada pela Edge Function);
+- `admin_crm_funil_gasto` e `admin_crm_funil_gasto_por_anuncio` (só admin);
+- **não** reescreve `admin_crm_funil`, `admin_crm_funil_por_anuncio` nem
+  `admin_crm_funil_teste`, e não usa `meta_ads_insights_dia` nem
+  `crm_campanhas_whatsapp`. Não toca `_zerar_catalogo` (a tabela não tem dono).
+
+Regra: em cada anúncio e dia com linha automática (inclusive gasto 0), vale
+o automático; o informado do mesmo anúncio e dia é ignorado; o informado
+**geral** é ignorado em todo dia que tiver qualquer linha automática. Nunca
+se somam os dois.
+
+**Depende da 1D aplicada.** Ordem: SQL → Edge Function → código → n8n.
+Se o código for publicado antes do SQL, o card fica igual ao de hoje, sem
+aviso nem erro. Com o SQL e sem nenhuma sincronização, o card mostra o
+gasto informado como hoje.
+
+Um arquivo por vez:
+
+| # | O quê | Grava? | Depois, conferir |
+|---|-------|--------|------------------|
+| 1 | `scripts/crm-leads/2a-0-conferir-producao.sql` (SQL Editor) | não | 8 linhas `ok = true`. **Se 1, 2 ou 3 der false, pare e me mande** (as funções da 1D em produção não são as do repositório). Anotar as linhas 7 e 8 (a 8 deve ser `America/Sao_Paulo` ou `(sem linha)`) |
+| 2 | `supabase/migrations/20261122120000_crm_leads_2a_gasto_meta_anuncio.sql` (SQL Editor) | 1 tabela nova + 3 funções novas | `scripts/crm-leads/2a-1-verificar.sql`: 9 linhas `ok = true`; a 9 deve dizer `0 linhas` |
+| 3 | publicar a Edge Function (`supabase functions deploy crm-leads --no-verify-jwt`, na branch da 2A) | — | teste abaixo, que **não grava nada** |
+| 4 | publicar o código do card (push da branch da 2A) | — | `/admin/marketing`: selo "Gasto informado (sem dado da Meta no período)", custos iguais aos de antes |
+| 5 | ligar o workflow "Gasto da Meta por anúncio" no n8n (CONTRATO.md, 5.6) | sim (pelo n8n) | card: "Gasto da Meta por anúncio · N de M dias", "atualizado há X min" e "A Meta contou N conversas" |
+
+Teste do passo 3 (o item é inválido de propósito: volta rejeitado e nada é gravado):
+```sh
+read -s CRM_N8N_SECRET   # cole o segredo e Enter
+curl -s -X POST https://<projeto>.supabase.co/functions/v1/crm-leads \
+  -H "x-crm-secret: $CRM_N8N_SECRET" -H 'Content-Type: application/json' \
+  -d '{"acao":"gasto_meta","itens":[{"ad_id":"x y","data":"2026-11-20","gasto_centavos":1}]}' ; echo
+# esperado: {"ok":true,"recebidos":1,"inseridos":0,"atualizados":0,"rejeitadas":[{"indice":0,"erro":"ad_id_invalido"}]}
+unset CRM_N8N_SECRET
+```
+
+- A migration cria tabela e funções novas e não trava tabela existente. Com
+  `lock_timeout = '3s'`, se algo travar, nada é feito: rode de novo.
+- Rodar de novo não muda nada.
+- Moeda: só `BRL` entra no custo. Se a conta de anúncios não for em real,
+  os números são guardados e ignorados (me avise).
+
+Rollback (**NÃO RODE, só em emergência**): `scripts/crm-leads/rollback-2a.sql`.
+- Desligue antes o workflow do n8n.
+- Apaga as 3 funções e a tabela, **perdendo o gasto automático gravado**.
+  Ao reaplicar, o n8n só repõe os últimos 3 dias, a não ser que se rode o
+  workflow com um período maior.
+- Não mexe em nada das fases 1, 1C e 1D. Com o código da 2A publicado, o
+  card volta sozinho ao gasto informado.
+- Na ordem geral dos rollbacks, ele vem **antes** do `rollback-1d.sql`.
+
+Provas:
+```sh
+PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-2a.mjs --mutantes        # SQL: suíte + 24 mutantes (fase 1 + 1C + 1D + 2A)
+deno test --no-check --allow-read scripts/testes-crm-leads/                     # card + Edge Function
+deno run --allow-read --allow-write --allow-run --allow-env scripts/testes-crm-leads/mutantes-2a.ts   # 25 mutantes (card + Edge)
+```
+
 ## Edge Function `crm-leads`: o que o Adriel faz
 
 Não foi publicada. Ordem: **depois** do passo 3 acima.
