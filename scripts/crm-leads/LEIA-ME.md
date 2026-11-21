@@ -41,10 +41,50 @@ SQL Editor, **UM arquivo por vez**. Nunca `supabase db push`. Cada SQL já traz
 
 ### Rollback: **NÃO RODE, só em emergência**
 
-Na ordem inversa:
+Na ordem inversa (se a 1C estiver aplicada, `rollback-1c-direcao.sql` antes de tudo):
 1. `scripts/crm-leads/rollback-3-funil-admin.sql`: tira o funil e o gasto. Tabelas e dados ficam.
 2. `scripts/crm-leads/rollback-2-gravacao.sql`: tira as funções da Edge Function, que passa a dar 500. **Pausar o n8n antes.**
 3. `scripts/crm-leads/rollback-1-estrutura.sql`: **apaga** leads, mensagens, gasto informado **e a lista de opt-out**. Recusa se houver dados; para forçar, exporte antes e troque `'NAO'` por `'SIM'` na linha marcada.
+
+## Fase 1C: só conta quem escreveu primeiro
+
+Migration `supabase/migrations/20261121130000_crm_leads_1c_direcao_primeiro_contato.sql`:
+- coluna `crm_leads.primeiro_contato_direcao`, com backfill a partir das mensagens guardadas;
+- a ingestão passa a gravar essa coluna;
+- o funil e o funil por anúncio só contam `entrada`, com as mesmas colunas de retorno;
+- função nova `admin_crm_funil_excluidos`.
+
+**Primeiro o SQL, depois o código.** O card publicado antes do SQL esconde
+sozinho a linha "Fora do funil" (a função nova ainda não existe). O card
+antigo continua funcionando com o SQL novo: nenhuma coluna de retorno mudou.
+
+| # | Arquivo | Grava? | Depois, conferir |
+|---|---------|--------|------------------|
+| 1 | `scripts/crm-leads/1c-0-conferir-producao.sql` | não | 10 linhas `ok = true`. **Se 4, 5 ou 6 der false, pare e me mande**: a função em produção não é a do repositório. Anotar a linha 9 |
+| 2 | `supabase/migrations/20261121130000_crm_leads_1c_direcao_primeiro_contato.sql` | 1 coluna nova + backfill nela + 3 funções trocadas + 1 nova | `scripts/crm-leads/1c-1-verificar.sql`: 9 linhas `ok = true`; anotar a linha 9 |
+| 3 | publicar o código do card (push da branch da 1C) | — | `/admin/marketing`: a linha "Fora do funil" aparece |
+
+- A migration trava `crm_leads` por um instante (`ADD COLUMN`) e segura a
+  trava até o `COMMIT`. O backfill é só um UPDATE em poucos milhares de
+  linhas. Com `lock_timeout = '3s'`, se a tabela estiver ocupada nada é
+  feito: rode de novo. Para ter certeza de que nenhum lead novo fica como
+  "desconhecido" nesse meio segundo, dá para pausar a captura do n8n durante
+  a aplicação (opcional).
+- Rodar a migration de novo não muda nada: o backfill só preenche quem
+  ainda está vazio.
+- Lead "desconhecido" (`NULL`) é aquele cuja 1ª mensagem não está guardada:
+  foi cortada pelo limite de 30 por lead ou pela retenção de 90 dias, ou é
+  um opt-out registrado antes de qualquer conversa. Ele fica fora do funil
+  e aparece na linha "Fora do funil".
+
+Rollback (**NÃO RODE, só em emergência**):
+`scripts/crm-leads/rollback-1c-direcao.sql`.
+- Devolve as 3 funções às versões da fase 1, apaga a função nova e a coluna.
+- **Perde a coluna.** Ao reaplicar, o backfill recupera só quem ainda tem a
+  1ª mensagem guardada.
+- Na ordem geral dos rollbacks, ele vem **antes** do rollback-3.
+
+Prova: `PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-1c.mjs --mutantes`
 
 ## Edge Function `crm-leads`: o que o Adriel faz
 

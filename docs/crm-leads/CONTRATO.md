@@ -115,6 +115,7 @@ O que acontece no banco:
 - Cria o lead se não existir (1 por telefone).
 - Guarda só as **30 últimas** mensagens de cada pessoa.
 - Atualiza o último contato e quem falou por último, sem voltar no tempo.
+- Guarda **quem mandou a 1ª mensagem** (`direcao` da mensagem mais antiga, mesmo chegando fora de ordem). Desde a fase 1C, **só quem escreveu primeiro (`entrada`) conta como conversa iniciada** no funil. Por isso a `direcao` precisa estar certa também nas mensagens enviadas pela loja: as boas-vindas automáticas e as respostas vão como `saida` (autor `automacao` ou `humano`). Se forem marcadas como `entrada`, quem só recebeu as boas-vindas entra no funil como se tivesse escrito.
 - Uma mensagem de entrada que seja **só** "PARAR" (ou pare, para, sair, stop, cancelar…) liga o **opt-out permanente**.
 
 ### 4.2 `resumo`
