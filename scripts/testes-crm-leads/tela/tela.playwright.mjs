@@ -31,10 +31,12 @@ const POR_ANUNCIO = [
   { ad_id: "120000000000002", ad_titulo: "Imagem 14 dias grátis", conversas: 43, cadastros: 6, testes: 4, assinantes: 0, gasto_manual_centavos: 18000 },
   { ad_id: "", ad_titulo: null, conversas: 94, cadastros: 9, testes: 7, assinantes: 1, gasto_manual_centavos: 0 },
 ];
+const FORA = [{ loja_chamou_primeiro: 14, loja_chamou_primeiro_com_cadastro: 12, direcao_desconhecida: 0 }];
 const GASTOS = [{ id: 7, inicio: "2026-11-01", fim: "2026-11-20", ad_id: null, descricao: "campanhas de novembro", valor: "1240.00", removido_em: null }];
 
 async function abrir(navegador, cenario, { largura = 1280 } = {}) {
-  const ctx = await navegador.newContext({ viewport: { width: largura, height: 900 }, locale: "pt-BR", timezoneId: "America/Sao_Paulo" });
+  const ctx = await navegador.newContext({ viewport: { width: largura, height: 900 }, locale: "pt-BR", timezoneId: "America/Sao_Paulo",
+    permissions: ["clipboard-read", "clipboard-write"] });
   const estado = { rpcs: [], leituras: [], externas: [], consoleApp: [], consoleRede: [] };
   await ctx.route("**/*", async (rota) => {
     const req = rota.request();
@@ -101,7 +103,8 @@ console.log("A) antes do SQL (admin_crm_funil não existe)");
 for (const largura of [1280, 390]) {
   console.log(`B) com dados, gasto informado (${largura}px)`);
   const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
-    rpc: (n) => n === "admin_crm_funil" ? { json: [FUNIL] } : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO } : { json: null },
+    rpc: (n) => n === "admin_crm_funil" ? { json: [FUNIL] } : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO }
+      : n === "admin_crm_funil_excluidos" ? { json: FORA } : { json: null },
     tabela: (t) => t === "crm_gasto_manual" ? { json: GASTOS } : { json: [] },
   }, { largura });
   await pg.waitForSelector('[data-testid="tabela-funil-anuncio"]');
@@ -115,11 +118,63 @@ for (const largura of [1280, 390]) {
   ok(!/Infinity|NaN/.test(t), "nenhum Infinity/NaN");
   ok(!/99000|\+55|@s\.whatsapp/.test(t), "nenhum telefone na tela");
   ok(t.includes("Sem anúncio (orgânico / link direto)"), "linha sem anúncio com rótulo");
-  ok(estado.rpcs.map((r) => r.nome).sort().join() === "admin_crm_funil,admin_crm_funil_por_anuncio", "lê só as 2 RPCs de leitura", estado.rpcs.map((r) => r.nome));
+  ok(estado.rpcs.map((r) => r.nome).sort().join() === "admin_crm_funil,admin_crm_funil_excluidos,admin_crm_funil_por_anuncio", "lê só as 3 RPCs de leitura", estado.rpcs.map((r) => r.nome));
+  // 1C: ajuda, linha "Fora do funil", ID do anúncio com copiar, sem rolagem lateral na página
+  ok(t.includes("Conversa iniciada = o cliente escreveu primeiro."), "ajuda: conversa iniciada = o cliente escreveu primeiro");
+  const fora = semNbsp(await pg.locator('[data-testid="fora-do-funil"]').innerText());
+  ok(fora === "Fora do funil: 14 começaram por mensagem da loja (boas-vindas automáticas), 0 desconhecidos", "linha 'Fora do funil'", fora);
+  ok((await pg.locator('[data-testid="fora-do-funil"]').getAttribute("title")).includes("12 já tinham cadastro"), "detalhe com os ligados a cadastro");
+  const ids = await pg.locator('[data-testid="id-anuncio"]').allInnerTexts();
+  ok(ids.length === 2 && ids[0].includes("ID 120000000000001") && ids[1].includes("ID 120000000000002"), "ID nas 2 linhas com anúncio (e não na sem anúncio)", ids);
+  await pg.getByRole("button", { name: "Copiar ID do anúncio 120000000000002" }).click();
+  await pg.waitForSelector("text=ID do anúncio copiado.");
+  ok(await pg.evaluate(() => navigator.clipboard.readText()) === "120000000000002", "botão copiar põe o ID na área de transferência");
+  const larg = await pg.evaluate(() => ({ doc: document.documentElement.scrollWidth, tela: window.innerWidth }));
+  ok(larg.doc <= larg.tela, `sem rolagem lateral na página (${larg.doc} <= ${larg.tela})`, larg);
+  const cel = pg.locator('[data-testid="tabela-funil-anuncio"] tbody tr').first().locator("td").first();
+  const [bCel, bId] = [await cel.boundingBox(), await cel.locator('[data-testid="id-anuncio"]').boundingBox()];
+  ok(bCel && bId && bId.x >= bCel.x && bId.x + bId.width <= bCel.x + bCel.width + 0.5,
+    `ID e botão copiar cabem dentro da célula do anúncio (célula ${bCel?.width}px, ID ${bId?.width}px)`);
+  // ID de 64 caracteres (o máximo aceito) não alarga a coluna: o texto é cortado com reticências
+  const largo = await pg.evaluate(() => {
+    const el = document.querySelector('[data-testid="id-anuncio"] .font-mono');
+    const td = el.closest("td");
+    const antes = td.getBoundingClientRect().width;
+    const original = el.textContent;
+    el.textContent = "ID " + "1".repeat(64);
+    const r = { antes, depois: td.getBoundingClientRect().width, corta: el.scrollWidth > el.clientWidth };
+    el.textContent = original;
+    return r;
+  });
+  ok(Math.abs(largo.depois - largo.antes) < 1 && largo.corta, `ID de 64 caracteres não alarga a coluna (${largo.antes} → ${largo.depois}px, cortado: ${largo.corta})`, largo);
   ok(estado.leituras.every((l) => l.startsWith("GET crm_gasto_manual")), "única tabela lida: crm_gasto_manual (GET)", estado.leituras);
   ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e sem log do app", { errosPagina, app: estado.consoleApp });
   ok(estado.externas.length === 0, "nenhuma chamada externa", estado.externas);
   await foto(pg, `b-dados-${largura}`);
+  await ctx.close();
+}
+
+// ── E) código da 1C publicado antes do SQL: admin_crm_funil_excluidos não existe ──
+for (const largura of [1280, 390]) {
+  console.log(`E) função nova ainda não existe (${largura}px)`);
+  const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
+    rpc: (n) => n === "admin_crm_funil" ? { json: [FUNIL] } : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO }
+      : n === "admin_crm_funil_excluidos"
+        ? { status: 404, json: { code: "PGRST202", message: "Could not find the function public.admin_crm_funil_excluidos(p_fim, p_inicio) in the schema cache", details: null, hint: null } }
+        : { json: null },
+    tabela: (t) => t === "crm_gasto_manual" ? { json: GASTOS } : { json: [] },
+  }, { largura });
+  await pg.waitForSelector('[data-testid="tabela-funil-anuncio"]');
+  await pg.waitForSelector('[data-testid="lista-gastos"]');
+  await pg.waitForTimeout(1500);
+  const t = semNbsp(await texto(pg));
+  ok(await pg.locator('[data-testid="fora-do-funil"]').count() === 0, "linha 'Fora do funil' escondida");
+  ok(!/não ativado|indisponível|Tentar novamente|Erro/i.test(t), "nenhum aviso de erro no card", t.slice(0, 300));
+  ok(t.includes("412") && t.includes("R$ 3,01") && await pg.locator('[data-testid="id-anuncio"]').count() === 2, "resto do card normal (funil, custos, ID)");
+  ok(estado.rpcs.filter((r) => r.nome === "admin_crm_funil_excluidos").length === 1, "uma única chamada à função nova (sem nova tentativa)");
+  ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e o app não loga nada", { errosPagina, app: estado.consoleApp });
+  console.log(`    (linhas do navegador para a resposta 404: ${estado.consoleRede.length})`);
+  await foto(pg, `e-sem-funcao-nova-${largura}`);
   await ctx.close();
 }
 
