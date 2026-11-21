@@ -49,6 +49,9 @@ SET LOCAL statement_timeout = '60s';
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.crm_gasto_meta_anuncio (
   ad_id          text   NOT NULL CHECK (ad_id ~ '^[A-Za-z0-9_.-]{1,64}$'),
+  -- A janela "400 dias para trás / 1 para frente" é checada na gravação
+  -- (crm_gravar_gasto_meta): um CHECK com current_date faria um restore de
+  -- backup falhar quando a linha envelhecesse. Aqui só o piso fixo.
   data           date   NOT NULL CHECK (data >= DATE '2024-01-01'),
   campaign_id    text            CHECK (campaign_id ~ '^[A-Za-z0-9_.-]{1,64}$'),
   gasto_centavos bigint NOT NULL CHECK (gasto_centavos BETWEEN 0 AND 100000000),
@@ -248,10 +251,11 @@ BEGIN
   ),
   manual_dia AS (
     -- rateio igual ao da fase 1: valor × 1 dia ÷ dias do lançamento
-    SELECT g.id AS g_id, g.ad_id AS g_ad, d::date AS g_dia,
+    -- (série de inteiros somada à data: não depende do fuso da sessão)
+    SELECT g.id AS g_id, g.ad_id AS g_ad, greatest(g.inicio, p_inicio) + k AS g_dia,
            g.valor * 100 / (g.fim - g.inicio + 1) AS centavos
       FROM public.crm_gasto_manual g
-      CROSS JOIN LATERAL generate_series(greatest(g.inicio, p_inicio), least(g.fim, p_fim), interval '1 day') d
+      CROSS JOIN LATERAL generate_series(0, least(g.fim, p_fim) - greatest(g.inicio, p_inicio)) k
      WHERE g.removido_em IS NULL AND g.moeda = 'BRL'
        AND g.inicio <= p_fim AND g.fim >= p_inicio
   ),
@@ -321,10 +325,10 @@ BEGIN
     -- só lançamentos COM anúncio (o geral não tem dono por anúncio)
     SELECT g.ad_id AS m_ad, round(sum(g.valor * 100 / (g.fim - g.inicio + 1)))::bigint AS centavos
       FROM public.crm_gasto_manual g
-      CROSS JOIN LATERAL generate_series(greatest(g.inicio, p_inicio), least(g.fim, p_fim), interval '1 day') d
+      CROSS JOIN LATERAL generate_series(0, least(g.fim, p_fim) - greatest(g.inicio, p_inicio)) k
      WHERE g.ad_id IS NOT NULL AND g.removido_em IS NULL AND g.moeda = 'BRL'
        AND g.inicio <= p_fim AND g.fim >= p_inicio
-       AND NOT EXISTS (SELECT 1 FROM auto x WHERE x.a_ad = g.ad_id AND x.a_dia = d::date)
+       AND NOT EXISTS (SELECT 1 FROM auto x WHERE x.a_ad = g.ad_id AND x.a_dia = greatest(g.inicio, p_inicio) + k)
      GROUP BY g.ad_id
   )
   SELECT

@@ -359,7 +359,7 @@ const MUTANTES = [
   { nome: "manual do anúncio não some no dia automático do mesmo anúncio", de: "AND (m.g_ad IS NULL OR x.a_ad = m.g_ad))", para: "AND m.g_ad IS NULL)" },
   { nome: "manual geral não some no dia com linha automática", de: "AND (m.g_ad IS NULL OR x.a_ad = m.g_ad))", para: "AND x.a_ad = m.g_ad)" },
   { nome: "manual do anúncio some com linha de QUALQUER anúncio", de: "AND (m.g_ad IS NULL OR x.a_ad = m.g_ad))", para: "AND true)" },
-  { nome: "por anúncio soma manual e automático no mesmo dia", de: "\n       AND NOT EXISTS (SELECT 1 FROM auto x WHERE x.a_ad = g.ad_id AND x.a_dia = d::date)", para: "" },
+  { nome: "por anúncio soma manual e automático no mesmo dia", de: "\n       AND NOT EXISTS (SELECT 1 FROM auto x WHERE x.a_ad = g.ad_id AND x.a_dia = greatest(g.inicio, p_inicio) + k)", para: "" },
   { nome: "automático sem filtro de moeda (USD entra)", de: "     WHERE a.data BETWEEN p_inicio AND p_fim AND a.moeda = 'BRL'\n  ),\n  manual_dia", para: "     WHERE a.data BETWEEN p_inicio AND p_fim\n  ),\n  manual_dia" },
   { nome: "automático sem o início do período", de: "     WHERE a.data BETWEEN p_inicio AND p_fim AND a.moeda = 'BRL'\n  ),\n  manual_dia", para: "     WHERE a.data <= p_fim AND a.moeda = 'BRL'\n  ),\n  manual_dia" },
   { nome: "rateio do manual dividindo pelos dias errados", de: "g.valor * 100 / (g.fim - g.inicio + 1) AS centavos", para: "g.valor * 100 / (g.fim - g.inicio + 2) AS centavos" },
