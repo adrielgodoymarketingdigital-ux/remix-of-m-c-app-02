@@ -32,6 +32,10 @@ const POR_ANUNCIO = [
   { ad_id: "", ad_titulo: null, conversas: 94, cadastros: 9, testes: 7, assinantes: 1, gasto_manual_centavos: 0 },
 ];
 const FORA = [{ loja_chamou_primeiro: 14, loja_chamou_primeiro_com_cadastro: 12, direcao_desconhecida: 0 }];
+// 1D: situação do teste (61 cadastros, 48 com teste)
+const TESTE = [{ teste_ativo_agora: 37, teste_acabou_sem_pagar: 11, teste_cancelado: 2, assinantes: 9 }];
+const AUSENTE = (fn) => ({ status: 404, json: { code: "PGRST202", message: `Could not find the function public.${fn}(p_fim, p_inicio) in the schema cache`, details: null, hint: null } });
+const etapas = async (pg) => (await pg.locator('[data-testid="funil-etapas"] > div').allInnerTexts()).map((x) => x.replace(/ /g, " ").replace(/\s+/g, " ").trim());
 const GASTOS = [{ id: 7, inicio: "2026-11-01", fim: "2026-11-20", ad_id: null, descricao: "campanhas de novembro", valor: "1240.00", removido_em: null }];
 
 async function abrir(navegador, cenario, { largura = 1280 } = {}) {
@@ -104,12 +108,28 @@ for (const largura of [1280, 390]) {
   console.log(`B) com dados, gasto informado (${largura}px)`);
   const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
     rpc: (n) => n === "admin_crm_funil" ? { json: [FUNIL] } : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO }
-      : n === "admin_crm_funil_excluidos" ? { json: FORA } : { json: null },
+      : n === "admin_crm_funil_excluidos" ? { json: FORA } : n === "admin_crm_funil_teste" ? { json: TESTE } : { json: null },
     tabela: (t) => t === "crm_gasto_manual" ? { json: GASTOS } : { json: [] },
   }, { largura });
   await pg.waitForSelector('[data-testid="tabela-funil-anuncio"]');
   await pg.waitForSelector('[data-testid="lista-gastos"]');
+  await pg.waitForSelector('[data-testid="etapa-em-teste"]');
   const t = semNbsp(await texto(pg));
+  // 1D: degraus do teste e ajuda dos 14 dias
+  const e = await etapas(pg);
+  ok(JSON.stringify(e) === JSON.stringify([
+    "Conversas iniciadas 412 318 de anúncio · 14 já eram clientes",
+    "Cadastraram 61 14,8% das conversas",
+    "Em teste agora 37 60,7% dos cadastros · 48 com teste no total",
+    "Teste acabou sem pagar 11 2 cancelaram o teste",
+    "Assinantes pagos 9 14,8% dos cadastros",
+  ]), "5 degraus: conversas, cadastros, em teste agora, teste acabou sem pagar, assinantes", e);
+  ok(!t.includes("Iniciaram teste"), "degrau antigo 'Iniciaram teste' não aparece com a função nova");
+  ok(semNbsp(await pg.locator('[data-testid="ajuda-teste"]').innerText()) === "Todo cadastro novo recebe 14 dias de teste; o retorno do anúncio só aparece quando o teste acaba.", "ajuda dos 14 dias");
+  const caixas = await pg.locator('[data-testid="funil-etapas"] > div').evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y), Math.round(r.width)]; }));
+  const linhasGrade = new Set(caixas.map((c) => c[1])).size;
+  ok(largura === 1280 ? linhasGrade === 1 : linhasGrade === 3 && caixas[0][2] > caixas[1][2] * 1.9,
+     largura === 1280 ? "1280px: 5 degraus numa linha" : "390px: conversas na largura toda, depois 2 + 2", caixas);
   for (const v of ["412", "61", "48", "9", "R$ 1.240,00", "R$ 3,01", "R$ 20,33", "R$ 137,78", "Gasto informado"]) ok(t.includes(v), `mostra ${v}`);
   ok(!t.includes("Gasto da Meta"), "fonte única: não mostra a Meta junto");
   ok(await pg.locator('[data-testid="aviso-amostra"]').count() === 0, "412 conversas e 9 assinantes: sem aviso geral de amostra pequena");
@@ -118,7 +138,8 @@ for (const largura of [1280, 390]) {
   ok(!/Infinity|NaN/.test(t), "nenhum Infinity/NaN");
   ok(!/99000|\+55|@s\.whatsapp/.test(t), "nenhum telefone na tela");
   ok(t.includes("Sem anúncio (orgânico / link direto)"), "linha sem anúncio com rótulo");
-  ok(estado.rpcs.map((r) => r.nome).sort().join() === "admin_crm_funil,admin_crm_funil_excluidos,admin_crm_funil_por_anuncio", "lê só as 3 RPCs de leitura", estado.rpcs.map((r) => r.nome));
+  ok(estado.rpcs.map((r) => r.nome).sort().join() === "admin_crm_funil,admin_crm_funil_excluidos,admin_crm_funil_por_anuncio,admin_crm_funil_teste", "lê só as 4 RPCs de leitura", estado.rpcs.map((r) => r.nome));
+  ok(JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_funil_teste")?.corpo) === JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_funil")?.corpo), "função nova com o mesmo período do funil");
   // 1C: ajuda, linha "Fora do funil", ID do anúncio com copiar, sem rolagem lateral na página
   ok(t.includes("Conversa iniciada = o cliente escreveu primeiro."), "ajuda: conversa iniciada = o cliente escreveu primeiro");
   const fora = semNbsp(await pg.locator('[data-testid="fora-do-funil"]').innerText());
@@ -159,8 +180,7 @@ for (const largura of [1280, 390]) {
   console.log(`E) função nova ainda não existe (${largura}px)`);
   const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
     rpc: (n) => n === "admin_crm_funil" ? { json: [FUNIL] } : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO }
-      : n === "admin_crm_funil_excluidos"
-        ? { status: 404, json: { code: "PGRST202", message: "Could not find the function public.admin_crm_funil_excluidos(p_fim, p_inicio) in the schema cache", details: null, hint: null } }
+      : n === "admin_crm_funil_excluidos" || n === "admin_crm_funil_teste" ? AUSENTE(n)
         : { json: null },
     tabela: (t) => t === "crm_gasto_manual" ? { json: GASTOS } : { json: [] },
   }, { largura });
@@ -172,9 +192,44 @@ for (const largura of [1280, 390]) {
   ok(!/não ativado|indisponível|Tentar novamente|Erro/i.test(t), "nenhum aviso de erro no card", t.slice(0, 300));
   ok(t.includes("412") && t.includes("R$ 3,01") && await pg.locator('[data-testid="id-anuncio"]').count() === 2, "resto do card normal (funil, custos, ID)");
   ok(estado.rpcs.filter((r) => r.nome === "admin_crm_funil_excluidos").length === 1, "uma única chamada à função nova (sem nova tentativa)");
+  ok(estado.rpcs.filter((r) => r.nome === "admin_crm_funil_teste").length === 1, "uma única chamada à função da 1D (sem nova tentativa)");
+  const e = await etapas(pg);
+  ok(e.length === 4 && e[2] === "Iniciaram teste 48 78,7% dos cadastros", "4 degraus, 'Iniciaram teste' como antes", e);
   ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e o app não loga nada", { errosPagina, app: estado.consoleApp });
   console.log(`    (linhas do navegador para a resposta 404: ${estado.consoleRede.length})`);
   await foto(pg, `e-sem-funcao-nova-${largura}`);
+  await ctx.close();
+}
+
+// ── F) código da 1D publicado antes do SQL da 1D (1C aplicada): só admin_crm_funil_teste não existe ──
+for (const largura of [1280, 390]) {
+  console.log(`F) função da 1D ainda não existe (${largura}px)`);
+  const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
+    rpc: (n) => n === "admin_crm_funil" ? { json: [FUNIL] } : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO }
+      : n === "admin_crm_funil_excluidos" ? { json: FORA } : n === "admin_crm_funil_teste" ? AUSENTE(n) : { json: null },
+    tabela: (t) => t === "crm_gasto_manual" ? { json: GASTOS } : { json: [] },
+  }, { largura });
+  await pg.waitForSelector('[data-testid="tabela-funil-anuncio"]');
+  await pg.waitForSelector('[data-testid="fora-do-funil"]');
+  await pg.waitForTimeout(1500);
+  const t = semNbsp(await texto(pg));
+  const e = await etapas(pg);
+  ok(JSON.stringify(e) === JSON.stringify([
+    "Conversas iniciadas 412 318 de anúncio · 14 já eram clientes",
+    "Cadastraram 61 14,8% das conversas",
+    "Iniciaram teste 48 78,7% dos cadastros",
+    "Assinantes pagos 9 14,8% dos cadastros",
+  ]), "4 degraus exatamente como na 1C", e);
+  ok(!/Em teste agora|Teste acabou sem pagar|não ativado|indisponível|Tentar novamente|Erro/i.test(t), "sem degraus novos e sem aviso de erro");
+  ok(t.includes("Todo cadastro novo recebe 14 dias de teste"), "ajuda dos 14 dias continua");
+  ok(await pg.locator('[data-testid="fora-do-funil"]').count() === 1 && t.includes("R$ 3,01") && await pg.locator('[data-testid="id-anuncio"]').count() === 2,
+     "resto do card normal (fora do funil, custos, ID)");
+  ok(estado.rpcs.filter((r) => r.nome === "admin_crm_funil_teste").length === 1, "uma única chamada à função da 1D (sem nova tentativa)");
+  const larg = await pg.evaluate(() => ({ doc: document.documentElement.scrollWidth, tela: window.innerWidth }));
+  ok(larg.doc <= larg.tela, `sem rolagem lateral na página (${larg.doc} <= ${larg.tela})`, larg);
+  ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e o app não loga nada", { errosPagina, app: estado.consoleApp });
+  console.log(`    (linhas do navegador para a resposta 404: ${estado.consoleRede.length})`);
+  await foto(pg, `f-sem-funcao-1d-${largura}`);
   await ctx.close();
 }
 
