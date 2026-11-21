@@ -41,7 +41,7 @@ SQL Editor, **UM arquivo por vez**. Nunca `supabase db push`. Cada SQL já traz
 
 ### Rollback: **NÃO RODE, só em emergência**
 
-Na ordem inversa (se a 1C estiver aplicada, `rollback-1c-direcao.sql` antes de tudo):
+Na ordem inversa (se a 1D estiver aplicada, `rollback-1d.sql` antes de tudo; depois, se a 1C estiver aplicada, `rollback-1c-direcao.sql`):
 1. `scripts/crm-leads/rollback-3-funil-admin.sql`: tira o funil e o gasto. Tabelas e dados ficam.
 2. `scripts/crm-leads/rollback-2-gravacao.sql`: tira as funções da Edge Function, que passa a dar 500. **Pausar o n8n antes.**
 3. `scripts/crm-leads/rollback-1-estrutura.sql`: **apaga** leads, mensagens, gasto informado **e a lista de opt-out**. Recusa se houver dados; para forçar, exporte antes e troque `'NAO'` por `'SIM'` na linha marcada.
@@ -85,6 +85,57 @@ Rollback (**NÃO RODE, só em emergência**):
 - Na ordem geral dos rollbacks, ele vem **antes** do rollback-3.
 
 Prova: `PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-1c.mjs --mutantes`
+
+## Fase 1D: o degrau "teste" lê o teste certo
+
+O funil contava teste só por `assinaturas.trial_started_at`, que só as
+funções de admin preenchem. Quem se cadastra sozinho ganha 14 dias no plano
+free, com `free_trial_ends_at` (e `trial_canceled`). Por isso o card
+mostrava "Iniciaram teste = 0".
+
+Migration `supabase/migrations/20261121140000_crm_leads_1d_teste.sql`:
+- `admin_crm_funil` e `admin_crm_funil_por_anuncio`: mesmos parâmetros e
+  colunas de retorno; `testes` passa a contar `trial_started_at` **ou**
+  `free_trial_ends_at`. É 1 linha a mais em cada função (marcada `-- 1D`);
+  o resto é cópia exata da 1C;
+- função nova `admin_crm_funil_teste`, só admin, só contagens: em teste
+  agora, teste acabou sem pagar, teste cancelado, assinantes.
+- Não cria nem altera tabela. Não mexe em `_crm_pagantes`,
+  `admin_mkt_origens`, ingestão nem n8n.
+
+**Depende da 1C aplicada.** Primeiro o SQL, depois o código. Se o código
+for publicado antes do SQL, o card continua igual à 1C ("Iniciaram teste"),
+sem aviso nem erro.
+
+Um arquivo por vez, no SQL Editor:
+
+| # | Arquivo | Grava? | Depois, conferir |
+|---|---------|--------|------------------|
+| 1 | `scripts/crm-leads/1d-0-conferir-producao.sql` | não | 9 linhas `ok = true`. **Se 1, 2 ou 3 der false, pare e me mande**: a 1C não está aplicada ou a função em produção não é a do repositório. Anotar a linha 9 |
+| 2 | `supabase/migrations/20261121140000_crm_leads_1d_teste.sql` | 2 funções trocadas + 1 nova (nenhuma tabela) | `scripts/crm-leads/1d-1-verificar.sql`: 7 linhas `ok = true`; a linha 7 deve bater com a 9 da conferência (`com teste` = `com teste depois da 1D`) |
+| 3 | publicar o código do card (push da branch da 1D) | — | `/admin/marketing`: aparecem "Em teste agora" e "Teste acabou sem pagar" |
+
+- A migration só troca funções: nenhuma trava de tabela. Com
+  `lock_timeout = '3s'`, se alguém estiver usando o funil no instante,
+  nada é feito: rode de novo.
+- Rodar de novo não muda nada.
+- As contagens novas podem se sobrepor: quem cancelou e já passou do prazo
+  conta em "cancelado" e em "acabou sem pagar". O card mostra os cancelados
+  só como detalhe.
+- "Em teste agora" e "acabou sem pagar" olham só `free_trial_ends_at`. O
+  teste liberado pelo admin (`trial_started_at`) entra em `testes` (o total),
+  mas não nessas duas.
+
+Rollback (**NÃO RODE, só em emergência**): `scripts/crm-leads/rollback-1d.sql`.
+- Devolve as 2 funções à versão da 1C e apaga a função nova. Não perde dado.
+- Na ordem geral dos rollbacks, ele vem **antes** do `rollback-1c-direcao.sql`.
+
+Provas:
+```sh
+PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-1d.mjs --mutantes        # SQL: suíte + 17 mutantes
+deno test --no-check --allow-read scripts/testes-crm-leads/                     # card
+deno run --allow-read --allow-write --allow-run --allow-env scripts/testes-crm-leads/mutantes-1d.ts   # 13 mutantes do card
+```
 
 ## Edge Function `crm-leads`: o que o Adriel faz
 
