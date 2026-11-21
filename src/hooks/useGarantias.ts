@@ -71,7 +71,9 @@ export function useGarantias(ativo: boolean) {
   return {
     lista,
     virtual,
-    carregando: habilitado ? consulta.isLoading : ativo && carregando,
+    // Sem saber ainda quem é o usuário, a lista NÃO é a definitiva (seriam os
+    // padrões virtuais): conta como carregando.
+    carregando: ativo && (carregando || !userId || consulta.isLoading),
     erro: consulta.error as Error | null,
     recarregar: consulta.refetch,
     gravar: gravar.mutateAsync,

@@ -28,6 +28,8 @@ import { useGerarReciboLegal } from "@/hooks/useGerarReciboLegal";
 import { REGRAS_CARTAO_DISPOSITIVO } from "@/lib/origem/regrasReciboLegal";
 import { useNavigate } from "react-router-dom";
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
+import { CampoGarantiaVenda } from "@/components/dispositivos/garantias/CampoGarantiaVenda";
+import type { EscolhaGarantia } from "@/lib/garantias/vendaGarantia";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DialogDispositivoEntrada } from "@/components/pdv/DialogDispositivoEntrada";
 import type { DadosEntradaTroca } from "@/lib/vendas/trocaPDV";
@@ -130,6 +132,9 @@ export function CardDispositivo({
     dispositivo.garantia ? dispositivo.tempo_garantia : undefined
   );
   const [dialogEntradaAberto, setDialogEntradaAberto] = useState(false);
+  // Seletor único de "Minhas garantias" (fase B, só quem o freio libera).
+  const [escolhaGarantia, setEscolhaGarantia] = useState<EscolhaGarantia | null>(null);
+  const [garantiaModoNovo, setGarantiaModoNovo] = useState(false);
   // Dados da entrada (troca) levados ao PDV; só são gravados quando a venda é finalizada lá.
   const [entradaTroca, setEntradaTroca] = useState<DadosEntradaTroca | null>(null);
   const valorEntrada = entradaTroca?.valorEntrada ?? 0;
@@ -140,7 +145,23 @@ export function CardDispositivo({
   };
 
   const handleConfirmarVenda = () => {
+    if (garantiaModoNovo && !escolhaGarantia) return;
     setDialogGarantiaAberto(false);
+    // Seletor antigo: o state de sempre. Seletor novo: prazo legado = prazo
+    // escolhido (0 → sem tempo) e a garantia escolhida, para o PDV gravar.
+    if (garantiaModoNovo && escolhaGarantia) {
+      navigate('/pdv', {
+        state: {
+          dispositivoSelecionado: {
+            ...dispositivo,
+            tempo_garantia: escolhaGarantia.meses > 0 ? escolhaGarantia.meses : undefined,
+          },
+          entradaTrocaInicial: entradaTroca,
+          garantiaEscolhida: escolhaGarantia,
+        }
+      });
+      return;
+    }
     navigate('/pdv', {
       state: {
         dispositivoSelecionado: {
@@ -211,12 +232,21 @@ export function CardDispositivo({
             <DialogTitle>Garantia para o Recibo</DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Selecione o tempo de garantia que aparecerá no termo de garantia do recibo.
-            </p>
-            <SeletorTempoGarantia
-              value={garantiaMeses}
-              onChange={setGarantiaMeses}
+            <CampoGarantiaVenda
+              dispositivo={dispositivo}
+              onEscolha={setEscolhaGarantia}
+              onModoNovo={setGarantiaModoNovo}
+              legado={
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Selecione o tempo de garantia que aparecerá no termo de garantia do recibo.
+                  </p>
+                  <SeletorTempoGarantia
+                    value={garantiaMeses}
+                    onChange={setGarantiaMeses}
+                  />
+                </>
+              }
             />
           </div>
           <DialogFooter className="flex-col gap-2">
@@ -235,7 +265,7 @@ export function CardDispositivo({
               <Button variant="outline" className="flex-1" onClick={() => setDialogGarantiaAberto(false)}>
                 Cancelar
               </Button>
-              <Button className="flex-1" onClick={handleConfirmarVenda}>
+              <Button className="flex-1" onClick={handleConfirmarVenda} disabled={garantiaModoNovo && !escolhaGarantia}>
                 Ir para o PDV
               </Button>
             </div>

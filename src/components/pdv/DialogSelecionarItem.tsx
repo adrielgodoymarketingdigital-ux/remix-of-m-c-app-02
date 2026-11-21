@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SeletorTempoGarantia } from "@/components/dispositivos/SeletorTempoGarantia";
+import { CampoGarantiaVenda } from "@/components/dispositivos/garantias/CampoGarantiaVenda";
+import type { EscolhaGarantia } from "@/lib/garantias/vendaGarantia";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import {
   ModeloGarantia,
@@ -52,6 +54,8 @@ export interface ItemVenda {
   numero_serie?: string;
   tempo_garantia?: number;
   modelo_termo_garantia_id?: string;
+  /** Fase B de "Minhas garantias" (só quem o freio libera): garantia escolhida com o texto a congelar. */
+  garantia_escolhida?: EscolhaGarantia;
 }
 
 export const MODELO_TERMO_GLOBAL = "__global__";
@@ -79,6 +83,9 @@ export const DialogSelecionarItem = ({
   const [garantiaPendenteId, setGarantiaPendenteId] = useState<string | null>(null);
   const [garantiaMeses, setGarantiaMeses] = useState<number | undefined>(undefined);
   const [modeloTermoId, setModeloTermoId] = useState<string>(MODELO_TERMO_GLOBAL);
+  // Seletor único (fase B): escolha nova e se ele está em uso (freio).
+  const [escolhaGarantia, setEscolhaGarantia] = useState<EscolhaGarantia | null>(null);
+  const [garantiaModoNovo, setGarantiaModoNovo] = useState(false);
 
   const termoConfig = configLoja?.termo_garantia_dispositivo_config as TermoGarantiaDispositivoConfig | undefined;
   const modelosSalvos: ModeloGarantia[] = termoConfig?.modelos?.length ? termoConfig.modelos : MODELOS_PADRAO_GARANTIA;
@@ -124,13 +131,15 @@ export const DialogSelecionarItem = ({
       setGarantiaPendenteId(dispositivo.id);
       setGarantiaMeses(dispositivo.garantia ? dispositivo.tempo_garantia : undefined);
       setModeloTermoId(MODELO_TERMO_GLOBAL);
+      setEscolhaGarantia(null);
       return;
     }
+    if (garantiaModoNovo && !escolhaGarantia) return;
     const imei = imeisSelecionados[dispositivo.id] !== "__pendente__"
       ? imeisSelecionados[dispositivo.id]
       : (dispositivo.imei || undefined);
     const quantidade = quantidades[dispositivo.id] || 1;
-    onAdicionarItem({
+    const itemDispositivo: ItemVenda = {
       id: dispositivo.id,
       tipo: "dispositivo",
       nome: `${dispositivo.marca} ${dispositivo.modelo}`,
@@ -146,12 +155,25 @@ export const DialogSelecionarItem = ({
       condicao: dispositivo.condicao || undefined,
       tempo_garantia: garantiaMeses,
       modelo_termo_garantia_id: modeloTermoId !== MODELO_TERMO_GLOBAL ? modeloTermoId : undefined,
-    });
+    };
+    // Seletor antigo: o mesmo item de sempre. Seletor novo: prazo legado = prazo
+    // escolhido (0 → sem tempo), sem modelo de termo, e a garantia escolhida.
+    onAdicionarItem(
+      garantiaModoNovo && escolhaGarantia
+        ? {
+            ...itemDispositivo,
+            tempo_garantia: escolhaGarantia.meses > 0 ? escolhaGarantia.meses : undefined,
+            modelo_termo_garantia_id: undefined,
+            garantia_escolhida: escolhaGarantia,
+          }
+        : itemDispositivo,
+    );
     setQuantidades((prev) => ({ ...prev, [dispositivo.id]: 1 }));
     setImeisSelecionados((prev) => { const n = { ...prev }; delete n[dispositivo.id]; return n; });
     setGarantiaPendenteId(null);
     setGarantiaMeses(undefined);
     setModeloTermoId(MODELO_TERMO_GLOBAL);
+    setEscolhaGarantia(null);
     onOpenChange(false);
   };
 
@@ -310,26 +332,35 @@ export const DialogSelecionarItem = ({
                     {/* Seleção de garantia — aparece após IMEI (se houver) e antes de adicionar ao carrinho */}
                     {aguardandoGarantia && (
                       <div className="mt-3 pt-3 border-t space-y-3">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">{t("selecionarItem.tempoGarantia")}</Label>
-                          <SeletorTempoGarantia value={garantiaMeses} onChange={setGarantiaMeses} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">{t("selecionarItem.modeloTermo")}</Label>
-                          <Select value={modeloTermoId} onValueChange={setModeloTermoId}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={MODELO_TERMO_GLOBAL}>{t("selecionarItem.configuracaoGlobal")}</SelectItem>
-                              {modelosSalvos.map((m) => (
-                                <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <CampoGarantiaVenda
+                          dispositivo={dispositivo}
+                          onEscolha={setEscolhaGarantia}
+                          onModoNovo={setGarantiaModoNovo}
+                          legado={
+                            <>
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">{t("selecionarItem.tempoGarantia")}</Label>
+                                <SeletorTempoGarantia value={garantiaMeses} onChange={setGarantiaMeses} />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">{t("selecionarItem.modeloTermo")}</Label>
+                                <Select value={modeloTermoId} onValueChange={setModeloTermoId}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={MODELO_TERMO_GLOBAL}>{t("selecionarItem.configuracaoGlobal")}</SelectItem>
+                                    {modelosSalvos.map((m) => (
+                                      <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </>
+                          }
+                        />
                         <div className="flex justify-end">
-                          <Button onClick={() => handleAdicionarDispositivo(dispositivo)}>
+                          <Button onClick={() => handleAdicionarDispositivo(dispositivo)} disabled={garantiaModoNovo && !escolhaGarantia}>
                             {t("selecionarItem.confirmar")}
                           </Button>
                         </div>
