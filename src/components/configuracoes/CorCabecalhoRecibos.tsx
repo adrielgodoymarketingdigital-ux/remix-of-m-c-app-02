@@ -139,7 +139,7 @@ export function CorCabecalhoRecibos({ paletas, corSalva, onGravada }: Props) {
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="recibo-cor-livre">{t("cores.recibo.corLivre")}</Label>
             <input
               id="recibo-cor-livre"
@@ -149,7 +149,7 @@ export function CorCabecalhoRecibos({ paletas, corSalva, onGravada }: Props) {
               className="h-10 w-16 cursor-pointer rounded-md border border-input bg-background p-1"
             />
           </div>
-          <div className="space-y-2 sm:w-40">
+          <div className="flex flex-col gap-2 sm:w-40">
             <Label htmlFor="recibo-cor-hex">{t("cores.recibo.codigo")}</Label>
             <Input
               id="recibo-cor-hex"
