@@ -56,6 +56,8 @@ const FALHA = process.env.FALHA ?? "";
 // CONFIG_RECIBO=<json>: a loja salvou uma personalização (configuracoes_loja.recibo_venda_config).
 // Sem a variável, a linha fica como o cenário define (sem a coluna = loja que nunca personalizou).
 const CONFIG_RECIBO = process.env.CONFIG_RECIBO ? JSON.parse(process.env.CONFIG_RECIBO) : undefined;
+// CORES_LOJA=<json>: valor de configuracoes_loja.cores_personalizadas (ex.: a cor do cabeçalho dos recibos).
+const CORES_LOJA = process.env.CORES_LOJA ? JSON.parse(process.env.CORES_LOJA) : undefined;
 
 function tabelasDoPerfil(base) {
   if (PERFIL !== "funcionario") return base;
@@ -195,6 +197,7 @@ async function rodarCaso(tela, lugar, cenario, falhasCaso) {
   const falharCaso = (m) => falhasCaso.push(m);
   const tabelas = { ...tabelasDoPerfil(TABELAS[cenario]), user_roles: ADMIN ? [{ user_id: USUARIO.id, role: "admin" }] : [] };
   if (CONFIG_RECIBO !== undefined) tabelas.configuracoes_loja = tabelas.configuracoes_loja.map((c) => ({ ...c, recibo_venda_config: CONFIG_RECIBO }));
+  if (CORES_LOJA !== undefined) tabelas.configuracoes_loja = tabelas.configuracoes_loja.map((c) => ({ ...c, cores_personalizadas: CORES_LOJA }));
   const registro = [];
   const ctx = await prepararContexto(navegador, tela, tabelas, registro);
   try {
