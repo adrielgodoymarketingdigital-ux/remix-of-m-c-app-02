@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import type { ContatoRecibo, FormaRecibo, ReciboVendaModelo, RedeSocial, TipoContato } from "@/lib/vendas/reciboVendaModelo";
 import { IconeFacebook, IconeInstagram, IconeWhatsApp } from "./IconesRedesSociais";
+import { atributoCorCabecalho, corOndaCabecalho, cssCorCabecalhoReciboVendaNovo } from "./cssReciboVendaNovo";
 
 const ICONE = "rvn-icone";
 
@@ -118,10 +119,13 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
   const textos = m.textos;
   const fotoTroca = m.troca && fotoOk(m.troca.fotoUrl) ? m.troca.fotoUrl : null;
   const cancelada = m.situacao.tipo === "cancelada";
+  // Cor do cabeçalho da loja: só com cor válida o <header> ganha data-rvn-cor e um <style>.
+  const atributoCor = atributoCorCabecalho(m.corCabecalho) ?? undefined;
+  const cssCor = cssCorCabecalhoReciboVendaNovo(m.corCabecalho);
 
   return (
     <div className="rvn">
-      <header className={m.qr ? "rvn-cab" : "rvn-cab rvn-cab--sem-qr"}>
+      <header className={m.qr ? "rvn-cab" : "rvn-cab rvn-cab--sem-qr"} data-rvn-cor={atributoCor}>
         <div className="rvn-cab-marca">
           {logoOk ? (
             <>
@@ -161,9 +165,11 @@ export function ReciboVendaNovo({ modelo: m }: ReciboVendaNovoProps) {
           </div>
         )}
         <svg className="rvn-cab-curva" viewBox="0 0 850 34" preserveAspectRatio="none" aria-hidden>
-          <path d="M0 34 L0 16 Q 300 40 560 22 T 850 6 L850 34 Z" fill="#2b6cf0" fillOpacity="0.35" />
+          <path d="M0 34 L0 16 Q 300 40 560 22 T 850 6 L850 34 Z" fill={corOndaCabecalho(m.corCabecalho)} fillOpacity="0.35" />
           <path d="M0 34 L0 24 Q 320 44 600 28 T 850 16 L850 34 Z" fill="#ffffff" />
         </svg>
+        {/* Por último: não muda a posição (:first-child) de nenhum filho do cabeçalho. */}
+        {cssCor ? <style>{cssCor}</style> : null}
       </header>
 
       <main className="rvn-corpo">

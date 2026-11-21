@@ -6,6 +6,8 @@
  * paraImpressao: acrescenta @page A4 (margem 10mm) e o corpo da página de
  * impressão; na prévia dentro do app fica de fora (não mexe na página).
  */
+import { normalizarCorHex, paletaCabecalhoRecibo } from "../../../lib/recibo/corCabecalhoRecibo.ts";
+
 export interface OpcoesCssReciboVendaNovo {
   paraImpressao?: boolean;
 }
@@ -484,4 +486,36 @@ html, body { margin: 0; padding: 0; background: #ffffff; }
   .rvn-bloco-texto-corpo { font-size: 9.5px; line-height: 1.35; }
 }
 `;
+}
+
+/** Valor do atributo data-rvn-cor do cabeçalho: o hex sem "#" (null = sem cor válida). */
+export function atributoCorCabecalho(cor: string | null | undefined): string | null {
+  const hex = normalizarCorHex(cor);
+  return hex ? hex.slice(1) : null;
+}
+
+/**
+ * Cor do cabeçalho escolhida pela loja. Vai num <style> DENTRO do próprio
+ * <header> (acompanha o HTML copiado para a janela de impressão) e só vale
+ * para o cabeçalho com data-rvn-cor igual — nunca mexe em --rvn-navy, que
+ * também pinta o título do corpo. Sem cor válida → "" e o recibo não ganha
+ * nada (nem o atributo nem o <style>).
+ */
+export function cssCorCabecalhoReciboVendaNovo(cor: string | null | undefined): string {
+  const hex = normalizarCorHex(cor);
+  if (!hex) return "";
+  const p = paletaCabecalhoRecibo(hex);
+  const C = `.rvn-cab[data-rvn-cor="${hex.slice(1)}"]`;
+  return `
+${C} { background: linear-gradient(115deg, ${p.fundo}, ${p.fundo2}); color: ${p.texto}; }
+${C} .rvn-cab-contatos, ${C} .rvn-cab-qr { border-left-color: ${p.borda}; }
+${C} .rvn-contato .rvn-icone { color: ${p.acento}; }
+${C} .rvn-icone.rvn-rede-instagram, ${C} .rvn-icone.rvn-rede-facebook, ${C} .rvn-icone.rvn-rede-whatsapp { color: ${p.texto}; }
+`;
+}
+
+/** Cor da onda no pé do cabeçalho: o destaque derivado da cor; sem cor, o azul de sempre. */
+export function corOndaCabecalho(cor: string | null | undefined): string {
+  const hex = normalizarCorHex(cor);
+  return hex ? paletaCabecalhoRecibo(hex).acento : "#2b6cf0";
 }

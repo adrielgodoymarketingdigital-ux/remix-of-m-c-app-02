@@ -34,6 +34,7 @@ import { nomeFormaPagamento } from "../formaPagamento.ts";
 import { MARCADOR_PAGAMENTO_DUPLO_SECUNDARIO } from "../vendasFinanceiras.ts";
 import { formatarTermoDispositivo, resolverTextoTermoDispositivo } from "../termo-garantia-utils.ts";
 import { ehReciboVendaConfigPadrao, normalizarReciboVendaConfig, type ReciboVendaConfig } from "./reciboVendaConfig.ts";
+import { corCabecalhoDaLoja } from "../recibo/corCabecalhoRecibo.ts";
 
 // ── Entrada ─────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,8 @@ export interface LojaReciboEntrada {
   facebook?: string | null;
   catalogo_ativo?: boolean | null;
   catalogo_slug?: string | null;
+  /** Só a chave recibo_cabecalho_cor interessa ao recibo (cor do cabeçalho). */
+  cores_personalizadas?: unknown;
 }
 
 export interface ClienteReciboEntrada {
@@ -236,6 +239,11 @@ export interface ReciboVendaModelo {
    * sem personalização o modelo fica idêntico ao de sempre.
    */
   textos?: TextosModeloRecibo;
+  /**
+   * Cor do cabeçalho escolhida pela loja ("#rrggbb"). Só existe com cor válida:
+   * sem ela o modelo (e o recibo) ficam idênticos aos de sempre, no azul padrão.
+   */
+  corCabecalho?: string;
 }
 
 export interface TextosModeloRecibo {
@@ -516,7 +524,9 @@ function montarForma(f: FormaReciboEntrada, valorC: number, mostrarValor: boolea
 export function montarReciboVenda(e: EntradaReciboVenda, config?: unknown): ReciboVendaModelo {
   const modelo = montarReciboVendaSemConfig(e);
   const cfg = normalizarReciboVendaConfig(config);
-  return ehReciboVendaConfigPadrao(cfg) ? modelo : aplicarConfigRecibo(modelo, cfg);
+  const final = ehReciboVendaConfigPadrao(cfg) ? modelo : aplicarConfigRecibo(modelo, cfg);
+  const cor = corCabecalhoDaLoja(e.loja);
+  return cor ? { ...final, corCabecalho: cor } : final;
 }
 
 /**
