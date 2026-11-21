@@ -29,3 +29,18 @@ export function telaMinhasGarantiasVisivelPara(
   if (ctx.isAdmin === true) return true;
   return liberado && ctx.papel === "dono";
 }
+
+/**
+ * FASE B: seletor ÚNICO de garantia na venda (PDV e cartão do dispositivo).
+ * Freio fechado → só admin; os demais seguem no seletor antigo (tempo +
+ * modelo do termo), com o mesmo payload de sempre. Liberado → todos que vendem
+ * (dono, funcionário e gerente de filial). Carregando (isAdmin não definido) =
+ * seletor antigo.
+ */
+export function seletorGarantiaVendaVisivelPara(
+  ctx: { isAdmin: boolean | null | undefined },
+  liberado: boolean = MINHAS_GARANTIAS_LIBERADA,
+): boolean {
+  if (ctx.isAdmin === true) return true;
+  return liberado;
+}
