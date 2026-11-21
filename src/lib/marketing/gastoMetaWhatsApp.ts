@@ -125,7 +125,7 @@ const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" 
 export function rotuloFonteGasto2A(c: Custos2A, diasPeriodo: number): string {
   if (c.fonte === "automatico") {
     const extra = c.gastoInformadoCentavos > 0 ? ` + ${BRL.format(c.gastoInformadoCentavos / 100)} informado nos dias sem dado da Meta` : "";
-    return `Gasto da Meta por anúncio · ${c.diasComGastoMeta} de ${diasPeriodo} dias${extra}`;
+    return `Gasto da Meta por anúncio · ${c.diasComGastoMeta} de ${diasPeriodo} ${diasPeriodo === 1 ? "dia" : "dias"}${extra}`;
   }
   if (c.fonte === "manual") return "Gasto informado (sem dado da Meta no período)";
   return "Sem gasto no período";

@@ -17,12 +17,17 @@
 import { custoPor, ehAmostraPequena, lerInteiro, percentual } from "./custoWhatsApp.ts";
 
 // ---------------------------------------------------------------------------
-// Período do card: 7, 14, 30 dias ou personalizado (datas de Brasília)
+// Período do card: hoje, ontem, 7, 14, 30 dias ou personalizado (datas de Brasília)
 // ---------------------------------------------------------------------------
 
-export type PeriodoFunil = "7d" | "14d" | "30d" | "personalizado";
+export type PeriodoFunil = "hoje" | "ontem" | "7d" | "14d" | "30d" | "personalizado";
+
+/** Período com que o card abre. */
+export const PERIODO_FUNIL_PADRAO: PeriodoFunil = "7d";
 
 export const PERIODOS_FUNIL: { valor: PeriodoFunil; rotulo: string }[] = [
+  { valor: "hoje", rotulo: "Hoje" },
+  { valor: "ontem", rotulo: "Ontem" },
   { valor: "7d", rotulo: "Últimos 7 dias" },
   { valor: "14d", rotulo: "Últimos 14 dias" },
   { valor: "30d", rotulo: "Últimos 30 dias" },
@@ -59,12 +64,21 @@ export type ResultadoIntervalo =
   | { ok: true; inicio: string; fim: string; dias: number }
   | { ok: false; erro: string };
 
-/** Intervalo inclusivo (inicio..fim) a mandar para as RPCs, ou o motivo de não mandar. */
+/**
+ * Intervalo inclusivo (inicio..fim) a mandar para as RPCs, ou o motivo de não mandar.
+ * hojeISO é a data de Brasília (dataBrasiliaISO), nunca a do fuso do aparelho.
+ * "hoje" e "ontem" são 1 dia só (inicio = fim).
+ */
 export function intervaloFunil(
   periodo: PeriodoFunil,
   personalizado: { inicio: string; fim: string },
   hojeISO: string,
 ): ResultadoIntervalo {
+  if (periodo === "hoje") return { ok: true, inicio: hojeISO, fim: hojeISO, dias: 1 };
+  if (periodo === "ontem") {
+    const ontem = somarDiasISO(hojeISO, -1);
+    return { ok: true, inicio: ontem, fim: ontem, dias: 1 };
+  }
   if (periodo !== "personalizado") {
     const n = { "7d": 7, "14d": 14, "30d": 30 }[periodo];
     return { ok: true, inicio: somarDiasISO(hojeISO, -(n - 1)), fim: hojeISO, dias: n };
@@ -105,6 +119,16 @@ export function formatarDataBR(iso: string): string {
   return dataValidaISO(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : iso;
 }
 
+/** "1 dia" / "N dias". */
+export function rotuloDias(n: number): string {
+  return n === 1 ? "1 dia" : `${n} dias`;
+}
+
+/** Trecho do texto de ajuda: "em 21/11/2026" (1 dia) ou "de 15/11/2026 a 21/11/2026". */
+export function textoPeriodoFunil(inicio: string, fim: string): string {
+  return inicio === fim ? `em ${formatarDataBR(inicio)}` : `de ${formatarDataBR(inicio)} a ${formatarDataBR(fim)}`;
+}
+
 // ---------------------------------------------------------------------------
 // Aviso de amostra pequena (regra: ehAmostraPequena da lib)
 // ---------------------------------------------------------------------------
@@ -120,7 +144,7 @@ export function avisoAmostraPequena(conversas: number, assinantes: number): stri
 // ---------------------------------------------------------------------------
 
 export function rotuloFonteGasto(fonte: "meta" | "manual" | "nenhum", diasMeta: number, diasPeriodo: number): string {
-  if (fonte === "meta") return `Gasto da Meta (campanhas de WhatsApp) · ${diasMeta} de ${diasPeriodo} dias`;
+  if (fonte === "meta") return `Gasto da Meta (campanhas de WhatsApp) · ${diasMeta} de ${rotuloDias(diasPeriodo)}`;
   if (fonte === "manual") return "Gasto informado";
   return "Sem gasto no período";
 }

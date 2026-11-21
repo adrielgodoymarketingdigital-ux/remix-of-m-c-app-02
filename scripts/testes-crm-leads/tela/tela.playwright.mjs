@@ -243,15 +243,16 @@ for (const largura of [1280, 390]) {
 }
 
 // ── G) SQL da 2A aplicado: gasto da Meta por anúncio ───────────────────────
+// O card abre em "Últimos 7 dias": a Meta cobre 6 dos 7.
 const MIN = 60_000;
 const GASTO = (atrasoMin) => [{
-  gasto_auto_centavos: 98000, dias_auto: 28, anuncios_auto: 2, conversas_meta: 455, impressoes: 120000, cliques: 3100,
+  gasto_auto_centavos: 98000, dias_auto: 6, anuncios_auto: 2, conversas_meta: 455, impressoes: 120000, cliques: 3100,
   gasto_manual_efetivo_centavos: 8000, lancamentos_manuais_efetivos: 1, // +30 s: o relógio da página é lido na montagem, um pouco antes desta resposta
   atualizado_em: new Date(Date.now() - atrasoMin * MIN - 30_000).toISOString(),
 }];
 const GASTO_ANUNCIO = [
-  { ad_id: "120000000000001", gasto_auto_centavos: 70000, dias_auto: 28, conversas_meta: 190, impressoes: 80000, cliques: 2000, gasto_manual_efetivo_centavos: 0, atualizado_em: new Date().toISOString() },
-  { ad_id: "120000000000002", gasto_auto_centavos: 28000, dias_auto: 28, conversas_meta: 60, impressoes: 40000, cliques: 1100, gasto_manual_efetivo_centavos: 0, atualizado_em: new Date().toISOString() },
+  { ad_id: "120000000000001", gasto_auto_centavos: 70000, dias_auto: 6, conversas_meta: 190, impressoes: 80000, cliques: 2000, gasto_manual_efetivo_centavos: 0, atualizado_em: new Date().toISOString() },
+  { ad_id: "120000000000002", gasto_auto_centavos: 28000, dias_auto: 6, conversas_meta: 60, impressoes: 40000, cliques: 1100, gasto_manual_efetivo_centavos: 0, atualizado_em: new Date().toISOString() },
   { ad_id: "120000000000003", gasto_auto_centavos: 0, dias_auto: 0, conversas_meta: 0, impressoes: 0, cliques: 0, gasto_manual_efetivo_centavos: 8000, atualizado_em: null },
 ];
 for (const [largura, atraso] of [[1280, 23], [390, 23], [1280, 8 * 60]]) {
@@ -270,7 +271,7 @@ for (const [largura, atraso] of [[1280, 23], [390, 23], [1280, 8 * 60]]) {
   await pg.waitForSelector('[data-testid="lista-gastos"]');
   const t = semNbsp(await texto(pg));
   const fonte = semNbsp(await pg.locator('[data-testid="fonte-gasto"]').innerText());
-  ok(fonte === "Gasto da Meta por anúncio · 28 de 30 dias + R$ 80,00 informado nos dias sem dado da Meta", "selo: Meta por anúncio + informado efetivo", fonte);
+  ok(fonte === "Gasto da Meta por anúncio · 6 de 7 dias + R$ 80,00 informado nos dias sem dado da Meta", "selo: Meta por anúncio + informado efetivo", fonte);
   const at = await pg.locator('[data-testid="gasto-atualizado"]').innerText();
   ok(at === (atraso < 60 ? "atualizado há 23 min" : "atualizado há 8 h"), `'${at}'`);
   const cor = await pg.locator('[data-testid="gasto-atualizado"]').getAttribute("class");
@@ -366,13 +367,13 @@ console.log("C) 29 conversas, gasto da Meta (e também informado)");
 {
   const { ctx, pg, errosPagina } = await abrir(navegador, {
     rpc: (n) => n === "admin_crm_funil"
-      ? { json: [{ ...FUNIL, conversas: 29, cadastros: 4, testes: 3, assinantes: 0, gasto_meta_centavos: 30000, gasto_meta_dias: 12, gasto_manual_centavos: 99900 }] }
+      ? { json: [{ ...FUNIL, conversas: 29, cadastros: 4, testes: 3, assinantes: 0, gasto_meta_centavos: 30000, gasto_meta_dias: 5, gasto_manual_centavos: 99900 }] }
       : { json: [] },
   });
   await pg.waitForSelector('[data-testid="aviso-amostra"]');
   const t = semNbsp(await texto(pg));
   ok(t.includes("Amostra pequena: use como indicativo"), "aviso de amostra pequena");
-  ok(t.includes("Gasto da Meta (campanhas de WhatsApp) · 12 de 30 dias") && !t.includes("Gasto informado ·"), "fonte Meta com dias cobertos");
+  ok(t.includes("Gasto da Meta (campanhas de WhatsApp) · 5 de 7 dias") && !t.includes("Gasto informado ·"), "fonte Meta com dias cobertos");
   ok(t.includes("R$ 300,00") && !t.includes("R$ 1.299,00") && !t.includes("R$ 999,00"), "gasto = só Meta (nunca soma com o informado)");
   ok(t.includes("R$ 10,34") && /Custo por assinante\s*—/.test(t), "custo por conversa e '—' com 0 assinantes", t.slice(0, 600));
   ok(errosPagina.length === 0, "sem erro na página", errosPagina);
@@ -427,6 +428,76 @@ console.log("D) formulário de gasto (respostas simuladas)");
   await pg.waitForSelector("text=Lançamento removido.");
   ok(JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_gasto_remover")?.corpo) === JSON.stringify({ p_id: 7 }), "remove pelo id via admin_crm_gasto_remover");
   ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e sem log do app", { errosPagina, app: estado.consoleApp });
+  ok(estado.externas.length === 0, "nenhuma chamada externa", estado.externas);
+  await ctx.close();
+}
+
+// ── P) filtro de período: Hoje, Ontem e padrão "Últimos 7 dias" ────────────
+const isoBrasilia = (deltaDias) => {
+  const d = new Date(Date.now() + deltaDias * 86_400_000);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+};
+const dataBR = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+const OPCOES = ["Hoje", "Ontem", "Últimos 7 dias", "Últimos 14 dias", "Últimos 30 dias", "Personalizado"];
+for (const largura of [1280, 390]) {
+  console.log(`P) filtro de período: 6 opções, Hoje e Ontem (${largura}px)`);
+  const hojeBR = isoBrasilia(0);
+  const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
+    com2A: true,
+    rpc: (n, corpo) => {
+      const umDia = corpo?.p_inicio === corpo?.p_fim;
+      const dias = umDia ? 1 : 6;
+      if (n === "admin_crm_funil") return { json: [FUNIL] };
+      if (n === "admin_crm_funil_por_anuncio") return { json: POR_ANUNCIO };
+      if (n === "admin_crm_funil_excluidos") return { json: FORA };
+      if (n === "admin_crm_funil_teste") return { json: TESTE };
+      if (n === "admin_crm_funil_gasto") return { json: [{ ...GASTO(23)[0], dias_auto: dias, gasto_manual_efetivo_centavos: 0, lancamentos_manuais_efetivos: 0 }] };
+      if (n === "admin_crm_funil_gasto_por_anuncio") return { json: GASTO_ANUNCIO.map((g) => ({ ...g, dias_auto: g.dias_auto ? dias : 0 })) };
+      return { json: null };
+    },
+    tabela: (t) => t === "crm_gasto_manual" ? { json: [] } : { json: [] },
+  }, { largura });
+  await pg.waitForSelector('[data-testid="tabela-funil-anuncio"]');
+  await pg.waitForSelector('[data-testid="conversas-meta-linha"]');
+  const gatilho = pg.getByRole("combobox", { name: "Período do funil" });
+  ok((await gatilho.innerText()).trim() === "Últimos 7 dias", "abre em 'Últimos 7 dias'", await gatilho.innerText());
+  const primeira = estado.rpcs.find((r) => r.nome === "admin_crm_funil")?.corpo;
+  ok(primeira?.p_inicio === isoBrasilia(-6) && primeira?.p_fim === hojeBR, "padrão consulta hoje-6..hoje (Brasília)", primeira);
+  ok(semNbsp(await pg.locator('[data-testid="fonte-gasto"]').innerText()) === "Gasto da Meta por anúncio · 6 de 7 dias", "selo com 7 dias");
+  const linhas7d = await pg.locator('[data-testid="tabela-funil-anuncio"] tbody tr').count();
+  ok(linhas7d >= POR_ANUNCIO.length, `tabela por anúncio em 7 dias (${linhas7d} linhas)`);
+  await gatilho.click();
+  await pg.waitForSelector('[role="option"]');
+  const opcoes = (await pg.getByRole("option").allInnerTexts()).map((x) => x.trim());
+  ok(JSON.stringify(opcoes) === JSON.stringify(OPCOES), "6 opções na ordem", opcoes);
+  await foto(pg, `p-periodo-select-${largura}`).catch(() => {});
+  await pg.screenshot({ path: path.join(SAIDA, `p-periodo-select-pagina-${largura}.png`) });
+
+  for (const [rotulo, iso] of [["Hoje", hojeBR], ["Ontem", isoBrasilia(-1)]]) {
+    if (await pg.getByRole("option").count() === 0) { await gatilho.click(); await pg.waitForSelector('[role="option"]'); }
+    const antes = estado.rpcs.length;
+    await pg.getByRole("option", { name: rotulo, exact: true }).click();
+    await pg.waitForFunction((d) => document.querySelector('[data-testid="ajuda-funil"]')?.textContent?.includes(`em ${d}`), dataBR(iso));
+    await pg.waitForSelector('[data-testid="tabela-funil-anuncio"]');
+    await pg.waitForFunction(() => /1 de 1 dia$/.test(document.querySelector('[data-testid="fonte-gasto"]')?.textContent ?? ""));
+    const novas = estado.rpcs.slice(antes);
+    const nomes = [...new Set(novas.map((r) => r.nome))].sort();
+    ok(nomes.length >= 6 && novas.every((r) => r.corpo.p_inicio === iso && r.corpo.p_fim === iso),
+      `${rotulo}: todas as consultas com início = fim = ${iso}`, novas.map((r) => [r.nome, r.corpo]));
+    ok((await gatilho.innerText()).trim() === rotulo, `${rotulo}: Select mostra '${rotulo}'`);
+    const selo = semNbsp(await pg.locator('[data-testid="fonte-gasto"]').innerText());
+    ok(selo === "Gasto da Meta por anúncio · 1 de 1 dia", `${rotulo}: selo '1 de 1 dia'`, selo);
+    const ajuda = semNbsp(await pg.locator('[data-testid="ajuda-funil"]').innerText());
+    ok(ajuda.includes(`Pessoas cujo 1º contato foi em ${dataBR(iso)}; cadastros`) && !ajuda.includes(" a " + dataBR(iso)), `${rotulo}: ajuda 'em ${dataBR(iso)}'`, ajuda);
+    ok(await pg.locator('[data-testid="tabela-funil-anuncio"] tbody tr').count() === linhas7d, `${rotulo}: tabela por anúncio com as mesmas ${linhas7d} linhas`);
+    ok(!/não ativado|indisponível|Tentar novamente|Escolha as duas datas/i.test(await texto(pg)), `${rotulo}: sem aviso de erro no card`);
+    await foto(pg, `p-${rotulo.toLowerCase()}-${largura}`);
+  }
+  // Personalizado começa nos mesmos 7 dias do padrão
+  await gatilho.click();
+  await pg.getByRole("option", { name: "Personalizado", exact: true }).click();
+  ok(await pg.locator('input[aria-label="Início"]').inputValue() === isoBrasilia(-6) && await pg.locator('input[aria-label="Fim"]').inputValue() === hojeBR, "Personalizado começa em hoje-6..hoje");
+  ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e nenhum log do app no console", { errosPagina, app: estado.consoleApp });
   ok(estado.externas.length === 0, "nenhuma chamada externa", estado.externas);
   await ctx.close();
 }

@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import {
   PERIODOS_FUNIL,
+  PERIODO_FUNIL_PADRAO,
   TEXTO_CONVERSA_INICIADA,
   TEXTO_NAO_ATIVADO,
   TEXTO_TESTE_14_DIAS,
@@ -19,12 +20,12 @@ import {
   etapasFunil,
   formatarCentavos,
   formatarCusto,
-  formatarDataBR,
   formatarNumero,
   intervaloFunil,
   rotuloFonteGasto,
   somarDiasISO,
   textoForaDoFunil,
+  textoPeriodoFunil,
   type PeriodoFunil,
 } from "@/lib/marketing/funilWhatsApp";
 import {
@@ -56,8 +57,9 @@ import { GastoInformadoWhatsApp } from "./GastoInformadoWhatsApp";
  */
 export function CardFunilWhatsApp() {
   const hoje = dataBrasiliaISO();
-  const [periodo, setPeriodo] = useState<PeriodoFunil>("30d");
-  const [personalizado, setPersonalizado] = useState({ inicio: somarDiasISO(hoje, -29), fim: hoje });
+  const [periodo, setPeriodo] = useState<PeriodoFunil>(PERIODO_FUNIL_PADRAO);
+  // Ao trocar para "Personalizado", começa nos mesmos 7 dias do padrão.
+  const [personalizado, setPersonalizado] = useState({ inicio: somarDiasISO(hoje, -6), fim: hoje });
 
   const intervalo = useMemo(() => intervaloFunil(periodo, personalizado, hoje), [periodo, personalizado, hoje]);
   const consulta = "erro" in intervalo ? null : { inicio: intervalo.inicio, fim: intervalo.fim };
@@ -135,8 +137,8 @@ export function CardFunilWhatsApp() {
         ) : (
           <>
             <p className="text-xs text-muted-foreground" data-testid="ajuda-funil">
-              {TEXTO_CONVERSA_INICIADA} Pessoas cujo 1º contato foi de {formatarDataBR(intervalo.inicio)} a{" "}
-              {formatarDataBR(intervalo.fim)}; cadastros e pagamentos contam até hoje.
+              {TEXTO_CONVERSA_INICIADA} Pessoas cujo 1º contato foi{" "}
+              {textoPeriodoFunil(intervalo.inicio, intervalo.fim)}; cadastros e pagamentos contam até hoje.
             </p>
             <p className="text-xs text-muted-foreground -mt-2" data-testid="ajuda-teste">{TEXTO_TESTE_14_DIAS}</p>
 
