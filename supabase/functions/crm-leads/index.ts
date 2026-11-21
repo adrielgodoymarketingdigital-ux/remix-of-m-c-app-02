@@ -1,5 +1,6 @@
 // Edge Function crm-leads: porta de entrada do n8n para o CRM de leads do
-// WhatsApp (fase 1: captura, resumo, vínculo, opt-out, retenção, relatório).
+// WhatsApp (fase 1: captura, resumo, vínculo, opt-out, retenção, relatório;
+// fase 2A: gasto da Meta por anúncio).
 // Lógica em handler.ts; contrato em docs/crm-leads/CONTRATO.md;
 // publicação e secret em scripts/crm-leads/LEIA-ME.md.
 // verify_jwt = false (supabase/config.toml): a autenticação é o x-crm-secret.

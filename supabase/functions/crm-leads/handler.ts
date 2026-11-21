@@ -8,7 +8,7 @@
 // - Nunca loga telefone, nome ou texto: só contagens e códigos de erro.
 // - A chave da Evolution e a da IA NÃO passam por aqui (ficam no n8n).
 
-import { lerEnvelope, MAX_BYTES, MAX_ITENS, normalizarMensagem, segredoConfere } from "./contrato.ts";
+import { lerEnvelope, MAX_BYTES, MAX_ITENS, MAX_ITENS_GASTO, normalizarGastoMeta, normalizarMensagem, segredoConfere } from "./contrato.ts";
 import { normalizarTelefone } from "./telefone.ts";
 
 export interface RpcCliente {
@@ -56,7 +56,8 @@ export function criarHandler(dep: Dependencias): (req: Request) => Promise<Respo
 
     const env = lerEnvelope(corpo);
     if (!env.ok) {
-      return json(env.status, env.status === 413 ? { erro: env.erro, max_itens: MAX_ITENS } : { erro: env.erro });
+      const max = (corpo as Record<string, unknown>).acao === "gasto_meta" ? MAX_ITENS_GASTO : MAX_ITENS;
+      return json(env.status, env.status === 413 ? { erro: env.erro, max_itens: max } : { erro: env.erro });
     }
 
     const db = dep.db();
@@ -143,6 +144,34 @@ export function criarHandler(dep: Dependencias): (req: Request) => Promise<Respo
           const data = await chamar(db, "crm_aplicar_retencao") as Record<string, number>;
           log("[crm-leads] retencao", data);
           return json(200, { ok: true, ...data });
+        }
+
+        case "gasto_meta": {
+          // Fase 2A. Só IDs e números; o log leva só contagens.
+          const hoje = dep.hojeBrasilia();
+          const validas: unknown[] = [];
+          const mapa: number[] = [];
+          const vistos = new Set<string>();
+          const rejeitadas: { indice: number; erro: string }[] = [];
+          env.itens.forEach((item, i) => {
+            const r = normalizarGastoMeta(item, hoje);
+            if (!r.ok) { rejeitadas.push({ indice: i, erro: r.erro }); return; }
+            const chave = `${r.valor.ad_id}|${r.valor.data}`;
+            if (vistos.has(chave)) { rejeitadas.push({ indice: i, erro: "duplicado_no_lote" }); return; }
+            vistos.add(chave);
+            mapa.push(i);
+            validas.push(r.valor);
+          });
+          let banco = { inseridos: 0, atualizados: 0, rejeitadas: [] as { indice: number; erro: string }[] };
+          if (validas.length > 0) banco = await chamar(db, "crm_gravar_gasto_meta", { p_itens: validas }) as typeof banco;
+          for (const r of banco.rejeitadas ?? []) rejeitadas.push({ indice: mapa[r.indice], erro: r.erro });
+          rejeitadas.sort((a, b) => a.indice - b.indice);
+          log("[crm-leads] gasto_meta", {
+            recebidos: env.itens.length, inseridos: banco.inseridos, atualizados: banco.atualizados, rejeitados: rejeitadas.length,
+          });
+          return json(200, {
+            ok: true, recebidos: env.itens.length, inseridos: banco.inseridos, atualizados: banco.atualizados, rejeitadas,
+          });
         }
 
         case "relatorio": {

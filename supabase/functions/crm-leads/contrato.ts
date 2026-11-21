@@ -5,6 +5,8 @@
 import { normalizarTelefone } from "./telefone.ts";
 
 export const MAX_ITENS = 200;
+/** Fase 2A: lote menor para o gasto da Meta (a função SQL recusa > 100). */
+export const MAX_ITENS_GASTO = 100;
 export const MAX_BYTES = 512 * 1024;
 
 export const ACOES = [
@@ -15,6 +17,7 @@ export const ACOES = [
   "opt_out",          // fase 1: opt-out por fora da mensagem
   "retencao",         // fase 1: apaga mensagens/resumo após 90 dias
   "relatorio",        // fase 1: números agregados do dia (Brasília)
+  "gasto_meta",       // fase 2A: gasto da Meta por anúncio e dia (Insights nível ad)
 ] as const;
 export type Acao = typeof ACOES[number];
 
@@ -62,10 +65,11 @@ export function lerEnvelope(corpo: unknown): ResultadoEnvelope {
   if (typeof acao !== "string" || !(ACOES as readonly string[]).includes(acao)) {
     return { ok: false, status: 400, erro: "acao_invalida" };
   }
-  const precisaItens = acao === "mensagens" || acao === "resumo" || acao === "vincular" || acao === "opt_out";
+  const precisaItens = acao === "mensagens" || acao === "resumo" || acao === "vincular" || acao === "opt_out"
+    || acao === "gasto_meta";
   const lista = Array.isArray(itens) ? itens : item !== undefined ? [item] : [];
   if (precisaItens && lista.length === 0) return { ok: false, status: 400, erro: "itens_vazios" };
-  if (lista.length > MAX_ITENS) return { ok: false, status: 413, erro: "lote_grande" };
+  if (lista.length > (acao === "gasto_meta" ? MAX_ITENS_GASTO : MAX_ITENS)) return { ok: false, status: 413, erro: "lote_grande" };
   return { ok: true, acao: acao as Acao, itens: lista, params };
 }
 
@@ -130,6 +134,81 @@ export function normalizarMensagem(
       referral,
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Fase 2A: gasto da Meta por anúncio e dia. Mesmas regras de
+// crm_gravar_gasto_meta (o banco valida de novo).
+// ---------------------------------------------------------------------------
+
+export interface GastoMetaNormalizado {
+  ad_id: string;
+  campaign_id: string | null;
+  data: string;
+  gasto_centavos: number;
+  impressoes: number;
+  cliques: number;
+  conversas_meta: number;
+  moeda: string;
+}
+
+export type ErroGastoMeta =
+  | "nao_objeto" | "ad_id_invalido" | "campaign_id_invalido" | "data_invalida" | "data_fora_da_janela"
+  | "gasto_invalido" | "impressoes_invalido" | "cliques_invalido" | "conversas_meta_invalido" | "moeda_invalida";
+
+const RE_ID = /^[A-Za-z0-9_.-]{1,64}$/;
+const RE_DIA = /^\d{4}-\d{2}-\d{2}$/;
+
+const LIMITES = { gasto_centavos: 100_000_000, impressoes: 1_000_000_000, cliques: 1_000_000_000, conversas_meta: 10_000_000 } as const;
+
+function diaISO(s: string, delta: number): string {
+  const d = new Date(`${s}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Um item do n8n -> formato de crm_gravar_gasto_meta. hojeISO = hoje em Brasília. */
+export function normalizarGastoMeta(
+  bruto: unknown,
+  hojeISO: string,
+): { ok: true; valor: GastoMetaNormalizado } | { ok: false; erro: ErroGastoMeta } {
+  if (typeof bruto !== "object" || bruto === null || Array.isArray(bruto)) return { ok: false, erro: "nao_objeto" };
+  const g = bruto as Record<string, unknown>;
+
+  if (typeof g.ad_id !== "string" || !RE_ID.test(g.ad_id)) return { ok: false, erro: "ad_id_invalido" };
+  let campaign: string | null = null;
+  if (g.campaign_id !== undefined && g.campaign_id !== null) {
+    if (typeof g.campaign_id !== "string" || !RE_ID.test(g.campaign_id)) return { ok: false, erro: "campaign_id_invalido" };
+    campaign = g.campaign_id;
+  }
+
+  const dia = typeof g.data === "string" ? g.data : "";
+  if (!RE_DIA.test(dia) || Number.isNaN(Date.parse(`${dia}T00:00:00Z`)) || new Date(`${dia}T00:00:00Z`).toISOString().slice(0, 10) !== dia) {
+    return { ok: false, erro: "data_invalida" };
+  }
+  if (dia < diaISO(hojeISO, -400) || dia > diaISO(hojeISO, 1) || dia < "2024-01-01") return { ok: false, erro: "data_fora_da_janela" };
+
+  const nums = {} as Record<keyof typeof LIMITES, number>;
+  for (const campo of Object.keys(LIMITES) as (keyof typeof LIMITES)[]) {
+    const v = g[campo];
+    if (v === undefined || v === null) {
+      if (campo === "gasto_centavos") return { ok: false, erro: "gasto_invalido" };
+      nums[campo] = 0;
+      continue;
+    }
+    if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > LIMITES[campo]) {
+      return { ok: false, erro: campo === "gasto_centavos" ? "gasto_invalido" : `${campo}_invalido` as ErroGastoMeta };
+    }
+    nums[campo] = v;
+  }
+
+  let moeda = "BRL";
+  if (g.moeda !== undefined && g.moeda !== null) {
+    if (typeof g.moeda !== "string" || !/^[A-Z]{3}$/.test(g.moeda)) return { ok: false, erro: "moeda_invalida" };
+    moeda = g.moeda;
+  }
+
+  return { ok: true, valor: { ad_id: g.ad_id, campaign_id: campaign, data: dia, ...nums, moeda } };
 }
 
 /** Compara o segredo em tempo constante sem vazar o tamanho (SHA-256 dos dois). */
