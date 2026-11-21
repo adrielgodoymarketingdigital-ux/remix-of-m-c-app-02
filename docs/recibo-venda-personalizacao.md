@@ -55,3 +55,11 @@ confere o valor da constante (atualizar junto).
   leitura da venda travava; e no iPhone com o app instalado o recibo abria numa
   janela sem saída. Corrigido na mesma noite (`1a602c3..c5ac878`: camada do iOS
   instalado e tempo máximo de 8 s), já na main.
+
+## Cor do cabeçalho (Configurações → Cores)
+
+Separada da personalização acima: `cores_personalizadas.recibo_cabecalho_cor`
+na mesma linha de `configuracoes_loja` que o diálogo já lê (mesma regra de
+funcionário/filial/gerente). Vale para o recibo de venda novo e o A4
+personalizado da OS. Sem a chave (ou inválida) = azul de sempre, HTML idêntico.
+Detalhes e pendências: `docs/pendencias-recibo-cor-cabecalho.md`.
