@@ -178,9 +178,11 @@ Deno.test("card: função nova ausente some sem aviso; dado novo só com a funç
   assert(CARD.includes("const gastoAnuncio = useAdminCrmFunilGastoPorAnuncio(consulta, ativo);"));
   assert(!/\bgasto(Anuncio)?\.(error|isError|failureReason|status|refetch)/.test(CARD), "o card não olha o erro das funções novas");
   assert(CARD.includes("custosComGastoAutomatico(funil.data, gasto.data)"));
-  assert(CARD.includes("linhasAnuncioComGasto(porAnuncio.data ?? [], gastoAnuncio.data)"));
-  assert(CARD.includes("const comMetaPorAnuncio = gastoAnuncio.data !== undefined;"));
-  assert(CARD.includes('{gasto.data && (\n              <p className="text-xs text-muted-foreground -mt-2" data-testid="ajuda-gasto-meta">{TEXTO_AJUDA_GASTO_META}</p>'));
+  assert(CARD.includes("linhasAnuncioComGasto(porAnuncio.data ?? [], comMetaPorAnuncio ? gastoAnuncio.data : undefined)"));
+  assert(CARD.includes("const comMetaPorAnuncio = (gastoAnuncio.data ?? []).some((g) => g.diasAuto > 0);"),
+    "colunas da Meta só com dado automático no período (antes da 1ª sincronização, tabela como antes)");
+  assert(CARD.includes('{gasto.data?.atualizadoEm && (\n              <p className="text-xs text-muted-foreground -mt-2" data-testid="ajuda-gasto-meta">{TEXTO_AJUDA_GASTO_META}</p>'),
+    "ajuda do atraso só depois da 1ª sincronização");
   assert(CARD.includes('{gasto.data && gasto.data.diasAuto > 0 && ('), "conversas da Meta só com dia automático");
   assert(CARD.includes("{textoConversasMeta(gasto.data.conversasMeta, funil.data.conversas)}"));
   assert(CARD.includes('{comMetaPorAnuncio && <TableHead className="text-right">Conversas (Meta)</TableHead>}'));

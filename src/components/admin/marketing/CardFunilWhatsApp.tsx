@@ -78,8 +78,10 @@ export function CardFunilWhatsApp() {
   const gastoAnuncio = useAdminCrmFunilGastoPorAnuncio(consulta, ativo);
   const agora = useAgoraPorMinuto();
   const custos = funil.data ? custosComGastoAutomatico(funil.data, gasto.data) : null;
-  const linhasAnuncio = linhasAnuncioComGasto(porAnuncio.data ?? [], gastoAnuncio.data);
-  const comMetaPorAnuncio = gastoAnuncio.data !== undefined;
+  // Colunas da Meta só quando algum anúncio do período tem dado automático
+  // (antes da 1ª sincronização a tabela fica exatamente como antes).
+  const comMetaPorAnuncio = (gastoAnuncio.data ?? []).some((g) => g.diasAuto > 0);
+  const linhasAnuncio = linhasAnuncioComGasto(porAnuncio.data ?? [], comMetaPorAnuncio ? gastoAnuncio.data : undefined);
   const atualizado = gasto.data ? textoAtualizado(gasto.data.atualizadoEm, agora) : null;
   const aviso = funil.data ? avisoAmostraPequena(funil.data.conversas, funil.data.assinantes) : null;
 
@@ -188,7 +190,7 @@ export function CardFunilWhatsApp() {
               <Custo titulo="Custo por assinante" valor={formatarCentavos(custos.porAssinanteCentavos)} />
             </div>
 
-            {gasto.data && (
+            {gasto.data?.atualizadoEm && (
               <p className="text-xs text-muted-foreground -mt-2" data-testid="ajuda-gasto-meta">{TEXTO_AJUDA_GASTO_META}</p>
             )}
 
@@ -254,7 +256,9 @@ export function CardFunilWhatsApp() {
               <p className="text-xs text-muted-foreground mt-2" data-testid="rodape-anuncio">
                 {comMetaPorAnuncio
                   ? "Só quem escreveu primeiro. Por anúncio, o gasto é o da Meta; o informado com o ID do anúncio só vale nos dias sem dado da Meta dele. Conversas (Meta) = o que a Meta contou, para comparar."
-                  : "Só quem escreveu primeiro. Por anúncio, o custo usa só o gasto informado com o ID do anúncio (o gasto da Meta é por campanha)."}
+                  : gasto.data
+                    ? "Só quem escreveu primeiro. Por anúncio, o custo usa o gasto informado com o ID do anúncio (ainda sem dado da Meta no período)."
+                    : "Só quem escreveu primeiro. Por anúncio, o custo usa só o gasto informado com o ID do anúncio (o gasto da Meta é por campanha)."}
                 {" "}"—" = sem gasto ou sem ninguém na etapa.
               </p>
             </div>

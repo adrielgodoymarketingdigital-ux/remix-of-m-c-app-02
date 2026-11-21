@@ -35,6 +35,9 @@ const FORA = [{ loja_chamou_primeiro: 14, loja_chamou_primeiro_com_cadastro: 12,
 // 1D: situação do teste (61 cadastros, 48 com teste)
 const TESTE = [{ teste_ativo_agora: 37, teste_acabou_sem_pagar: 11, teste_cancelado: 2, assinantes: 9 }];
 const AUSENTE = (fn) => ({ status: 404, json: { code: "PGRST202", message: `Could not find the function public.${fn}(p_fim, p_inicio) in the schema cache`, details: null, hint: null } });
+// 2A: nos cenários antigos (A–F) o SQL da 2A ainda não foi aplicado: as 2
+// funções novas respondem "não existe". Só o cenário G (com2A) as responde.
+const FUNCOES_2A = ["admin_crm_funil_gasto", "admin_crm_funil_gasto_por_anuncio"];
 const etapas = async (pg) => (await pg.locator('[data-testid="funil-etapas"] > div').allInnerTexts()).map((x) => x.replace(/ /g, " ").replace(/\s+/g, " ").trim());
 const GASTOS = [{ id: 7, inicio: "2026-11-01", fim: "2026-11-20", ad_id: null, descricao: "campanhas de novembro", valor: "1240.00", removido_em: null }];
 
@@ -52,7 +55,7 @@ async function abrir(navegador, cenario, { largura = 1280 } = {}) {
         const nome = rpc[1];
         const corpo = req.postDataJSON();
         estado.rpcs.push({ nome, corpo });
-        const r = cenario.rpc(nome, corpo, estado);
+        const r = !cenario.com2A && FUNCOES_2A.includes(nome) ? AUSENTE(nome) : cenario.rpc(nome, corpo, estado);
         return rota.fulfill({ status: r.status ?? 200, json: r.json });
       }
       const tab = url.pathname.match(/\/rest\/v1\/([a-z_]+)/);
@@ -138,7 +141,13 @@ for (const largura of [1280, 390]) {
   ok(!/Infinity|NaN/.test(t), "nenhum Infinity/NaN");
   ok(!/99000|\+55|@s\.whatsapp/.test(t), "nenhum telefone na tela");
   ok(t.includes("Sem anúncio (orgânico / link direto)"), "linha sem anúncio com rótulo");
-  ok(estado.rpcs.map((r) => r.nome).sort().join() === "admin_crm_funil,admin_crm_funil_excluidos,admin_crm_funil_por_anuncio,admin_crm_funil_teste", "lê só as 4 RPCs de leitura", estado.rpcs.map((r) => r.nome));
+  ok(t.includes("(o gasto da Meta é por campanha)"), "2A ausente: rodapé antigo");
+  ok(estado.rpcs.map((r) => r.nome).filter((n) => !FUNCOES_2A.includes(n)).sort().join() === "admin_crm_funil,admin_crm_funil_excluidos,admin_crm_funil_por_anuncio,admin_crm_funil_teste", "lê só as 4 RPCs de leitura (fora as da 2A)", estado.rpcs.map((r) => r.nome));
+  // 2A ausente: uma chamada a cada função nova, nada da 2A na tela
+  ok(FUNCOES_2A.every((f) => estado.rpcs.filter((r) => r.nome === f).length === 1), "2A ausente: uma única chamada a cada função nova (sem nova tentativa)", estado.rpcs.map((r) => r.nome));
+  ok(!/atualizado há|A Meta contou|Conversas \(Meta\)|Gasto da Meta por anúncio|minutos a algumas horas/.test(t)
+     && await pg.locator('[data-testid="ajuda-gasto-meta"], [data-testid="gasto-atualizado"], [data-testid="conversas-meta"], [data-testid="aviso-informado-ignorado"], [data-testid="origem-gasto"]').count() === 0,
+     "2A ausente: nenhuma linha nova (atualizado, conversas da Meta, ajuda, origem)");
   ok(JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_funil_teste")?.corpo) === JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_funil")?.corpo), "função nova com o mesmo período do funil");
   // 1C: ajuda, linha "Fora do funil", ID do anúncio com copiar, sem rolagem lateral na página
   ok(t.includes("Conversa iniciada = o cliente escreveu primeiro."), "ajuda: conversa iniciada = o cliente escreveu primeiro");
@@ -230,6 +239,125 @@ for (const largura of [1280, 390]) {
   ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e o app não loga nada", { errosPagina, app: estado.consoleApp });
   console.log(`    (linhas do navegador para a resposta 404: ${estado.consoleRede.length})`);
   await foto(pg, `f-sem-funcao-1d-${largura}`);
+  await ctx.close();
+}
+
+// ── G) SQL da 2A aplicado: gasto da Meta por anúncio ───────────────────────
+const MIN = 60_000;
+const GASTO = (atrasoMin) => [{
+  gasto_auto_centavos: 98000, dias_auto: 28, anuncios_auto: 2, conversas_meta: 455, impressoes: 120000, cliques: 3100,
+  gasto_manual_efetivo_centavos: 8000, lancamentos_manuais_efetivos: 1, // +30 s: o relógio da página é lido na montagem, um pouco antes desta resposta
+  atualizado_em: new Date(Date.now() - atrasoMin * MIN - 30_000).toISOString(),
+}];
+const GASTO_ANUNCIO = [
+  { ad_id: "120000000000001", gasto_auto_centavos: 70000, dias_auto: 28, conversas_meta: 190, impressoes: 80000, cliques: 2000, gasto_manual_efetivo_centavos: 0, atualizado_em: new Date().toISOString() },
+  { ad_id: "120000000000002", gasto_auto_centavos: 28000, dias_auto: 28, conversas_meta: 60, impressoes: 40000, cliques: 1100, gasto_manual_efetivo_centavos: 0, atualizado_em: new Date().toISOString() },
+  { ad_id: "120000000000003", gasto_auto_centavos: 0, dias_auto: 0, conversas_meta: 0, impressoes: 0, cliques: 0, gasto_manual_efetivo_centavos: 8000, atualizado_em: null },
+];
+for (const [largura, atraso] of [[1280, 23], [390, 23], [1280, 8 * 60]]) {
+  console.log(`G) com a 2A: gasto da Meta por anúncio (${largura}px, sincronizado há ${atraso} min)`);
+  const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
+    com2A: true,
+    rpc: (n) => n === "admin_crm_funil" ? { json: [{ ...FUNIL, gasto_meta_centavos: 555500, gasto_meta_dias: 30 }] }
+      : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO }
+      : n === "admin_crm_funil_excluidos" ? { json: FORA } : n === "admin_crm_funil_teste" ? { json: TESTE }
+      : n === "admin_crm_funil_gasto" ? { json: GASTO(atraso) } : n === "admin_crm_funil_gasto_por_anuncio" ? { json: GASTO_ANUNCIO }
+      : { json: null },
+    tabela: (t) => t === "crm_gasto_manual" ? { json: GASTOS } : { json: [] },
+  }, { largura });
+  await pg.waitForSelector('[data-testid="conversas-meta-linha"]');
+  await pg.waitForSelector('[data-testid="gasto-atualizado"]');
+  await pg.waitForSelector('[data-testid="lista-gastos"]');
+  const t = semNbsp(await texto(pg));
+  const fonte = semNbsp(await pg.locator('[data-testid="fonte-gasto"]').innerText());
+  ok(fonte === "Gasto da Meta por anúncio · 28 de 30 dias + R$ 80,00 informado nos dias sem dado da Meta", "selo: Meta por anúncio + informado efetivo", fonte);
+  const at = await pg.locator('[data-testid="gasto-atualizado"]').innerText();
+  ok(at === (atraso < 60 ? "atualizado há 23 min" : "atualizado há 8 h"), `'${at}'`);
+  const cor = await pg.locator('[data-testid="gasto-atualizado"]').getAttribute("class");
+  ok(atraso < 60 ? cor.includes("text-muted-foreground") : cor.includes("text-amber-700"), atraso < 60 ? "sincronização recente: cor normal" : "mais de 6 h sem sincronizar: destaque âmbar");
+  ok((await pg.locator('[data-testid="gasto-atualizado"]').getAttribute("title")).includes("última sincronização"), "detalhe: é a hora da última sincronização");
+  ok(semNbsp(await pg.locator('[data-testid="conversas-meta"]').innerText()) === "A Meta contou 455 conversas (aqui: 412 em que o cliente escreveu primeiro)", "conversas da Meta ao lado das nossas");
+  const custos = semNbsp(await pg.locator('[data-testid="funil-custos"]').innerText()).replace(/\s+/g, " ");
+  ok(custos === "Gasto no período R$ 1.060,00 Custo por conversa R$ 2,57 Custo por cadastro R$ 17,38 Custo por assinante R$ 117,78",
+     "custos = (980 Meta + 80 informado) ÷ conversas/cadastros/assinantes; Meta por campanha (R$ 5.555) ignorada", custos);
+  ok(!t.includes("5.555") && !t.includes("campanhas de WhatsApp) ·") && !fonte.includes("1.240"), "nunca soma a Meta por campanha nem o informado bruto", t.slice(0, 400));
+  const ajuda = semNbsp(await pg.locator('[data-testid="ajuda-gasto-meta"]').innerText());
+  ok(ajuda.includes("minutos a algumas horas") && ajuda.includes("últimos 3 dias são recalculados") && ajuda.includes("última sincronização"), "ajuda do atraso da Meta");
+  const cab = (await pg.locator('[data-testid="tabela-funil-anuncio"] thead th').allInnerTexts()).map((x) => x.trim());
+  ok(JSON.stringify(cab) === JSON.stringify(["Anúncio", "Conversas", "Conversas (Meta)", "Cadastros", "Teste", "Assinantes", "Gasto", "Custo/conversa", "Custo/assinante"]), "colunas com 'Conversas (Meta)' e 'Gasto'", cab);
+  const linhas = (await pg.locator('[data-testid="tabela-funil-anuncio"] tbody tr').allInnerTexts()).map((x) => semNbsp(x).replace(/\s+/g, " ").trim());
+  ok(linhas.length === 4, "4 linhas: 3 do funil + anúncio com gasto e sem conversa", linhas);
+  ok(linhas[0].includes("171 190 29 23 5 R$ 700,00 Meta R$ 4,09 R$ 140,00"), "anúncio 1: conversas, Meta, gasto automático e custos", linhas[0]);
+  ok(linhas[2].includes("94 — 9 7 1 — —"), "sem anúncio: sem conversa da Meta e sem gasto", linhas[2]);
+  ok(linhas[3].startsWith("Anúncio 120000000000003") && linhas[3].includes("0 0 0 0 0 R$ 80,00 informado — —"), "anúncio sem conversa entra com o gasto informado", linhas[3]);
+  ok(semNbsp(await pg.locator('[data-testid="rodape-anuncio"]').innerText()).includes("o informado com o ID do anúncio só vale nos dias sem dado da Meta"), "rodapé explica a regra por anúncio");
+  ok(await pg.locator('[data-testid="aviso-informado-ignorado"]').count() === 1, "formulário avisa que o informado é ignorado nos dias com dado da Meta");
+  ok(JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_funil_gasto")?.corpo) === JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_funil")?.corpo)
+     && JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_funil_gasto_por_anuncio")?.corpo) === JSON.stringify(estado.rpcs.find((r) => r.nome === "admin_crm_funil")?.corpo),
+     "funções da 2A com o mesmo período do funil");
+  ok(estado.rpcs.findIndex((r) => r.nome === "admin_crm_funil_gasto") > estado.rpcs.findIndex((r) => r.nome === "admin_crm_funil"), "funções da 2A só depois do funil");
+  const larg = await pg.evaluate(() => ({ doc: document.documentElement.scrollWidth, tela: window.innerWidth }));
+  ok(larg.doc <= larg.tela, `sem rolagem lateral na página (${larg.doc} <= ${larg.tela})`, larg);
+  ok(!/Infinity|NaN/.test(t) && !/99000|\+55|@s\.whatsapp/.test(t), "nenhum Infinity/NaN nem telefone");
+  ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e sem log do app", { errosPagina, app: estado.consoleApp });
+  ok(estado.externas.length === 0, "nenhuma chamada externa", estado.externas);
+  await foto(pg, `g-gasto-meta-${largura}${atraso >= 60 ? "-atrasado" : ""}`);
+  await ctx.close();
+}
+
+// ── I) SQL da 2A aplicado, n8n ainda não ligado (tabela automática vazia) ──
+for (const largura of [1280, 390]) {
+  console.log(`I) 2A aplicada, sem nenhuma sincronização ainda (${largura}px)`);
+  const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
+    com2A: true,
+    rpc: (n) => n === "admin_crm_funil" ? { json: [FUNIL] } : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO }
+      : n === "admin_crm_funil_excluidos" ? { json: FORA } : n === "admin_crm_funil_teste" ? { json: TESTE }
+      : n === "admin_crm_funil_gasto" ? { json: [{ gasto_auto_centavos: 0, dias_auto: 0, anuncios_auto: 0, conversas_meta: 0, impressoes: 0, cliques: 0,
+          gasto_manual_efetivo_centavos: 124000, lancamentos_manuais_efetivos: 1, atualizado_em: null }] }
+      : n === "admin_crm_funil_gasto_por_anuncio" ? { json: [] }
+      : { json: null },
+    tabela: (t) => t === "crm_gasto_manual" ? { json: GASTOS } : { json: [] },
+  }, { largura });
+  await pg.waitForSelector('[data-testid="tabela-funil-anuncio"]');
+  await pg.waitForSelector('[data-testid="aviso-informado-ignorado"]');
+  await pg.waitForTimeout(800);
+  const t = semNbsp(await texto(pg));
+  ok(semNbsp(await pg.locator('[data-testid="fonte-gasto"]').innerText()) === "Gasto informado (sem dado da Meta no período)", "selo: só o informado");
+  const custos = semNbsp(await pg.locator('[data-testid="funil-custos"]').innerText()).replace(/\s+/g, " ");
+  ok(custos === "Gasto no período R$ 1.240,00 Custo por conversa R$ 3,01 Custo por cadastro R$ 20,33 Custo por assinante R$ 137,78", "custos iguais aos de antes da 2A", custos);
+  ok(await pg.locator('[data-testid="gasto-atualizado"], [data-testid="conversas-meta"], [data-testid="ajuda-gasto-meta"], [data-testid="conversas-meta-linha"], [data-testid="origem-gasto"]').count() === 0,
+     "sem 'atualizado há', conversas da Meta, ajuda do atraso ou origem por linha");
+  const cab = (await pg.locator('[data-testid="tabela-funil-anuncio"] thead th').allInnerTexts()).map((x) => x.trim());
+  ok(cab.includes("Gasto informado") && !cab.includes("Conversas (Meta)"), "tabela por anúncio como antes", cab);
+  ok(semNbsp(await pg.locator('[data-testid="rodape-anuncio"]').innerText()).includes("ainda sem dado da Meta no período") && !t.includes("é por campanha"), "rodapé não fala mais de Meta por campanha");
+  ok(!/Infinity|NaN|indisponível|Tentar novamente/.test(t), "sem Infinity/NaN nem aviso de erro");
+  ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e sem log do app", { errosPagina, app: estado.consoleApp });
+  await foto(pg, `i-2a-sem-sincronizacao-${largura}`);
+  await ctx.close();
+}
+
+// ── H) 2A aplicada só em parte (gasto por anúncio falha): tabela como antes ──
+console.log("H) 2A: gasto por anúncio com erro, gasto do período ok (1280px)");
+{
+  const { ctx, pg, estado, errosPagina } = await abrir(navegador, {
+    com2A: true,
+    rpc: (n) => n === "admin_crm_funil" ? { json: [FUNIL] } : n === "admin_crm_funil_por_anuncio" ? { json: POR_ANUNCIO }
+      : n === "admin_crm_funil_excluidos" ? { json: FORA } : n === "admin_crm_funil_teste" ? { json: TESTE }
+      : n === "admin_crm_funil_gasto" ? { json: GASTO(5) } : n === "admin_crm_funil_gasto_por_anuncio" ? { status: 500, json: { code: "XX000", message: "falha" } }
+      : { json: null },
+    tabela: (t) => t === "crm_gasto_manual" ? { json: GASTOS } : { json: [] },
+  });
+  await pg.waitForSelector('[data-testid="gasto-atualizado"]');
+  await pg.waitForSelector('[data-testid="tabela-funil-anuncio"]');
+  await pg.waitForTimeout(1500);
+  const t = semNbsp(await texto(pg));
+  const cab = (await pg.locator('[data-testid="tabela-funil-anuncio"] thead th').allInnerTexts()).map((x) => x.trim());
+  ok(cab.includes("Gasto informado") && !cab.includes("Conversas (Meta)"), "tabela por anúncio volta ao formato antigo", cab);
+  ok(!/indisponível|Tentar novamente|Erro/i.test(t), "nenhum aviso de erro");
+  ok(t.includes("R$ 1.060,00"), "custos do período continuam com o gasto da 2A");
+  ok(estado.rpcs.filter((r) => r.nome === "admin_crm_funil_gasto_por_anuncio").length <= 2, "no máximo 1 nova tentativa em falha comum (mesma regra das outras)");
+  ok(errosPagina.length === 0 && estado.consoleApp.length === 0, "sem erro na página e sem log do app", { errosPagina, app: estado.consoleApp });
+  await foto(pg, "h-gasto-anuncio-falhou");
   await ctx.close();
 }
 
