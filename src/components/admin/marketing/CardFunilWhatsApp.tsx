@@ -9,18 +9,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
-import { calcularCustosWhatsApp, percentual } from "@/lib/marketing/custoWhatsApp";
+import { calcularCustosWhatsApp } from "@/lib/marketing/custoWhatsApp";
 import {
   PERIODOS_FUNIL,
   TEXTO_CONVERSA_INICIADA,
   TEXTO_NAO_ATIVADO,
+  TEXTO_TESTE_14_DIAS,
   avisoAmostraPequena,
   detalheForaDoFunil,
+  etapasFunil,
   formatarCentavos,
   formatarCusto,
   formatarDataBR,
   formatarNumero,
-  formatarPercentual,
   intervaloFunil,
   rotuloFonteGasto,
   somarDiasISO,
@@ -32,6 +33,7 @@ import {
   useAdminCrmFunil,
   useAdminCrmFunilExcluidos,
   useAdminCrmFunilPorAnuncio,
+  useAdminCrmFunilTeste,
 } from "@/hooks/useAdminCrmFunil";
 import { GastoInformadoWhatsApp } from "./GastoInformadoWhatsApp";
 
@@ -54,6 +56,9 @@ export function CardFunilWhatsApp() {
   // Fase 1C. Qualquer erro (inclusive "função ainda não existe") só esconde a linha.
   const excluidos = useAdminCrmFunilExcluidos(consulta, ativo);
   const textoFora = excluidos.data ? textoForaDoFunil(excluidos.data) : null;
+  // Fase 1D. Sem a função nova (ou com erro) o funil fica como antes: 4 degraus.
+  const teste = useAdminCrmFunilTeste(consulta, ativo);
+  const etapas = funil.data ? etapasFunil(funil.data, teste.data) : [];
   const estadoErro = funil.error instanceof ErroFunilWhatsApp ? funil.error.estado : funil.error ? "falha" : null;
 
   const custos = funil.data ? calcularCustosWhatsApp(funil.data) : null;
@@ -112,16 +117,13 @@ export function CardFunilWhatsApp() {
               {TEXTO_CONVERSA_INICIADA} Pessoas cujo 1º contato foi de {formatarDataBR(intervalo.inicio)} a{" "}
               {formatarDataBR(intervalo.fim)}; cadastros e pagamentos contam até hoje.
             </p>
+            <p className="text-xs text-muted-foreground -mt-2" data-testid="ajuda-teste">{TEXTO_TESTE_14_DIAS}</p>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="funil-etapas">
-              <Etapa titulo="Conversas iniciadas" valor={funil.data.conversas}
-                detalhe={`${formatarNumero(funil.data.conversas_anuncio)} de anúncio · ${formatarNumero(funil.data.ja_clientes)} já eram clientes`} />
-              <Etapa titulo="Cadastraram" valor={funil.data.cadastros}
-                detalhe={`${formatarPercentual(percentual(funil.data.cadastros, funil.data.conversas))} das conversas`} />
-              <Etapa titulo="Iniciaram teste" valor={funil.data.testes}
-                detalhe={`${formatarPercentual(percentual(funil.data.testes, funil.data.cadastros))} dos cadastros`} />
-              <Etapa titulo="Assinantes pagos" valor={funil.data.assinantes}
-                detalhe={`${formatarPercentual(percentual(funil.data.assinantes, funil.data.cadastros))} dos cadastros`} />
+            <div className={`grid grid-cols-2 gap-3 ${etapas.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4"}`} data-testid="funil-etapas">
+              {etapas.map((e, i) => (
+                <Etapa key={e.id} id={e.id} titulo={e.titulo} valor={e.valor} detalhe={e.detalhe}
+                  className={etapas.length === 5 && i === 0 ? "col-span-2 lg:col-span-1" : ""} />
+              ))}
             </div>
             {textoFora && excluidos.data && (
               <p className="text-xs text-muted-foreground -mt-2" data-testid="fora-do-funil" title={detalheForaDoFunil(excluidos.data)}>
@@ -238,9 +240,9 @@ function IdAnuncio({ id }: { id: string }) {
   );
 }
 
-function Etapa({ titulo, valor, detalhe }: { titulo: string; valor: number; detalhe: string }) {
+function Etapa({ id, titulo, valor, detalhe, className = "" }: { id: string; titulo: string; valor: number; detalhe: string; className?: string }) {
   return (
-    <div className="rounded-lg border p-3">
+    <div className={`rounded-lg border p-3 ${className}`} data-testid={`etapa-${id}`}>
       <p className="text-xs text-muted-foreground">{titulo}</p>
       <p className="text-2xl font-semibold tabular-nums">{formatarNumero(valor)}</p>
       <p className="text-[11px] text-muted-foreground">{detalhe}</p>

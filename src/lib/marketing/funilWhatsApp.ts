@@ -14,7 +14,7 @@
  * Nenhuma delas devolve telefone, nome ou texto de lead.
  */
 
-import { custoPor, ehAmostraPequena, lerInteiro } from "./custoWhatsApp.ts";
+import { custoPor, ehAmostraPequena, lerInteiro, percentual } from "./custoWhatsApp.ts";
 
 // ---------------------------------------------------------------------------
 // Período do card: 7, 14, 30 dias ou personalizado (datas de Brasília)
@@ -278,4 +278,63 @@ export function textoForaDoFunil(f: ForaDoFunil | null | undefined): string | nu
 export function detalheForaDoFunil(f: ForaDoFunil): string {
   return `Destes que a loja chamou primeiro, ${formatarNumero(f.lojaChamouPrimeiroComCadastro)} já tinham cadastro no app. `
     + "Desconhecido = a 1ª mensagem não está mais guardada.";
+}
+
+// ---------------------------------------------------------------------------
+// Fase 1D: situação do teste da coorte (admin_crm_funil_teste)
+// ---------------------------------------------------------------------------
+
+export const TEXTO_TESTE_14_DIAS =
+  "Todo cadastro novo recebe 14 dias de teste; o retorno do anúncio só aparece quando o teste acaba.";
+
+export interface SituacaoTeste {
+  emTesteAgora: number;
+  acabouSemPagar: number;
+  cancelados: number;
+  assinantes: number;
+}
+
+/** 1 linha de admin_crm_funil_teste (só contagens). */
+export function normalizarSituacaoTeste(brutas: unknown): SituacaoTeste {
+  const linha = Array.isArray(brutas) ? brutas[0] : brutas;
+  const r = (typeof linha === "object" && linha !== null ? linha : {}) as Record<string, unknown>;
+  return {
+    emTesteAgora: lerInteiro(r.teste_ativo_agora),
+    acabouSemPagar: lerInteiro(r.teste_acabou_sem_pagar),
+    cancelados: lerInteiro(r.teste_cancelado),
+    assinantes: lerInteiro(r.assinantes),
+  };
+}
+
+export interface EtapaFunil { id: string; titulo: string; valor: number; detalhe: string }
+
+/**
+ * Degraus do funil. Sem a situação do teste (função da 1D ainda não existe ou
+ * falhou) fica exatamente como antes: 4 degraus, com "Iniciaram teste".
+ * Com ela, o degrau do teste vira "Em teste agora" e entra "Teste acabou sem
+ * pagar" antes de "Assinantes pagos".
+ */
+export function etapasFunil(
+  f: { conversas: number; conversas_anuncio: number; ja_clientes: number; cadastros: number; testes: number; assinantes: number },
+  teste: SituacaoTeste | null | undefined,
+): EtapaFunil[] {
+  const pctCadastros = (n: number) => `${formatarPercentual(percentual(n, f.cadastros))} dos cadastros`;
+  const conversas: EtapaFunil = { id: "conversas", titulo: "Conversas iniciadas", valor: f.conversas,
+    detalhe: `${formatarNumero(f.conversas_anuncio)} de anúncio · ${formatarNumero(f.ja_clientes)} já eram clientes` };
+  const cadastros: EtapaFunil = { id: "cadastros", titulo: "Cadastraram", valor: f.cadastros,
+    detalhe: `${formatarPercentual(percentual(f.cadastros, f.conversas))} das conversas` };
+  const assinantes: EtapaFunil = { id: "assinantes", titulo: "Assinantes pagos", valor: f.assinantes, detalhe: pctCadastros(f.assinantes) };
+  if (!teste) {
+    return [conversas, cadastros, { id: "testes", titulo: "Iniciaram teste", valor: f.testes, detalhe: pctCadastros(f.testes) }, assinantes];
+  }
+  const c = teste.cancelados;
+  return [
+    conversas,
+    cadastros,
+    { id: "em-teste", titulo: "Em teste agora", valor: teste.emTesteAgora,
+      detalhe: `${pctCadastros(teste.emTesteAgora)} · ${formatarNumero(f.testes)} com teste no total` },
+    { id: "acabou-sem-pagar", titulo: "Teste acabou sem pagar", valor: teste.acabouSemPagar,
+      detalhe: `${formatarNumero(c)} ${c === 1 ? "cancelou" : "cancelaram"} o teste` },
+    assinantes,
+  ];
 }

@@ -6,10 +6,12 @@ import {
   normalizarForaDoFunil,
   normalizarLancamentos,
   normalizarLinhasAnuncio,
+  normalizarSituacaoTeste,
   type EstadoErroFunil,
   type ForaDoFunil,
   type LancamentoGasto,
   type LinhaAnuncio,
+  type SituacaoTeste,
 } from "@/lib/marketing/funilWhatsApp";
 import { centavosParaDecimal } from "@/lib/marketing/metaAds";
 
@@ -120,6 +122,30 @@ export function useAdminCrmGastos(habilitado: boolean) {
         .limit(50);
       if (error) throw erroDe(error);
       return normalizarLancamentos(data);
+    },
+  });
+}
+
+/**
+ * Situação do teste da coorte do funil (fase 1D): em teste agora, teste
+ * acabou sem pagar, cancelados. Se o SQL da 1D ainda não foi aplicado, a
+ * função não existe: o erro vira "nao_ativado", sem nova tentativa, e o card
+ * fica como antes (degrau "Iniciaram teste"), sem aviso nem log.
+ */
+export function useAdminCrmFunilTeste(intervalo: Intervalo | null, habilitado: boolean) {
+  return useQuery({
+    queryKey: ["admin-crm-funil-teste", intervalo?.inicio, intervalo?.fim],
+    enabled: habilitado && intervalo !== null,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: naoRepetirSeNaoAtivado,
+    queryFn: async (): Promise<SituacaoTeste> => {
+      const { data, error } = await supabase.rpc(
+        "admin_crm_funil_teste" as never,
+        { p_inicio: intervalo!.inicio, p_fim: intervalo!.fim } as never,
+      );
+      if (error) throw erroDe(error);
+      return normalizarSituacaoTeste(data);
     },
   });
 }
