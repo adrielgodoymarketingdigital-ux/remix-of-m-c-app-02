@@ -22,7 +22,7 @@ export const DADOS = {
 
 export type Bloco = string | { lista: string[] };
 export type Secao = { id: string; titulo: string; blocos: Bloco[] };
-export type Documento = { titulo: string; resumo: string; secoes: Secao[] };
+export type Documento = { titulo: string; resumo: string; atualizado?: string; secoes: Secao[] };
 
 const D = DADOS;
 
@@ -167,6 +167,7 @@ export const termos: Documento = {
 
 export const privacidade: Documento = {
   titulo: "Política de privacidade",
+  atualizado: "21 de novembro de 2026",
   resumo:
     "Quais dados o MécApp coleta, para que usa, com quem compartilha, por quanto tempo guarda e como você pode pedir acesso, correção ou exclusão. De acordo com a LGPD.",
   secoes: [
@@ -327,8 +328,17 @@ export const privacidade: Documento = {
       ],
     },
     {
+      id: "whatsapp",
+      titulo: "10. Contatos pelo WhatsApp",
+      blocos: [
+        `Quando você nos chama no WhatsApp, inclusive a partir de um anúncio, guardamos o seu número de telefone, o seu nome de perfil, o anúncio que originou a conversa e até as 30 últimas mensagens. Usamos esses dados para responder você e medir o resultado dos nossos anúncios.`,
+        `As mensagens são apagadas 90 dias depois do último contato.`,
+        `Responda PARAR a qualquer momento e não enviaremos mais mensagens. Nesse caso, seu número fica registrado apenas para respeitar esse pedido.`,
+      ],
+    },
+    {
       id: "mudancas",
-      titulo: "10. Mudanças nesta Política",
+      titulo: "11. Mudanças nesta Política",
       blocos: [
         `Podemos atualizar esta Política. Quando houver mudança importante, avisaremos pelo sistema ou por mensagem. A data da última atualização fica no topo desta página.`,
       ],

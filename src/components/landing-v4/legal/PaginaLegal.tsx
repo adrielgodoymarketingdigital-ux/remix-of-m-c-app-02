@@ -74,7 +74,7 @@ export function PaginaLegal({
               <span className="bg-gradient-to-r from-cyan-600 via-blue-600 to-violet-600 bg-clip-text text-transparent">{doc.titulo}</span>
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">{doc.resumo}</p>
-            <p className="mt-4 text-sm text-slate-500">Atualizado em {DADOS.atualizado}</p>
+            <p className="mt-4 text-sm text-slate-500">Atualizado em {doc.atualizado ?? DADOS.atualizado}</p>
           </div>
         </section>
 
