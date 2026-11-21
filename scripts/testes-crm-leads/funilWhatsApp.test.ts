@@ -179,5 +179,5 @@ Deno.test("tela e hook: sem campo de lead, sem console, gravação só pelas RPC
   }
   const hook = arquivos.find(([p]) => p.endsWith("useAdminCrmFunil.ts"))![1];
   const rpcs = [...hook.matchAll(/rpc\(\s*"([a-z_]+)"/g)].map((m) => m[1]).sort();
-  assertEquals(rpcs, ["admin_crm_funil", "admin_crm_funil_por_anuncio", "admin_crm_gasto_informar", "admin_crm_gasto_remover"]);
+  assertEquals(rpcs, ["admin_crm_funil", "admin_crm_funil_excluidos", "admin_crm_funil_por_anuncio", "admin_crm_gasto_informar", "admin_crm_gasto_remover"]);
 });

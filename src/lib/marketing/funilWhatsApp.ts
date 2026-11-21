@@ -241,3 +241,41 @@ export function normalizarLancamentos(brutos: unknown): LancamentoGasto[] {
       valorCentavos: numericParaCentavos(r.valor),
     }));
 }
+
+// ---------------------------------------------------------------------------
+// Fase 1C: só conta quem escreveu primeiro; quem ficou fora (admin_crm_funil_excluidos)
+// ---------------------------------------------------------------------------
+
+export const TEXTO_CONVERSA_INICIADA = "Conversa iniciada = o cliente escreveu primeiro.";
+
+export interface ForaDoFunil {
+  lojaChamouPrimeiro: number;
+  lojaChamouPrimeiroComCadastro: number;
+  desconhecidos: number;
+}
+
+/** 1 linha de admin_crm_funil_excluidos (só contagens). */
+export function normalizarForaDoFunil(brutas: unknown): ForaDoFunil {
+  const linha = Array.isArray(brutas) ? brutas[0] : brutas;
+  const r = (typeof linha === "object" && linha !== null ? linha : {}) as Record<string, unknown>;
+  return {
+    lojaChamouPrimeiro: lerInteiro(r.loja_chamou_primeiro),
+    lojaChamouPrimeiroComCadastro: lerInteiro(r.loja_chamou_primeiro_com_cadastro),
+    desconhecidos: lerInteiro(r.direcao_desconhecida),
+  };
+}
+
+/** Linha discreta abaixo do funil; null = não mostrar (sem dado ou ninguém fora). */
+export function textoForaDoFunil(f: ForaDoFunil | null | undefined): string | null {
+  if (!f || (f.lojaChamouPrimeiro === 0 && f.desconhecidos === 0)) return null;
+  const n = f.lojaChamouPrimeiro;
+  const m = f.desconhecidos;
+  return `Fora do funil: ${formatarNumero(n)} ${n === 1 ? "começou" : "começaram"} por mensagem da loja (boas-vindas automáticas), `
+    + `${formatarNumero(m)} ${m === 1 ? "desconhecido" : "desconhecidos"}`;
+}
+
+/** Detalhe (title) da linha "Fora do funil". */
+export function detalheForaDoFunil(f: ForaDoFunil): string {
+  return `Destes que a loja chamou primeiro, ${formatarNumero(f.lojaChamouPrimeiroComCadastro)} já tinham cadastro no app. `
+    + "Desconhecido = a 1ª mensagem não está mais guardada.";
+}

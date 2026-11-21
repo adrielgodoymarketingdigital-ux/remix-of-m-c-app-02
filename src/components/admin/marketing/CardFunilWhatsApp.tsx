@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, Info, MessageCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Copy, Info, MessageCircle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,10 @@ import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { calcularCustosWhatsApp, percentual } from "@/lib/marketing/custoWhatsApp";
 import {
   PERIODOS_FUNIL,
+  TEXTO_CONVERSA_INICIADA,
   TEXTO_NAO_ATIVADO,
   avisoAmostraPequena,
+  detalheForaDoFunil,
   formatarCentavos,
   formatarCusto,
   formatarDataBR,
@@ -21,9 +24,15 @@ import {
   intervaloFunil,
   rotuloFonteGasto,
   somarDiasISO,
+  textoForaDoFunil,
   type PeriodoFunil,
 } from "@/lib/marketing/funilWhatsApp";
-import { ErroFunilWhatsApp, useAdminCrmFunil, useAdminCrmFunilPorAnuncio } from "@/hooks/useAdminCrmFunil";
+import {
+  ErroFunilWhatsApp,
+  useAdminCrmFunil,
+  useAdminCrmFunilExcluidos,
+  useAdminCrmFunilPorAnuncio,
+} from "@/hooks/useAdminCrmFunil";
 import { GastoInformadoWhatsApp } from "./GastoInformadoWhatsApp";
 
 /**
@@ -42,6 +51,9 @@ export function CardFunilWhatsApp() {
   const funil = useAdminCrmFunil(consulta);
   const ativo = funil.isSuccess;
   const porAnuncio = useAdminCrmFunilPorAnuncio(consulta, ativo);
+  // Fase 1C. Qualquer erro (inclusive "função ainda não existe") só esconde a linha.
+  const excluidos = useAdminCrmFunilExcluidos(consulta, ativo);
+  const textoFora = excluidos.data ? textoForaDoFunil(excluidos.data) : null;
   const estadoErro = funil.error instanceof ErroFunilWhatsApp ? funil.error.estado : funil.error ? "falha" : null;
 
   const custos = funil.data ? calcularCustosWhatsApp(funil.data) : null;
@@ -96,9 +108,9 @@ export function CardFunilWhatsApp() {
           <Skeleton className="h-48 w-full" />
         ) : (
           <>
-            <p className="text-xs text-muted-foreground">
-              Pessoas cujo 1º contato foi de {formatarDataBR(intervalo.inicio)} a {formatarDataBR(intervalo.fim)}; cadastros e
-              pagamentos contam até hoje.
+            <p className="text-xs text-muted-foreground" data-testid="ajuda-funil">
+              {TEXTO_CONVERSA_INICIADA} Pessoas cujo 1º contato foi de {formatarDataBR(intervalo.inicio)} a{" "}
+              {formatarDataBR(intervalo.fim)}; cadastros e pagamentos contam até hoje.
             </p>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="funil-etapas">
@@ -111,6 +123,11 @@ export function CardFunilWhatsApp() {
               <Etapa titulo="Assinantes pagos" valor={funil.data.assinantes}
                 detalhe={`${formatarPercentual(percentual(funil.data.assinantes, funil.data.cadastros))} dos cadastros`} />
             </div>
+            {textoFora && excluidos.data && (
+              <p className="text-xs text-muted-foreground -mt-2" data-testid="fora-do-funil" title={detalheForaDoFunil(excluidos.data)}>
+                {textoFora}
+              </p>
+            )}
 
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" data-testid="fonte-gasto">
@@ -164,6 +181,7 @@ export function CardFunilWhatsApp() {
                           <TableRow key={l.adId || "sem-anuncio"}>
                             <TableCell className={`max-w-[240px] ${l.adId ? "font-medium" : "text-muted-foreground italic"}`}>
                               <span className="block truncate" title={l.titulo}>{l.titulo}</span>
+                              {l.adId && <IdAnuncio id={l.adId} />}
                               {avisoLinha && <span className="block text-[11px] font-normal not-italic text-amber-700 dark:text-amber-400">{avisoLinha}</span>}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">{formatarNumero(l.conversas)}</TableCell>
@@ -181,7 +199,7 @@ export function CardFunilWhatsApp() {
                 </div>
               )}
               <p className="text-xs text-muted-foreground mt-2">
-                Por anúncio, o custo usa só o gasto informado com o ID do anúncio (o gasto da Meta é por campanha).
+                Só quem escreveu primeiro. Por anúncio, o custo usa só o gasto informado com o ID do anúncio (o gasto da Meta é por campanha).
                 "—" = sem gasto ou sem ninguém na etapa.
               </p>
             </div>
@@ -196,6 +214,27 @@ export function CardFunilWhatsApp() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+async function copiarIdAnuncio(id: string) {
+  try {
+    await navigator.clipboard.writeText(id);
+    toast.success("ID do anúncio copiado.");
+  } catch {
+    toast.error("Não foi possível copiar. Selecione o ID e copie à mão.");
+  }
+}
+
+function IdAnuncio({ id }: { id: string }) {
+  return (
+    <span className="flex items-center gap-1 text-[11px] font-normal not-italic text-muted-foreground" data-testid="id-anuncio">
+      <span className="truncate font-mono select-all" title={id}>ID {id}</span>
+      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label={`Copiar ID do anúncio ${id}`}
+        title="Copiar ID do anúncio" onClick={() => copiarIdAnuncio(id)}>
+        <Copy className="h-3 w-3" />
+      </Button>
+    </span>
   );
 }
 

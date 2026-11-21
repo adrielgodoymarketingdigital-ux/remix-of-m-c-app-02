@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { normalizarLinhaFunil, type LinhaFunilWhatsApp } from "@/lib/marketing/custoWhatsApp";
 import {
   classificarErroFunil,
+  normalizarForaDoFunil,
   normalizarLancamentos,
   normalizarLinhasAnuncio,
   type EstadoErroFunil,
+  type ForaDoFunil,
   type LancamentoGasto,
   type LinhaAnuncio,
 } from "@/lib/marketing/funilWhatsApp";
@@ -73,6 +75,30 @@ export function useAdminCrmFunilPorAnuncio(intervalo: Intervalo | null, habilita
       );
       if (error) throw erroDe(error);
       return normalizarLinhasAnuncio(data);
+    },
+  });
+}
+
+/**
+ * Quem ficou fora do funil no período (fase 1C): a loja chamou primeiro ou
+ * direção desconhecida. Se o SQL da 1C ainda não foi aplicado, a função não
+ * existe: o erro vira "nao_ativado", sem nova tentativa, e o card só esconde
+ * a linha.
+ */
+export function useAdminCrmFunilExcluidos(intervalo: Intervalo | null, habilitado: boolean) {
+  return useQuery({
+    queryKey: ["admin-crm-funil-excluidos", intervalo?.inicio, intervalo?.fim],
+    enabled: habilitado && intervalo !== null,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: naoRepetirSeNaoAtivado,
+    queryFn: async (): Promise<ForaDoFunil> => {
+      const { data, error } = await supabase.rpc(
+        "admin_crm_funil_excluidos" as never,
+        { p_inicio: intervalo!.inicio, p_fim: intervalo!.fim } as never,
+      );
+      if (error) throw erroDe(error);
+      return normalizarForaDoFunil(data);
     },
   });
 }
