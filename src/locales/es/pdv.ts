@@ -107,6 +107,7 @@ const pdv: Traducao<typeof pdvPtBR> = {
       finalizada: "¡Venta finalizada con éxito!",
       finalizadaTotal: "Total: {{valor}}",
       erroFinalizar: "Error al finalizar la venta",
+      garantiaSemTexto: "Garantía guardada sin el texto del término; se podrá generar de nuevo.",
     },
   },
   selecionarItem: {

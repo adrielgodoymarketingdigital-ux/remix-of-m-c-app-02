@@ -109,6 +109,7 @@ const pdv = {
       finalizada: "Venda finalizada com sucesso!",
       finalizadaTotal: "Total: {{valor}}",
       erroFinalizar: "Erro ao finalizar venda",
+      garantiaSemTexto: "Garantia salva sem o texto do termo; ele poderá ser regerado.",
     },
   },
   // components/pdv/DialogSelecionarItem.tsx

@@ -88,6 +88,8 @@ import {
   valoresContaReceberComTroca,
 } from "@/lib/vendas/trocaPDV";
 import { ContextoEntradaTroca, ProgressoEntradaTroca, registrarEntradaTroca } from "@/lib/vendas/registrarEntradaTroca";
+import { camposGarantiaVenda, congelarTextosDaVenda, escolhaGarantiaValida, type ResultadoTextosVenda, textoACongelar } from "@/lib/garantias/vendaGarantia";
+import { repositorioTextosSupabase } from "@/lib/garantias/textosVendaSupabase";
 
 /**
  * Timestamp UTC completo do instante atual (ex.: "2026-09-27T00:13:55.178Z"),
@@ -238,7 +240,7 @@ const PDV = () => {
     carregarClientes();
 
     // Verificar se há dispositivo selecionado
-    const state = location.state as { dispositivoSelecionado?: Dispositivo; entradaTrocaInicial?: DadosEntradaTroca | null };
+    const state = location.state as { dispositivoSelecionado?: Dispositivo; entradaTrocaInicial?: DadosEntradaTroca | null; garantiaEscolhida?: unknown };
     if (state?.dispositivoSelecionado) {
       const dispositivo = state.dispositivoSelecionado;
       
@@ -260,6 +262,8 @@ const PDV = () => {
         cor: (dispositivo as any).cor || undefined,
         capacidade_gb: (dispositivo as any).capacidade_gb || undefined,
         numero_serie: (dispositivo as any).numero_serie || undefined,
+        // Fase B de "Minhas garantias": garantia escolhida no cartão (só com o seletor novo).
+        ...(escolhaGarantiaValida(state.garantiaEscolhida) ? { garantia_escolhida: state.garantiaEscolhida } : {}),
       };
       
       setItensCarrinho([itemVenda]);
@@ -605,6 +609,20 @@ const PDV = () => {
 
       const vendasRegistradas = [];
 
+      // Fase B de "Minhas garantias": texto do termo CONGELADO, um por texto
+      // distinto, em nome do dono da venda (só aparelhos com o seletor novo;
+      // sem nenhum, nada é consultado). Nunca impede a venda: se falhar, o item
+      // fica sem garantia_texto_id e o aviso aparece no fim.
+      let textosGarantia: ResultadoTextosVenda = { textoIdPorItem: [], falhas: 0 };
+      if (itensCarrinho.some((i) => textoACongelar(i))) {
+        try {
+          textosGarantia = await congelarTextosDaVenda(repositorioTextosSupabase(supabase), userIdParaVenda, itensCarrinho);
+        } catch (erroTexto) {
+          console.error("[PDV] texto da garantia não gravado; a venda segue", erroTexto);
+          textosGarantia = { textoIdPorItem: [], falhas: itensCarrinho.filter((i) => textoACongelar(i)).length };
+        }
+      }
+
       for (const [idxItem, item] of itensCarrinho.entries()) {
         // Peças são tratadas como produtos no banco (tipo_produto só aceita 'produto' ou 'dispositivo')
         const tipoParaBanco = item.tipo === "dispositivo" ? "dispositivo" : "produto";
@@ -695,6 +713,8 @@ const PDV = () => {
             imei_dispositivo: item.tipo === "dispositivo" ? (item.imei_dispositivo || null) : null,
             tempo_garantia: item.tipo === "dispositivo" ? (item.tempo_garantia ?? null) : null,
             ...(trocaPorLinha ? { valor_troca: trocaPorLinha[idxItem][parcIdx] } : {}),
+            // Garantia escolhida (fase B): {} no fluxo antigo → linha igual à de sempre.
+            ...camposGarantiaVenda(item, textosGarantia.textoIdPorItem[idxItem]),
           };
 
           const { data: venda, error: vendaError } = await supabase
@@ -948,6 +968,9 @@ const PDV = () => {
       });
       if (entradaFalhou) {
         toast({ title: tPDV("pagina.entradaPendente.titulo"), description: tPDV("pagina.entradaPendente.mensagem"), variant: "destructive", duration: 10000 });
+      }
+      if (textosGarantia.falhas > 0) {
+        sonnerToast.warning(tPDV("pagina.toast.garantiaSemTexto"), { duration: 10000 });
       }
 
       // Disparar evento de notificação automática
