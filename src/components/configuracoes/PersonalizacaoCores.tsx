@@ -8,6 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Palette, RotateCcw, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFormatadores } from "@/hooks/useFormatadores";
+import {
+  gravarCoresPorLinha,
+  linhaDeReferencia,
+  mesclarCoresApp,
+  removerCoresApp,
+  type ClienteCores,
+} from "@/lib/configuracaoLoja/coresPersonalizadasLinhas";
 
 interface CoresPersonalizadas {
   primary_from: string;
@@ -72,16 +79,18 @@ export function PersonalizacaoCores() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Todas as linhas do dono (matriz + filiais): com filial, .single() falhava
+      // e a tela mostrava o padrão. Mostra a da matriz (sem ela, a primeira).
+      const { data: linhas, error } = await supabase
         .from("configuracoes_loja")
-        .select("cores_personalizadas")
-        .eq("user_id", user.id)
-        .single();
+        .select("empresa_id, cores_personalizadas")
+        .eq("user_id", user.id);
 
       if (error && error.code !== "PGRST116") {
         console.error("Erro ao carregar cores:", error);
         return;
       }
+      const data = linhaDeReferencia(linhas);
 
       if (data?.cores_personalizadas) {
         const coresDB = data.cores_personalizadas as unknown as CoresPersonalizadas;
@@ -119,21 +128,9 @@ export function PersonalizacaoCores() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Lê o valor atual para não apagar campos como tracking_config
-      const { data: atual } = await supabase
-        .from("configuracoes_loja")
-        .select("cores_personalizadas")
-        .eq("user_id", user.id)
-        .single();
-
-      const coresAtuais = (atual?.cores_personalizadas as Record<string, unknown>) || {};
-
-      const { error } = await supabase
-        .from("configuracoes_loja")
-        .update({ cores_personalizadas: { ...coresAtuais, ...cores } })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
+      // Linha a linha (matriz e filiais), mesclando com o valor de cada uma:
+      // não apaga tracking_config nem a cor do cabeçalho dos recibos.
+      await gravarCoresPorLinha(supabase as unknown as ClienteCores, user.id, mesclarCoresApp({ ...cores }));
 
       // Aplicar cores via CSS custom properties
       aplicarCoresNoDOM(cores);
@@ -160,27 +157,9 @@ export function PersonalizacaoCores() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Lê o valor atual para preservar campos não relacionados (ex: tracking_config)
-      const { data: atual } = await supabase
-        .from("configuracoes_loja")
-        .select("cores_personalizadas")
-        .eq("user_id", user.id)
-        .single();
-
-      const coresAtuais = (atual?.cores_personalizadas as Record<string, unknown>) || {};
-      // Remove apenas as chaves de cores do dashboard, mantém o resto
-      const { primary_from, primary_via, primary_to, card_faturamento_from, card_faturamento_via, card_faturamento_to, ...resto } = coresAtuais as Record<string, unknown>;
-      void primary_from; void primary_via; void primary_to;
-      void card_faturamento_from; void card_faturamento_via; void card_faturamento_to;
-
-      const novoValor = Object.keys(resto).length > 0 ? resto : null;
-
-      const { error } = await supabase
-        .from("configuracoes_loja")
-        .update({ cores_personalizadas: novoValor })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
+      // Remove só as chaves de cores do app, linha a linha (mantém tracking_config,
+      // cor do cabeçalho dos recibos etc.); linha que fica vazia vira null, como antes.
+      await gravarCoresPorLinha(supabase as unknown as ClienteCores, user.id, removerCoresApp);
 
       setCores(DEFAULT_CORES);
       setCorSelecionada(null);
