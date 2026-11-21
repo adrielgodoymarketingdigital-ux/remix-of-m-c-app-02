@@ -171,6 +171,7 @@ Deno.test("tela e hook: sem campo de lead, sem console, gravação só pelas RPC
     "src/components/admin/marketing/GastoInformadoWhatsApp.tsx",
     "src/hooks/useAdminCrmFunil.ts",
     "src/lib/marketing/funilWhatsApp.ts",
+    "src/lib/marketing/gastoMetaWhatsApp.ts",
   ].map((p) => [p, semComentarios(ler(p))] as const);
   for (const [p, s] of arquivos) {
     assert(!/console\./.test(s), `${p}: console`);
@@ -179,5 +180,6 @@ Deno.test("tela e hook: sem campo de lead, sem console, gravação só pelas RPC
   }
   const hook = arquivos.find(([p]) => p.endsWith("useAdminCrmFunil.ts"))![1];
   const rpcs = [...hook.matchAll(/rpc\(\s*"([a-z_]+)"/g)].map((m) => m[1]).sort();
-  assertEquals(rpcs, ["admin_crm_funil", "admin_crm_funil_excluidos", "admin_crm_funil_por_anuncio", "admin_crm_funil_teste", "admin_crm_gasto_informar", "admin_crm_gasto_remover"]);
+  assertEquals(rpcs, ["admin_crm_funil", "admin_crm_funil_excluidos", "admin_crm_funil_gasto", "admin_crm_funil_gasto_por_anuncio",
+    "admin_crm_funil_por_anuncio", "admin_crm_funil_teste", "admin_crm_gasto_informar", "admin_crm_gasto_remover"]);
 });

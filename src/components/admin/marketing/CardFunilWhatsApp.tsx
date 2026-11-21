@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Copy, Info, MessageCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
-import { calcularCustosWhatsApp } from "@/lib/marketing/custoWhatsApp";
 import {
   PERIODOS_FUNIL,
   TEXTO_CONVERSA_INICIADA,
@@ -29,9 +28,21 @@ import {
   type PeriodoFunil,
 } from "@/lib/marketing/funilWhatsApp";
 import {
+  TEXTO_AJUDA_GASTO_META,
+  custosComGastoAutomatico,
+  linhasAnuncioComGasto,
+  rotuloFonteGasto2A,
+  rotuloOrigemGasto,
+  sincronizacaoAtrasada,
+  textoAtualizado,
+  textoConversasMeta,
+} from "@/lib/marketing/gastoMetaWhatsApp";
+import {
   ErroFunilWhatsApp,
   useAdminCrmFunil,
   useAdminCrmFunilExcluidos,
+  useAdminCrmFunilGasto,
+  useAdminCrmFunilGastoPorAnuncio,
   useAdminCrmFunilPorAnuncio,
   useAdminCrmFunilTeste,
 } from "@/hooks/useAdminCrmFunil";
@@ -40,7 +51,8 @@ import { GastoInformadoWhatsApp } from "./GastoInformadoWhatsApp";
 /**
  * Funil das conversas de WhatsApp (anúncios Click-to-WhatsApp), só números:
  * nenhum telefone, nome ou texto de lead. Custos, fonte do gasto e amostra
- * pequena vêm de src/lib/marketing/custoWhatsApp.ts (fonte única).
+ * pequena vêm de src/lib/marketing/custoWhatsApp.ts (fonte única); com as
+ * funções da fase 2A, o gasto vem de src/lib/marketing/gastoMetaWhatsApp.ts.
  */
 export function CardFunilWhatsApp() {
   const hoje = dataBrasiliaISO();
@@ -61,7 +73,14 @@ export function CardFunilWhatsApp() {
   const etapas = funil.data ? etapasFunil(funil.data, teste.data) : [];
   const estadoErro = funil.error instanceof ErroFunilWhatsApp ? funil.error.estado : funil.error ? "falha" : null;
 
-  const custos = funil.data ? calcularCustosWhatsApp(funil.data) : null;
+  // Fase 2A. Sem a função nova (ou com erro) o gasto fica como antes.
+  const gasto = useAdminCrmFunilGasto(consulta, ativo);
+  const gastoAnuncio = useAdminCrmFunilGastoPorAnuncio(consulta, ativo);
+  const agora = useAgoraPorMinuto();
+  const custos = funil.data ? custosComGastoAutomatico(funil.data, gasto.data) : null;
+  const linhasAnuncio = linhasAnuncioComGasto(porAnuncio.data ?? [], gastoAnuncio.data);
+  const comMetaPorAnuncio = gastoAnuncio.data !== undefined;
+  const atualizado = gasto.data ? textoAtualizado(gasto.data.atualizadoEm, agora) : null;
   const aviso = funil.data ? avisoAmostraPequena(funil.data.conversas, funil.data.assinantes) : null;
 
   return (
@@ -133,8 +152,19 @@ export function CardFunilWhatsApp() {
 
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" data-testid="fonte-gasto">
-                {rotuloFonteGasto(custos.fonte, custos.diasComGastoMeta, intervalo.dias)}
+                {custos.daFase2A
+                  ? rotuloFonteGasto2A(custos, intervalo.dias)
+                  : rotuloFonteGasto(custos.fonte as "meta" | "manual" | "nenhum", custos.diasComGastoMeta, intervalo.dias)}
               </Badge>
+              {atualizado && gasto.data && (
+                <span
+                  className={`text-xs ${sincronizacaoAtrasada(gasto.data.atualizadoEm, agora) ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}
+                  data-testid="gasto-atualizado"
+                  title="Hora da última sincronização com a Meta (não a hora em que a Meta fechou os números)."
+                >
+                  {atualizado}
+                </span>
+              )}
               {aviso && (
                 <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400" data-testid="aviso-amostra">
                   {aviso}
@@ -145,6 +175,12 @@ export function CardFunilWhatsApp() {
               )}
             </div>
 
+            {gasto.data && gasto.data.diasAuto > 0 && (
+              <p className="text-xs text-muted-foreground -mt-2" data-testid="conversas-meta">
+                {textoConversasMeta(gasto.data.conversasMeta, funil.data.conversas)}
+              </p>
+            )}
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="funil-custos">
               <Custo titulo="Gasto no período" valor={formatarCentavos(custos.gastoCentavos)} />
               <Custo titulo="Custo por conversa" valor={formatarCentavos(custos.porConversaCentavos)} />
@@ -152,13 +188,17 @@ export function CardFunilWhatsApp() {
               <Custo titulo="Custo por assinante" valor={formatarCentavos(custos.porAssinanteCentavos)} />
             </div>
 
+            {gasto.data && (
+              <p className="text-xs text-muted-foreground -mt-2" data-testid="ajuda-gasto-meta">{TEXTO_AJUDA_GASTO_META}</p>
+            )}
+
             <div>
               <h3 className="text-sm font-medium mb-2">Por anúncio</h3>
               {porAnuncio.isLoading ? (
                 <Skeleton className="h-24 w-full" />
               ) : porAnuncio.isError ? (
                 <p className="text-sm text-muted-foreground">Não foi possível carregar a tabela por anúncio.</p>
-              ) : (porAnuncio.data ?? []).length === 0 ? (
+              ) : linhasAnuncio.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nenhuma conversa no período.</p>
               ) : (
                 <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
@@ -167,17 +207,18 @@ export function CardFunilWhatsApp() {
                       <TableRow>
                         <TableHead className="min-w-[160px]">Anúncio</TableHead>
                         <TableHead className="text-right">Conversas</TableHead>
+                        {comMetaPorAnuncio && <TableHead className="text-right">Conversas (Meta)</TableHead>}
                         <TableHead className="text-right">Cadastros</TableHead>
                         <TableHead className="text-right">Teste</TableHead>
                         <TableHead className="text-right">Assinantes</TableHead>
-                        <TableHead className="text-right">Gasto informado</TableHead>
+                        <TableHead className="text-right">{comMetaPorAnuncio ? "Gasto" : "Gasto informado"}</TableHead>
                         <TableHead className="text-right">Custo/conversa</TableHead>
                         <TableHead className="text-right">Custo/assinante</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(porAnuncio.data ?? []).map((l) => {
-                        const gasto = l.gastoInformadoCentavos > 0 ? l.gastoInformadoCentavos : null;
+                      {linhasAnuncio.map((l) => {
+                        const gastoLinha = l.gastoCentavos;
                         const avisoLinha = avisoAmostraPequena(l.conversas, l.assinantes);
                         return (
                           <TableRow key={l.adId || "sem-anuncio"}>
@@ -187,12 +228,22 @@ export function CardFunilWhatsApp() {
                               {avisoLinha && <span className="block text-[11px] font-normal not-italic text-amber-700 dark:text-amber-400">{avisoLinha}</span>}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">{formatarNumero(l.conversas)}</TableCell>
+                            {comMetaPorAnuncio && (
+                              <TableCell className="text-right tabular-nums text-muted-foreground" data-testid="conversas-meta-linha">
+                                {l.conversasMeta === null ? "—" : formatarNumero(l.conversasMeta)}
+                              </TableCell>
+                            )}
                             <TableCell className="text-right tabular-nums">{formatarNumero(l.cadastros)}</TableCell>
                             <TableCell className="text-right tabular-nums">{formatarNumero(l.testes)}</TableCell>
                             <TableCell className="text-right tabular-nums">{formatarNumero(l.assinantes)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatarCentavos(gasto)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatarCusto(gasto, l.conversas)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatarCusto(gasto, l.assinantes)}</TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {formatarCentavos(gastoLinha)}
+                              {comMetaPorAnuncio && l.origemGasto && (
+                                <span className="block text-[11px] text-muted-foreground" data-testid="origem-gasto">{rotuloOrigemGasto(l.origemGasto)}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">{formatarCusto(gastoLinha, l.conversas)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{formatarCusto(gastoLinha, l.assinantes)}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -200,9 +251,11 @@ export function CardFunilWhatsApp() {
                   </Table>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground mt-2">
-                Só quem escreveu primeiro. Por anúncio, o custo usa só o gasto informado com o ID do anúncio (o gasto da Meta é por campanha).
-                "—" = sem gasto ou sem ninguém na etapa.
+              <p className="text-xs text-muted-foreground mt-2" data-testid="rodape-anuncio">
+                {comMetaPorAnuncio
+                  ? "Só quem escreveu primeiro. Por anúncio, o gasto é o da Meta; o informado com o ID do anúncio só vale nos dias sem dado da Meta dele. Conversas (Meta) = o que a Meta contou, para comparar."
+                  : "Só quem escreveu primeiro. Por anúncio, o custo usa só o gasto informado com o ID do anúncio (o gasto da Meta é por campanha)."}
+                {" "}"—" = sem gasto ou sem ninguém na etapa.
               </p>
             </div>
           </>
@@ -211,12 +264,22 @@ export function CardFunilWhatsApp() {
         {ativo && (
           <div className="border-t pt-4 space-y-2">
             <h3 className="text-sm font-medium">Gasto informado</h3>
-            <GastoInformadoWhatsApp habilitado={ativo} />
+            <GastoInformadoWhatsApp habilitado={ativo} comGastoAutomatico={gasto.data !== undefined} />
           </div>
         )}
       </CardContent>
     </Card>
   );
+}
+
+/** Relógio que anda de minuto em minuto (para o "atualizado há X min"). */
+function useAgoraPorMinuto(): number {
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setAgora(Date.now()), 60_000);
+    return () => window.clearInterval(t);
+  }, []);
+  return agora;
 }
 
 async function copiarIdAnuncio(id: string) {

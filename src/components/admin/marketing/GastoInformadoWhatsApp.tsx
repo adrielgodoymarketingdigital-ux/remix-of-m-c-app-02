@@ -32,7 +32,7 @@ const MAX_DESCRICAO = 200;
  * A validação local é a mesma da função (validarGastoInformado); a função
  * também recusa sobreposição de período.
  */
-export function GastoInformadoWhatsApp({ habilitado }: { habilitado: boolean }) {
+export function GastoInformadoWhatsApp({ habilitado, comGastoAutomatico = false }: { habilitado: boolean; comGastoAutomatico?: boolean }) {
   const hoje = dataBrasiliaISO();
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState(hoje);
@@ -109,6 +109,12 @@ export function GastoInformadoWhatsApp({ habilitado }: { habilitado: boolean }) 
         Sem ID do anúncio = gasto geral das campanhas de WhatsApp. O período não pode se sobrepor a outro lançamento do
         mesmo anúncio, nem a um lançamento geral.
       </p>
+      {comGastoAutomatico && (
+        <p className="text-xs text-muted-foreground" data-testid="aviso-informado-ignorado">
+          Nos dias em que a Meta mandou gasto do anúncio, o informado dele é ignorado; o geral é ignorado em todo dia com
+          dado da Meta. Nunca se somam os dois.
+        </p>
+      )}
 
       {gastos.isLoading ? (
         <Skeleton className="h-16 w-full" />

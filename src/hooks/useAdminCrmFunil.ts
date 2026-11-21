@@ -14,6 +14,12 @@ import {
   type SituacaoTeste,
 } from "@/lib/marketing/funilWhatsApp";
 import { centavosParaDecimal } from "@/lib/marketing/metaAds";
+import {
+  normalizarGastoPeriodo,
+  normalizarGastoPorAnuncio,
+  type GastoAnuncio,
+  type GastoPeriodo,
+} from "@/lib/marketing/gastoMetaWhatsApp";
 
 /**
  * Card "Funil do WhatsApp" (/admin/marketing). Só admin: as RPCs recusam quem
@@ -150,12 +156,55 @@ export function useAdminCrmFunilTeste(intervalo: Intervalo | null, habilitado: b
   });
 }
 
+/**
+ * Fase 2A: gasto da Meta por anúncio (automático) + gasto informado efetivo.
+ * Se o SQL da 2A ainda não foi aplicado, a função não existe: o erro vira
+ * "nao_ativado", sem nova tentativa e sem log, e o card fica como antes.
+ */
+export function useAdminCrmFunilGasto(intervalo: Intervalo | null, habilitado: boolean) {
+  return useQuery({
+    queryKey: ["admin-crm-funil-gasto", intervalo?.inicio, intervalo?.fim],
+    enabled: habilitado && intervalo !== null,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: naoRepetirSeNaoAtivado,
+    queryFn: async (): Promise<GastoPeriodo> => {
+      const { data, error } = await supabase.rpc(
+        "admin_crm_funil_gasto" as never,
+        { p_inicio: intervalo!.inicio, p_fim: intervalo!.fim } as never,
+      );
+      if (error) throw erroDe(error);
+      return normalizarGastoPeriodo(data);
+    },
+  });
+}
+
+export function useAdminCrmFunilGastoPorAnuncio(intervalo: Intervalo | null, habilitado: boolean) {
+  return useQuery({
+    queryKey: ["admin-crm-funil-gasto-anuncio", intervalo?.inicio, intervalo?.fim],
+    enabled: habilitado && intervalo !== null,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: naoRepetirSeNaoAtivado,
+    queryFn: async (): Promise<GastoAnuncio[]> => {
+      const { data, error } = await supabase.rpc(
+        "admin_crm_funil_gasto_por_anuncio" as never,
+        { p_inicio: intervalo!.inicio, p_fim: intervalo!.fim } as never,
+      );
+      if (error) throw erroDe(error);
+      return normalizarGastoPorAnuncio(data);
+    },
+  });
+}
+
 function useInvalidarFunil() {
   const qc = useQueryClient();
   return () => Promise.all([
     qc.invalidateQueries({ queryKey: ["admin-crm-funil"] }),
     qc.invalidateQueries({ queryKey: ["admin-crm-funil-anuncio"] }),
     qc.invalidateQueries({ queryKey: ["admin-crm-gastos"] }),
+    qc.invalidateQueries({ queryKey: ["admin-crm-funil-gasto"] }),
+    qc.invalidateQueries({ queryKey: ["admin-crm-funil-gasto-anuncio"] }),
   ]);
 }
 
