@@ -9,6 +9,8 @@
  * (Arial/Helvetica); nada externo.
  */
 
+import { normalizarCorHex, paletaCabecalhoRecibo } from "../../../lib/recibo/corCabecalhoRecibo.ts";
+
 const R = ".impressao-ordem-container.os-recibo-personalizado";
 
 const AZUL_ESCURO = "#0a1a3f";
@@ -198,6 +200,28 @@ function comImportant(css: string): string {
 }
 
 export const CSS_RECIBO_PERSONALIZADO = comImportant(CSS_BASE);
+
+/**
+ * Cor do cabeçalho escolhida pela loja (Configurações → Cores). Vai num
+ * <style> a mais, depois do CSS_RECIBO_PERSONALIZADO, SÓ quando há cor
+ * válida: sem cor, o recibo não ganha nenhum elemento e fica no azul de
+ * sempre. Mesmo escopo e !important do CSS base (as regras vêm depois e
+ * ganham pela ordem). Cor inválida → "" (nada muda).
+ */
+export function cssCorCabecalhoReciboPersonalizado(cor: string | null | undefined): string {
+  const hex = normalizarCorHex(cor);
+  if (!hex) return "";
+  const p = paletaCabecalhoRecibo(hex);
+  return comImportant(`
+${R} .osr-header { background: linear-gradient(135deg, ${p.fundo} 0%, ${p.fundo2} 100%); color: ${p.texto}; }
+${R} .osr-logo-box { border-color: ${p.borda}; background: ${p.superficie}; }
+${R} .osr-logo-nome, ${R} .osr-titulo, ${R} .osr-loja-nome, ${R} .osr-loja-linha svg { color: ${p.texto}; }
+${R} .osr-numero { color: ${p.acento}; }
+${R} .osr-data-status { color: ${p.textoSuave}; }
+${R} .osr-status { border-color: ${p.contornoSelo}; color: ${p.texto}; }
+${R} .osr-loja { border-left-color: ${p.borda}; color: ${p.textoSuave}; }
+`);
+}
 
 /*
  * ── Uma folha: compactação em níveis e agrupamento do fim (2 folhas) ──

@@ -38,7 +38,8 @@ import servicosPtBR from "@/locales/pt-BR/servicos";
 import { SilhuetaComAvarias } from "../SilhuetaComAvarias";
 import { PatternLockVisualizacao } from "../PatternLockVisualizacao";
 import { DispositivosAdicionaisImpressao } from "../DispositivosAdicionaisImpressao";
-import { CSS_RECIBO_PERSONALIZADO, cssAjustesReciboPersonalizado } from "./cssReciboPersonalizado";
+import { CSS_RECIBO_PERSONALIZADO, cssAjustesReciboPersonalizado, cssCorCabecalhoReciboPersonalizado } from "./cssReciboPersonalizado";
+import { corCabecalhoDaLoja } from "@/lib/recibo/corCabecalhoRecibo";
 import type { AgrupamentoFinal, NivelCompactacao } from "@/lib/ordemServico/compactacaoReciboPersonalizado";
 
 /**
@@ -475,10 +476,13 @@ export function ImpressaoA4Personalizado({
   const cssAjustes = cssAjustesReciboPersonalizado(nivel, agrupamento !== "nenhum");
   // Só quando há ajuste: no nível 0 sem agrupamento a classe e o HTML são os de sempre.
   const classeAjustes = cssAjustes ? ` osr-compacto osr-nivel-${nivel}` : "";
+  // Cor do cabeçalho da loja: só com cor válida entra um <style> a mais; sem ela, o HTML é o de sempre.
+  const cssCor = cssCorCabecalhoReciboPersonalizado(corCabecalhoDaLoja(configuracaoLoja));
 
   return (
     <div className={`impressao-ordem-container os-recibo-personalizado${paraCaptura ? " osr-captura" : ""}${medicao ? " osr-medicao" : ""}${classeAjustes}`}>
       <style>{CSS_RECIBO_PERSONALIZADO}</style>
+      {cssCor ? <style>{cssCor}</style> : null}
       {cssAjustes ? <style>{cssAjustes}</style> : null}
 
       {renderizarBlocos(blocosCorpo, blocosFim, agrupamento)}

@@ -1,17 +1,24 @@
 import type { ModeloReciboA4 } from "@/lib/ordemServico/modeloReciboOS";
+import { normalizarCorHex, paletaCabecalhoRecibo } from "@/lib/recibo/corCabecalhoRecibo";
 
 /**
  * Miniatura simples (só CSS, sem imagem) de cada modelo do recibo A4 nos
  * cartões da tela "Layout da OS". É um desenho esquemático, não uma prévia.
  */
-export function MiniaturaModeloRecibo({ modelo }: { modelo: ModeloReciboA4 }) {
+export function MiniaturaModeloRecibo({ modelo, corCabecalho }: { modelo: ModeloReciboA4; corCabecalho?: string | null }) {
   if (modelo === "personalizado") {
+    // Cor do cabeçalho da loja: sem cor válida, a miniatura é a de sempre (mesmo HTML).
+    const hex = normalizarCorHex(corCabecalho);
+    const p = hex ? paletaCabecalhoRecibo(hex) : null;
     return (
       <div aria-hidden="true" className="flex h-28 flex-col gap-1 overflow-hidden rounded border border-border bg-white p-1.5">
-        <div className="flex h-5 items-center gap-1 rounded-sm px-1" style={{ background: "linear-gradient(135deg,#0a1a3f,#0f2a6b)" }}>
-          <div className="h-3 w-4 rounded-[2px] border border-white/40" />
-          <div className="h-1.5 w-10 rounded-sm bg-white/90" />
-          <div className="ml-auto h-1 w-6 rounded-sm bg-white/50" />
+        <div
+          className="flex h-5 items-center gap-1 rounded-sm px-1"
+          style={{ background: p ? `linear-gradient(135deg,${p.fundo},${p.fundo2})` : "linear-gradient(135deg,#0a1a3f,#0f2a6b)" }}
+        >
+          <div className="h-3 w-4 rounded-[2px] border border-white/40" style={p ? { borderColor: p.borda } : undefined} />
+          <div className="h-1.5 w-10 rounded-sm bg-white/90" style={p ? { background: p.texto } : undefined} />
+          <div className="ml-auto h-1 w-6 rounded-sm bg-white/50" style={p ? { background: p.acento } : undefined} />
         </div>
         <div className="grid grid-cols-2 gap-1">
           <CartaoMini />

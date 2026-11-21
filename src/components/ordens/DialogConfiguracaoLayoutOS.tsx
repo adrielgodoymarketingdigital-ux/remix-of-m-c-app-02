@@ -25,6 +25,7 @@ import { LayoutOSConfig, Layout80mmConfig } from "@/types/configuracao-loja";
 import { Preview80mm } from "./Preview80mm";
 import { PreviewA4 } from "./PreviewA4";
 import { MiniaturaModeloRecibo } from "./recibo-personalizado/MiniaturaModeloRecibo";
+import { corCabecalhoDaLoja } from "@/lib/recibo/corCabecalhoRecibo";
 import { CAMINHOS_SO_PADRAO, modeloReciboA4, type ModeloReciboA4 } from "@/lib/ordemServico/modeloReciboOS";
 
 interface DialogConfiguracaoLayoutOSProps {
@@ -206,7 +207,7 @@ export function DialogConfiguracaoLayoutOS({
                         <div className="mb-2 text-xs font-semibold text-foreground">
                           {modelo === "padrao" ? t("layoutOS.modeloPadrao") : t("layoutOS.modeloPersonalizado")}
                         </div>
-                        <MiniaturaModeloRecibo modelo={modelo} />
+                        <MiniaturaModeloRecibo modelo={modelo} corCabecalho={corCabecalhoDaLoja(config)} />
                         <p className="mt-2 text-xs text-muted-foreground">
                           {modelo === "padrao" ? t("layoutOS.modeloPadraoDescricao") : t("layoutOS.modeloPersonalizadoDescricao")}
                         </p>
