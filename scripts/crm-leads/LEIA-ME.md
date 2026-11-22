@@ -208,6 +208,78 @@ deno test --no-check --allow-read scripts/testes-crm-leads/                     
 deno run --allow-read --allow-write --allow-run --allow-env scripts/testes-crm-leads/mutantes-2a.ts   # 25 mutantes (card + Edge)
 ```
 
+## Feedback: lista de pagantes para a pesquisa (n8n)
+
+O admin dispara no n8n um fluxo que manda a pesquisa de feedback aos
+pagantes. O n8n não lê o banco: pede a lista à Edge Function
+(`pagantes_contato`) e conta quem recebeu (`contato_registrar`). As regras de
+quem entra, a pausa de 120 dias entre campanhas e o formato estão em
+`docs/crm-leads/CONTRATO.md` (4.8, 4.9 e 5.7).
+
+A migration `20261122130000_crm_feedback_pagantes.sql` é **aditiva**. Ela cria:
+- a tabela `crm_contato_campanha` (campanha, `destinatario_user_id`,
+  resultado, `enviado_em`, `atualizado_em`). Não guarda nome, telefone nem
+  texto. RLS ligada, sem política, só service_role;
+- as funções `crm_pagantes_contato` e `crm_contato_registrar` (SECURITY
+  DEFINER, só service_role).
+
+Ela **não altera** tabela nem função existente. Só **usa** `_crm_pagantes`,
+`_crm_profile_elegivel`, `crm_normalizar_telefone` e o opt-out de
+`crm_leads`; a conferência confere o md5 dessas três funções.
+
+A coluna se chama `destinatario_user_id`, e não `user_id`, de propósito.
+Com `user_id`, o "Começar do zero" recusaria todo lojista que já recebeu a
+pesquisa (`tabela_nao_classificada`). É o mesmo motivo do `cadastro_user_id`
+da fase 1.
+
+Um arquivo por vez:
+
+| # | O quê | Grava? | Depois, conferir |
+|---|-------|--------|------------------|
+| 1 | `scripts/crm-leads/feedback-0-conferir-producao.sql` (SQL Editor) | não | 9 linhas `ok = true`. **Se 1 a 6 derem false, pare e me mande.** Anotar as linhas 7, 8 e 9 (só contagens) |
+| 2 | `supabase/migrations/20261122130000_crm_feedback_pagantes.sql` (SQL Editor) | 1 tabela nova + 2 funções novas | `scripts/crm-leads/feedback-1-verificar.sql`: 10 linhas `ok = true`; a 10 deve dizer `0 / 0 / 0` |
+| 3 | publicar a Edge Function (`supabase functions deploy crm-leads --no-verify-jwt`, nesta branch) | — | teste abaixo, que **não grava nada** |
+| 4 | `scripts/crm-leads/feedback-0-candidatos-teste.sql` (SQL Editor) | não | até 10 linhas com `user_id` e `dias_assinatura`. Escolher 2 |
+| 5 | teste no n8n: o fluxo 5.7 com `"campanha": "feedback_teste"` e `"user_ids": [<os 2>]` | sim (2 linhas) | as 2 mensagens chegaram; `scripts/crm-leads/feedback-2-quem-recebeu.sql` mostra `feedback_teste` com 2 recebidos |
+| 6 | campanha de verdade (nome novo, sem `user_ids`) | sim | `feedback-2-quem-recebeu.sql` |
+
+O passo 3 pode vir antes do 1 e do 2: a função publicada responde
+`{"erro":"interno","codigo":"PGRST202"}` (função inexistente) às ações novas
+até a migration existir. As ações antigas não mudam.
+
+Os 2 do teste entram na pausa: **não** recebem a campanha de verdade pelos
+próximos 120 dias, porque já receberam a de teste.
+
+Teste do passo 3 (só lê; use um nome de campanha qualquer):
+```sh
+read -s CRM_N8N_SECRET   # cole o segredo e Enter
+curl -s -X POST https://<projeto>.supabase.co/functions/v1/crm-leads \
+  -H "x-crm-secret: $CRM_N8N_SECRET" -H 'Content-Type: application/json' \
+  -d '{"acao":"pagantes_contato","campanha":"Errada"}' ; echo
+# esperado: {"erro":"campanha_invalida"}
+curl -s -X POST https://<projeto>.supabase.co/functions/v1/crm-leads \
+  -H "x-crm-secret: $CRM_N8N_SECRET" -H 'Content-Type: application/json' \
+  -d '{"acao":"pagantes_contato","campanha":"conferencia","limite":1}' | jq '{total_elegiveis, excluidos_por_pausa, itens: (.itens | length)}'
+# esperado: total_elegiveis igual ao último número da linha 7 da conferência (ou um pouco menor:
+# a função tira o telefone inteiro quando uma das contas dele tem opt-out); excluidos_por_pausa 0; itens 1
+unset CRM_N8N_SECRET
+```
+(O `jq` mostra só as contagens, sem nome nem telefone na tela.)
+
+Rollback (**NÃO RODE, só em emergência**): `scripts/crm-leads/rollback-feedback.sql`.
+- Desligue antes o workflow de feedback do n8n.
+- Apaga as 2 funções e a tabela, **perdendo o registro de quem recebeu**. Ao
+  reaplicar, a pausa recomeça do zero. Antes, guarde o resultado de
+  `feedback-2-quem-recebeu.sql` e não dispare campanha nova até a pausa passar.
+- Não mexe em nada das fases 1, 1C, 1D e 2A.
+
+Provas:
+```sh
+PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-feedback.mjs --mutantes   # SQL: suíte + 42 mutantes
+deno test --no-check --allow-read scripts/testes-crm-leads/                       # Edge Function (e o resto do CRM)
+deno run --allow-read --allow-write --allow-run --allow-env scripts/testes-crm-leads/mutantes-feedback.ts   # 33 mutantes da Edge
+```
+
 ## Edge Function `crm-leads`: o que o Adriel faz
 
 Não foi publicada. Ordem: **depois** do passo 3 acima.

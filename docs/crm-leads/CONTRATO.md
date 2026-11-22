@@ -1,8 +1,10 @@
-# CRM de leads do WhatsApp — contrato n8n → MecApp (fases 1 e 2A)
+# CRM de leads do WhatsApp — contrato n8n → MecApp (fases 1, 2A e pesquisa de feedback)
 
 Fase 1 = captura das conversas, ligação com o cadastro, opt-out, retenção e
-relatório. Follow-up e envio de mensagens são da fase 3 e **não existem** nesta
-função. Números de exemplo são fictícios.
+relatório. Follow-up é da fase 3 e **não existe** nesta função. A pesquisa de
+feedback (4.8 e 4.9) só **entrega a lista e registra o resultado**: quem envia
+a mensagem é o n8n, pela Evolution. Esta função nunca envia WhatsApp.
+Números e ids de exemplo são fictícios.
 
 > **A CONFIRMAR antes de montar os workflows:** o formato real do evento da
 > Evolution API v2 (onde vêm o número, o número alternativo quando o contato
@@ -22,8 +24,8 @@ função. Números de exemplo são fictícios.
 - Também mandar `Content-Type: application/json`.
 - `verify_jwt = false`: não usa login nem chave anon. Sem CORS, porque só o
   servidor do n8n chama.
-- Limites: corpo de até 512 KB e até **200 itens por lote** (`gasto_meta`:
-  até **100**).
+- Limites: corpo de até 512 KB e até **200 itens por lote** (`gasto_meta` e
+  `contato_registrar`: até **100**).
 - A chave da Evolution e a da IA ficam só nas credenciais do n8n. Esta função
   não envia WhatsApp nem chama IA.
 
@@ -32,15 +34,16 @@ função. Números de exemplo são fictícios.
 | HTTP | corpo | o que o n8n faz |
 |---|---|---|
 | 200 | `{ok:true, ...}` (pode trazer `rejeitadas` por item) | segue; registra as rejeitadas |
-| 400 | `{erro: "json_invalido" \| "acao_invalida" \| "itens_vazios" \| "dias_invalido" \| "dia_invalido"}` | **não** repetir; corrigir o workflow |
+| 400 | `{erro: "json_invalido" \| "acao_invalida" \| "itens_vazios" \| "dias_invalido" \| "dia_invalido" \| "campanha_invalida" \| "limite_invalido" \| "pausa_dias_invalido" \| "user_ids_invalido"}` | **não** repetir; corrigir o workflow |
 | 401 | `{erro:"nao_autorizado"}` | não repetir; conferir a credencial |
 | 405 | `{erro:"metodo_invalido"}` | usar POST |
-| 413 | `{erro:"lote_grande", max_itens:200}` (`gasto_meta`: `max_itens:100`) ou `{erro:"corpo_grande", max_bytes:524288}` | dividir o lote |
+| 413 | `{erro:"lote_grande", max_itens:200}` (`gasto_meta` e `contato_registrar`: `max_itens:100`) ou `{erro:"corpo_grande", max_bytes:524288}` | dividir o lote |
 | 500 | `{erro:"interno", codigo:"<código do Postgres>"}` | repetir até 3x (30 s, 2 min, 10 min) |
 | 503 | `{erro:"nao_configurado"}` | secret ausente: avisar o admin |
 
 Repetir é seguro. A captura deduplica por pessoa + `wa_message_id`, e opt-out,
-vínculo e retenção podem ser chamados de novo sem efeito duplicado.
+vínculo, retenção e `contato_registrar` podem ser chamados de novo sem efeito
+duplicado. `pagantes_contato` só lê.
 
 ## 3. Envelope
 
@@ -208,6 +211,89 @@ Os itens bons do mesmo lote gravam.
   A Meta atrasa de minutos a horas e recalcula os últimos dias. Por isso a
   janela de 3 dias.
 
+### 4.8 `pagantes_contato`: lista de pagantes para uma campanha (feedback)
+
+```json
+{ "acao": "pagantes_contato", "campanha": "feedback_2026_11", "limite": 15, "pausa_dias": 120 }
+```
+
+| campo | obrigatório | regra |
+|---|---|---|
+| `campanha` | sim | `^[a-z0-9_-]{3,40}$` (minúsculas, números, `_` e `-`). Um nome por campanha; o mesmo nome em todos os lotes dela |
+| `limite` | não (15) | inteiro de 1 a 50: quantas pessoas neste lote |
+| `pausa_dias` | não (120) | inteiro de 30 a 365 |
+| `user_ids` | não | **só para teste**: lista de 1 a 10 `user_id`. Restringe a lista a essas contas; todas as regras continuam valendo |
+
+Resposta:
+```json
+{
+  "ok": true,
+  "itens": [{ "user_id": "00000000-0000-0000-0000-000000000001", "primeiro_nome": "Maria", "telefone": "+5511990000001" }],
+  "total_elegiveis": 37,
+  "excluidos_por_pausa": 4
+}
+```
+
+- `total_elegiveis`: quantas pessoas ainda podem receber nesta campanha (com
+  as deste lote). `excluidos_por_pausa`: quantas ficaram de fora **só** pela
+  pausa. Os dois são contagens: não identificam ninguém.
+- `primeiro_nome`: 1ª palavra de `profiles.nome`, com a 1ª letra maiúscula e
+  o resto minúsculo (`JOÃO` vira `João`). Vazio quando não há nome ou quando
+  a 1ª palavra não tem letra. O texto da mensagem tem que funcionar com nome
+  vazio ("Oi! Tudo bem?" em vez de "Oi, !").
+- `telefone`: sempre celular brasileiro, `+55` + DDD + 9 dígitos.
+
+Quem entra (todas as regras):
+1. assinatura `active` em plano pago (os 8 planos de `PRECOS_CENTAVOS`),
+   dentro do prazo (`data_fim` vazia ou futura);
+2. já pagou de verdade (PIX pago, cartão Pagar.me ou notificação de
+   assinatura com cobrança) e a conta não foi bloqueada pelo admin. Cortesia
+   liberada à mão fica de fora;
+3. não é admin, nem conta de teste (plano `demonstracao`/`admin`), nem
+   funcionário, nem gerente de filial;
+4. `profiles.celular` vira celular brasileiro válido;
+5. o telefone não pediu para sair (opt-out do CRM, em `crm_leads`), e a conta
+   não está ligada a um lead que pediu;
+6. ninguém com esse telefone recebeu (`enviado`) **nesta** campanha;
+7. **pausa:** ninguém com esse telefone recebeu (`enviado`) em **qualquer**
+   campanha nos últimos `pausa_dias` dias. `falhou` não conta.
+
+Um telefone é uma pessoa. As regras 5 a 7 valem para todas as contas com o
+mesmo número, e sai uma conta por número (a de menor `user_id`).
+
+Ordem estável: primeiro quem nunca falhou nesta campanha, depois quem já
+falhou; dentro de cada grupo, por `user_id`. Chamar de novo, sem registrar
+nada, devolve o **mesmo** lote.
+
+### 4.9 `contato_registrar`: quem recebeu (feedback)
+
+```json
+{
+  "acao": "contato_registrar",
+  "campanha": "feedback_2026_11",
+  "itens": [
+    { "user_id": "00000000-0000-0000-0000-000000000001", "resultado": "enviado" },
+    { "user_id": "00000000-0000-0000-0000-000000000002", "resultado": "falhou" }
+  ]
+}
+```
+
+Até 100 itens. `resultado`: `enviado` (a Evolution aceitou a mensagem) ou
+`falhou`. Resposta: `{ok, recebidos, inseridos, atualizados, inalterados,
+rejeitadas:[{indice, erro}]}`. Erros por item: `nao_objeto`,
+`user_id_invalido`, `resultado_invalido`, `duplicado_no_lote` (vale o 1º),
+`usuario_inexistente`. Os itens bons do mesmo lote gravam.
+
+Idempotente por campanha + pessoa:
+
+| já gravado | chega | fica | conta como |
+|---|---|---|---|
+| nada | `enviado` | `enviado`, hora do envio = agora | `inseridos` |
+| nada | `falhou` | `falhou`, sem hora de envio | `inseridos` |
+| `falhou` | `enviado` | `enviado`, hora do envio = agora | `atualizados` |
+| `falhou` | `falhou` | `falhou` | `atualizados` |
+| `enviado` | qualquer um | **nada muda** (nem a hora do envio, para a pausa não esticar) | `inalterados` |
+
 ## 5. Workflows do n8n (fase 1)
 
 1. **Captura.** Evento de mensagem da Evolution, recebida e enviada:
@@ -239,10 +325,35 @@ Os itens bons do mesmo lote gravam.
    - lotes de até 100 itens, `POST gasto_meta`;
    - o token da Meta fica só na credencial do n8n.
 
+7. **Pesquisa de feedback com pagantes** (disparo manual pelo admin):
+   - definir a `campanha` (ex.: `feedback_2026_11`) e usar o mesmo nome em
+     todos os lotes;
+   - `POST pagantes_contato` com `limite` 15;
+   - para cada item, enviar a mensagem pela Evolution com **intervalo de 20
+     a 60 s** entre uma e outra (envio em massa rápido derruba o número);
+   - a mensagem termina com "Se não quiser mais receber, responda PARAR". A
+     captura (1) já trata o PARAR, desde que ela esteja ligada no mesmo
+     número;
+   - **registrar logo depois de cada envio** (ou no fim do lote, antes de
+     pedir o próximo): `POST contato_registrar` com `enviado` ou `falhou`.
+     Sem o registro, o próximo `pagantes_contato` devolve as **mesmas**
+     pessoas e elas recebem de novo;
+   - repetir até `itens` vir vazio. **Parar também** quando um lote inteiro
+     falhar: quem falha volta no fim da lista e o laço não terminaria nunca;
+   - no fim, mandar ao admin só os números: enviados, falhas,
+     `total_elegiveis`, `excluidos_por_pausa`.
+   - Teste: `user_ids` com os 2 escolhidos (`scripts/crm-leads/feedback-0-candidatos-teste.sql`).
+
 ## 6. Privacidade
 
 - Só admin lê (RLS + `has_role`), e a lista mostra o telefone mascarado.
 - Até 30 mensagens por pessoa. Mensagens e resumo são apagados 90 dias após o último contato.
 - O opt-out fica guardado para sempre, para poder ser respeitado.
+- Pesquisa de feedback: `crm_contato_campanha` guarda só `user_id`, campanha,
+  resultado e datas (nada de nome, telefone ou texto), e só o service_role
+  tem acesso. Nome e telefone aparecem apenas na resposta de
+  `pagantes_contato`, para quem tem o `x-crm-secret`. Os logs da função levam
+  só contagens. A pesquisa vai para quem **já é cliente**. Vale conferir se a
+  política de privacidade cobre esse contato (seção 10).
 - Texto sugerido para a política de privacidade:
   > "Quando você nos chama no WhatsApp, guardamos seu número, nome de perfil, o anúncio que originou a conversa e até as 30 últimas mensagens, para responder e medir nossos anúncios. As mensagens são apagadas 90 dias após o último contato. Responda PARAR a qualquer momento e não enviaremos mais mensagens; seu número fica registrado apenas para respeitar esse pedido."
