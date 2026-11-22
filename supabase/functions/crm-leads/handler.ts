@@ -13,6 +13,7 @@ import {
   normalizarRegistro, primeiroNome, RE_CAMPANHA, segredoConfere,
 } from "./contrato.ts";
 import { normalizarTelefone } from "./telefone.ts";
+import { montarRelatorioMarketing, periodoRelatorio } from "./relatorio.ts";
 
 export interface RpcCliente {
   rpc(fn: string, args?: Record<string, unknown>): PromiseLike<{ data: unknown; error: { code?: string } | null }>;
@@ -236,6 +237,17 @@ export function criarHandler(dep: Dependencias): (req: Request) => Promise<Respo
             ok: true, recebidos: env.itens.length, inseridos: banco.inseridos, atualizados: banco.atualizados,
             inalterados: banco.inalterados, rejeitadas,
           });
+        }
+
+        case "relatorio_marketing": {
+          // Só agregados: a resposta passa pela lista fechada de campos de
+          // montarRelatorioMarketing; o log leva só o tipo de período e contagens.
+          const per = periodoRelatorio(env.params, dep.hojeBrasilia());
+          if (!per.ok) return json(400, { erro: per.erro });
+          const bruto = await chamar(db, "crm_relatorio_marketing", { p_inicio: per.inicio, p_fim: per.fim });
+          const rel = montarRelatorioMarketing(bruto);
+          log("[crm-leads] relatorio_marketing", { periodo: per.periodo, dias: rel.periodo.dias, anuncios: rel.por_anuncio.length });
+          return json(200, { ok: true, ...rel });
         }
 
         case "relatorio": {

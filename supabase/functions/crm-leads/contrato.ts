@@ -22,6 +22,7 @@ export const ACOES = [
   "gasto_meta",       // fase 2A: gasto da Meta por anúncio e dia (Insights nível ad)
   "pagantes_contato", // feedback: lista de pagantes elegíveis para uma campanha
   "contato_registrar",// feedback: quem recebeu / falhou
+  "relatorio_marketing", // relatório semanal/mensal de cadastros e anúncios (só agregados)
 ] as const;
 export type Acao = typeof ACOES[number];
 
