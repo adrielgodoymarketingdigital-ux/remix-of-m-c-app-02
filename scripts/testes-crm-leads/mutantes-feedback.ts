@@ -10,6 +10,7 @@ const raiz = new URL("../../", import.meta.url);
 const ARQUIVOS = [
   "supabase/functions/crm-leads/contrato.ts",
   "supabase/functions/crm-leads/handler.ts",
+  "supabase/functions/crm-leads/relatorio.ts", // importado pelo handler (relatorio_marketing)
   "supabase/functions/crm-leads/telefone.ts",
   "scripts/testes-crm-leads/feedbackPagantes.test.ts",
   "scripts/testes-crm-leads/funcao.test.ts",

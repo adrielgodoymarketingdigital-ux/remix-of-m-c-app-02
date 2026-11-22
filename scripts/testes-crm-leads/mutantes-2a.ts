@@ -17,6 +17,7 @@ const ARQUIVOS = [
   "supabase/migrations/20261122120000_crm_leads_2a_gasto_meta_anuncio.sql",
   "supabase/functions/crm-leads/contrato.ts",
   "supabase/functions/crm-leads/handler.ts",
+  "supabase/functions/crm-leads/relatorio.ts", // importado pelo handler (relatorio_marketing)
   "supabase/functions/crm-leads/telefone.ts",
   "scripts/testes-crm-leads/gastoMeta2a.test.ts",
   "scripts/testes-crm-leads/gastoMeta.test.ts",

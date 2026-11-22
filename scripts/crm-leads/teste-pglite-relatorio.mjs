@@ -49,6 +49,7 @@ const ANTERIORES = [
   ler("supabase/migrations/20261121130000_crm_leads_1c_direcao_primeiro_contato.sql"),
   ler("supabase/migrations/20261121140000_crm_leads_1d_teste.sql"),
   ler("supabase/migrations/20261122120000_crm_leads_2a_gasto_meta_anuncio.sql"),
+  ler("supabase/migrations/20261122130000_crm_feedback_pagantes.sql"), // feedback: vem antes em produção; não toca as fontes
 ];
 const ORIG = {
   mig: ler("supabase/migrations/20261123120000_crm_leads_relatorio_marketing.sql"),
