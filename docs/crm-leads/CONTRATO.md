@@ -1,9 +1,10 @@
-# CRM de leads do WhatsApp — contrato n8n → MecApp (fases 1, 2A e pesquisa de feedback)
+# CRM de leads do WhatsApp — contrato n8n → MecApp (fases 1, 2A, pesquisa de feedback e relatório de marketing)
 
 Fase 1 = captura das conversas, ligação com o cadastro, opt-out, retenção e
 relatório. Follow-up é da fase 3 e **não existe** nesta função. A pesquisa de
 feedback (4.8 e 4.9) só **entrega a lista e registra o resultado**: quem envia
 a mensagem é o n8n, pela Evolution. Esta função nunca envia WhatsApp.
+O relatório de marketing (4.10) só lê: devolve números agregados prontos.
 Números e ids de exemplo são fictícios.
 
 > **A CONFIRMAR antes de montar os workflows:** o formato real do evento da
@@ -34,7 +35,7 @@ Números e ids de exemplo são fictícios.
 | HTTP | corpo | o que o n8n faz |
 |---|---|---|
 | 200 | `{ok:true, ...}` (pode trazer `rejeitadas` por item) | segue; registra as rejeitadas |
-| 400 | `{erro: "json_invalido" \| "acao_invalida" \| "itens_vazios" \| "dias_invalido" \| "dia_invalido" \| "campanha_invalida" \| "limite_invalido" \| "pausa_dias_invalido" \| "user_ids_invalido"}` | **não** repetir; corrigir o workflow |
+| 400 | `{erro: "json_invalido" \| "acao_invalida" \| "itens_vazios" \| "dias_invalido" \| "dia_invalido" \| "campanha_invalida" \| "limite_invalido" \| "pausa_dias_invalido" \| "user_ids_invalido"}` ou, em `relatorio_marketing`, um dos erros de período de 4.10 | **não** repetir; corrigir o workflow |
 | 401 | `{erro:"nao_autorizado"}` | não repetir; conferir a credencial |
 | 405 | `{erro:"metodo_invalido"}` | usar POST |
 | 413 | `{erro:"lote_grande", max_itens:200}` (`gasto_meta` e `contato_registrar`: `max_itens:100`) ou `{erro:"corpo_grande", max_bytes:524288}` | dividir o lote |
@@ -294,6 +295,95 @@ Idempotente por campanha + pessoa:
 | `falhou` | `falhou` | `falhou` | `atualizados` |
 | `enviado` | qualquer um | **nada muda** (nem a hora do envio, para a pausa não esticar) | `inalterados` |
 
+### 4.10 `relatorio_marketing`: relatório semanal e mensal (só leitura)
+
+Devolve os números **prontos** do `/admin/marketing` para um período e para o
+período anterior de mesmo tamanho. O n8n **não calcula nada**: só formata e
+envia. Não grava nada no banco.
+
+Pedido (sem `itens`):
+```json
+{ "acao": "relatorio_marketing", "periodo": "semana_anterior" }
+{ "acao": "relatorio_marketing", "periodo": "mes_anterior" }
+{ "acao": "relatorio_marketing", "periodo": "personalizado", "inicio": "2026-11-01", "fim": "2026-11-15" }
+```
+
+Períodos (datas de calendário de **Brasília**, nunca UTC nem o fuso do servidor):
+
+| `periodo` | o que é | exemplo |
+|---|---|---|
+| `semana_anterior` | a última semana **completa**, segunda a domingo, antes de hoje | rodando na segunda 23/11/2026 → 16/11 a 22/11. No domingo 22/11 → 09/11 a 15/11 (a semana de hoje ainda não acabou) |
+| `mes_anterior` | o último mês de calendário completo | rodando em 01/12/2026 → 01/11 a 30/11 |
+| `personalizado` | `inicio` e `fim` (YYYY-MM-DD) obrigatórios; `fim` ≥ `inicio`, `fim` ≤ hoje, `fim − inicio` ≤ 400 (mesma regra do card) | |
+
+`periodo_anterior` = os mesmos N dias imediatamente antes. Para o mês, é
+**mesmo número de dias**, não o mês de calendário anterior: novembro (30 dias)
+compara com 02/10 a 31/10; outubro (31 dias) compara com 31/08 a 30/09.
+
+Erros 400 (o banco não é chamado): `periodo_invalido`, `datas_obrigatorias`
+(personalizado sem as duas datas), `datas_so_no_personalizado` (`inicio`/`fim`
+mandados com `semana_anterior` ou `mes_anterior`), `data_invalida`,
+`periodo_invertido`, `data_futura`, `periodo_longo`.
+
+Resposta 200 — **só agregados**; nenhum nome, e-mail, telefone ou id de
+pessoa. Valores em centavos são inteiros; `null` = "sem como calcular".
+Exemplo de `semana_anterior` rodando na segunda 23/11/2026 (números fictícios):
+```json
+{
+  "ok": true,
+  "periodo": { "inicio": "2026-11-16", "fim": "2026-11-22", "dias": 7 },
+  "periodo_anterior": { "inicio": "2026-11-09", "fim": "2026-11-15" },
+  "cadastros": { "total": 42, "com_utm": 30, "vindos_meta": 25,
+                 "anterior": { "total": 38, "com_utm": 26, "vindos_meta": 20 } },
+  "funil_whatsapp": { "conversas_iniciadas": 120, "cadastros": 18, "em_teste_agora": 15,
+                      "teste_acabou_sem_pagar": 2, "assinantes_pagos": 1,
+                      "anterior": { "conversas_iniciadas": 101, "cadastros": 15, "em_teste_agora": 9,
+                                    "teste_acabou_sem_pagar": 4, "assinantes_pagos": 2 } },
+  "gasto": { "total_centavos": 84250, "meta_centavos": 84250, "manual_centavos": 0, "fonte": "automatico",
+             "dias_com_gasto_meta": 7, "dias_no_periodo": 7, "atualizado_em": "2026-11-23T10:05:00.000Z" },
+  "custos": { "por_conversa_centavos": 702, "por_cadastro_centavos": 4681, "por_assinante_centavos": 84250 },
+  "receita_estimada_centavos": 11970,
+  "amadurecendo": { "cadastros_em_teste": 16 },
+  "por_anuncio": [
+    { "ad_id": "120000000000001", "rotulo": "Promo assistência", "conversas": 80, "cadastros": 12, "teste": 12,
+      "assinantes": 1, "gasto_centavos": 60000, "custo_por_conversa_centavos": 750 },
+    { "ad_id": "120000000000002", "rotulo": "Anúncio 120000000000002", "conversas": 0, "cadastros": 0, "teste": 0,
+      "assinantes": 0, "gasto_centavos": 24250, "custo_por_conversa_centavos": null },
+    { "ad_id": null, "rotulo": "Sem anúncio (orgânico / link direto)", "conversas": 40, "cadastros": 6, "teste": 6,
+      "assinantes": 0, "gasto_centavos": null, "custo_por_conversa_centavos": null }
+  ]
+}
+```
+Exemplo de `mes_anterior` rodando em 01/12/2026: mesmo formato, com
+`"periodo": {"inicio": "2026-11-01", "fim": "2026-11-30", "dias": 30}` e
+`"periodo_anterior": {"inicio": "2026-10-02", "fim": "2026-10-31"}`; quando o
+mês não tem dado da Meta e tem gasto informado à mão, `"fonte": "manual"`,
+`"meta_centavos": 0`, `"dias_com_gasto_meta": 0`; sem gasto nenhum,
+`"fonte": "nenhum"`, `"total_centavos": null` e os 3 custos `null`.
+
+Definições — **as mesmas do `/admin/marketing`** (o teste PGlite exige número
+idêntico ao do card para os mesmos dados):
+
+| campo | de onde vem (card) | regra |
+|---|---|---|
+| `cadastros.*` | "Cadastros por dia" | cadastros criados no período, sem funcionário, gerente de filial, admin e demonstração. `com_utm` = com `utm_source`; `vindos_meta` = com `fbclid` ou `utm_source` fb/facebook/ig/instagram/meta |
+| `receita_estimada_centavos` | total de "Cadastros e conversão por origem" | só o **1º pagamento** de cada cadastro do período (em qualquer data até hoje): PIX pelo valor exato, cartão pelo **preço cheio** do plano (sem cupom); gateway antigo conta como 0 |
+| `funil_whatsapp.conversas_iniciadas` | "Funil do WhatsApp" | 1º contato no período e o cliente escreveu primeiro |
+| `funil_whatsapp.cadastros` | idem | cadastro feito a partir de 24 h antes do 1º contato (mais antigo = já era cliente, fica fora) |
+| `em_teste_agora` / `teste_acabou_sem_pagar` | degraus da 1D | teste de 14 dias ainda valendo e não cancelado / prazo acabou e não pagou |
+| `assinantes_pagos` | idem | cadastro do funil com 1º pagamento (mesma regra de pagante do card por origem) |
+| `gasto` | selo de fonte do funil (2A) | `fonte` = `automatico` quando há dado da Meta em algum dia do período, senão `manual` quando há gasto informado, senão `nenhum`. Por anúncio e dia, o automático **vence** o informado (o informado geral some em todo dia com qualquer dado da Meta). `total_centavos` = `meta_centavos` + `manual_centavos` (só o informado que sobrou). `atualizado_em` = última sincronização do n8n |
+| `custos.*` | "Custo por …" do funil | `total_centavos ÷ quantidade`, arredondado; `null` quando a quantidade é 0 ou não há gasto |
+| `amadurecendo.cadastros_em_teste` | — (só no relatório) | cadastros do funil no período cujo teste de 14 dias **ainda não acabou** (inclui quem cancelou o teste antes do fim). Enquanto for alto, `assinantes_pagos` e o custo por assinante ainda vão mudar |
+| `por_anuncio` | tabela por anúncio do funil | todos os anúncios com conversa ou gasto no período, ordenados por `gasto_centavos` (maior primeiro; sem gasto no fim). `ad_id: null` = sem anúncio |
+
+Diferenças do card, de propósito:
+- `por_anuncio`: sem dado da Meta no período, um anúncio com gasto informado e
+  **sem conversa** entra na lista (no card ele não aparece). As linhas que o
+  card mostra são iguais.
+- `receita_estimada_centavos` soma todas as origens; o card corta em 500
+  combinações de origem (só faz diferença acima disso).
+
 ## 5. Workflows do n8n (fase 1)
 
 1. **Captura.** Evento de mensagem da Evolution, recebida e enviada:
@@ -343,6 +433,14 @@ Idempotente por campanha + pessoa:
    - no fim, mandar ao admin só os números: enviados, falhas,
      `total_elegiveis`, `excluidos_por_pausa`.
    - Teste: `user_ids` com os 2 escolhidos (`scripts/crm-leads/feedback-0-candidatos-teste.sql`).
+
+8. **Relatório de marketing** (4.10):
+   - semanal: toda segunda às 8h, `POST relatorio_marketing` com `periodo: "semana_anterior"`;
+   - mensal: todo dia 1 às 8h, `POST relatorio_marketing` com `periodo: "mes_anterior"`;
+   - o agendamento do n8n no fuso America/Sao_Paulo (o período já é
+     calculado em Brasília pela função; o fuso do n8n só decide a hora do envio);
+   - só formatar os números e enviar ao WhatsApp do Adriel; não somar nem
+     dividir nada no n8n. Em 500, repetir como na tabela da seção 2.
 
 ## 6. Privacidade
 

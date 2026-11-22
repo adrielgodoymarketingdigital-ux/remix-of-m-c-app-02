@@ -280,6 +280,51 @@ deno test --no-check --allow-read scripts/testes-crm-leads/                     
 deno run --allow-read --allow-write --allow-run --allow-env scripts/testes-crm-leads/mutantes-feedback.ts   # 33 mutantes da Edge
 ```
 
+## Relatório de marketing (semanal/mensal) para o n8n
+
+Ação nova `relatorio_marketing` da Edge Function `crm-leads` (contrato em
+`docs/crm-leads/CONTRATO.md`, 4.10). O n8n recebe os números prontos, com as
+mesmas regras dos cards do `/admin/marketing`, e só formata e envia.
+
+Migration `supabase/migrations/20261123120000_crm_leads_relatorio_marketing.sql`
+(**aditiva, só leitura**):
+- cria `crm_relatorio_marketing(p_inicio date, p_fim date) → jsonb`, só
+  `service_role`, e 2 funções internas (`_crm_rel_cadastros`,
+  `_crm_rel_funil`) que ninguém executa direto;
+- **não altera nenhuma função existente**: as `admin_*` checam o admin logado
+  e não servem para o `service_role`. Os trechos de regra são cópias, e o
+  teste PGlite roda as funções admin com os mesmos dados, passa pelas funções
+  TypeScript do card e exige número idêntico;
+- não cria tabela, não grava nada, não toca `_zerar_catalogo`.
+
+**Primeiro o SQL, depois a Edge Function.** Publicada antes do SQL, a ação nova
+responde 500 (`codigo: PGRST202`) e as outras ações continuam iguais.
+
+| # | Arquivo | Grava? | Depois, conferir |
+|---|---------|--------|------------------|
+| 1 | `scripts/crm-leads/relatorio-0-conferir-producao.sql` | não | 11 linhas `ok = true`. **Se 1 a 8 der false, pare e me mande**: a função do card em produção não é a do repositório |
+| 2 | `supabase/migrations/20261123120000_crm_leads_relatorio_marketing.sql` | cria 3 funções (nenhum dado) | `scripts/crm-leads/relatorio-1-verificar.sql`: 5 linhas `ok = true` |
+| 3 | (opcional) no SQL Editor: `SELECT jsonb_pretty(public.crm_relatorio_marketing('2026-11-16', '2026-11-22'));` | não | números iguais aos do `/admin/marketing` com "Personalizado" no mesmo período |
+| 4 | publicar a Edge Function `crm-leads` (seção abaixo, passo 4) | — | teste do passo 5 abaixo com `{"acao":"relatorio_marketing","periodo":"semana_anterior"}` |
+| 5 | n8n: workflows semanal (segunda) e mensal (dia 1) — CONTRATO.md, seção 5, item 8 | — | 1ª mensagem chega no WhatsApp do Adriel |
+
+- `lock_timeout = '3s'`: a migration só cria funções; se der timeout, nada foi
+  criado. Rode de novo (é idempotente).
+- No passo 3 o SQL Editor roda como dono da função, então a chamada funciona;
+  pela API, só o `service_role` chama.
+
+Rollback (**NÃO RODE, só em emergência**): desligue antes os 2 workflows do
+n8n; depois `scripts/crm-leads/rollback-relatorio.sql` (apaga só as 3 funções;
+nenhum dado). Independe dos rollbacks das outras fases.
+
+Provas:
+```sh
+PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-relatorio.mjs --mutantes   # SQL: 97 verificações + 35 mutantes
+deno test --no-check --allow-read scripts/testes-crm-leads/                      # inclui relatorioMarketing.test.ts
+deno run --allow-read --allow-write --allow-run --allow-env scripts/testes-crm-leads/mutantes-relatorio.ts   # 18 mutantes (Edge)
+deno check supabase/functions/crm-leads/index.ts
+```
+
 ## Edge Function `crm-leads`: o que o Adriel faz
 
 Não foi publicada. Ordem: **depois** do passo 3 acima.

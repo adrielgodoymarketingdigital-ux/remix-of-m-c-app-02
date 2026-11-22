@@ -1,6 +1,6 @@
 // Ação "relatorio_marketing" (n8n: relatório semanal e mensal) — regras puras,
 // sem rede e sem Supabase, para o deno test.
-// Contrato: docs/crm-leads/CONTRATO.md. Números: public.crm_relatorio_marketing
+// Contrato: docs/crm-leads/CONTRATO.md, seção 4.10. Números: public.crm_relatorio_marketing
 // (supabase/migrations/20261123120000_crm_leads_relatorio_marketing.sql).
 //
 // Datas: sempre de calendário de Brasília. hojeISO vem de dataBrasiliaISO()
