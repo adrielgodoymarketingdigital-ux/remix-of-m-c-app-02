@@ -20,6 +20,19 @@
 // Períodos: vazio, virada de ano (semana seg–dom), mês cheio (misto), virada
 // de mês, semana incompleta (qua–sex), 2 semanas com gasto misto, mês só
 // automático, 1 dia, e os 3 últimos dias (teste de 14 dias em andamento).
+//
+// Duas rodadas: depois da 20261123120000 (anterior = mesmos N dias) e depois
+// da 20261123130000 (mês de calendário inteiro -> mês de calendário anterior
+// inteiro; o resto continua N dias). Nas duas, o período atual tem que dar o
+// número do card e o anterior o das funções admin reais no intervalo da regra.
+// Casos do mês: nov×out, mar×fev (2026 com 28 dias, 2024 bissexto com 29),
+// jan×dez do ano anterior, mês incompleto (1–15), semana, personalizado que
+// coincide com um mês, "mês" que não começa no dia 1, rateio do gasto
+// informado entre meses de tamanhos diferentes. Depois, rollback da regra do
+// mês (volta ao texto da 20261123120000) e o rollback geral.
+//
+// admin_mkt_origens é carregada como está em PRODUÇÃO: o mesmo corpo da
+// migration sem as 4 linhas de comentário de dentro (md5 90777d71…).
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -40,9 +53,14 @@ const { normalizarSituacaoTeste, normalizarLinhasAnuncio } = await lib("src/lib/
 const { normalizarGastoPeriodo, normalizarGastoPorAnuncio, custosComGastoAutomatico, linhasAnuncioComGasto } =
   await lib("src/lib/marketing/gastoMetaWhatsApp.ts");
 
+/** Tira as linhas de comentário de dentro do corpo $$…$$ (é assim que admin_mkt_origens está em produção). */
+function semComentariosNoCorpo(sql) {
+  const i = sql.indexOf("AS $$"), j = sql.indexOf("$$;", i);
+  return sql.slice(0, i) + sql.slice(i, j).split("\n").filter((l) => !/^\s*--/.test(l)).join("\n") + sql.slice(j);
+}
 const ANTERIORES = [
   ler("supabase/migrations/20261021120000_admin_mkt_cadastros_por_dia.sql"),
-  ler("supabase/migrations/20261021130000_admin_mkt_origens.sql"),
+  semComentariosNoCorpo(ler("supabase/migrations/20261021130000_admin_mkt_origens.sql")), // como em produção
   ler("supabase/migrations/20261121120000_crm_leads_1_estrutura.sql"),
   ler("supabase/migrations/20261121120010_crm_leads_2_gravacao.sql"),
   ler("supabase/migrations/20261121120020_crm_leads_3_funil_admin.sql"),
@@ -54,7 +72,11 @@ const ANTERIORES = [
 const ORIG = {
   mig: ler("supabase/migrations/20261123120000_crm_leads_relatorio_marketing.sql"),
   rollback: ler("scripts/crm-leads/rollback-relatorio.sql"),
+  mes: ler("supabase/migrations/20261123130000_crm_leads_relatorio_mes_calendario.sql"),
+  rollbackMes: ler("scripts/crm-leads/rollback-relatorio-mes.sql"),
 };
+const CONFERIR_MES = ler("scripts/crm-leads/relatorio-mes-0-conferir-producao.sql");
+const VERIFICAR_MES = ler("scripts/crm-leads/relatorio-mes-1-verificar.sql");
 const META_ADS = ler("supabase/migrations/20261024130000_meta_ads_cache.sql");
 const CONFERIR = ler("scripts/crm-leads/relatorio-0-conferir-producao.sql");
 const VERIFICAR = ler("scripts/crm-leads/relatorio-1-verificar.sql");
@@ -74,6 +96,14 @@ const NOVAS = ["_crm_rel_cadastros", "_crm_rel_funil", "crm_relatorio_marketing"
 const FONTES = ["admin_mkt_cadastros_por_dia", "admin_mkt_origens", "_crm_pagantes", "admin_crm_funil", "admin_crm_funil_por_anuncio",
   "admin_crm_funil_teste", "admin_crm_funil_gasto", "admin_crm_funil_gasto_por_anuncio"];
 const A = "120000000000001", B = "120000000000002", C = "120000000000003", D = "120000000000004", E = "120000000000005";
+
+/** Mês de calendário inteiro -> o mês de calendário anterior inteiro; senão null. (Conta independente da do SQL.) */
+function anteriorDoMes(inicio, fim) {
+  const [a, m, d] = inicio.split("-").map(Number);
+  const ultimo = new Date(Date.UTC(a, m, 0)).toISOString().slice(0, 10); // dia 0 do mês seguinte
+  if (d !== 1 || fim !== ultimo) return null;
+  return { inicio: new Date(Date.UTC(a, m - 2, 1)).toISOString().slice(0, 10), fim: somarDias(inicio, -1) };
+}
 
 /** JSON com as chaves em ordem (o jsonb reordena as chaves). */
 const canon = (v) => JSON.stringify(v, (_k, x) => (x && typeof x === "object" && !Array.isArray(x)
@@ -105,11 +135,17 @@ async function suite(s, { silencioso = false, comVerificacao = true } = {}) {
     SELECT p.proname, p.prosrc, pg_get_function_result(p.oid) r, p.prosecdef, p.proconfig, p.proacl::text acl
       FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname = ANY($1) ORDER BY 1`, [nomes]));
 
-  /** O que o card mostra para o período (funções admin + TS do card). */
+  /** Regra do período anterior em vigor (false = 20261123120000; true = 20261123130000). */
+  let regraMes = false;
+  /**
+   * O que o card mostra para o período (funções admin + TS do card). O anterior
+   * segue a regra em vigor; os números dele vêm das funções admin no intervalo.
+   */
   const card = async (inicio, fim) => {
     await como("authenticated", ADMIN);
     const dias = diasNoIntervalo({ inicio, fim });
-    const anterior = { inicio: somarDias(inicio, -dias), fim: somarDias(inicio, -1) };
+    const anterior = regraMes ? anteriorDoMes(inicio, fim) ?? { inicio: somarDias(inicio, -dias), fim: somarDias(inicio, -1) }
+      : { inicio: somarDias(inicio, -dias), fim: somarDias(inicio, -1) };
     const r = async (fn, ini, f) => q(`SELECT * FROM public.${fn}($1::date, $2::date)`, [ini, f]);
     // useAdminMarketingCadastros: 1 chamada de anterior.inicio a fim, separada no client
     const cad = (await q("SELECT dia::text AS dia, cadastros, com_utm, meta FROM public.admin_mkt_cadastros_por_dia($1::date, $2::date)",
@@ -211,7 +247,12 @@ async function suite(s, { silencioso = false, comVerificacao = true } = {}) {
       ('${U(31)}', now() - interval '1 day' + interval '10 minutes', 'fb', NULL),
       ('${U(32)}', now() - interval '1 day' + interval '10 minutes', NULL, NULL),
       ('${U(33)}', now() - interval '2 days' + interval '10 minutes', NULL, NULL),
-      ('${U(34)}', now() - interval '2 days' + interval '10 minutes', NULL, NULL);
+      ('${U(34)}', now() - interval '2 days' + interval '10 minutes', NULL, NULL),
+      ('${U(40)}', '2025-10-01T12:00:00Z', 'facebook', NULL),   -- 01/10/2025: só o mês inteiro de outubro pega
+      ('${U(41)}', '2025-12-10T12:00:00Z', 'google', NULL),     -- 10/12/2025: só o mês inteiro de dezembro pega
+      ('${U(42)}', '2024-01-31T12:00:00Z', 'facebook', NULL),   -- 31/01/2024: só os 31 dias antes de março/2024 pegam
+      ('${U(43)}', '2024-02-29T12:00:00Z', 'instagram', NULL),  -- 29/02/2024 (bissexto)
+      ('${U(44)}', '2024-03-10T12:00:00Z', NULL, 'fbc-y');
       INSERT INTO loja_funcionarios VALUES ('${U(5)}');
       INSERT INTO empresa_usuarios VALUES ('${U(6)}');
       INSERT INTO user_roles VALUES ('${U(7)}', 'admin');
@@ -262,7 +303,12 @@ async function suite(s, { silencioso = false, comVerificacao = true } = {}) {
       ${lead(14, "now() - interval '1 day'", D, null, "entrada", U(32))},
       ${lead(15, "now() - interval '2 days'", null, null, "entrada", U(33))},
       ${lead(16, "now() - interval '2 days'", D, null, "entrada", U(34))},
-      ${lead(17, "'2025-11-03T12:00:00Z'", B, null, "entrada", null)};`);
+      ${lead(17, "'2025-11-03T12:00:00Z'", B, null, "entrada", null)},
+      ${lead(18, "'2025-10-01T11:00:00Z'", A, null, "entrada", U(40))},
+      ${lead(19, "'2025-12-10T11:00:00Z'", null, null, "entrada", U(41))},
+      ${lead(20, "'2024-01-31T11:00:00Z'", D, null, "entrada", U(42))},
+      ${lead(21, "'2024-02-29T11:00:00Z'", D, null, "entrada", U(43))},
+      ${lead(22, "'2024-03-10T11:00:00Z'", D, null, "entrada", U(44))};`);
 
     // Gasto informado (dia = Brasília)
     //  M1 anúncio A 29–31/12 R$ 30,00 (1.000/dia)       M2 geral 02–04/01 R$ 10,00 (333,33/dia)
@@ -278,7 +324,10 @@ async function suite(s, { silencioso = false, comVerificacao = true } = {}) {
       ('2026-01-07', '2026-01-09', '${C}',  0.03, 'BRL', NULL),
       ('2026-01-12', '2026-01-25', '${B}', 999.00, 'BRL', now()),
       ('2026-01-12', '2026-01-25', '${B}', 999.00, 'USD', NULL),
-      ('2025-11-01', '2025-11-12', '${B}',   0.01, 'BRL', NULL);`);
+      ('2025-11-01', '2025-11-12', '${B}',   0.01, 'BRL', NULL),
+      -- rateio entre meses de tamanhos diferentes (1 centavo/dia e R$ 1,00/dia)
+      ('2024-02-26', '2024-03-03', '${D}',   0.07, 'BRL', NULL),  -- 4 dias em fev/2024 (29 dias), 3 em mar/2024
+      ('2025-09-25', '2025-10-04', '${D}',  10.00, 'BRL', NULL);`);  // 6 dias em set (30), 4 em out (31)
     // Gasto automático (2A): A 13–14/01 (14/01 com gasto 0), B 20/01; fevereiro só automático (B e C; C sem conversa); USD não conta
     await db.exec(`INSERT INTO crm_gasto_meta_anuncio (ad_id, data, gasto_centavos, conversas_meta, moeda, atualizado_em) VALUES
       ('${A}', '2026-01-13', 700, 3, 'BRL', '2026-01-14T09:00:00Z'),
@@ -384,6 +433,99 @@ async function suite(s, { silencioso = false, comVerificacao = true } = {}) {
     ok(!(await erro("SELECT public.crm_relatorio_marketing($1::date, $1::date)", [h])), "reaplicar a migration devolve o EXECUTE ao service_role (GRANT explícito)");
     await db.exec("RESET ROLE");
 
+    // Meses na regra antiga (mesmos N dias): só para provar que a regra nova é que muda
+    const MESES = [
+      ["novembro × outubro", "2025-11-01", "2025-11-30", "2025-10-01", "2025-10-31"],
+      ["março × fevereiro (28 dias)", "2026-03-01", "2026-03-31", "2026-02-01", "2026-02-28"],
+      ["março × fevereiro bissexto (29 dias)", "2024-03-01", "2024-03-31", "2024-02-01", "2024-02-29"],
+      ["fevereiro bissexto × janeiro", "2024-02-01", "2024-02-29", "2024-01-01", "2024-01-31"],
+      ["janeiro × dezembro do ano anterior", "2026-01-01", "2026-01-31", "2025-12-01", "2025-12-31"],
+      ["fevereiro × janeiro (personalizado que coincide com o mês)", "2026-02-01", "2026-02-28", "2026-01-01", "2026-01-31"],
+      ["outubro × setembro (gasto informado entre os dois)", "2025-10-01", "2025-10-31", "2025-09-01", "2025-09-30"],
+    ];
+    const NAO_MES = [
+      ["mês incompleto (01–15/01)", "2026-01-01", "2026-01-15"],
+      ["semana seg–dom", "2025-12-29", "2026-01-04"],
+      ["“mês” que não começa no dia 1 (15/02–14/03)", "2026-02-15", "2026-03-14"],
+      ["dezembro até o dia 30", "2025-12-01", "2025-12-30"],
+    ];
+    for (const [nome, ini, fim] of MESES) {
+      const r = await comparar(`regra antiga: ${nome}`, ini, fim);
+      ok(r.periodo_anterior.inicio === somarDias(ini, -diasNoIntervalo({ inicio: ini, fim })), `regra antiga: ${nome} compara com os mesmos N dias`);
+    }
+
+    // ---------------- 20261123130000: mês × mês de calendário anterior ----------------
+    const relAntigo = await defs(["crm_relatorio_marketing"]);
+    const internasAntes = await defs(["_crm_rel_cadastros", "_crm_rel_funil"]);
+    const comentario = async () => (await q("SELECT obj_description('public.crm_relatorio_marketing(date, date)'::regprocedure, 'pg_proc') c"))[0].c;
+    const comentarioAntigo = await comentario();
+    if (comVerificacao) await tudoOk(CONFERIR_MES, "relatorio-mes-0-conferir-producao (antes)");
+    await db.exec(s.mes);
+    if (comVerificacao) await tudoOk(VERIFICAR_MES, "relatorio-mes-1-verificar");
+    // 2ª aplicação com o EXECUTE bagunçado: a migration fecha authenticated e devolve service_role
+    await db.exec("GRANT EXECUTE ON FUNCTION public.crm_relatorio_marketing(date, date) TO authenticated;"
+      + " REVOKE EXECUTE ON FUNCTION public.crm_relatorio_marketing(date, date) FROM service_role;");
+    await db.exec(s.mes);
+    if (comVerificacao) await tudoOk(VERIFICAR_MES, "relatorio-mes-1-verificar (2ª aplicação: idempotente, privilégios refeitos)");
+    ok(await defs(["_crm_rel_cadastros", "_crm_rel_funil"]) === internasAntes, "regra do mês: internas idênticas (código e privilégios)");
+    ok(await defs(FONTES) === fontesAntes, "regra do mês: as 8 funções do card idênticas");
+    ok(/mês de calendário anterior inteiro/.test(await comentario() ?? ""), "regra do mês: COMMENT descreve a regra nova");
+    await como("authenticated", ADMIN);
+    ok(/permission denied/.test(await erro("SELECT public.crm_relatorio_marketing($1::date, $1::date)", [h])), "regra do mês: authenticated não chama");
+    await como("anon");
+    ok(/permission denied/.test(await erro("SELECT public.crm_relatorio_marketing($1::date, $1::date)", [h])), "regra do mês: anon não chama");
+    await como("service_role");
+    ok(!(await erro("SELECT public.crm_relatorio_marketing($1::date, $1::date)", [h])), "regra do mês: service_role chama");
+    ok(/permission denied/.test(await erro("SELECT public._crm_rel_funil($1::date, $1::date)", [h])), "regra do mês: internas continuam fechadas");
+    ok(/22023/.test(await erro("SELECT public.crm_relatorio_marketing($1::date, $2::date)", [hoje(-1), hoje(1)])), "regra do mês: recusa data futura");
+    await db.exec("RESET ROLE");
+
+    regraMes = true;
+    for (const [nome, ini, fim, aIni, aFim] of MESES) {
+      const r = await comparar(`regra do mês: ${nome}`, ini, fim);
+      ok(r.periodo_anterior.inicio === aIni && r.periodo_anterior.fim === aFim && r.periodo.dias === diasNoIntervalo({ inicio: ini, fim }),
+         `regra do mês: ${nome} -> anterior ${aIni}..${aFim}, dias do atual (${JSON.stringify(r.periodo)} ${JSON.stringify(r.periodo_anterior)})`);
+    }
+    for (const [nome, ini, fim] of NAO_MES) {
+      const r = await comparar(`regra do mês: ${nome}`, ini, fim);
+      const n = diasNoIntervalo({ inicio: ini, fim });
+      ok(r.periodo_anterior.inicio === somarDias(ini, -n) && r.periodo_anterior.fim === somarDias(ini, -1),
+         `regra do mês: ${nome} continua com os mesmos ${n} dias antes (${JSON.stringify(r.periodo_anterior)})`);
+    }
+    // Todos os períodos da 1ª rodada de novo, na regra nova
+    for (const [ini, fim] of [["2025-06-02", "2025-06-08"], ["2026-01-31", "2026-02-01"], ["2026-01-07", "2026-01-09"],
+                              ["2026-01-12", "2026-01-25"], ["2025-12-31", "2025-12-31"], ["2025-11-01", "2025-11-06"], [hoje(-2), h]]) {
+      await comparar(`regra do mês: ${ini}..${fim}`, ini, fim);
+    }
+    // Números conferidos à mão (o anterior tem outro tamanho que o atual)
+    const nov = await relatorio("2025-11-01", "2025-11-30");
+    ok(nov.cadastros.anterior.total === 1 && nov.funil_whatsapp.anterior.conversas_iniciadas === 1 && nov.funil_whatsapp.anterior.cadastros === 1,
+       `novembro: o anterior (outubro inteiro) pega o cadastro e a conversa de 01/10 (${JSON.stringify(nov.cadastros.anterior)} ${JSON.stringify(nov.funil_whatsapp.anterior)})`);
+    const mar24 = await relatorio("2024-03-01", "2024-03-31");
+    ok(mar24.cadastros.anterior.total === 1 && mar24.funil_whatsapp.anterior.conversas_iniciadas === 1,
+       `março/2024: o anterior (fevereiro bissexto, 29 dias) pega 29/02 e não 31/01 (${JSON.stringify(mar24.cadastros.anterior)})`);
+    ok(mar24.gasto.manual_centavos === 3 && (await relatorio("2024-02-01", "2024-02-29")).gasto.manual_centavos === 4,
+       "rateio entre meses: R$ 0,07 em 7 dias = 3 centavos em março/2024 e 4 em fevereiro/2024 (29 dias)");
+    const out = await relatorio("2025-10-01", "2025-10-31");
+    ok(out.gasto.manual_centavos === 400 && (await relatorio("2025-09-01", "2025-09-30")).gasto.manual_centavos === 600,
+       `rateio entre meses: R$ 10,00 em 10 dias = R$ 4,00 em outubro (31 dias) e R$ 6,00 em setembro (30) (${out.gasto.manual_centavos})`);
+    const dez = await relatorio("2025-12-01", "2025-12-30");
+    ok(dez.periodo_anterior.inicio === "2025-11-01" && dez.periodo_anterior.fim === "2025-11-30",
+       "dezembro até o dia 30: 30 dias antes = 01–30/11 (não é a regra do mês, mas coincide)");
+    const jan15 = await relatorio("2026-01-01", "2026-01-15");
+    ok(jan15.cadastros.anterior.total === 1, `mês incompleto 01–15/01: anterior 17–31/12 (só o de 31/12, não o de 10/12) (${JSON.stringify(jan15.cadastros.anterior)})`);
+    regraMes = false;
+
+    // ---------------- rollback da regra do mês ----------------
+    await db.exec(s.rollbackMes);
+    ok(await defs(["crm_relatorio_marketing"]) === relAntigo, "rollback do mês: crm_relatorio_marketing volta ao texto e aos privilégios da 20261123120000");
+    ok(await comentario() === comentarioAntigo, "rollback do mês: COMMENT antigo de volta");
+    ok((await q("SELECT count(*)::int n FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname = ANY($1)", [NOVAS]))[0].n === 3,
+       "rollback do mês: não apaga nenhuma função");
+    ok(await defs(["_crm_rel_cadastros", "_crm_rel_funil"]) === internasAntes, "rollback do mês: internas intactas");
+    if (comVerificacao) await tudoOk(VERIFICAR, "relatorio-1-verificar (depois do rollback do mês)");
+    await comparar("depois do rollback do mês: novembro volta aos 30 dias antes", "2025-11-01", "2025-11-30");
+
     // ---------------- rollback ----------------
     await db.exec(s.rollback);
     ok((await q("SELECT count(*)::int n FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname = ANY($1)", [NOVAS]))[0].n === 0,
@@ -413,8 +555,29 @@ function estaticas() {
   ok(ORIG.rollback.includes("NÃO RODE — SÓ EM EMERGÊNCIA") && NOVAS.every((n) => ORIG.rollback.includes(`DROP FUNCTION IF EXISTS public.${n}(`)),
      "rollback marcado NÃO RODE; apaga as 3 funções");
   ok(!/CREATE|ALTER|TABLE/i.test(ORIG.rollback.replace(/--.*$/gm, "")), "rollback não cria nem altera nada");
-  ok(!/\b(INSERT|UPDATE|DELETE|ALTER|DROP|CREATE|GRANT|REVOKE|TRUNCATE)\b/i.test((CONFERIR + VERIFICAR).replace(/--.*$/gm, "").replace(/'[^']*'/g, "")),
-     "conferência e verificação são só leitura");
+  ok(!/\b(INSERT|UPDATE|DELETE|ALTER|DROP|CREATE|GRANT|REVOKE|TRUNCATE)\b/i.test((CONFERIR + VERIFICAR + CONFERIR_MES + VERIFICAR_MES).replace(/--.*$/gm, "").replace(/'[^']*'/g, "")),
+     "conferências e verificações (inclusive as do mês) são só leitura");
+  ok(CONFERIR.includes("90777d7132e49d03e0959406bf4d5635") && VERIFICAR.includes("90777d7132e49d03e0959406bf4d5635")
+     && !(CONFERIR + VERIFICAR).replace(/--.*$/gm, "").includes("d9e7a4aac4de5d5ca235a5017db53da8"),
+     "admin_mkt_origens: esperado = md5 de produção nos 2 scripts (o do repositório só no comentário)");
+  // migration do mês
+  const funcao = (sql) => sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION public.crm_relatorio_marketing"), sql.indexOf("$$;\n", sql.indexOf("CREATE OR REPLACE FUNCTION public.crm_relatorio_marketing")) + 3);
+  const mm = ORIG.mes.replace(/--.*$/gm, "");
+  ok(/^\s*BEGIN;\s*SET LOCAL lock_timeout = '3s';\s*SET LOCAL statement_timeout = '60s';/m.test(mm) && /COMMIT;\s*$/.test(mm),
+     "migration do mês com BEGIN, lock_timeout 3s, statement_timeout e COMMIT");
+  ok([...mm.matchAll(/CREATE OR REPLACE FUNCTION public\.(\w+)/g)].map((m) => m[1]).join() === "crm_relatorio_marketing",
+     "migration do mês: só CREATE OR REPLACE de crm_relatorio_marketing");
+  ok(!/\b(ALTER|DROP|TRUNCATE|INSERT|UPDATE|DELETE)\b|CREATE TABLE|FUNCTION public\._crm_rel_/i.test(mm),
+     "migration do mês: nenhum DROP/ALTER/dado; não toca as internas");
+  ok([...mm.matchAll(/\bGRANT\b[^;]*\bTO\s+([^;]+);/gi)].map((m) => m[1].trim()).join() === "service_role",
+     "migration do mês: único GRANT para service_role");
+  const antiga = funcao(ORIG.mig), nova = funcao(ORIG.mes);
+  const trocaDe = "  v_aini := p_inicio - v_dias;\n";
+  const semTroca = nova.replace(/  -- Período anterior\.[\s\S]*?  END IF;\n/, trocaDe);
+  ok(semTroca === antiga && nova !== antiga, "migration do mês: função idêntica à da 20261123120000, exceto o cálculo de v_aini");
+  ok(funcao(ORIG.rollbackMes) === antiga, "rollback do mês: função com o texto EXATO da 20261123120000");
+  ok(!/\bDROP\b|CREATE TABLE|FUNCTION public\._crm_rel_/i.test(ORIG.rollbackMes.replace(/--.*$/gm, "")) && ORIG.rollbackMes.includes("NÃO RODE — SÓ EM EMERGÊNCIA"),
+     "rollback do mês: marcado NÃO RODE, nenhum DROP, não toca as internas");
   return falhas;
 }
 
@@ -462,6 +625,23 @@ const MUTANTES = [
   { nome: "interna liberada para service_role", de: "REVOKE ALL ON FUNCTION public._crm_rel_funil(date, date)          FROM PUBLIC, anon, authenticated, service_role;", para: "REVOKE ALL ON FUNCTION public._crm_rel_funil(date, date)          FROM PUBLIC, anon, authenticated;" },
   { nome: "relatório sem GRANT para service_role", de: "GRANT EXECUTE ON FUNCTION public.crm_relatorio_marketing(date, date) TO service_role;", para: "" },
   { nome: "rollback sem apagar o relatório", alvo: "rollback", de: "DROP FUNCTION IF EXISTS public.crm_relatorio_marketing(date, date);", para: "" },
+  // 20261123130000: mês × mês anterior
+  { nome: "mês: regra do mês desligada (volta a N dias)", alvo: "mes", de: "  IF extract(day FROM p_inicio) = 1\n", para: "  IF false AND extract(day FROM p_inicio) = 1\n" },
+  { nome: "mês: sem checar o último dia (mês incompleto vira mês)", alvo: "mes",
+    de: "  IF extract(day FROM p_inicio) = 1\n     AND p_fim = (p_inicio::timestamp + interval '1 month')::date - 1 THEN", para: "  IF extract(day FROM p_inicio) = 1 THEN" },
+  { nome: "mês: sem checar o dia 1 (15/02–14/03 vira mês)", alvo: "mes",
+    de: "  IF extract(day FROM p_inicio) = 1\n     AND p_fim = (p_inicio::timestamp + interval '1 month')::date - 1 THEN", para: "  IF p_fim = (p_inicio::timestamp + interval '1 month')::date - 1 THEN" },
+  { nome: "mês: anterior começa no dia 2", alvo: "mes", de: "v_aini := (p_inicio::timestamp - interval '1 month')::date;", para: "v_aini := (p_inicio::timestamp - interval '1 month')::date + 1;" },
+  { nome: "mês: anterior = 30 dias", alvo: "mes", de: "v_aini := (p_inicio::timestamp - interval '1 month')::date;", para: "v_aini := p_inicio - 30;" },
+  { nome: "mês: anterior = 31 dias", alvo: "mes", de: "v_aini := (p_inicio::timestamp - interval '1 month')::date;", para: "v_aini := p_inicio - 31;" },
+  { nome: "mês: fim do anterior no 1º dia do atual", alvo: "mes", de: "  v_afim := p_inicio - 1;\n  -- Período anterior.", para: "  v_afim := p_inicio;\n  -- Período anterior." },
+  { nome: "mês: periodo.dias = dias do anterior", alvo: "mes", de: "jsonb_build_object('inicio', p_inicio, 'fim', p_fim, 'dias', v_dias)", para: "jsonb_build_object('inicio', p_inicio, 'fim', p_fim, 'dias', v_afim - v_aini + 1)" },
+  { nome: "mês: sem REVOKE (authenticated aberto continua aberto)", alvo: "mes", de: "\nREVOKE ALL ON FUNCTION public.crm_relatorio_marketing(date, date) FROM PUBLIC, anon, authenticated;", para: "" },
+  { nome: "mês: sem GRANT para service_role", alvo: "mes", de: "\nGRANT EXECUTE ON FUNCTION public.crm_relatorio_marketing(date, date) TO service_role;", para: "" },
+  { nome: "mês: COMMENT sem a regra nova", alvo: "mes", de: "mês de calendário inteiro compara com o mês de calendário anterior inteiro; outros períodos, com", para: "compara com" },
+  { nome: "rollback do mês mantém a regra do mês", alvo: "rollbackMes", de: "  v_aini := p_inicio - v_dias;\n",
+    para: "  IF extract(day FROM p_inicio) = 1 AND p_fim = (p_inicio::timestamp + interval '1 month')::date - 1 THEN\n    v_aini := (p_inicio::timestamp - interval '1 month')::date;\n  ELSE\n    v_aini := p_inicio - v_dias;\n  END IF;\n" },
+  { nome: "rollback do mês sem o COMMENT antigo", alvo: "rollbackMes", de: "COMMENT ON FUNCTION public.crm_relatorio_marketing(date, date) IS", para: "SELECT" },
 ];
 
 function aplicarMutante(m) {
@@ -478,6 +658,9 @@ if (process.argv.includes("--hashes")) {
   await db.exec(BASE); await db.exec(COLUNAS_TESTE); await db.exec(META_ADS);
   for (const sql of ANTERIORES) await db.exec(sql);
   await db.exec(ORIG.mig);
+  const hsAntiga = (await db.query(`SELECT md5(regexp_replace(prosrc, '\\s+', ' ', 'g')) h FROM pg_proc WHERE proname = 'crm_relatorio_marketing'`)).rows[0].h;
+  await db.exec(ORIG.mes);
+  console.log("crm_relatorio_marketing antiga / mês:", hsAntiga, "/", (await db.query(`SELECT md5(regexp_replace(prosrc, '\\s+', ' ', 'g')) h FROM pg_proc WHERE proname = 'crm_relatorio_marketing'`)).rows[0].h);
   const hs = async (nomes) => (await db.query(`SELECT proname, md5(regexp_replace(prosrc, '\\s+', ' ', 'g')) h FROM pg_proc
     WHERE pronamespace = 'public'::regnamespace AND proname = ANY($1) ORDER BY proname`, [nomes])).rows;
   console.log("fontes:", JSON.stringify(await hs(FONTES)));

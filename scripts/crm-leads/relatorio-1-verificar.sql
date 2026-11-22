@@ -2,6 +2,14 @@
 -- CRM de leads — RELATÓRIO DE MARKETING — VERIFICAÇÃO depois da migration
 -- 20261123120000_crm_leads_relatorio_marketing.sql. SOMENTE LEITURA.
 -- Esperado: todas as linhas com ok = true.
+-- admin_mkt_origens: o md5 esperado é o de PRODUÇÃO
+-- (90777d7132e49d03e0959406bf4d5635), não o do arquivo do repositório
+-- (d9e7a4aac4de5d5ca235a5017db53da8). Em produção o corpo da função é igual
+-- em lógica ao de 20261021130000_admin_mkt_origens.sql, só sem as 4 linhas de
+-- comentário de dentro do corpo ("-- Espelho de PRECOS_CENTAVOS…", "-- PIX:…",
+-- "-- Cartão Pagar.me:…", "-- Gateway antigo…"); comentário entra no prosrc e
+-- muda o md5. Reproduzido no PGlite tirando só essas 4 linhas. Com o valor do
+-- repositório a linha dava falso alarme.
 -- =====================================================================
 WITH f AS (
   SELECT p.oid, p.proname, md5(regexp_replace(p.prosrc, '\s+', ' ', 'g')) AS h,
@@ -26,8 +34,8 @@ SELECT * FROM (VALUES
      coalesce((SELECT count(*) = 3 AND string_agg(h, ' / ' ORDER BY proname COLLATE "C") = '7248f2c66df5e862f722354ae26e7f7c / 780e1348dff477d4ad4f9102ab47a363 / 4e034d5e70a4d309bc362eb2c4d34ab0' FROM f), false)),
   ('2. as 8 funções do card NÃO mudaram',
      (SELECT string_agg(h, ' / ' ORDER BY proname COLLATE "C") FROM fontes),
-     '83436d28276fb79cf60bef2da5fd0890 / 68c3b2319c99ffb294432887dbb392db / 117d524b804f5bacb4a5170a06e5acd5 / 02a42ad91c4ab6a84fbea04e5800c6c6 / 91a2786178ab291e7bafda361529c768 / b761af836793047661ad77a9fb7a0601 / 7eaa6fb74dc82991e071027594f103c5 / d9e7a4aac4de5d5ca235a5017db53da8',
-     coalesce((SELECT count(*) = 8 AND string_agg(h, ' / ' ORDER BY proname COLLATE "C") = '83436d28276fb79cf60bef2da5fd0890 / 68c3b2319c99ffb294432887dbb392db / 117d524b804f5bacb4a5170a06e5acd5 / 02a42ad91c4ab6a84fbea04e5800c6c6 / 91a2786178ab291e7bafda361529c768 / b761af836793047661ad77a9fb7a0601 / 7eaa6fb74dc82991e071027594f103c5 / d9e7a4aac4de5d5ca235a5017db53da8' FROM fontes), false)),
+     '83436d28276fb79cf60bef2da5fd0890 / 68c3b2319c99ffb294432887dbb392db / 117d524b804f5bacb4a5170a06e5acd5 / 02a42ad91c4ab6a84fbea04e5800c6c6 / 91a2786178ab291e7bafda361529c768 / b761af836793047661ad77a9fb7a0601 / 7eaa6fb74dc82991e071027594f103c5 / 90777d7132e49d03e0959406bf4d5635',
+     coalesce((SELECT count(*) = 8 AND string_agg(h, ' / ' ORDER BY proname COLLATE "C") = '83436d28276fb79cf60bef2da5fd0890 / 68c3b2319c99ffb294432887dbb392db / 117d524b804f5bacb4a5170a06e5acd5 / 02a42ad91c4ab6a84fbea04e5800c6c6 / 91a2786178ab291e7bafda361529c768 / b761af836793047661ad77a9fb7a0601 / 7eaa6fb74dc82991e071027594f103c5 / 90777d7132e49d03e0959406bf4d5635' FROM fontes), false)),
   ('3. SECURITY DEFINER com search_path fixo, sem EXECUTE para PUBLIC, retorno jsonb',
      (SELECT string_agg(proname || ' ' || definer_fixo || '/' || public_executa || '/' || ret, ', ' ORDER BY proname COLLATE "C") FROM f),
      '_crm_rel_cadastros true/false/jsonb, _crm_rel_funil true/false/jsonb, crm_relatorio_marketing true/false/jsonb',

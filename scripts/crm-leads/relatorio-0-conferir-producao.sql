@@ -11,6 +11,14 @@
 -- Linha 9: as 3 funções novas ainda não existem (nenhuma função existente é
 -- substituída). Se der false porque você já aplicou esta migration antes,
 -- pode seguir (é idempotente); qualquer outro caso, pare.
+-- admin_mkt_origens: o md5 esperado é o de PRODUÇÃO
+-- (90777d7132e49d03e0959406bf4d5635), não o do arquivo do repositório
+-- (d9e7a4aac4de5d5ca235a5017db53da8). Em produção o corpo da função é igual
+-- em lógica ao de 20261021130000_admin_mkt_origens.sql, só sem as 4 linhas de
+-- comentário de dentro do corpo ("-- Espelho de PRECOS_CENTAVOS…", "-- PIX:…",
+-- "-- Cartão Pagar.me:…", "-- Gateway antigo…"); comentário entra no prosrc e
+-- muda o md5. Reproduzido no PGlite tirando só essas 4 linhas. Com o valor do
+-- repositório a linha dava falso alarme.
 -- =====================================================================
 WITH f AS (
   SELECT p.proname, md5(regexp_replace(p.prosrc, '\s+', ' ', 'g')) AS h
@@ -21,7 +29,7 @@ WITH f AS (
                        'admin_crm_funil_gasto', 'admin_crm_funil_gasto_por_anuncio')
 ), esperado(n, proname, h) AS (VALUES
   (1, 'admin_mkt_cadastros_por_dia',       '7eaa6fb74dc82991e071027594f103c5'),
-  (2, 'admin_mkt_origens',                 'd9e7a4aac4de5d5ca235a5017db53da8'),
+  (2, 'admin_mkt_origens',                 '90777d7132e49d03e0959406bf4d5635'),
   (3, '_crm_pagantes',                     '83436d28276fb79cf60bef2da5fd0890'),
   (4, 'admin_crm_funil',                   '68c3b2319c99ffb294432887dbb392db'),
   (5, 'admin_crm_funil_por_anuncio',       '91a2786178ab291e7bafda361529c768'),
