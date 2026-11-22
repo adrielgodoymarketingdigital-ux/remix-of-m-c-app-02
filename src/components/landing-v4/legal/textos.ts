@@ -167,7 +167,7 @@ export const termos: Documento = {
 
 export const privacidade: Documento = {
   titulo: "Política de privacidade",
-  atualizado: "21 de novembro de 2026",
+  atualizado: "22 de novembro de 2026",
   resumo:
     "Quais dados o MécApp coleta, para que usa, com quem compartilha, por quanto tempo guarda e como você pode pedir acesso, correção ou exclusão. De acordo com a LGPD.",
   secoes: [
@@ -228,6 +228,7 @@ export const privacidade: Documento = {
             "Criar e proteger a sua conta, inclusive com a verificação contra robôs.",
             "Cobrar a assinatura e liberar o plano contratado.",
             "Dar suporte, inclusive pelo WhatsApp, e enviar avisos importantes sobre a conta.",
+            "Pedir a sua opinião sobre o sistema por WhatsApp, de vez em quando, para melhorar o MécApp e cuidar da relação com quem assina.",
             "Enviar notificações do sistema, se você permitir.",
             "Medir de onde vêm os visitantes e o resultado dos nossos anúncios.",
             "Melhorar o sistema e cumprir obrigações legais.",
@@ -333,7 +334,8 @@ export const privacidade: Documento = {
       blocos: [
         `Quando você nos chama no WhatsApp, inclusive a partir de um anúncio, guardamos o seu número de telefone, o seu nome de perfil, o anúncio que originou a conversa e até as 30 últimas mensagens. Usamos esses dados para responder você e medir o resultado dos nossos anúncios.`,
         `As mensagens são apagadas 90 dias depois do último contato.`,
-        `Responda PARAR a qualquer momento e não enviaremos mais mensagens. Nesse caso, seu número fica registrado apenas para respeitar esse pedido.`,
+        `Se você é assinante, também podemos mandar uma mensagem por WhatsApp para pedir a sua opinião sobre o sistema. Fazemos isso poucas vezes e não repetimos o contato por alguns meses para a mesma pessoa.`,
+        `Nos dois casos, responda PARAR a qualquer momento e não enviaremos mais mensagens. Nesse caso, seu número fica registrado apenas para respeitar esse pedido.`,
       ],
     },
     {
