@@ -7,6 +7,8 @@ import { normalizarTelefone } from "./telefone.ts";
 export const MAX_ITENS = 200;
 /** Fase 2A: lote menor para o gasto da Meta (a função SQL recusa > 100). */
 export const MAX_ITENS_GASTO = 100;
+/** Feedback: registro de envio (a função SQL recusa > 100). */
+export const MAX_ITENS_REGISTRO = 100;
 export const MAX_BYTES = 512 * 1024;
 
 export const ACOES = [
@@ -18,6 +20,8 @@ export const ACOES = [
   "retencao",         // fase 1: apaga mensagens/resumo após 90 dias
   "relatorio",        // fase 1: números agregados do dia (Brasília)
   "gasto_meta",       // fase 2A: gasto da Meta por anúncio e dia (Insights nível ad)
+  "pagantes_contato", // feedback: lista de pagantes elegíveis para uma campanha
+  "contato_registrar",// feedback: quem recebeu / falhou
 ] as const;
 export type Acao = typeof ACOES[number];
 
@@ -56,6 +60,11 @@ const texto = (v: unknown, max: number): string | null => {
   return t === "" ? null : t.slice(0, max);
 };
 
+/** Tamanho máximo do lote por ação (o 413 devolve este número). */
+export function maxItens(acao: unknown): number {
+  return acao === "gasto_meta" ? MAX_ITENS_GASTO : acao === "contato_registrar" ? MAX_ITENS_REGISTRO : MAX_ITENS;
+}
+
 /** Envelope: {acao, itens?, ...params}. Um item solto vira lote de 1. */
 export function lerEnvelope(corpo: unknown): ResultadoEnvelope {
   if (typeof corpo !== "object" || corpo === null || Array.isArray(corpo)) {
@@ -66,10 +75,10 @@ export function lerEnvelope(corpo: unknown): ResultadoEnvelope {
     return { ok: false, status: 400, erro: "acao_invalida" };
   }
   const precisaItens = acao === "mensagens" || acao === "resumo" || acao === "vincular" || acao === "opt_out"
-    || acao === "gasto_meta";
+    || acao === "gasto_meta" || acao === "contato_registrar";
   const lista = Array.isArray(itens) ? itens : item !== undefined ? [item] : [];
   if (precisaItens && lista.length === 0) return { ok: false, status: 400, erro: "itens_vazios" };
-  if (lista.length > (acao === "gasto_meta" ? MAX_ITENS_GASTO : MAX_ITENS)) return { ok: false, status: 413, erro: "lote_grande" };
+  if (lista.length > maxItens(acao)) return { ok: false, status: 413, erro: "lote_grande" };
   return { ok: true, acao: acao as Acao, itens: lista, params };
 }
 
@@ -209,6 +218,72 @@ export function normalizarGastoMeta(
   }
 
   return { ok: true, valor: { ad_id: g.ad_id, campaign_id: campaign, data: dia, ...nums, moeda } };
+}
+
+// ---------------------------------------------------------------------------
+// Pesquisa de feedback com pagantes. Mesmas regras de crm_pagantes_contato /
+// crm_contato_registrar (o banco valida de novo).
+// ---------------------------------------------------------------------------
+
+export const RE_CAMPANHA = /^[a-z0-9_-]{3,40}$/;
+const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const LIMITE_PADRAO = 15;
+export const PAUSA_PADRAO_DIAS = 120;
+
+export interface ParamsPagantes {
+  campanha: string;
+  limite: number;
+  pausa_dias: number;
+  /** Só para teste: restringe a estas contas (as regras continuam valendo). */
+  user_ids: string[] | null;
+}
+
+export type ErroParamsPagantes = "campanha_invalida" | "limite_invalido" | "pausa_dias_invalido" | "user_ids_invalido";
+
+export function lerParamsPagantes(p: Record<string, unknown>): { ok: true; valor: ParamsPagantes } | { ok: false; erro: ErroParamsPagantes } {
+  if (typeof p.campanha !== "string" || !RE_CAMPANHA.test(p.campanha)) return { ok: false, erro: "campanha_invalida" };
+  const limite = p.limite === undefined || p.limite === null ? LIMITE_PADRAO : p.limite;
+  if (typeof limite !== "number" || !Number.isInteger(limite) || limite < 1 || limite > 50) return { ok: false, erro: "limite_invalido" };
+  const pausa = p.pausa_dias === undefined || p.pausa_dias === null ? PAUSA_PADRAO_DIAS : p.pausa_dias;
+  if (typeof pausa !== "number" || !Number.isInteger(pausa) || pausa < 30 || pausa > 365) return { ok: false, erro: "pausa_dias_invalido" };
+  let ids: string[] | null = null;
+  if (p.user_ids !== undefined && p.user_ids !== null) {
+    if (!Array.isArray(p.user_ids) || p.user_ids.length < 1 || p.user_ids.length > 10
+      || !p.user_ids.every((u) => typeof u === "string" && RE_UUID.test(u))) {
+      return { ok: false, erro: "user_ids_invalido" };
+    }
+    ids = [...new Set((p.user_ids as string[]).map((u) => u.toLowerCase()))];
+  }
+  return { ok: true, valor: { campanha: p.campanha, limite, pausa_dias: pausa, user_ids: ids } };
+}
+
+export interface RegistroContato { user_id: string; resultado: "enviado" | "falhou" }
+export type ErroRegistro = "nao_objeto" | "user_id_invalido" | "resultado_invalido";
+
+export function normalizarRegistro(bruto: unknown): { ok: true; valor: RegistroContato } | { ok: false; erro: ErroRegistro } {
+  if (typeof bruto !== "object" || bruto === null || Array.isArray(bruto)) return { ok: false, erro: "nao_objeto" };
+  const r = bruto as Record<string, unknown>;
+  if (typeof r.user_id !== "string" || !RE_UUID.test(r.user_id)) return { ok: false, erro: "user_id_invalido" };
+  if (r.resultado !== "enviado" && r.resultado !== "falhou") return { ok: false, erro: "resultado_invalido" };
+  return { ok: true, valor: { user_id: r.user_id.toLowerCase(), resultado: r.resultado } };
+}
+
+/**
+ * 1ª palavra de profiles.nome (o banco já manda só ela) com a 1ª letra
+ * maiúscula e o resto minúsculo ("JOÃO" e "joão" viram "João"). Sem letra
+ * nenhuma ("123", "-", emoji) ou vazio: "".
+ */
+export function primeiroNome(bruto: unknown): string {
+  if (typeof bruto !== "string") return "";
+  const palavra = bruto.trim().split(/\s+/)[0] ?? "";
+  if (!/\p{L}/u.test(palavra)) return "";
+  const [primeira, ...resto] = [...palavra].slice(0, 40);
+  return primeira.toLocaleUpperCase("pt-BR") + resto.join("").toLocaleLowerCase("pt-BR");
+}
+
+/** Celular brasileiro já normalizado: +55 DDD 9XXXXXXXX. */
+export function ehCelularBrasil(e164: string): boolean {
+  return /^\+55[1-9]{2}9\d{8}$/.test(e164) && normalizarTelefone(e164) === e164;
 }
 
 /** Compara o segredo em tempo constante sem vazar o tamanho (SHA-256 dos dois). */

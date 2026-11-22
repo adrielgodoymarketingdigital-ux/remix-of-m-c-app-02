@@ -8,7 +8,10 @@
 // - Nunca loga telefone, nome ou texto: só contagens e códigos de erro.
 // - A chave da Evolution e a da IA NÃO passam por aqui (ficam no n8n).
 
-import { lerEnvelope, MAX_BYTES, MAX_ITENS, MAX_ITENS_GASTO, normalizarGastoMeta, normalizarMensagem, segredoConfere } from "./contrato.ts";
+import {
+  ehCelularBrasil, lerEnvelope, lerParamsPagantes, MAX_BYTES, maxItens, normalizarGastoMeta, normalizarMensagem,
+  normalizarRegistro, primeiroNome, RE_CAMPANHA, segredoConfere,
+} from "./contrato.ts";
 import { normalizarTelefone } from "./telefone.ts";
 
 export interface RpcCliente {
@@ -56,7 +59,7 @@ export function criarHandler(dep: Dependencias): (req: Request) => Promise<Respo
 
     const env = lerEnvelope(corpo);
     if (!env.ok) {
-      const max = (corpo as Record<string, unknown>).acao === "gasto_meta" ? MAX_ITENS_GASTO : MAX_ITENS;
+      const max = maxItens((corpo as Record<string, unknown>).acao);
       return json(env.status, env.status === 413 ? { erro: env.erro, max_itens: max } : { erro: env.erro });
     }
 
@@ -171,6 +174,67 @@ export function criarHandler(dep: Dependencias): (req: Request) => Promise<Respo
           });
           return json(200, {
             ok: true, recebidos: env.itens.length, inseridos: banco.inseridos, atualizados: banco.atualizados, rejeitadas,
+          });
+        }
+
+        case "pagantes_contato": {
+          // Lista para o n8n mandar a pesquisa. A resposta leva nome e
+          // telefone (só para quem tem o x-crm-secret); o log, só contagens.
+          const p = lerParamsPagantes(env.params);
+          if (!p.ok) return json(400, { erro: p.erro });
+          const banco = await chamar(db, "crm_pagantes_contato", {
+            p_campanha: p.valor.campanha, p_limite: p.valor.limite, p_pausa_dias: p.valor.pausa_dias,
+            p_user_ids: p.valor.user_ids,
+          }) as { itens?: unknown[]; total_elegiveis?: unknown; excluidos_por_pausa?: unknown } | null;
+          const itens: { user_id: string; primeiro_nome: string; telefone: string }[] = [];
+          let descartados = 0;
+          for (const it of Array.isArray(banco?.itens) ? banco.itens : []) {
+            const o = (typeof it === "object" && it !== null ? it : {}) as Record<string, unknown>;
+            // Defesa: o banco já filtra; aqui confere de novo com o normalizarTelefone.
+            if (typeof o.user_id !== "string" || !UUID.test(o.user_id) || typeof o.telefone !== "string" || !ehCelularBrasil(o.telefone)) {
+              descartados++;
+              continue;
+            }
+            itens.push({ user_id: o.user_id, primeiro_nome: primeiroNome(o.primeira_palavra), telefone: o.telefone });
+            if (itens.length >= p.valor.limite) break;
+          }
+          const total = Number(banco?.total_elegiveis ?? 0);
+          const pausa = Number(banco?.excluidos_por_pausa ?? 0);
+          log("[crm-leads] pagantes_contato", {
+            limite: p.valor.limite, pausa_dias: p.valor.pausa_dias, filtro_ids: p.valor.user_ids?.length ?? 0,
+            itens: itens.length, total_elegiveis: total, excluidos_por_pausa: pausa, descartados,
+          });
+          return json(200, { ok: true, itens, total_elegiveis: total, excluidos_por_pausa: pausa });
+        }
+
+        case "contato_registrar": {
+          const campanha = env.params.campanha;
+          if (typeof campanha !== "string" || !RE_CAMPANHA.test(campanha)) return json(400, { erro: "campanha_invalida" });
+          const validas: unknown[] = [];
+          const mapa: number[] = [];
+          const vistos = new Set<string>();
+          const rejeitadas: { indice: number; erro: string }[] = [];
+          env.itens.forEach((item, i) => {
+            const r = normalizarRegistro(item);
+            if (!r.ok) { rejeitadas.push({ indice: i, erro: r.erro }); return; }
+            if (vistos.has(r.valor.user_id)) { rejeitadas.push({ indice: i, erro: "duplicado_no_lote" }); return; }
+            vistos.add(r.valor.user_id);
+            mapa.push(i);
+            validas.push(r.valor);
+          });
+          let banco = { inseridos: 0, atualizados: 0, inalterados: 0, rejeitadas: [] as { indice: number; erro: string }[] };
+          if (validas.length > 0) {
+            banco = await chamar(db, "crm_contato_registrar", { p_campanha: campanha, p_itens: validas }) as typeof banco;
+          }
+          for (const r of banco.rejeitadas ?? []) rejeitadas.push({ indice: mapa[r.indice], erro: r.erro });
+          rejeitadas.sort((a, b) => a.indice - b.indice);
+          log("[crm-leads] contato_registrar", {
+            recebidos: env.itens.length, inseridos: banco.inseridos, atualizados: banco.atualizados,
+            inalterados: banco.inalterados, rejeitados: rejeitadas.length,
+          });
+          return json(200, {
+            ok: true, recebidos: env.itens.length, inseridos: banco.inseridos, atualizados: banco.atualizados,
+            inalterados: banco.inalterados, rejeitadas,
           });
         }
 
