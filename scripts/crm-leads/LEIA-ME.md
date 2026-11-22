@@ -319,10 +319,48 @@ nenhum dado). Independe dos rollbacks das outras fases.
 
 Provas:
 ```sh
-PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-relatorio.mjs --mutantes   # SQL: 97 verificações + 35 mutantes
+PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-relatorio.mjs --mutantes   # SQL: 276 verificações + 48 mutantes (inclui a regra do mês)
 deno test --no-check --allow-read scripts/testes-crm-leads/                      # inclui relatorioMarketing.test.ts
 deno run --allow-read --allow-write --allow-run --allow-env scripts/testes-crm-leads/mutantes-relatorio.ts   # 18 mutantes (Edge)
 deno check supabase/functions/crm-leads/index.ts
+```
+
+## Relatório de marketing: mês contra mês anterior
+
+Migration `supabase/migrations/20261123130000_crm_leads_relatorio_mes_calendario.sql`
+(**só troca o texto de uma função; nenhum dado**): `crm_relatorio_marketing`
+passa a comparar um mês de calendário inteiro com o mês de calendário
+anterior inteiro (01/11–30/11 contra 01/10–31/10). Semana, personalizado e mês
+incompleto continuam contra os mesmos N dias antes. Contrato:
+`docs/crm-leads/CONTRATO.md`, 4.10. O JSON não ganha campo nenhum: o n8n
+continua igual e a Edge Function **não** precisa ser publicada de novo.
+
+Não altera `_crm_rel_cadastros` nem `_crm_rel_funil`. A 20261123120000 (já
+aplicada) não foi editada.
+
+| # | Arquivo | Grava? | Depois, conferir |
+|---|---------|--------|------------------|
+| 1 | `scripts/crm-leads/relatorio-mes-0-conferir-producao.sql` | não | 4 linhas `ok = true`. **Se 1, 2 ou 3 der false, pare e me mande** (exceto a 1 com o md5 `34e689704d8f45199d721a0458deeb85`: a migration já foi aplicada) |
+| 2 | `supabase/migrations/20261123130000_crm_leads_relatorio_mes_calendario.sql` | troca o texto de 1 função | `scripts/crm-leads/relatorio-mes-1-verificar.sql`: 5 linhas `ok = true` |
+| 3 | (opcional) `SELECT public.crm_relatorio_marketing('2026-11-01', '2026-11-30') -> 'periodo_anterior';` | não | `{"fim": "2026-10-31", "inicio": "2026-10-01"}` |
+
+- Depois desta migration, a linha 1 de `relatorio-1-verificar.sql` passa a
+  dar false (ela confere a versão da 20261123120000). É esperado; use
+  `relatorio-mes-1-verificar.sql`.
+- `relatorio-0-conferir-producao.sql` e `relatorio-1-verificar.sql` agora
+  esperam para `admin_mkt_origens` o md5 de produção
+  (`90777d7132e49d03e0959406bf4d5635`): lá a função está sem 4 linhas de
+  comentário de dentro do corpo; a lógica é a mesma do repositório.
+
+Rollback (**NÃO RODE, só em emergência**):
+`scripts/crm-leads/rollback-relatorio-mes.sql`. Volta
+`crm_relatorio_marketing` ao texto exato da 20261123120000 (mês contra os
+mesmos N dias). Não apaga nenhuma função, não perde dado e o n8n pode ficar
+ligado. Depois, `relatorio-1-verificar.sql` volta a dar 5 linhas `ok`.
+
+Provas:
+```sh
+PGLITE_DIR=/tmp/pg node scripts/crm-leads/teste-pglite-relatorio.mjs --mutantes   # as duas regras, rollback do mês; 13 dos 48 mutantes são da regra do mês
 ```
 
 ## Edge Function `crm-leads`: o que o Adriel faz

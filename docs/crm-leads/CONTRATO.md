@@ -316,9 +316,22 @@ Períodos (datas de calendário de **Brasília**, nunca UTC nem o fuso do servid
 | `mes_anterior` | o último mês de calendário completo | rodando em 01/12/2026 → 01/11 a 30/11 |
 | `personalizado` | `inicio` e `fim` (YYYY-MM-DD) obrigatórios; `fim` ≥ `inicio`, `fim` ≤ hoje, `fim − inicio` ≤ 400 (mesma regra do card) | |
 
-`periodo_anterior` = os mesmos N dias imediatamente antes. Para o mês, é
-**mesmo número de dias**, não o mês de calendário anterior: novembro (30 dias)
-compara com 02/10 a 31/10; outubro (31 dias) compara com 31/08 a 30/09.
+`periodo_anterior` (migration 20261123130000):
+- quando o período é um **mês de calendário inteiro** (`inicio` = dia 1 e
+  `fim` = último dia do **mesmo** mês), o anterior é o **mês de calendário
+  anterior inteiro**, mesmo com outro número de dias: novembro (01/11–30/11)
+  compara com 01/10–31/10; março com 01/02–28/02 (29/02 em ano bissexto);
+  janeiro com 01/12–31/12 do ano anterior. Vale para `mes_anterior` e também
+  para um `personalizado` que coincida com um mês inteiro (a regra olha as
+  datas, não o nome do período);
+- em qualquer outro caso (`semana_anterior`, `personalizado`, mês incompleto
+  como 01–15), são os **mesmos N dias imediatamente antes**: 01/01–15/01
+  compara com 17/12–31/12.
+
+`periodo.dias` é sempre o número de dias do período **atual**; o tamanho do
+anterior sai das datas de `periodo_anterior`. Só `cadastros.anterior` e
+`funil_whatsapp.anterior` usam o período anterior; gasto, custos e
+`por_anuncio` são só do período atual.
 
 Erros 400 (o banco não é chamado): `periodo_invalido`, `datas_obrigatorias`
 (personalizado sem as duas datas), `datas_so_no_personalizado` (`inicio`/`fim`
@@ -356,7 +369,8 @@ Exemplo de `semana_anterior` rodando na segunda 23/11/2026 (números fictícios)
 ```
 Exemplo de `mes_anterior` rodando em 01/12/2026: mesmo formato, com
 `"periodo": {"inicio": "2026-11-01", "fim": "2026-11-30", "dias": 30}` e
-`"periodo_anterior": {"inicio": "2026-10-02", "fim": "2026-10-31"}`; quando o
+`"periodo_anterior": {"inicio": "2026-10-01", "fim": "2026-10-31"}` (outubro
+inteiro, 31 dias, contra os 30 de novembro); quando o
 mês não tem dado da Meta e tem gasto informado à mão, `"fonte": "manual"`,
 `"meta_centavos": 0`, `"dias_com_gasto_meta": 0`; sem gasto nenhum,
 `"fonte": "nenhum"`, `"total_centavos": null` e os 3 custos `null`.
