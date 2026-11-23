@@ -17,7 +17,6 @@ import type { OrdemParaCaixa } from "@/lib/caixa/servicosCaixa";
 import { TaxaCartao } from "@/hooks/useTaxasCartao";
 import {
   CandidatoAmbiguo,
-  ComissaoConfig,
   ComissaoCalculo,
   TipoServicoResumo,
   calcularComissaoDoItem,
@@ -25,7 +24,11 @@ import {
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
 import { FormData, TecnicoOS } from "./tipos";
-import { quantidadeLinhaForm } from "@/lib/ordemServico/linhaServicoOS";
+import {
+  ComissaoFuncionarioTipoRow,
+  entradaComissaoServico,
+  montarLinhasTecnicosOS,
+} from "@/lib/ordemServico/tecnicosPorServicoOS";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
 import {
   BUCKET_FOTOS_OS,
@@ -48,26 +51,6 @@ const clienteAdicionaisSupabase: ClienteGravacaoAdicionais = {
     supabase.from("os_dispositivos_adicionais").delete().eq("os_id", osId).in("id", ids),
   apagarFotos: (caminhos) => supabase.storage.from(BUCKET_FOTOS_OS).remove(caminhos),
 };
-
-/**
- * Entrada da comissão de um serviço. Com peça repassada ao cliente pelo custo,
- * a base é só a mão de obra (preço), em qualquer modo — a peça não gera
- * comissão nem reduz o lucro da linha. Sem repasse: preço − custo, como antes.
- */
-function entradaComissaoServico(servico: FormData["servicos"][number]): { preco: number; custo: number; custoConfirmado?: boolean; quantidade: number } {
-  // preco/custo são o total da linha; a quantidade só pesa na comissão de valor fixo.
-  const quantidade = quantidadeLinhaForm(servico);
-  if (servico.peca_repassada) {
-    return { preco: Number(servico.preco) || 0, custo: 0, custoConfirmado: true, quantidade };
-  }
-  return {
-    preco: servico.preco,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    custo: (servico as any).peca_valor ?? servico.custo,
-    custoConfirmado: servico.custo_confirmado,
-    quantidade,
-  };
-}
 
 interface SalvarOrdemServicoParams {
   formData: FormData;
@@ -454,7 +437,6 @@ async function salvarTecnicosOS(
   // Remover técnicos antigos
   await supabase.from("os_tecnicos").delete().eq("os_id", osId);
 
-  const tsId = tipoServicoId || null;
   const funcionarioIds = [...new Set(tecnicos.map(t => t.funcionario_id))];
   // Ids de serviço de catálogo referenciados pelos técnicos (para buscar o
   // vínculo direto servico → Tipo de Serviço). "manual_*" não é catálogo.
@@ -481,127 +463,22 @@ async function salvarTecnicosOS(
       : Promise.resolve({ data: [] as { id: string; tipo_servico_id: string | null }[] }),
   ]);
 
-  const vinculoPorServicoId = new Map<string, string>();
-  (servicosCatalogoVinculo || []).forEach((s: { id: string; tipo_servico_id: string | null }) => {
-    if (s.tipo_servico_id) vinculoPorServicoId.set(s.id, s.tipo_servico_id);
+  const montado = montarLinhasTecnicosOS({
+    osId,
+    tecnicos,
+    servicosOS,
+    totalOS,
+    tipoServicoId,
+    dispositivoMarca,
+    servicoIdsValidos,
+    tiposServicoTodos: tiposServicoTodos || [],
+    comissoesFuncionarios: (comissoesFuncionarios || []) as ComissaoFuncionarioTipoRow[],
+    funcsCalculo: funcsCalculo || [],
+    servicosCatalogoVinculo: servicosCatalogoVinculo || [],
   });
-
-  const comissaoPorFuncionarioETipo = new Map<string, ComissaoConfig>();
-  (comissoesFuncionarios || []).forEach((c: any) => {
-    comissaoPorFuncionarioETipo.set(`${c.funcionario_id}:${c.tipo_servico_id}`, c);
-  });
-
-  const comissaoCalculoPorFuncionario = new Map<string, ComissaoCalculo>();
-  const nomePorFuncionario = new Map<string, string>();
-  (funcsCalculo || []).forEach((f: { id: string; nome: string; comissao_calculo: string | null }) => {
-    comissaoCalculoPorFuncionario.set(f.id, f.comissao_calculo === "lucro" ? "lucro" : "faturamento");
-    nomePorFuncionario.set(f.id, f.nome);
-  });
-
-  const tecnicosParaInserir: TablesInsert<"os_tecnicos">[] = [];
-
-  for (const tec of tecnicos) {
-    let comissaoTipo: string | null = null;
-    let comissaoValor: number | null = null;
-    let comissaoCalculada: number | null = null;
-
-    // Serviço vinculado a este técnico (preço próprio); se não houver
-    // vínculo (dados antigos ou não informado), cai no total da OS. Com o mesmo
-    // serviço repetido, a linha (servico_linha_id) decide qual delas.
-    const servicoVinculado = tec.servico_linha_id
-      ? servicosOS.find(s => s.linha_os?.linha_id === tec.servico_linha_id)
-      : tec.servico_id
-        ? servicosOS.find(s => s.id === tec.servico_id)
-        : undefined;
-    const baseCalculo = servicoVinculado ? servicoVinculado.preco : totalOS;
-
-    let comissaoConfig: ComissaoConfig | undefined;
-    if (servicoVinculado) {
-      const tiposComComissaoDoTecnico = (tiposServicoTodos || []).filter(t =>
-        comissaoPorFuncionarioETipo.has(`${tec.funcionario_id}:${t.id}`)
-      );
-      const comissaoPorTipoServicoId = new Map(
-        tiposComComissaoDoTecnico.map(t => [t.id, comissaoPorFuncionarioETipo.get(`${tec.funcionario_id}:${t.id}`)!])
-      );
-      // Vínculo direto (servicos.tipo_servico_id) tem prioridade sobre o nome.
-      const resultadoMatch = resolverComissaoDoServico(
-        servicoVinculado.nome,
-        vinculoPorServicoId.get(servicoVinculado.id),
-        tiposComComissaoDoTecnico,
-        comissaoPorTipoServicoId,
-        dispositivoMarca,
-      );
-      comissaoConfig = resultadoMatch.config;
-      if (resultadoMatch.vinculoSemConfig) {
-        // Serviço vinculado a um Tipo, mas este técnico não tem % para ele:
-        // comissão R$ 0,00 intencional — não é ambiguidade, não gera aviso
-        // "revise" (mesmo tratamento do Técnico Principal).
-        console.info(
-          "[comissao] Técnico por serviço: serviço vinculado a um Tipo sem % configurada para o técnico — comissão R$ 0,00 intencional:",
-          { funcionarioId: tec.funcionario_id, servico: servicoVinculado.nome },
-        );
-      } else if (resultadoMatch.ambiguo) {
-        console.warn(
-          "[comissao] Comissão ambígua para técnico vinculado a serviço específico — não aplicada (revisão manual necessária):",
-          { funcionarioId: tec.funcionario_id, servico: servicoVinculado.nome, dispositivoMarca, candidatos: resultadoMatch.candidatosAmbiguos },
-        );
-        resultado.itensComissaoAmbigua.push({
-          nome: servicoVinculado.nome,
-          tecnico: nomePorFuncionario.get(tec.funcionario_id) || "técnico",
-          candidatos: resultadoMatch.candidatosAmbiguos || [],
-        });
-      }
-    } else if (tsId) {
-      comissaoConfig = comissaoPorFuncionarioETipo.get(`${tec.funcionario_id}:${tsId}`);
-    }
-
-    if (comissaoConfig && comissaoConfig.comissao_valor > 0) {
-      const calculoFunc = comissaoCalculoPorFuncionario.get(tec.funcionario_id) || "faturamento";
-      // Com serviço vinculado: base = preço − custo (modo lucro) do próprio
-      // serviço. Sem vínculo (legado): cai no total da OS como faturamento.
-      const itemCalc = servicoVinculado
-        ? entradaComissaoServico(servicoVinculado)
-        : { preco: baseCalculo > 0 ? baseCalculo : 0, custo: 0, custoConfirmado: true };
-      const calc = calcularComissaoDoItem(itemCalc, comissaoConfig, calculoFunc);
-      if (calc.custoNaoConfirmado) {
-        console.warn(
-          "[comissao] Comissão sobre LUCRO (Técnico por Serviço): custo R$ 0,00 não confirmado — comissão não aplicada até confirmar o custo na OS:",
-          { funcionarioId: tec.funcionario_id, servico: servicoVinculado?.nome },
-        );
-        resultado.itensCustoNaoConfirmado.push({
-          nome: servicoVinculado?.nome || tec.descricao_servico || "serviço",
-          tecnico: nomePorFuncionario.get(tec.funcionario_id) || "técnico",
-        });
-      } else {
-        comissaoTipo = comissaoConfig.comissao_tipo;
-        comissaoValor = comissaoConfig.comissao_valor;
-        comissaoCalculada = calc.valor;
-      }
-    }
-
-    // Serviço manual (id "manual_*") mantém o comportamento antigo; serviço de
-    // catálogo só é gravado se ainda existir — id órfão vira null.
-    const servicoIdParaGravar = servicoVinculado
-      ? (servicoVinculado.id.startsWith("manual_") || servicoIdsValidos.has(servicoVinculado.id)
-          ? servicoVinculado.id
-          : null)
-      : null;
-
-    tecnicosParaInserir.push({
-      os_id: osId,
-      funcionario_id: tec.funcionario_id,
-      descricao_servico: tec.descricao_servico || null,
-      servico_id: servicoIdParaGravar,
-      servico_nome_snapshot: servicoVinculado ? servicoVinculado.nome : null,
-      preco_servico_snapshot: servicoVinculado ? servicoVinculado.preco : null,
-      comissao_tipo_snapshot: comissaoTipo,
-      comissao_valor_snapshot: comissaoValor,
-      comissao_calculada_snapshot: comissaoCalculada,
-      // Só linhas com linha_id (serviço repetido/quantidade) levam a coluna;
-      // as demais gravam exatamente como antes.
-      ...(servicoVinculado?.linha_os?.linha_id ? { servico_linha_id: servicoVinculado.linha_os.linha_id } : {}),
-    });
-  }
+  resultado.itensCustoNaoConfirmado.push(...montado.itensCustoNaoConfirmado);
+  resultado.itensComissaoAmbigua.push(...montado.itensComissaoAmbigua);
+  const tecnicosParaInserir = montado.linhas;
 
   const { error: erroInsertTecnicos } = await supabase.from("os_tecnicos").insert(tecnicosParaInserir);
   // Coluna servico_linha_id ainda não criada no banco (migration da etapa 2

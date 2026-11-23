@@ -9,6 +9,7 @@ import { aplicarMascaraCPF, aplicarMascaraCNPJ, removerMascara } from "@/lib/mas
 import { buscarCEP } from "@/lib/buscarCEP";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { extrairCamposNovosLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { tecnicoOSDoBanco } from "@/lib/ordemServico/tecnicosPorServicoOS";
 import { buscarDispositivosAdicionaisOSParaEditar } from "@/hooks/useOsDispositivosAdicionais";
 import {
   EstadoAdicionaisForm,
@@ -379,12 +380,9 @@ export function useOrdemServicoWizardState({
         .eq("os_id", ordem.id)
         .then(({ data }) => {
           if (data && data.length > 0) {
-            setTecnicosOS(data.map(t => ({
-              funcionario_id: t.funcionario_id,
-              descricao_servico: t.descricao_servico || "",
-              // Só técnico ligado a uma linha repetida/com quantidade traz isto.
-              ...(t.servico_linha_id ? { servico_linha_id: t.servico_linha_id } : {}),
-            })));
+            // Traz de volta o serviço ligado (servico_id/servico_linha_id):
+            // sem ele, salvar de novo jogava a comissão no cálculo antigo.
+            setTecnicosOS(data.map(tecnicoOSDoBanco));
           } else {
             setTecnicosOS([]);
           }
