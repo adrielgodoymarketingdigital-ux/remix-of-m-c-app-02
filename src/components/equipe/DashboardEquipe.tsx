@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import type { Funcionario } from "@/types/funcionario";
 import { useComissoes, useComissoesSerieMensal } from "@/hooks/useComissoes";
 import { PerfilDesempenhoFuncionario } from "./PerfilDesempenhoFuncionario";
+import { ComoFuncionaComissao } from "./ComoFuncionaComissao";
 import { format, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
@@ -202,6 +203,11 @@ export function DashboardEquipe({ funcionarios }: DashboardEquipeProps) {
         </Popover>
       </div>
       )}
+
+      {/* Ajuda: como a comissão é calculada */}
+      <div className="flex justify-end -mt-3">
+        <ComoFuncionaComissao />
+      </div>
 
       {/* Cards resumo */}
       {isDesktop ? (

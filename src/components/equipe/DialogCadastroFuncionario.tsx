@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SeletorPermissoes } from "./SeletorPermissoes";
 import { ComissoesTipoServicoEditor, ComissaoTipoServicoLocal } from "./ComissoesTipoServicoEditor";
+import { ComoFuncionaComissao } from "./ComoFuncionaComissao";
 import type { Funcionario, FuncionarioFormData, Permissoes, ComissaoTipo, ComissaoEscopo, ComissaoCargo, BaseComissao, ComissaoCalculo } from "@/types/funcionario";
 import { PERMISSOES_DEFAULT, CARGOS_PADRAO, ESCOPOS_POR_CARGO } from "@/types/funcionario";
 import { Loader2, Eye, EyeOff, DollarSign, Percent, Tag } from "lucide-react";
@@ -541,10 +542,13 @@ export function DialogCadastroFuncionario({
 
             {/* Comissão por Cargo */}
             <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Comissão
-              </h3>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Comissão
+                </h3>
+                <ComoFuncionaComissao />
+              </div>
 
               <div className="space-y-2">
                 <Label className="text-sm">Base de cálculo da comissão</Label>
