@@ -297,8 +297,13 @@ function comissoesLidas(r: any, principal: string, funcionarios: string[]) {
   }
   return out;
 }
+// Mesmas chamadas, sem olhar o snapshot do principal nem a ORDEM: desde a F0e
+// as 4 consultas de comissão dos técnicos vêm antes do principal (e não se
+// repetem depois) quando há outro técnico ligado a serviço.
 const semSnapshot = (r: { chamadas: Chamada[] }) =>
-  JSON.parse(JSON.stringify(r.chamadas).replace(/"comissao_calculada_snapshot":[^,}]*/g, '"comissao_calculada_snapshot":"<x>"'));
+  r.chamadas
+    .map((c) => JSON.stringify(c).replace(/"comissao_calculada_snapshot":[^,}]*/g, '"comissao_calculada_snapshot":"<x>"'))
+    .sort();
 
 Deno.test("cenário antigo 'CRIAÇÃO com técnicos por serviço' (principal sem linha): só a base do principal muda", async () => {
   const a = await rodar(antes, CRIACAO_PRINCIPAL_SEM_LINHA);
@@ -407,7 +412,9 @@ Deno.test("abrir -> salvar -> abrir -> salvar sem mudar nada: mesmos valores (ca
 
 Deno.test("regra pura: servicosDeOutrosTecnicos", () => {
   const sv = [SRV_A, SRV_B];
-  const ex = (principal: string | null, tecs: Record<string, unknown>[]) => [...regraNova.servicosDeOutrosTecnicos(principal, tecs, sv)];
+  // linhas calculadas: todos com comissão configurada (critério F0e testado à parte)
+  const com = (tecs: unknown[]) => tecs.map(() => ({ comissao_tipo_snapshot: "porcentagem" }));
+  const ex = (principal: string | null, tecs: Record<string, unknown>[]) => [...regraNova.servicosDeOutrosTecnicos(principal, tecs, sv, com(tecs))];
   assertEquals(ex("ana", []), []); // sem técnicos por serviço
   assertEquals(ex("ana", [BRUNO_B]), [1]);
   assertEquals(ex("ana", [ANA_A, BRUNO_B]), []); // principal com linha própria
@@ -419,5 +426,53 @@ Deno.test("regra pura: servicosDeOutrosTecnicos", () => {
     { ...SRV_B, linha_os: { linha_id: "l1" } },
     { ...SRV_B, linha_os: { linha_id: "l2" } },
   ];
-  assertEquals([...regraNova.servicosDeOutrosTecnicos("ana", [{ ...BRUNO_B, servico_linha_id: "l2" }], rep)], [1]);
+  assertEquals([...regraNova.servicosDeOutrosTecnicos("ana", [{ ...BRUNO_B, servico_linha_id: "l2" }], rep, com([1]))], [1]);
+  // F0e: técnico ligado SEM comissão configurada → o serviço não sai
+  assertEquals([...regraNova.servicosDeOutrosTecnicos("ana", [BRUNO_B], sv, [{ comissao_tipo_snapshot: null }])], []);
+  assertEquals([...regraNova.servicosDeOutrosTecnicos("ana", [BRUNO_B], sv, [undefined])], []);
+});
+
+// ===========================================================================
+// F0e — técnico ligado SEM comissão configurada para o serviço: o serviço
+// continua com o Técnico Principal (e o técnico fica com R$ 0 nele).
+const SEM_CONFIG_BRUNO: Dados = {
+  ...DADOS_ANA_BRUNO,
+  COMISSOES: DADOS_ANA_BRUNO.COMISSOES.filter((c) => c.funcionario_id !== "bruno"),
+};
+
+Deno.test("F0e (i): técnico ligado COM comissão configurada — serviço sai da base (Ana R$ 10, Bruno R$ 40)", async () => {
+  const n = await rodar(novo, { formData: FORM_AB, tecnicoId: "ana", tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO);
+  assertEquals(n.erro, null);
+  assertEquals(gravacaoOS(n).comissao_calculada_snapshot, 10);
+  assertEquals(comissoesLidas(n, "ana", ["ana", "bruno"]), { ana: 10, bruno: 40 });
+  // as 4 consultas de comissão dos técnicos acontecem uma vez só
+  assertEquals(n.chamadas.filter((c: Chamada) => c.alvo === "tipos_servico").length, 2); // 1 do principal + 1 dos técnicos
+});
+
+Deno.test("F0e (ii): técnico ligado SEM comissão configurada — serviço fica com o principal, técnico R$ 0", async () => {
+  const p = { formData: FORM_AB, tecnicoId: "ana", tecnicosOS: [BRUNO_B] };
+  const a = await rodar(antes, p, SEM_CONFIG_BRUNO);
+  const n = await rodar(novo, p, SEM_CONFIG_BRUNO);
+  assertEquals([a.erro, n.erro], [null, null]);
+  assertEquals(gravacaoOS(n).comissao_calculada_snapshot, 30); // 10% de A + 10% de B
+  assertEquals(gravacaoOS(a).comissao_calculada_snapshot, 30); // igual a antes da F0c
+  const linhaBruno = linhasGravadas(n)[0];
+  assertEquals([linhaBruno.comissao_tipo_snapshot, linhaBruno.comissao_calculada_snapshot], [null, null]);
+  const lidas = comissoesLidas(n, "ana", ["ana", "bruno"]);
+  assertEquals(lidas, { ana: 30, bruno: 0 }); // ninguém recebe duas vezes, ninguém fica sem
+  // A gravação é a mesma de antes da F0c (só muda a ordem das consultas).
+  assertEquals(semSnapshot(n), semSnapshot(a));
+});
+
+Deno.test("F0e (iii): dois serviços, um técnico com configuração e outro sem", async () => {
+  const dados: Dados = {
+    ...DADOS_ANA_BRUNO,
+    FUNCIONARIOS: [...DADOS_ANA_BRUNO.FUNCIONARIOS, { id: "caio", nome: "Caio", comissao_calculo: "faturamento" }],
+  };
+  const CAIO_A = { funcionario_id: "caio", descricao_servico: "Serviço A", servico_id: "srv-a" }; // Caio sem config
+  const n = await rodar(novo, { formData: FORM_AB, tecnicoId: "ana", tecnicosOS: [CAIO_A, BRUNO_B] }, dados);
+  assertEquals(n.erro, null);
+  // A fica com a Ana (Caio sem config); B sai para o Bruno.
+  assertEquals(gravacaoOS(n).comissao_calculada_snapshot, 10);
+  assertEquals(comissoesLidas(n, "ana", ["ana", "bruno", "caio"]), { ana: 10, bruno: 40, caio: 0 });
 });

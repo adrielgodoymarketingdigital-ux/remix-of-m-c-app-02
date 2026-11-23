@@ -45,6 +45,8 @@ function linha(osId: string, func: string, snap: number | null, servico: { id: s
     descricao_servico: servico?.nome ?? "Serviço antigo",
     servico_id: servico?.id ?? null, servico_nome_snapshot: servico?.nome ?? null,
     preco_servico_snapshot: servico?.preco ?? null, comissao_calculada_snapshot: snap,
+    // Como salvarTecnicosOS grava: tipo/valor só quando a comissão foi aplicada.
+    comissao_tipo_snapshot: snap != null && snap > 0 ? "porcentagem" : null,
   };
 }
 
@@ -369,7 +371,7 @@ Deno.test("Sistema A: OS SEM técnicos por serviço — idêntico antes x depois
 Deno.test("regra pura: baseSistemaADaOS", () => {
   const r = novo.regra;
   const sv = [{ id: "a" }, { id: "b" }];
-  const lB = { funcionario_id: "bruno", servico_id: "b", servico_nome_snapshot: "B", preco_servico_snapshot: 200 };
+  const lB = { funcionario_id: "bruno", servico_id: "b", servico_nome_snapshot: "B", preco_servico_snapshot: 200, comissao_tipo_snapshot: "porcentagem" };
   const os300 = { funcionario_id: "ana", total: 300 };
   assertEquals(r.baseSistemaADaOS(os300, [], sv), { valor: 300, conta: true });
   assertEquals(r.baseSistemaADaOS(os300, [lB], sv), { valor: 100, conta: true });
@@ -384,4 +386,42 @@ Deno.test("regra pura: baseSistemaADaOS", () => {
   assertEquals(r.baseSistemaADaOS({ funcionario_id: "ana", total: 400 }, [{ ...lB, servico_linha_id: "l2" }], rep), { valor: 200, conta: true });
   assertEquals(r.baseSistemaADaOS({ funcionario_id: "ana", total: 400 }, [{ ...lB, servico_linha_id: "l1" }, { ...lB, servico_linha_id: "l2" }], rep), { valor: 0, conta: false });
   assertEquals(r.baseSistemaADaOS({ funcionario_id: "ana", total: 200 }, [{ ...lB, servico_id: null }], [{ id: "b" }]), { valor: 0, conta: true });
+  // F0e: técnico ligado SEM comissão configurada → o serviço fica com o principal
+  assertEquals(r.baseSistemaADaOS(os300, [{ ...lB, comissao_tipo_snapshot: null }], sv), { valor: 300, conta: true });
+  assertEquals(r.baseSistemaADaOS({ funcionario_id: "ana", total: 200 }, [{ ...lB, comissao_tipo_snapshot: null }], [{ id: "b" }]), { valor: 200, conta: true });
+  // critério único
+  assertEquals([r.linhaComComissaoConfigurada(lB), r.linhaComComissaoConfigurada({ comissao_tipo_snapshot: null }), r.linhaComComissaoConfigurada(undefined)], [true, false, false]);
+});
+
+// ===========================================================================
+// F0e no Sistema A: técnico ligado sem comissão configurada (linha com R$ 0,
+// sem comissao_tipo_snapshot) → o serviço continua na base do principal.
+const LINHA_SEM_CONFIG = (osId: string, func: string, srv: Linha) =>
+  linha(osId, func, null, srv as { id: string; nome: string; preco: number });
+
+Deno.test("F0e Sistema A (ii): técnico ligado SEM comissão configurada — Ana R$ 30, ele R$ 0", async () => {
+  bancoSistemaA([osA("os-e1", "ana-a", 300, SERVICOS_AB)], [LINHA_SEM_CONFIG("os-e1", "bruno", SERVICOS_AB[1])]);
+  const a = await comissoesEquipeA(antes);
+  const n = await comissoesEquipeA(novo);
+  assertEquals([porFunc(n, "ana-a").comissaoCalculada, porFunc(n, "bruno").comissaoCalculada], [30, 0]);
+  assertEquals(porFunc(n, "ana-a"), porFunc(a, "ana-a")); // igual a antes da F0d
+  // valor fixo: a OS só com serviço dele (sem config) continua contando
+  bancoSistemaA([osA("os-e2", "ana-f", 200, [SERVICOS_AB[1]])], [LINHA_SEM_CONFIG("os-e2", "bruno", SERVICOS_AB[1])]);
+  assertEquals(porFunc(await comissoesEquipeA(novo), "ana-f").comissaoCalculada, 5);
+});
+
+Deno.test("F0e Sistema A (iii): dois serviços, um técnico com configuração e outro sem", async () => {
+  bancoSistemaA(
+    [osA("os-e3", "ana-a", 300, SERVICOS_AB)],
+    [LINHA_SEM_CONFIG("os-e3", "davi", SERVICOS_AB[0]), LINHA_BRUNO_B("os-e3")],
+  );
+  const n = await comissoesEquipeA(novo);
+  // A (do Davi, sem config) fica com a Ana; B sai para o Bruno.
+  assertEquals([porFunc(n, "ana-a").comissaoCalculada, porFunc(n, "bruno").comissaoCalculada], [10, 40]);
+  // valor fixo: o A ainda conta como serviço dela → OS conta 1
+  bancoSistemaA(
+    [osA("os-e4", "ana-f", 300, SERVICOS_AB)],
+    [LINHA_SEM_CONFIG("os-e4", "davi", SERVICOS_AB[0]), LINHA_BRUNO_B("os-e4")],
+  );
+  assertEquals(porFunc(await comissoesEquipeA(novo), "ana-f").comissaoCalculada, 5);
 });
