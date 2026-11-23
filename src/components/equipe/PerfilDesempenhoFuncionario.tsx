@@ -25,7 +25,7 @@ import {
   encontrarComissaoPorNomeServico,
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
-import { comissaoOsDoSnapshot } from "@/lib/comissao/comissaoOsDoSnapshot";
+import { comissaoOsDaParticipacao } from "@/lib/comissao/comissaoOsDoSnapshot";
 
 interface PerfilDesempenhoFuncionarioProps {
   funcionario: Funcionario | null;
@@ -42,15 +42,16 @@ function isOSComissionavel(os: OSFuncionario): boolean {
 
 /**
  * Comissão da OS = SEMPRE o snapshot do Sistema B (mesma regra que o card
- * "Comissões a Pagar" usa via comissaoOsDoSnapshot). Sem fallback de cálculo
- * paralelo na tela: se não há snapshot, devolve null e a UI mostra "—".
+ * "Comissões a Pagar" usa via comissaoOsDaParticipacao). Sem fallback de
+ * cálculo paralelo na tela: se não há snapshot, devolve null e a UI mostra "—".
  * os.tecnicos_os já vem filtrado por funcionário em useDesempenhoFuncionario.
+ * OS em que ele é só técnico por serviço: só as linhas dele (nunca o snapshot
+ * da OS, que é do principal).
  */
 function resolverComissaoOS(os: OSFuncionario): number | null {
-  return comissaoOsDoSnapshot({
-    status: os.status,
-    comissao_calculada_snapshot: os.comissao_calculada_snapshot,
-    tecnicosDoFuncionario: os.tecnicos_os ?? [],
+  return comissaoOsDaParticipacao(os, {
+    ehPrincipal: os.tecnico_principal !== false,
+    linhas: os.tecnicos_os ?? [],
   });
 }
 
@@ -457,12 +458,19 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                           const alertasComissao = avaliarAlertasComissaoOS(os, tiposServico, comissoesTipoServico, comissaoCalculo);
                           return (
                             <TableRow key={os.id}>
-                              <TableCell className="font-medium">{os.numero_os}</TableCell>
+                              <TableCell className="font-medium">
+                                {os.numero_os}
+                                {os.tecnico_principal === false && (
+                                  <Badge variant="outline" className="ml-1.5 text-[10px] font-normal" title="Não é o Técnico Principal: ganha só pelo serviço ligado a ele">
+                                    por serviço
+                                  </Badge>
+                                )}
+                              </TableCell>
                               <TableCell>{formatDate(os.created_at)}</TableCell>
                               <TableCell>{os.cliente?.nome || "—"}</TableCell>
                               <TableCell>{os.dispositivo_marca} {os.dispositivo_modelo}</TableCell>
                               <TableCell>
-                                {os.tecnicos_os && os.tecnicos_os.length > 1 ? (
+                                {os.tecnicos_os && (os.tecnicos_os.length > 1 || (os.tecnico_principal === false && os.tecnicos_os.length > 0)) ? (
                                   <div className="flex flex-col gap-1">
                                     {os.tecnicos_os.map((t, idx) => (
                                       <Badge key={idx} variant="outline" className="text-xs w-fit">

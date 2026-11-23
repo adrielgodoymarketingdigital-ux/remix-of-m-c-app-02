@@ -2,7 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Funcionario, ComissaoTipo, ComissaoEscopo, ComissaoCargo } from "@/types/funcionario";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
-import { comissaoOsDoSnapshot } from "@/lib/comissao/comissaoOsDoSnapshot";
+import {
+  type LinhaTecnicoComissao,
+  comissaoOsDaParticipacao,
+  participacoesDoFuncionario,
+} from "@/lib/comissao/comissaoOsDoSnapshot";
 
 export interface ComissaoFuncionario {
   funcionarioId: string;
@@ -144,11 +148,7 @@ interface OSRow {
   data_saida: string | null;
   comissao_calculada_snapshot: number | null;
 }
-interface OSTecnicoRow {
-  os_id: string;
-  funcionario_id: string;
-  comissao_calculada_snapshot: number | null;
-}
+type OSTecnicoRow = LinhaTecnicoComissao;
 interface VendaRow {
   funcionario_id: string | null;
   total: number | null;
@@ -165,30 +165,26 @@ function campoDataDe(f: Funcionario): "data_saida" | "created_at" {
 /**
  * Comissão de OS de um funcionário num intervalo:
  *  - tem config de Tipo de Serviço → soma os snapshots (Sistema B), EXATAMENTE
- *    como o Perfil de Desempenho (useDesempenhoFuncionario + resolverComissaoOS):
- *    só OS em que o funcionário é o Técnico Principal (funcionario_id), com as
- *    linhas de os_tecnicos DELE naquela OS. OS em que ele é só os_tecnico de
- *    terceiros ficam de fora aqui e no Perfil — é lacuna pré-existente, medida
- *    como R$ 0 de impacto (R2).
+ *    como o Perfil de Desempenho (useDesempenhoFuncionario + resolverComissaoOS),
+ *    nas OS em que ele participa (participacoesDoFuncionario):
+ *      · Técnico Principal → como sempre (linhas dele em os_tecnicos, senão o
+ *        snapshot da OS);
+ *      · só em "Técnicos por Serviço" → só as linhas DELE ligadas a um
+ *        serviço (regra "a": ganha só pelo serviço dele; o snapshot da OS é
+ *        do principal e nunca entra aqui).
+ *    Cada OS entra uma vez por funcionário.
  *  - não tem                       → usa a parteOS do Sistema A (escopo/cargo).
  */
 function comissaoOSNoPeriodo(
-  f: Funcionario,
   temConfig: boolean,
   parteOSSistemaA: number,
-  osPrincipalNoMes: OSRow[],
-  tecnicosPorFuncOS: Map<string, OSTecnicoRow[]>,
+  participacoes: ReturnType<typeof participacoesDoFuncionario<OSRow, OSTecnicoRow>>,
 ): number {
   if (!temConfig) return parteOSSistemaA;
 
   let total = 0;
-  for (const o of osPrincipalNoMes) {
-    const tec = tecnicosPorFuncOS.get(`${f.id}:${o.id}`) || [];
-    total += comissaoOsDoSnapshot({
-      status: o.status,
-      comissao_calculada_snapshot: o.comissao_calculada_snapshot,
-      tecnicosDoFuncionario: tec,
-    }) || 0;
+  for (const { os, participacao } of participacoes) {
+    total += comissaoOsDaParticipacao(os, participacao) || 0;
   }
   return total;
 }
@@ -263,7 +259,7 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
       const osIds = osTodas.map((o) => o.id);
       const { data: osTecnicos } = osIds.length > 0
         ? await supabase.from("os_tecnicos")
-            .select("os_id, funcionario_id, comissao_calculada_snapshot")
+            .select("os_id, funcionario_id, comissao_calculada_snapshot, servico_id, servico_nome_snapshot")
             .in("os_id", osIds).in("funcionario_id", funcionarioIds)
         : { data: [] as OSTecnicoRow[] };
 
@@ -292,15 +288,20 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
           const d = new Date(raw);
           return d >= inicioDate && d <= fimDate;
         };
-        const osPrincipal = osTodas.filter((o) => o.funcionario_id === f.id && dentroMes(o));
+        const osDoMes = osTodas.filter(dentroMes);
+        const osPrincipal = osDoMes.filter((o) => o.funcionario_id === f.id);
+        // Valor de OS e Sistema A continuam só com as OS em que ele é o principal
+        // (somar a OS inteira para cada técnico dela contaria o valor em dobro).
         const totalServicos = osPrincipal.reduce((acc, o) => acc + Number(o.total || 0), 0);
-        const quantidadeOS = osPrincipal.length;
 
         const sa = calcularComissaoSistemaA(
-          f, totalVendasProdutos, totalVendasDispositivos, totalServicos, quantidadeVendas, quantidadeOS,
+          f, totalVendasProdutos, totalVendasDispositivos, totalServicos, quantidadeVendas, osPrincipal.length,
         );
         const temConfig = funcIdsComConfig.has(f.id);
-        const comissaoOS = comissaoOSNoPeriodo(f, temConfig, sa.parteOS, osPrincipal, tecnicosPorFuncOS);
+        // Com config, a OS conta também onde ele é só técnico por serviço.
+        const participacoes = temConfig ? participacoesDoFuncionario(f.id, osDoMes, tecnicosPorFuncOS) : [];
+        const quantidadeOS = temConfig ? participacoes.length : osPrincipal.length;
+        const comissaoOS = comissaoOSNoPeriodo(temConfig, sa.parteOS, participacoes);
         const comissaoCalculada = sa.parteVendas + comissaoOS;
 
         return {
@@ -398,7 +399,7 @@ export function useComissoesSerieMensal(funcionarios: Funcionario[], mesRef: Dat
       const osIds = osTodas.map((o) => o.id);
       const { data: osTecnicos } = osIds.length > 0
         ? await supabase.from("os_tecnicos")
-            .select("os_id, funcionario_id, comissao_calculada_snapshot")
+            .select("os_id, funcionario_id, comissao_calculada_snapshot, servico_id, servico_nome_snapshot")
             .in("os_id", osIds).in("funcionario_id", funcionarioIds)
         : { data: [] as OSTecnicoRow[] };
 
@@ -442,15 +443,19 @@ export function useComissoesSerieMensal(funcionarios: Funcionario[], mesRef: Dat
             const d = new Date(raw);
             return d >= inicioMes && d <= fimMes;
           };
-          const osPrincipal = osTodas.filter((o) => o.funcionario_id === f.id && dentroMes(o));
+          const osDoMes = osTodas.filter(dentroMes);
+          const osPrincipal = osDoMes.filter((o) => o.funcionario_id === f.id);
+          // Valor de OS e Sistema A continuam só com as OS em que ele é o principal
+          // (somar a OS inteira para cada técnico dela contaria o valor em dobro).
           const totalServicos = osPrincipal.reduce((acc, o) => acc + Number(o.total || 0), 0);
-          const quantidadeOS = osPrincipal.length;
 
           const sa = calcularComissaoSistemaA(
-            f, totalVendasProdutos, totalVendasDispositivos, totalServicos, quantidadeVendas, quantidadeOS,
+            f, totalVendasProdutos, totalVendasDispositivos, totalServicos, quantidadeVendas, osPrincipal.length,
           );
           const temConfig = funcIdsComConfig.has(f.id);
-          const comissaoOS = comissaoOSNoPeriodo(f, temConfig, sa.parteOS, osPrincipal, tecnicosPorFuncOS);
+          // Com config, a comissão conta também onde ele é só técnico por serviço.
+          const participacoes = temConfig ? participacoesDoFuncionario(f.id, osDoMes, tecnicosPorFuncOS) : [];
+          const comissaoOS = comissaoOSNoPeriodo(temConfig, sa.parteOS, participacoes);
 
           totalVendidoMes += totalVendasProdutos + totalVendasDispositivos + totalServicos;
           totalComissoesMes += sa.parteVendas + comissaoOS;

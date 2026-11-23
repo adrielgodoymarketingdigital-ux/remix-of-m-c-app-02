@@ -35,6 +35,37 @@
 > duplicados. Backfill das OS antigas afetadas = tarefa separada (dry-run
 > primeiro). Detalhes: P3-e abaixo.
 
+> **Status F0b — vários técnicos na mesma OS (2026-11-23), regra "a":** cada
+> técnico ganha **só pelo serviço em que está ligado** em "Técnicos por
+> Serviço" (`os_tecnicos`). Nada é dividido entre técnicos e ninguém recebe a
+> comissão da OS inteira por estar só em `os_tecnicos`. Antes, "Comissões a
+> Pagar", o gráfico mensal e o "Perfil de Desempenho" só olhavam as OS em que
+> o funcionário era o **Técnico Principal** — quem estava só em `os_tecnicos`
+> tinha o snapshot gravado mas aparecia com **R$ 0**. Agora (helper
+> `participacaoNaOS` / `comissaoOsDaParticipacao` em
+> [`comissaoOsDoSnapshot.ts`](../src/lib/comissao/comissaoOsDoSnapshot.ts)),
+> para cada OS e cada funcionário a comissão entra **uma vez só**:
+> - **é o Técnico Principal** → exatamente como antes (`comissaoOsDoSnapshot`:
+>   linhas dele em `os_tecnicos`, senão o snapshot da OS);
+> - **não é o principal, mas tem linha ligada a um serviço** → Σ dessas linhas
+>   dele (o snapshot da OS é do principal e **nunca** entra);
+> - **não é o principal e só tem linha sem serviço ligado** (legado, cálculo
+>   antigo "tipo da OS × total") → não participa (era R$ 0 e continua);
+> - senão → não participa.
+>
+> "Linha ligada a um serviço" = `servico_id` preenchido **ou**
+> `servico_nome_snapshot` preenchido (`salvarTecnicosOS` grava o nome sempre
+> que achou o serviço, mesmo quando o id do catálogo já foi apagado).
+> No "Desempenho" a OS passa a contar para todos os técnicos dela (marcada
+> "por serviço" no Perfil); no "Comissões a Pagar" a coluna OS também conta
+> essas OS para quem tem "Comissão por Tipo de Serviço". O **valor de OS**
+> (`totalServicos`, "Total Vendido") e o **Sistema A** continuam só com as OS
+> em que o funcionário é o principal (somar a OS para cada técnico contaria o
+> valor em dobro). OS sem `os_tecnicos` dão exatamente os mesmos números de
+> antes. Provas: `scripts/testes-os-tecnicos/comissao/run.sh`. Não existe
+> marcação de "comissão paga" no app nem no banco — a tela é só cálculo.
+> Pendência registrada: P3-f.
+
 Historicamente existiam **dois motores de cálculo de comissão completamente
 separados**, que **não se conciliavam** e podiam mostrar números diferentes
 para o mesmo funcionário no mesmo mês:
@@ -133,6 +164,9 @@ Busca as OS do funcionário no período + as linhas de `os_tecnicos` dele + o
 mapa `comissoes_tipo_servico` (fallback) + `comissao_calculo`. Filtra
 `deleted_at IS NULL` e `is_teste = false`. Campo de data:
 `data_saida` se `base_comissao = "entrega"`, senão `created_at`.
+Desde a F0b (2026-11-23) traz também as OS em que ele **não** é o principal mas
+tem linha de `os_tecnicos` ligada a um serviço (`buscarOSPorServico`), com
+`tecnico_principal: false` e só as linhas ligadas dele.
 
 **[`src/components/equipe/PerfilDesempenhoFuncionario.tsx`](../src/components/equipe/PerfilDesempenhoFuncionario.tsx)**
 
@@ -405,7 +439,9 @@ Prioridade por impacto em **pagamento real de funcionário**.
   `useComissoes` / `useComissoesSerieMensal` passaram a: (a) buscar
   `comissoes_tipo_servico` para saber quem tem config; (b) para quem TEM,
   somar os snapshots das OS onde é Técnico Principal (mesmíssimo conjunto que o
-  Perfil, via `comissaoOsDoSnapshot`); (c) para quem NÃO tem, seguir no
+  Perfil, via `comissaoOsDoSnapshot`) — **desde a F0b também as OS em que ele
+  está só em "Técnicos por Serviço", ligado a um serviço** (ver o status F0b no
+  Resumo executivo); (c) para quem NÃO tem, seguir no
   Sistema A. `calcularComissaoSistemaA` agora devolve `{ total, parteVendas,
   parteOS }` — a `parteOS` é substituída pelo snapshot para quem tem config; a
   `parteVendas` continua Sistema A para todo mundo (até a Fase 3).
@@ -609,7 +645,29 @@ Prioridade por impacto em **pagamento real de funcionário**.
   (`ordens_servico.comissao_calculada_snapshot` **e** `os_tecnicos.*`).
   `resolverComissaoOS` prefere `os_tecnicos` e não soma o outro — então hoje não
   há bug —, mas qualquer relatório novo que some as duas colunas vai contar em
-  dobro.
+  dobro. **Desde a F0b** a escolha está num lugar só
+  (`comissaoOsDaParticipacao`): todo leitor novo deve usar o helper, nunca somar
+  as colunas.
+
+### ✅ Técnico só em "Técnicos por Serviço" aparecia com R$ 0 — **CORRIGIDO na F0b (2026-11-23)**
+
+- **O quê (era):** "Comissões a Pagar", gráfico mensal e "Perfil de
+  Desempenho" só somavam as OS em que o funcionário era o Técnico Principal; a
+  comissão gravada em `os_tecnicos` para outro técnico não aparecia em lugar
+  nenhum (em produção, 24 OS com técnico por serviço diferente do principal).
+- **Correção:** regra "a" descrita no Resumo executivo (status F0b).
+
+### 🟡 P3-f — Principal SEM linha própria + outro técnico por serviço
+
+- Quando o Técnico Principal **não** está em `os_tecnicos`, a comissão dele é
+  o snapshot da OS, calculado por `calcularComissaoPorServico` sobre **todos**
+  os serviços — inclusive o serviço ligado a outro técnico. Com a F0b o outro
+  técnico passa a receber pelo serviço dele, e o mesmo serviço pode entrar na
+  comissão dos dois (se o principal também tiver % para aquele tipo). A F0b não
+  mudou o valor do principal (decisão: só somar quem faltava). Corrigir exige
+  decidir se o principal deve perder o serviço ligado a outro técnico (no
+  save, `calcularComissaoPorServico` ignorar serviços que têm técnico em
+  `os_tecnicos`) e re-salvar/backfill das OS afetadas.
 
 ---
 
@@ -669,7 +727,7 @@ Prioridade por impacto em **pagamento real de funcionário**.
 | Equipe → Dashboard → card "Comissões a Pagar" | soma da equipe no mês | A |
 | Equipe → Dashboard → tabela "Desempenho por Funcionário", coluna "Comissão" | por funcionário no mês | A |
 | Equipe → Dashboard → export XLSX | idem tabela | A |
-| Equipe → Dashboard → botão 👁 "Perfil" → cards e tabela de OS + dialog "OS ####" | por OS e total do período | **B** (com fallback) |
+| Equipe → Dashboard → botão 👁 "Perfil" → cards e tabela de OS + dialog "OS ####" | por OS e total do período; OS "por serviço" marcadas (F0b) | **B** (com fallback) |
 | Equipe → Dashboard → sparkline dos 6 meses | série de "Total Vendido" e "Comissões" | A |
 | Dashboard do funcionário → "Sua Comissão do Mês" | estimativa do próprio mês | A' |
 | Wizard da OS → toast ao salvar | "⚠️ Comissão do técnico incompleta — revise: ..." | B |
