@@ -6,11 +6,11 @@
  * nomes amigáveis das contagens, mensagens dos erros e quando o botão final libera.
  */
 
-export type Categoria = "vendas" | "os" | "clientes" | "financeiro" | "estoque" | "orcamentos";
+export type Categoria = "vendas" | "os" | "clientes" | "financeiro" | "estoque" | "produtos_pecas" | "orcamentos";
 export type Escolha = Categoria | "tudo";
 
 /** Ordem do banco (c_ordem da prévia). */
-export const ORDEM_CATEGORIAS: readonly Categoria[] = ["vendas", "os", "clientes", "financeiro", "estoque", "orcamentos"];
+export const ORDEM_CATEGORIAS: readonly Categoria[] = ["vendas", "os", "clientes", "financeiro", "estoque", "produtos_pecas", "orcamentos"];
 
 export interface InfoCategoria {
   id: Escolha;
@@ -54,6 +54,13 @@ export const CATEGORIAS: readonly InfoCategoria[] = [
     aviso: "Apagar o estoque também apaga as vendas.",
   },
   {
+    id: "produtos_pecas",
+    titulo: "Produtos e peças",
+    apaga: "Produtos, peças, as entradas de estoque e as fotos deles.",
+    fica: "Os aparelhos, as compras de aparelhos, os fornecedores, as listas de compras e as notas XML continuam.",
+    aviso: "Apagar produtos e peças também apaga TODAS as vendas, inclusive as de aparelhos.",
+  },
+  {
     id: "orcamentos",
     titulo: "Orçamentos",
     apaga: "Todos os orçamentos.",
@@ -75,12 +82,27 @@ export interface Inclusao {
   motivo: string;
 }
 
-/** Mesmas regras da prévia: clientes inclui os, vendas e orçamentos; estoque inclui vendas; tudo = todas. */
-export function expandirEscolha(escolhidas: readonly Escolha[]): { efetivas: Categoria[]; tudo: boolean; incluidas: Inclusao[] } {
+/** Categoria marcada que não conta porque outra já a contém (Produtos e peças dentro do Estoque). */
+export interface Absorcao {
+  categoria: Categoria;
+  por_causa_de: Categoria;
+  motivo: string;
+}
+
+/** O que "Tudo" apaga: todas as categorias, menos Produtos e peças (o Estoque já contém). */
+export const CATEGORIAS_DO_TUDO: readonly Categoria[] = ORDEM_CATEGORIAS.filter((c) => c !== "produtos_pecas");
+
+/**
+ * Mesmas regras da prévia: clientes inclui os, vendas e orçamentos; estoque inclui vendas;
+ * produtos e peças inclui vendas e fica dentro do estoque (não conta duas vezes); tudo = todas
+ * as de antes (sem produtos e peças, que o estoque já contém).
+ */
+export function expandirEscolha(escolhidas: readonly Escolha[]): { efetivas: Categoria[]; tudo: boolean; incluidas: Inclusao[]; absorvidas: Absorcao[] } {
   const tudo = escolhidas.includes("tudo");
-  if (tudo) return { efetivas: [...ORDEM_CATEGORIAS], tudo, incluidas: [] };
+  if (tudo) return { efetivas: [...CATEGORIAS_DO_TUDO], tudo, incluidas: [], absorvidas: [] };
   const ef = new Set<Categoria>(escolhidas.filter((e): e is Categoria => e !== "tudo"));
   const incluidas: Inclusao[] = [];
+  const absorvidas: Absorcao[] = [];
   const incluir = (categoria: Categoria, por_causa_de: Categoria, motivo: string) => {
     if (!ef.has(categoria)) {
       ef.add(categoria);
@@ -92,8 +114,13 @@ export function expandirEscolha(escolhidas: readonly Escolha[]): { efetivas: Cat
     incluir("vendas", "clientes", "As vendas ficariam sem cliente.");
     incluir("orcamentos", "clientes", "Os orçamentos ficariam sem cliente.");
   }
+  if (ef.has("estoque") && ef.has("produtos_pecas")) {
+    ef.delete("produtos_pecas");
+    absorvidas.push({ categoria: "produtos_pecas", por_causa_de: "estoque", motivo: "O Estoque já apaga os produtos e as peças." });
+  }
   if (ef.has("estoque")) incluir("vendas", "estoque", "As vendas ficariam sem o produto ou aparelho vendido.");
-  return { efetivas: ORDEM_CATEGORIAS.filter((c) => ef.has(c)), tudo, incluidas };
+  if (ef.has("produtos_pecas")) incluir("vendas", "produtos_pecas", "As vendas ficariam sem o produto ou a peça vendida.");
+  return { efetivas: ORDEM_CATEGORIAS.filter((c) => ef.has(c)), tudo, incluidas, absorvidas };
 }
 
 /** Lista que vai para o banco (p_categorias): o que a pessoa marcou, na ordem do banco. */
@@ -158,6 +185,7 @@ export const ROTULOS_RESUMO: Record<Categoria, Record<string, Rotulo>> = {
   clientes: { clientes: ["cliente", "clientes"], pontos_fidelidade: ["lançamento de pontos de fidelidade", "lançamentos de pontos de fidelidade"], remessas: ["remessa corporativa", "remessas corporativas"] },
   financeiro: { contas: ["conta a pagar ou receber", "contas a pagar ou receber"], caixas: ["caixa", "caixas"], lancamentos_extrato: ["lançamento manual do extrato", "lançamentos manuais do extrato"] },
   estoque: { produtos: ["produto", "produtos"], pecas: ["peça", "peças"], aparelhos: ["aparelho", "aparelhos"], compras_aparelhos: ["compra de aparelho", "compras de aparelhos"], fornecedores: ["fornecedor", "fornecedores"], notas_xml: ["nota XML importada", "notas XML importadas"] },
+  produtos_pecas: { produtos: ["produto", "produtos"], pecas: ["peça", "peças"], entradas_estoque: ["entrada de estoque", "entradas de estoque"], ligacoes_xml: ["ligação de item de nota XML", "ligações de itens de notas XML"] },
   orcamentos: { orcamentos: ["orçamento", "orçamentos"] },
 };
 

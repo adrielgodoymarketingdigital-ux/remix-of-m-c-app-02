@@ -5,6 +5,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   CATEGORIAS,
+  CATEGORIAS_DO_TUDO,
   categoriasParaEnviar,
   contagemAmigavel,
   type Escolha,
@@ -21,8 +22,8 @@ import {
   textosNumeracao,
 } from "../../src/lib/comecarDoZero/regras.ts";
 
-Deno.test("categorias: as 7 da tela, cada uma com o que apaga e o que fica", () => {
-  assertEquals(CATEGORIAS.map((c) => c.id), ["vendas", "os", "clientes", "financeiro", "estoque", "orcamentos", "tudo"]);
+Deno.test("categorias: as 8 da tela, cada uma com o que apaga e o que fica", () => {
+  assertEquals(CATEGORIAS.map((c) => c.id), ["vendas", "os", "clientes", "financeiro", "estoque", "produtos_pecas", "orcamentos", "tudo"]);
   for (const c of CATEGORIAS) assert(c.titulo && c.apaga && c.fica, c.id);
   assert(CATEGORIAS.find((c) => c.id === "clientes")!.aviso!.includes("ordens de serviço, as vendas e os orçamentos"));
   assert(CATEGORIAS.find((c) => c.id === "estoque")!.aviso!.includes("vendas"));
@@ -36,15 +37,59 @@ Deno.test("inclusão automática: igual às regras da prévia do banco", () => {
       { categoria: "vendas", por_causa_de: "clientes", motivo: "As vendas ficariam sem cliente." },
       { categoria: "orcamentos", por_causa_de: "clientes", motivo: "Os orçamentos ficariam sem cliente." },
     ],
+    absorvidas: [],
   });
   assertEquals(expandirEscolha(["estoque"]).efetivas, ["vendas", "estoque"]);
   assertEquals(expandirEscolha(["estoque"]).incluidas.map((i) => `${i.categoria}<${i.por_causa_de}`), ["vendas<estoque"]);
   // já marcada não aparece como incluída
   assertEquals(expandirEscolha(["estoque", "vendas"]).incluidas, []);
   assertEquals(expandirEscolha(["clientes", "estoque"]).incluidas.map((i) => i.categoria), ["os", "vendas", "orcamentos"]);
-  assertEquals(expandirEscolha(["tudo", "os"]), { efetivas: [...ORDEM_CATEGORIAS], tudo: true, incluidas: [] });
-  assertEquals(expandirEscolha([]), { efetivas: [], tudo: false, incluidas: [] });
+  // Tudo = as 6 categorias de antes (Produtos e peças está dentro do Estoque)
+  assertEquals(expandirEscolha(["tudo", "os"]), { efetivas: ["vendas", "os", "clientes", "financeiro", "estoque", "orcamentos"], tudo: true, incluidas: [], absorvidas: [] });
+  assertEquals(expandirEscolha([]), { efetivas: [], tudo: false, incluidas: [], absorvidas: [] });
   assertEquals(expandirEscolha(["financeiro", "orcamentos"]).efetivas, ["financeiro", "orcamentos"]);
+});
+
+Deno.test("Produtos e peças: textos, inclusão das vendas e absorção pelo Estoque (igual à prévia do banco)", () => {
+  const pp = CATEGORIAS.find((c) => c.id === "produtos_pecas")!;
+  assertEquals(pp, {
+    id: "produtos_pecas",
+    titulo: "Produtos e peças",
+    apaga: "Produtos, peças, as entradas de estoque e as fotos deles.",
+    fica: "Os aparelhos, as compras de aparelhos, os fornecedores, as listas de compras e as notas XML continuam.",
+    aviso: "Apagar produtos e peças também apaga TODAS as vendas, inclusive as de aparelhos.",
+  });
+  // ao lado do Estoque, na tela e na ordem do banco
+  assertEquals(ORDEM_CATEGORIAS, ["vendas", "os", "clientes", "financeiro", "estoque", "produtos_pecas", "orcamentos"]);
+  assertEquals(CATEGORIAS_DO_TUDO, ["vendas", "os", "clientes", "financeiro", "estoque", "orcamentos"]);
+  // o Estoque continua exatamente como era
+  assertEquals(CATEGORIAS.find((c) => c.id === "estoque"), {
+    id: "estoque", titulo: "Estoque",
+    apaga: "Produtos, peças, aparelhos, compras de aparelhos, fornecedores, notas XML importadas e listas de compras.",
+    fica: "Os serviços cadastrados continuam, mas sem a peça ligada a eles.",
+    aviso: "Apagar o estoque também apaga as vendas.",
+  });
+  assertEquals(expandirEscolha(["produtos_pecas"]), {
+    efetivas: ["vendas", "produtos_pecas"], tudo: false,
+    incluidas: [{ categoria: "vendas", por_causa_de: "produtos_pecas", motivo: "As vendas ficariam sem o produto ou a peça vendida." }],
+    absorvidas: [],
+  });
+  const absorvida = [{ categoria: "produtos_pecas", por_causa_de: "estoque", motivo: "O Estoque já apaga os produtos e as peças." }];
+  // Estoque + Produtos e peças = Estoque (não conta duas vezes)
+  assertEquals(expandirEscolha(["estoque", "produtos_pecas"]), { ...expandirEscolha(["estoque"]), absorvidas: absorvida });
+  assertEquals(expandirEscolha(["produtos_pecas", "estoque", "os"]).efetivas, ["vendas", "os", "estoque"]);
+  // Tudo + Produtos e peças = Tudo
+  assertEquals(expandirEscolha(["tudo", "produtos_pecas"]), expandirEscolha(["tudo"]));
+  // vendas entram uma vez só: quem incluiu primeiro (clientes) fica como motivo
+  assertEquals(expandirEscolha(["clientes", "produtos_pecas"]).incluidas.map((i) => `${i.categoria}<${i.por_causa_de}`), ["os<clientes", "vendas<clientes", "orcamentos<clientes"]);
+  assertEquals(expandirEscolha(["vendas", "produtos_pecas"]).incluidas, []);
+  assertEquals(expandirEscolha(["os", "produtos_pecas"]).efetivas, ["vendas", "os", "produtos_pecas"]);
+  // a lista para o banco leva as duas; quem absorve é o banco (e a tela, igual)
+  assertEquals(categoriasParaEnviar(["produtos_pecas", "estoque"]), ["estoque", "produtos_pecas"]);
+  assertEquals(categoriasParaEnviar(["orcamentos", "produtos_pecas"]), ["produtos_pecas", "orcamentos"]);
+  assertEquals(linhasResumo("produtos_pecas", { produtos: 12, pecas: 1, entradas_estoque: 30, ligacoes_xml: 0 }),
+    ["12 produtos", "1 peça", "30 entradas de estoque"]);
+  assertEquals(linhasResumo("produtos_pecas", { ligacoes_xml: 2 }), ["2 ligações de itens de notas XML"]);
 });
 
 Deno.test("lista enviada ao banco: 'tudo' sozinho; senão na ordem do banco", () => {
