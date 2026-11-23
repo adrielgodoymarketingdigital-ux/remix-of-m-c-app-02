@@ -3,7 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Funcionario, ComissaoTipo, ComissaoEscopo, ComissaoCargo } from "@/types/funcionario";
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 import {
+  type LinhaBaseSistemaA,
   type LinhaTecnicoComissao,
+  type ServicoRealizadoBase,
+  baseSistemaADaOS,
   comissaoOsDaParticipacao,
   participacoesDoFuncionario,
 } from "@/lib/comissao/comissaoOsDoSnapshot";
@@ -147,8 +150,10 @@ interface OSRow {
   created_at: string | null;
   data_saida: string | null;
   comissao_calculada_snapshot: number | null;
+  /** avarias->servicos_realizados (só para achar o serviço de cada técnico). */
+  servicos_realizados?: ServicoRealizadoBase[] | null;
 }
-type OSTecnicoRow = LinhaTecnicoComissao;
+type OSTecnicoRow = LinhaTecnicoComissao & LinhaBaseSistemaA;
 interface VendaRow {
   funcionario_id: string | null;
   total: number | null;
@@ -156,7 +161,9 @@ interface VendaRow {
   data?: string | null;
 }
 
-const OS_SELECT = "id, funcionario_id, status, total, created_at, data_saida, comissao_calculada_snapshot";
+// `: string` de propósito: com o caminho json (avarias->…) o tipo literal do
+// select estoura o TypeScript (TS2589); o resultado é convertido para OSRow.
+const OS_SELECT: string = "id, funcionario_id, status, total, created_at, data_saida, comissao_calculada_snapshot, servicos_realizados:avarias->servicos_realizados";
 
 function campoDataDe(f: Funcionario): "data_saida" | "created_at" {
   return f.base_comissao === "entrega" ? "data_saida" : "created_at";
@@ -187,6 +194,32 @@ function comissaoOSNoPeriodo(
     total += comissaoOsDaParticipacao(os, participacao) || 0;
   }
   return total;
+}
+
+/** Linhas de os_tecnicos por OS (de TODOS os técnicos da OS). */
+function indexarOsTecnicosPorOS(osTecnicos: OSTecnicoRow[]): Map<string, OSTecnicoRow[]> {
+  const porOS = new Map<string, OSTecnicoRow[]>();
+  osTecnicos.forEach((t) => {
+    if (!porOS.has(t.os_id)) porOS.set(t.os_id, []);
+    porOS.get(t.os_id)!.push(t);
+  });
+  return porOS;
+}
+
+/**
+ * Sistema A (F0d): base de OS do principal sem os serviços ligados a outros
+ * técnicos (baseSistemaADaOS) — valor para o percentual e quantidade de OS
+ * para o valor fixo. Sem técnicos por serviço = Σ os.total e nº de OS, como antes.
+ */
+function baseOSSistemaA(osPrincipal: OSRow[], linhasPorOS: Map<string, OSTecnicoRow[]>): { valor: number; quantidade: number } {
+  let valor = 0;
+  let quantidade = 0;
+  for (const o of osPrincipal) {
+    const b = baseSistemaADaOS(o, linhasPorOS.get(o.id) || [], o.servicos_realizados);
+    valor += b.valor;
+    if (b.conta) quantidade += 1;
+  }
+  return { valor, quantidade };
 }
 
 function indexarOsTecnicos(osTecnicos: OSTecnicoRow[]): Map<string, OSTecnicoRow[]> {
@@ -245,12 +278,12 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
         supabase.from("ordens_servico").select(OS_SELECT)
           .eq("user_id", user.id).is("deleted_at", null).eq("is_teste", false)
           .eq("status", "entregue").gte("created_at", inicio).lte("created_at", fim)
-          .then((r) => (r.data || []) as OSRow[]),
+          .then((r) => (r.data || []) as unknown as OSRow[]),
         supabase.from("ordens_servico").select(OS_SELECT)
           .eq("user_id", user.id).is("deleted_at", null).eq("is_teste", false)
           .eq("status", "entregue").not("data_saida", "is", null)
           .gte("data_saida", inicio).lte("data_saida", fim)
-          .then((r) => (r.data || []) as OSRow[]),
+          .then((r) => (r.data || []) as unknown as OSRow[]),
       ]);
       const osById0 = new Map<string, OSRow>();
       [...osPorCriacao, ...osPorEntrega].forEach((o) => osById0.set(o.id, o));
@@ -258,9 +291,12 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
 
       const osIds = osTodas.map((o) => o.id);
       const { data: osTecnicos } = osIds.length > 0
+        // Todos os técnicos das OS (não só os da lista): o Sistema A do
+        // principal desconta o serviço de qualquer outro técnico. "*" porque
+        // servico_linha_id só existe depois da migration 20261025120000.
         ? await supabase.from("os_tecnicos")
-            .select("os_id, funcionario_id, comissao_calculada_snapshot, servico_id, servico_nome_snapshot")
-            .in("os_id", osIds).in("funcionario_id", funcionarioIds)
+            .select("*")
+            .in("os_id", osIds)
         : { data: [] as OSTecnicoRow[] };
 
       const { data: cfgTipo } = await supabase
@@ -270,6 +306,7 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
       const funcIdsComConfig = new Set((cfgTipo || []).map((c: { funcionario_id: string }) => c.funcionario_id));
 
       const tecnicosPorFuncOS = indexarOsTecnicos((osTecnicos || []) as OSTecnicoRow[]);
+      const linhasPorOS = indexarOsTecnicosPorOS((osTecnicos || []) as OSTecnicoRow[]);
 
       const atual = funcionarios.map((f) => {
         const vendasFunc = (vendasMes || []).filter((v: VendaRow) => v.funcionario_id === f.id);
@@ -294,10 +331,15 @@ export function useComissoes(funcionarios: Funcionario[], mes?: Date) {
         // (somar a OS inteira para cada técnico dela contaria o valor em dobro).
         const totalServicos = osPrincipal.reduce((acc, o) => acc + Number(o.total || 0), 0);
 
-        const sa = calcularComissaoSistemaA(
-          f, totalVendasProdutos, totalVendasDispositivos, totalServicos, quantidadeVendas, osPrincipal.length,
-        );
         const temConfig = funcIdsComConfig.has(f.id);
+        // Sistema A (sem Comissão por Tipo de Serviço): base sem os serviços de
+        // outros técnicos. Com config, a parte de OS vem do snapshot (abaixo).
+        const baseA = temConfig
+          ? { valor: totalServicos, quantidade: osPrincipal.length }
+          : baseOSSistemaA(osPrincipal, linhasPorOS);
+        const sa = calcularComissaoSistemaA(
+          f, totalVendasProdutos, totalVendasDispositivos, baseA.valor, quantidadeVendas, baseA.quantidade,
+        );
         // Com config, a OS conta também onde ele é só técnico por serviço.
         const participacoes = temConfig ? participacoesDoFuncionario(f.id, osDoMes, tecnicosPorFuncOS) : [];
         const quantidadeOS = temConfig ? participacoes.length : osPrincipal.length;
@@ -385,12 +427,12 @@ export function useComissoesSerieMensal(funcionarios: Funcionario[], mesRef: Dat
         supabase.from("ordens_servico").select(OS_SELECT)
           .eq("user_id", user.id).is("deleted_at", null).eq("is_teste", false)
           .eq("status", "entregue").gte("created_at", inicioSerie).lte("created_at", fimSerie)
-          .then((r) => (r.data || []) as OSRow[]),
+          .then((r) => (r.data || []) as unknown as OSRow[]),
         supabase.from("ordens_servico").select(OS_SELECT)
           .eq("user_id", user.id).is("deleted_at", null).eq("is_teste", false)
           .eq("status", "entregue").not("data_saida", "is", null)
           .gte("data_saida", inicioSerie).lte("data_saida", fimSerie)
-          .then((r) => (r.data || []) as OSRow[]),
+          .then((r) => (r.data || []) as unknown as OSRow[]),
       ]);
       const osById0 = new Map<string, OSRow>();
       [...osPorCriacao, ...osPorEntrega].forEach((o) => osById0.set(o.id, o));
@@ -398,9 +440,12 @@ export function useComissoesSerieMensal(funcionarios: Funcionario[], mesRef: Dat
 
       const osIds = osTodas.map((o) => o.id);
       const { data: osTecnicos } = osIds.length > 0
+        // Todos os técnicos das OS (não só os da lista): o Sistema A do
+        // principal desconta o serviço de qualquer outro técnico. "*" porque
+        // servico_linha_id só existe depois da migration 20261025120000.
         ? await supabase.from("os_tecnicos")
-            .select("os_id, funcionario_id, comissao_calculada_snapshot, servico_id, servico_nome_snapshot")
-            .in("os_id", osIds).in("funcionario_id", funcionarioIds)
+            .select("*")
+            .in("os_id", osIds)
         : { data: [] as OSTecnicoRow[] };
 
       const { data: cfgTipo } = await supabase
@@ -410,6 +455,7 @@ export function useComissoesSerieMensal(funcionarios: Funcionario[], mesRef: Dat
       const funcIdsComConfig = new Set((cfgTipo || []).map((c: { funcionario_id: string }) => c.funcionario_id));
 
       const tecnicosPorFuncOS = indexarOsTecnicos((osTecnicos || []) as OSTecnicoRow[]);
+      const linhasPorOS = indexarOsTecnicosPorOS((osTecnicos || []) as OSTecnicoRow[]);
 
       const pontos: PontoSerieMensalComissoes[] = [];
       for (let i = meses - 1; i >= 0; i--) {
@@ -449,10 +495,15 @@ export function useComissoesSerieMensal(funcionarios: Funcionario[], mesRef: Dat
           // (somar a OS inteira para cada técnico dela contaria o valor em dobro).
           const totalServicos = osPrincipal.reduce((acc, o) => acc + Number(o.total || 0), 0);
 
-          const sa = calcularComissaoSistemaA(
-            f, totalVendasProdutos, totalVendasDispositivos, totalServicos, quantidadeVendas, osPrincipal.length,
-          );
           const temConfig = funcIdsComConfig.has(f.id);
+          // Sistema A (sem Comissão por Tipo de Serviço): base sem os serviços de
+          // outros técnicos. Com config, a parte de OS vem do snapshot (abaixo).
+          const baseA = temConfig
+            ? { valor: totalServicos, quantidade: osPrincipal.length }
+            : baseOSSistemaA(osPrincipal, linhasPorOS);
+          const sa = calcularComissaoSistemaA(
+            f, totalVendasProdutos, totalVendasDispositivos, baseA.valor, quantidadeVendas, baseA.quantidade,
+          );
           // Com config, a comissão conta também onde ele é só técnico por serviço.
           const participacoes = temConfig ? participacoesDoFuncionario(f.id, osDoMes, tecnicosPorFuncOS) : [];
           const comissaoOS = comissaoOSNoPeriodo(temConfig, sa.parteOS, participacoes);

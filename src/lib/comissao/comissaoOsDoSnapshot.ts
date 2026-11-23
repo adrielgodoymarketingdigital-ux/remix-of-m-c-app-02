@@ -155,3 +155,68 @@ export function valorOsDaParticipacao(
   if (p.ehPrincipal) return Number(os.total) || 0;
   return p.linhas.reduce((acc, l) => acc + (Number(l.preco_servico_snapshot) || 0), 0);
 }
+
+// ===========================================================================
+// Sistema A (comissão por escopo/cargo, calculada na tela) com vários
+// técnicos (F0d, 2026-11-23): a base do Técnico Principal NÃO inclui o preço
+// dos serviços ligados a OUTROS técnicos em "Técnicos por Serviço" — mesma
+// regra da gravação (F0c, servicosDeOutrosTecnicos): só quando o principal não
+// tem linha própria nesta OS, e só linhas de outro técnico ligadas a serviço.
+
+/** Linha de os_tecnicos (de qualquer técnico da OS) para a base do Sistema A. */
+export interface LinhaBaseSistemaA {
+  funcionario_id: string | null;
+  servico_id?: string | null;
+  servico_linha_id?: string | null;
+  servico_nome_snapshot?: string | null;
+  preco_servico_snapshot?: number | null;
+}
+
+/** Serviço de avarias.servicos_realizados (só o que identifica a linha). */
+export interface ServicoRealizadoBase {
+  id?: string | null;
+  linha_id?: string | null;
+}
+
+/**
+ * Parte da OS que é do principal no Sistema A:
+ * - `valor`: total da OS − Σ preco_servico_snapshot dos serviços de outros
+ *   técnicos (nunca abaixo de zero) → base do percentual;
+ * - `conta`: a OS conta 1 no valor fixo × quantidade de OS, a não ser que
+ *   TODOS os serviços da OS sejam de outros técnicos.
+ * Sem técnicos por serviço, sem principal ou com o principal tendo linha
+ * própria: `{ valor: total da OS, conta: true }` (igual a antes).
+ * Linha de outro técnico cujo serviço não se acha na OS (serviço apagado do
+ * catálogo, por exemplo) desconta o preço dela, mas não prova que todos os
+ * serviços são de outros: a OS continua contando.
+ */
+export function baseSistemaADaOS(
+  os: { funcionario_id: string | null | undefined; total: number | null | undefined },
+  linhasDaOS: LinhaBaseSistemaA[],
+  servicosDaOS: ServicoRealizadoBase[] | null | undefined,
+): { valor: number; conta: boolean } {
+  const total = Number(os.total) || 0;
+  const principal = os.funcionario_id;
+  const igual = { valor: total, conta: true };
+  if (!principal) return igual;
+  if (linhasDaOS.some((l) => l.funcionario_id === principal)) return igual;
+  const deOutros = linhasDaOS.filter(
+    (l) => !!l.funcionario_id && l.funcionario_id !== principal && linhaTemServicoLigado(l),
+  );
+  if (deOutros.length === 0) return igual;
+
+  const desconto = deOutros.reduce((acc, l) => acc + (Number(l.preco_servico_snapshot) || 0), 0);
+  const servicos = Array.isArray(servicosDaOS) ? servicosDaOS : [];
+  const ocupados = new Set<number>();
+  for (const l of deOutros) {
+    // Mesmo critério de indiceServicoDoTecnico (gravação): linha, senão o 1º com o id.
+    const i = l.servico_linha_id
+      ? servicos.findIndex((s) => s?.linha_id === l.servico_linha_id)
+      : l.servico_id
+        ? servicos.findIndex((s) => s?.id === l.servico_id)
+        : -1;
+    if (i >= 0) ocupados.add(i);
+  }
+  const todosDeOutros = servicos.length > 0 && ocupados.size === servicos.length;
+  return { valor: Math.max(0, total - desconto), conta: !todosDeOutros };
+}

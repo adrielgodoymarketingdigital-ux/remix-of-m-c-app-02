@@ -86,13 +86,37 @@
 >   comissão do principal é **R$ 0,00** (não "—"). O fallback do Tipo da
 >   Etapa 4 continua valendo só para OS de 1 serviço (conta a OS inteira).
 > Vale para percentual sobre faturamento ou lucro e valor fixo por serviço
-> (todos item a item). **Não vale para o Sistema A** (escopo/cargo, calculado
-> na leitura sobre o total das OS de principal): esse continua como antes —
-> pendência aberta. **Vale só para gravações novas**: OS antigas só mudam se
+> (todos item a item). O Sistema A segue a mesma regra na leitura (status F0d,
+> abaixo). **Vale só para gravações novas**: OS antigas só mudam se
 > forem salvas de novo. No Perfil de Desempenho, o "Valor Total" (e a coluna
 > Valor) de uma OS "por serviço" mostra só o valor dos serviços dele; o
 > principal continua vendo o total da OS, e o "Total Vendido" da equipe não
 > mudou. Provas: `scripts/testes-os-tecnicos/salvar/run.sh`.
+>
+> **Status F0d — Sistema A com vários técnicos (2026-11-23), decisão do dono
+> (opção a):** para quem usa o Sistema A (sem "Comissão por Tipo de Serviço"),
+> a base de OS do principal **não inclui o preço dos serviços ligados a outros
+> técnicos** — `baseSistemaADaOS` em
+> [`comissaoOsDoSnapshot.ts`](../src/lib/comissao/comissaoOsDoSnapshot.ts),
+> usada por `useComissoes` / `useComissoesSerieMensal`. Mesma condição da F0c:
+> só quando o principal não tem linha própria em `os_tecnicos` nesta OS, e só
+> linhas de técnico diferente do principal ligadas a serviço.
+> - **percentual**: base da OS = `total` − Σ `preco_servico_snapshot` dessas
+>   linhas, nunca abaixo de zero;
+> - **valor fixo × quantidade de OS**: a OS conta 1 enquanto o principal ainda
+>   tiver serviço dele nela; se **todos** os serviços
+>   (`avarias.servicos_realizados`, casados pelo mesmo critério da gravação:
+>   linha, senão 1º serviço com o id) forem de outros técnicos, a OS conta 0.
+>   Linha de outro técnico cujo serviço não se acha na OS (apagado do
+>   catálogo) desconta o preço, mas não tira a OS da contagem.
+> - OS sem técnicos por serviço / principal com linha própria → igual a antes.
+> - O técnico por serviço que usa o Sistema A segue a F0b: só pela linha dele
+>   (snapshot, que depende da "Comissão por Tipo de Serviço" — sem ela é R$ 0).
+> - "Total Vendido", `totalServicos` e a coluna OS **não mudam** (só a base da
+>   comissão). Por ser calculado na tela, **vale na hora para OS antigas**
+>   também — nenhum dado gravado muda. Busca todas as linhas de `os_tecnicos`
+>   das OS do período (de qualquer técnico) e `avarias->servicos_realizados`.
+> Provas: `scripts/testes-os-tecnicos/comissao/run.sh`.
 
 Historicamente existiam **dois motores de cálculo de comissão completamente
 separados**, que **não se conciliavam** e podiam mostrar números diferentes
@@ -227,6 +251,10 @@ tem linha de `os_tecnicos` ligada a um serviço (`buscarOSPorServico`), com
   `comissaoCalculada`, `detalhePorCargo`; e os totais `totalComissoes`,
   `totalVendido`.
 - `useComissoesSerieMensal(...)`: mesma regra, série de 6 meses para o sparkline.
+- **F0d:** no Sistema A, `totalServicos`/`qtdOS` passados a
+  `calcularComissaoSistemaA` são a base do principal sem os serviços de outros
+  técnicos (`baseOSSistemaA` → `baseSistemaADaOS`); os campos exibidos
+  `totalServicos` e `quantidadeOS` continuam com o valor/contagem cheios.
 
 **[`src/components/equipe/DashboardEquipe.tsx`](../src/components/equipe/DashboardEquipe.tsx)**
 Consome `useComissoes` + `useComissoesSerieMensal`. Renderiza:
@@ -690,8 +718,8 @@ Prioridade por impacto em **pagamento real de funcionário**.
 
 > Corrigido como descrito no status F0c: o serviço ligado a outro técnico sai
 > da base do principal ao salvar. **OS antigas só mudam se forem salvas de
-> novo** (nenhum dado foi alterado). Resta aberto só o Sistema A (comissão por
-> escopo/cargo sobre o total da OS), que não separa serviço por serviço.
+> novo** (nenhum dado foi alterado). O Sistema A ficou coberto na F0d (base do
+> principal sem os serviços de outros técnicos, calculada na tela).
 
 Texto original da pendência:
 
