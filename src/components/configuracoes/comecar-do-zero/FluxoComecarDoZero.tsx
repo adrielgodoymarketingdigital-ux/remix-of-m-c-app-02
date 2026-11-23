@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { TurnstileWidget, type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import { cn } from "@/lib/utils";
 import {
+  type Absorcao,
   CATEGORIAS,
   type Categoria,
   categoriasParaEnviar,
@@ -32,13 +33,15 @@ import {
   TITULO_CATEGORIA,
 } from "@/lib/comecarDoZero/regras";
 
-/** Formato devolvido por zerar_meus_dados_previa (etapa 1). */
+/** Formato devolvido por zerar_meus_dados_previa (etapa 1 + Produtos e peças). */
 interface Previa {
   pode_usar: boolean;
   codigo?: string | null;
   motivo?: string | null;
   categorias_efetivas?: Categoria[];
   incluidas_automaticamente?: Inclusao[];
+  /** Só vem quando a pessoa marcou Estoque e Produtos e peças: vale o Estoque. */
+  absorvidas?: Absorcao[];
   resumo?: Partial<Record<Categoria, Record<string, number>>>;
   tabelas?: Record<string, number>;
   avisos?: { codigo: string; quantidade: number | null; texto: string }[];
@@ -95,6 +98,9 @@ function CaixaErro({ erro }: { erro: MensagemErro }) {
 }
 
 const SEM_VOLTA = "Isso NÃO tem volta. Se quiser guardar seus dados, exporte antes.";
+/** Diferença entre Estoque e Produtos e peças, mostrada na opção nova. */
+const PARTE_DO_ESTOQUE = "É só uma parte do Estoque: apaga os produtos e as peças e deixa os aparelhos.";
+const DENTRO_DO_ESTOQUE = "Já está incluído no Estoque, que também apaga os produtos e as peças.";
 /** Avisos da prévia que a tela já mostra com o próprio texto (sem volta e numeração). */
 const AVISOS_DA_TELA = new Set(["sem_volta", "contador_os", "contador_venda"]);
 
@@ -133,8 +139,11 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
 
   useEffect(() => onExecutandoChange(executando), [executando, onExecutandoChange]);
 
+  // Marcar o Estoque desmarca Produtos e peças (o Estoque já contém; não marca duas vezes).
   const alternar = (id: Escolha, marcar: boolean) =>
-    setEscolhidas((atual) => (marcar ? [...atual.filter((e) => e !== id), id] : atual.filter((e) => e !== id)));
+    setEscolhidas((atual) => (marcar
+      ? [...atual.filter((e) => e !== id && !(id === "estoque" && e === "produtos_pecas")), id]
+      : atual.filter((e) => e !== id)));
 
   const carregarPrevia = async () => {
     setCarregandoPrevia(true);
@@ -248,8 +257,9 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
           {CATEGORIAS.map((c) => {
             const marcadaPeloTudo = tudo && c.id !== "tudo";
             const inclusao = c.id !== "tudo" ? incluidas.find((i) => i.categoria === c.id) : undefined;
-            const marcada = escolhidas.includes(c.id) || marcadaPeloTudo || !!inclusao;
-            const travada = marcadaPeloTudo || (!!inclusao && !escolhidas.includes(c.id));
+            const dentroDoEstoque = c.id === "produtos_pecas" && !tudo && efetivas.includes("estoque");
+            const marcada = escolhidas.includes(c.id) || marcadaPeloTudo || !!inclusao || dentroDoEstoque;
+            const travada = marcadaPeloTudo || dentroDoEstoque || (!!inclusao && !escolhidas.includes(c.id));
             const idCampo = `zerar-${c.id}`;
             return (
               <li key={c.id} className={cn("rounded-lg border p-3", marcada && "border-destructive/50 bg-destructive/5", c.id === "tudo" && "border-dashed")}>
@@ -258,9 +268,11 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
                     onCheckedChange={(v) => alternar(c.id, v === true)} className="mt-0.5" />
                   <div className="min-w-0 flex-1 space-y-1">
                     <Label htmlFor={idCampo} className="font-medium">{c.titulo}</Label>
+                    {c.id === "produtos_pecas" && <p className="text-xs text-muted-foreground">{PARTE_DO_ESTOQUE}</p>}
                     <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Apaga:</span> {c.apaga}</p>
                     <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Fica:</span> {c.fica}</p>
                     {c.aviso && <p className="text-xs font-medium text-amber-600 dark:text-amber-500">{c.aviso}</p>}
+                    {dentroDoEstoque && <p className="text-xs font-medium text-destructive">{DENTRO_DO_ESTOQUE}</p>}
                     {inclusao && !escolhidas.includes(c.id) && (
                       <p className="text-xs font-medium text-destructive">
                         Entra junto porque você marcou {TITULO_CATEGORIA[inclusao.por_causa_de]}: {inclusao.motivo}
@@ -311,6 +323,11 @@ export function FluxoComecarDoZero({ onFechar, onIrParaExportacao, onExecutandoC
               }} />
             )}
             <p className="text-sm font-medium">Será apagado de vez:</p>
+            {(previa.absorvidas ?? []).map((a) => (
+              <p key={a.categoria} className="text-xs text-muted-foreground">
+                {TITULO_CATEGORIA[a.categoria]} já está incluído em {TITULO_CATEGORIA[a.por_causa_de]}: {a.motivo}
+              </p>
+            ))}
             <ul className="flex flex-col gap-2">
               {ef.map((c) => {
                 const linhas = linhasResumo(c, previa.resumo?.[c]);
