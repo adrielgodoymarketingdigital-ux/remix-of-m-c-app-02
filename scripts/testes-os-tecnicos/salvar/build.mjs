@@ -9,6 +9,10 @@ await empacotarAntesNovo({
   raiz: path.resolve(process.argv[2]),
   saida: path.resolve(process.argv[3]),
   refAntes: process.argv[4],
-  alvos: ["src/components/ordens/ordem-servico-wizard/handleSubmitOrdemServico.ts"],
+  alvos: [
+    "src/components/ordens/ordem-servico-wizard/handleSubmitOrdemServico.ts",
+    // Módulo de regra importado pelo save: no "antes", a cópia antiga dele.
+    "src/lib/ordemServico/tecnicosPorServicoOS.ts",
+  ],
   mocks: { "@/integrations/supabase/client": `${H}/mocks/supabaseClient.ts` },
 });

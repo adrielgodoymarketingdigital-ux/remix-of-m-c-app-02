@@ -125,12 +125,19 @@ function resolverAntes(o: any) {
 function resolverNovo(o: any) {
   return novo.regra.comissaoOsDaParticipacao(o, { ehPrincipal: o.tecnico_principal !== false, linhas: o.tecnicos_os ?? [] });
 }
+// "Valor Total" do Perfil: antes = Σ os.total; novo = total da OS para o
+// principal e só os serviços dele para quem está "por serviço" (F0c).
+// deno-lint-ignore no-explicit-any
+const valorAntes = (o: any) => o.total || 0;
+// deno-lint-ignore no-explicit-any
+const valorNovo = (o: any) => novo.regra.valorOsDaParticipacao(o, { ehPrincipal: o.tecnico_principal !== false, linhas: o.tecnicos_os ?? [] });
 // deno-lint-ignore no-explicit-any
 function cardsPerfil(ordens: any[], resolver: (o: any) => number | null) {
   const entregues = ordens.filter((o) => (o.status || "").trim().toLowerCase() === "entregue");
+  const valor = resolver === resolverNovo ? valorNovo : valorAntes;
   return {
     osEntregues: entregues.length,
-    valorTotal: entregues.reduce((a, o) => a + (o.total || 0), 0),
+    valorTotal: entregues.reduce((a, o) => a + valor(o), 0),
     comissaoTotal: entregues.reduce((a, o) => a + (resolver(o) || 0), 0),
   };
 }
@@ -150,7 +157,8 @@ Deno.test("exemplo Ana/Bruno: antes Ana R$ 10 e Bruno R$ 0; depois Ana R$ 10 e B
   const pa = cardsPerfil((await desempenhoDe(antes, "bruno")).ordens, resolverAntes);
   const pn = cardsPerfil((await desempenhoDe(novo, "bruno")).ordens, resolverNovo);
   assertEquals(pa, { osEntregues: 0, valorTotal: 0, comissaoTotal: 0 });
-  assertEquals(pn, { osEntregues: 1, valorTotal: 300, comissaoTotal: 40 });
+  // "Valor Total" do Bruno = só o serviço dele (R$ 200), não a OS (R$ 300).
+  assertEquals(pn, { osEntregues: 1, valorTotal: 200, comissaoTotal: 40 });
   // Perfil da Ana não muda
   assertEquals(
     cardsPerfil((await desempenhoDe(novo, "ana")).ordens, resolverNovo),
@@ -211,7 +219,8 @@ Deno.test("Desempenho: a OS conta para o técnico por serviço, comissão só pe
   // (vii) só as linhas DELE em cada OS
   // deno-lint-ignore no-explicit-any
   assert(dn.ordens.every((o: any) => o.tecnicos_os.every((t: any) => t.comissao_calculada_snapshot !== 10)));
-  assertEquals(cardsPerfil(dn.ordens, resolverNovo), { osEntregues: 3, valorTotal: 720, comissaoTotal: 110 });
+  // Valor: só os serviços dele (200 + 150 + 200), não as OS inteiras (720).
+  assertEquals(cardsPerfil(dn.ordens, resolverNovo), { osEntregues: 3, valorTotal: 550, comissaoTotal: 110 });
   // Ana: igual a antes (principal em os-1, 3, 7, 8)
   const aa = await desempenhoDe(antes, "ana");
   const an = await desempenhoDe(novo, "ana");
