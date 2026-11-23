@@ -141,3 +141,17 @@ export function participacoesDoFuncionario<T extends { id: string; funcionario_i
   }
   return r;
 }
+
+/**
+ * Valor da OS para o funcionário no Perfil de Desempenho: o principal vê o
+ * total da OS (como sempre); quem está só por serviço vê só o valor dos
+ * serviços dele (preco_servico_snapshot das linhas dele). O valor de OS da
+ * equipe ("Total Vendido") continua contando a OS uma vez, pelo principal.
+ */
+export function valorOsDaParticipacao(
+  os: { total: number | null | undefined },
+  p: { ehPrincipal: boolean; linhas: { preco_servico_snapshot?: number | null }[] },
+): number {
+  if (p.ehPrincipal) return Number(os.total) || 0;
+  return p.linhas.reduce((acc, l) => acc + (Number(l.preco_servico_snapshot) || 0), 0);
+}

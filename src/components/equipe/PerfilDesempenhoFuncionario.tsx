@@ -25,7 +25,7 @@ import {
   encontrarComissaoPorNomeServico,
   formatarMotivoComissao,
 } from "@/lib/ordemServico/comissaoPorTipoServico";
-import { comissaoOsDaParticipacao } from "@/lib/comissao/comissaoOsDoSnapshot";
+import { comissaoOsDaParticipacao, valorOsDaParticipacao } from "@/lib/comissao/comissaoOsDoSnapshot";
 
 interface PerfilDesempenhoFuncionarioProps {
   funcionario: Funcionario | null;
@@ -50,6 +50,14 @@ function isOSComissionavel(os: OSFuncionario): boolean {
  */
 function resolverComissaoOS(os: OSFuncionario): number | null {
   return comissaoOsDaParticipacao(os, {
+    ehPrincipal: os.tecnico_principal !== false,
+    linhas: os.tecnicos_os ?? [],
+  });
+}
+
+/** Valor da OS para ele: total da OS se principal; só os serviços dele se "por serviço". */
+function resolverValorOS(os: OSFuncionario): number {
+  return valorOsDaParticipacao(os, {
     ehPrincipal: os.tecnico_principal !== false,
     linhas: os.tecnicos_os ?? [],
   });
@@ -271,7 +279,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
   );
 
   const totalOS = ordensComissionaveis.length;
-  const totalValor = ordensComissionaveis.reduce((acc, o) => acc + (o.total || 0), 0);
+  const totalValor = ordensComissionaveis.reduce((acc, o) => acc + resolverValorOS(o), 0);
   const totalComissao = ordensComissionaveis.reduce((acc, o) => {
     const c = resolverComissaoOS(o);
     return acc + (c || 0);
@@ -488,7 +496,7 @@ export function PerfilDesempenhoFuncionario({ funcionario, open, onOpenChange, m
                                 <Badge variant="secondary" className="text-xs">{os.status || "—"}</Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <ValorMonetario valor={os.total} />
+                                <ValorMonetario valor={os.tecnico_principal === false ? resolverValorOS(os) : os.total} />
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1.5">

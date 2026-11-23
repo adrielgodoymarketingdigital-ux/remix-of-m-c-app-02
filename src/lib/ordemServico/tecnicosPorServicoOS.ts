@@ -66,6 +66,56 @@ export function tecnicoOSDoBanco(linha: LinhaOsTecnicoBanco): TecnicoOS {
   };
 }
 
+/**
+ * Posição (em servicosOS) do serviço ligado ao técnico, ou -1. Com o mesmo
+ * serviço repetido, a linha (servico_linha_id) decide qual delas; senão vale o
+ * 1º serviço com aquele id. É O critério de salvarTecnicosOS — quem exclui o
+ * serviço da base do principal usa exatamente o mesmo.
+ */
+export function indiceServicoDoTecnico(
+  tec: Pick<TecnicoOS, "servico_id" | "servico_linha_id">,
+  servicosOS: FormData["servicos"],
+): number {
+  if (tec.servico_linha_id) return servicosOS.findIndex(s => s.linha_os?.linha_id === tec.servico_linha_id);
+  if (tec.servico_id) return servicosOS.findIndex(s => s.id === tec.servico_id);
+  return -1;
+}
+
+export function servicoDoTecnicoNaOS(
+  tec: Pick<TecnicoOS, "servico_id" | "servico_linha_id">,
+  servicosOS: FormData["servicos"],
+): FormData["servicos"][number] | undefined {
+  const i = indiceServicoDoTecnico(tec, servicosOS);
+  return i >= 0 ? servicosOS[i] : undefined;
+}
+
+/**
+ * Serviços (posições em servicosOS) que saem da base de comissão do Técnico
+ * Principal porque estão ligados a OUTRO técnico em "Técnicos por Serviço" —
+ * o mesmo serviço nunca paga comissão duas vezes.
+ *
+ * Vazio (cálculo do principal idêntico ao de antes) quando:
+ *  - não há principal;
+ *  - o principal tem linha própria em os_tecnicos nesta OS (aí a comissão dele
+ *    é a soma das linhas dele, como sempre — o snapshot da OS não é lido);
+ *  - nenhum outro técnico (com funcionário escolhido) está ligado a um serviço.
+ */
+export function servicosDeOutrosTecnicos(
+  principalId: string | null | undefined,
+  tecnicos: TecnicoOS[],
+  servicosOS: FormData["servicos"],
+): Set<number> {
+  const excluidos = new Set<number>();
+  if (!principalId) return excluidos;
+  if (tecnicos.some(t => t.funcionario_id === principalId)) return excluidos;
+  for (const tec of tecnicos) {
+    if (!tec.funcionario_id) continue; // linha sem técnico escolhido
+    const i = indiceServicoDoTecnico(tec, servicosOS);
+    if (i >= 0) excluidos.add(i);
+  }
+  return excluidos;
+}
+
 export interface ComissaoFuncionarioTipoRow extends ComissaoConfig {
   funcionario_id: string;
 }
@@ -134,11 +184,7 @@ export function montarLinhasTecnicosOS({
     // Serviço vinculado a este técnico (preço próprio); se não houver
     // vínculo (dados antigos ou não informado), cai no total da OS. Com o mesmo
     // serviço repetido, a linha (servico_linha_id) decide qual delas.
-    const servicoVinculado = tec.servico_linha_id
-      ? servicosOS.find(s => s.linha_os?.linha_id === tec.servico_linha_id)
-      : tec.servico_id
-        ? servicosOS.find(s => s.id === tec.servico_id)
-        : undefined;
+    const servicoVinculado = servicoDoTecnicoNaOS(tec, servicosOS);
     const baseCalculo = servicoVinculado ? servicoVinculado.preco : totalOS;
 
     let comissaoConfig: ComissaoConfig | undefined;

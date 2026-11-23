@@ -64,7 +64,35 @@
 > valor em dobro). OS sem `os_tecnicos` dão exatamente os mesmos números de
 > antes. Provas: `scripts/testes-os-tecnicos/comissao/run.sh`. Não existe
 > marcação de "comissão paga" no app nem no banco — a tela é só cálculo.
-> Pendência registrada: P3-f.
+> Pendência registrada: P3-f (corrigida para gravações novas na F0c, abaixo).
+>
+> **Status F0c — base do Técnico Principal (2026-11-23), regra definida pelo
+> dono:** a OS tem um Técnico Principal; cada serviço pode ter um técnico
+> vinculado em "Técnicos por Serviço", que recebe pela configuração dele
+> ("Comissão por Tipo de Serviço") **só sobre aquele serviço**. O **Técnico
+> Principal recebe sobre os serviços que NÃO estão vinculados a outro
+> técnico** — um serviço vinculado a outro técnico sai da base dele, e a mesma
+> comissão nunca é paga duas vezes sobre o mesmo serviço. Na gravação
+> (`salvarOrdemServico` → `calcularComissaoPorServico(…, indicesExcluidos)`,
+> com `servicosDeOutrosTecnicos` em
+> [`tecnicosPorServicoOS.ts`](../src/lib/ordemServico/tecnicosPorServicoOS.ts)):
+> - **OS sem técnicos por serviço** → cálculo do principal idêntico ao de antes;
+> - **principal com linha própria em `os_tecnicos`** → nada muda (a comissão
+>   dele é a soma das linhas dele, como sempre);
+> - **senão**, cada serviço ligado a outro técnico (mesmo critério de
+>   `salvarTecnicosOS`: `servico_linha_id`, senão o 1º serviço com o
+>   `servico_id`) sai da base do principal. Linha sem técnico escolhido ou sem
+>   serviço não tira nada. Se todos os serviços forem de outros técnicos, a
+>   comissão do principal é **R$ 0,00** (não "—"). O fallback do Tipo da
+>   Etapa 4 continua valendo só para OS de 1 serviço (conta a OS inteira).
+> Vale para percentual sobre faturamento ou lucro e valor fixo por serviço
+> (todos item a item). **Não vale para o Sistema A** (escopo/cargo, calculado
+> na leitura sobre o total das OS de principal): esse continua como antes —
+> pendência aberta. **Vale só para gravações novas**: OS antigas só mudam se
+> forem salvas de novo. No Perfil de Desempenho, o "Valor Total" (e a coluna
+> Valor) de uma OS "por serviço" mostra só o valor dos serviços dele; o
+> principal continua vendo o total da OS, e o "Total Vendido" da equipe não
+> mudou. Provas: `scripts/testes-os-tecnicos/salvar/run.sh`.
 
 Historicamente existiam **dois motores de cálculo de comissão completamente
 separados**, que **não se conciliavam** e podiam mostrar números diferentes
@@ -332,6 +360,7 @@ Seja `funcId = tecnicoId || funcionarioId` e `tsId = tipoServicoId` (Etapa 4):
 | `funcId` **e** `servicos.length > 0` (**1 ou N serviços** — desde a Fase 1) | `calcularComissaoPorServico` (item a item) | **preço de cada serviço** | ✅ | ✅ |
 | `funcId` e **0 serviços** | — | nada é gravado (`snapshot = null`) | — | — |
 | Linhas em `os_tecnicos` (qualquer nº de serviços) | `salvarTecnicosOS` (por linha) | **preço do serviço vinculado** (ou total da OS se legado) | ✅ | ✅ |
+| `funcId` sem linha própria **e** serviço(s) ligado(s) a outro técnico (F0c) | `calcularComissaoPorServico` sem esses serviços | preço de cada serviço **não** vinculado a outro técnico | ✅ | ✅ |
 
 ➡️ **Fase 1 (2026-09-02):** o ponto cego "OS de 1 serviço" foi eliminado — o
 guard `> 1` virou `> 0` e o ramo `(total da OS) × %` foi removido. `tsId` da
@@ -657,7 +686,14 @@ Prioridade por impacto em **pagamento real de funcionário**.
   nenhum (em produção, 24 OS com técnico por serviço diferente do principal).
 - **Correção:** regra "a" descrita no Resumo executivo (status F0b).
 
-### 🟡 P3-f — Principal SEM linha própria + outro técnico por serviço
+### ✅ P3-f — Principal SEM linha própria + outro técnico por serviço — **CORRIGIDO para gravações novas na F0c (2026-11-23)**
+
+> Corrigido como descrito no status F0c: o serviço ligado a outro técnico sai
+> da base do principal ao salvar. **OS antigas só mudam se forem salvas de
+> novo** (nenhum dado foi alterado). Resta aberto só o Sistema A (comissão por
+> escopo/cargo sobre o total da OS), que não separa serviço por serviço.
+
+Texto original da pendência:
 
 - Quando o Técnico Principal **não** está em `os_tecnicos`, a comissão dele é
   o snapshot da OS, calculado por `calcularComissaoPorServico` sobre **todos**

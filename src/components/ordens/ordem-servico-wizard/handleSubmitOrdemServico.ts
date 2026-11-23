@@ -28,6 +28,7 @@ import {
   ComissaoFuncionarioTipoRow,
   entradaComissaoServico,
   montarLinhasTecnicosOS,
+  servicosDeOutrosTecnicos,
 } from "@/lib/ordemServico/tecnicosPorServicoOS";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
 import {
@@ -220,12 +221,20 @@ interface ResultadoComissaoPorServico {
  * em itensFallbackTipoFormulario para gerar o aviso brando (renomeie o
  * serviço). Só vale para 1 serviço: com 2+ não existe um único dropdown que
  * represente cada serviço.
+ *
+ * SERVIÇO DE OUTRO TÉCNICO (indicesExcluidos, ver servicosDeOutrosTecnicos):
+ * serviço ligado a outro técnico em "Técnicos por Serviço" não entra na base
+ * do principal — quem recebe por ele é o técnico ligado. A regra do fallback
+ * continua olhando a OS inteira (1 serviço na OS). Se TODOS os serviços são de
+ * outros técnicos, a comissão do principal é R$ 0,00 (calculada, não "—").
+ * Sem exclusões o cálculo é exatamente o de antes.
  */
 async function calcularComissaoPorServico(
   funcId: string,
   servicos: FormData["servicos"],
   dispositivoMarca?: string | null,
   tipoServicoIdFallback?: string | null,
+  indicesExcluidos: Set<number> = new Set(),
 ): Promise<ResultadoComissaoPorServico> {
   if (servicos.length === 0) {
     return { total: null, itensSemComissaoConfigurada: [], itensComissaoAmbigua: [], itensCustoNaoConfirmado: [], itensFallbackTipoFormulario: [], itensVinculoSemConfig: [] };
@@ -290,7 +299,8 @@ async function calcularComissaoPorServico(
   const itensFallbackTipoFormulario: string[] = [];
   const itensVinculoSemConfig: string[] = [];
 
-  for (const servico of servicos) {
+  for (const [indice, servico] of servicos.entries()) {
+    if (indicesExcluidos.has(indice)) continue;
     const resultado = resolverComissaoDoServico(
       servico.nome,
       vinculoPorServicoId.get(servico.id),
@@ -379,8 +389,10 @@ async function calcularComissaoPorServico(
     );
   }
 
+  const todosDeOutrosTecnicos = indicesExcluidos.size > 0 && servicos.every((_, i) => indicesExcluidos.has(i));
+
   return {
-    total: algumEncontrado ? comissaoTotal : null,
+    total: algumEncontrado ? comissaoTotal : (todosDeOutrosTecnicos ? 0 : null),
     itensSemComissaoConfigurada,
     itensComissaoAmbigua,
     itensCustoNaoConfirmado,
@@ -780,8 +792,13 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // tsId (Tipo de Serviço do formulário) entra só como FALLBACK para OS
       // de 1 serviço quando o match por nome falha — nunca sobrepõe um match
       // por nome bem-sucedido. Ver calcularComissaoPorServico.
+      //
+      // Serviço ligado a OUTRO técnico em "Técnicos por Serviço" sai da base do
+      // principal (cada serviço paga comissão uma vez só); sem técnicos por
+      // serviço, ou com o principal tendo linha própria, nada sai.
       const resultadoComissaoPorServico = await calcularComissaoPorServico(
-        funcId, formData.servicos, formData.dispositivoMarca, tsId
+        funcId, formData.servicos, formData.dispositivoMarca, tsId,
+        servicosDeOutrosTecnicos(funcId, tecnicosOS, formData.servicos),
       );
       comissaoCalculadaSnapshot = resultadoComissaoPorServico.total;
 
