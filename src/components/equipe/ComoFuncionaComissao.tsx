@@ -92,8 +92,8 @@ export function ComoFuncionaComissao({ className }: { className?: string }) {
                 <li>Só OS entregues geram comissão.</li>
                 <li>
                   Serviços sem técnico ligado ficam com o Técnico Principal. Se o próprio Técnico Principal também
-                  estiver ligado a um serviço da OS, muda: na Comissão por Tipo de Serviço ele ganha só pelos serviços
-                  em que está ligado; na comissão geral, a OS inteira conta para ele.
+                  estiver ligado a um serviço da OS, na Comissão por Tipo de Serviço ele ganha só pelos serviços em
+                  que está ligado.
                 </li>
                 <li>
                   Se o técnico ligado ao serviço não tem comissão por tipo de serviço configurada, o serviço continua com

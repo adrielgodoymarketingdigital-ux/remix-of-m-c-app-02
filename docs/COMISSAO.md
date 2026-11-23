@@ -98,9 +98,9 @@
 > a base de OS do principal **não inclui o preço dos serviços ligados a outros
 > técnicos** — `baseSistemaADaOS` em
 > [`comissaoOsDoSnapshot.ts`](../src/lib/comissao/comissaoOsDoSnapshot.ts),
-> usada por `useComissoes` / `useComissoesSerieMensal`. Mesma condição da F0c:
-> só quando o principal não tem linha própria em `os_tecnicos` nesta OS, e só
-> linhas de técnico diferente do principal ligadas a serviço.
+> usada por `useComissoes` / `useComissoesSerieMensal`. Só linhas de técnico
+> diferente do principal, ligadas a serviço e (F0e) com comissão configurada —
+> **tenha o principal linha própria em `os_tecnicos` ou não (F0f)**.
 > - **percentual**: base da OS = `total` − Σ `preco_servico_snapshot` dessas
 >   linhas, nunca abaixo de zero;
 > - **valor fixo × quantidade de OS**: a OS conta 1 enquanto o principal ainda
@@ -109,7 +109,9 @@
 >   linha, senão 1º serviço com o id) forem de outros técnicos, a OS conta 0.
 >   Linha de outro técnico cujo serviço não se acha na OS (apagado do
 >   catálogo) desconta o preço, mas não tira a OS da contagem.
-> - OS sem técnicos por serviço / principal com linha própria → igual a antes.
+> - OS sem técnicos por serviço → igual a antes. Principal com linha própria
+>   (F0f): ele ganha sobre os serviços dele e os sem técnico, nunca sobre o de
+>   outro técnico configurado (antes a OS inteira contava para ele).
 > - O técnico por serviço que usa o Sistema A segue a F0b: só pela linha dele
 >   (snapshot, que depende da "Comissão por Tipo de Serviço" — sem ela é R$ 0).
 > - "Total Vendido", `totalServicos` e a coluna OS **não mudam** (só a base da
@@ -134,8 +136,17 @@
 >   ligado a serviço, as linhas dos técnicos são calculadas **antes** do
 >   snapshot do principal (`montarLinhasTecnicosOS`, mesmos dados que
 >   `salvarTecnicosOS` grava depois — as 4 consultas não se repetem);
-> - na **tela do Sistema A** (`baseSistemaADaOS`, F0d): base do percentual e
->   contagem do valor fixo.
+> - na **tela do Sistema A** (`baseSistemaADaOS`, F0d/F0f): base do percentual
+>   e contagem do valor fixo.
+>
+> **Status F0f (2026-11-23), decisão do dono:** no Sistema A o serviço ligado a
+> outro técnico com comissão configurada sai da base do Técnico Principal
+> **também quando o principal tem linha própria** em `os_tecnicos` nesta OS.
+> O Sistema B não muda: com linha própria, o principal já ganhava só a soma
+> das linhas dele (o snapshot da OS não é lido), e a gravação (F0c) só tira
+> serviços do snapshot do principal quando ele não tem linha própria — o que
+> é coerente, porque esse snapshot só é lido nesse caso. Critério do "outro
+> técnico configurado" é o mesmo nos dois lugares (`linhaComComissaoConfigurada`).
 > Consequência: técnico ligado com comissão **ambígua** ou com **custo não
 > confirmado** também deixa o serviço com o principal até a OS ser corrigida e
 > salva de novo. Vale para gravações novas (F0c) e na hora para o Sistema A

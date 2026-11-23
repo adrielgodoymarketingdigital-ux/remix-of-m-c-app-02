@@ -207,9 +207,10 @@ function indexarOsTecnicosPorOS(osTecnicos: OSTecnicoRow[]): Map<string, OSTecni
 }
 
 /**
- * Sistema A (F0d): base de OS do principal sem os serviços ligados a outros
- * técnicos (baseSistemaADaOS) — valor para o percentual e quantidade de OS
- * para o valor fixo. Sem técnicos por serviço = Σ os.total e nº de OS, como antes.
+ * Sistema A (F0d/F0e/F0f): base de OS do principal sem os serviços ligados a
+ * outros técnicos com comissão configurada (baseSistemaADaOS), mesmo quando
+ * ele tem linha própria — valor para o percentual e quantidade de OS para o
+ * valor fixo. Sem técnicos por serviço = Σ os.total e nº de OS, como antes.
  */
 function baseOSSistemaA(osPrincipal: OSRow[], linhasPorOS: Map<string, OSTecnicoRow[]>): { valor: number; quantidade: number } {
   let valor = 0;

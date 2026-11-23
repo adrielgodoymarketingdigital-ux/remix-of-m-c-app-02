@@ -172,11 +172,10 @@ export function valorOsDaParticipacao(
 
 // ===========================================================================
 // Sistema A (comissão por escopo/cargo, calculada na tela) com vários
-// técnicos (F0d, 2026-11-23): a base do Técnico Principal NÃO inclui o preço
-// dos serviços ligados a OUTROS técnicos em "Técnicos por Serviço" — mesma
-// regra da gravação (F0c, servicosDeOutrosTecnicos): só quando o principal não
-// tem linha própria nesta OS, e só linhas de outro técnico ligadas a serviço
-// e com comissão configurada (F0e, linhaComComissaoConfigurada).
+// técnicos (F0d/F0e/F0f, 2026-11-23): a base do Técnico Principal NÃO inclui o
+// preço dos serviços ligados a OUTROS técnicos em "Técnicos por Serviço" que
+// têm comissão configurada (linhaComComissaoConfigurada) — tenha o principal
+// linha própria nesta OS ou não.
 
 /** Linha de os_tecnicos (de qualquer técnico da OS) para a base do Sistema A. */
 export interface LinhaBaseSistemaA {
@@ -200,8 +199,9 @@ export interface ServicoRealizadoBase {
  *   técnicos (nunca abaixo de zero) → base do percentual;
  * - `conta`: a OS conta 1 no valor fixo × quantidade de OS, a não ser que
  *   TODOS os serviços da OS sejam de outros técnicos.
- * Sem técnicos por serviço, sem principal ou com o principal tendo linha
- * própria: `{ valor: total da OS, conta: true }` (igual a antes).
+ * Sem técnicos por serviço, sem principal, ou sem linha de outro técnico
+ * configurado: `{ valor: total da OS, conta: true }` (igual a antes). A linha
+ * própria do principal não muda nada aqui (F0f).
  * Linha de outro técnico cujo serviço não se acha na OS (serviço apagado do
  * catálogo, por exemplo) desconta o preço dela, mas não prova que todos os
  * serviços são de outros: a OS continua contando.
@@ -215,7 +215,9 @@ export function baseSistemaADaOS(
   const principal = os.funcionario_id;
   const igual = { valor: total, conta: true };
   if (!principal) return igual;
-  if (linhasDaOS.some((l) => l.funcionario_id === principal)) return igual;
+  // F0f: vale também quando o principal tem linha própria nesta OS — ele ganha
+  // sobre os serviços dele e os sem técnico, nunca sobre o de outro técnico
+  // configurado. (No Sistema B, com linha própria, já vale só a soma das linhas dele.)
   const deOutros = linhasDaOS.filter(
     (l) => !!l.funcionario_id && l.funcionario_id !== principal && linhaTemServicoLigado(l)
       // F0e: técnico sem comissão configurada para o serviço → fica com o principal.
