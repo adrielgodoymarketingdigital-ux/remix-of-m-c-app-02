@@ -1,5 +1,5 @@
 // Rodar com: bash scripts/testes-os-tecnicos/salvar/run.sh
-// salvarOrdemServico REAL de ANTES (c4e14d5) x NOVO, com Supabase falso que só
+// salvarOrdemServico REAL de ANTES (REF_ANTES) x NOVO, com Supabase falso que só
 // registra as chamadas. Prova que a F0 não mudou NENHUMA gravação para a mesma
 // entrada (OS sem técnicos por serviço, criação e edição; e OS com técnicos).
 // Dados fictícios; nada vai à rede nem ao banco.
@@ -7,8 +7,8 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const PASTA = Deno.env.get("SALVAR_BUNDLES");
 if (!PASTA) throw new Error("rode pelo run.sh (SALVAR_BUNDLES)");
-const antes = await import(`file://${PASTA}/antes.mjs`);
-const novo = await import(`file://${PASTA}/novo.mjs`);
+const antes = await import(`file://${PASTA}/antes/handleSubmitOrdemServico.js`);
+const novo = await import(`file://${PASTA}/novo/handleSubmitOrdemServico.js`);
 
 type Op = [string, unknown[]];
 interface Chamada { alvo: string; ops: Op[] }
