@@ -29,6 +29,7 @@ import {
   entradaComissaoServico,
   montarLinhasTecnicosOS,
   servicosDeOutrosTecnicos,
+  temServicoDeOutroTecnico,
 } from "@/lib/ordemServico/tecnicosPorServicoOS";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
 import {
@@ -426,29 +427,15 @@ interface ResultadoSalvarTecnicos {
   itensComissaoAmbigua: { nome: string; tecnico: string; candidatos: CandidatoAmbiguo[] }[];
 }
 
-async function salvarTecnicosOS(
-  osId: string,
-  tecnicos: TecnicoOS[],
-  servicosOS: FormData["servicos"],
-  totalOS: number,
-  tipoServicoId: string | null,
-  dispositivoMarca?: string | null,
-  // Ids de serviço do catálogo que AINDA existem (ver salvarOrdemServico).
-  // Usado para não gravar em os_tecnicos.servico_id um id de serviço já
-  // excluído fisicamente do catálogo.
-  servicoIdsValidos: Set<string> = new Set(),
-): Promise<ResultadoSalvarTecnicos> {
-  const resultado: ResultadoSalvarTecnicos = { itensCustoNaoConfirmado: [], itensComissaoAmbigua: [] };
+/** Configuração de comissão dos técnicos por serviço (as 4 consultas de salvarTecnicosOS). */
+interface DadosComissaoTecnicos {
+  tiposServicoTodos: TipoServicoResumo[];
+  comissoesFuncionarios: ComissaoFuncionarioTipoRow[];
+  funcsCalculo: { id: string; nome: string; comissao_calculo: string | null }[];
+  servicosCatalogoVinculo: { id: string; tipo_servico_id: string | null }[];
+}
 
-  if (tecnicos.length === 0) {
-    // Limpar técnicos existentes se lista vazia
-    await supabase.from("os_tecnicos").delete().eq("os_id", osId);
-    return resultado;
-  }
-
-  // Remover técnicos antigos
-  await supabase.from("os_tecnicos").delete().eq("os_id", osId);
-
+async function buscarDadosComissaoTecnicos(tecnicos: TecnicoOS[]): Promise<DadosComissaoTecnicos> {
   const funcionarioIds = [...new Set(tecnicos.map(t => t.funcionario_id))];
   // Ids de serviço de catálogo referenciados pelos técnicos (para buscar o
   // vínculo direto servico → Tipo de Serviço). "manual_*" não é catálogo.
@@ -463,7 +450,7 @@ async function salvarTecnicosOS(
           .from("comissoes_tipo_servico")
           .select("funcionario_id, tipo_servico_id, comissao_tipo, comissao_valor")
           .in("funcionario_id", funcionarioIds)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as ComissaoFuncionarioTipoRow[] }),
     funcionarioIds.length > 0
       ? supabase
           .from("loja_funcionarios")
@@ -475,6 +462,41 @@ async function salvarTecnicosOS(
       : Promise.resolve({ data: [] as { id: string; tipo_servico_id: string | null }[] }),
   ]);
 
+  return {
+    tiposServicoTodos: tiposServicoTodos || [],
+    comissoesFuncionarios: (comissoesFuncionarios || []) as ComissaoFuncionarioTipoRow[],
+    funcsCalculo: funcsCalculo || [],
+    servicosCatalogoVinculo: servicosCatalogoVinculo || [],
+  };
+}
+
+async function salvarTecnicosOS(
+  osId: string,
+  tecnicos: TecnicoOS[],
+  servicosOS: FormData["servicos"],
+  totalOS: number,
+  tipoServicoId: string | null,
+  dispositivoMarca?: string | null,
+  // Ids de serviço do catálogo que AINDA existem (ver salvarOrdemServico).
+  // Usado para não gravar em os_tecnicos.servico_id um id de serviço já
+  // excluído fisicamente do catálogo.
+  servicoIdsValidos: Set<string> = new Set(),
+  // Já buscados antes do snapshot do principal (F0e): não busca de novo.
+  dadosPrevios?: DadosComissaoTecnicos,
+): Promise<ResultadoSalvarTecnicos> {
+  const resultado: ResultadoSalvarTecnicos = { itensCustoNaoConfirmado: [], itensComissaoAmbigua: [] };
+
+  if (tecnicos.length === 0) {
+    // Limpar técnicos existentes se lista vazia
+    await supabase.from("os_tecnicos").delete().eq("os_id", osId);
+    return resultado;
+  }
+
+  // Remover técnicos antigos
+  await supabase.from("os_tecnicos").delete().eq("os_id", osId);
+
+  const dados = dadosPrevios ?? await buscarDadosComissaoTecnicos(tecnicos);
+
   const montado = montarLinhasTecnicosOS({
     osId,
     tecnicos,
@@ -483,10 +505,7 @@ async function salvarTecnicosOS(
     tipoServicoId,
     dispositivoMarca,
     servicoIdsValidos,
-    tiposServicoTodos: tiposServicoTodos || [],
-    comissoesFuncionarios: (comissoesFuncionarios || []) as ComissaoFuncionarioTipoRow[],
-    funcsCalculo: funcsCalculo || [],
-    servicosCatalogoVinculo: servicosCatalogoVinculo || [],
+    ...dados,
   });
   resultado.itensCustoNaoConfirmado.push(...montado.itensCustoNaoConfirmado);
   resultado.itensComissaoAmbigua.push(...montado.itensComissaoAmbigua);
@@ -750,6 +769,9 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     const comissaoTipoSnapshot: string | null = null;
     const comissaoValorSnapshot: number | null = null;
     let comissaoCalculadaSnapshot: number | null = null;
+    // Buscados antes do snapshot do principal quando há outro técnico ligado a
+    // serviço (F0e); reaproveitados por salvarTecnicosOS (sem buscar de novo).
+    let dadosComissaoTecnicos: DadosComissaoTecnicos | undefined;
     let tipoServicoNomeSnapshot: string | null = null;
     // Itens que ficaram sem comissão configurada ou ambíguos ao calcular a
     // comissão do Técnico Principal em OS com múltiplos serviços — usados
@@ -794,11 +816,29 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // por nome bem-sucedido. Ver calcularComissaoPorServico.
       //
       // Serviço ligado a OUTRO técnico em "Técnicos por Serviço" sai da base do
-      // principal (cada serviço paga comissão uma vez só); sem técnicos por
-      // serviço, ou com o principal tendo linha própria, nada sai.
+      // principal (cada serviço paga comissão uma vez só) — mas só se esse
+      // técnico tem comissão configurada para o serviço (F0e); senão o serviço
+      // continua com o principal. Para saber, as linhas dos técnicos são
+      // calculadas ANTES (mesma função e mesmos dados que salvarTecnicosOS usa
+      // depois). Sem técnicos por serviço, ou com o principal tendo linha
+      // própria, nada é calculado antes e nada sai.
+      let servicosExcluidos = new Set<number>();
+      if (temServicoDeOutroTecnico(funcId, tecnicosOS, formData.servicos)) {
+        dadosComissaoTecnicos = await buscarDadosComissaoTecnicos(tecnicosOS);
+        const previa = montarLinhasTecnicosOS({
+          osId: "",
+          tecnicos: tecnicosOS,
+          servicosOS: formData.servicos,
+          totalOS: total,
+          tipoServicoId,
+          dispositivoMarca: formData.dispositivoMarca,
+          servicoIdsValidos: new Set(), // só afeta o servico_id gravado, não a comissão
+          ...dadosComissaoTecnicos,
+        });
+        servicosExcluidos = servicosDeOutrosTecnicos(funcId, tecnicosOS, formData.servicos, previa.linhas);
+      }
       const resultadoComissaoPorServico = await calcularComissaoPorServico(
-        funcId, formData.servicos, formData.dispositivoMarca, tsId,
-        servicosDeOutrosTecnicos(funcId, tecnicosOS, formData.servicos),
+        funcId, formData.servicos, formData.dispositivoMarca, tsId, servicosExcluidos,
       );
       comissaoCalculadaSnapshot = resultadoComissaoPorServico.total;
 
@@ -963,7 +1003,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       }
 
       // === SALVAR TÉCNICOS DA OS ===
-      const resTecnicosEdit = await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos);
+      const resTecnicosEdit = await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos, dadosComissaoTecnicos);
       aplicarAvisoTecnicosOS(resTecnicosEdit);
 
       // === ATUALIZAR OU CRIAR CONTA A RECEBER AO EDITAR OS ===
@@ -1205,7 +1245,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       resultadoAdicionais = await gravarAdicionais(osCriada?.id ?? null);
 
       if (osCriada) {
-        const resTecnicosCreate = await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos);
+        const resTecnicosCreate = await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos, dadosComissaoTecnicos);
         aplicarAvisoTecnicosOS(resTecnicosCreate);
       }
 

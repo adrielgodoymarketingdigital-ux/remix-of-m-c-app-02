@@ -22,6 +22,7 @@ import {
   resolverComissaoDoServico,
 } from "./comissaoPorTipoServico";
 import { quantidadeLinhaForm } from "./linhaServicoOS";
+import { linhaComComissaoConfigurada } from "../comissao/comissaoOsDoSnapshot";
 
 /**
  * Entrada da comissão de um serviço. Com peça repassada ao cliente pelo custo,
@@ -90,28 +91,58 @@ export function servicoDoTecnicoNaOS(
 }
 
 /**
- * Serviços (posições em servicosOS) que saem da base de comissão do Técnico
- * Principal porque estão ligados a OUTRO técnico em "Técnicos por Serviço" —
- * o mesmo serviço nunca paga comissão duas vezes.
- *
- * Vazio (cálculo do principal idêntico ao de antes) quando:
+ * Técnicos (posição em `tecnicos`) ligados a um serviço de OUTRA pessoa que
+ * não o principal, com o serviço (posição em servicosOS). Vazio quando:
  *  - não há principal;
  *  - o principal tem linha própria em os_tecnicos nesta OS (aí a comissão dele
  *    é a soma das linhas dele, como sempre — o snapshot da OS não é lido);
  *  - nenhum outro técnico (com funcionário escolhido) está ligado a um serviço.
  */
+function ligacoesDeOutrosTecnicos(
+  principalId: string | null | undefined,
+  tecnicos: TecnicoOS[],
+  servicosOS: FormData["servicos"],
+): { tecnico: number; servico: number }[] {
+  if (!principalId) return [];
+  if (tecnicos.some(t => t.funcionario_id === principalId)) return [];
+  const r: { tecnico: number; servico: number }[] = [];
+  tecnicos.forEach((tec, t) => {
+    if (!tec.funcionario_id) return; // linha sem técnico escolhido
+    const i = indiceServicoDoTecnico(tec, servicosOS);
+    if (i >= 0) r.push({ tecnico: t, servico: i });
+  });
+  return r;
+}
+
+/** Há outro técnico ligado a serviço? Só então vale calcular as linhas antes do principal. */
+export function temServicoDeOutroTecnico(
+  principalId: string | null | undefined,
+  tecnicos: TecnicoOS[],
+  servicosOS: FormData["servicos"],
+): boolean {
+  return ligacoesDeOutrosTecnicos(principalId, tecnicos, servicosOS).length > 0;
+}
+
+/**
+ * Serviços (posições em servicosOS) que saem da base de comissão do Técnico
+ * Principal porque estão ligados a OUTRO técnico em "Técnicos por Serviço" que
+ * TEM comissão configurada para eles — o mesmo serviço nunca paga comissão
+ * duas vezes, e nenhum serviço fica sem ninguém recebendo.
+ *
+ * `linhasCalculadas` = montarLinhasTecnicosOS(...).linhas para os MESMOS
+ * `tecnicos` (uma linha por técnico, na mesma ordem); o critério é
+ * linhaComComissaoConfigurada (o mesmo da tela do Sistema A). Técnico ligado
+ * sem comissão configurada: o serviço continua com o principal (F0e).
+ */
 export function servicosDeOutrosTecnicos(
   principalId: string | null | undefined,
   tecnicos: TecnicoOS[],
   servicosOS: FormData["servicos"],
+  linhasCalculadas: ({ comissao_tipo_snapshot?: string | null } | undefined)[],
 ): Set<number> {
   const excluidos = new Set<number>();
-  if (!principalId) return excluidos;
-  if (tecnicos.some(t => t.funcionario_id === principalId)) return excluidos;
-  for (const tec of tecnicos) {
-    if (!tec.funcionario_id) continue; // linha sem técnico escolhido
-    const i = indiceServicoDoTecnico(tec, servicosOS);
-    if (i >= 0) excluidos.add(i);
+  for (const { tecnico, servico } of ligacoesDeOutrosTecnicos(principalId, tecnicos, servicosOS)) {
+    if (linhaComComissaoConfigurada(linhasCalculadas[tecnico])) excluidos.add(servico);
   }
   return excluidos;
 }

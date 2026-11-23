@@ -85,6 +85,20 @@ export function linhaTemServicoLigado(l: Pick<LinhaTecnicoComissao, "servico_id"
 /** O mínimo de uma linha de os_tecnicos para decidir e somar a comissão. */
 export type LinhaParticipacao = Pick<LinhaTecnicoComissao, "comissao_calculada_snapshot" | "servico_id" | "servico_nome_snapshot">;
 
+/**
+ * "O técnico ligado tem Comissão por Tipo de Serviço configurada para aquele
+ * serviço" (F0e) — critério ÚNICO, usado na gravação (servicosDeOutrosTecnicos)
+ * e na tela do Sistema A (baseSistemaADaOS). É o mesmo que decide o snapshot
+ * da linha em salvarTecnicosOS/montarLinhasTecnicosOS: comissao_tipo_snapshot
+ * só é gravado quando achou a config do técnico para o serviço (vínculo direto
+ * ou nome), com comissao_valor > 0, e a comissão foi aplicada (não ficou
+ * pendente por custo não confirmado). Sem isso a linha vale R$ 0 e o serviço
+ * continua na base do Técnico Principal.
+ */
+export function linhaComComissaoConfigurada(l: { comissao_tipo_snapshot?: string | null } | null | undefined): boolean {
+  return !!l && l.comissao_tipo_snapshot != null && l.comissao_tipo_snapshot !== "";
+}
+
 /** Participação de um funcionário numa OS: como principal, por serviço, ou nenhuma (null). */
 export interface ParticipacaoOS<L extends LinhaParticipacao = LinhaParticipacao> {
   ehPrincipal: boolean;
@@ -161,11 +175,13 @@ export function valorOsDaParticipacao(
 // técnicos (F0d, 2026-11-23): a base do Técnico Principal NÃO inclui o preço
 // dos serviços ligados a OUTROS técnicos em "Técnicos por Serviço" — mesma
 // regra da gravação (F0c, servicosDeOutrosTecnicos): só quando o principal não
-// tem linha própria nesta OS, e só linhas de outro técnico ligadas a serviço.
+// tem linha própria nesta OS, e só linhas de outro técnico ligadas a serviço
+// e com comissão configurada (F0e, linhaComComissaoConfigurada).
 
 /** Linha de os_tecnicos (de qualquer técnico da OS) para a base do Sistema A. */
 export interface LinhaBaseSistemaA {
   funcionario_id: string | null;
+  comissao_tipo_snapshot?: string | null;
   servico_id?: string | null;
   servico_linha_id?: string | null;
   servico_nome_snapshot?: string | null;
@@ -201,7 +217,9 @@ export function baseSistemaADaOS(
   if (!principal) return igual;
   if (linhasDaOS.some((l) => l.funcionario_id === principal)) return igual;
   const deOutros = linhasDaOS.filter(
-    (l) => !!l.funcionario_id && l.funcionario_id !== principal && linhaTemServicoLigado(l),
+    (l) => !!l.funcionario_id && l.funcionario_id !== principal && linhaTemServicoLigado(l)
+      // F0e: técnico sem comissão configurada para o serviço → fica com o principal.
+      && linhaComComissaoConfigurada(l),
   );
   if (deOutros.length === 0) return igual;
 

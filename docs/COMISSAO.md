@@ -117,6 +117,31 @@
 >   também — nenhum dado gravado muda. Busca todas as linhas de `os_tecnicos`
 >   das OS do período (de qualquer técnico) e `avarias->servicos_realizados`.
 > Provas: `scripts/testes-os-tecnicos/comissao/run.sh`.
+>
+> **Status F0e — técnico ligado SEM comissão configurada (2026-11-23),
+> decisão do dono (opção 1):** o serviço **não sai** da base do Técnico
+> Principal quando o técnico ligado a ele não tem "Comissão por Tipo de
+> Serviço" configurada para aquele serviço — o principal continua recebendo
+> por ele e o técnico fica com R$ 0 nele (nenhum serviço fica sem ninguém e
+> nenhum é pago duas vezes). Critério **único**,
+> `linhaComComissaoConfigurada` em
+> [`comissaoOsDoSnapshot.ts`](../src/lib/comissao/comissaoOsDoSnapshot.ts):
+> a linha tem `comissao_tipo_snapshot` — que `montarLinhasTecnicosOS` só grava
+> quando achou a config do técnico para o serviço (vínculo direto ou nome),
+> com `comissao_valor > 0`, e a comissão foi aplicada (não ficou pendente por
+> custo R$ 0,00 não confirmado no modo lucro, nem ambígua). Usado:
+> - na **gravação** (`servicosDeOutrosTecnicos`, F0c): quando há outro técnico
+>   ligado a serviço, as linhas dos técnicos são calculadas **antes** do
+>   snapshot do principal (`montarLinhasTecnicosOS`, mesmos dados que
+>   `salvarTecnicosOS` grava depois — as 4 consultas não se repetem);
+> - na **tela do Sistema A** (`baseSistemaADaOS`, F0d): base do percentual e
+>   contagem do valor fixo.
+> Consequência: técnico ligado com comissão **ambígua** ou com **custo não
+> confirmado** também deixa o serviço com o principal até a OS ser corrigida e
+> salva de novo. Vale para gravações novas (F0c) e na hora para o Sistema A
+> (F0d). Ajuda na tela: botão "Como funciona a comissão?"
+> (`ComoFuncionaComissao.tsx`) no Desempenho da Equipe e no cadastro do
+> funcionário; o exemplo é calculado pelas regras (`exemploComissao.ts`).
 
 Historicamente existiam **dois motores de cálculo de comissão completamente
 separados**, que **não se conciliavam** e podiam mostrar números diferentes
