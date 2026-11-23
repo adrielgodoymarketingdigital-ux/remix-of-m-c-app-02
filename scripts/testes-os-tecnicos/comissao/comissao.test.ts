@@ -272,3 +272,116 @@ Deno.test("regra pura: participação e anti-dupla-contagem", () => {
   assertEquals(r.comissaoOsDaParticipacao(osEntregue, { ehPrincipal: true, linhas: [ligada] }), 40);
   assertEquals(r.comissaoOsDaParticipacao({ status: "em_andamento", comissao_calculada_snapshot: 500 }, { ehPrincipal: true, linhas: [] }), 0);
 });
+
+// ===========================================================================
+// F0d — Sistema A (escopo/cargo, sem "Comissão por Tipo de Serviço"): a base
+// do principal não inclui os serviços ligados a outros técnicos.
+// OS R$ 300 = serviço A R$ 100 (sem técnico) + serviço B R$ 200 (Bruno 20%).
+const ANA_A_PCT = { id: "ana-a", nome: "Ana A", cargo: "Técnico", ativo: true, comissao_tipo: "porcentagem", comissao_valor: 10, comissao_escopo: "servicos_os", comissoes_por_cargo: null, base_comissao: "criacao", comissao_calculo: "faturamento" };
+const ANA_A_FIXO = { ...ANA_A_PCT, id: "ana-f", nome: "Ana fixo", comissao_tipo: "valor_fixo", comissao_valor: 5 };
+const BRUNO_T = FUNCIONARIOS[1];
+const SERVICOS_AB = [{ id: "srv-a", nome: "Serviço A", preco: 100 }, { id: "srv-b", nome: "Serviço B", preco: 200 }];
+const LINHA_BRUNO_B = (osId: string) => linha(osId, "bruno", 40, { id: "srv-b", nome: "Serviço B", preco: 200 });
+
+function bancoSistemaA(ordens: Linha[], linhas: Linha[]) {
+  carregarBanco(ordens, linhas);
+  g.__bancoFalso.loja_funcionarios = [ANA_A_PCT, ANA_A_FIXO, BRUNO_T];
+}
+const EQUIPE_A = [ANA_A_PCT, ANA_A_FIXO, BRUNO_T];
+// deno-lint-ignore no-explicit-any
+const comissoesEquipeA = (m: Modulos) => rodarConsulta(() => m.comissoes.useComissoes(EQUIPE_A, MES)) as Promise<any>;
+// deno-lint-ignore no-explicit-any
+const serieEquipeA = (m: Modulos) => rodarConsulta(() => m.comissoes.useComissoesSerieMensal(EQUIPE_A, MES, 2)) as Promise<any>;
+// os() com servicos_realizados (no banco real vem de avarias->servicos_realizados)
+const osA = (id: string, principal: string, total: number, servicos: Linha[], extra: Linha = {}) =>
+  os(id, principal, total, null, { servicos_realizados: servicos, avarias: { servicos_realizados: servicos }, ...extra });
+
+Deno.test("Sistema A, exemplo: antes Ana R$ 30 e Bruno R$ 0; depois Ana R$ 10 e Bruno R$ 40 (total R$ 50)", async () => {
+  bancoSistemaA([osA("os-a1", "ana-a", 300, SERVICOS_AB)], [LINHA_BRUNO_B("os-a1")]);
+  const a = await comissoesEquipeA(antes);
+  const n = await comissoesEquipeA(novo);
+  assertEquals([porFunc(a, "ana-a").comissaoCalculada, porFunc(a, "bruno").comissaoCalculada], [30, 0]);
+  assertEquals([porFunc(n, "ana-a").comissaoCalculada, porFunc(n, "bruno").comissaoCalculada], [10, 40]);
+  assertEquals(porFunc(n, "ana-a").comissaoCalculada + porFunc(n, "bruno").comissaoCalculada, 50);
+  // Detalhe por cargo acompanha a base nova; valor de OS ("Total Vendido") não muda.
+  assertEquals(porFunc(n, "ana-a").detalhePorCargo, [{ cargo: "Técnico", comissao: 10, base: 10 }]);
+  assertEquals(porFunc(n, "ana-a").totalServicos, 300);
+  assertEquals(porFunc(n, "ana-a").quantidadeOS, 1);
+  assertEquals(n.totalVendido, a.totalVendido);
+  // Gráfico mensal: novembro = 10 + 40
+  const sn = await serieEquipeA(novo);
+  assertEquals(sn[1].totalComissoes, 50);
+  assertEquals((await serieEquipeA(antes))[1].totalComissoes, 30);
+});
+
+Deno.test("Sistema A, valor fixo por OS: com serviço próprio conta 1; todos de outros técnicos conta 0", async () => {
+  bancoSistemaA([
+    osA("os-f1", "ana-f", 300, SERVICOS_AB), // A é dela → conta
+    osA("os-f2", "ana-f", 200, [SERVICOS_AB[1]]), // só B, do Bruno → não conta
+  ], [LINHA_BRUNO_B("os-f1"), LINHA_BRUNO_B("os-f2")]);
+  const a = await comissoesEquipeA(antes);
+  const n = await comissoesEquipeA(novo);
+  assertEquals(porFunc(a, "ana-f").comissaoCalculada, 10); // 2 OS × R$ 5
+  assertEquals(porFunc(n, "ana-f").comissaoCalculada, 5); // 1 OS × R$ 5
+  assertEquals(porFunc(n, "bruno").comissaoCalculada, 80);
+  // A coluna OS da tabela segue contando as OS em que ela é a principal.
+  assertEquals(porFunc(n, "ana-f").quantidadeOS, 2);
+});
+
+Deno.test("Sistema A, principal COM linha própria: igual a antes", async () => {
+  bancoSistemaA(
+    [osA("os-p1", "ana-a", 300, SERVICOS_AB)],
+    [linha("os-p1", "ana-a", null, { id: "srv-a", nome: "Serviço A", preco: 100 }), LINHA_BRUNO_B("os-p1")],
+  );
+  const a = await comissoesEquipeA(antes);
+  const n = await comissoesEquipeA(novo);
+  assertEquals(porFunc(n, "ana-a"), porFunc(a, "ana-a"));
+  assertEquals(porFunc(n, "ana-a").comissaoCalculada, 30);
+});
+
+Deno.test("Sistema A: OS apagada, de teste e de outro mês continuam fora; nunca abaixo de zero", async () => {
+  bancoSistemaA([
+    osA("os-x1", "ana-a", 300, SERVICOS_AB, { deleted_at: NOV(20) }),
+    osA("os-x2", "ana-a", 300, SERVICOS_AB, { is_teste: true }),
+    osA("os-x3", "ana-a", 300, SERVICOS_AB, { created_at: OUT(10), data_saida: OUT(11) }),
+    osA("os-x4", "ana-a", 150, SERVICOS_AB), // OS com desconto: 150 − 200 → 0
+  ], ["os-x1", "os-x2", "os-x3", "os-x4"].map(LINHA_BRUNO_B));
+  const n = await comissoesEquipeA(novo);
+  assertEquals(porFunc(n, "ana-a").comissaoCalculada, 0);
+  assertEquals(porFunc(n, "bruno").comissaoCalculada, 40); // só a os-x4
+  const sn = await serieEquipeA(novo);
+  // Outubro (os-x3, fora do mês acima, mas dentro do gráfico): Ana 10% de
+  // (300 − 200) = 10 + Bruno 40 = 50. Novembro: Ana 0 (os-x4) + Bruno 40.
+  assertEquals(sn[0].totalComissoes, 50);
+  assertEquals(sn[1].totalComissoes, 40);
+});
+
+Deno.test("Sistema A: OS SEM técnicos por serviço — idêntico antes x depois", async () => {
+  bancoSistemaA([
+    osA("os-s1", "ana-a", 300, SERVICOS_AB),
+    osA("os-s2", "ana-f", 200, [SERVICOS_AB[1]]),
+    osA("os-s3", "ana-a", 300, SERVICOS_AB, { created_at: OUT(10), data_saida: OUT(11) }),
+  ], []);
+  assertEquals(await comissoesEquipeA(novo), await comissoesEquipeA(antes));
+  assertEquals(await serieEquipeA(novo), await serieEquipeA(antes));
+});
+
+Deno.test("regra pura: baseSistemaADaOS", () => {
+  const r = novo.regra;
+  const sv = [{ id: "a" }, { id: "b" }];
+  const lB = { funcionario_id: "bruno", servico_id: "b", servico_nome_snapshot: "B", preco_servico_snapshot: 200 };
+  const os300 = { funcionario_id: "ana", total: 300 };
+  assertEquals(r.baseSistemaADaOS(os300, [], sv), { valor: 300, conta: true });
+  assertEquals(r.baseSistemaADaOS(os300, [lB], sv), { valor: 100, conta: true });
+  assertEquals(r.baseSistemaADaOS({ funcionario_id: "ana", total: 200 }, [lB], [{ id: "b" }]), { valor: 0, conta: false });
+  // principal com linha própria / sem principal / linha sem serviço / sem técnico
+  assertEquals(r.baseSistemaADaOS(os300, [{ funcionario_id: "ana", servico_id: "a" }, lB], sv), { valor: 300, conta: true });
+  assertEquals(r.baseSistemaADaOS({ funcionario_id: null, total: 300 }, [lB], sv), { valor: 300, conta: true });
+  assertEquals(r.baseSistemaADaOS(os300, [{ funcionario_id: "bruno", servico_id: null, servico_nome_snapshot: null, preco_servico_snapshot: 200 }], sv), { valor: 300, conta: true });
+  assertEquals(r.baseSistemaADaOS(os300, [{ ...lB, funcionario_id: "" }], sv), { valor: 300, conta: true });
+  // serviço repetido: a linha decide; serviço apagado do catálogo desconta, mas a OS conta
+  const rep = [{ id: "b", linha_id: "l1" }, { id: "b", linha_id: "l2" }];
+  assertEquals(r.baseSistemaADaOS({ funcionario_id: "ana", total: 400 }, [{ ...lB, servico_linha_id: "l2" }], rep), { valor: 200, conta: true });
+  assertEquals(r.baseSistemaADaOS({ funcionario_id: "ana", total: 400 }, [{ ...lB, servico_linha_id: "l1" }, { ...lB, servico_linha_id: "l2" }], rep), { valor: 0, conta: false });
+  assertEquals(r.baseSistemaADaOS({ funcionario_id: "ana", total: 200 }, [{ ...lB, servico_id: null }], [{ id: "b" }]), { valor: 0, conta: true });
+});
