@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import {
   Select,
   SelectContent,
@@ -150,13 +151,11 @@ export const DialogEditarVenda = ({
           {/* Valor da venda */}
           <div className="space-y-2">
             <Label htmlFor="valorTotal">{t("editar.valor")}</Label>
-            <Input
+            <InputDecimal
               id="valorTotal"
-              type="number"
-              step="0.01"
               min="0.01"
               value={valorTotal}
-              onChange={(e) => setValorTotal(e.target.value)}
+              onChange={(v) => setValorTotal(v)}
             />
             {!valorTotalValido && (
               <p className="text-sm text-destructive">{t("editar.valorInvalido")}</p>
