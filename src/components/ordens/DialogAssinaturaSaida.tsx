@@ -32,6 +32,7 @@ import { useOsDispositivosAdicionais } from "@/hooks/useOsDispositivosAdicionais
 import { marcaModelo, numeroAdicional, tituloDispositivo } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { empresaIdHerdado } from "@/lib/multiempresas/resolverLojaGravacao";
 import { CartaoNaSaidaOS } from "./CartaoNaSaidaOS";
+import { textoAceiteEntrega } from "@/lib/ordemServico/textoAceiteEntrega";
 import type { TaxaCartao } from "@/hooks/useTaxasCartao";
 import {
   CATEGORIA_TAXA_CARTAO,
@@ -769,7 +770,7 @@ export const DialogAssinaturaSaida = ({
           {/* Assinatura */}
           <AssinaturaDigital
             label="Assinatura de Recebimento"
-            textoAceite="Declaro ter recebido o dispositivo nas condições descritas acima e estou ciente do termo de garantia de 90 dias para o serviço executado."
+            textoAceite={textoAceiteEntrega(ordem.tempo_garantia)}
             onSave={setAssinaturaSaida}
             onClear={() => setAssinaturaSaida(null)}
             onTipoChange={(tipo) => {
