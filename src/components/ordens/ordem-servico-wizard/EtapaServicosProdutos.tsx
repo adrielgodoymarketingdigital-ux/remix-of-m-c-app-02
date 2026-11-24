@@ -1,4 +1,4 @@
-import { Wrench, User, Plus, Trash2 } from "lucide-react";
+import { Wrench, User, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,7 @@ import { FormData, TecnicoOS } from "./tipos";
 import { Funcionario } from "@/types/funcionario";
 import { useQuantidadeServicoOSVisivel } from "@/hooks/useQuantidadeServicoOSVisivel";
 import { chaveLinhaForm, nomeLinhaForm } from "@/lib/ordemServico/linhaServicoOS";
+import { type SituacaoLinhaTecnico, situacaoLinhaTecnico } from "@/lib/ordemServico/tecnicosPorServicoOS";
 import type { DispositivoAdicionalForm } from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
 import {
   definirDispositivoRefLinha,
@@ -16,6 +17,13 @@ import {
   VALOR_APARELHO_PRINCIPAL,
   valorAparelhoDaLinha,
 } from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
+
+/** Aviso de linha que NÃO será gravada (ver tecnicosParaGravar). */
+const AVISO_LINHA_TECNICO: Partial<Record<SituacaoLinhaTecnico, string>> = {
+  servico_removido: "O serviço deste técnico foi removido da OS. Escolha outro serviço ou exclua a linha — sem serviço, ela não será salva.",
+  sem_servico: "Escolha o serviço — sem serviço, esta linha não será salva.",
+  sem_tecnico: "Escolha o técnico — sem técnico, esta linha não será salva.",
+};
 
 interface EtapaServicosProdutosProps {
   formData: FormData;
@@ -137,11 +145,20 @@ export function EtapaServicosProdutos({
                 </p>
               )}
               <div className="space-y-2">
-                {tecnicosOS.map((tec, index) => (
-                  <div key={index} className="flex gap-2 items-start p-3 border rounded-xl bg-muted/30">
+                {tecnicosOS.map((tec, index) => {
+                  const situacao = situacaoLinhaTecnico(tec, formData.servicos);
+                  const aviso = AVISO_LINHA_TECNICO[situacao];
+                  const servicoRemovido = situacao === "servico_removido";
+                  return (
+                  <div
+                    key={index}
+                    className={`flex gap-2 items-start p-3 border rounded-xl ${servicoRemovido ? "border-destructive bg-destructive/5" : aviso ? "border-amber-400 bg-amber-50/50 dark:bg-amber-950/20" : "bg-muted/30"}`}
+                    data-situacao-tecnico={situacao}
+                  >
                     <div className="flex-1 space-y-2">
                       <Select
-                        value={tec.servico_linha_id || tec.servico_id || "selecionar"}
+                        // Serviço removido da OS: mostra "Selecione o serviço..." em vez de em branco.
+                        value={servicoRemovido ? "selecionar" : (tec.servico_linha_id || tec.servico_id || "selecionar")}
                         onValueChange={(value) => {
                           const novos = [...tecnicosOS];
                           // Opção = chave da linha (linha_id, senão o id do serviço — como sempre foi).
@@ -150,7 +167,8 @@ export function EtapaServicosProdutos({
                             ...novos[index],
                             servico_id: value === "selecionar" ? "" : (servico?.id ?? value),
                             servico_linha_id: servico?.linha_os?.linha_id,
-                            descricao_servico: servico?.nome || novos[index].descricao_servico,
+                            // "Selecione..." desliga do serviço de vez (sem descrição, a linha não é salva).
+                            descricao_servico: value === "selecionar" ? "" : (servico?.nome || novos[index].descricao_servico),
                           };
                           setTecnicosOS(novos);
                         }}
@@ -190,6 +208,12 @@ export function EtapaServicosProdutos({
                             ))}
                         </SelectContent>
                       </Select>
+                      {aviso && (
+                        <p className={`flex items-start gap-1.5 text-xs ${servicoRemovido ? "text-destructive" : "text-amber-700 dark:text-amber-400"}`}>
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+                          {aviso}
+                        </p>
+                      )}
                     </div>
                     <Button
                       type="button"
@@ -204,7 +228,8 @@ export function EtapaServicosProdutos({
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
