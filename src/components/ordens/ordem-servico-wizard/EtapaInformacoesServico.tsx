@@ -23,6 +23,7 @@ import {
   tituloBlocoDispositivo,
 } from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
 import { numeroAdicional } from "@/lib/ordemServico/dispositivosAdicionaisOS";
+import { tempoGarantiaDoSelect, tempoGarantiaParaSelect } from "@/lib/ordemServico/tempoGarantiaOS";
 
 interface EtapaInformacoesServicoProps {
   formData: FormData;
@@ -203,9 +204,9 @@ export function EtapaInformacoesServico({
           <div>
             <CampoLabel htmlFor="tempoGarantia" texto="Tempo de Garantia" />
             <Select
-              value={formData.tempoGarantia?.toString() || "90"}
+              value={tempoGarantiaParaSelect(formData.tempoGarantia)}
               onValueChange={(value) =>
-                setFormData({ ...formData, tempoGarantia: value === "0" ? null : Number(value) })
+                setFormData({ ...formData, tempoGarantia: tempoGarantiaDoSelect(value) })
               }
             >
               <SelectTrigger id="tempoGarantia" className="h-10 rounded-xl">

@@ -19,6 +19,7 @@ import {
   estadoAdicionaisNovaOS,
   estadoAdicionaisVazio,
 } from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
+import { TEMPO_GARANTIA_OS_PADRAO, tempoGarantiaCarregadoDaOS } from "@/lib/ordemServico/tempoGarantiaOS";
 import { FormData, TecnicoOS, EtapaWizard } from "./tipos";
 
 const formDataVazio: FormData = {
@@ -54,7 +55,7 @@ const formDataVazio: FormData = {
   servicos: [],
   produtos: [],
   custosAdicionais: [],
-  tempoGarantia: 90,
+  tempoGarantia: TEMPO_GARANTIA_OS_PADRAO,
   formaPagamento: "",
   numeroParcelas: 2,
   desconto: 0,
@@ -342,8 +343,8 @@ export function useOrdemServicoWizardState({
         servicos: servicosCarregados,
         produtos: produtosUtilizados,
         custosAdicionais: avariasData.custos_adicionais || [],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        tempoGarantia: (ordem as any).tempo_garantia ?? 90,
+        // null no banco = sem garantia (a impressão já trata assim); não virar 90.
+        tempoGarantia: tempoGarantiaCarregadoDaOS(ordem.tempo_garantia),
         formaPagamento: avariasData.dados_pagamento?.forma || "",
         numeroParcelas: avariasData.dados_pagamento?.parcelas || 2,
         desconto: avariasData.dados_pagamento?.desconto || 0,
