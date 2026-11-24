@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency } from "@/lib/formatters";
 import { custoLinhaServico, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
@@ -245,14 +246,12 @@ export const ResumoFinanceiro = ({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <Label className="text-xs whitespace-nowrap">Valor:</Label>
-                    <Input
-                      type="number"
+                    <InputDecimal
                       value={custo.valor}
-                      onChange={(e) => atualizarCusto(custo.id, { valor: Math.max(0, Number(e.target.value)) })}
+                      onChange={(v) => atualizarCusto(custo.id, { valor: Math.max(0, Number(v)) })}
                       className="h-8 text-sm"
                       placeholder="0,00"
                       min="0"
-                      step="0.01"
                     />
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -297,16 +296,14 @@ export const ResumoFinanceiro = ({
           
           <div className="flex items-center gap-2">
             <Label htmlFor="desconto" className="text-xs whitespace-nowrap">Desconto:</Label>
-            <Input
+            <InputDecimal
               id="desconto"
-              type="number"
               value={desconto}
-              onChange={(e) => onDescontoChange(Math.min(subtotal, Math.max(0, Number(e.target.value))))}
+              onChange={(v) => onDescontoChange(Math.min(subtotal, Math.max(0, Number(v))))}
               className="h-8 text-sm"
               placeholder="0,00"
               min="0"
               max={subtotal}
-              step="0.01"
             />
           </div>
         </div>
@@ -448,16 +445,14 @@ export const ResumoFinanceiro = ({
               <div className="space-y-2 pl-0 sm:pl-6">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="valor-entrada" className="text-xs whitespace-nowrap">Entrada:</Label>
-                  <Input
+                  <InputDecimal
                     id="valor-entrada"
-                    type="number"
                     value={valorEntrada}
-                    onChange={(e) => onValorEntradaChange(Math.min(total, Math.max(0, Number(e.target.value))))}
+                    onChange={(v) => onValorEntradaChange(Math.min(total, Math.max(0, Number(v))))}
                     className="h-8 text-sm"
                     placeholder="0,00"
                     min="0"
                     max={total}
-                    step="0.01"
                   />
                 </div>
                 {valorEntrada > 0 && (

@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Plus, Minus, X, Package, Check, ChevronsUpDown, Pencil } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
@@ -202,12 +203,10 @@ export const SelecionadorProduto = ({ value, onChange }: SelecionadorProdutoProp
                     <span className="text-sm text-muted-foreground">Valor unit.:</span>
                     <div className="relative">
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-                      <Input
-                        type="number"
+                      <InputDecimal
                         min="0"
-                        step="0.01"
                         value={produto.preco_unitario}
-                        onChange={(e) => handleAlterarPrecoUnitario(produto.id, parseFloat(e.target.value))}
+                        onChange={(v) => handleAlterarPrecoUnitario(produto.id, parseFloat(v))}
                         className="h-8 w-24 pl-7 text-right"
                       />
                     </div>

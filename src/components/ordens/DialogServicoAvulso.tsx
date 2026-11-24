@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
@@ -78,23 +79,19 @@ export const DialogServicoAvulso = ({ open, onOpenChange, onCriar }: DialogServi
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="custo-avulso">Custo (R$)</Label>
-              <Input
+              <InputDecimal
                 id="custo-avulso"
-                type="number"
-                step="0.01"
                 value={custo}
-                onChange={(e) => setCusto(e.target.value)}
+                onChange={(v) => setCusto(v)}
                 placeholder="0,00"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="preco-avulso">Valor Cobrado (R$) *</Label>
-              <Input
+              <InputDecimal
                 id="preco-avulso"
-                type="number"
-                step="0.01"
                 value={preco}
-                onChange={(e) => setPreco(e.target.value)}
+                onChange={(v) => setPreco(v)}
                 placeholder="0,00"
               />
             </div>

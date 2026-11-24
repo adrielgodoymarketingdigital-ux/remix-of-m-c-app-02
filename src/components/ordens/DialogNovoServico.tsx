@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -216,24 +217,20 @@ export const DialogNovoServico = ({ open, onOpenChange, onCriar }: DialogNovoSer
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="custo-servico">Custo da Peça *</Label>
-              <Input
+              <InputDecimal
                 id="custo-servico"
-                type="number"
-                step="0.01"
                 value={custo}
-                onChange={(e) => setCusto(e.target.value)}
+                onChange={(v) => setCusto(v)}
                 placeholder="0,00"
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="preco-servico">Preço do Serviço *</Label>
-              <Input
+              <InputDecimal
                 id="preco-servico"
-                type="number"
-                step="0.01"
                 value={preco}
-                onChange={(e) => setPreco(e.target.value)}
+                onChange={(v) => setPreco(v)}
                 placeholder="0,00"
               />
             </div>

@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Plus, Minus, X, Pencil, Check, User, AlertCircle, CheckCircle2, ChevronsUpDown, Package, ChevronDown, ChevronUp, Wrench } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
@@ -317,24 +318,20 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs">Custo (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
+                <InputDecimal
                   min="0"
                   placeholder="0,00"
                   value={manualCusto}
-                  onChange={(e) => setManualCusto(e.target.value)}
+                  onChange={(v) => setManualCusto(v)}
                 />
               </div>
               <div>
                 <Label className="text-xs">Valor de Venda (R$) *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
+                <InputDecimal
                   min="0"
                   placeholder="0,00"
                   value={manualPreco}
-                  onChange={(e) => setManualPreco(e.target.value)}
+                  onChange={(v) => setManualPreco(v)}
                 />
               </div>
               <div>
@@ -461,13 +458,11 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">Custo R$</span>
-                          <Input
-                            type="number"
-                            step="0.01"
+                          <InputDecimal
                             min="0"
                             placeholder="0,00"
                             value={custoEditando}
-                            onChange={(e) => setCustoEditando(e.target.value)}
+                            onChange={(v) => setCustoEditando(v)}
                             className="h-8 w-24"
                             autoFocus={focarCustoId === chave}
                             onKeyDown={(e) => {
@@ -478,12 +473,10 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">Venda R$</span>
-                          <Input
-                            type="number"
-                            step="0.01"
+                          <InputDecimal
                             min="0"
                             value={precoEditando}
-                            onChange={(e) => setPrecoEditando(e.target.value)}
+                            onChange={(v) => setPrecoEditando(v)}
                             className="h-8 w-24"
                             autoFocus={focarCustoId !== chave}
                             onKeyDown={(e) => {
@@ -622,15 +615,13 @@ export const SelecionadorServico = ({ value, onChange, comissaoLucroAtiva = fals
                       <Label className="text-xs">Valor da Peça (custo{quantidade > 1 ? ", por unidade" : ""})</Label>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">R$</span>
-                        <Input
-                          type="number"
-                          step="0.01"
+                        <InputDecimal
                           min="0"
                           placeholder="0,00"
                           className="h-8 text-xs w-32"
                           value={servico.linha_os ? custoUnitario : (servico.peca_valor ?? servico.custo ?? '')}
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                          onChange={(v) => {
+                            const val = v === '' ? undefined : parseFloat(v);
                             onChange(servicosValue.map(s => {
                               if (chaveLinhaForm(s) !== chave) return s;
                               // Linha com quantidade: o valor digitado é por unidade.
