@@ -3701,6 +3701,52 @@ export type Database = {
           },
         ]
       }
+      os_tecnicos_adicionais: {
+        Row: {
+          created_at: string
+          funcionario_id: string
+          id: string
+          os_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          funcionario_id: string
+          id?: string
+          os_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          funcionario_id?: string
+          id?: string
+          os_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_tecnicos_adicionais_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "loja_funcionarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_tecnicos_adicionais_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_tecnicos_adicionais_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico_ativas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_tracking_links: {
         Row: {
           ativo: boolean | null
@@ -6551,6 +6597,14 @@ export type Database = {
             Args: { novo_inicio: number; p_user_id: string }
             Returns: undefined
           }
+      salvar_tecnicos_os: {
+        Args: {
+          p_adicionais: string[]
+          p_ordem_id: string
+          p_principal: string
+        }
+        Returns: Json
+      }
       track_user_event: {
         Args: { _event_data?: Json; _event_type: string }
         Returns: string
