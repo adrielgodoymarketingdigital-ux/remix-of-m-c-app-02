@@ -34,11 +34,22 @@ interface DialogExportarPorCategoriaProps {
   items: ItemEstoque[];
   categorias: CategoriaProduto[];
   configLoja?: ConfiguracaoLoja | null;
+  /** Começa com a escolha do menu Exportar; mudar aqui também vale para o menu (mesma preferência). */
+  mostrarCustoELucro: boolean;
+  onMostrarCustoELucroChange: (valor: boolean) => void;
 }
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-export function DialogExportarPorCategoria({ aberto, onFechar, items, categorias, configLoja }: DialogExportarPorCategoriaProps) {
+export function DialogExportarPorCategoria({
+  aberto,
+  onFechar,
+  items,
+  categorias,
+  configLoja,
+  mostrarCustoELucro,
+  onMostrarCustoELucroChange,
+}: DialogExportarPorCategoriaProps) {
   const [selecao, setSelecao] = useState<Set<string>>(new Set());
   const [formato, setFormato] = useState<Formato>('pdf');
   const [somenteComEstoque, setSomenteComEstoque] = useState(false);
@@ -101,11 +112,12 @@ export function DialogExportarPorCategoria({ aberto, onFechar, items, categorias
       if (formato === 'pdf') {
         await exportarCategoriasPDF(grupos, configLoja, {
           observacao: somenteComEstoque ? 'Somente itens com estoque' : undefined,
+          mostrarCustoELucro,
         });
       } else {
         // xlsx é pesado: só carrega quando a pessoa escolhe Excel.
         const { exportarCategoriasExcel } = await import('@/lib/produtos/exportarCategoriasExcel');
-        exportarCategoriasExcel(grupos, configLoja?.nome_loja || 'Minha Loja');
+        exportarCategoriasExcel(grupos, configLoja?.nome_loja || 'Minha Loja', { mostrarCustoELucro });
       }
       toast.success(formato === 'pdf' ? 'PDF exportado com sucesso!' : 'Planilha exportada com sucesso!');
       onFechar();
@@ -233,6 +245,17 @@ export function DialogExportarPorCategoria({ aberto, onFechar, items, categorias
               Somente itens com estoque
             </Label>
             <Switch id="exp-cat-estoque" checked={somenteComEstoque} onCheckedChange={setSomenteComEstoque} />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="exp-cat-custo-lucro" className="text-sm font-normal">
+              Mostrar custo e lucro
+            </Label>
+            <Checkbox
+              id="exp-cat-custo-lucro"
+              checked={mostrarCustoELucro}
+              onCheckedChange={(v) => onMostrarCustoELucroChange(v === true)}
+              className="h-4 w-4"
+            />
           </div>
         </div>
 

@@ -5,13 +5,14 @@ import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, T
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useProdutos } from '@/hooks/useProdutos';
 import { useFuncionarioPermissoes } from '@/hooks/useFuncionarioPermissoes';
 import { useCategoriasProdutos } from '@/hooks/useCategoriasProdutos';
 import { useAssinatura } from '@/hooks/useAssinatura';
 import { useColunasVisiveis } from '@/hooks/useColunasVisiveis';
+import { useMostrarCustoLucroExportacao } from '@/hooks/useMostrarCustoLucroExportacao';
 import { DialogCadastroProduto } from '@/components/produtos/DialogCadastroProduto';
 import { DialogImportarProdutos } from '@/components/produtos/DialogImportarProdutos';
 import { DialogLimiteAtingido } from '@/components/planos/DialogLimiteAtingido';
@@ -44,6 +45,7 @@ const Produtos = () => {
   const { limiteBaixo } = useConfiguracaoEstoque();
   const { trocas, criar: criarTroca, excluir: excluirTroca } = useTrocasGarantia();
   const { colunasVisiveis, toggleColuna, resetarColunas } = useColunasVisiveis();
+  const { mostrarCustoELucro, alterarMostrarCustoELucro } = useMostrarCustoLucroExportacao();
   const [abaAtiva, setAbaAtiva] = useState<'estoque' | 'trocas'>('estoque');
   const [dialogTrocaAberto, setDialogTrocaAberto] = useState(false);
   const [dialogExportarCategoriaAberto, setDialogExportarCategoriaAberto] = useState(false);
@@ -255,10 +257,19 @@ const Produtos = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
+                  {/* Vale para todos os relatórios do menu; o menu não fecha ao marcar. */}
+                  <DropdownMenuCheckboxItem
+                    checked={mostrarCustoELucro}
+                    onCheckedChange={(v) => alterarMostrarCustoELucro(v === true)}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    Mostrar custo e lucro
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {
                       if (items.length === 0) { toast.error('Nenhum item para exportar'); return; }
-                      await exportarProdutosPDF(items, configLoja);
+                      await exportarProdutosPDF(items, configLoja, { mostrarCustoELucro });
                       toast.success('PDF exportado com sucesso!');
                     }}
                   >
@@ -593,6 +604,8 @@ const Produtos = () => {
         items={items}
         categorias={categorias}
         configLoja={configLoja}
+        mostrarCustoELucro={mostrarCustoELucro}
+        onMostrarCustoELucroChange={alterarMostrarCustoELucro}
       />
 
       {/* Dialog de Nova Troca em Garantia */}
