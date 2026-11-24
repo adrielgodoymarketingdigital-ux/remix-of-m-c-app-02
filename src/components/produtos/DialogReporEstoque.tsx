@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InputDecimal } from '@/components/ui/input-decimal';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -168,14 +169,12 @@ export const DialogReporEstoque = ({ open, onOpenChange, item, onConfirmar }: Di
               <>
                 <div>
                   <Label htmlFor="custo-repor">Custo unitário desta compra (opcional)</Label>
-                  <Input
+                  <InputDecimal
                     id="custo-repor"
-                    type="number"
                     min="0"
-                    step="0.01"
                     placeholder="0,00"
                     value={custo}
-                    onChange={(e) => setCusto(e.target.value)}
+                    onChange={(v) => setCusto(v)}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Custo atual do item: {formatarReais(Number(item.custo || 0))}

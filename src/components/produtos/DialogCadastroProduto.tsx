@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { InputDecimal } from '@/components/ui/input-decimal';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -541,18 +542,16 @@ export const DialogCadastroProduto = ({
                             </div>
                             <div className="space-y-1.5">
                               <Label className="text-xs">Custo</Label>
-                              <Input
-                                type="number" step="0.01" min="0"
+                              <InputDecimal min="0"
                                 value={v.custo}
-                                onChange={e => atualizarVariacao(index, { custo: Number(e.target.value) })}
+                                onChange={v => atualizarVariacao(index, { custo: Number(v) })}
                               />
                             </div>
                             <div className="space-y-1.5">
                               <Label className="text-xs">Venda</Label>
-                              <Input
-                                type="number" step="0.01" min="0"
+                              <InputDecimal min="0"
                                 value={v.preco}
-                                onChange={e => atualizarVariacao(index, { preco: Number(e.target.value) })}
+                                onChange={v => atualizarVariacao(index, { preco: Number(v) })}
                               />
                             </div>
                           </div>
@@ -706,9 +705,7 @@ export const DialogCadastroProduto = ({
                       <FormItem>
                         <FormLabel>{temVariacoes ? 'Custo (valor padrão)' : 'Preço de Custo'}</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
+                          <InputDecimal
                             min="0"
                             placeholder="0.00"
                             disabled={isFuncionario && !podeEditarProdutos}
@@ -734,9 +731,7 @@ export const DialogCadastroProduto = ({
                     <FormItem>
                       <FormLabel>{temVariacoes ? 'Venda (valor padrão)' : 'Preço de Venda'}</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
+                        <InputDecimal
                           min="0"
                           placeholder="0.00"
                           disabled={isFuncionario && !podeEditarProdutos}
@@ -761,14 +756,12 @@ export const DialogCadastroProduto = ({
                     <FormItem>
                       <FormLabel>{temVariacoes ? 'Atacado (valor padrão)' : 'Preço Atacado'}</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
+                        <InputDecimal
                           min="0"
                           placeholder="Opcional"
                           disabled={isFuncionario && !podeEditarProdutos}
                           value={field.value ?? ''}
-                          onChange={e => field.onChange(e.target.value === '' ? null : e.target.value)}
+                          onChange={v => field.onChange(v === '' ? null : v)}
                         />
                       </FormControl>
                       <FormMessage />

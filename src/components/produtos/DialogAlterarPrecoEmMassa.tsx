@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InputDecimal } from '@/components/ui/input-decimal';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Package, Wrench, Info } from 'lucide-react';
@@ -138,14 +139,12 @@ export const DialogAlterarPrecoEmMassa = ({
             <Label htmlFor="novo-preco">Novo Preço de Venda *</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-              <Input
+              <InputDecimal
                 id="novo-preco"
-                type="number"
                 min="0"
-                step="0.01"
                 placeholder="0,00"
                 value={novoPreco}
-                onChange={(e) => setNovoPreco(e.target.value)}
+                onChange={(v) => setNovoPreco(v)}
                 className="pl-9"
                 autoFocus
               />
@@ -160,14 +159,12 @@ export const DialogAlterarPrecoEmMassa = ({
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-              <Input
+              <InputDecimal
                 id="novo-preco-atacado"
-                type="number"
                 min="0"
-                step="0.01"
                 placeholder="Deixe vazio para não alterar"
                 value={novoPrecoAtacado}
-                onChange={(e) => setNovoPrecoAtacado(e.target.value)}
+                onChange={(v) => setNovoPrecoAtacado(v)}
                 className="pl-9"
               />
             </div>

@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, X } from "lucide-react";
 import { Servico } from "@/types/servico";
@@ -423,9 +424,7 @@ export function DialogCadastroServico({
                   <FormItem>
                     <FormLabel>Preço de Custo *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <InputDecimal
                         placeholder="0.00"
                         {...field}
                       />
@@ -442,9 +441,7 @@ export function DialogCadastroServico({
                   <FormItem>
                     <FormLabel>Preço de Venda *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <InputDecimal
                         placeholder="0.00"
                         {...field}
                       />

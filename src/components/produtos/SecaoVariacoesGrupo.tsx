@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InputDecimal } from '@/components/ui/input-decimal';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Check, X, Plus, Link2Off, Loader2 } from 'lucide-react';
@@ -230,18 +231,16 @@ export function SecaoVariacoesGrupo({
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Custo</Label>
-                <Input
-                  type="number" step="0.01" min="0"
+                <InputDecimal min="0"
                   value={novaVariacao.custo}
-                  onChange={(e) => setNovaVariacao((v) => ({ ...v, custo: Number(e.target.value) }))}
+                  onChange={(valor) => setNovaVariacao((v) => ({ ...v, custo: Number(valor) }))}
                 />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Venda</Label>
-                <Input
-                  type="number" step="0.01" min="0"
+                <InputDecimal min="0"
                   value={novaVariacao.preco}
-                  onChange={(e) => setNovaVariacao((v) => ({ ...v, preco: Number(e.target.value) }))}
+                  onChange={(valor) => setNovaVariacao((v) => ({ ...v, preco: Number(valor) }))}
                 />
               </div>
             </div>
