@@ -26,6 +26,7 @@ import { useConfiguracaoLoja } from '@/hooks/useConfiguracaoLoja';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { DialogReporEstoque } from '@/components/produtos/DialogReporEstoque';
+import { DialogExportarPorCategoria } from '@/components/produtos/DialogExportarPorCategoria';
 import { CardInventario } from '@/components/produtos/CardInventario';
 import { CardInventarioDesktop } from '@/components/produtos/CardInventarioDesktop';
 import { TabelaTrocasGarantia } from '@/components/produtos/TabelaTrocasGarantia';
@@ -45,6 +46,7 @@ const Produtos = () => {
   const { colunasVisiveis, toggleColuna, resetarColunas } = useColunasVisiveis();
   const [abaAtiva, setAbaAtiva] = useState<'estoque' | 'trocas'>('estoque');
   const [dialogTrocaAberto, setDialogTrocaAberto] = useState(false);
+  const [dialogExportarCategoriaAberto, setDialogExportarCategoriaAberto] = useState(false);
   const [busca, setBusca] = useState('');
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([]);
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -286,6 +288,16 @@ const Produtos = () => {
                   >
                     <TrendingUp className="w-4 h-4 mr-2 text-green-500" />
                     Mais vendidos
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (items.length === 0) { toast.error('Nenhum item para exportar'); return; }
+                      setDialogExportarCategoriaAberto(true);
+                    }}
+                  >
+                    <Tag className="w-4 h-4 mr-2 text-muted-foreground" />
+                    Por categoria (PDF ou Excel)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -572,6 +584,15 @@ const Produtos = () => {
         onOpenChange={(open) => !open && setItemParaRepor(null)}
         item={itemParaRepor}
         onConfirmar={reporEstoque}
+      />
+
+      {/* Dialog de Exportar relatório por categoria */}
+      <DialogExportarPorCategoria
+        aberto={dialogExportarCategoriaAberto}
+        onFechar={() => setDialogExportarCategoriaAberto(false)}
+        items={items}
+        categorias={categorias}
+        configLoja={configLoja}
       />
 
       {/* Dialog de Nova Troca em Garantia */}
