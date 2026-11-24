@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import {
   Select,
   SelectContent,
@@ -112,13 +113,11 @@ export function ComissoesTipoServicoEditor({ comissoes, onChange }: ComissoesTip
                 <div>
                   <Label className="text-xs">Valor</Label>
                   <div className="relative">
-                    <Input
-                      type="number"
+                    <InputDecimal
                       min="0"
-                      step={comissao.comissao_tipo === "porcentagem" ? "0.5" : "0.01"}
                       max={comissao.comissao_tipo === "porcentagem" ? "100" : undefined}
                       value={comissao.comissao_valor || ""}
-                      onChange={(e) => updateComissao(comissao.tipo_servico_id, "comissao_valor", parseFloat(e.target.value) || 0)}
+                      onChange={(v) => updateComissao(comissao.tipo_servico_id, "comissao_valor", parseFloat(v) || 0)}
                       className="h-8 text-xs pr-8"
                       placeholder="0"
                     />

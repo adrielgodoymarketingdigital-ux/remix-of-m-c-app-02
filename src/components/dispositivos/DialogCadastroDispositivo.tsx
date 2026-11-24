@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Dispositivo, FormularioDispositivo } from "@/types/dispositivo";
@@ -798,12 +799,10 @@ export function DialogCadastroDispositivo({
                             {podeVerCustos ? (
                               <div className="space-y-1">
                                 <label className="text-sm font-medium">Custo</label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
+                                <InputDecimal
                                   placeholder="0.00"
                                   value={unidade.custo}
-                                  onChange={(e) => atualizarUnidade(idx, "custo", e.target.value)}
+                                  onChange={(v) => atualizarUnidade(idx, "custo", v)}
                                 />
                               </div>
                             ) : (
@@ -814,12 +813,10 @@ export function DialogCadastroDispositivo({
                             )}
                             <div className="space-y-1">
                               <label className="text-sm font-medium">Preço de Venda</label>
-                              <Input
-                                type="number"
-                                step="0.01"
+                              <InputDecimal
                                 placeholder="0.00"
                                 value={unidade.preco}
-                                onChange={(e) => atualizarUnidade(idx, "preco", e.target.value)}
+                                onChange={(v) => atualizarUnidade(idx, "preco", v)}
                               />
                             </div>
                           </div>
@@ -1189,7 +1186,7 @@ export function DialogCadastroDispositivo({
                           <FormItem>
                             <FormLabel>Custo</FormLabel>
                             <FormControl>
-                              <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value || ""} />
+                              <InputDecimal placeholder="0.00" {...field} value={field.value || ""} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1208,7 +1205,7 @@ export function DialogCadastroDispositivo({
                         <FormItem>
                           <FormLabel>Preço de Venda</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value || ""} />
+                            <InputDecimal placeholder="0.00" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

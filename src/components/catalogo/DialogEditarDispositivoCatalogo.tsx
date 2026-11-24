@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, X, ImageIcon, Loader2, Tag } from "lucide-react";
@@ -297,14 +298,12 @@ export function DialogEditarDispositivoCatalogo({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                   R$
                 </span>
-                <Input
+                <InputDecimal
                   id="preco"
-                  type="number"
-                  step="0.01"
                   min="0"
                   placeholder="0,00"
                   value={preco}
-                  onChange={(e) => setPreco(e.target.value)}
+                  onChange={(v) => setPreco(v)}
                   className="pl-9"
                 />
               </div>
@@ -355,14 +354,12 @@ export function DialogEditarDispositivoCatalogo({
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                   {tipoDesconto === "percentual" ? "%" : "R$"}
                 </span>
-                <Input
-                  type="number"
-                  step={tipoDesconto === "percentual" ? "1" : "0.01"}
+                <InputDecimal
                   min="0"
                   max={tipoDesconto === "percentual" ? "100" : undefined}
                   placeholder={tipoDesconto === "percentual" ? "Ex: 15" : "Ex: 100,00"}
                   value={valorDesconto}
-                  onChange={(e) => setValorDesconto(e.target.value)}
+                  onChange={(v) => setValorDesconto(v)}
                   className="pl-9"
                 />
               </div>

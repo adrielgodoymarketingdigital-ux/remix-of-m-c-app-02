@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -375,13 +376,11 @@ export function DialogCadastroFuncionario({
             <div className="space-y-1">
               <Label className="text-sm">Valor</Label>
               <div className="relative">
-                <Input
-                  type="number"
+                <InputDecimal
                   min="0"
-                  step={config.tipo === "porcentagem" ? "0.5" : "0.01"}
                   max={config.tipo === "porcentagem" ? "100" : undefined}
                   value={config.valor}
-                  onChange={(e) => setComissaoField(cargo, "valor", e.target.value)}
+                  onChange={(v) => setComissaoField(cargo, "valor", v)}
                   placeholder="0"
                   disabled={!config.tipo}
                 />

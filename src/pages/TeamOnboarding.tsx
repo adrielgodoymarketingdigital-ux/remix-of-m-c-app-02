@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -446,21 +447,19 @@ function TeamOnboardingInner() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-slate-400">Valor cobrado (R$) *</Label>
-                  <Input
-                    type="number"
+                  <InputDecimal
                     placeholder="220.00"
                     value={valor}
-                    onChange={(e) => setValor(e.target.value)}
+                    onChange={(v) => setValor(v)}
                     className="bg-slate-800/60 border-white/10 text-white placeholder:text-slate-600 h-10 rounded-xl"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs text-slate-400">Custo da peça (R$)</Label>
-                  <Input
-                    type="number"
+                  <InputDecimal
                     placeholder="85.00"
                     value={custo}
-                    onChange={(e) => setCusto(e.target.value)}
+                    onChange={(v) => setCusto(v)}
                     className="bg-slate-800/60 border-white/10 text-white placeholder:text-slate-600 h-10 rounded-xl"
                   />
                 </div>

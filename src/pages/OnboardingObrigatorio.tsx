@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
@@ -359,22 +360,20 @@ export default function OnboardingObrigatorio() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="servicoValor">Valor cobrado (R$)</Label>
-                      <Input
+                      <InputDecimal
                         id="servicoValor"
-                        type="number"
                         placeholder="150.00"
                         value={servicoValor}
-                        onChange={(e) => setServicoValor(e.target.value)}
+                        onChange={(v) => setServicoValor(v)}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="servicoCusto">Custo (R$)</Label>
-                      <Input
+                      <InputDecimal
                         id="servicoCusto"
-                        type="number"
                         placeholder="80.00"
                         value={servicoCusto}
-                        onChange={(e) => setServicoCusto(e.target.value)}
+                        onChange={(v) => setServicoCusto(v)}
                       />
                     </div>
                   </div>
