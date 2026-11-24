@@ -203,8 +203,7 @@ const eventosJanela: string[] = [];
 };
 
 async function rodar(
-  // deno-lint-ignore no-explicit-any
-  modulo: any,
+  modulo: { salvarOrdemServico: (params: unknown) => Promise<unknown> },
   extra: Record<string, unknown>,
   conjunto: Dados = DADOS_PADRAO,
   falha: typeof falhaOT = null,
