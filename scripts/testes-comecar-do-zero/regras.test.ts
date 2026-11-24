@@ -111,7 +111,7 @@ Deno.test("contagens em português", () => {
 });
 
 Deno.test("todas as tabelas que a prévia pode devolver têm nome amigável", () => {
-  const doCatalogo = ["os_tecnicos", "os_dispositivos_adicionais", "os_tracking_links", "cliente_tracking_links", "fidelidade_resgates", "fidelidade_pontos",
+  const doCatalogo = ["os_tecnicos", "os_dispositivos_adicionais", "os_tecnicos_adicionais", "os_tracking_links", "cliente_tracking_links", "fidelidade_resgates", "fidelidade_pontos",
     "remessa_itens", "remessas_corporativas", "trocas_garantia", "vendas_trocas", "vendas_cupons", "dispositivo_imeis", "vendas_alteracoes",
     "caixa_movimentacoes", "pagamentos_contas", "entradas_estoque", "compras_xml_itens", "compras_xml_mapeamento", "compras_xml_importadas",
     "ordens_servico", "vendas", "vendas_avulsas", "servicos_avulsos", "pedidos", "orcamentos", "contas", "extrato_lancamentos_manuais", "caixas",

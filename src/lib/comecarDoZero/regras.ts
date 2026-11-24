@@ -138,6 +138,7 @@ export const ROTULOS_TABELA: Record<string, Rotulo> = {
   ordens_servico: ["ordem de serviço", "ordens de serviço"],
   os_tecnicos: ["registro de técnico da OS", "registros de técnicos das OS"],
   os_dispositivos_adicionais: ["aparelho adicional de OS", "aparelhos adicionais de OS"],
+  os_tecnicos_adicionais: ["técnico adicional de OS", "técnicos adicionais de OS"],
   os_tracking_links: ["link de acompanhamento de OS", "links de acompanhamento de OS"],
   os_audit_log: ["registro do histórico das OS", "registros do histórico das OS"],
   os_localizacoes: ["localização de OS", "localizações de OS"],
