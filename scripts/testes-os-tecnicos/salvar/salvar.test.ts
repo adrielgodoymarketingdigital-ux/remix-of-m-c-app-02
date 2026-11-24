@@ -60,8 +60,41 @@ function valorEq(c: Chamada, coluna: string): unknown {
   return argsDe(c, "eq").find((x) => x[0] === coluna)?.[1];
 }
 
+// os_tecnicos em memória (F0g): select/insert/delete de verdade, para comparar
+// o ESTADO FINAL da tabela entre antes e novo (a ordem das chamadas mudou de
+// propósito: insere antes de apagar). Toda execução começa com 1 linha antiga
+// na OS de edição (os-1).
+type Linha = Record<string, unknown>;
+const OT_ANTIGA: Linha = {
+  id: "ot-antiga", os_id: "os-1", funcionario_id: "func-a", descricao_servico: "Antigo", servico_id: null,
+  comissao_calculada_snapshot: 12,
+};
+let tabelaOT: Linha[] = [];
+let proximoIdOT = 1;
+// Falha injetada: devolve o erro para a chamada a os_tecnicos (ou null).
+let falhaOT: ((c: Chamada, metodos: string[]) => unknown) | null = null;
+
+function responderOsTecnicos(c: Chamada, metodos: string[]): { data: unknown; error: unknown } {
+  const erro = falhaOT?.(c, metodos);
+  if (erro) return { data: null, error: erro };
+  if (metodos.includes("insert")) {
+    const novas = (argsDe(c, "insert")[0][0] as Linha[]).map((l) => ({ id: `ot-nova-${proximoIdOT++}`, ...l }));
+    tabelaOT.push(...novas);
+    return { data: metodos.includes("select") ? novas.map((l) => ({ id: l.id })) : null, error: null };
+  }
+  let alvo = tabelaOT;
+  for (const [col, val] of argsDe(c, "eq") as [string, unknown][]) alvo = alvo.filter((l) => l[col] === val);
+  for (const [col, vals] of argsDe(c, "in") as [string, unknown[]][]) alvo = alvo.filter((l) => vals.includes(l[col]));
+  if (metodos.includes("delete")) {
+    tabelaOT = tabelaOT.filter((l) => !alvo.includes(l));
+    return { data: null, error: null };
+  }
+  return { data: alvo.map((l) => ({ id: l.id })), error: null };
+}
+
 function responder(c: Chamada): { data: unknown; error: unknown } {
   const metodos = c.ops.map((o) => o[0]);
+  if (c.alvo === "os_tecnicos") return responderOsTecnicos(c, metodos);
   const unico = metodos.includes("single") || metodos.includes("maybeSingle");
   const filtrar = <T extends Record<string, unknown>>(linhas: T[]) => {
     let r = linhas;
@@ -169,9 +202,17 @@ const eventosJanela: string[] = [];
   dispatchEvent: (e: Event) => { eventosJanela.push(e.type); return true; },
 };
 
-// deno-lint-ignore no-explicit-any
-async function rodar(modulo: any, extra: Record<string, unknown>, conjunto: Dados = DADOS_PADRAO) {
+async function rodar(
+  // deno-lint-ignore no-explicit-any
+  modulo: any,
+  extra: Record<string, unknown>,
+  conjunto: Dados = DADOS_PADRAO,
+  falha: typeof falhaOT = null,
+) {
   dados = conjunto;
+  tabelaOT = [{ ...OT_ANTIGA }];
+  proximoIdOT = 1;
+  falhaOT = falha;
   g.__supabaseFalso.chamadas = [];
   g.__supabaseFalso.responder = responder;
   eventosJanela.length = 0;
@@ -188,8 +229,13 @@ async function rodar(modulo: any, extra: Record<string, unknown>, conjunto: Dado
   } finally {
     Object.assign(console, { log, warn, info, error });
   }
-  return normalizar({ chamadas: g.__supabaseFalso.chamadas, registro, retorno, erro, logs, eventosJanela });
+  // Estado final de os_tecnicos sem o id (o id das linhas novas é do banco).
+  const osTecnicosFinal = tabelaOT.map(({ id: _id, ...resto }) => resto);
+  return normalizar({ chamadas: g.__supabaseFalso.chamadas, registro, retorno, erro, logs, eventosJanela, osTecnicosFinal });
 }
+
+// Chamadas fora de os_tecnicos (as de os_tecnicos são comparadas pelo estado final).
+const foraOT = (r: { chamadas: Chamada[] }) => r.chamadas.filter((c) => c.alvo !== "os_tecnicos");
 
 function gravacoesOsTecnicos(r: { chamadas: Chamada[] }) {
   return r.chamadas.filter((c) => c.alvo === "os_tecnicos").map((c) => c.ops);
@@ -225,7 +271,8 @@ for (const [nome, extra] of CENARIOS) {
     assertEquals(n.erro, null, `novo falhou: ${n.erro}`);
     assert(a.chamadas.length > 5, "o cenário precisa exercitar a gravação");
     assert(a.chamadas.some((c: Chamada) => c.alvo === "ordens_servico" && c.ops.some((o) => o[0] === "insert" || o[0] === "update")));
-    assertEquals(n.chamadas, a.chamadas);
+    assertEquals(foraOT(n), foraOT(a));
+    assertEquals(n.osTecnicosFinal, a.osTecnicosFinal);
     assertEquals(n.registro, a.registro);
     assertEquals(n.retorno, a.retorno);
     assertEquals(n.logs, a.logs);
@@ -301,7 +348,7 @@ function comissoesLidas(r: any, principal: string, funcionarios: string[]) {
 // as 4 consultas de comissão dos técnicos vêm antes do principal (e não se
 // repetem depois) quando há outro técnico ligado a serviço.
 const semSnapshot = (r: { chamadas: Chamada[] }) =>
-  r.chamadas
+  foraOT(r)
     .map((c) => JSON.stringify(c).replace(/"comissao_calculada_snapshot":[^,}]*/g, '"comissao_calculada_snapshot":"<x>"'))
     .sort();
 
@@ -325,7 +372,8 @@ Deno.test("exemplo Ana/Bruno (Ana principal com linha própria em A): Ana R$ 10,
   const n = await rodar(novo, p, DADOS_ANA_BRUNO);
   assertEquals([a.erro, n.erro], [null, null]);
   // Principal com linha própria: comportamento atual preservado (gravação idêntica).
-  assertEquals(n.chamadas, a.chamadas);
+  assertEquals(foraOT(n), foraOT(a));
+  assertEquals(n.osTecnicosFinal, a.osTecnicosFinal);
   assertEquals(n.registro, a.registro);
   const lidas = comissoesLidas(n, "ana", ["ana", "bruno"]);
   assertEquals(lidas, { ana: 10, bruno: 40 });
@@ -378,16 +426,25 @@ Deno.test("todos os serviços são de outros técnicos: principal R$ 0,00 (não 
 });
 
 Deno.test("linha sem técnico escolhido ou sem serviço não tira nada da base do principal", async () => {
-  for (const tecnicosOS of [
-    [{ funcionario_id: "", descricao_servico: "Serviço B", servico_id: "srv-b" }],
-    [{ funcionario_id: "bruno", descricao_servico: "Serviço antigo" }],
-  ]) {
-    const p = { formData: FORM_AB, tecnicoId: "ana", tecnicosOS };
-    const a = await rodar(antes, p, DADOS_ANA_BRUNO);
-    const n = await rodar(novo, p, DADOS_ANA_BRUNO);
-    assertEquals(gravacaoOS(n).comissao_calculada_snapshot, 30);
-    assertEquals(n.chamadas, a.chamadas);
-  }
+  // Legada (sem serviço ligado, com descrição): gravação igual à de antes.
+  const pLegada = { formData: FORM_AB, tecnicoId: "ana", tecnicosOS: [{ funcionario_id: "bruno", descricao_servico: "Serviço antigo" }] };
+  const a = await rodar(antes, pLegada, DADOS_ANA_BRUNO);
+  const n = await rodar(novo, pLegada, DADOS_ANA_BRUNO);
+  assertEquals(gravacaoOS(n).comissao_calculada_snapshot, 30);
+  assertEquals(foraOT(n), foraOT(a));
+  assertEquals(n.osTecnicosFinal, a.osTecnicosFinal);
+  // Sem técnico escolhido (F0g): antes ia para o insert com funcionario_id ""
+  // (no banco, a FK derrubava o insert inteiro); agora é ignorada.
+  const pSemTecnico = { formData: FORM_AB, tecnicoId: "ana", tecnicosOS: [{ funcionario_id: "", descricao_servico: "Serviço B", servico_id: "srv-b" }] };
+  const a2 = await rodar(antes, pSemTecnico, DADOS_ANA_BRUNO);
+  const n2 = await rodar(novo, pSemTecnico, DADOS_ANA_BRUNO);
+  assertEquals(gravacaoOS(n2).comissao_calculada_snapshot, 30);
+  assertEquals(linhasGravadas(a2).map((l) => l.funcionario_id), [""]);
+  assertEquals(linhasGravadas(n2), []);
+  // a linha sem técnico se comporta exatamente como não ter linha nenhuma
+  const n3 = await rodar(novo, { ...pSemTecnico, tecnicosOS: [] }, DADOS_ANA_BRUNO);
+  assertEquals(n2.chamadas, n3.chamadas);
+  assertEquals(n2.registro, n3.registro);
 });
 
 Deno.test("abrir -> salvar -> abrir -> salvar sem mudar nada: mesmos valores (caso P3-f)", async () => {
@@ -475,4 +532,140 @@ Deno.test("F0e (iii): dois serviços, um técnico com configuração e outro sem
   // A fica com a Ana (Caio sem config); B sai para o Bruno.
   assertEquals(gravacaoOS(n).comissao_calculada_snapshot, 10);
   assertEquals(comissoesLidas(n, "ana", ["ana", "bruno", "caio"]), { ana: 10, bruno: 40, caio: 0 });
+});
+
+// ===========================================================================
+// F0g — linhas incompletas não são gravadas; falha em os_tecnicos avisa e não
+// apaga as linhas antigas.
+const AVISO = "A OS foi salva, mas os técnicos por serviço não foram gravados. Abra a OS e salve de novo.";
+const BRUNO_REMOVIDO = { funcionario_id: "bruno", descricao_servico: "Película", servico_id: "srv-pelicula" };
+const VAZIA = { funcionario_id: "", descricao_servico: "", servico_id: "" };
+const toastFinal = (r: { registro: string[] }) => {
+  const t = r.registro.filter((x) => x.startsWith("toast ")).at(-1)!;
+  return JSON.parse(t.slice(6)) as { title: string; description: string; variant?: string };
+};
+const EDICAO_AB = { formData: FORM_AB, tecnicoId: "ana", ordem: { ...ORDEM, funcionario_id: "ana", total: 300 } };
+
+Deno.test("F0g: linhas vazias/sem técnico/serviço removido não viram registro; a completa sim", async () => {
+  const n = await rodar(novo, {
+    ...EDICAO_AB,
+    tecnicosOS: [VAZIA, BRUNO_B, { ...BRUNO_B, funcionario_id: "" }, BRUNO_REMOVIDO, { funcionario_id: "bruno", descricao_servico: "", servico_id: "" }],
+  }, DADOS_ANA_BRUNO);
+  assertEquals(n.erro, null);
+  assertEquals(linhasGravadas(n).map((l) => [l.funcionario_id, l.servico_id]), [["bruno", "srv-b"]]);
+  // a antiga saiu, só a nova ficou
+  assertEquals(n.osTecnicosFinal.map((l: Linha) => [l.os_id, l.funcionario_id, l.servico_id]), [["os-1", "bruno", "srv-b"]]);
+  // mesma gravação (e mesma comissão do principal) que mandar só a linha completa
+  const soCompleta = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO);
+  assertEquals(semSnapshot(n), semSnapshot(soCompleta));
+  assertEquals(gravacaoOS(n).comissao_calculada_snapshot, gravacaoOS(soCompleta).comissao_calculada_snapshot);
+  assertEquals(n.osTecnicosFinal, soCompleta.osTecnicosFinal);
+  assertEquals(toastFinal(n).variant, undefined);
+});
+
+Deno.test("F0g: serviço removido da OS — a linha do técnico não grava, nem comissão sobre o total, nem tira nada do principal", async () => {
+  const a = await rodar(antes, { ...EDICAO_AB, tecnicosOS: [BRUNO_REMOVIDO] }, DADOS_ANA_BRUNO);
+  const n = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [BRUNO_REMOVIDO] }, DADOS_ANA_BRUNO);
+  assertEquals([a.erro, n.erro], [null, null]);
+  // antes: a linha virava registro sem serviço (servico_id null)
+  assertEquals(linhasGravadas(a).map((l) => [l.funcionario_id, l.servico_id]), [["bruno", null]]);
+  // novo: nada inserido; os_tecnicos da OS fica vazio; principal com A + B
+  assertEquals(linhasGravadas(n), []);
+  assertEquals(n.osTecnicosFinal, []);
+  assertEquals(gravacaoOS(n).comissao_calculada_snapshot, 30);
+  assert(!JSON.stringify(n.registro).includes("Erro"), JSON.stringify(n.registro));
+});
+
+Deno.test("F0g: lista só com linhas vazias = zero registros, sem erro", async () => {
+  const n = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [VAZIA, { ...VAZIA, funcionario_id: "bruno" }] }, DADOS_ANA_BRUNO);
+  assertEquals(n.erro, null);
+  assertEquals(linhasGravadas(n), []);
+  assertEquals(n.osTecnicosFinal, []);
+  assertEquals(toastFinal(n).title, "Ordem atualizada");
+});
+
+const ERRO_RLS = { message: "new row violates row-level security policy for table \"os_tecnicos\"", code: "42501" };
+const falhaEm = (metodo: "insert" | "delete" | "select", erro: unknown = ERRO_RLS, vezes = Infinity) => {
+  let n = 0;
+  return (_c: Chamada, metodos: string[]) => {
+    const bate = metodo === "select" ? metodos.includes("select") && !metodos.includes("insert") : metodos.includes(metodo);
+    if (!bate || n >= vezes) return null;
+    n++;
+    return erro;
+  };
+};
+const ANTIGA_FINAL = (() => {
+  const { id: _id, ...resto } = OT_ANTIGA;
+  return resto;
+})();
+
+function conferirFalha(r: Awaited<ReturnType<typeof rodar>>, criacao = false) {
+  assertEquals(r.erro, null); // o save da OS não quebra
+  assertEquals(r.eventosJanela, ["os-salva"]);
+  const t = toastFinal(r);
+  assertEquals(t.title, criacao ? "Ordem criada — técnicos por serviço não gravados" : "Ordem atualizada — técnicos por serviço não gravados");
+  assert(t.description.includes(AVISO), t.description);
+  assertEquals(t.variant, "destructive");
+  const log = r.logs.find((l: string) => l.startsWith("[os_tecnicos] Falha ao gravar"));
+  assert(log, JSON.stringify(r.logs));
+}
+
+Deno.test("F0g: insert falha — aviso claro e a linha antiga NÃO é apagada", async () => {
+  const r = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO, falhaEm("insert"));
+  conferirFalha(r);
+  assertEquals(r.osTecnicosFinal, [ANTIGA_FINAL]);
+  // nenhum delete chegou a ser enviado
+  assert(!gravacoesOsTecnicos(r).some((ops) => ops.some((o) => o[0] === "delete")));
+  // antes: apagava primeiro e perdia a antiga, sem avisar
+  const a = await rodar(antes, { ...EDICAO_AB, tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO, falhaEm("insert"));
+  assertEquals(a.osTecnicosFinal, []);
+  assertEquals(toastFinal(a).title, "Ordem atualizada");
+});
+
+Deno.test("F0g: coluna servico_linha_id ausente e o 2º insert também falha — antiga mantida e aviso", async () => {
+  const erroColuna = { message: "Could not find the 'servico_linha_id' column of 'os_tecnicos'" };
+  let n = 0;
+  const falha = (_c: Chamada, metodos: string[]) => (metodos.includes("insert") ? (n++ === 0 ? erroColuna : ERRO_RLS) : null);
+  const r = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO, falha);
+  conferirFalha(r);
+  assertEquals(n, 2);
+  assertEquals(r.osTecnicosFinal, [ANTIGA_FINAL]);
+});
+
+Deno.test("F0g: coluna servico_linha_id ausente e o 2º insert dá certo — grava sem a coluna, sem aviso", async () => {
+  const erroColuna = { message: "Could not find the 'servico_linha_id' column of 'os_tecnicos'" };
+  const r = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO, falhaEm("insert", erroColuna, 1));
+  assertEquals(r.erro, null);
+  assertEquals(r.osTecnicosFinal.map((l: Linha) => [l.funcionario_id, l.servico_id]), [["bruno", "srv-b"]]);
+  assertEquals(toastFinal(r).variant, undefined);
+});
+
+Deno.test("F0g: ler as linhas antigas falha — nada é inserido nem apagado, e aviso", async () => {
+  const r = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO, falhaEm("select"));
+  conferirFalha(r);
+  assertEquals(r.osTecnicosFinal, [ANTIGA_FINAL]);
+  assert(!gravacoesOsTecnicos(r).some((ops) => ops.some((o) => o[0] === "insert" || o[0] === "delete")));
+});
+
+Deno.test("F0g: apagar as antigas falha — as novas são desfeitas (sem comissão em dobro) e aviso", async () => {
+  const r = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO, falhaEm("delete", ERRO_RLS, 1));
+  conferirFalha(r);
+  assertEquals(r.osTecnicosFinal, [ANTIGA_FINAL]);
+});
+
+Deno.test("F0g: limpar (lista vazia) falha — aviso", async () => {
+  const r = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [VAZIA] }, DADOS_ANA_BRUNO, falhaEm("delete"));
+  conferirFalha(r);
+  assertEquals(r.osTecnicosFinal, [ANTIGA_FINAL]);
+});
+
+Deno.test("F0g: criação com insert falhando — 'Ordem criada — técnicos por serviço não gravados'", async () => {
+  const r = await rodar(novo, { formData: FORM_AB, tecnicoId: "ana", tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO, falhaEm("insert"));
+  conferirFalha(r, true);
+  assertEquals(r.osTecnicosFinal, [ANTIGA_FINAL]); // só a da outra OS
+});
+
+Deno.test("F0g: o aviso de falha vem logo depois da frase de sucesso (um toast só — TOAST_LIMIT=1)", async () => {
+  const r = await rodar(novo, { ...EDICAO_AB, tecnicosOS: [BRUNO_B] }, DADOS_ANA_BRUNO, falhaEm("insert"));
+  assert(toastFinal(r).description.startsWith("A ordem de serviço foi atualizada com sucesso. " + AVISO));
 });

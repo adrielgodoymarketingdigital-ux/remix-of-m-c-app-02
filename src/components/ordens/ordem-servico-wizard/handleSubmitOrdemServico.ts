@@ -29,6 +29,7 @@ import {
   entradaComissaoServico,
   montarLinhasTecnicosOS,
   servicosDeOutrosTecnicos,
+  tecnicosParaGravar,
   temServicoDeOutroTecnico,
 } from "@/lib/ordemServico/tecnicosPorServicoOS";
 import { aplicarEscolhaFotosDoBanco } from "@/lib/acompanhamento/fotosAcompanhamento";
@@ -425,7 +426,13 @@ async function calcularComissaoPorServico(
 interface ResultadoSalvarTecnicos {
   itensCustoNaoConfirmado: { nome: string; tecnico: string }[];
   itensComissaoAmbigua: { nome: string; tecnico: string; candidatos: CandidatoAmbiguo[] }[];
+  /** A gravação em os_tecnicos falhou (a OS já está salva). */
+  falhou: boolean;
 }
+
+/** Texto do aviso quando a OS salvou mas os técnicos por serviço não. */
+export const AVISO_FALHA_TECNICOS_OS =
+  "A OS foi salva, mas os técnicos por serviço não foram gravados. Abra a OS e salve de novo.";
 
 /** Configuração de comissão dos técnicos por serviço (as 4 consultas de salvarTecnicosOS). */
 interface DadosComissaoTecnicos {
@@ -484,16 +491,28 @@ async function salvarTecnicosOS(
   // Já buscados antes do snapshot do principal (F0e): não busca de novo.
   dadosPrevios?: DadosComissaoTecnicos,
 ): Promise<ResultadoSalvarTecnicos> {
-  const resultado: ResultadoSalvarTecnicos = { itensCustoNaoConfirmado: [], itensComissaoAmbigua: [] };
+  const resultado: ResultadoSalvarTecnicos = { itensCustoNaoConfirmado: [], itensComissaoAmbigua: [], falhou: false };
+  const falhar = (etapa: string, erro: unknown, extra: Record<string, unknown> = {}): ResultadoSalvarTecnicos => {
+    console.error("[os_tecnicos] Falha ao gravar os técnicos por serviço da OS:", { osId, etapa, erro, ...extra });
+    resultado.falhou = true;
+    return resultado;
+  };
 
   if (tecnicos.length === 0) {
-    // Limpar técnicos existentes se lista vazia
-    await supabase.from("os_tecnicos").delete().eq("os_id", osId);
+    // Nada a gravar: limpa os técnicos existentes.
+    const { error: erroLimpar } = await supabase.from("os_tecnicos").delete().eq("os_id", osId);
+    if (erroLimpar) return falhar("limpar", erroLimpar);
     return resultado;
   }
 
-  // Remover técnicos antigos
-  await supabase.from("os_tecnicos").delete().eq("os_id", osId);
+  // Ordem segura: 1) anota as linhas antigas, 2) insere as novas, 3) só então
+  // apaga as antigas (pelo id). Se o insert falhar, as antigas ficam intactas.
+  const { data: antigas, error: erroLerAntigas } = await supabase
+    .from("os_tecnicos")
+    .select("id")
+    .eq("os_id", osId);
+  if (erroLerAntigas) return falhar("ler_antigas", erroLerAntigas);
+  const idsAntigos = (antigas || []).map((l: { id: string }) => l.id);
 
   const dados = dadosPrevios ?? await buscarDadosComissaoTecnicos(tecnicos);
 
@@ -507,23 +526,50 @@ async function salvarTecnicosOS(
     servicoIdsValidos,
     ...dados,
   });
-  resultado.itensCustoNaoConfirmado.push(...montado.itensCustoNaoConfirmado);
-  resultado.itensComissaoAmbigua.push(...montado.itensComissaoAmbigua);
   const tecnicosParaInserir = montado.linhas;
 
-  const { error: erroInsertTecnicos } = await supabase.from("os_tecnicos").insert(tecnicosParaInserir);
+  let { data: inseridas, error: erroInsertTecnicos } = await supabase
+    .from("os_tecnicos")
+    .insert(tecnicosParaInserir)
+    .select("id");
   // Coluna servico_linha_id ainda não criada no banco (migration da etapa 2
   // não aplicada): grava sem ela, como antes, em vez de perder os técnicos.
   if (erroInsertTecnicos && /servico_linha_id/.test(erroInsertTecnicos.message || "")) {
     console.warn("[os_tecnicos] coluna servico_linha_id ausente — gravando sem ela:", erroInsertTecnicos.message);
-    await supabase.from("os_tecnicos").insert(
-      tecnicosParaInserir.map((tec) => {
-        const semColuna = { ...tec };
-        delete semColuna.servico_linha_id;
-        return semColuna;
-      }),
-    );
+    ({ data: inseridas, error: erroInsertTecnicos } = await supabase
+      .from("os_tecnicos")
+      .insert(
+        tecnicosParaInserir.map((tec) => {
+          const semColuna = { ...tec };
+          delete semColuna.servico_linha_id;
+          return semColuna;
+        }),
+      )
+      .select("id"));
   }
+  if (erroInsertTecnicos) {
+    return falhar("inserir", erroInsertTecnicos, { linhas: tecnicosParaInserir.length, antigasMantidas: idsAntigos.length });
+  }
+
+  if (idsAntigos.length > 0) {
+    const { error: erroApagarAntigas } = await supabase
+      .from("os_tecnicos")
+      .delete()
+      .eq("os_id", osId)
+      .in("id", idsAntigos);
+    if (erroApagarAntigas) {
+      // Antigas e novas juntas contariam a comissão em dobro: desfaz as novas.
+      const idsNovos = (inseridas || []).map((l: { id: string }) => l.id);
+      if (idsNovos.length > 0) {
+        const { error: erroDesfazer } = await supabase.from("os_tecnicos").delete().in("id", idsNovos);
+        if (erroDesfazer) console.error("[os_tecnicos] Não foi possível desfazer as linhas novas:", { osId, idsNovos, erro: erroDesfazer });
+      }
+      return falhar("apagar_antigas", erroApagarAntigas, { idsAntigos });
+    }
+  }
+
+  resultado.itensCustoNaoConfirmado.push(...montado.itensCustoNaoConfirmado);
+  resultado.itensComissaoAmbigua.push(...montado.itensComissaoAmbigua);
   return resultado;
 }
 
@@ -539,7 +585,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     formData,
     ordem,
     tecnicoId,
-    tecnicosOS,
+    tecnicosOS: tecnicosOSDaTela,
     tipoServicoId,
     clienteSelecionadoId,
     bandeiraSelecionada,
@@ -561,6 +607,10 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     primeiraOsOnboarding,
     dispositivosAdicionais,
   } = params;
+
+  // Linhas de "Técnicos por Serviço" incompletas (sem técnico, sem serviço ou
+  // com o serviço removido da OS) não são gravadas nem entram na comissão.
+  const tecnicosOS = tecnicosParaGravar(tecnicosOSDaTela, formData.servicos);
 
   // Validar técnico obrigatório antes de qualquer operação
   if (tecnicoObrigatorioOS && !tecnicoId && !funcionarioId) {
@@ -877,7 +927,12 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     // aplicada no fluxo "Técnicos por Serviço" (salvarTecnicosOS) — mesma
     // redação (formatarMotivoComissao) do fluxo do Técnico Principal, só com o
     // nome do técnico ao final para identificar qual linha revisar.
+    let falhaTecnicosOS = false;
     const aplicarAvisoTecnicosOS = (res: ResultadoSalvarTecnicos) => {
+      if (res.falhou) {
+        falhaTecnicosOS = true;
+        return;
+      }
       const motivos = [
         ...res.itensComissaoAmbigua.map(({ nome, tecnico, candidatos }) =>
           `${formatarMotivoComissao(nome, { ambiguo: true, candidatosAmbiguos: candidatos })} (técnico: ${tecnico})`
@@ -1176,11 +1231,12 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         // como "precisa de revisão" — a comissão foi calculada normalmente.
         title: resultadoAdicionais?.status === "falhou"
           ? "Ordem atualizada — aparelhos adicionais não gravados"
+          : falhaTecnicosOS ? "Ordem atualizada — técnicos por serviço não gravados"
           : avisoComissaoTexto ? "Ordem atualizada — comissão precisa de revisão" : "Ordem atualizada",
-        description: ["A ordem de serviço foi atualizada com sucesso.", avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
+        description: ["A ordem de serviço foi atualizada com sucesso.", falhaTecnicosOS ? AVISO_FALHA_TECNICOS_OS : null, avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
           .filter(Boolean)
           .join(" "),
-        ...(resultadoAdicionais?.status === "falhou" ? { variant: "destructive" as const } : {}),
+        ...(resultadoAdicionais?.status === "falhou" || falhaTecnicosOS ? { variant: "destructive" as const } : {}),
       });
       window.dispatchEvent(new Event("os-salva"));
     } else {
@@ -1357,11 +1413,12 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       toast({
         title: resultadoAdicionais?.status === "falhou"
           ? "Ordem criada — aparelhos adicionais não gravados"
+          : falhaTecnicosOS ? "Ordem criada — técnicos por serviço não gravados"
           : avisoComissaoTexto ? "Ordem criada — comissão precisa de revisão" : "Ordem criada",
-        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
+        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, falhaTecnicosOS ? AVISO_FALHA_TECNICOS_OS : null, avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
           .filter(Boolean)
           .join(" "),
-        ...(resultadoAdicionais?.status === "falhou" ? { variant: "destructive" as const } : {}),
+        ...(resultadoAdicionais?.status === "falhou" || falhaTecnicosOS ? { variant: "destructive" as const } : {}),
       });
 
       window.dispatchEvent(new Event("os-salva"));
