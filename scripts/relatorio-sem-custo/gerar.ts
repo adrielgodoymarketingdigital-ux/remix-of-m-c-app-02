@@ -33,8 +33,7 @@ const DataReal = Date;
 class DataFixa extends DataReal {
   constructor(...args: unknown[]) {
     if (args.length === 0) super(FIXO);
-    // deno-lint-ignore no-explicit-any
-    else super(...(args as [any]));
+    else super(...(args as [number]));
   }
   static now() {
     return FIXO;
@@ -102,21 +101,20 @@ const gerados: Record<Variante, Partial<Record<Relatorio, Uint8Array>>> = { padr
 
 // Chamadas como o app faz. A opção vai no último parâmetro; no modo "antes"
 // ela não é passada (o código antigo não a conhece).
-// deno-lint-ignore no-explicit-any
-type Qualquer = (...a: any[]) => Promise<unknown>;
+type Qualquer = (...a: unknown[]) => Promise<unknown>;
 for (const v of variantes) {
   const op = opcaoDe(v);
   const extra = op ? [op] : [];
   const pasta = join(saida, v);
   mkdirSync(pasta, { recursive: true });
 
-  gerados[v].completo = await capturar(() => (exportarProdutosPDF as Qualquer)(itens, config, ...extra));
+  gerados[v].completo = await capturar(() => (exportarProdutosPDF as unknown as Qualquer)(itens, config, ...extra));
   // Menor estoque e Mais vendidos não recebem a opção (não mostram custo/lucro).
   gerados[v]["menos-estoque"] = await capturar(() => exportarMenosEstoquePDF(itens, config, null));
   gerados[v]["mais-vendidos"] = await capturar(() => exportarMaisVendidosPDF(itens, contagemVendas, config));
-  const docCat = await (gerarCategoriasPDF as Qualquer)(grupos, config, { ...(op ?? {}) }) as jsPDF;
+  const docCat = await (gerarCategoriasPDF as unknown as Qualquer)(grupos, config, { ...(op ?? {}) }) as jsPDF;
   gerados[v]["categoria-pdf"] = bytesDoPdf(docCat);
-  const wb = (gerarCategoriasWorkbook as (...a: unknown[]) => XLSX.WorkBook)(grupos, config.nome_loja ?? "", "24/11/2026", ...extra);
+  const wb = (gerarCategoriasWorkbook as unknown as (...a: unknown[]) => XLSX.WorkBook)(grupos, config.nome_loja ?? "", "24/11/2026", ...extra);
   gerados[v]["categoria-xlsx"] = new Uint8Array(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
 
   for (const [rel, bytes] of Object.entries(gerados[v])) {
@@ -168,7 +166,7 @@ function textoPdf(bytes: Uint8Array): string {
         .replace(/\\(.)/g, "$1"),
     );
   }
-  return partes.join("\n").replace(/ /g, " ");
+  return partes.join("\n").replace(/\u00a0/g, " ");
 }
 /** Valor "1.234,56" no texto, sem pegar pedaço de outro número. */
 const temValor = (texto: string, n: number) =>
