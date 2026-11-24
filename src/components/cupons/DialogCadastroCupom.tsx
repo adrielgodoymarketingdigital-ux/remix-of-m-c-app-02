@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -187,14 +188,12 @@ export const DialogCadastroCupom = ({
               <Label htmlFor="valor">
                 {formData.tipo_desconto === "percentual" ? "Percentual (%)" : "Valor (R$)"} *
               </Label>
-              <Input
+              <InputDecimal
                 id="valor"
-                type="number"
-                step="0.01"
                 min="0"
                 value={formData.valor}
-                onChange={(e) =>
-                  setFormData({ ...formData, valor: e.target.value })
+                onChange={(v) =>
+                  setFormData({ ...formData, valor: v })
                 }
                 required
               />
@@ -204,14 +203,12 @@ export const DialogCadastroCupom = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="valor_minimo_compra">Valor Mínimo de Compra (R$)</Label>
-              <Input
+              <InputDecimal
                 id="valor_minimo_compra"
-                type="number"
-                step="0.01"
                 min="0"
                 value={formData.valor_minimo_compra}
-                onChange={(e) =>
-                  setFormData({ ...formData, valor_minimo_compra: e.target.value })
+                onChange={(v) =>
+                  setFormData({ ...formData, valor_minimo_compra: v })
                 }
               />
             </div>

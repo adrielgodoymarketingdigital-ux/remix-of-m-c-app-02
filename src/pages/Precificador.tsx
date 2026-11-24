@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -216,35 +217,29 @@ function ModalMaquininha({ open, onClose, onSalvar, inicial }: ModalMaquininhaPr
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Taxa Pix (%)</Label>
-              <Input
-                type="number"
-                step="0.01"
+              <InputDecimal
                 min="0"
                 placeholder="0,00"
                 value={form.taxa_pix || ""}
-                onChange={e => setField("taxa_pix", e.target.value)}
+                onChange={v => setField("taxa_pix", v)}
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Taxa Débito (%)</Label>
-              <Input
-                type="number"
-                step="0.01"
+              <InputDecimal
                 min="0"
                 placeholder="0,00"
                 value={form.taxa_debito || ""}
-                onChange={e => setField("taxa_debito", e.target.value)}
+                onChange={v => setField("taxa_debito", v)}
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Crédito 1x (%)</Label>
-              <Input
-                type="number"
-                step="0.01"
+              <InputDecimal
                 min="0"
                 placeholder="0,00"
                 value={form.taxa_credito_1x || ""}
-                onChange={e => setField("taxa_credito_1x", e.target.value)}
+                onChange={v => setField("taxa_credito_1x", v)}
               />
             </div>
           </div>
@@ -257,14 +252,12 @@ function ModalMaquininha({ open, onClose, onSalvar, inicial }: ModalMaquininhaPr
               {parcelas.map((p, i) => (
                 <div key={p} className="space-y-1">
                   <Label className="text-[11px] text-muted-foreground">{i + 2}x (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <InputDecimal
                     min="0"
                     placeholder="0,00"
                     className="h-8 text-sm"
                     value={form.taxas_parcelado[p] || ""}
-                    onChange={e => setParcelado(p, e.target.value)}
+                    onChange={v => setParcelado(p, v)}
                   />
                 </div>
               ))}
@@ -396,24 +389,21 @@ export default function Precificador() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Valor da nota fiscal (R$)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <InputDecimal
                         min="0"
                         placeholder="0,00"
                         value={valorNota}
-                        onChange={e => setValorNota(e.target.value)}
+                        onChange={v => setValorNota(v)}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Margem de lucro desejada (%)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
+                      <InputDecimal
+                        casasDecimais={1}
                         min="0"
                         placeholder="0,0"
                         value={margem}
-                        onChange={e => setMargem(e.target.value)}
+                        onChange={v => setMargem(v)}
                       />
                     </div>
                   </div>
@@ -446,13 +436,11 @@ export default function Precificador() {
                     {!isSP && (
                       <div className="space-y-1.5 animate-in fade-in duration-200">
                         <Label>Frete (R$)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
+                        <InputDecimal
                           min="0"
                           placeholder="0,00"
                           value={frete}
-                          onChange={e => setFrete(e.target.value)}
+                          onChange={v => setFrete(v)}
                         />
                       </div>
                     )}

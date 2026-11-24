@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -291,9 +292,7 @@ export function DialogCadastroConta({
                   <FormItem>
                     <FormLabel>Valor *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <InputDecimal
                         min="0"
                         placeholder="0,00"
                         {...field}
@@ -498,13 +497,11 @@ export function DialogCadastroConta({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <FormLabel>Valor da entrada (R$)</FormLabel>
-                        <Input
-                          type="number"
-                          step="0.01"
+                        <InputDecimal
                           min="0"
                           placeholder="0,00"
                           value={valorEntrada}
-                          onChange={(e) => setValorEntrada(e.target.value)}
+                          onChange={(v) => setValorEntrada(v)}
                         />
                       </div>
 

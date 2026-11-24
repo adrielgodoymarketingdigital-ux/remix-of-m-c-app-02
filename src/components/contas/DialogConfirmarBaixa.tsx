@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ValorMonetario } from "@/components/ui/valor-monetario";
@@ -271,14 +272,12 @@ function BaixaComHistorico({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="valor-parcial">Valor do {rotuloAcao} (R$)</Label>
-                    <Input
+                    <InputDecimal
                       id="valor-parcial"
-                      type="number"
-                      step="0.01"
                       min="0"
                       max={saldo}
                       value={valor}
-                      onChange={(e) => setValor(e.target.value)}
+                      onChange={(v) => setValor(v)}
                     />
                   </div>
                   <div className="space-y-1.5">

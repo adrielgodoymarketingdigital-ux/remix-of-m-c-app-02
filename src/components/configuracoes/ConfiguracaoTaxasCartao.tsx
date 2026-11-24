@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -241,28 +242,24 @@ export function ConfiguracaoTaxasCartao() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1.5">
                             <Label className="text-xs">Taxa Débito (%)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
+                            <InputDecimal
                               min="0"
                               max="100"
                               value={editForm.taxa_debito}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, taxa_debito: Number(e.target.value) })
+                              onChange={(v) =>
+                                setEditForm({ ...editForm, taxa_debito: Number(v) })
                               }
                               className="h-8"
                             />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-xs">Taxa Crédito à Vista (%)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
+                            <InputDecimal
                               min="0"
                               max="100"
                               value={editForm.taxa_credito}
-                              onChange={(e) =>
-                                setEditForm({ ...editForm, taxa_credito: Number(e.target.value) })
+                              onChange={(v) =>
+                                setEditForm({ ...editForm, taxa_credito: Number(v) })
                               }
                               className="h-8"
                             />
@@ -277,15 +274,13 @@ export function ConfiguracaoTaxasCartao() {
                             {PARCELAS.map((p) => (
                               <div key={p} className="flex items-center gap-2">
                                 <Label className="text-xs w-8 shrink-0">{p}x:</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
+                                <InputDecimal
                                   min="0"
                                   max="100"
                                   placeholder="0"
                                   value={editForm.taxas_parcelado[String(p)] ?? ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
+                                  onChange={(v) => {
+                                    const val = v;
                                     const novas = { ...editForm.taxas_parcelado };
                                     if (val === "" || val === "0") {
                                       delete novas[String(p)];

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -493,13 +494,11 @@ export default function Pedidos() {
             {/* Valor */}
             <div className="space-y-1.5">
               <Label>Valor total (R$)</Label>
-              <Input
-                type="number"
+              <InputDecimal
                 min="0"
-                step="0.01"
                 placeholder="Ex: 4500,00"
                 value={form.valor_total}
-                onChange={(e) => setForm({ ...form, valor_total: e.target.value })}
+                onChange={(v) => setForm({ ...form, valor_total: v })}
               />
             </div>
 

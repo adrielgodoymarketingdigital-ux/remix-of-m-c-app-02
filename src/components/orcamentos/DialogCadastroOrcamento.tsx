@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -601,13 +602,11 @@ export function DialogCadastroOrcamento({
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Valor Unitário (R$)</Label>
-                          <Input
-                            type="number"
+                          <InputDecimal
                             min="0"
-                            step="0.01"
                             value={item.valor_unitario}
-                            onChange={(e) =>
-                              atualizarItem(item.id, "valor_unitario", parseFloat(e.target.value) || 0)
+                            onChange={(v) =>
+                              atualizarItem(item.id, "valor_unitario", parseFloat(v) || 0)
                             }
                           />
                         </div>
@@ -664,12 +663,10 @@ export function DialogCadastroOrcamento({
                         Desconto (R$)
                         <span className="ml-1 text-muted-foreground font-normal">— opcional</span>
                       </Label>
-                      <Input
-                        type="number"
+                      <InputDecimal
                         min="0"
-                        step="0.01"
                         value={desconto}
-                        onChange={(e) => setDesconto(parseFloat(e.target.value) || 0)}
+                        onChange={(v) => setDesconto(parseFloat(v) || 0)}
                       />
                     </div>
                     {mostrarTotal && (

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -139,12 +140,10 @@ function DialogResgate({ cliente, open, onClose, onConfirmar }: DialogResgatePro
             {tipo === 'valor' && (
               <div className="space-y-1">
                 <Label>Valor do desconto (R$)</Label>
-                <Input
-                  type="number"
+                <InputDecimal
                   min={0}
-                  step={0.01}
                   value={valorDesconto}
-                  onChange={e => setValorDesconto(e.target.value)}
+                  onChange={v => setValorDesconto(v)}
                   placeholder="Ex: 15.00"
                 />
               </div>
@@ -250,11 +249,11 @@ function DialogConfig({ open, onClose, config, niveis, onSalvarConfig, onSalvarN
               </div>
               <div className="space-y-1">
                 <Label>Pontos por R$1 em vendas</Label>
-                <Input type="number" min={0} step={0.1} value={pontosPorRealVenda} onChange={e => setPontosPorRealVenda(e.target.value)} />
+                <InputDecimal min={0} casasDecimais={1} value={pontosPorRealVenda} onChange={v => setPontosPorRealVenda(v)} />
               </div>
               <div className="space-y-1">
                 <Label>Pontos por R$1 em OS</Label>
-                <Input type="number" min={0} step={0.1} value={pontosPorRealOS} onChange={e => setPontosPorRealOS(e.target.value)} />
+                <InputDecimal min={0} casasDecimais={1} value={pontosPorRealOS} onChange={v => setPontosPorRealOS(v)} />
               </div>
               <div className="space-y-1">
                 <Label>Validade dos pontos</Label>
