@@ -2,6 +2,7 @@
 // As linhas vêm de montarPlanilhas (exportarPorCategoria.ts); aqui só vira .xlsx.
 // Download pelo XLSX.writeFile, o mesmo da exportação de dados (ExportacaoDados.tsx).
 import * as XLSX from "xlsx";
+import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { montarPlanilhas, type AbaPlanilha, type GrupoCategoria } from "./exportarPorCategoria";
 
 const FORMATO_MOEDA = '"R$" #,##0.00;-"R$" #,##0.00';
@@ -40,6 +41,6 @@ export function gerarCategoriasWorkbook(
 
 export function exportarCategoriasExcel(grupos: GrupoCategoria[], lojaNome: string) {
   const wb = gerarCategoriasWorkbook(grupos, lojaNome, new Date().toLocaleDateString("pt-BR"));
-  const dataAtual = new Date().toISOString().split("T")[0];
+  const dataAtual = dataBrasiliaISO();
   XLSX.writeFile(wb, `estoque-por-categoria-${dataAtual}.xlsx`);
 }

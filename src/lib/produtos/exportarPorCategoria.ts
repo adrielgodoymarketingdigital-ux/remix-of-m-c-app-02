@@ -165,10 +165,10 @@ export function filtrarItens<T extends ItemBasico>(
 }
 
 /** Categorias na ordem da árvore: pai, depois as filhas (cada nível em ordem alfabética). */
-export function ordemDaArvore(categorias: CategoriaBasica[]): { categoria: CategoriaBasica; nivel: number; caminho: string }[] {
+export function ordemDaArvore<C extends CategoriaBasica>(categorias: C[]): { categoria: C; nivel: number; caminho: string }[] {
   const ids = new Set(categorias.map((c) => c.id));
-  const porNome = (a: CategoriaBasica, b: CategoriaBasica) => a.nome.localeCompare(b.nome, "pt-BR");
-  const resultado: { categoria: CategoriaBasica; nivel: number; caminho: string }[] = [];
+  const porNome = (a: C, b: C) => a.nome.localeCompare(b.nome, "pt-BR");
+  const resultado: { categoria: C; nivel: number; caminho: string }[] = [];
   const visitados = new Set<string>();
   const percorrer = (paiId: string | null, nivel: number, prefixo: string) => {
     categorias

@@ -12,6 +12,7 @@ import {
   adicionarTituloSecao,
 } from "./pdfHelpers";
 import { codigoDoItem, totaisGerais, type GrupoCategoria } from "./produtos/exportarPorCategoria";
+import { dataBrasiliaISO } from "./dataBrasilia";
 
 interface CategoriaAgrupada {
   nome: string;
@@ -444,6 +445,6 @@ export const exportarCategoriasPDF = async (
   opcoes: OpcoesPDFCategorias = {}
 ) => {
   const doc = await gerarCategoriasPDF(grupos, config, opcoes);
-  const dataAtual = new Date().toISOString().split("T")[0];
+  const dataAtual = dataBrasiliaISO();
   doc.save(`estoque-por-categoria-${dataAtual}.pdf`);
 };
