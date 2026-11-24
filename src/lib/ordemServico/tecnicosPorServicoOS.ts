@@ -82,6 +82,41 @@ export function indiceServicoDoTecnico(
   return -1;
 }
 
+/**
+ * Situação de uma linha de "Técnicos por Serviço" diante dos serviços da OS:
+ *  - "completa": técnico escolhido e ligado a um serviço que está na OS;
+ *  - "legado": técnico escolhido, sem serviço ligado, mas com descrição — linha
+ *    gravada antes de existir a ligação (servico_id null no banco). Continua
+ *    sendo gravada como sempre, para reabrir e salvar uma OS antiga não apagar
+ *    o técnico dela;
+ *  - "servico_removido": a linha aponta para um serviço que saiu da OS;
+ *  - "sem_servico": nenhum serviço escolhido (nem descrição);
+ *  - "sem_tecnico": serviço ok, mas técnico não escolhido.
+ * Só "completa" e "legado" viram registro em os_tecnicos (tecnicosParaGravar).
+ */
+export type SituacaoLinhaTecnico = "completa" | "legado" | "servico_removido" | "sem_servico" | "sem_tecnico";
+
+export function situacaoLinhaTecnico(tec: TecnicoOS, servicosOS: FormData["servicos"]): SituacaoLinhaTecnico {
+  const temLigacao = !!tec.servico_id || !!tec.servico_linha_id;
+  if (temLigacao && indiceServicoDoTecnico(tec, servicosOS) < 0) return "servico_removido";
+  if (!temLigacao && !(tec.descricao_servico || "").trim()) return "sem_servico";
+  if (!tec.funcionario_id) return "sem_tecnico";
+  return temLigacao ? "completa" : "legado";
+}
+
+/**
+ * Linhas que o save grava (e que entram no cálculo da comissão do principal).
+ * Linha incompleta — sem técnico, sem serviço ou com o serviço removido da OS —
+ * é ignorada: não vira insert, nem snapshot de comissão, nem erro. A tela
+ * destaca essas linhas (EtapaServicosProdutos) para o usuário corrigir.
+ */
+export function tecnicosParaGravar(tecnicos: TecnicoOS[], servicosOS: FormData["servicos"]): TecnicoOS[] {
+  return tecnicos.filter((tec) => {
+    const s = situacaoLinhaTecnico(tec, servicosOS);
+    return s === "completa" || s === "legado";
+  });
+}
+
 export function servicoDoTecnicoNaOS(
   tec: Pick<TecnicoOS, "servico_id" | "servico_linha_id">,
   servicosOS: FormData["servicos"],
