@@ -43,6 +43,11 @@ import {
   planejarGravacaoAdicionais,
   validarDispositivosAdicionais,
 } from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
+import {
+  EntradaTecnicosAdicionais,
+  avisoFalhaTecnicosAdicionais,
+  planejarGravacaoTecnicosAdicionais,
+} from "@/lib/ordemServico/tecnicosAdicionaisOS";
 
 /** Banco real da gravação dos dispositivos adicionais (a lógica fica no módulo puro). */
 const clienteAdicionaisSupabase: ClienteGravacaoAdicionais = {
@@ -95,6 +100,11 @@ interface SalvarOrdemServicoParams {
    * todo mundo hoje (nenhuma tela envia ainda).
    */
   dispositivosAdicionais?: EntradaGravacaoAdicionais;
+  /**
+   * Técnicos adicionais (os_tecnicos_adicionais, pela função salvar_tecnicos_os).
+   * Ausente = a gravação não chama a função nem toca na tabela (freio: só admin).
+   */
+  tecnicosAdicionais?: EntradaTecnicosAdicionais;
 }
 
 /** Aviso dos adicionais para o toast; null quando não há o que avisar (sempre, sem a lista). */
@@ -146,6 +156,8 @@ export interface ResultadoSalvarOrdemServico {
   numeroOS: string | null;
   /** null quando dispositivosAdicionais não foi enviado. "falhou" = OS salva, adicionais não. */
   adicionais: ResultadoGravacaoAdicionais | null;
+  /** Ausente = nada a gravar (ou não enviado); true = gravado; false = OS salva, técnicos adicionais não. */
+  tecnicosAdicionaisGravados?: boolean;
 }
 
 /**
@@ -606,6 +618,7 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     onOpenChange,
     primeiraOsOnboarding,
     dispositivosAdicionais,
+    tecnicosAdicionais,
   } = params;
 
   // Linhas de "Técnicos por Serviço" incompletas (sem técnico, sem serviço ou
@@ -966,6 +979,39 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       return resultado;
     };
 
+    // Técnicos adicionais: depois da OS gravada (e dos técnicos por serviço).
+    // Falha não desfaz nada: a OS fica salva e o toast orienta salvar de novo.
+    // principal = o que acabou de ser gravado em ordens_servico.funcionario_id.
+    const tecnicosAdicionaisRes: { gravados: boolean | null; aviso: string | null } = { gravados: null, aviso: null };
+    const gravarTecnicosAdicionais = async (osId: string | null, principal: string | null) => {
+      const plano = planejarGravacaoTecnicosAdicionais(tecnicosAdicionais, principal);
+      if (plano.acao === "nada") return;
+      tecnicosAdicionaisRes.gravados = false;
+      if (!osId) {
+        tecnicosAdicionaisRes.aviso = avisoFalhaTecnicosAdicionais(null);
+        return;
+      }
+      try {
+        const { error } = plano.acao === "rpc"
+          ? await supabase.rpc("salvar_tecnicos_os", {
+              p_ordem_id: osId,
+              p_principal: plano.principal,
+              p_adicionais: plano.adicionais,
+            })
+          // Sem principal a função recusa (TA002): OS que perdeu o principal perde os adicionais.
+          : await supabase.from("os_tecnicos_adicionais").delete().eq("os_id", osId);
+        if (error) {
+          console.warn("[OS] Gravação dos técnicos adicionais:", error);
+          tecnicosAdicionaisRes.aviso = avisoFalhaTecnicosAdicionais(error);
+          return;
+        }
+        tecnicosAdicionaisRes.gravados = true;
+      } catch (erro) {
+        console.warn("[OS] Gravação dos técnicos adicionais:", erro);
+        tecnicosAdicionaisRes.aviso = avisoFalhaTecnicosAdicionais(null);
+      }
+    };
+
     if (ordem) {
       // Status da conta a receber ANTES da edição — usado para o ajuste
       // retroativo de caixas fechados (getValorFaturavelOS depende dele).
@@ -1060,6 +1106,9 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
       // === SALVAR TÉCNICOS DA OS ===
       const resTecnicosEdit = await salvarTecnicosOS(ordem.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos, dadosComissaoTecnicos);
       aplicarAvisoTecnicosOS(resTecnicosEdit);
+
+      // === TÉCNICOS ADICIONAIS (só se a tela enviou a lista) ===
+      await gravarTecnicosAdicionais(ordem.id, tecnicoId || null);
 
       // === ATUALIZAR OU CRIAR CONTA A RECEBER AO EDITAR OS ===
       if (ordem.numero_os) {
@@ -1232,11 +1281,12 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         title: resultadoAdicionais?.status === "falhou"
           ? "Ordem atualizada — aparelhos adicionais não gravados"
           : falhaTecnicosOS ? "Ordem atualizada — técnicos por serviço não gravados"
+          : tecnicosAdicionaisRes.aviso ? "Ordem atualizada — técnicos adicionais não gravados"
           : avisoComissaoTexto ? "Ordem atualizada — comissão precisa de revisão" : "Ordem atualizada",
-        description: ["A ordem de serviço foi atualizada com sucesso.", falhaTecnicosOS ? AVISO_FALHA_TECNICOS_OS : null, avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
+        description: ["A ordem de serviço foi atualizada com sucesso.", falhaTecnicosOS ? AVISO_FALHA_TECNICOS_OS : null, tecnicosAdicionaisRes.aviso, avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
           .filter(Boolean)
           .join(" "),
-        ...(resultadoAdicionais?.status === "falhou" || falhaTecnicosOS ? { variant: "destructive" as const } : {}),
+        ...(resultadoAdicionais?.status === "falhou" || falhaTecnicosOS || tecnicosAdicionaisRes.aviso ? { variant: "destructive" as const } : {}),
       });
       window.dispatchEvent(new Event("os-salva"));
     } else {
@@ -1304,6 +1354,9 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         const resTecnicosCreate = await salvarTecnicosOS(osCriada.id, tecnicosOS, formData.servicos, total, tipoServicoId, formData.dispositivoMarca, idsServicoValidos, dadosComissaoTecnicos);
         aplicarAvisoTecnicosOS(resTecnicosCreate);
       }
+
+      // === TÉCNICOS ADICIONAIS (só se a tela enviou a lista) ===
+      await gravarTecnicosAdicionais(osCriada?.id ?? null, tecnicoId || funcionarioId || null);
 
       // === BAIXA NO ESTOQUE E REGISTRO DE VENDAS PARA PRODUTOS/PEÇAS ===
       // Estoque lido do banco na hora (não o valor carregado na tela) e cada
@@ -1414,11 +1467,12 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
         title: resultadoAdicionais?.status === "falhou"
           ? "Ordem criada — aparelhos adicionais não gravados"
           : falhaTecnicosOS ? "Ordem criada — técnicos por serviço não gravados"
+          : tecnicosAdicionaisRes.aviso ? "Ordem criada — técnicos adicionais não gravados"
           : avisoComissaoTexto ? "Ordem criada — comissão precisa de revisão" : "Ordem criada",
-        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, falhaTecnicosOS ? AVISO_FALHA_TECNICOS_OS : null, avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
+        description: [`Ordem de serviço ${numeroOS} criada com sucesso.`, falhaTecnicosOS ? AVISO_FALHA_TECNICOS_OS : null, tecnicosAdicionaisRes.aviso, avisoAdicionaisToast(resultadoAdicionais, dispositivosAdicionais), avisoComissaoTexto, avisoComissaoBrando]
           .filter(Boolean)
           .join(" "),
-        ...(resultadoAdicionais?.status === "falhou" || falhaTecnicosOS ? { variant: "destructive" as const } : {}),
+        ...(resultadoAdicionais?.status === "falhou" || falhaTecnicosOS || tecnicosAdicionaisRes.aviso ? { variant: "destructive" as const } : {}),
       });
 
       window.dispatchEvent(new Event("os-salva"));
@@ -1443,7 +1497,13 @@ export async function salvarOrdemServico(params: SalvarOrdemServicoParams): Prom
     // Adicionais não gravados: o assistente fica aberto com o que o usuário
     // preencheu, para a tela tentar de novo (etapa 5b). A OS já está salva.
     if (resultadoAdicionais?.status !== "falhou") onOpenChange(false);
-    return { osId: osIdSalva, numeroOS: numeroOSSalva, adicionais: resultadoAdicionais };
+    return {
+      osId: osIdSalva,
+      numeroOS: numeroOSSalva,
+      adicionais: resultadoAdicionais,
+      // Só aparece quando houve gravação: sem a lista, o retorno é o de sempre.
+      ...(tecnicosAdicionaisRes.gravados === null ? {} : { tecnicosAdicionaisGravados: tecnicosAdicionaisRes.gravados }),
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error?.message === "TECNICO_OBRIGATORIO") return;

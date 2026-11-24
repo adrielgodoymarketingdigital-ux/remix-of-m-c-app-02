@@ -34,6 +34,9 @@ import { useEmpresaInfo } from "@/hooks/useResolvedUserId";
 import { useTaxasCartao } from "@/hooks/useTaxasCartao";
 import { useLocalizacoesOS } from "@/hooks/useLocalizacoesOS";
 import { useDispositivosAdicionaisOSVisivel } from "@/hooks/useDispositivosAdicionaisOSVisivel";
+import { useTecnicosAdicionaisOSVisivel } from "@/hooks/useTecnicosAdicionaisOSVisivel";
+import { normalizarAdicionais, type EntradaTecnicosAdicionais } from "@/lib/ordemServico/tecnicosAdicionaisOS";
+import type { TecnicosAdicionaisEtapa } from "./ordem-servico-wizard/BlocoTecnicosAdicionais";
 import { chaveDispositivosAdicionaisOS } from "@/hooks/useOsDispositivosAdicionais";
 import { chaveLinhasServicoOS } from "@/hooks/useLinhasServicoOS";
 import type { EntradaGravacaoAdicionais } from "@/lib/ordemServico/gravacaoDispositivosAdicionaisOS";
@@ -104,6 +107,8 @@ export const DialogOrdemServico = ({
   const queryClient = useQueryClient();
   // Dispositivos adicionais: tudo abaixo só age para quem os vê (regra em visibilidadeDispositivosAdicionais; hoje, todos).
   const adicionaisVisiveis = useDispositivosAdicionaisOSVisivel();
+  // Técnicos adicionais: só para quem os vê (regra em visibilidadeTecnicosAdicionais; hoje, só admin).
+  const tecnicosAdicionaisVisiveis = useTecnicosAdicionaisOSVisivel();
   // OS salva, mas os adicionais não (resultado "falhou" da gravação): o
   // assistente fica aberto até "Gravar aparelhos de novo" ou fechar confirmando.
   const [falhaAdicionais, setFalhaAdicionais] = useState<
@@ -132,12 +137,26 @@ export const DialogOrdemServico = ({
     campoComErro, setCampoComErro,
     formData, setFormData,
     estadoAdicionais, setEstadoAdicionais, recarregarAdicionais,
+    tecnicosAdicionais, setTecnicosAdicionais,
+    tecnicosAdicionaisOriginais, setTecnicosAdicionaisOriginais,
+    cargaTecnicosAdicionais, recarregarTecnicosAdicionais,
     buscarClientes,
     selecionarCliente,
     handleClienteNomeChange,
     handleClienteCPFChange,
     handleBuscarCEPOS,
-  } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId, carregandoPermissoes, adicionaisVisiveis });
+  } = useOrdemServicoWizardState({ open, ordem, isFuncionario, lojaUserId, isFilialCtx, empresaInfoId, carregandoPermissoes, adicionaisVisiveis, tecnicosAdicionaisVisiveis });
+
+  // Quem não vê o bloco: lista vazia na validação e nada vai para a gravação.
+  const tecnicosAdicionaisTela = tecnicosAdicionaisVisiveis ? tecnicosAdicionais : [];
+  const tecnicosAdicionaisEtapa: TecnicosAdicionaisEtapa | undefined = tecnicosAdicionaisVisiveis
+    ? {
+        lista: tecnicosAdicionais,
+        onAlterar: setTecnicosAdicionais,
+        carga: cargaTecnicosAdicionais,
+        onTentarCarregarDeNovo: recarregarTecnicosAdicionais,
+      }
+    : undefined;
 
   useEffect(() => {
     if (!open) {
@@ -248,6 +267,7 @@ export const DialogOrdemServico = ({
       tecnicoId,
       tecnicoObrigatorioOS,
       funcionarioId,
+      tecnicosAdicionais: tecnicosAdicionaisTela,
     });
 
     if (!resultado.valido) {
@@ -272,6 +292,16 @@ export const DialogOrdemServico = ({
     setLoading(true);
     // undefined para quem não vê os adicionais (ou se a lista não carregou): a gravação não toca na tabela.
     const entradaAdicionais = entradaGravacaoParaSalvar(adicionaisVisiveis, estadoAdicionais);
+    // Técnicos adicionais: undefined para quem não vê, ou se a lista da OS em
+    // edição não carregou (gravar a lista vazia apagaria os que estão no banco).
+    const entradaTecnicosAdicionais: EntradaTecnicosAdicionais | undefined =
+      tecnicosAdicionaisVisiveis && (ordem ? cargaTecnicosAdicionais === "ok" : true)
+        ? {
+            adicionais: tecnicosAdicionais,
+            originais: ordem ? tecnicosAdicionaisOriginais : null,
+            principalOriginal: ordem?.funcionario_id ?? null,
+          }
+        : undefined;
     try {
       const resultado = await salvarOrdemServico({
         formData,
@@ -298,7 +328,12 @@ export const DialogOrdemServico = ({
         onOpenChange,
         primeiraOsOnboarding,
         dispositivosAdicionais: entradaAdicionais,
+        tecnicosAdicionais: entradaTecnicosAdicionais,
       });
+      // Gravou: se o assistente ficar aberto, salvar de novo não repete a escrita.
+      if (ordem && resultado?.tecnicosAdicionaisGravados === true) {
+        setTecnicosAdicionaisOriginais(normalizarAdicionais(tecnicosAdicionais, tecnicoId));
+      }
       // Linha expandida da lista (só para quem vê os adicionais) volta a buscar os serviços.
       if (adicionaisVisiveis && resultado?.osId) queryClient.invalidateQueries({ queryKey: chaveLinhasServicoOS(resultado.osId) });
       if (entradaAdicionais && resultado) {
@@ -324,6 +359,7 @@ export const DialogOrdemServico = ({
         tecnicoId,
         tecnicoObrigatorioOS,
         funcionarioId,
+        tecnicosAdicionais: tecnicosAdicionaisTela,
       });
       if (!resultado.valido) {
         return { etapa, resultado };
@@ -371,7 +407,7 @@ export const DialogOrdemServico = ({
 
   const etapasComPendencia: EtapaWizard[] = ([2, 3, 4] as EtapaWizard[]).filter(
     (etapa) =>
-      !validarEtapa({ etapa, formData, tecnicoId, tecnicoObrigatorioOS, funcionarioId }).valido
+      !validarEtapa({ etapa, formData, tecnicoId, tecnicoObrigatorioOS, funcionarioId, tecnicosAdicionais: tecnicosAdicionaisTela }).valido
   );
 
   return (
@@ -474,6 +510,7 @@ export const DialogOrdemServico = ({
                   tecnicoObrigatorioOS={tecnicoObrigatorioOS}
                   tecnicoId={tecnicoId}
                   setTecnicoId={setTecnicoId}
+                  tecnicosAdicionais={tecnicosAdicionaisEtapa}
                   tiposServico={tiposServico}
                   tipoServicoId={tipoServicoId}
                   setTipoServicoId={setTipoServicoId}
@@ -565,6 +602,7 @@ export const DialogOrdemServico = ({
               tecnicoObrigatorioOS={tecnicoObrigatorioOS}
               tecnicoId={tecnicoId}
               setTecnicoId={setTecnicoId}
+              tecnicosAdicionais={tecnicosAdicionaisEtapa}
               tiposServico={tiposServico}
               tipoServicoId={tipoServicoId}
               setTipoServicoId={setTipoServicoId}

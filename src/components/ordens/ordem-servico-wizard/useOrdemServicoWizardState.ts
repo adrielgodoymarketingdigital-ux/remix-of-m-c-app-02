@@ -21,6 +21,7 @@ import {
 } from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
 import { TEMPO_GARANTIA_OS_PADRAO, tempoGarantiaCarregadoDaOS } from "@/lib/ordemServico/tempoGarantiaOS";
 import { FormData, TecnicoOS, EtapaWizard } from "./tipos";
+import type { CargaTecnicosAdicionais } from "./BlocoTecnicosAdicionais";
 
 const formDataVazio: FormData = {
   clienteNome: "",
@@ -86,6 +87,8 @@ interface UseOrdemServicoWizardStateParams {
   carregandoPermissoes: boolean;
   /** Quem vê os dispositivos adicionais (useDispositivosAdicionaisOSVisivel). false = nunca lê a tabela. */
   adicionaisVisiveis?: boolean;
+  /** Quem vê os técnicos adicionais (useTecnicosAdicionaisOSVisivel). false = nunca lê a tabela. */
+  tecnicosAdicionaisVisiveis?: boolean;
 }
 
 /**
@@ -101,6 +104,7 @@ export function useOrdemServicoWizardState({
   empresaInfoId,
   carregandoPermissoes,
   adicionaisVisiveis = false,
+  tecnicosAdicionaisVisiveis = false,
 }: UseOrdemServicoWizardStateParams) {
   const [loading, setLoading] = useState(false);
   const [tecnicoId, setTecnicoId] = useState<string | null>(null);
@@ -128,6 +132,14 @@ export function useOrdemServicoWizardState({
   // gravados em tabela própria (os_dispositivos_adicionais).
   const [estadoAdicionais, setEstadoAdicionais] = useState<EstadoAdicionaisForm>(estadoAdicionaisNovaOS);
   const [tentativaCargaAdicionais, setTentativaCargaAdicionais] = useState(0);
+
+  // Técnicos adicionais (só para quem os vê): ids de loja_funcionarios, fora do
+  // formData porque moram em os_tecnicos_adicionais. `originais` = o que veio do
+  // banco ao abrir a edição (null = OS nova), base do "mudou?" da gravação.
+  const [tecnicosAdicionais, setTecnicosAdicionais] = useState<string[]>([]);
+  const [tecnicosAdicionaisOriginais, setTecnicosAdicionaisOriginais] = useState<string[] | null>(null);
+  const [cargaTecnicosAdicionais, setCargaTecnicosAdicionais] = useState<CargaTecnicosAdicionais>("nova");
+  const [tentativaCargaTecnicosAdicionais, setTentativaCargaTecnicosAdicionais] = useState(0);
 
   const resolvedUserIdFromContext = useResolvedUserId();
 
@@ -422,6 +434,42 @@ export function useOrdemServicoWizardState({
 
   const recarregarAdicionais = () => setTentativaCargaAdicionais((n) => n + 1);
 
+  // Técnicos adicionais da OS em edição: efeito próprio pelo mesmo motivo do de
+  // cima (a permissão de admin chega depois). OS nova (ou duplicada/convertida,
+  // que chega sem id salvo) começa vazia. Quem não vê nunca lê.
+  useEffect(() => {
+    if (!open || !ordem || !tecnicosAdicionaisVisiveis) {
+      setTecnicosAdicionais((l) => (l.length === 0 ? l : []));
+      setTecnicosAdicionaisOriginais(null);
+      setCargaTecnicosAdicionais("nova");
+      return;
+    }
+    let cancelado = false;
+    setTecnicosAdicionais([]);
+    setTecnicosAdicionaisOriginais(null);
+    setCargaTecnicosAdicionais("carregando");
+    supabase
+      .from("os_tecnicos_adicionais")
+      .select("funcionario_id, created_at")
+      .eq("os_id", ordem.id)
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (cancelado) return;
+        if (error) {
+          console.warn("[OS] Leitura dos técnicos adicionais:", error);
+          setCargaTecnicosAdicionais("erro");
+          return;
+        }
+        const ids = (data ?? []).map((l) => l.funcionario_id);
+        setTecnicosAdicionais(ids);
+        setTecnicosAdicionaisOriginais(ids);
+        setCargaTecnicosAdicionais("ok");
+      });
+    return () => { cancelado = true; };
+  }, [ordem, open, tecnicosAdicionaisVisiveis, tentativaCargaTecnicosAdicionais]);
+
+  const recarregarTecnicosAdicionais = () => setTentativaCargaTecnicosAdicionais((n) => n + 1);
+
   return {
     loading, setLoading,
     tecnicoId, setTecnicoId,
@@ -442,6 +490,9 @@ export function useOrdemServicoWizardState({
     campoComErro, setCampoComErro,
     formData, setFormData,
     estadoAdicionais, setEstadoAdicionais, recarregarAdicionais,
+    tecnicosAdicionais, setTecnicosAdicionais,
+    tecnicosAdicionaisOriginais, setTecnicosAdicionaisOriginais,
+    cargaTecnicosAdicionais, recarregarTecnicosAdicionais,
     buscarClientes,
     selecionarCliente,
     handleClienteNomeChange,
