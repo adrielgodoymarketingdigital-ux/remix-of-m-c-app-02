@@ -17,6 +17,7 @@ Deno.serve(async () => {
     'clientes',
     'ordens_servico',
     'os_dispositivos_adicionais',
+    'os_tecnicos_adicionais',
     'vendas',
     'produtos',
     'dispositivos',
