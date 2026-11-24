@@ -11,7 +11,13 @@ import {
   adicionarCardsPDF,
   adicionarTituloSecao,
 } from "./pdfHelpers";
-import { codigoDoItem, totaisGerais, type GrupoCategoria } from "./produtos/exportarPorCategoria";
+import {
+  codigoDoItem,
+  mostraCustoELucro,
+  totaisGerais,
+  type GrupoCategoria,
+  type OpcoesCustoLucro,
+} from "./produtos/exportarPorCategoria";
 import { dataBrasiliaISO } from "./dataBrasilia";
 
 interface CategoriaAgrupada {
@@ -221,8 +227,11 @@ export const exportarMaisVendidosPDF = async (
 
 export const exportarProdutosPDF = async (
   items: ItemEstoque[],
-  config?: ConfiguracaoLoja | null
+  config?: ConfiguracaoLoja | null,
+  /** Desligado: sem custo, lucro e margem (cards e tabela). Padrão: ligado. */
+  opcoes: OpcoesCustoLucro = {}
 ) => {
+  const comCusto = mostraCustoELucro(opcoes);
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const margin = 15;
 
@@ -244,32 +253,34 @@ export const exportarProdutosPDF = async (
   );
 
   // Cards de resumo geral
-  y = adicionarCardsPDF(doc, y, [
-    {
-      label: "Total em Estoque",
-      value: totalQtd.toString(),
-      sub: `${produtos.length} produtos • ${pecas.length} peças`,
-      color: [50, 50, 50],
-    },
+  const cardTotalEstoque = {
+    label: "Total em Estoque",
+    value: totalQtd.toString(),
+    sub: `${produtos.length} produtos • ${pecas.length} peças`,
+    color: [50, 50, 50] as [number, number, number],
+  };
+  const cardVendaTotal = {
+    label: "Venda Total",
+    value: formatCurrencyPDF(totalVenda),
+    sub: "Valor potencial",
+    color: [40, 100, 210] as [number, number, number],
+  };
+  y = adicionarCardsPDF(doc, y, comCusto ? [
+    cardTotalEstoque,
     {
       label: "Custo Total",
       value: formatCurrencyPDF(totalCusto),
       sub: "Valor investido",
       color: [220, 80, 60],
     },
-    {
-      label: "Venda Total",
-      value: formatCurrencyPDF(totalVenda),
-      sub: "Valor potencial",
-      color: [40, 100, 210],
-    },
+    cardVendaTotal,
     {
       label: "Lucro Potencial",
       value: formatCurrencyPDF(totalLucro),
       sub: totalVenda > 0 ? `Margem: ${((totalLucro / totalVenda) * 100).toFixed(1)}%` : "",
       color: [30, 160, 80],
     },
-  ]);
+  ] : [cardTotalEstoque, cardVendaTotal]);
 
   // Agrupar por categoria
   const categorias = agruparPorCategoria(items);
@@ -285,26 +296,36 @@ export const exportarProdutosPDF = async (
     y = adicionarTituloSecao(doc, y, cat.nome);
 
     // Mini cards for category
-    y = adicionarCardsPDF(doc, y, [
+    y = adicionarCardsPDF(doc, y, comCusto ? [
       { label: "Itens", value: cat.quantidade.toString(), color: [80, 80, 80] },
       { label: "Custo", value: formatCurrencyPDF(cat.custo), color: [220, 80, 60] },
       { label: "Venda", value: formatCurrencyPDF(cat.venda), color: [40, 100, 210] },
       { label: "Lucro", value: formatCurrencyPDF(cat.lucro), color: [30, 160, 80] },
+    ] : [
+      { label: "Itens", value: cat.quantidade.toString(), color: [80, 80, 80] },
+      { label: "Venda", value: formatCurrencyPDF(cat.venda), color: [40, 100, 210] },
     ]);
 
     // Items table
-    const rows = cat.items.map((item) => [
+    const rows = cat.items.map((item) => comCusto ? [
       item.nome,
       item.tipo === "produto" ? "Produto" : "Peça",
       item.quantidade.toString(),
       formatCurrencyPDF(item.custo),
       formatCurrencyPDF(item.preco),
       formatCurrencyPDF((item.preco - item.custo) * item.quantidade),
+    ] : [
+      item.nome,
+      item.tipo === "produto" ? "Produto" : "Peça",
+      item.quantidade.toString(),
+      formatCurrencyPDF(item.preco),
     ]);
 
     autoTable(doc, {
       startY: y,
-      head: [["Nome", "Tipo", "Qtd", "Custo Unit.", "Preço Unit.", "Lucro Total"]],
+      head: comCusto
+        ? [["Nome", "Tipo", "Qtd", "Custo Unit.", "Preço Unit.", "Lucro Total"]]
+        : [["Nome", "Tipo", "Qtd", "Preço Unit."]],
       body: rows,
       margin: { left: margin, right: margin },
       styles: { fontSize: 7.5, cellPadding: 2.5 },
@@ -315,13 +336,19 @@ export const exportarProdutosPDF = async (
         fontSize: 7.5,
       },
       alternateRowStyles: { fillColor: [250, 250, 252] },
-      columnStyles: {
+      // Sem custo/lucro, o Nome ("auto") fica com a largura das colunas que saíram.
+      columnStyles: comCusto ? {
         0: { cellWidth: "auto" },
         1: { cellWidth: 20, halign: "center" },
         2: { cellWidth: 14, halign: "center" },
         3: { cellWidth: 26, halign: "right" },
         4: { cellWidth: 26, halign: "right" },
         5: { cellWidth: 28, halign: "right" },
+      } : {
+        0: { cellWidth: "auto" },
+        1: { cellWidth: 20, halign: "center" },
+        2: { cellWidth: 14, halign: "center" },
+        3: { cellWidth: 26, halign: "right" },
       },
     });
 
@@ -338,7 +365,7 @@ export const exportarProdutosPDF = async (
 // Não muda os relatórios acima. Grupos e totais vêm prontos de
 // src/lib/produtos/exportarPorCategoria.ts (mesmas contas do relatório completo).
 
-export interface OpcoesPDFCategorias {
+export interface OpcoesPDFCategorias extends OpcoesCustoLucro {
   /** Ex.: "Somente itens com estoque". */
   observacao?: string;
 }
@@ -349,6 +376,7 @@ export const gerarCategoriasPDF = async (
   config?: ConfiguracaoLoja | null,
   opcoes: OpcoesPDFCategorias = {}
 ): Promise<jsPDF> => {
+  const comCusto = mostraCustoELucro(opcoes);
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const margin = 15;
   const total = totaisGerais(grupos);
@@ -361,7 +389,7 @@ export const gerarCategoriasPDF = async (
 
   let y = await adicionarCabecalhoPDF(doc, config || null, "Relatório por Categoria", partes.join(" • "));
 
-  y = adicionarCardsPDF(doc, y, [
+  y = adicionarCardsPDF(doc, y, comCusto ? [
     { label: "Total em Estoque", value: total.quantidade.toString(), sub: `${total.itens} itens`, color: [50, 50, 50] },
     { label: "Custo Total", value: formatCurrencyPDF(total.custo), sub: "Valor investido", color: [220, 80, 60] },
     { label: "Venda Total", value: formatCurrencyPDF(total.venda), sub: "Valor potencial", color: [40, 100, 210] },
@@ -371,6 +399,9 @@ export const gerarCategoriasPDF = async (
       sub: total.venda > 0 ? `Margem: ${((total.lucro / total.venda) * 100).toFixed(1)}%` : "",
       color: [30, 160, 80],
     },
+  ] : [
+    { label: "Total em Estoque", value: total.quantidade.toString(), sub: `${total.itens} itens`, color: [50, 50, 50] },
+    { label: "Venda Total", value: formatCurrencyPDF(total.venda), sub: "Valor potencial", color: [40, 100, 210] },
   ]);
 
   grupos.forEach((cat) => {
@@ -381,12 +412,28 @@ export const gerarCategoriasPDF = async (
 
     y = adicionarTituloSecao(doc, y, cat.nome.replace(/›/g, ">"));
 
-    y = adicionarCardsPDF(doc, y, [
-      { label: "Quantidade", value: cat.quantidade.toString(), sub: `${cat.itens.length} ${cat.itens.length === 1 ? "item" : "itens"}`, color: [80, 80, 80] },
+    const cardQuantidade = {
+      label: "Quantidade",
+      value: cat.quantidade.toString(),
+      sub: `${cat.itens.length} ${cat.itens.length === 1 ? "item" : "itens"}`,
+      color: [80, 80, 80] as [number, number, number],
+    };
+    y = adicionarCardsPDF(doc, y, comCusto ? [
+      cardQuantidade,
       { label: "Custo Total", value: formatCurrencyPDF(cat.custo), color: [220, 80, 60] },
       { label: "Venda Total", value: formatCurrencyPDF(cat.venda), color: [40, 100, 210] },
       { label: "Lucro Total", value: formatCurrencyPDF(cat.lucro), color: [30, 160, 80] },
+    ] : [
+      cardQuantidade,
+      { label: "Venda Total", value: formatCurrencyPDF(cat.venda), color: [40, 100, 210] },
     ]);
+
+    if (!comCusto) {
+      tabelaCategoriaSemCusto(doc, y, margin, cat);
+      const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y;
+      y = finalY + 10;
+      return;
+    }
 
     const rows = cat.itens.map((item) => [
       codigoDoItem(item) || "—",
@@ -438,6 +485,42 @@ export const gerarCategoriasPDF = async (
   adicionarRodapePDF(doc, config);
   return doc;
 };
+
+/** Tabela da categoria sem Custo/Lucro: Código, Nome, Tipo, Qtd, Preço Unit. (rodapé com a venda total). */
+function tabelaCategoriaSemCusto(doc: jsPDF, y: number, margin: number, cat: GrupoCategoria<ItemEstoque>) {
+  autoTable(doc, {
+    startY: y,
+    head: [["Código", "Nome", "Tipo", "Qtd", "Preço Unit."]],
+    body: cat.itens.map((item) => [
+      codigoDoItem(item) || "—",
+      item.nome,
+      item.tipo === "produto" ? "Produto" : "Peça",
+      item.quantidade.toString(),
+      formatCurrencyPDF(item.preco),
+    ]),
+    foot: [[
+      "",
+      "Total da categoria",
+      "",
+      { content: cat.quantidade.toString(), styles: { halign: "center" } },
+      { content: formatCurrencyPDF(cat.venda), styles: { halign: "right" } },
+    ]],
+    showFoot: "lastPage",
+    margin: { left: margin, right: margin },
+    styles: { fontSize: 7, cellPadding: 2 },
+    headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7 },
+    footStyles: { fillColor: [235, 237, 240], textColor: [25, 25, 25], fontStyle: "bold", fontSize: 7 },
+    alternateRowStyles: { fillColor: [250, 250, 252] },
+    // Nome ("auto") fica com a largura das 3 colunas que saíram.
+    columnStyles: {
+      0: { cellWidth: 22 },
+      1: { cellWidth: "auto" },
+      2: { cellWidth: 14, halign: "center" },
+      3: { cellWidth: 11, halign: "center" },
+      4: { cellWidth: 24, halign: "right" },
+    },
+  });
+}
 
 export const exportarCategoriasPDF = async (
   grupos: GrupoCategoria<ItemEstoque>[],

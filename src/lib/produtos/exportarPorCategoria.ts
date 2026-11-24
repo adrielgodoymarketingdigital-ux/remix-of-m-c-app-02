@@ -29,6 +29,20 @@ export interface ItemBasico {
   categoria_id?: string | null;
 }
 
+/**
+ * Opção "Mostrar custo e lucro" dos relatórios exportados. Padrão: ligado
+ * (igual a antes da opção). Desligado, o arquivo não leva custo, lucro nem
+ * margem em lugar nenhum: só nome, categoria, quantidade, preço e venda.
+ */
+export interface OpcoesCustoLucro {
+  mostrarCustoELucro?: boolean;
+}
+
+/** Ligado, a não ser que venha false explícito (quem não passa nada fica igual a antes). */
+export function mostraCustoELucro(opcoes?: OpcoesCustoLucro): boolean {
+  return opcoes?.mostrarCustoELucro !== false;
+}
+
 export interface OpcoesFiltro {
   /** Só itens com quantidade > 0. Desligado por padrão. */
   somenteComEstoque?: boolean;
@@ -280,6 +294,24 @@ export const CABECALHO_ITENS = [
 
 export const CABECALHO_RESUMO = ["Categoria", "Itens", "Quantidade", "Custo total", "Venda total", "Lucro total"];
 
+/** Colunas que revelam margem (índices em CABECALHO_ITENS / CABECALHO_RESUMO). */
+const COLUNAS_CUSTO_LUCRO_ITENS = [5, 7, 8, 10]; // Custo unit., Lucro unit., Custo total, Lucro total
+const COLUNAS_CUSTO_LUCRO_RESUMO = [3, 5]; // Custo total, Lucro total
+
+/** Tira colunas da aba e reindexa as colunas de dinheiro que sobram. */
+function semColunas(aba: AbaPlanilha, remover: number[]): AbaPlanilha {
+  const fora = new Set(remover);
+  const novoIndice = (c: number) => c - remover.filter((r) => r < c).length;
+  return {
+    ...aba,
+    linhas: aba.linhas.map((linha, r) =>
+      // Topo (loja, data, linha vazia) não é tabela: fica como está.
+      r < aba.linhaCabecalho ? linha : linha.filter((_, c) => !fora.has(c)),
+    ),
+    colunasMoeda: aba.colunasMoeda.filter((c) => !fora.has(c)).map(novoIndice),
+  };
+}
+
 const arred = (v: number) => Math.round(v * 100) / 100;
 
 /** Nome de aba válido no Excel: até 31 caracteres, sem : \ / ? * [ ], sem repetir. */
@@ -300,6 +332,7 @@ export function montarPlanilhas(
   grupos: GrupoCategoria[],
   lojaNome: string,
   dataGerado: string,
+  opcoes: OpcoesCustoLucro = {},
 ): AbaPlanilha[] {
   const topo: Celula[][] = [[lojaNome], [`Gerado em ${dataGerado}`], []];
   const usados = new Set<string>(["resumo"]);
@@ -341,5 +374,6 @@ export function montarPlanilhas(
     ],
   }));
 
-  return [resumo, ...abas];
+  if (mostraCustoELucro(opcoes)) return [resumo, ...abas];
+  return [semColunas(resumo, COLUNAS_CUSTO_LUCRO_RESUMO), ...abas.map((a) => semColunas(a, COLUNAS_CUSTO_LUCRO_ITENS))];
 }

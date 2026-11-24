@@ -3,7 +3,7 @@
 // Download pelo XLSX.writeFile, o mesmo da exportação de dados (ExportacaoDados.tsx).
 import * as XLSX from "xlsx";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
-import { montarPlanilhas, type AbaPlanilha, type GrupoCategoria } from "./exportarPorCategoria";
+import { montarPlanilhas, type AbaPlanilha, type GrupoCategoria, type OpcoesCustoLucro } from "./exportarPorCategoria";
 
 const FORMATO_MOEDA = '"R$" #,##0.00;-"R$" #,##0.00';
 
@@ -31,16 +31,17 @@ export function gerarCategoriasWorkbook(
   grupos: GrupoCategoria[],
   lojaNome: string,
   dataGerado: string,
+  opcoes: OpcoesCustoLucro = {},
 ): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
-  for (const aba of montarPlanilhas(grupos, lojaNome, dataGerado)) {
+  for (const aba of montarPlanilhas(grupos, lojaNome, dataGerado, opcoes)) {
     XLSX.utils.book_append_sheet(wb, montarAba(aba), aba.nome);
   }
   return wb;
 }
 
-export function exportarCategoriasExcel(grupos: GrupoCategoria[], lojaNome: string) {
-  const wb = gerarCategoriasWorkbook(grupos, lojaNome, new Date().toLocaleDateString("pt-BR"));
+export function exportarCategoriasExcel(grupos: GrupoCategoria[], lojaNome: string, opcoes: OpcoesCustoLucro = {}) {
+  const wb = gerarCategoriasWorkbook(grupos, lojaNome, new Date().toLocaleDateString("pt-BR"), opcoes);
   const dataAtual = dataBrasiliaISO();
   XLSX.writeFile(wb, `estoque-por-categoria-${dataAtual}.xlsx`);
 }

@@ -12,6 +12,7 @@ import {
   estadoCaixa,
   filtrarItens,
   montarPlanilhas,
+  mostraCustoELucro,
   nomeDeAba,
   ordemDaArvore,
   selecionarTodas,
@@ -191,6 +192,62 @@ test("planilha: Resumo + uma aba por categoria, totais iguais", () => {
   // Nomes de aba válidos e únicos
   assert.ok(abas.every((a) => a.nome.length <= 31 && !/[:\\/?*[\]]/.test(a.nome)));
   assert.equal(new Set(abas.map((a) => a.nome.toLowerCase())).size, abas.length);
+});
+
+test("opção mostrarCustoELucro: só false explícito desliga", () => {
+  assert.equal(mostraCustoELucro(), true);
+  assert.equal(mostraCustoELucro({}), true);
+  assert.equal(mostraCustoELucro({ mostrarCustoELucro: true }), true);
+  assert.equal(mostraCustoELucro({ mostrarCustoELucro: false }), false);
+});
+
+test("planilha ligada (true) é igual à de quem não passa a opção", () => {
+  const grupos = agruparPorCategoria(filtrarItens(itens, selecionarTodas(categorias), categorias), categorias);
+  assert.deepEqual(
+    montarPlanilhas(grupos, "Loja Teste", "24/11/2026", { mostrarCustoELucro: true }),
+    montarPlanilhas(grupos, "Loja Teste", "24/11/2026"),
+  );
+});
+
+test("planilha sem custo e lucro: sem colunas, sem totais e sem valores de custo/lucro", () => {
+  const grupos = agruparPorCategoria(filtrarItens(itens, selecionarTodas(categorias), categorias), categorias);
+  const abas = montarPlanilhas(grupos, "Loja Teste", "24/11/2026", { mostrarCustoELucro: false });
+  const resumo = abas[0];
+  assert.equal(abas.length, 1 + grupos.length);
+  assert.deepEqual(resumo.linhas.slice(0, resumo.linhaCabecalho), [["Loja Teste"], ["Gerado em 24/11/2026"], []]);
+  assert.deepEqual(resumo.linhas[resumo.linhaCabecalho], ["Categoria", "Itens", "Quantidade", "Venda total"]);
+  assert.deepEqual(resumo.linhas.at(-1), ["TOTAL", 7, 16, 881]);
+  assert.deepEqual(resumo.colunasMoeda, [3]);
+
+  const telas = abas.find((a) => a.nome === "Telas")!;
+  assert.deepEqual(telas.linhas[telas.linhaCabecalho], ["Nome", "Código/SKU", "Tipo", "Categoria", "Quantidade", "Preço de venda", "Venda total"]);
+  assert.deepEqual(telas.linhas[telas.linhaCabecalho + 1], ["Item 5", "789", "Peça", "Telas", 4, 180.5, 722]);
+  assert.deepEqual(telas.linhas.at(-1), ["TOTAL", "", "", "", 4, "", 722]);
+  assert.deepEqual(telas.colunasMoeda, [5, 6]);
+
+  // Nenhuma célula com "custo"/"lucro" e nenhum valor de custo ou lucro (unit., total, por categoria, geral).
+  const proibidos = new Set<number>();
+  for (const i of itens) [i.custo, i.custo * i.quantidade, i.preco - i.custo, (i.preco - i.custo) * i.quantidade].forEach((n) => proibidos.add(n));
+  for (const g of grupos) [g.custo, g.lucro].forEach((n) => proibidos.add(n));
+  const t = totaisGerais(grupos);
+  [t.custo, t.lucro].forEach((n) => proibidos.add(n));
+  // Que também são valores legítimos neste conjunto (quantidade/itens/preço/venda) não provam nada: fora.
+  const legitimos = new Set<number>([0]);
+  for (const i of itens) [i.quantidade, i.preco, i.preco * i.quantidade].forEach((n) => legitimos.add(n));
+  for (const g of grupos) [g.quantidade, g.itens.length, g.venda].forEach((n) => legitimos.add(n));
+  [t.itens, t.quantidade, t.venda].forEach((n) => legitimos.add(n));
+  for (const n of legitimos) proibidos.delete(n);
+  assert.ok(proibidos.size >= 10, "poucos valores para conferir");
+
+  for (const aba of abas) {
+    for (const linha of aba.linhas.slice(aba.linhaCabecalho)) {
+      for (const cel of linha) {
+        if (typeof cel === "string") assert.ok(!/custo|lucro|margem/i.test(cel), `${aba.nome}: "${cel}"`);
+        else assert.ok(!proibidos.has(cel), `${aba.nome}: valor ${cel} revela custo/lucro`);
+      }
+    }
+    assert.ok(!/custo|lucro/i.test(aba.nome));
+  }
 });
 
 test("nomeDeAba corta em 31, troca caracteres proibidos e não repete", () => {
