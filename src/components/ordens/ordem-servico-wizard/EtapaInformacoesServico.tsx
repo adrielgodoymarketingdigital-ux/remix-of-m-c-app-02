@@ -24,6 +24,8 @@ import {
 } from "@/lib/ordemServico/formularioDispositivosAdicionaisOS";
 import { numeroAdicional } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { tempoGarantiaDoSelect, tempoGarantiaParaSelect } from "@/lib/ordemServico/tempoGarantiaOS";
+import { adicionaisAposTrocarPrincipal } from "@/lib/ordemServico/tecnicosAdicionaisOS";
+import { BlocoTecnicosAdicionais, TecnicosAdicionaisEtapa } from "./BlocoTecnicosAdicionais";
 
 interface EtapaInformacoesServicoProps {
   formData: FormData;
@@ -45,6 +47,8 @@ interface EtapaInformacoesServicoProps {
   criarTipoServico: (nome: string) => Promise<TipoServico | null>;
   /** Só para quem vê os adicionais; undefined = etapa como sempre foi. */
   dispositivosAdicionais?: AparelhosNasEtapas;
+  /** Só para quem vê os técnicos adicionais (useTecnicosAdicionaisOSVisivel); undefined = etapa como sempre foi. */
+  tecnicosAdicionais?: TecnicosAdicionaisEtapa;
 }
 
 export function EtapaInformacoesServico({
@@ -66,6 +70,7 @@ export function EtapaInformacoesServico({
   setNovoTipoServicoNome,
   criarTipoServico,
   dispositivosAdicionais,
+  tecnicosAdicionais,
 }: EtapaInformacoesServicoProps) {
   const exibicaoAdicionais = exibicaoAparelhosNasEtapas(dispositivosAdicionais?.estado);
 
@@ -235,7 +240,15 @@ export function EtapaInformacoesServico({
               />
               <Select
                 value={tecnicoId || "nenhum"}
-                onValueChange={(value) => setTecnicoId(value === "nenhum" ? null : value)}
+                onValueChange={(value) => {
+                  const novo = value === "nenhum" ? null : value;
+                  setTecnicoId(novo);
+                  // Quem virou principal sai dos adicionais (o banco recusa os dois ao mesmo tempo).
+                  if (tecnicosAdicionais) {
+                    const lista = adicionaisAposTrocarPrincipal(tecnicosAdicionais.lista, novo);
+                    if (lista.length !== tecnicosAdicionais.lista.length) tecnicosAdicionais.onAlterar(lista);
+                  }
+                }}
               >
                 <SelectTrigger className={cn("h-10 rounded-xl", ((tecnicoObrigatorioOS && !tecnicoId) || campoComErro === "tecnicoId") && "border-destructive")}>
                   <SelectValue placeholder="Selecione o técnico" />
@@ -255,6 +268,15 @@ export function EtapaInformacoesServico({
             </div>
           )}
         </div>
+
+        {podeVerTecnicos && funcionarios.length > 0 && tecnicosAdicionais && (
+          <BlocoTecnicosAdicionais
+            {...tecnicosAdicionais}
+            principal={tecnicoId}
+            funcionarios={funcionarios}
+            campoComErro={campoComErro}
+          />
+        )}
 
         {podeVerTecnicos && funcionarios.length > 0 && (
           <p className="text-xs text-muted-foreground -mt-2">

@@ -1,4 +1,5 @@
 import { FormData, ResultadoValidacaoEtapa, EtapaWizard } from "./tipos";
+import { validarTecnicosAdicionais } from "@/lib/ordemServico/tecnicosAdicionaisOS";
 
 const VALIDO: ResultadoValidacaoEtapa = { valido: true };
 
@@ -48,13 +49,18 @@ function validarEtapa4(
   formData: FormData,
   tecnicoId: string | null,
   tecnicoObrigatorioOS: boolean,
-  funcionarioId: string | null
+  funcionarioId: string | null,
+  tecnicosAdicionais: readonly string[],
 ): ResultadoValidacaoEtapa {
   if (!formData.defeitoRelatado.trim()) {
     return { valido: false, mensagem: "Informe o defeito relatado.", campoComErro: "defeitoRelatado" };
   }
   if (tecnicoObrigatorioOS && !tecnicoId && !funcionarioId) {
     return { valido: false, mensagem: "Selecione um técnico responsável antes de continuar.", campoComErro: "tecnicoId" };
+  }
+  const erroAdicionais = validarTecnicosAdicionais(tecnicoId, tecnicosAdicionais);
+  if (erroAdicionais) {
+    return { valido: false, mensagem: erroAdicionais, campoComErro: "tecnicosAdicionais" };
   }
   return VALIDO;
 }
@@ -79,6 +85,8 @@ interface ValidarEtapaParams {
   tecnicoId: string | null;
   tecnicoObrigatorioOS: boolean;
   funcionarioId: string | null;
+  /** Técnicos adicionais da tela (vazio para quem não vê o bloco). */
+  tecnicosAdicionais?: readonly string[];
 }
 
 export function validarEtapa({
@@ -87,12 +95,13 @@ export function validarEtapa({
   tecnicoId,
   tecnicoObrigatorioOS,
   funcionarioId,
+  tecnicosAdicionais = [],
 }: ValidarEtapaParams): ResultadoValidacaoEtapa {
   switch (etapa) {
     case 1: return validarEtapa1();
     case 2: return validarEtapa2(formData);
     case 3: return validarEtapa3(formData);
-    case 4: return validarEtapa4(formData, tecnicoId, tecnicoObrigatorioOS, funcionarioId);
+    case 4: return validarEtapa4(formData, tecnicoId, tecnicoObrigatorioOS, funcionarioId, tecnicosAdicionais);
     case 5: return validarEtapa5();
     case 6: return validarEtapa6();
     case 7: return validarEtapa7();
