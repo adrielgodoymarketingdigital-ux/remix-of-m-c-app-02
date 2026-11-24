@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -202,13 +203,11 @@ export function DialogVendaAvulsa({ open, onOpenChange, onVendaSalva }: Props) {
 
           <div>
             <Label>{t("vendaAvulsa.valor")}</Label>
-            <Input
-              type="number"
-              step="0.01"
+            <InputDecimal
               min="0"
               placeholder={t("vendaAvulsa.valorPlaceholder")}
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              onChange={(v) => setValor(v)}
             />
           </div>
 

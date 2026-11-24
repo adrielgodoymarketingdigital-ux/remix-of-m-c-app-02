@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowDownCircle, ArrowUpCircle, Loader2 } from "lucide-react";
@@ -89,13 +90,11 @@ export function DialogSangria({ open, onOpenChange, caixaId, onSucesso }: Dialog
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>{t("caixa.sangria.valor", { simbolo: fmt.simboloMoeda })}</Label>
-            <Input
-              type="number"
-              step="0.01"
+            <InputDecimal
               min="0"
               placeholder={t("caixa.sangria.valorPlaceholder")}
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              onChange={(v) => setValor(v)}
             />
           </div>
 

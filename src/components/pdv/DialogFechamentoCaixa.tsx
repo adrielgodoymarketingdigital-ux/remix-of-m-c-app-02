@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -484,13 +485,11 @@ export function DialogFechamentoCaixa({ open, onOpenChange, caixa, onCaixaFechad
 
           <div className="space-y-1">
             <Label htmlFor="saldo-contado">{t("caixa.fechamento.saldoContado", { simbolo: fmt.simboloMoeda })}</Label>
-            <Input
+            <InputDecimal
               id="saldo-contado"
-              type="number"
               min={0}
-              step={0.01}
               value={saldoFinalContado}
-              onChange={(e) => setSaldoFinalContado(Number(e.target.value) || 0)}
+              onChange={(v) => setSaldoFinalContado(Number(v) || 0)}
               disabled={carregandoResumo}
             />
             <p className="text-xs text-muted-foreground">

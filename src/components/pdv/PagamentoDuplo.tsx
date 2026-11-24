@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -142,23 +143,22 @@ export function PagamentoDuplo({
               <Label htmlFor="valor-primeira" className="text-xs text-muted-foreground whitespace-nowrap">
                 {t("pagamentoDuplo.valorPrimeira")}
               </Label>
-              <Input
+              <InputDecimal
                 id="valor-primeira"
-                type="number"
                 min="0.01"
                 max={valorTotal}
-                step="0.01"
                 value={valorPrimeiraStr}
-                onChange={(e) => {
-                  setValorPrimeiraStr(e.target.value);
-                  const num = parseFloat(e.target.value);
+                onChange={(v) => {
+                  setValorPrimeiraStr(v);
+                  const num = parseFloat(v);
                   if (!isNaN(num) && num > 0 && num < valorTotal) {
                     const segunda = valorTotal - num;
                     emitirMudanca({ valorPrimeira: num, valorSegunda: segunda });
                   }
                 }}
-                onBlur={(e) => {
-                  const num = parseFloat(e.target.value);
+                onBlur={() => {
+                  // valorPrimeiraStr já vem normalizado com ponto pelo InputDecimal
+                  const num = parseFloat(valorPrimeiraStr);
                   if (isNaN(num) || num <= 0) {
                     setValorPrimeiraStr("0.01");
                   } else if (num >= valorTotal) {

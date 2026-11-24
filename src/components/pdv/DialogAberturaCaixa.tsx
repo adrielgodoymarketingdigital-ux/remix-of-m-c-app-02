@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Caixa } from "@/types/caixa";
@@ -57,13 +58,11 @@ export function DialogAberturaCaixa({ open, onOpenChange, onCaixaAberto, abrirCa
           <AvisoRelogioAparelho />
           <div className="space-y-2">
             <Label htmlFor="saldo-inicial">{t("caixa.abertura.saldoInicial", { simbolo: fmt.simboloMoeda })}</Label>
-            <Input
+            <InputDecimal
               id="saldo-inicial"
-              type="number"
               min="0"
-              step="0.01"
               value={saldoInicial}
-              onChange={(e) => setSaldoInicial(Number(e.target.value) || 0)}
+              onChange={(v) => setSaldoInicial(Number(v) || 0)}
             />
           </div>
           <div className="space-y-2">

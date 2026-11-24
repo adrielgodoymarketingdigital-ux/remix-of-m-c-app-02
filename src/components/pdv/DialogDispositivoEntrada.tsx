@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -341,22 +342,20 @@ export function DialogDispositivoEntrada({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="valor-custo">{t("entradaTroca.valorCusto")}</Label>
-                <Input
+                <InputDecimal
                   id="valor-custo"
-                  type="number"
                   placeholder={t("entradaTroca.valorPlaceholder")}
                   value={valorCusto}
-                  onChange={(e) => setValorCusto(e.target.value)}
+                  onChange={(v) => setValorCusto(v)}
                 />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="valor-venda">{t("entradaTroca.valorVenda")}</Label>
-                <Input
+                <InputDecimal
                   id="valor-venda"
-                  type="number"
                   placeholder={t("entradaTroca.valorPlaceholder")}
                   value={valorVenda}
-                  onChange={(e) => setValorVenda(e.target.value)}
+                  onChange={(v) => setValorVenda(v)}
                 />
               </div>
             </div>

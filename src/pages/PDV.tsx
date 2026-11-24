@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputDecimal } from "@/components/ui/input-decimal";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -1320,13 +1321,12 @@ const PDV = () => {
                           <SelectItem value="porcentagem">{t("pagina.resumo.descontoPorcentagem")}</SelectItem>
                         </SelectContent>
                       </Select>
-                      <Input
-                        type="number"
+                      <InputDecimal
                         min="0"
                         max={tipoDesconto === "porcentagem" ? 100 : subtotal}
                         value={descontoValor}
-                        onChange={(e) => {
-                          const val = Number(e.target.value) || 0;
+                        onChange={(v) => {
+                          const val = Number(v) || 0;
                           const maxVal = tipoDesconto === "porcentagem" ? 100 : subtotal;
                           setDescontoValor(Math.min(maxVal, Math.max(0, val)));
                         }}
