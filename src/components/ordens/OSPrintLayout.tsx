@@ -3,7 +3,7 @@ import { ConfiguracaoLoja, LayoutOSConfig } from "@/types/configuracao-loja";
 import { AvariasOS, ProdutoUtilizado, ServicoRealizado, CustoAdicional } from "@/types/ordem-servico";
 import { formatCurrency, formatDate, formatPhone, formatCPF } from "@/lib/formatters";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
-import { valorLinhaProduto, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { chaveLinhaServico, nomeLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 
 interface Props {
@@ -191,7 +191,6 @@ export function OSPrintLayout({ ordem, configuracaoLoja, layoutConfig, termoGara
             {produtosUtilizados.map((p) => (
               <div key={p.id} style={s.itemLinha}>
                 <span>• {p.quantidade}x {p.nome}</span>
-                <span style={{ fontWeight: 700 }}>{formatCurrency(valorLinhaProduto(p))}</span>
               </div>
             ))}
           </div>
