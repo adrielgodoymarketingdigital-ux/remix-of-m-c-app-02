@@ -12,6 +12,7 @@ import { obterTermoGarantia } from "@/lib/termo-garantia-utils";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { chaveLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
+import { linhasEnderecoCupom } from "@/lib/ordemServico/enderecoClienteImpressao";
 import {
   imeiOuSerie,
   juntarDispositivos,
@@ -54,6 +55,8 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
   // Com adicionais, as seções do 1º aparelho (que vêm depois dos adicionais) dizem de quem são.
   const doDispositivo1 = (titulo: string) => (temAdicionais ? `${titulo} — ${tituloDispositivo(1).toUpperCase()}` : titulo);
 
+  // Endereço do cliente: linhas curtas abaixo do CPF, só se preenchido (bobina: não há folha).
+  const linhasEndereco = linhasEnderecoCupom(ordem.cliente);
   const avariasData = ordem.avarias as AvariasOS | null;
   const checklistEntrada = avariasData?.checklist?.entrada || {};
   const checklistSaida = avariasData?.checklist?.saida || {};
@@ -123,6 +126,9 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
           <div>Nome: {ordem.cliente?.nome || "N/A"}</div>
           <div>Tel: {ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"}</div>
           {ordem.cliente?.cpf && <div>CPF: {formatCPF(ordem.cliente.cpf)}</div>}
+          {linhasEndereco.map((linha, i) => (
+            <div key={i}>{i === 0 ? `Endereço: ${linha}` : linha}</div>
+          ))}
         </div>
       )}
 

@@ -7,6 +7,7 @@ import { decryptSenhaDesbloqueio } from './password-encryption';
 import { obterTermoGarantia, LAYOUT_PADRAO } from './termo-garantia-utils';
 import { adicionarImagemContida, assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { cortarAteCaber, linhasEnderecoCupom, textoEnderecoCliente } from "@/lib/ordemServico/enderecoClienteImpressao";
 import {
   imeiOuSerie,
   juntarDispositivos,
@@ -288,16 +289,27 @@ export async function gerarOrdemServicoPDF(
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
+  // Endereço: a linha "Endereço:" já saía quando a rua (cliente.endereco) estava
+  // preenchida — aí continua no mesmo lugar e com o mesmo passo (5 mm), agora com
+  // o endereço inteiro. Endereço sem rua é linha nova: o bloco aperta (passo 4 mm)
+  // e termina na mesma altura de quando não havia endereço. Sempre 1 linha ("…").
+  const enderecoCliente = textoEnderecoCliente(ordem.cliente);
+  const linhaEnderecoJaExistia = !!ordem.cliente?.endereco;
+  const passoCliente = enderecoCliente && !linhaEnderecoJaExistia ? 4 : 5;
   doc.text(`Nome: ${ordem.cliente?.nome || 'N/A'}`, margemEsquerda, yPos);
-  yPos += 5;
+  yPos += passoCliente;
   doc.text(`Telefone: ${formatarTelefone(ordem.cliente?.telefone)}`, margemEsquerda, yPos);
   const cpfCnpjValue = ordem.cliente?.cpf || '';
   const cpfCnpjLabel = cpfCnpjValue.replace(/\D/g, '').length > 11 ? 'CNPJ' : 'CPF';
   doc.text(`${cpfCnpjLabel}: ${formatarCPFCNPJ(ordem.cliente?.cpf)}`, 100, yPos);
-  yPos += 5;
-  if (ordem.cliente?.endereco) {
-    doc.text(`Endereço: ${ordem.cliente.endereco}`, margemEsquerda, yPos);
-    yPos += 5;
+  yPos += passoCliente;
+  if (enderecoCliente || linhaEnderecoJaExistia) {
+    const larguraEndereco = margemDireita - margemEsquerda;
+    const textoEndereco = enderecoCliente
+      ? cortarAteCaber(`Endereço: ${enderecoCliente}`, (t) => doc.getTextWidth(t) <= larguraEndereco)
+      : `Endereço: ${ordem.cliente?.endereco}`;
+    doc.text(textoEndereco, margemEsquerda, yPos);
+    yPos += linhaEnderecoJaExistia ? 5 : 6;
   }
 
   yPos += 4;
@@ -1348,6 +1360,8 @@ export async function gerarOrdemServicoCupom80mmPDF(
       linhaTexto(`Nome: ${ordem.cliente?.nome || 'N/A'}`);
       linhaTexto(`Tel: ${formatarTelefone(ordem.cliente?.telefone)}`);
       if (ordem.cliente?.cpf) linhaTexto(`CPF: ${formatarCPFCNPJ(ordem.cliente.cpf)}`);
+      // Endereço (só se preenchido): linhas curtas abaixo do CPF, como no cupom em tela.
+      linhasEnderecoCupom(ordem.cliente).forEach((linha, i) => linhaTexto(i === 0 ? `Endereço: ${linha}` : linha));
       y += 2;
     }
 
