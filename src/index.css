@@ -505,13 +505,17 @@ All colors MUST be HSL.
     line-height: 1.2 !important;
   }
 
-  /* Com endereço: termo 0,5 pt menor (5,5 → 5 pt) e a faixa do endereço com o ritmo das grades. */
+  /* Com endereço: termo 0,5 pt menor (5,5 → 5 pt) e a faixa do endereço com o espaçamento
+     mínimo (≈ 0,5 mm acima e abaixo, entrelinha 1,15) — juntos não aumentam a folha com
+     endereço de 1 linha. */
   .impressao-ordem-container .impressao-termo-text.impressao-termo-text-com-endereco {
     font-size: 5pt !important;
   }
 
   .impressao-ordem-container .impressao-faixa-endereco {
-    margin-bottom: 1.5mm !important;
+    margin-top: -1mm !important;
+    margin-bottom: 0.5mm !important;
+    line-height: 1.15 !important;
   }
 
   .impressao-ordem-container .impressao-footer {
