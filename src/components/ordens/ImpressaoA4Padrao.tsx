@@ -119,13 +119,6 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
                 {ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}
               </span>
             </div>
-            {enderecoCliente && (
-              // Endereço inteiro, sem corte: se for longo, quebra linha (Tel e CPF continuam nas linhas de sempre).
-              <div className="impressao-field impressao-field-endereco">
-                <span className="impressao-label">Endereço:</span>
-                <span className="impressao-value" data-endereco-cliente="">{enderecoCliente}</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -156,6 +149,15 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
           </div>
         </div>
       </div>
+
+      {/* Endereço do cliente: faixa de largura inteira, só se preenchido. Inteiro, sem
+          corte: se passar da largura da folha, quebra linha. */}
+      {enderecoCliente && (
+        <div className="impressao-faixa-endereco" data-faixa-endereco="">
+          <span className="impressao-label">Endereço:</span>
+          <span className="impressao-value" data-endereco-cliente="">{enderecoCliente}</span>
+        </div>
+      )}
 
       {/* Defeito + Valor */}
       <div className="impressao-grid-defeito-valor">
@@ -454,7 +456,8 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
       {layoutConfig.mostrar_termos_condicoes && (
         <div className="impressao-termo-garantia">
           <div className="impressao-termo-title">Termo de Garantia do Serviço</div>
-          <p className="impressao-termo-text">{termoGarantia}</p>
+          {/* Com endereço, o termo sai 0,5 pt menor (recupera a altura da faixa do endereço). */}
+          <p className={enderecoCliente ? "impressao-termo-text impressao-termo-text-com-endereco" : "impressao-termo-text"}>{termoGarantia}</p>
         </div>
       )}
 

@@ -505,6 +505,15 @@ All colors MUST be HSL.
     line-height: 1.2 !important;
   }
 
+  /* Com endereço: termo 0,5 pt menor (5,5 → 5 pt) e a faixa do endereço com o ritmo das grades. */
+  .impressao-ordem-container .impressao-termo-text.impressao-termo-text-com-endereco {
+    font-size: 5pt !important;
+  }
+
+  .impressao-ordem-container .impressao-faixa-endereco {
+    margin-bottom: 1.5mm !important;
+  }
+
   .impressao-ordem-container .impressao-footer {
     gap: 6mm !important;
     margin-top: 1.5mm !important;
@@ -796,6 +805,10 @@ All colors MUST be HSL.
     font-size: 10pt !important;
   }
 
+  .impressao-duas-os-slot .impressao-termo-text.impressao-termo-text-com-endereco {
+    font-size: 9.5pt !important;
+  }
+
   .impressao-duas-os-slot .impressao-assinatura-label {
     font-size: 11pt !important;
   }
@@ -859,6 +872,10 @@ All colors MUST be HSL.
 
   .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-termo-text {
     font-size: 8pt !important;
+  }
+
+  .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-termo-text.impressao-termo-text-com-endereco {
+    font-size: 7.5pt !important;
   }
 
   .impressao-duas-os-horizontal .impressao-duas-os-slot .impressao-assinatura-label {
@@ -1343,15 +1360,29 @@ All colors MUST be HSL.
   color: #1e293b;
 }
 
-/* Endereço do cliente: inteiro, sem corte; se for longo, quebra linha.
-   width 0 + flex: o texto não alarga a coluna da grade (cliente | aparelho); ocupa só o que sobra.
-   Só existe quando o cliente tem endereço. */
-.impressao-ordem-container .impressao-field.impressao-field-endereco .impressao-value {
+/* Endereço do cliente: faixa de largura inteira logo abaixo de Cliente | Aparelho.
+   Só existe quando o cliente tem endereço. Texto inteiro, sem corte: se passar da
+   largura da folha, quebra linha. Rótulo e valor com as fontes de sempre dos campos. */
+.impressao-ordem-container .impressao-faixa-endereco {
+  display: flex;
+  align-items: baseline;
+  gap: 1mm;
+  margin-bottom: 2.5mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.impressao-ordem-container .impressao-faixa-endereco .impressao-value {
   flex: 1 1 0%;
-  width: 0;
   min-width: 0;
+  text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/* Com endereço, o termo de garantia sai 0,5 pt menor (6 → 5,5 pt na tela). */
+.impressao-termo-garantia .impressao-termo-text.impressao-termo-text-com-endereco {
+  font-size: 5.5pt;
 }
 
 .impressao-defeito {
