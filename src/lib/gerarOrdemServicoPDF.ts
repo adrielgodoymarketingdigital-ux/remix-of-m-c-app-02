@@ -291,8 +291,9 @@ export async function gerarOrdemServicoPDF(
   doc.setFontSize(9);
   // Endereço: a linha "Endereço:" já saía quando a rua (cliente.endereco) estava
   // preenchida — aí continua no mesmo lugar e com o mesmo passo (5 mm), agora com
-  // o endereço inteiro. Endereço sem rua é linha nova: o bloco aperta (passo 4 mm)
-  // e termina na mesma altura de quando não havia endereço. Sempre 1 linha ("…").
+  // o endereço inteiro. Endereço sem rua é linha nova: o bloco aperta (passo 4 mm
+  // e 2 mm depois do endereço) e a linha divisória fica onde ficava sem endereço
+  // (nome +4, telefone +4, endereço +2, +4 = os mesmos 14 mm). Sempre 1 linha ("…").
   const enderecoCliente = textoEnderecoCliente(ordem.cliente);
   const linhaEnderecoJaExistia = !!ordem.cliente?.endereco;
   const passoCliente = enderecoCliente && !linhaEnderecoJaExistia ? 4 : 5;
@@ -309,7 +310,7 @@ export async function gerarOrdemServicoPDF(
       ? cortarAteCaber(`Endereço: ${enderecoCliente}`, (t) => doc.getTextWidth(t) <= larguraEndereco)
       : `Endereço: ${ordem.cliente?.endereco}`;
     doc.text(textoEndereco, margemEsquerda, yPos);
-    yPos += linhaEnderecoJaExistia ? 5 : 6;
+    yPos += linhaEnderecoJaExistia ? 5 : 2;
   }
 
   yPos += 4;
