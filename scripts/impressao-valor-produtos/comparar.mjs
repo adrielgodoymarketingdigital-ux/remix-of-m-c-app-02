@@ -5,8 +5,13 @@
 //   2. alguma OS que hoje cabe em 1 folha deixar de caber:
 //        desktop = 1 página e nada cortado (a OS tem max-height 277 mm e corta);
 //        android = 1 página (documento isolado, pode virar 2 folhas);
+//        duas OS por folha (Padrão e Tech, vertical/horizontal, desktop/Android) =
+//          nada cortado na metade (altura fixa, overflow hidden) e 1 página na amostra;
 //        Personalizado automático = primeiro nível 0–3 com altura ≤ 270 mm
 //        (LIMITE_UMA_FOLHA_MM); sem nível = 2 folhas.
+//
+//   3. PDF do jsPDF de OS sem produto não for idêntico (sem data/ID), ou qualquer
+//      PDF mudar de páginas. OS antiga (sem preco_total / NaN): mostra antes → depois.
 //
 //   node comparar.mjs <pasta-antes> <pasta-depois>
 import { readFileSync, readdirSync } from "node:fs";
@@ -43,13 +48,18 @@ for (const chave of Object.keys(mA)) {
 }
 
 // ── 2. Cabe em 1 folha ──────────────────────────────────────────────────────
-const cabe = (m, via) => (via === "desktop" ? m.paginas === 1 && m.cortadoMm <= 0.05 : m.paginas === 1);
+const cabe = (m, via) =>
+  via.startsWith("duas-") ? m.cortadoMm <= 0.05 && (m.paginas === undefined || m.paginas === 1)
+  : via === "desktop" ? m.paginas === 1 && m.cortadoMm <= 0.05
+  : m.paginas === 1;
+const VIAS = { padrao: ["desktop", "android", "duas-v-desktop", "duas-v-android", "duas-h-desktop", "duas-h-android"], tech: null };
+VIAS.tech = VIAS.padrao;
 const linhas = [];
 const estouros = [];
 const MODELOS = ["padrao", "tech", "personalizado-n0", "personalizado-n1", "personalizado-n2", "personalizado-n3"];
 for (const modelo of MODELOS) {
-  for (const via of ["desktop", "android"]) {
-    let total = 0, cabiaA = 0, cabeD = 0, perdeu = 0, ganhou = 0, maisPaginas = 0, maxCresc = 0, folgaMin = Infinity, folgaOs = "";
+  for (const via of VIAS[modelo] ?? ["desktop", "android"]) {
+    let total = 0, cabiaA = 0, cabeD = 0, perdeu = 0, ganhou = 0, maisPaginas = 0, maxCresc = 0;
     for (const os of OS_TODAS) {
       const a = mA[`${modelo}__${os}`]?.[via];
       const d = mD[`${modelo}__${os}`]?.[via];
@@ -60,19 +70,13 @@ for (const modelo of MODELOS) {
       if (cd) cabeD++;
       if (d.paginas > a.paginas) maisPaginas++;
       maxCresc = Math.max(maxCresc, d.alturaConteudoMm - a.alturaConteudoMm);
-      if (ca && cd && via === "desktop") {
-        const folga = d.alturaVisivelMm - d.alturaConteudoMm; // ≥ 0 quando nada cortado; usa 277 − altura
-        const sobra = 277 - d.alturaConteudoMm;
-        if (sobra < folgaMin) { folgaMin = sobra; folgaOs = os; }
-        void folga;
-      }
       if (ca && !cd) {
         perdeu++;
-        estouros.push(`${modelo} (${via}) ${os}: altura ${a.alturaConteudoMm} → ${d.alturaConteudoMm} mm; ${via === "desktop" ? `cortado ${a.cortadoMm} → ${d.cortadoMm} mm` : `páginas ${a.paginas} → ${d.paginas}`}`);
+        estouros.push(`${modelo} (${via}) ${os}: altura ${a.alturaConteudoMm} → ${d.alturaConteudoMm} mm; ${via === "android" ? `páginas ${a.paginas} → ${d.paginas}` : `cortado ${a.cortadoMm} → ${d.cortadoMm} mm`}`);
       }
       if (!ca && cd) ganhou++;
     }
-    linhas.push(`| ${modelo} (${via}) | ${total} | ${cabiaA} → ${cabeD} | ${perdeu} | ${maisPaginas} | +${maxCresc.toFixed(2)} | ${via === "desktop" && folgaMin !== Infinity ? `${folgaMin.toFixed(2)} (${folgaOs})` : "—"} |`);
+    linhas.push(`| ${modelo} (${via}) | ${total} | ${cabiaA} → ${cabeD} | ${perdeu} | ${maisPaginas} | +${maxCresc.toFixed(2)} |`);
   }
 }
 
@@ -100,7 +104,7 @@ for (const os of OS_TODAS) {
     nivelMudou.push(`${os}: n${na} → n${nd}`);
   }
 }
-linhas.push(`| personalizado AUTOMÁTICO (nível 0–3 ≤ 270 mm) | ${pTotal} | ${pCabiaA} → ${pCabeD} | ${pPerdeu} | — | — | ${pSubiu} OS compactam 1+ nível a mais |`);
+linhas.push(`| personalizado AUTOMÁTICO (nível 0–3 ≤ 270 mm; ${pSubiu} OS compactam 1+ nível a mais) | ${pTotal} | ${pCabiaA} → ${pCabeD} | ${pPerdeu} | — | — |`);
 
 // Cupom (bobina): só crescimento
 let cupomMax = 0, cupomOs = "";
@@ -111,11 +115,31 @@ for (const os of OS_TODAS) {
   if (c > cupomMax) { cupomMax = c; cupomOs = os; }
 }
 
-console.log("| modelo (caminho) | OS | cabem em 1 folha antes → depois | cabiam e deixaram de caber | com mais páginas | maior aumento de altura (mm) | menor sobra até 277 mm entre as que cabem (mm) |");
-console.log("|---|---|---|---|---|---|---|");
+console.log("| modelo (caminho) | OS | cabem antes → depois | cabiam e deixaram de caber | com mais páginas | maior aumento de altura (mm) |");
+console.log("|---|---|---|---|---|---|");
 console.log(linhas.join("\n"));
 console.log(`\nCupom 80 mm (bobina): maior aumento ${cupomMax.toFixed(2)} mm (${cupomOs || "nenhum"}).`);
 console.log(`OS sem produto: ${identicas} arquivos HTML idênticos byte a byte (+ layout medido igual).`);
+// ── 3. PDFs do jsPDF ────────────────────────────────────────────────────────
+const jA = ler(path.join(antes, "jspdf.json"));
+const jD = ler(path.join(depois, "jspdf.json"));
+const semCarimbo = (buf) => buf.toString("latin1").replace(/\/CreationDate \([^)]*\)/g, "").replace(/\/ID \[[^\]]*\]/g, "");
+let pdfIguais = 0, pdfDiferentes = 0, pdfSemProdIguais = 0;
+for (const chave of Object.keys(jA)) {
+  const os = chave.split("__")[1];
+  const a = jA[chave], d = jD[chave];
+  if (os.startsWith("antigo-")) {
+    console.log(`PDF OS antiga ${chave}: antes ${a.erro ? `ERRO "${a.erro}"` : `${a.paginas} pág${a.nan ? " com NaN" : ""}`} → depois ${d.erro ? `ERRO "${d.erro}"` : `${d.paginas} pág${d.nan ? " com NaN" : ", sem NaN"}`}`);
+    if (d.erro || d.nan) falhas.push(`pdf ${chave}: depois ainda ${d.erro ? "quebra" : "tem NaN"}`);
+    continue;
+  }
+  if (a.erro || d.erro) { falhas.push(`pdf ${chave}: erro ${a.erro ?? ""} / ${d.erro ?? ""}`); continue; }
+  if (a.paginas !== d.paginas) falhas.push(`pdf ${chave}: páginas ${a.paginas} → ${d.paginas}`);
+  const igual = semCarimbo(readFileSync(path.join(antes, "pdf", `${chave}.pdf`))) === semCarimbo(readFileSync(path.join(depois, "pdf", `${chave}.pdf`)));
+  if (igual) pdfIguais++; else pdfDiferentes++;
+  if (semProduto(os)) { if (igual) pdfSemProdIguais++; else falhas.push(`pdf ${chave}: PDF sem produto mudou`); }
+}
+console.log(`PDF jsPDF: ${pdfIguais} idênticos (sem data/ID) e ${pdfDiferentes} diferentes; sem produto: ${pdfSemProdIguais} idênticos.`);
 if (nivelMudou.length) console.log(`Personalizado que compacta mais: ${nivelMudou.join("; ")}`);
 
 if (estouros.length) {

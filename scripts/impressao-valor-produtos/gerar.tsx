@@ -5,6 +5,11 @@
 //   node gerar.mjs <pasta-saida>
 //
 // Saída: html/<modelo>__<os>.html  (A4 Padrão, Tech, Personalizado n0-n3, cupom 80 mm)
+//        pdf/<a4|cupom>__<os>.pdf  (jsPDF: gerarOrdemServicoPDF completo e cupom 80 mm)
+//        jspdf.json                páginas de cada PDF, ou o erro se a geração quebrou
+//
+// Além das séries, "antigo-sem-total" e "antigo-nan": produtos de OS antiga sem
+// preco_total (chave ausente) e com preco_total NaN, só para o PDF (na main quebra/NaN).
 //
 // Séries de OS (N = 0 a 40 itens), em 3 densidades:
 //   semprod-<dens>-NN  N serviços, nenhum produto          (tem de ficar IDÊNTICA)
@@ -24,6 +29,7 @@ import { ImpressaoA4Tech } from "@/components/ordens/ImpressaoA4Tech";
 import { ImpressaoA4Personalizado } from "@/components/ordens/recibo-personalizado/ImpressaoA4Personalizado";
 import { ImpressaoCupom80mm } from "@/components/ordens/ImpressaoCupom80mm";
 import { getCupom80mmOSPrintDocCSS } from "@/lib/paper-size-utils";
+import { gerarOrdemServicoPDF, gerarOrdemServicoCupom80mmPDF } from "@/lib/gerarOrdemServicoPDF";
 
 const AGORA_FIXO = new Date("2026-11-25T15:00:00.000Z").getTime();
 const DataReal = Date;
@@ -40,6 +46,25 @@ globalThis.Date = DataFixa as DateConstructor;
 
 const SAIDA = path.resolve(process.argv[2] ?? "saida-impressao-valor-produtos");
 mkdirSync(path.join(SAIDA, "html"), { recursive: true });
+mkdirSync(path.join(SAIDA, "pdf"), { recursive: true });
+const jspdf: Record<string, { paginas?: number; erro?: string; nan?: boolean }> = {};
+const contarPaginas = (bytes: Uint8Array) => (Buffer.from(bytes).toString("latin1").match(/\/Type \/Page\b(?!s)/g) ?? []).length;
+async function pdfs(nomeOS: string, os: OrdemServico, loja: ConfiguracaoLoja) {
+  const gerar = {
+    a4: async () => new Uint8Array(await (await gerarOrdemServicoPDF(os, loja, "completo", {})).arrayBuffer()),
+    cupom: async () => new Uint8Array(await (await gerarOrdemServicoCupom80mmPDF(os, loja, [])).arrayBuffer()),
+  };
+  for (const [tipo, fn] of Object.entries(gerar)) {
+    const chave = `${tipo}__${nomeOS}`;
+    try {
+      const bytes = await fn();
+      writeFileSync(path.join(SAIDA, "pdf", `${chave}.pdf`), bytes);
+      jspdf[chave] = { paginas: contarPaginas(bytes), nan: Buffer.from(bytes).toString("latin1").includes("NaN") };
+    } catch (e) {
+      jspdf[chave] = { erro: String((e as Error)?.message ?? e) };
+    }
+  }
+}
 
 type Cliente = NonNullable<OrdemServico["cliente"]>;
 const CLIENTE: Cliente = {
@@ -150,8 +175,24 @@ for (const tipo of ["semprod", "mista", "longo"] as const) {
       const cupom = renderToStaticMarkup(<ImpressaoCupom80mm ordem={os} configuracaoLoja={loja} config80mm={{}} />);
       html.cupom = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${getCupom80mmOSPrintDocCSS()}</style></head><body><div id="print-root">${cupom}</div></body></html>`;
       for (const [modelo, corpo] of Object.entries(html)) writeFileSync(path.join(SAIDA, "html", `${modelo}__${nomeOS}.html`), corpo);
+      await pdfs(nomeOS, os, loja);
       total++;
     }
   }
 }
+// OS antiga: só PDF (o HTML já foi provado pela série e pelo teste unitário).
+{
+  const loja = { ...LOJA, layout_os_config: { ...LAYOUT, termo_garantia: TERMO_CURTO } } as unknown as ConfiguracaoLoja;
+  const casos: Record<string, (p: ProdutoUtilizado) => ProdutoUtilizado> = {
+    "antigo-sem-total": (p) => { const { preco_total: _sem, ...resto } = p; void _sem; return resto as ProdutoUtilizado; },
+    "antigo-nan": (p) => ({ ...p, preco_total: NaN }),
+  };
+  for (const [nomeOS, mexer] of Object.entries(casos)) {
+    const os = ordem("mista", "simples", 6);
+    const av = os.avarias as AvariasOS;
+    av.produtos_utilizados = (av.produtos_utilizados ?? []).map(mexer);
+    await pdfs(nomeOS, os, loja);
+  }
+}
+writeFileSync(path.join(SAIDA, "jspdf.json"), JSON.stringify(jspdf, null, 2));
 console.log(`gerado: ${total} OS em ${SAIDA}`);

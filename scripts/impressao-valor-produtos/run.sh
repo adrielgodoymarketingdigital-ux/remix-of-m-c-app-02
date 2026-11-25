@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Prova de páginas do valor da linha de produto/peça na impressão da OS (dados fictícios, sem banco, sem rede).
-#   1. gera as impressões (A4 Padrão, Tech, Personalizado níveis 0-3, cupom 80 mm)
+#   1. gera as impressões (A4 Padrão, Tech, Personalizado níveis 0-3, cupom 80 mm,
+#      PDF A4 e cupom do jsPDF)
 #      com o código de REF_ANTES e com o código atual;
-#   2. mede no Chrome com mídia de impressão (caminho do desktop e do Android) e
+#   2. mede no Chrome com mídia de impressão (desktop e Android, 1 OS e duas OS por folha) e
 #      imprime em PDF A4 contando as páginas;
 #   3. compara (comparar.mjs) e sai com erro se OS que cabia deixar de caber ou OS sem produto mudar.
 # Uso: bash scripts/impressao-valor-produtos/run.sh [pasta-de-saída]
@@ -19,7 +20,7 @@ mkdir -p "$SAIDA" "$CACHE"
 empacotar() { # $1 = pasta src usada no alias @, $2 = saída .mjs
   "$RAIZ/node_modules/.bin/esbuild" "$DIR/gerar.tsx" \
     --bundle --platform=node --format=esm --jsx=automatic \
-    --alias:@="$1" \
+    --alias:jspdf="$RAIZ/node_modules/jspdf/dist/jspdf.es.min.js" --alias:@="$1" \
     --banner:js="import{createRequire as __cr}from'module';const require=__cr(import.meta.url);" \
     --outfile="$2" --log-level=warning
 }
