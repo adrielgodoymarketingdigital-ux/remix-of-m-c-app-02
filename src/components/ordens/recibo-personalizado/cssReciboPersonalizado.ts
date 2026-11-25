@@ -89,6 +89,8 @@ ${R} .osr-card-body { padding: 1.8mm 4mm; }
 ${R} .osr-campo { display: grid; grid-template-columns: 26mm 1fr; gap: 2mm; padding: 0.7mm 0; border-bottom: 0.2mm solid #eef2f7; }
 ${R} .osr-campo:last-child { border-bottom: 0; }
 ${R} .osr-campo-cheio { grid-template-columns: 1fr; }
+/* Endereço do cliente: faixa de largura inteira abaixo de Cliente | Aparelho (só com endereço). Rótulo alinhado aos campos dos cartões. */
+${R} .osr-faixa-endereco { display: grid; grid-template-columns: 26mm 1fr; gap: 2mm; padding: 1mm 4mm; border: 0.3mm solid ${BORDA}; border-radius: 2.5mm; background: #fff; break-inside: avoid; page-break-inside: avoid; }
 ${R} .osr-rotulo { color: ${TEXTO_SUAVE}; }
 ${R} .osr-valor { font-weight: 700; color: ${TEXTO}; overflow-wrap: anywhere; }
 ${R} .osr-texto { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -135,6 +137,7 @@ ${R} .osr-foto figcaption { text-align: center; font-size: 8.5pt; padding-top: 1
 ${R} .osr-fotos-excedentes { font-size: 8pt; color: #555; margin-top: 2mm; }
 
 ${R} .osr-termo { font-size: 8pt; color: #334155; white-space: pre-line; overflow-wrap: anywhere; }
+${R} .osr-termo.osr-termo-com-endereco { font-size: 7.5pt; }
 
 ${R} .osr-assinaturas {
   display: flex; align-items: stretch; margin-top: auto;
@@ -235,6 +238,8 @@ ${R} .osr-loja { border-left-color: ${p.borda}; color: ${p.textoSuave}; }
  * níveis diferentes convivem no mesmo documento.
  * Mínimos (aprovados): texto 8 pt, títulos dos cartões 8 pt, termo 7,5 pt,
  * ícones do checklist 3,2 mm, espaço entre cartões 1,5 mm, espaço interno ≥ 1 mm.
+ * Exceção pedida pelo dono (2026-11-25): com endereço do cliente, o termo sai 0,5 pt
+ * menor em todos os níveis (no nível 3: 7 pt).
  */
 const C = "{{C}}";
 
@@ -273,6 +278,7 @@ ${C} .osr-check-icone { width: 3.2mm; height: 3.2mm; }
 ${C} .osr-marca { width: 3.4mm; height: 3.4mm; }
 ${C} .osr-marca svg { width: 2.4mm; height: 2.4mm; }
 ${C} .osr-termo { font-size: 7.5pt; }
+${C} .osr-termo.osr-termo-com-endereco { font-size: 7pt; }
 `;
 
 /** Agrupamento do fim (só no nível 0): blocos que não se partem nem se separam. Mesmo espaço do recibo (2,5 mm). */

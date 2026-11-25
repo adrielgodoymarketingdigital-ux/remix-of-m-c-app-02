@@ -287,8 +287,6 @@ export function ImpressaoA4Personalizado({
           <Campo rotulo="Nome:" valor={ordem.cliente?.nome || "N/A"} />
           <Campo rotulo="Tel:" valor={ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} />
           <Campo rotulo="CPF:" valor={ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"} />
-          {/* Endereço inteiro, sem corte: se for longo, quebra linha. */}
-          {enderecoCliente && <Campo rotulo="Endereço:" valor={enderecoCliente} endereco />}
         </div>
       </div>
       <div className="osr-card">
@@ -303,6 +301,14 @@ export function ImpressaoA4Personalizado({
         </div>
       </div>
     </div>,
+    // Endereço do cliente: faixa de largura inteira, só se preenchido. Inteiro, sem
+    // corte: se passar da largura da folha, quebra linha.
+    enderecoCliente && (
+      <div className="osr-faixa-endereco" data-faixa-endereco="">
+        <span className="osr-rotulo">Endereço:</span>
+        <span className="osr-valor" data-endereco-cliente="">{enderecoCliente}</span>
+      </div>
+    ),
     // Defeito + Valor
     <div className="osr-linha-defeito">
       <div className="osr-card">
@@ -432,7 +438,8 @@ export function ImpressaoA4Personalizado({
           <h2 className="osr-card-titulo">Termo de Garantia do Serviço</h2>
         </div>
         <div className="osr-card-body">
-          <p className="osr-termo">{termoGarantia}</p>
+          {/* Com endereço, o termo sai 0,5 pt menor (recupera a altura da faixa do endereço). */}
+          <p className={enderecoCliente ? "osr-termo osr-termo-com-endereco" : "osr-termo"}>{termoGarantia}</p>
         </div>
       </div>
     ),
@@ -522,12 +529,11 @@ function renderizarBlocos(corpo: ReactNode[], fim: ReactNode[], agrupamento: Agr
   );
 }
 
-/** endereco = marca o valor (data-endereco-cliente) para a prova de páginas; o campo é o de sempre. */
-function Campo({ rotulo, valor, endereco = false }: { rotulo: string; valor: string; endereco?: boolean }) {
+function Campo({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <div className="osr-campo">
       <span className="osr-rotulo">{rotulo}</span>
-      <span className="osr-valor" {...(endereco ? { "data-endereco-cliente": "" } : {})}>{valor}</span>
+      <span className="osr-valor">{valor}</span>
     </div>
   );
 }
