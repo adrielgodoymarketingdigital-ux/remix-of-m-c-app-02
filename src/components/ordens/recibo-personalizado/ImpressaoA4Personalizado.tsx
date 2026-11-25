@@ -34,6 +34,7 @@ import {
   type ChecklistRecibo,
 } from "@/lib/ordemServico/reciboOSPersonalizadoModelo";
 import { primeiraMaiuscula } from "@/lib/ordemServico/paginasReciboPersonalizado";
+import { textoEnderecoCliente } from "@/lib/ordemServico/enderecoClienteImpressao";
 import servicosPtBR from "@/locales/pt-BR/servicos";
 import { SilhuetaComAvarias } from "../SilhuetaComAvarias";
 import { PatternLockVisualizacao } from "../PatternLockVisualizacao";
@@ -94,6 +95,7 @@ export function ImpressaoA4Personalizado({
   const assinaturaLoja = assinaturaLojaAtiva(configuracaoLoja);
   const formaPagamento = (ordem as OrdemServico & { forma_pagamento?: string | null }).forma_pagamento;
   const endereco = configuracaoLoja ? formatarEndereco(configuracaoLoja) : "";
+  const enderecoCliente = textoEnderecoCliente(ordem.cliente);
   const cidadeAssinatura = configuracaoLoja?.endereco?.split(",")[1]?.trim() || "________";
 
   const mostrarLogo = !!(layoutConfig.mostrar_logo_impressao && configuracaoLoja?.logo_url && !logoFalhou);
@@ -283,8 +285,23 @@ export function ImpressaoA4Personalizado({
         </div>
         <div className="osr-card-body">
           <Campo rotulo="Nome:" valor={ordem.cliente?.nome || "N/A"} />
-          <Campo rotulo="Tel:" valor={ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} />
-          <Campo rotulo="CPF:" valor={ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"} />
+          {enderecoCliente ? (
+            // Com endereço: Tel e CPF dividem uma linha e o endereço fica na outra —
+            // o card continua com 3 linhas (mesma altura de sempre); nada quebra linha.
+            <>
+              <Campo
+                rotulo="Tel / CPF:"
+                valor={`${ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} · ${ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}`}
+                umaLinha
+              />
+              <Campo rotulo="Endereço:" valor={enderecoCliente} umaLinha endereco />
+            </>
+          ) : (
+            <>
+              <Campo rotulo="Tel:" valor={ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} />
+              <Campo rotulo="CPF:" valor={ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"} />
+            </>
+          )}
         </div>
       </div>
       <div className="osr-card">
@@ -518,11 +535,12 @@ function renderizarBlocos(corpo: ReactNode[], fim: ReactNode[], agrupamento: Agr
   );
 }
 
-function Campo({ rotulo, valor }: { rotulo: string; valor: string }) {
+/** umaLinha = o valor nunca quebra linha (o excesso vira "…"). Sem ela, o campo de sempre. */
+function Campo({ rotulo, valor, umaLinha = false, endereco = false }: { rotulo: string; valor: string; umaLinha?: boolean; endereco?: boolean }) {
   return (
-    <div className="osr-campo">
+    <div className={umaLinha ? "osr-campo osr-campo-uma-linha" : "osr-campo"}>
       <span className="osr-rotulo">{rotulo}</span>
-      <span className="osr-valor">{valor}</span>
+      <span className="osr-valor" {...(endereco ? { "data-endereco-cliente": "" } : {})}>{valor}</span>
     </div>
   );
 }
