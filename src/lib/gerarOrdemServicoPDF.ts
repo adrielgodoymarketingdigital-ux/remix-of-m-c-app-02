@@ -7,7 +7,7 @@ import { decryptSenhaDesbloqueio } from './password-encryption';
 import { obterTermoGarantia, LAYOUT_PADRAO } from './termo-garantia-utils';
 import { adicionarImagemContida, assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
-import { cortarAteCaber, linhasEnderecoCupom, textoEnderecoCliente } from "@/lib/ordemServico/enderecoClienteImpressao";
+import { linhasEnderecoCupom, textoEnderecoCliente } from "@/lib/ordemServico/enderecoClienteImpressao";
 import {
   imeiOuSerie,
   juntarDispositivos,
@@ -17,6 +17,9 @@ import {
   type DispositivoAdicionalOS,
 } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { TITULO_FOTOS, encaixarNaCaixa, formatoImagemDataUrl, geometriaGradeFotosPDF, textoExcedentes, type FotoImpressao } from './os/fotosImpressaoOS';
+
+/** PDF A4: altura de cada linha a mais do endereço do cliente (fonte 9 pt). */
+const PASSO_LINHA_EXTRA_ENDERECO = 4;
 
 // Formatar data/hora Brasil
 const formatarDataHoraBrasil = (dataISO: string): string => {
@@ -293,7 +296,7 @@ export async function gerarOrdemServicoPDF(
   // preenchida — aí continua no mesmo lugar e com o mesmo passo (5 mm), agora com
   // o endereço inteiro. Endereço sem rua é linha nova: o bloco aperta (passo 4 mm
   // e 2 mm depois do endereço) e a linha divisória fica onde ficava sem endereço
-  // (nome +4, telefone +4, endereço +2, +4 = os mesmos 14 mm). Sempre 1 linha ("…").
+  // (nome +4, telefone +4, endereço +2, +4 = os mesmos 14 mm). Endereço longo quebra linha.
   const enderecoCliente = textoEnderecoCliente(ordem.cliente);
   const linhaEnderecoJaExistia = !!ordem.cliente?.endereco;
   const passoCliente = enderecoCliente && !linhaEnderecoJaExistia ? 4 : 5;
@@ -306,10 +309,11 @@ export async function gerarOrdemServicoPDF(
   yPos += passoCliente;
   if (enderecoCliente || linhaEnderecoJaExistia) {
     const larguraEndereco = margemDireita - margemEsquerda;
-    const textoEndereco = enderecoCliente
-      ? cortarAteCaber(`Endereço: ${enderecoCliente}`, (t) => doc.getTextWidth(t) <= larguraEndereco)
-      : `Endereço: ${ordem.cliente?.endereco}`;
-    doc.text(textoEndereco, margemEsquerda, yPos);
+    const textoEndereco = `Endereço: ${enderecoCliente || ordem.cliente?.endereco}`;
+    // Inteiro, sem corte: se não couber na largura da folha, quebra linha (4 mm por linha a mais).
+    const linhasEndereco: string[] = doc.splitTextToSize(textoEndereco, larguraEndereco);
+    linhasEndereco.forEach((linha, i) => doc.text(linha, margemEsquerda, yPos + i * PASSO_LINHA_EXTRA_ENDERECO));
+    yPos += (linhasEndereco.length - 1) * PASSO_LINHA_EXTRA_ENDERECO;
     yPos += linhaEnderecoJaExistia ? 5 : 2;
   }
 
