@@ -24,7 +24,7 @@ import { formatCurrency, formatDate, formatPhone, formatCPF, formatarEndereco } 
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
 import { checklistIcons } from "@/lib/checklist-icons";
-import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { valorLinhaProduto, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { chaveLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import { nomeLinhaServicoComDispositivo, tituloDispositivo, type DispositivoAdicionalOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { TITULO_FOTOS, textoExcedentes, type FotoImpressao } from "@/lib/os/fotosImpressaoOS";
@@ -362,6 +362,7 @@ export function ImpressaoA4Personalizado({
               {dados.produtos.map((produto) => (
                 <div key={produto.id} className="osr-item">
                   <span className="osr-item-nome">• {produto.quantidade}x {produto.nome}</span>
+                  <span className="osr-item-valor">{formatCurrency(valorLinhaProduto(produto))}</span>
                 </div>
               ))}
             </div>

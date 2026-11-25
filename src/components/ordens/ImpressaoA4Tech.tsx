@@ -9,7 +9,7 @@ import { CheckCircle2, XCircle, User, Smartphone, Lock, FileText, DollarSign, Pa
 import { Badge } from "@/components/ui/badge";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
-import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { valorLinhaProduto, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { chaveLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import { nomeLinhaServicoComDispositivo, tituloDispositivo, type DispositivoAdicionalOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { DispositivosAdicionaisImpressao } from "./DispositivosAdicionaisImpressao";
@@ -218,6 +218,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
                 {produtosUtilizados.map((produto) => (
                   <div key={produto.id} className="impressao-item-linha">
                     <span className="impressao-item-nome">• {produto.quantidade}x {produto.nome}</span>
+                    <span className="impressao-item-valor">{formatCurrency(valorLinhaProduto(produto))}</span>
                   </div>
                 ))}
               </div>
