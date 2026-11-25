@@ -6,11 +6,11 @@
 #      imprime em PDF A4 contando as páginas;
 #   3. compara (comparar.mjs) e sai com erro se OS que cabia deixar de caber ou OS sem produto mudar.
 # Uso: bash scripts/impressao-valor-produtos/run.sh [pasta-de-saída]
-#   REF_ANTES=<commit> (padrão a312631 = origin/main de 2026-11-25)   PLAYWRIGHT_PATH=<.../node_modules/playwright>   CHROME_PATH=<chrome>
+#   REF_ANTES=<commit> (padrão ca9189b = origin/main de 2026-11-25)   PLAYWRIGHT_PATH=<.../node_modules/playwright>   CHROME_PATH=<chrome>
 set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/../.." && pwd)"
 SAIDA="${1:-$(mktemp -d)}"
-REF_ANTES="${REF_ANTES:-a312631}"
+REF_ANTES="${REF_ANTES:-ca9189b}"
 CACHE="$RAIZ/prova-cache.local/impressao-valor-produtos"  # *.local está no .gitignore; dentro da raiz p/ achar node_modules
 DIR="$RAIZ/scripts/impressao-valor-produtos"
 export PLAYWRIGHT_PATH="${PLAYWRIGHT_PATH:-$HOME/Downloads/teste-carencia/node_modules/playwright}"
