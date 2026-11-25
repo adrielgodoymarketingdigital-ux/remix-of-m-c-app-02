@@ -93,7 +93,12 @@ async function medir(seletor) {
         linhas: topos.size,
       };
     });
+    // Altura do termo de garantia (para medir quanto o termo 0,5 pt menor recupera).
+    const termoEl = c.querySelector(".impressao-termo-garantia") ?? c.querySelector(".osr-termo")?.closest(".osr-card");
+    const faixaEl = c.querySelector("[data-faixa-endereco]");
     return {
+      termoMm: termoEl ? mm(termoEl.getBoundingClientRect().height) : null,
+      faixaMm: faixaEl ? mm(faixaEl.getBoundingClientRect().height) : null,
       alturaConteudoMm: mm(c.scrollHeight),
       alturaVisivelMm: mm(c.getBoundingClientRect().height),
       cortadoMm: mm(Math.max(0, c.scrollHeight - c.clientHeight)),

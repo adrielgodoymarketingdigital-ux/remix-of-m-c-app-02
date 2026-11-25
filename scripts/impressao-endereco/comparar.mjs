@@ -42,10 +42,15 @@ for (const chave of Object.keys(mA)) {
 // ── 3: HTML sem endereço byte a byte ────────────────────────────────────────
 // O Personalizado leva o próprio CSS num <style> dentro do recibo: o HTML é
 // comparado sem os <style>, e o CSS à parte — a única diferença aceita é a regra
-// .osr-campo-uma-linha (a do corte em 1 linha, que saiu; só valia com endereço).
+// .osr-campo-uma-linha (a do corte em 1 linha, que saiu) e as da faixa/termo com endereço.
 const semStyle = (t) => t.replace(/<style>[\s\S]*?<\/style>/g, "");
 const estilos = (t) => (t.match(/<style>[\s\S]*?<\/style>/g) ?? []).join("");
-const semRegraUmaLinha = (t) => t.replace(/\.impressao-ordem-container\.os-recibo-personalizado \.osr-campo-uma-linha \.osr-valor \{[^}]*\}\s*/g, "");
+// As regras novas (.osr-faixa-endereco, .osr-termo-com-endereco) só valem com endereço.
+const semRegraUmaLinha = (t) => t
+  .replace(/\.impressao-ordem-container\.os-recibo-personalizado \.osr-campo-uma-linha \.osr-valor \{[^}]*\}\s*/g, "")
+  .replace(/\/\* Endereço do cliente: faixa[^*]*\*\/\s*/g, "")
+  .replace(/[^{}]*\.osr-faixa-endereco \{[^}]*\}\s*/g, "")
+  .replace(/[^{}]*\.osr-termo\.osr-termo-com-endereco \{[^}]*\}\s*/g, "");
 for (const arq of readdirSync(path.join(antes, "html")).filter((f) => f.includes("__a-sem-endereco"))) {
   const a = readFileSync(path.join(antes, "html", arq), "utf8");
   const d = readFileSync(path.join(depois, "html", arq), "utf8");
