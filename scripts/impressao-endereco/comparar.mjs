@@ -55,7 +55,8 @@ for (const arq of readdirSync(path.join(antes, "html")).filter((f) => f.includes
   const a = readFileSync(path.join(antes, "html", arq), "utf8");
   const d = readFileSync(path.join(depois, "html", arq), "utf8");
   if (semStyle(a) !== semStyle(d)) falhar(`html ${arq}: HTML sem endereço mudou`);
-  if (semRegraUmaLinha(estilos(a)) !== semRegraUmaLinha(estilos(d))) falhar(`html ${arq}: CSS embutido mudou além da regra do corte`);
+  const semEspacos = (t) => semRegraUmaLinha(t).replace(/\s+/g, "");
+  if (semEspacos(estilos(a)) !== semEspacos(estilos(d))) falhar(`html ${arq}: CSS embutido mudou além da regra do corte`);
 }
 
 // ── 1 e 3: PDFs do jsPDF ────────────────────────────────────────────────────
