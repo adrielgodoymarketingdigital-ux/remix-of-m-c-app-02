@@ -216,7 +216,7 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
               <div className="impressao-itens-lista">
                 <div className="impressao-itens-titulo">Produtos/Peças:</div>
                 {produtosUtilizados.map((produto) => (
-                  <div key={produto.id} className="impressao-item-linha">
+                  <div key={produto.id} className="impressao-item-linha impressao-item-produto">
                     <span className="impressao-item-nome">• {produto.quantidade}x {produto.nome}</span>
                     <span className="impressao-item-valor">{formatCurrency(valorLinhaProduto(produto))}</span>
                   </div>

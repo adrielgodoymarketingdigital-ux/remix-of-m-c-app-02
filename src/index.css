@@ -1473,6 +1473,22 @@ All colors MUST be HSL.
   color: #1e293b;
 }
 
+/* Duas OS por folha: a linha de produto/peça fica numa linha só — o nome que não
+   cabe termina em "…" e o valor à direita nunca encolhe nem some. Só nesse modo
+   (a metade tem altura fixa e corta o que passar). !important vence o
+   "* { overflow: visible !important }" da impressão e o reset do Android. */
+.impressao-duas-os-slot .impressao-item-produto .impressao-item-nome {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.impressao-duas-os-slot .impressao-item-produto .impressao-item-valor {
+  flex-shrink: 0 !important;
+  margin-left: 1mm !important;
+}
+
 /* ── SENHA ── */
 .impressao-senha-content {
   display: flex;
