@@ -10,7 +10,7 @@ import { CheckCircle2, XCircle, Smartphone } from "lucide-react";
 import { decryptSenhaDesbloqueio } from "@/lib/password-encryption";
 import { obterTermoGarantia } from "@/lib/termo-garantia-utils";
 import { assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
-import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { valorLinhaProduto, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { chaveLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import { linhasEnderecoCupom } from "@/lib/ordemServico/enderecoClienteImpressao";
 import {
@@ -175,8 +175,9 @@ export function ImpressaoCupom80mm({ ordem, configuracaoLoja, config80mm, adicio
             <>
               <div className="cupom-section-title" style={{ marginTop: "1mm" }}>PEÇAS</div>
               {produtosUtilizados.map((p) => (
-                <div key={p.id}>
+                <div key={p.id} className="cupom-line-between">
                   <span>{p.quantidade}x {p.nome}</span>
+                  <span>{formatCurrency(valorLinhaProduto(p))}</span>
                 </div>
               ))}
             </>
