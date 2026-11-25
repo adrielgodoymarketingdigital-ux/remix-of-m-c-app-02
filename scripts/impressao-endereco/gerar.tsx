@@ -53,12 +53,22 @@ const CLIENTES: Record<string, Cliente> = {
   "a-sem-endereco": { ...BASE_CLIENTE, endereco: null, numero: null, bairro: null, cidade: null, estado: null, cep: null },
   // (b) endereço curto
   "b-curto": { ...BASE_CLIENTE, endereco: "Rua das Flores", numero: "120", bairro: "Centro", cidade: "Campinas", estado: "SP", cep: null },
-  // (c) endereço muito longo, todos os campos
+  // (c) endereço exagerado, todos os campos (pior caso: passa de 2 linhas)
   "c-longo": {
     ...BASE_CLIENTE,
     endereco: "Avenida Presidente Juscelino Kubitschek de Oliveira (antiga Estrada Municipal do Jardim das Palmeiras)",
     numero: "12345-A, bloco C, apto 1201",
     bairro: "Jardim Residencial Parque das Flores e Colinas do Sul",
+    cidade: "São José do Rio Preto",
+    estado: "SP",
+    cep: "15091450",
+  },
+  // (f) endereço longo de verdade (rua, número, complemento, bairro, cidade/UF e CEP): quebra em 2 linhas
+  "f-longo-2l": {
+    ...BASE_CLIENTE,
+    endereco: "Avenida Presidente Juscelino Kubitschek",
+    numero: "1500, apto 82",
+    bairro: "Jardim Paulista",
     cidade: "São José do Rio Preto",
     estado: "SP",
     cep: "15091450",
@@ -149,8 +159,20 @@ for (let n = 0; n <= 40; n += 2) {
   OS[`leve-${String(n).padStart(2, "0")}`] = { itens: n, cheia: false, termoLongo: true };
 }
 
-const jspdf: Record<string, { paginas: number; alturaMm: number }> = {};
+const jspdf: Record<string, { paginas: number; alturaMm: number; fimMm: number }> = {};
 const contarPaginas = (bytes: Uint8Array) => (Buffer.from(bytes).toString("latin1").match(/\/Type \/Page\b(?!s)/g) ?? []).length;
+// Onde termina o desenho na ÚLTIMA página (mm do topo): o texto/linha mais baixo do último stream.
+// jsPDF escreve texto como "x y Td" e linhas como "x y m / x y l" (origem embaixo, em pt).
+const fimUltimaPaginaMm = (bytes: Uint8Array) => {
+  const t = Buffer.from(bytes).toString("latin1");
+  const m = t.match(/\/MediaBox \[([\d.\s-]+)\]/);
+  const alturaPt = m ? Number(m[1].trim().split(/\s+/)[3]) : 841.89;
+  const streams = t.match(/stream\n[\s\S]*?endstream/g) ?? [];
+  const ultimo = streams.filter((st) => /\bTd\b|\bTj\b| l\n/.test(st)).pop() ?? "";
+  const ys = [...ultimo.matchAll(/(-?[\d.]+) (-?[\d.]+) (?:Td|m|l)\n/g)].map((x) => Number(x[2]));
+  const menor = ys.length ? Math.min(...ys) : alturaPt;
+  return Number((((alturaPt - menor) * 25.4) / 72).toFixed(2));
+};
 const alturaPrimeiraPaginaMm = (bytes: Uint8Array) => {
   const m = Buffer.from(bytes).toString("latin1").match(/\/MediaBox \[([\d.\s-]+)\]/);
   return m ? Number((Number(m[1].trim().split(/\s+/)[3]) * 25.4 / 72).toFixed(2)) : 0;
@@ -181,8 +203,8 @@ for (const [nomeOS, { itens, cheia, termoLongo }] of Object.entries(OS)) {
     const cupom = new Uint8Array(await (await gerarOrdemServicoCupom80mmPDF(os, loja, [])).arrayBuffer());
     writeFileSync(path.join(SAIDA, "pdf", `a4__${chave}.pdf`), a4);
     writeFileSync(path.join(SAIDA, "pdf", `cupom__${chave}.pdf`), cupom);
-    jspdf[`a4__${chave}`] = { paginas: contarPaginas(a4), alturaMm: alturaPrimeiraPaginaMm(a4) };
-    jspdf[`cupom__${chave}`] = { paginas: contarPaginas(cupom), alturaMm: alturaPrimeiraPaginaMm(cupom) };
+    jspdf[`a4__${chave}`] = { paginas: contarPaginas(a4), alturaMm: alturaPrimeiraPaginaMm(a4), fimMm: fimUltimaPaginaMm(a4) };
+    jspdf[`cupom__${chave}`] = { paginas: contarPaginas(cupom), alturaMm: alturaPrimeiraPaginaMm(cupom), fimMm: fimUltimaPaginaMm(cupom) };
   }
 }
 writeFileSync(path.join(SAIDA, "jspdf.json"), JSON.stringify(jspdf, null, 2));

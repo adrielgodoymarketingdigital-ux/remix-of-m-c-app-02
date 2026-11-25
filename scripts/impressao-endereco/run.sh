@@ -6,11 +6,11 @@
 #      imprime em PDF A4 contando as páginas;
 #   3. compara (comparar.mjs) e sai com erro se alguma página a mais aparecer.
 # Uso: bash scripts/impressao-endereco/run.sh [pasta-de-saída]
-#   REF_ANTES=<commit> (padrão fb11114)   PLAYWRIGHT_PATH=<.../node_modules/playwright>   CHROME_PATH=<chrome>
+#   REF_ANTES=<commit> (padrão a312631 = endereço cortado em 1 linha)   PLAYWRIGHT_PATH=<.../node_modules/playwright>   CHROME_PATH=<chrome>
 set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/../.." && pwd)"
 SAIDA="${1:-$(mktemp -d)}"
-REF_ANTES="${REF_ANTES:-fb11114}"
+REF_ANTES="${REF_ANTES:-a312631}"
 CACHE="$RAIZ/node_modules/.cache/impressao-endereco"
 DIR="$RAIZ/scripts/impressao-endereco"
 export PLAYWRIGHT_PATH="${PLAYWRIGHT_PATH:-$HOME/Downloads/teste-carencia/node_modules/playwright}"

@@ -82,10 +82,17 @@ async function medir(seletor) {
       return `${el.tagName}.${el.getAttribute("class") ?? ""}@${r.left.toFixed(2)},${(r.top - topo).toFixed(2)},${r.width.toFixed(2)},${r.height.toFixed(2)}`;
     });
     // Texto do endereço cortado por reticências? (largura do texto > caixa)
-    const linhaEndereco = Array.from(c.querySelectorAll("[data-endereco-cliente]")).map((el) => ({
-      cabe: el.scrollWidth <= el.clientWidth + 0.5,
-      alturaMm: mm(el.getBoundingClientRect().height),
-    }));
+    // e em quantas linhas ele quebrou (topos distintos das linhas do texto).
+    const linhaEndereco = Array.from(c.querySelectorAll("[data-endereco-cliente]")).map((el) => {
+      const faixa = document.createRange();
+      faixa.selectNodeContents(el);
+      const topos = new Set(Array.from(faixa.getClientRects()).filter((r) => r.width > 0).map((r) => Math.round(r.top)));
+      return {
+        cabe: el.scrollWidth <= el.clientWidth + 0.5,
+        alturaMm: mm(el.getBoundingClientRect().height),
+        linhas: topos.size,
+      };
+    });
     return {
       alturaConteudoMm: mm(c.scrollHeight),
       alturaVisivelMm: mm(c.getBoundingClientRect().height),
