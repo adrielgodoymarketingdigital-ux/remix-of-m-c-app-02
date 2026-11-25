@@ -140,6 +140,20 @@ for (const chave of Object.keys(jA)) {
   if (semProduto(os)) { if (igual) pdfSemProdIguais++; else falhas.push(`pdf ${chave}: PDF sem produto mudou`); }
 }
 console.log(`PDF jsPDF: ${pdfIguais} idênticos (sem data/ID) e ${pdfDiferentes} diferentes; sem produto: ${pdfSemProdIguais} idênticos.`);
+// Duas OS: nome longo com "…" sem empurrar nem esconder o valor (depois).
+for (const via of ["duas-v-desktop", "duas-v-android", "duas-h-desktop", "duas-h-android"]) {
+  let linhasP = 0, comReticencias = 0, umaLinha = 0, valorOk = 0;
+  for (const [chave, m] of Object.entries(mD)) {
+    for (const p of m[via]?.produtos ?? []) {
+      linhasP++;
+      if (p.reticencias) comReticencias++;
+      if (p.umaLinha) umaLinha++;
+      if (p.valorInteiro) valorOk++;
+      if (!p.umaLinha || !p.valorInteiro) falhas.push(`${chave} [${via}]: linha de produto ${p.umaLinha ? "" : "quebrou "}${p.valorInteiro ? "" : "valor escondido/empurrado"}`);
+    }
+  }
+  console.log(`Duas OS ${via}: ${linhasP} linhas de produto; ${umaLinha} numa linha só; ${valorOk} com o valor inteiro; ${comReticencias} com "…".`);
+}
 if (nivelMudou.length) console.log(`Personalizado que compacta mais: ${nivelMudou.join("; ")}`);
 
 if (estouros.length) {

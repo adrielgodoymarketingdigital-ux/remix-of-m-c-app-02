@@ -119,7 +119,23 @@ async function medir(seletor) {
     // Altura do termo de garantia (para medir quanto o termo 0,5 pt menor recupera).
     const termoEl = c.querySelector(".impressao-termo-garantia") ?? c.querySelector(".osr-termo")?.closest(".osr-card");
     const faixaEl = c.querySelector("[data-faixa-endereco]");
+    // Linhas de produto/peça: nome com "…" (texto maior que a caixa), numa linha só
+    // (altura do nome ≤ a do valor, que é nowrap) e valor inteiro dentro da linha.
+    const produtos = Array.from(c.querySelectorAll(".impressao-item-produto")).map((l) => {
+      const n = l.querySelector(".impressao-item-nome");
+      const v = l.querySelector(".impressao-item-valor");
+      if (!n || !v) return { semValor: true };
+      const rl = l.getBoundingClientRect();
+      const rn = n.getBoundingClientRect();
+      const rv = v.getBoundingClientRect();
+      return {
+        reticencias: n.scrollWidth > n.clientWidth + 0.5 && getComputedStyle(n).textOverflow === "ellipsis",
+        umaLinha: rn.height <= rv.height + 0.5,
+        valorInteiro: rv.width > 0 && v.scrollWidth <= v.clientWidth + 0.5 && rv.right <= rl.right + 0.5 && rv.left >= rn.right - 0.5,
+      };
+    });
     return {
+      produtos,
       termoMm: termoEl ? mm(termoEl.getBoundingClientRect().height) : null,
       faixaMm: faixaEl ? mm(faixaEl.getBoundingClientRect().height) : null,
       alturaConteudoMm: mm(c.scrollHeight),
