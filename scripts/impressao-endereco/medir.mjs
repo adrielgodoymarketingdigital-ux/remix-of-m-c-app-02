@@ -25,19 +25,42 @@ const [pasta, cssApp, arquivoImpressao] = process.argv.slice(2);
 const css = readFileSync(cssApp, "utf8");
 const PX_POR_MM = 96 / 25.4;
 
+// Duas OS por folha: a mesma geometria de getDuasOSGeometria() (paper-size-utils.ts):
+// margem 8 mm, divisor 1 mm, conteúdo de 194 mm reduzido para caber em cada metade.
+const GEO_DUAS = {
+  vertical: { pagina: "portrait", areaLarguraMm: 194, areaAlturaMm: 281, slotLarguraMm: 96.5, slotAlturaMm: 281, scale: 96.5 / 194 },
+  horizontal: { pagina: "landscape", areaLarguraMm: 281, areaAlturaMm: 194, slotLarguraMm: 140, slotAlturaMm: 194, scale: 140 / 194 },
+};
+
 // Bloco "Essential resets" do documento do Android, como está no código medido.
-function blocoAndroid() {
+// orientacao = null (1 OS por folha) ou "vertical"/"horizontal" (duas OS por folha).
+function blocoAndroid(orientacao) {
   const fonte = readFileSync(arquivoImpressao, "utf8");
   const ini = fonte.indexOf("/* Essential resets */");
   const fim = fonte.indexOf("</style>", ini);
   if (ini < 0 || fim < 0) throw new Error("bloco do Android não encontrado em ImpressaoOrdemServico.tsx");
+  const geo = (nome) => (_, campo) => String(GEO_DUAS[nome][campo]);
   return fonte.slice(ini, fim)
-    .replace(/\$\{isHorizontalMode[\s\S]*?\}mm; \}`\}/, "@page { size: A4 portrait; margin: 8mm; }")
-    .replace(/\$\{layoutConfig\.duas_os_por_folha \? '0' : '4mm'\}/, "4mm")
+    .replace(/\$\{isHorizontalMode[\s\S]*?\}mm; \}`\}/, `@page { size: A4 ${orientacao ? GEO_DUAS[orientacao].pagina : "portrait"}; margin: 8mm; }`)
+    .replace(/\$\{layoutConfig\.duas_os_por_folha \? '0' : '4mm'\}/, orientacao ? "0" : "4mm")
+    .replace(/\$\{geoDuasOsVertical\.(\w+)\}/g, geo("vertical"))
+    .replace(/\$\{geoDuasOsHorizontal\.(\w+)\}/g, geo("horizontal"))
     .replace(/\$\{[^}]*\}/g, "0");
 }
-const CSS_ANDROID = blocoAndroid();
-if (CSS_ANDROID.includes("${")) throw new Error("sobrou interpolação no bloco do Android");
+const CSS_ANDROID = blocoAndroid(null);
+const CSS_ANDROID_DUAS = { vertical: blocoAndroid("vertical"), horizontal: blocoAndroid("horizontal") };
+for (const t of [CSS_ANDROID, ...Object.values(CSS_ANDROID_DUAS)]) if (t.includes("${")) throw new Error("sobrou interpolação no bloco do Android");
+
+// Wrapper de duas OS igual ao do app (ImpressaoOrdemServico.tsx): a mesma OS nas duas metades.
+const wrapperDuas = (corpo, orientacao) =>
+  `<div class="impressao-duas-os-wrapper impressao-duas-os-${orientacao}"><div class="impressao-duas-os-slot os-pdf-slot">${corpo}</div>` +
+  `<div class="impressao-duas-os-corte"><span class="impressao-duas-os-corte-label">✂ cortar aqui</span></div>` +
+  `<div class="impressao-duas-os-slot os-pdf-slot">${corpo}</div></div>`;
+// Desktop: o <style id="print-page-duas-os"> que o useEffect injeta + a classe do body na horizontal.
+const estiloDuasDesktop = (o) => {
+  const g = GEO_DUAS[o];
+  return `@media print { @page { size: A4 ${g.pagina}; margin: 8mm; } :root { --duas-os-largura-mm: ${g.areaLarguraMm}mm; --duas-os-altura-mm: ${g.areaAlturaMm}mm; --duas-os-slot-largura-mm: ${g.slotLarguraMm}mm; --duas-os-scale: ${g.scale}; } }`;
+};
 
 const saidaPdf = path.join(pasta, "pdf-html");
 mkdirSync(saidaPdf, { recursive: true });
@@ -155,6 +178,44 @@ for (const arquivo of arquivos) {
   const pdfAnd = await pagina.pdf({ preferCSSPageSize: true, printBackground: true });
   entrada.android.paginas = contarPaginas(pdfAnd);
   writeFileSync(path.join(saidaPdf, `${nome}.android.pdf`), pdfAnd);
+
+  // Duas OS por folha (vertical e horizontal; desktop e Android). A folha nunca vira 2:
+  // cada metade tem altura fixa e corta o que passar (overflow hidden). Mede-se quanto
+  // a OS (já reduzida) passa da altura da metade. PDF só numa amostra (OS normal e a
+  // mais cheia), para confirmar que é sempre 1 folha.
+  const amostraPdf = /__(normal|cheia-40)__/.test(nome);
+  for (const orientacao of ["vertical", "horizontal"]) {
+    for (const via of ["desktop", "android"]) {
+      const corpoDuas = wrapperDuas(corpo, orientacao);
+      const doc = via === "desktop"
+        ? `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style><style>${estiloDuasDesktop(orientacao)}</style></head><body class="${orientacao === "horizontal" ? "print-duas-os-horizontal" : ""}"><div id="print-root" class="print-root">${corpoDuas}</div></body></html>`
+        : `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${printCSS}\n${CSS_ANDROID_DUAS[orientacao]}</style></head><body><div id="print-root">${corpoDuas}</div></body></html>`;
+      const caminho = path.join(saidaPdf, `${nome}.duas-${orientacao}-${via}.html`);
+      writeFileSync(caminho, doc);
+      await abrir(pathToFileURL(caminho).href);
+      await pagina.evaluate(() => document.fonts.ready);
+      const m = await medir(".impressao-duas-os-slot .impressao-ordem-container");
+      const slot = await pagina.evaluate((pxmm) => {
+        const s = document.querySelector(".impressao-duas-os-slot");
+        const c = s?.querySelector(".impressao-ordem-container");
+        if (!s || !c) return null;
+        const mm = (px) => Math.round((px / pxmm) * 100) / 100;
+        return { alturaReduzidaMm: mm(c.getBoundingClientRect().height), alturaMetadeMm: mm(s.getBoundingClientRect().height) };
+      }, PX_POR_MM);
+      const chaveVia = `duas-${orientacao === "vertical" ? "v" : "h"}-${via}`;
+      entrada[chaveVia] = {
+        ...m,
+        ...slot,
+        // altura da OS reduzida (mm no papel) e quanto passa da metade
+        alturaConteudoMm: slot.alturaReduzidaMm,
+        cortadoMm: Math.max(0, Math.round((slot.alturaReduzidaMm - slot.alturaMetadeMm) * 100) / 100),
+      };
+      if (amostraPdf) {
+        const pdf = await pagina.pdf({ preferCSSPageSize: true, printBackground: true });
+        entrada[chaveVia].paginas = contarPaginas(pdf);
+      }
+    }
+  }
   medidas[nome] = entrada;
 }
 await navegador.close();

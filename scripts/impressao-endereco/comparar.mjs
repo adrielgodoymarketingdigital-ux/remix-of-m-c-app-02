@@ -1,7 +1,7 @@
 // Compara antes × depois (saídas de gerar.tsx + medir.mjs) e falha se:
 //   1. qualquer documento A4 mudar de número de páginas (A4 desktop, A4 android, PDF jsPDF);
-//   2. o corte do desktop (max-height 277mm, overflow hidden) aumentar — no desktop a
-//      folha nunca vira 2: o que não cabe some;
+//   2. o corte do desktop (max-height 277mm, overflow hidden) ou de uma metade do modo
+//      duas OS por folha aumentar — nesses a folha nunca vira 2: o que não cabe some;
 //   3. o cenário SEM endereço (a) não for idêntico: mesmo HTML byte a byte, mesma
 //      posição/tamanho de todos os elementos, mesmo PDF do jsPDF (sem data/ID).
 // Com endereço, a altura PODE mudar (endereço inteiro, quebrando linha; Tel e CPF em
@@ -19,6 +19,11 @@ const mD = ler(path.join(depois, "medidas.json"));
 const jA = ler(path.join(antes, "jspdf.json"));
 const jD = ler(path.join(depois, "jspdf.json"));
 
+// Caminhos em que a folha nunca vira 2 e o que não cabe é cortado: desktop (max-height
+// 277 mm) e duas OS por folha (cada metade tem altura fixa, overflow hidden).
+const cortaNaFolha = (via) => via === "desktop" || via.startsWith("duas-");
+const VIAS = ["desktop", "android", "duas-v-desktop", "duas-v-android", "duas-h-desktop", "duas-h-android"];
+
 const falhas = [];
 const falhar = (msg) => falhas.push(msg);
 const TOL = 0.05;
@@ -33,7 +38,7 @@ for (const chave of Object.keys(mA)) {
     if (a.paginas !== d.paginas) falhar(`${chave} [${via}]: páginas ${a.paginas} → ${d.paginas}`);
     if (cliente === "a-sem-endereco") {
       if (JSON.stringify(a.caixas) !== JSON.stringify(d.caixas)) falhar(`${chave} [${via}]: layout sem endereço mudou`);
-    } else if (via === "desktop" && d.cortadoMm > a.cortadoMm + TOL) {
+    } else if (cortaNaFolha(via) && d.cortadoMm > a.cortadoMm + TOL) {
       falhar(`${chave} [${via}]: corte ${a.cortadoMm} → ${d.cortadoMm} mm`);
     }
   }
@@ -91,7 +96,8 @@ const linhasEndereco = (modelo, via, cliente) => {
 //                                  (desktop: "cabe" = nada cortado pelo max-height de 277 mm);
 //   estouraram                   = nº de OS que cabiam antes e não cabem depois;
 //   pior caso                    = a OS mais alta que ANTES cabia em 1 folha: altura antes → depois.
-const cabeEm1 = (x) => x.paginas === 1 && (x.corte === undefined || x.corte <= TOL);
+// Duas OS: o PDF só é impresso numa amostra; nos outros, "cabe" = nada cortado.
+const cabeEm1 = (x) => (x.paginas === undefined || x.paginas === 1) && (x.corte === undefined || x.corte <= TOL);
 function linhaModelo(rotulo, pegarA, pegarD, unidade, extra) {
   const linhas = [];
   for (const c of CLIENTES) {
@@ -116,13 +122,13 @@ function linhaModelo(rotulo, pegarA, pegarD, unidade, extra) {
 
 const tabela = [];
 for (const modelo of ["padrao", "tech", "personalizado-n0", "personalizado-n1", "personalizado-n2", "personalizado-n3"]) {
-  for (const via of ["desktop", "android"]) {
+  for (const via of VIAS) {
     const pegar = (m) => (os, c) => {
       const x = m[`${modelo}__${os}__${c}`]?.[via];
-      return x && { paginas: x.paginas, altura: x.alturaConteudoMm, ...(via === "desktop" ? { corte: x.cortadoMm } : {}) };
+      return x && { paginas: x.paginas, altura: x.alturaConteudoMm, ...(cortaNaFolha(via) ? { corte: x.cortadoMm } : {}) };
     };
     tabela.push(...linhaModelo(`${modelo} (${via})`, pegar(mA), pegar(mD), "mm", (c, pior) => {
-      const corte = via === "desktop" && pior ? `${pior.a.corte}→${pior.d.corte}` : "–";
+      const corte = cortaNaFolha(via) && pior ? `${pior.a.corte}→${pior.d.corte}` : "–";
       return `${linhasEndereco(modelo, via, c)} | ${corte}`;
     }));
   }
@@ -139,7 +145,7 @@ for (const c of CLIENTES) {
   tabela.push(`| PDF A4 jsPDF (completo) | ${c} | folhas: ${Object.entries(dist).map(([t, n]) => `${n}× ${t}`).join(", ")} | ${mudou} | – | – | – |`);
 }
 
-console.log(`| modelo (caminho) | cliente | OS em 1 folha antes→depois (de ${OS_TODAS.length}) | OS que cabiam e passaram a não caber | pior caso: OS mais alta que antes cabia em 1 folha, altura antes→depois | linhas do endereço (depois) | corte desktop do pior caso antes→depois (mm) |`);
+console.log(`| modelo (caminho) | cliente | OS em 1 folha antes→depois (de ${OS_TODAS.length}) | OS que cabiam e passaram a não caber | pior caso: OS mais alta que antes cabia em 1 folha, altura antes→depois | linhas do endereço (depois) | corte do pior caso antes→depois (mm; desktop e duas OS) |`);
 console.log("|---|---|---|---|---|---|---|");
 console.log(tabela.join("\n"));
 
