@@ -14,6 +14,7 @@ import { chaveLinhaServico } from "@/lib/ordemServico/linhaServicoOS";
 import { nomeLinhaServicoComDispositivo, tituloDispositivo, type DispositivoAdicionalOS } from "@/lib/ordemServico/dispositivosAdicionaisOS";
 import { DispositivosAdicionaisImpressao } from "./DispositivosAdicionaisImpressao";
 import { htmlGradeFotos, type FotoImpressao } from "@/lib/os/fotosImpressaoOS";
+import { textoEnderecoCliente } from "@/lib/ordemServico/enderecoClienteImpressao";
 
 interface Props {
   ordem: OrdemServico;
@@ -41,6 +42,7 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
   const senhaDesbloqueio = decryptSenhaDesbloqueio(avariasData?.senha_desbloqueio);
   const assinaturas = avariasData?.assinaturas;
   const assinaturaLoja = assinaturaLojaAtiva(configuracaoLoja);
+  const enderecoCliente = textoEnderecoCliente(ordem.cliente);
 
   let servicosRealizados: ServicoRealizado[] = (avariasData?.servicos_realizados || []) as ServicoRealizado[];
   if (servicosRealizados.length === 0 && (avariasData as any)?.servicos_inline?.length > 0) {
@@ -105,18 +107,39 @@ export function ImpressaoA4Padrao({ ordem, configuracaoLoja, layoutConfig, termo
               <span className="impressao-label">Nome:</span>
               <span className="impressao-value">{ordem.cliente?.nome || "N/A"}</span>
             </div>
-            <div className="impressao-field">
-              <span className="impressao-label">Tel:</span>
-              <span className="impressao-value">
-                {ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"}
-              </span>
-            </div>
-            <div className="impressao-field">
-              <span className="impressao-label">CPF:</span>
-              <span className="impressao-value">
-                {ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}
-              </span>
-            </div>
+            {enderecoCliente ? (
+              // Com endereço: Tel e CPF dividem uma linha e o endereço fica na outra —
+              // o bloco continua com 3 linhas (mesma altura de sempre); nada quebra linha.
+              <>
+                <div className="impressao-field impressao-field-uma-linha">
+                  <span className="impressao-label">Tel / CPF:</span>
+                  <span className="impressao-value">
+                    {ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"}
+                    {" · "}
+                    {ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}
+                  </span>
+                </div>
+                <div className="impressao-field impressao-field-uma-linha">
+                  <span className="impressao-label">Endereço:</span>
+                  <span className="impressao-value" data-endereco-cliente="">{enderecoCliente}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="impressao-field">
+                  <span className="impressao-label">Tel:</span>
+                  <span className="impressao-value">
+                    {ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"}
+                  </span>
+                </div>
+                <div className="impressao-field">
+                  <span className="impressao-label">CPF:</span>
+                  <span className="impressao-value">
+                    {ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
