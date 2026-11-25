@@ -110,38 +110,24 @@ export function ImpressaoA4Tech({ ordem, configuracaoLoja, layoutConfig, termoGa
               <span className="impressao-label">Nome:</span>
               <span className="impressao-value">{ordem.cliente?.nome || "N/A"}</span>
             </div>
-            {enderecoCliente ? (
-              // Com endereço: Tel e CPF dividem uma linha e o endereço fica na outra —
-              // o bloco continua com 3 linhas (mesma altura de sempre); nada quebra linha.
-              <>
-                <div className="impressao-field impressao-field-uma-linha">
-                  <span className="impressao-label">Tel / CPF:</span>
-                  <span className="impressao-value">
-                    {ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"}
-                    {" · "}
-                    {ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}
-                  </span>
-                </div>
-                <div className="impressao-field impressao-field-uma-linha">
-                  <span className="impressao-label">Endereço:</span>
-                  <span className="impressao-value" data-endereco-cliente="">{enderecoCliente}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="impressao-field">
-                  <span className="impressao-label">Tel:</span>
-                  <span className="impressao-value">
-                    {ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"}
-                  </span>
-                </div>
-                <div className="impressao-field">
-                  <span className="impressao-label">CPF:</span>
-                  <span className="impressao-value">
-                    {ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}
-                  </span>
-                </div>
-              </>
+            <div className="impressao-field">
+              <span className="impressao-label">Tel:</span>
+              <span className="impressao-value">
+                {ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"}
+              </span>
+            </div>
+            <div className="impressao-field">
+              <span className="impressao-label">CPF:</span>
+              <span className="impressao-value">
+                {ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}
+              </span>
+            </div>
+            {enderecoCliente && (
+              // Endereço inteiro, sem corte: se for longo, quebra linha (Tel e CPF continuam nas linhas de sempre).
+              <div className="impressao-field impressao-field-endereco">
+                <span className="impressao-label">Endereço:</span>
+                <span className="impressao-value" data-endereco-cliente="">{enderecoCliente}</span>
+              </div>
             )}
           </div>
         </div>

@@ -1343,22 +1343,15 @@ All colors MUST be HSL.
   color: #1e293b;
 }
 
-/* Endereço do cliente (e "Tel / CPF" juntos quando há endereço): sempre 1 linha,
-   o excesso vira "…". overflow com !important porque a impressão põe
-   "* { overflow: visible !important }". Só existe quando o cliente tem endereço. */
-.impressao-ordem-container .impressao-field.impressao-field-uma-linha {
-  flex-wrap: nowrap;
-  min-width: 0;
-}
-
-/* width 0 + flex: o texto não alarga a coluna da grade (cliente | aparelho); ocupa só o que sobra. */
-.impressao-ordem-container .impressao-field.impressao-field-uma-linha .impressao-value {
+/* Endereço do cliente: inteiro, sem corte; se for longo, quebra linha.
+   width 0 + flex: o texto não alarga a coluna da grade (cliente | aparelho); ocupa só o que sobra.
+   Só existe quando o cliente tem endereço. */
+.impressao-ordem-container .impressao-field.impressao-field-endereco .impressao-value {
   flex: 1 1 0%;
   width: 0;
   min-width: 0;
-  overflow: hidden !important;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .impressao-defeito {
