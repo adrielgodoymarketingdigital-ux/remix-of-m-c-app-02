@@ -59,3 +59,28 @@ export function custoServicosOS(avarias: unknown): number {
   const servicos = ((avarias as { servicos_realizados?: { custo?: number | string | null }[] } | null)?.servicos_realizados) ?? [];
   return servicos.reduce((acc, s) => acc + (Number(s.custo) || 0), 0);
 }
+
+/** Linha de produto/peça da OS (avarias.produtos_utilizados), só o que a impressão usa. */
+export interface LinhaProdutoOS {
+  quantidade?: number | string | null;
+  preco_unitario?: number | string | null;
+  preco_total?: number | string | null;
+}
+
+/**
+ * Valor cobrado pela linha de produto/peça, para exibir na impressão.
+ * `preco_total` é o que a OS gravou (já com o preço editado na OS, se houve).
+ * Dado antigo sem `preco_total` (ausente, null, NaN ou 0) cai para
+ * quantidade × preco_unitario; sem nada aproveitável, 0. Nunca devolve NaN.
+ * Não usa `preco_cadastro`: o valor da OS manda.
+ */
+export function valorLinhaProduto(p: LinhaProdutoOS | null | undefined): number {
+  if (!p) return 0;
+  const total = Number(p.preco_total);
+  if (Number.isFinite(total) && total !== 0) return total;
+  const qtd = Number(p.quantidade);
+  const unitario = Number(p.preco_unitario);
+  if (!Number.isFinite(unitario)) return 0;
+  const linha = (Number.isFinite(qtd) && qtd > 0 ? qtd : 1) * unitario;
+  return Number.isFinite(linha) ? linha : 0;
+}
