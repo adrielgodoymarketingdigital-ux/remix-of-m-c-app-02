@@ -1,12 +1,10 @@
 // deno test -A --no-check src/lib/ordemServico/enderecoClienteImpressao.test.ts
-// Endereço do cliente na impressão da OS: texto de uma linha e linhas do cupom.
+// Endereço do cliente na impressão da OS: texto inteiro (sem corte) e linhas do cupom.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import * as modulo from "./enderecoClienteImpressao.ts";
 import {
-  cortarAteCaber,
-  cortarComReticencias,
   linhasEnderecoCupom,
-  MAX_CARACTERES_LINHA_CUPOM,
   partesEnderecoCliente,
   textoEnderecoCliente,
 } from "./enderecoClienteImpressao.ts";
@@ -87,30 +85,39 @@ test("partes soltas sem rua", () => {
   assert.equal(textoEnderecoCliente({ cep: "1301" }), "CEP 1301");
 });
 
-test("cupom: uma parte por linha, cada uma curta", () => {
+test("cupom: uma parte por linha, inteira", () => {
   assert.deepEqual(
     linhasEnderecoCupom({ endereco: "Rua das Flores", numero: "120", bairro: "Centro", cidade: "Campinas", estado: "SP", cep: "13010000" }),
     ["Rua das Flores, 120", "Centro, Campinas/SP", "CEP 13010-000"],
   );
-  const longo = linhasEnderecoCupom({ endereco: "Avenida ".repeat(20), bairro: "B" });
-  assert.equal(longo.length, 2);
-  assert.equal(longo[0].length, MAX_CARACTERES_LINHA_CUPOM);
-  assert.ok(longo[0].endsWith("…"));
+  const rua = "Avenida ".repeat(20).trim();
+  const longo = linhasEnderecoCupom({ endereco: rua, bairro: "B" });
+  assert.deepEqual(longo, [rua, "B"]);
+  assert.ok(!longo.some((linha) => linha.includes("…")));
   assert.deepEqual(partesEnderecoCliente({ endereco: "x" }), ["x"]);
 });
 
-test("cortarComReticencias", () => {
-  assert.equal(cortarComReticencias("abc", 3), "abc");
-  assert.equal(cortarComReticencias("abcd", 3), "ab…");
-  assert.equal(cortarComReticencias("ab   cd", 4), "ab…");
-  assert.equal(cortarComReticencias("abcd", 1), "…");
+test("endereço longo sai inteiro, sem reticências", () => {
+  const cliente = {
+    endereco: "Avenida Presidente Juscelino Kubitschek de Oliveira (antiga Estrada Municipal do Jardim das Palmeiras)",
+    numero: "12345-A, bloco C, apto 1201",
+    bairro: "Jardim Residencial Parque das Flores e Colinas do Sul",
+    cidade: "São José do Rio Preto",
+    estado: "SP",
+    cep: "15091450",
+  };
+  const texto = textoEnderecoCliente(cliente);
+  assert.equal(
+    texto,
+    "Avenida Presidente Juscelino Kubitschek de Oliveira (antiga Estrada Municipal do Jardim das Palmeiras), 12345-A, bloco C, apto 1201" +
+      " – Jardim Residencial Parque das Flores e Colinas do Sul, São José do Rio Preto/SP – CEP 15091-450",
+  );
+  assert.ok(!texto.includes("…"));
 });
 
-test("cortarAteCaber pega o maior prefixo que cabe", () => {
-  const cabe = (s: string) => s.length <= 10;
-  assert.equal(cortarAteCaber("curto", cabe), "curto");
-  const r = cortarAteCaber("um texto bem comprido mesmo", cabe);
-  assert.ok(r.length <= 10 && r.endsWith("…"), r);
-  assert.equal(r, "um texto…");
-  assert.equal(cortarAteCaber("abcdef", () => false), "…");
+test("não existe mais corte de endereço (cortarComReticencias / cortarAteCaber / MAX_CARACTERES_LINHA_CUPOM)", () => {
+  const exportados = Object.keys(modulo);
+  for (const nome of ["cortarComReticencias", "cortarAteCaber", "MAX_CARACTERES_LINHA_CUPOM"]) {
+    assert.ok(!exportados.includes(nome), nome);
+  }
 });

@@ -1,7 +1,7 @@
 /**
  * Endereço do cliente na impressão da OS (A4 Padrão, A4 Tech, A4 Personalizado,
- * PDF A4 e cupom 80 mm). Uma fonte só para o texto; cada modelo decide onde ele
- * cabe sem aumentar a folha.
+ * PDF A4 e cupom 80 mm). Uma fonte só para o texto. O endereço sai sempre
+ * inteiro, sem corte nem reticências: se for longo, quebra linha.
  *
  * Colunas de `clientes`: endereco (rua/logradouro), numero, bairro, cidade,
  * estado (UF), cep. Cliente antigo tem o endereço inteiro em `endereco` — aí
@@ -17,9 +17,6 @@ export interface EnderecoClienteCampos {
   estado?: string | null;
   cep?: string | null;
 }
-
-/** Teto de caracteres por linha no cupom 80 mm (o resto vira "…"). */
-export const MAX_CARACTERES_LINHA_CUPOM = 60;
 
 const limpar = (valor: string | null | undefined): string =>
   (valor ?? "").replace(/\s+/g, " ").trim();
@@ -40,35 +37,6 @@ function contem(texto: string, parte: string): boolean {
 function formatarCep(cep: string): string {
   const digitos = cep.replace(/\D/g, "");
   return digitos.length === 8 ? `${digitos.slice(0, 5)}-${digitos.slice(5)}` : cep;
-}
-
-/** Corta o texto em `max` caracteres, terminando em "…". */
-export function cortarComReticencias(texto: string, max: number): string {
-  if (texto.length <= max) return texto;
-  if (max <= 1) return "…";
-  return `${texto.slice(0, max - 1).trimEnd()}…`;
-}
-
-/**
- * Maior prefixo de `texto` (terminado em "…") que `cabe` aceita. Para o PDF,
- * onde `cabe` mede a largura real na fonte do jsPDF.
- */
-export function cortarAteCaber(texto: string, cabe: (candidato: string) => boolean): string {
-  if (cabe(texto)) return texto;
-  let baixo = 0;
-  let alto = texto.length - 1;
-  let melhor = "…";
-  while (baixo <= alto) {
-    const meio = Math.floor((baixo + alto) / 2);
-    const candidato = `${texto.slice(0, meio).trimEnd()}…`;
-    if (cabe(candidato)) {
-      melhor = candidato;
-      baixo = meio + 1;
-    } else {
-      alto = meio - 1;
-    }
-  }
-  return melhor;
 }
 
 /** As três partes do endereço: "rua, número", "bairro, cidade/UF" e "CEP 00000-000". */
@@ -101,15 +69,12 @@ export function partesEnderecoCliente(cliente: EnderecoClienteCampos | null | un
   return [ruaNumero, bairroLocal, cepNovo].filter(Boolean);
 }
 
-/** "Rua X, 123 – Bairro, Cidade/UF – CEP 00000-000" (ou "" sem endereço). Uma linha só. */
+/** "Rua X, 123 – Bairro, Cidade/UF – CEP 00000-000" (ou "" sem endereço). Texto inteiro, sem corte. */
 export function textoEnderecoCliente(cliente: EnderecoClienteCampos | null | undefined): string {
   return partesEnderecoCliente(cliente).join(" – ");
 }
 
-/** Cupom 80 mm: uma parte por linha curta, cada uma com no máximo `max` caracteres. */
-export function linhasEnderecoCupom(
-  cliente: EnderecoClienteCampos | null | undefined,
-  max: number = MAX_CARACTERES_LINHA_CUPOM,
-): string[] {
-  return partesEnderecoCliente(cliente).map((parte) => cortarComReticencias(parte, max));
+/** Cupom 80 mm: uma parte por linha, inteira (se não couber na bobina, quebra linha). */
+export function linhasEnderecoCupom(cliente: EnderecoClienteCampos | null | undefined): string[] {
+  return partesEnderecoCliente(cliente);
 }
