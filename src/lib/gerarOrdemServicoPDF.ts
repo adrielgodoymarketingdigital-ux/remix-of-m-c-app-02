@@ -6,7 +6,7 @@ import { OrdemServico } from '@/hooks/useOrdensServico';
 import { decryptSenhaDesbloqueio } from './password-encryption';
 import { obterTermoGarantia, LAYOUT_PADRAO } from './termo-garantia-utils';
 import { adicionarImagemContida, assinaturaLojaAtiva } from "@/lib/assinaturaLoja";
-import { valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
+import { valorLinhaProduto, valorLinhaServico } from "@/lib/ordemServico/totaisPecasOS";
 import { linhasEnderecoCupom, textoEnderecoCliente } from "@/lib/ordemServico/enderecoClienteImpressao";
 import {
   imeiOuSerie,
@@ -783,7 +783,7 @@ export async function gerarOrdemServicoPDF(
       produtosUtilizados.forEach((produto: any) => {
         verificarNovaPagina(8);
         doc.text(`• ${produto.quantidade}x ${produto.nome}`, margemEsquerda + 3, yPos);
-        doc.text(formatarMoeda(produto.preco_total), margemDireita, yPos, { align: 'right' });
+        doc.text(formatarMoeda(valorLinhaProduto(produto)), margemDireita, yPos, { align: 'right' });
         yPos += 5;
       });
       yPos += 2;
@@ -1550,7 +1550,7 @@ export async function gerarOrdemServicoCupom80mmPDF(
       if (produtosUtilizados.length > 0) {
         tituloSecao('Peças');
         produtosUtilizados.forEach((produto: any) => {
-          linhaComValor(`${produto.quantidade}x ${produto.nome}`, formatarMoeda(produto.preco_total));
+          linhaComValor(`${produto.quantidade}x ${produto.nome}`, formatarMoeda(valorLinhaProduto(produto)));
         });
         y += 2;
       }
