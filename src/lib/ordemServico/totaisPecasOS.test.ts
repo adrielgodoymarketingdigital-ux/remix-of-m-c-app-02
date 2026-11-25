@@ -47,3 +47,16 @@ test("preço editado na OS: vale o valor gravado na OS, não o do cadastro", () 
   // dado antigo editado sem preco_total: usa o unitário editado, nunca o cadastro
   assert.equal(valorLinhaProduto({ ...editado, preco_total: 0 }), 140);
 });
+
+test("produto antigo sem preco_total (como vem do banco) dá número, nunca erro nem NaN", () => {
+  // OS antiga: o item foi gravado sem preco_total (chave inexistente) e sem preco_cadastro/preco_editado.
+  const antigo = JSON.parse('{"id":"x","nome":"Bateria","tipo":"peca","quantidade":2,"preco_unitario":89.9,"custo_unitario":40}');
+  const v = valorLinhaProduto(antigo);
+  assert.equal(v, 179.8);
+  assert.ok(Number.isFinite(v));
+  assert.doesNotThrow(() => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+  // nem unitário: 0, e formatar 0 funciona (o PDF fazia toLocaleString de undefined e quebrava)
+  const semNada = valorLinhaProduto(JSON.parse('{"id":"y","nome":"Capa","quantidade":1}'));
+  assert.equal(semNada, 0);
+  assert.equal(semNada.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/\s/g, " "), "R$ 0,00");
+});
