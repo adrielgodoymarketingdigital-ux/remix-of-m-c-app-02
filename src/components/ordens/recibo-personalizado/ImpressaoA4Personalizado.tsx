@@ -285,23 +285,10 @@ export function ImpressaoA4Personalizado({
         </div>
         <div className="osr-card-body">
           <Campo rotulo="Nome:" valor={ordem.cliente?.nome || "N/A"} />
-          {enderecoCliente ? (
-            // Com endereço: Tel e CPF dividem uma linha e o endereço fica na outra —
-            // o card continua com 3 linhas (mesma altura de sempre); nada quebra linha.
-            <>
-              <Campo
-                rotulo="Tel / CPF:"
-                valor={`${ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} · ${ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"}`}
-                umaLinha
-              />
-              <Campo rotulo="Endereço:" valor={enderecoCliente} umaLinha endereco />
-            </>
-          ) : (
-            <>
-              <Campo rotulo="Tel:" valor={ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} />
-              <Campo rotulo="CPF:" valor={ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"} />
-            </>
-          )}
+          <Campo rotulo="Tel:" valor={ordem.cliente?.telefone ? formatPhone(ordem.cliente.telefone) : "N/A"} />
+          <Campo rotulo="CPF:" valor={ordem.cliente?.cpf ? formatCPF(ordem.cliente.cpf) : "N/A"} />
+          {/* Endereço inteiro, sem corte: se for longo, quebra linha. */}
+          {enderecoCliente && <Campo rotulo="Endereço:" valor={enderecoCliente} endereco />}
         </div>
       </div>
       <div className="osr-card">
@@ -535,10 +522,10 @@ function renderizarBlocos(corpo: ReactNode[], fim: ReactNode[], agrupamento: Agr
   );
 }
 
-/** umaLinha = o valor nunca quebra linha (o excesso vira "…"). Sem ela, o campo de sempre. */
-function Campo({ rotulo, valor, umaLinha = false, endereco = false }: { rotulo: string; valor: string; umaLinha?: boolean; endereco?: boolean }) {
+/** endereco = marca o valor (data-endereco-cliente) para a prova de páginas; o campo é o de sempre. */
+function Campo({ rotulo, valor, endereco = false }: { rotulo: string; valor: string; endereco?: boolean }) {
   return (
-    <div className={umaLinha ? "osr-campo osr-campo-uma-linha" : "osr-campo"}>
+    <div className="osr-campo">
       <span className="osr-rotulo">{rotulo}</span>
       <span className="osr-valor" {...(endereco ? { "data-endereco-cliente": "" } : {})}>{valor}</span>
     </div>

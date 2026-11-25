@@ -89,7 +89,6 @@ ${R} .osr-card-body { padding: 1.8mm 4mm; }
 ${R} .osr-campo { display: grid; grid-template-columns: 26mm 1fr; gap: 2mm; padding: 0.7mm 0; border-bottom: 0.2mm solid #eef2f7; }
 ${R} .osr-campo:last-child { border-bottom: 0; }
 ${R} .osr-campo-cheio { grid-template-columns: 1fr; }
-${R} .osr-campo-uma-linha .osr-valor { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
 ${R} .osr-rotulo { color: ${TEXTO_SUAVE}; }
 ${R} .osr-valor { font-weight: 700; color: ${TEXTO}; overflow-wrap: anywhere; }
 ${R} .osr-texto { white-space: pre-wrap; overflow-wrap: anywhere; }
