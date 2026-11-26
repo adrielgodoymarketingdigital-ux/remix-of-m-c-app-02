@@ -7,6 +7,7 @@ import { MobileMenuDrawer } from "./MobileMenuDrawer";
 import { MobileNavCustomizer, allNavOptions, getSelectedNavItems } from "./MobileNavCustomizer";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { useCorMenuAplicada } from "@/hooks/useCorMenu";
 import type { PermissoesModulos } from "@/types/funcionario";
 
 // Mapeamento de id do nav para módulo de permissão
@@ -34,8 +35,26 @@ const NAV_ID_TO_MODULO: Record<string, keyof PermissoesModulos> = {
   tutoriais: "tutoriais",
 };
 
+// Cores da barra. Sem cor do menu escolhida: as de sempre (classes/estilo idênticos
+// aos de antes). Com cor: as variáveis --sidebar-* derivadas dela (src/lib/menu/corMenu.ts).
+const COR_PADRAO = {
+  nav: "border-border/50",
+  fundo: "hsl(var(--foreground) / 0.97)",
+  ativo: "text-primary",
+  inativo: "text-background/60 hover:text-background",
+  linha: "bg-primary",
+};
+const COR_DO_MENU = {
+  nav: "border-sidebar-border",
+  fundo: "hsl(var(--sidebar-background) / 0.97)",
+  ativo: "text-sidebar-primary",
+  inativo: "text-sidebar-foreground hover:text-sidebar-hover-foreground",
+  linha: "bg-sidebar-primary",
+};
+
 export function MobileBottomNav() {
   const location = useLocation();
+  const cor = useCorMenuAplicada() ? COR_DO_MENU : COR_PADRAO;
   // Rótulos: barraInferior.itens.<id> no namespace "menu".
   const { t } = useTranslation("menu");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -101,9 +120,9 @@ export function MobileBottomNav() {
   return (
     <>
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/50"
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t ${cor.nav}`}
         style={{
-          background: "hsl(var(--foreground) / 0.97)",
+          background: cor.fundo,
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
@@ -120,12 +139,12 @@ export function MobileBottomNav() {
                   "flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 relative",
                   "active:scale-95 touch-manipulation transition-transform",
                   active
-                    ? "text-primary"
-                    : "text-background/60 hover:text-background"
+                    ? cor.ativo
+                    : cor.inativo
                 )}
               >
                 {active && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-primary" />
+                  <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full ${cor.linha}`} />
                 )}
                 <item.icon className={cn(
                   "h-5 w-5 transition-transform",
@@ -144,7 +163,7 @@ export function MobileBottomNav() {
           {/* Menu Button */}
           <button
             onClick={() => setMenuOpen(true)}
-            className="flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 active:scale-95 touch-manipulation text-background/60 hover:text-background"
+            className={`flex flex-col items-center justify-center flex-1 gap-0.5 transition-all duration-200 active:scale-95 touch-manipulation ${cor.inativo}`}
           >
             <Menu className="h-5 w-5" />
             <span className="text-[10px] font-medium">{t("barraInferior.menu")}</span>

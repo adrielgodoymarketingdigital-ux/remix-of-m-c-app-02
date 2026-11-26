@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLogout } from "@/hooks/useLogout";
 import { useAdminBadges } from "@/hooks/useAdminBadges";
+import { useCorMenuAplicada } from "@/hooks/useCorMenu";
 import { useMenuAdminOculto } from "@/hooks/useMenuAdminOculto";
 import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
 import { useImportacaoXmlCompraVisivel } from "@/hooks/useImportacaoXmlCompraVisivel";
@@ -79,6 +80,8 @@ const adminMenuItems = ADMIN_MENU_COM_ICONE;
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  // Com cor do menu escolhida, o hover do "Sair" usa as cores do menu (vermelho fixo pode ficar ilegível).
+  const temCorMenu = !!useCorMenuAplicada();
   const location = useLocation();
   const navigate = useNavigate();
   // Rótulos do menu: namespace "menu" (src/locales/<idioma>/menu.ts). Em pt-BR
@@ -390,7 +393,7 @@ export function AppSidebar() {
           </Button>
           <Button
             variant="ghost"
-            className={`w-full text-sidebar-foreground hover:text-red-400 hover:bg-red-500/10 ${collapsed ? "justify-center" : "justify-start"}`}
+            className={`w-full text-sidebar-foreground ${temCorMenu ? "hover:text-sidebar-hover-foreground hover:bg-sidebar-hover" : "hover:text-red-400 hover:bg-red-500/10"} ${collapsed ? "justify-center" : "justify-start"}`}
             onClick={() => sair()}
           >
             <LogOut className="h-5 w-5" />

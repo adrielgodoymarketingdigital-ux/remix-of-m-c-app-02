@@ -1,4 +1,17 @@
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
+import { useCorMenuAplicada } from "@/hooks/useCorMenu";
+import { VARIAVEIS_MENU_PADRAO } from "@/lib/menu/corMenu";
+
+/**
+ * O banner usa as variáveis do menu, mas é conteúdo da página: com cor do menu
+ * escolhida, ele continua com as do padrão (texto branco sempre legível).
+ */
+const CORES_PADRAO_BANNER = {
+  "--sidebar-accent": VARIAVEIS_MENU_PADRAO.accent,
+  "--sidebar-background": VARIAVEIS_MENU_PADRAO.background,
+  "--sidebar-primary": VARIAVEIS_MENU_PADRAO.primary,
+} as CSSProperties;
 
 interface BannerFinanceiroProps {
   className?: string;
@@ -10,8 +23,10 @@ interface BannerFinanceiroProps {
  * A ilustração é só enfeite: não representa nenhum dado.
  */
 export function BannerFinanceiro({ className }: BannerFinanceiroProps) {
+  const temCorMenu = !!useCorMenuAplicada();
   return (
     <section
+      style={temCorMenu ? CORES_PADRAO_BANNER : undefined}
       className={cn(
         "relative isolate overflow-hidden rounded-2xl px-5 py-6 sm:px-8 sm:py-8 text-white",
         "bg-gradient-to-br from-sidebar-accent via-sidebar-background to-primary",

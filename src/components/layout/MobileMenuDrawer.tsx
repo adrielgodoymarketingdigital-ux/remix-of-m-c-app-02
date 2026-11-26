@@ -29,6 +29,7 @@ import { useFiscalVisivel } from "@/hooks/useFiscalVisivel";
 import { useImportacaoXmlCompraVisivel } from "@/hooks/useImportacaoXmlCompraVisivel";
 import { useFuncionarioPermissoes } from "@/hooks/useFuncionarioPermissoes";
 import { useAssinatura } from "@/hooks/useAssinatura";
+import { useCorMenuAplicada } from "@/hooks/useCorMenu";
 import type { PermissoesModulos } from "@/types/funcionario";
 import { ADMIN_MENU_COM_ICONE, ICONES_MENU, MENU_PRINCIPAL_COM_ICONE } from "@/components/layout/iconesMenu";
 import { GRUPOS_MENU, filtrarMenuVisivel } from "@/lib/menu/menuPrincipal";
@@ -68,6 +69,8 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
   const navigate = useNavigate();
   // Textos: namespace "menu" (os itens são os mesmos do AppSidebar).
   const { t } = useTranslation("menu");
+  // Com cor do menu escolhida, "Sair" usa o texto do menu (o vermelho fixo some em menu claro/saturado).
+  const temCorMenu = !!useCorMenuAplicada();
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>({});
   // Mesma chave do AppSidebar (desktop) — estado compartilhado entre as duas telas.
@@ -338,7 +341,9 @@ export function MobileMenuDrawer({ open, onOpenChange, onPersonalizarMenu }: Mob
             )}
             <Button
               variant="ghost"
-              className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10 h-12"
+              className={temCorMenu
+                ? "w-full justify-start text-sidebar-foreground hover:text-sidebar-hover-foreground hover:bg-sidebar-hover h-12"
+                : "w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10 h-12"}
               onClick={handleLogout}
             >
               <LogOut className="h-5 w-5 mr-3" />
