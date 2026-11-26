@@ -12,7 +12,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { dataBrasiliaISO } from "@/lib/dataBrasilia";
 import { camposDevolucao, type DadosEntradaTroca, type FormaDevolucao } from "./trocaPDV";
-import { colunasImeiDaEntrada } from "./entradaTrocaForm";
+import { colunasFotosDaEntrada, colunasImeiDaEntrada } from "./entradaTrocaForm";
 
 export interface ContextoEntradaTroca {
   /** Dono da loja (= vendas.user_id). */
@@ -90,6 +90,8 @@ export async function registrarEntradaTroca(
           vendido: false,
           garantia: false,
           origem_tipo: "troca_pdv",
+          // fotos filtradas e foto_url = 1ª foto; sem foto (ou troca pendente antiga): [] e null.
+          ...colunasFotosDaEntrada(a),
         })
         .select("id")
         .single();

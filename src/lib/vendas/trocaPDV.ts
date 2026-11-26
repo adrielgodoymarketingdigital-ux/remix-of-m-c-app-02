@@ -23,6 +23,8 @@ export interface DadosEntradaTroca {
     capacidadeGb: number | null;
     condicao: string;
     checklistEntrada: Record<string, boolean> | null;
+    /** URLs das fotos do aparelho. Opcional: troca pendente salva antes das fotos não tem o campo. */
+    fotos?: string[];
   };
   /** Valor pago pelo aparelho (custo no estoque) — é o que abate a venda. */
   valorEntrada: number;

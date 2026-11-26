@@ -56,7 +56,7 @@ Deno.test("troca pendente antiga (JSON sem imei2) → grava imei2 null e o resto
   assertEquals("imei2" in antiga.aparelho, false);
   const r = await registrarEntradaTroca(antiga, ctx, {});
   assertEquals(r, { ok: true });
-  // Linha exata: a de antes da F2 + imei2 null (o padrão da coluna).
+  // Linha exata: a de antes da F2 + imei2 null + fotos [] / foto_url null (os padrões das colunas).
   assertEquals(linhaDispositivo(), {
     user_id: "dono-teste",
     empresa_id: "empresa-teste",
@@ -75,6 +75,9 @@ Deno.test("troca pendente antiga (JSON sem imei2) → grava imei2 null e o resto
     vendido: false,
     garantia: false,
     origem_tipo: "troca_pdv",
+    // Sem o campo fotos: os padrões das colunas ('[]'::jsonb e null), como antes.
+    fotos: [],
+    foto_url: null,
   });
 });
 
@@ -132,4 +135,72 @@ Deno.test("sem cliente escolhido: origem_pessoas igual à de antes", async () =>
   reiniciarBanco();
   await registrarEntradaTroca(montarEntradaTroca({ ...camposBase, vendedorNome: "Pessoa Teste" }).dados!, ctx, {});
   assertEquals(pessoaGravada(), { user_id: "dono-teste", tipo: "fisica", nome: "Pessoa Teste", cpf_cnpj: null, telefone: null, ativo: true });
+});
+
+// ── Fotos do aparelho de entrada ────────────────────────────────────────────
+
+const camposDialogo = {
+  vendedorNome: "Pessoa Teste", vendedorCpf: "", vendedorTelefone: "",
+  marca: "Marca Teste", modelo: "Modelo Teste", imei: "111111111111111", imei2: "",
+  numeroSerie: "", cor: "", capacidadeGb: "", condicao: "usado", checklistEntrada: {},
+  valorCusto: "500", valorVenda: "800", observacoes: "",
+};
+
+Deno.test("com 2 fotos: grava fotos e foto_url = primeira", async () => {
+  reiniciarBanco();
+  const r = await registrarEntradaTroca(dados({ ...aparelhoBase, fotos: ["https://x/f1.jpg", "https://x/f2.jpg"] }), ctx, {});
+  assertEquals(r, { ok: true });
+  assertEquals(linhaDispositivo().fotos, ["https://x/f1.jpg", "https://x/f2.jpg"]);
+  assertEquals(linhaDispositivo().foto_url, "https://x/f1.jpg");
+});
+
+Deno.test("sem fotos (lista vazia): grava [] e null", async () => {
+  reiniciarBanco();
+  await registrarEntradaTroca(dados({ ...aparelhoBase, fotos: [] }), ctx, {});
+  assertEquals([linhaDispositivo().fotos, linhaDispositivo().foto_url], [[], null]);
+});
+
+Deno.test("fotos com string vazia são filtradas (foto_url = 1ª não vazia)", async () => {
+  reiniciarBanco();
+  await registrarEntradaTroca(dados({ ...aparelhoBase, fotos: ["", "https://x/f2.jpg", ""] }), ctx, {});
+  assertEquals(linhaDispositivo().fotos, ["https://x/f2.jpg"]);
+  assertEquals(linhaDispositivo().foto_url, "https://x/f2.jpg");
+});
+
+Deno.test("só strings vazias: grava [] e null", async () => {
+  reiniciarBanco();
+  await registrarEntradaTroca(dados({ ...aparelhoBase, fotos: ["", ""] }), ctx, {});
+  assertEquals([linhaDispositivo().fotos, linhaDispositivo().foto_url], [[], null]);
+});
+
+Deno.test("diálogo → gravação: fotos do diálogo chegam ao aparelho, vazias filtradas", async () => {
+  reiniciarBanco();
+  const r = montarEntradaTroca({ ...camposDialogo, fotos: ["https://x/f1.jpg", "", "https://x/f3.jpg"] });
+  await registrarEntradaTroca(r.dados!, ctx, {});
+  assertEquals(linhaDispositivo().fotos, ["https://x/f1.jpg", "https://x/f3.jpg"]);
+  assertEquals(linhaDispositivo().foto_url, "https://x/f1.jpg");
+});
+
+Deno.test("diálogo sem foto: linha do aparelho igual à de troca antiga (fotos [] e foto_url null)", async () => {
+  reiniciarBanco();
+  const r = montarEntradaTroca({ ...camposDialogo, fotos: [] });
+  await registrarEntradaTroca(r.dados!, ctx, {});
+  const comDialogo = linhaDispositivo();
+  reiniciarBanco();
+  const antiga = JSON.parse(JSON.stringify(dados({ ...aparelhoBase, imei2: null, capacidadeGb: null }))) as DadosEntradaTroca;
+  await registrarEntradaTroca(antiga, ctx, {});
+  assertEquals(comDialogo, linhaDispositivo());
+});
+
+Deno.test("fotos só na linha do aparelho; demais etapas iguais", async () => {
+  reiniciarBanco();
+  await registrarEntradaTroca(dados({ ...aparelhoBase, fotos: ["https://x/f1.jpg"] }), ctx, {});
+  assertEquals(chamadas.map((c) => `${c.op}:${c.tabela}`), [
+    "insert:origem_pessoas",
+    "insert:dispositivos",
+    "insert:compras_dispositivos",
+    "update:dispositivos",
+    "upsert:vendas_trocas",
+  ]);
+  assertEquals(chamadas.filter((c) => "fotos" in c.linha || "foto_url" in c.linha).map((c) => c.tabela), ["dispositivos"]);
 });

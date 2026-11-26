@@ -15,6 +15,7 @@ import {
   montarEntradaTroca,
   secaoClienteTroca,
   vendedorDoCliente,
+  colunasFotosDaEntrada,
   type CamposEntradaTroca,
 } from "../../src/lib/vendas/entradaTrocaForm.ts";
 import type { DadosEntradaTroca } from "../../src/lib/vendas/trocaPDV.ts";
@@ -345,4 +346,62 @@ Deno.test("seção do cliente: sem a prop clientes não há busca; sem clienteVe
 Deno.test("troca sem cliente escolhido: mesmos dados de antes (referência antiga)", () => {
   // O diálogo só muda os três campos do vendedor ao escolher; sem escolher, é o de sempre.
   assertEquals(novo(completo), referenciaAntiga(completo));
+});
+
+// ── Fotos do aparelho de entrada ────────────────────────────────────────────
+
+const camposFotos: CamposEntradaTroca = {
+  vendedorNome: "Pessoa Teste", vendedorCpf: "", vendedorTelefone: "",
+  marca: "Marca Teste", modelo: "Modelo Teste", imei: "", imei2: "",
+  numeroSerie: "", cor: "", capacidadeGb: "", condicao: "usado", checklistEntrada: {},
+  valorCusto: "500", valorVenda: "800", observacoes: "",
+};
+
+Deno.test("fotos: 2 fotos entram no aparelho na ordem", () => {
+  const r = montarEntradaTroca({ ...camposFotos, fotos: ["https://x/f1.jpg", "https://x/f2.jpg"] });
+  assertEquals(r.dados!.aparelho.fotos, ["https://x/f1.jpg", "https://x/f2.jpg"]);
+});
+
+Deno.test("fotos: strings vazias são filtradas", () => {
+  const r = montarEntradaTroca({ ...camposFotos, fotos: ["", "https://x/f2.jpg", ""] });
+  assertEquals(r.dados!.aparelho.fotos, ["https://x/f2.jpg"]);
+});
+
+Deno.test("fotos: sem foto → lista vazia", () => {
+  const r = montarEntradaTroca({ ...camposFotos, fotos: [] });
+  assertEquals(r.dados!.aparelho.fotos, []);
+});
+
+Deno.test("fotos: campo ausente → o objeto não ganha a chave fotos (idêntico ao de antes)", () => {
+  const r = montarEntradaTroca(camposFotos);
+  assertEquals("fotos" in r.dados!.aparelho, false);
+});
+
+Deno.test("fotos não mudam validação nem os demais dados", () => {
+  const sem = montarEntradaTroca(camposFotos);
+  const com = montarEntradaTroca({ ...camposFotos, fotos: ["https://x/f1.jpg"] });
+  const { fotos: _f, ...aparelhoCom } = com.dados!.aparelho;
+  assertEquals({ ...com.dados!, aparelho: aparelhoCom }, sem.dados!);
+  assertEquals(montarEntradaTroca({ ...camposFotos, vendedorNome: " ", fotos: ["https://x/f1.jpg"] }), { ok: false, erro: "informeVendedor" });
+});
+
+Deno.test("colunasFotosDaEntrada: 2 fotos → fotos e foto_url = primeira", () => {
+  const r = montarEntradaTroca({ ...camposFotos, fotos: ["https://x/f1.jpg", "https://x/f2.jpg"] });
+  assertEquals(colunasFotosDaEntrada(r.dados!.aparelho), { fotos: ["https://x/f1.jpg", "https://x/f2.jpg"], foto_url: "https://x/f1.jpg" });
+});
+
+Deno.test("colunasFotosDaEntrada: sem fotos → [] e null", () => {
+  const r = montarEntradaTroca({ ...camposFotos, fotos: [] });
+  assertEquals(colunasFotosDaEntrada(r.dados!.aparelho), { fotos: [], foto_url: null });
+});
+
+Deno.test("colunasFotosDaEntrada: string vazia filtrada também na gravação", () => {
+  const aparelho = { ...montarEntradaTroca(camposFotos).dados!.aparelho, fotos: ["", "https://x/f2.jpg"] };
+  assertEquals(colunasFotosDaEntrada(aparelho), { fotos: ["https://x/f2.jpg"], foto_url: "https://x/f2.jpg" });
+});
+
+Deno.test("troca pendente antiga (JSON sem fotos) → [] e null", () => {
+  const antiga = JSON.parse(JSON.stringify(montarEntradaTroca(camposFotos).dados!)) as DadosEntradaTroca;
+  assertEquals("fotos" in antiga.aparelho, false);
+  assertEquals(colunasFotosDaEntrada(antiga.aparelho), { fotos: [], foto_url: null });
 });

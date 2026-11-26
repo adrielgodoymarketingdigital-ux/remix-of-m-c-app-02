@@ -30,6 +30,8 @@ export interface CamposEntradaTroca {
   valorCusto: string;
   valorVenda: string;
   observacoes: string;
+  /** URLs das fotos (UploadFotosDispositivo). Ausente = resultado sem a chave `fotos`. */
+  fotos?: string[];
 }
 
 /**
@@ -88,6 +90,7 @@ export function montarEntradaTroca(c: CamposEntradaTroca): ResultadoEntradaTroca
         capacidadeGb: Number.isFinite(capacidade) ? capacidade : null,
         condicao: c.condicao,
         checklistEntrada,
+        ...(c.fotos !== undefined ? { fotos: c.fotos.filter(Boolean) } : {}),
       },
       // Centavos: o mesmo valor vai para vendas.valor_troca, compra e vendas_trocas (numeric(12,2)).
       valorEntrada: Math.round(custo * 100) / 100,
@@ -103,6 +106,16 @@ export function montarEntradaTroca(c: CamposEntradaTroca): ResultadoEntradaTroca
  */
 export function colunasImeiDaEntrada(aparelho: DadosEntradaTroca["aparelho"]): { imei: string | null; imei2: string | null } {
   return { imei: aparelho.imei, imei2: aparelho.imei2 ?? null };
+}
+
+/**
+ * Colunas fotos/foto_url de `dispositivos` para a entrada (mesmo critério do
+ * DialogCadastroDispositivo). Sem foto, ou troca pendente salva antes das
+ * fotos (sem o campo): [] e null, que são os padrões das colunas.
+ */
+export function colunasFotosDaEntrada(aparelho: DadosEntradaTroca["aparelho"]): { fotos: string[]; foto_url: string | null } {
+  const fotos = (aparelho.fotos ?? []).filter(Boolean);
+  return { fotos, foto_url: fotos[0] ?? null };
 }
 
 /** Cliente já cadastrado → campos do vendedor do aparelho, copiados como estão no cadastro. */
