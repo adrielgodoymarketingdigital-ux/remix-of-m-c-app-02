@@ -11,15 +11,22 @@ interface UploadFotosDispositivoProps {
   fotos?: string[];
   onFotosChange: (urls: string[]) => void;
   maxFotos?: number;
+  /** Opcional: avisa quando um envio começa/termina (ex.: travar o "confirmar" do diálogo). */
+  onUploadingChange?: (uploading: boolean) => void;
 }
 
 export function UploadFotosDispositivo({
   fotos: fotosProp = [],
   onFotosChange,
-  maxFotos = 10
+  maxFotos = 10,
+  onUploadingChange,
 }: UploadFotosDispositivoProps) {
   const fotos = Array.isArray(fotosProp) ? fotosProp : [];
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploadingState] = useState(false);
+  const setUploading = (valor: boolean) => {
+    setUploadingState(valor);
+    onUploadingChange?.(valor);
+  };
   const { toast } = useToast();
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
