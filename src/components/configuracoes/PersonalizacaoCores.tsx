@@ -17,6 +17,8 @@ import {
 } from "@/lib/configuracaoLoja/coresPersonalizadasLinhas";
 import { corCabecalhoDaLoja } from "@/lib/recibo/corCabecalhoRecibo";
 import { CorCabecalhoRecibos } from "./CorCabecalhoRecibos";
+import { CorMenu } from "./CorMenu";
+import { corMenuDasCores } from "@/lib/menu/corMenu";
 
 interface CoresPersonalizadas {
   primary_from: string;
@@ -73,6 +75,8 @@ export function PersonalizacaoCores() {
   const [corSelecionada, setCorSelecionada] = useState<number | null>(null);
   // Cor do cabeçalho dos recibos já gravada (null = azul padrão).
   const [corRecibo, setCorRecibo] = useState<string | null>(null);
+  // Cor do menu já gravada (null = padrão).
+  const [corMenu, setCorMenu] = useState<string | null>(null);
 
   useEffect(() => {
     carregarCores();
@@ -96,6 +100,7 @@ export function PersonalizacaoCores() {
       }
       const data = linhaDeReferencia(linhas);
       setCorRecibo(corCabecalhoDaLoja(data));
+      setCorMenu(corMenuDasCores(data?.cores_personalizadas));
 
       if (data?.cores_personalizadas) {
         const coresDB = data.cores_personalizadas as unknown as CoresPersonalizadas;
@@ -329,6 +334,8 @@ export function PersonalizacaoCores() {
           </div>
         </CardContent>
       </Card>
+
+      <CorMenu corSalva={corMenu} onGravada={setCorMenu} />
 
       <CorCabecalhoRecibos paletas={CORES_PREDEFINIDAS} corSalva={corRecibo} onGravada={setCorRecibo} />
 
