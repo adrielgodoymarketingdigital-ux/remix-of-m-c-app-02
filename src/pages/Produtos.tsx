@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, FileDown, Upload, Tag, X, Package, Wrench, ArrowUpDown, TrendingDown, TrendingUp, ListFilter, ChevronDown, RefreshCw, Settings } from 'lucide-react';
@@ -16,6 +16,7 @@ import { useMostrarCustoLucroExportacao } from '@/hooks/useMostrarCustoLucroExpo
 import { DialogCadastroProduto } from '@/components/produtos/DialogCadastroProduto';
 import { DialogImportarProdutos } from '@/components/produtos/DialogImportarProdutos';
 import { DialogLimiteAtingido } from '@/components/planos/DialogLimiteAtingido';
+import { deveBloquearNovoProduto } from '@/lib/assinatura/bloqueioLimiteProdutos';
 import { AbaConfiguracoesProdutos, DialogConfiguracoesProdutos } from '@/components/produtos/DialogConfiguracoesProdutos';
 import { TabelaProdutos } from '@/components/produtos/TabelaProdutos';
 import { ItemEstoque, FormularioProduto } from '@/types/produto';
@@ -40,7 +41,7 @@ const Produtos = () => {
   const { items, loading, carregarTodos, criar, atualizar, excluir, excluirEmMassa, categorizarEmMassa, alterarTipoEmMassa, alterarPrecoEmMassa, adicionarFotoEmMassa, importarEmLote, criarProdutoComVariacoes, criarPecaComVariacoes, reporEstoque, renomearVariacao, adicionarVariacaoAoGrupo, removerDoGrupo } = useProdutos();
   const { categorias, categoriasArvore, carregarCategorias, criarCategoria, atualizarCategoria, excluirCategoria } = useCategoriasProdutos();
   const { isFuncionario, permissoes } = useFuncionarioPermissoes();
-  const { obterContagemProdutosMes, assinatura, planoVencido, planoAnterior } = useAssinatura();
+  const { obterContagemProdutosMes, assinatura, carregando: assinaturaCarregando, planoVencido, planoAnterior } = useAssinatura();
   const { config: configLoja } = useConfiguracaoLoja();
   const { limiteBaixo } = useConfiguracaoEstoque();
   const { trocas, criar: criarTroca, excluir: excluirTroca } = useTrocasGarantia();
@@ -97,17 +98,27 @@ const Produtos = () => {
   useEffect(() => {
     carregarTodos();
     carregarCategorias();
-    carregarContador();
   }, [carregarTodos, carregarCategorias]);
 
   useEffect(() => {
     if (ordemFiltro === 'mais_vendido') carregarContagemVendas();
   }, [ordemFiltro, carregarContagemVendas]);
 
-  const carregarContador = async () => {
+  // Só a resposta da chamada mais recente grava o contador: uma contagem feita com os
+  // limites Free provisórios (assinatura ainda carregando) não pode sobrescrever a do trial.
+  const contadorSeqRef = useRef(0);
+  const carregarContador = useCallback(async () => {
+    const seq = ++contadorSeqRef.current;
     const dados = await obterContagemProdutosMes();
-    setContadorProdutos(dados);
-  };
+    if (seq === contadorSeqRef.current) setContadorProdutos(dados);
+    return dados;
+  }, [obterContagemProdutosMes]);
+
+  // Recalcula quando os limites mudam (obterContagemProdutosMes depende de limites.produtos_mes),
+  // quando a assinatura termina de carregar e quando a lista muda (criou/apagou).
+  useEffect(() => {
+    carregarContador();
+  }, [carregarContador, assinaturaCarregando, items.length]);
 
   const resumoInventario = useMemo(() => {
     const produtos = items.filter(i => i.tipo === 'produto');
@@ -202,11 +213,23 @@ const Produtos = () => {
     setDialogAberto(true);
   };
 
-  const handleNovoItem = () => {
-    // Verificar limite antes de abrir o dialog
-    if (assinatura?.plano_tipo === 'free' && !contadorProdutos.ilimitado && contadorProdutos.usados >= contadorProdutos.limite) {
-      setDialogLimiteAtingido(true);
-      return;
+  const handleNovoItem = async () => {
+    // Verificar limite antes de abrir o dialog. Com a assinatura carregada, conta NA HORA
+    // (o state pode ter sido calculado com os limites Free provisórios).
+    // Plano que não é free nunca bloqueia aqui, então nem consulta.
+    if (!assinaturaCarregando && assinatura?.plano_tipo === 'free') {
+      const dados = await carregarContador();
+      if (deveBloquearNovoProduto({
+        assinaturaCarregando: false,
+        planoTipo: assinatura?.plano_tipo,
+        ilimitado: dados.ilimitado,
+        usados: dados.usados,
+        limite: dados.limite,
+      })) {
+        setContadorProdutos(dados);
+        setDialogLimiteAtingido(true);
+        return;
+      }
     }
     setItemParaEditar(null);
     setDialogAberto(true);
