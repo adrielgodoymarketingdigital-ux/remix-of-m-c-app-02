@@ -13,6 +13,7 @@
  * devolvem o novo (null = coluna nula, como o "Resetar" já fazia).
  */
 import { CHAVE_COR_CABECALHO_RECIBO, normalizarCorHex } from "../recibo/corCabecalhoRecibo.ts";
+import { CHAVE_COR_MENU } from "../menu/corMenu.ts";
 
 export type ValorCores = Record<string, unknown>;
 export type Mescla = (atual: ValorCores) => ValorCores | null;
@@ -38,8 +39,17 @@ const semChaves = (atual: ValorCores, chaves: readonly string[]): ValorCores | n
   return Object.keys(resto).length > 0 ? resto : null;
 };
 
-/** Salvar cores do app: as cores por cima do que a linha já tem (igual ao de antes). */
-export const mesclarCoresApp = (cores: ValorCores): Mescla => (atual) => ({ ...atual, ...cores });
+/**
+ * Salvar cores do app: as cores por cima do que a linha já tem (igual ao de antes).
+ * Só as 6 chaves do app: o estado da tela é carregado com TODAS as chaves da linha
+ * (menu_cor, recibo_cabecalho_cor...) e regravá-las desfaria uma troca feita em
+ * outro cartão depois de abrir a tela.
+ */
+export const mesclarCoresApp = (cores: ValorCores): Mescla => {
+  const soApp: ValorCores = {};
+  for (const c of CHAVES_CORES_APP) if (c in cores) soApp[c] = cores[c];
+  return (atual) => ({ ...atual, ...soApp });
+};
 
 /** Resetar cores do app: tira só as 6 chaves do app; sobrou nada → null (igual ao de antes). */
 export const removerCoresApp: Mescla = (atual) => semChaves(atual, CHAVES_CORES_APP);
@@ -53,6 +63,16 @@ export function definirCorRecibo(cor: string): Mescla {
 
 /** "Voltar ao azul padrão": REMOVE a chave (nunca grava o azul); sobrou nada → null. */
 export const removerCorRecibo: Mescla = (atual) => semChaves(atual, [CHAVE_COR_CABECALHO_RECIBO]);
+
+/** Salvar a cor do menu (só hex válido); as outras chaves da linha ficam. */
+export function definirCorMenu(cor: string): Mescla {
+  const hex = normalizarCorHex(cor);
+  if (!hex) throw new Error("Cor inválida");
+  return (atual) => ({ ...atual, [CHAVE_COR_MENU]: hex });
+}
+
+/** "Restaurar padrão" do menu: REMOVE só a chave menu_cor; sobrou nada → null. */
+export const removerCorMenu: Mescla = (atual) => semChaves(atual, [CHAVE_COR_MENU]);
 
 export interface LinhaCores {
   id: string;
