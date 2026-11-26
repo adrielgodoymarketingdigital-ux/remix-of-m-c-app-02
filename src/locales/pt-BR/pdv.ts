@@ -268,6 +268,7 @@ const pdv = {
     condicao: "Condição",
     condicoes: { novo: "Novo", semi_novo: "Semi-novo", usado: "Usado" },
     checklist: "Checklist",
+    fotos: "Fotos",
     valores: "Valores",
     valorCusto: "Valor de Custo (Entrada) *",
     valorVenda: "Valor de Venda *",
@@ -276,6 +277,7 @@ const pdv = {
     observacoesPlaceholder: "Detalhes adicionais sobre o dispositivo ou a negociação...",
     cancelar: "Cancelar",
     usar: "Usar na venda",
+    enviandoFotos: "Enviando fotos...",
     toast: {
       informeVendedor: "Informe o nome do vendedor.",
       informeMarcaModelo: "Informe a marca e o modelo do dispositivo.",

@@ -257,6 +257,7 @@ const pdv: Traducao<typeof pdvPtBR> = {
     condicao: "Condición",
     condicoes: { novo: "Nuevo", semi_novo: "Seminuevo", usado: "Usado" },
     checklist: "Checklist",
+    fotos: "Fotos",
     valores: "Valores",
     valorCusto: "Costo (ingreso) *",
     valorVenda: "Precio de venta *",
@@ -265,6 +266,7 @@ const pdv: Traducao<typeof pdvPtBR> = {
     observacoesPlaceholder: "Detalles adicionales sobre el equipo o la negociación...",
     cancelar: "Cancelar",
     usar: "Usar en la venta",
+    enviandoFotos: "Enviando fotos...",
     toast: {
       informeVendedor: "Indique el nombre de quien entrega el equipo.",
       informeMarcaModelo: "Indique la marca y el modelo del equipo.",

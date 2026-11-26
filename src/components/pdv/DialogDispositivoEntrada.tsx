@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,7 @@ import { montarEntradaTroca, vendedorDoCliente } from "@/lib/vendas/entradaTroca
 import { LeitorCodigoBarras } from "@/components/scanner/LeitorCodigoBarras";
 import { SeletorClienteTroca } from "@/components/pdv/SeletorClienteTroca";
 import type { Cliente } from "@/types/cliente";
+import { UploadFotosDispositivo } from "@/components/dispositivos/UploadFotosDispositivo";
 
 interface DialogDispositivoEntradaProps {
   open: boolean;
@@ -75,6 +76,12 @@ export function DialogDispositivoEntrada({
   const [valorVenda, setValorVenda] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
+  // Fotos do aparelho (gravadas em dispositivos.fotos/foto_url ao finalizar a venda).
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [enviandoFotos, setEnviandoFotos] = useState(false);
+  // Envio que termina depois do diálogo fechar/confirmar não volta para o formulário limpo.
+  const versaoFormulario = useRef(0);
+
   // Puxar cliente cadastrado (só no PDV, com a prop clientes/clienteVenda).
   const [buscaCliente, setBuscaCliente] = useState("");
   const [clienteEscolhido, setClienteEscolhido] = useState<string | null>(null);
@@ -97,6 +104,9 @@ export function DialogDispositivoEntrada({
     setValorCusto("");
     setValorVenda("");
     setObservacoes("");
+    setFotos([]);
+    setEnviandoFotos(false);
+    versaoFormulario.current += 1;
     setBuscaCliente("");
     setClienteEscolhido(null);
   };
@@ -117,6 +127,7 @@ export function DialogDispositivoEntrada({
   };
 
   const handleConfirmar = () => {
+    if (enviandoFotos) return;
     // Validação e montagem: lógica pura em lib/vendas/entradaTrocaForm.ts.
     const resultado = montarEntradaTroca({
       vendedorNome,
@@ -134,6 +145,7 @@ export function DialogDispositivoEntrada({
       valorCusto,
       valorVenda,
       observacoes,
+      fotos,
     });
     if (!resultado.ok) {
       toast.error(t(`entradaTroca.toast.${resultado.erro}`));
@@ -144,6 +156,8 @@ export function DialogDispositivoEntrada({
     resetForm();
     onOpenChange(false);
   };
+
+  const versao = versaoFormulario.current;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -334,6 +348,23 @@ export function DialogDispositivoEntrada({
             />
           </div>
 
+          {/* Fotos: mesmo componente do cadastro de dispositivo (câmera ou galeria). */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              {t("entradaTroca.fotos")}
+            </h3>
+            <UploadFotosDispositivo
+              fotos={fotos}
+              onFotosChange={(urls) => {
+                if (versao === versaoFormulario.current) setFotos(urls);
+              }}
+              onUploadingChange={(enviando) => {
+                if (versao === versaoFormulario.current) setEnviandoFotos(enviando);
+              }}
+              maxFotos={10}
+            />
+          </div>
+
           {/* Valores */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -381,7 +412,9 @@ export function DialogDispositivoEntrada({
           >
             {t("entradaTroca.cancelar")}
           </Button>
-          <Button onClick={handleConfirmar}>{t("entradaTroca.usar")}</Button>
+          <Button onClick={handleConfirmar} disabled={enviandoFotos}>
+            {enviandoFotos ? t("entradaTroca.enviandoFotos") : t("entradaTroca.usar")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
