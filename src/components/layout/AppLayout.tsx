@@ -6,6 +6,7 @@ import { MobileHeader } from "@/components/layout/MobileHeader";
 import { DashboardTopbar } from "@/components/layout/DashboardTopbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useCoresPersonalizadas } from "@/hooks/useCoresPersonalizadas";
+import { useCorMenu } from "@/hooks/useCorMenu";
 import { TutorialProvider } from "@/components/tutorial/TutorialContext";
 import { TutorialOverlay } from "@/components/tutorial/TutorialOverlay";
 import { OnboardingWalkthroughHost } from "@/components/onboarding/OnboardingWalkthroughHost";
@@ -34,6 +35,7 @@ interface AppLayoutProps {
  */
 export function AppLayout({ children }: AppLayoutProps) {
   useCoresPersonalizadas();
+  useCorMenu();
   const { assinatura } = useAssinatura();
   const { isFuncionario } = useFuncionarioPermissoes();
   useUserPresence((assinatura as any)?.user_id ?? null);

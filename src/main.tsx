@@ -16,6 +16,7 @@ import { APP_BUILD_ID } from "./lib/build";
 
 import { registrarServiceWorker } from "./lib/pwa/atualizacaoApp";
 import { registerNotificationSoundListener } from "./lib/notification-sounds";
+import { aplicarCorMenuLembrada } from "./lib/menu/aplicarCorMenu";
 
 console.log(`[Méc] Build ID: ${APP_BUILD_ID}`);
 
@@ -25,5 +26,9 @@ registrarServiceWorker();
 
 // Listener para tocar sons customizados de notificação enviados pelo SW
 registerNotificationSoundListener();
+
+// Cor do menu escolhida pela loja (lembrada da última vez): antes do primeiro
+// render, para não piscar o padrão. Sem cor lembrada não toca em nada.
+aplicarCorMenuLembrada();
 
 createRoot(document.getElementById("root")!).render(<App />);
