@@ -60,3 +60,15 @@ Deno.test("nome novo válido não bate com parecido (prefixo não é duplicado)"
   assertEquals(validarNovoModelo("Moto Rápido Plus", existentes), { ok: true, nome: "Moto Rápido Plus" });
   assertEquals(validarNovoModelo("Redmi Note 99", []), { ok: true, nome: "Redmi Note 99" });
 });
+
+Deno.test("podeAdicionarModelo: exige tipo + marca da lista (fixa ou da loja), nunca 'Outra'/digitada", async () => {
+  const { podeAdicionarModelo } = await import("../../src/lib/ordemServico/novoModeloCatalogo.ts");
+  const { OPCAO_OUTRA, getMarcasPorTipo } = await import("../../src/data/catalogoDispositivos.ts");
+  const marcas = [...getMarcasPorTipo("celular"), "Marca da Loja"];
+  assertEquals(podeAdicionarModelo("celular", "Apple", marcas), true);
+  assertEquals(podeAdicionarModelo("celular", "Marca da Loja", marcas), true);
+  assertEquals(podeAdicionarModelo("", "Apple", marcas), false);
+  assertEquals(podeAdicionarModelo("celular", "", marcas), false);
+  assertEquals(podeAdicionarModelo("celular", OPCAO_OUTRA, marcas), false);
+  assertEquals(podeAdicionarModelo("celular", "Digitada à mão", marcas), false);
+});

@@ -38,3 +38,12 @@ export function validarNovoModelo(nome: string, existentes: readonly string[]): 
   if (existente !== undefined) return { ok: false, motivo: "duplicado", existente };
   return { ok: true, nome: limpo };
 }
+
+/**
+ * Só dá para adicionar modelo com Tipo escolhido e Marca escolhida da lista
+ * (fixa ou da loja). Marca "Outra"/digitada à mão não está em `marcasDaLista`,
+ * então não libera — o modelo ficaria preso a uma marca que não existe no catálogo.
+ */
+export function podeAdicionarModelo(tipo: string, marca: string, marcasDaLista: readonly string[]): boolean {
+  return !!tipo && !!marca && marcasDaLista.includes(marca);
+}
