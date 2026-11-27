@@ -6,6 +6,17 @@ const marketing = {
   secoes: {
     avaliacoesGoogle: "Avaliações no Google",
   },
+  cabecalho: {
+    navegacao: "Navegação",
+    inicio: "Início",
+  },
+  banner: {
+    titulo: "Mais avaliações, mais confiança",
+    descricao: "Incentive seus clientes a avaliarem sua loja no Google e fortaleça sua reputação online.",
+    exemplo: "Exemplo",
+    notaExemplo: "4,9",
+    totalExemplo: "(327 avaliações)",
+  },
   avaliacao: {
     configTitulo: "Link de avaliação do Google",
     configDescricao: "Cadastre o link para seus clientes avaliarem sua loja no Google.",
@@ -38,10 +49,14 @@ const marketing = {
     restaurarPadrao: "Restaurar mensagem padrão",
     previa: "Prévia",
     previaDescricao: "Com dados de exemplo",
+    previaTitulo: "Prévia da mensagem",
+    previaSubtitulo: "Veja como seu cliente receberá no WhatsApp.",
+    contaComercial: "Conta comercial",
     exemploCliente: "João Silva",
     exemploLoja: "Minha Loja",
     exemploDispositivo: "iPhone 13 Pro",
     salvar: "Salvar",
+    salvarAlteracoes: "Salvar alterações",
     salvando: "Salvando...",
     salvoSucesso: "Configuração de avaliação salva!",
     salvoErro: "Não foi possível salvar. Tente novamente.",

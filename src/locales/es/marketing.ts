@@ -9,6 +9,17 @@ const marketing: Traducao<typeof marketingPtBR> = {
   secoes: {
     avaliacoesGoogle: "Reseñas en Google",
   },
+  cabecalho: {
+    navegacao: "Navegación",
+    inicio: "Inicio",
+  },
+  banner: {
+    titulo: "Más reseñas, más confianza",
+    descricao: "Motive a sus clientes a calificar su tienda en Google y fortalezca su reputación en línea.",
+    exemplo: "Ejemplo",
+    notaExemplo: "4,9",
+    totalExemplo: "(327 reseñas)",
+  },
   avaliacao: {
     configTitulo: "Enlace de reseñas de Google",
     configDescricao: "Registre el enlace para que sus clientes califiquen su tienda en Google.",
@@ -41,10 +52,14 @@ const marketing: Traducao<typeof marketingPtBR> = {
     restaurarPadrao: "Restaurar mensaje predeterminado",
     previa: "Vista previa",
     previaDescricao: "Con datos de ejemplo",
+    previaTitulo: "Vista previa del mensaje",
+    previaSubtitulo: "Vea cómo lo recibirá su cliente en WhatsApp.",
+    contaComercial: "Cuenta comercial",
     exemploCliente: "Juan Pérez",
     exemploLoja: "Mi Tienda",
     exemploDispositivo: "iPhone 13 Pro",
     salvar: "Guardar",
+    salvarAlteracoes: "Guardar cambios",
     salvando: "Guardando...",
     salvoSucesso: "¡Configuración de reseñas guardada!",
     salvoErro: "No se pudo guardar. Inténtelo de nuevo.",

@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useConfiguracaoLoja } from "@/hooks/useConfiguracaoLoja";
 import { CardConfigAvaliacaoGoogle } from "@/components/marketing/CardConfigAvaliacaoGoogle";
 import { CardPedirAvaliacao } from "@/components/marketing/CardPedirAvaliacao";
+import { BannerAvaliacoesGoogle } from "@/components/marketing/BannerAvaliacoesGoogle";
 
 /**
  * Marketing → Avaliações no Google. Usa a mesma configuração da loja que a tela
@@ -21,6 +22,7 @@ export function SecaoAvaliacoesGoogle() {
 
   return (
     <div className="space-y-6">
+      <BannerAvaliacoesGoogle />
       <CardConfigAvaliacaoGoogle config={config} atualizarConfiguracao={atualizarConfiguracao} aoSalvar={refetch} />
       <CardPedirAvaliacao config={config} />
     </div>
