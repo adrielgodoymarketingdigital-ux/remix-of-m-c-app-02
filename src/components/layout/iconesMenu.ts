@@ -66,6 +66,7 @@ export const ICONES_MENU: Record<string, LucideIcon> = {
   "/extrato": ScrollText,
   "/relatorios": FileText,
   "/equipe": Users,
+  "/marketing": Megaphone,
   "/configuracoes": Settings,
   "/configuracoes/fiscal": Landmark,
   "/configuracoes/fiscal/xml-compra": FileCode,

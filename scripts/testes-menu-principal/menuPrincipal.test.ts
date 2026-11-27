@@ -161,3 +161,36 @@ Deno.test("Importar XML de compra: barra lateral agrupa com Configurações/Fisc
   // Produtos não tem mais o botão/diálogo.
   assertEquals(/XmlCompra|Importar XML/.test(await Deno.readTextFile("src/pages/Produtos.tsx")), false);
 });
+
+Deno.test("Marketing (/marketing): em Pessoas depois de Equipe, ícone próprio, fora do menu admin", async () => {
+  const item = MENU_PRINCIPAL.find((i) => i.url === "/marketing")!;
+  assertEquals([item.title, item.modulo, item.items], ["Marketing", "marketing", undefined]);
+  assertEquals(GRUPOS_MENU.find((g) => g.key === "pessoas")!.urls, ["/clientes", "/fornecedores", "/equipe", "/marketing"]);
+  assertEquals((await Deno.readTextFile("src/components/layout/iconesMenu.ts")).includes('"/marketing": Megaphone'), true);
+  // O Marketing de admin continua sendo outro item, outra rota.
+  assertEquals(ADMIN_MENU.some((a) => a.url === "/admin/marketing"), true);
+  assertEquals(ADMIN_MENU.some((a) => a.url === "/marketing"), false);
+});
+
+Deno.test("Marketing: dono vê em TODOS os planos (sem trava de plano)", () => {
+  for (const p of ["free", "basico", "intermediario", "profissional", "ultra"] as const) {
+    // Mesmo que temAcessoPlano("marketing") devolvesse false, o item aparece.
+    assertEquals(ver(dono(p, { temAcessoPlano: () => false })).includes("/marketing"), true, p);
+  }
+});
+
+Deno.test("Marketing: funcionário só vê com o módulo marketing liberado", () => {
+  assertEquals(ver(funcionario(["dashboard", "ordem_servico", "clientes"])).includes("/marketing"), false);
+  assertEquals(ver(funcionario(["dashboard", "marketing"])).includes("/marketing"), true);
+});
+
+Deno.test("Marketing: funcionário já cadastrado (permissões sem a chave) fica SEM acesso", async () => {
+  const tipos = await Deno.readTextFile("src/types/funcionario.ts");
+  const padrao = tipos.slice(tipos.indexOf("export const PERMISSOES_DEFAULT"));
+  assertEquals(/\n {4}marketing: false,/.test(padrao.slice(0, padrao.indexOf("recursos:"))), true);
+  // A leitura mescla o salvo sobre PERMISSOES_DEFAULT: chave ausente = false.
+  const hook = await Deno.readTextFile("src/hooks/useFuncionarioPermissoes.ts");
+  assertEquals(hook.includes("modulos: { ...PERMISSOES_DEFAULT.modulos, ...(raw?.modulos ?? {}) }"), true);
+  assertEquals(hook.includes('"/marketing": "marketing"'), true);
+  assertEquals((await Deno.readTextFile("src/components/equipe/SeletorPermissoes.tsx")).includes('modulo: "marketing", label: "Marketing"'), true);
+});

@@ -66,6 +66,8 @@ export interface PermissoesModulos {
   precificador: boolean;
   pedidos: boolean;
   remessas_corporativas: boolean;
+  /** Página Marketing (/marketing). Padrão: sem acesso até o dono liberar. */
+  marketing: boolean;
 }
 
 export interface PermissoesRecursos {
@@ -167,6 +169,7 @@ export const PERMISSOES_DEFAULT: Permissoes = {
     precificador: true,
     pedidos: false,
     remessas_corporativas: false,
+    marketing: false,
   },
   recursos: {
     ver_custos: false,
@@ -217,6 +220,7 @@ export const MODULOS_LABELS: Record<keyof PermissoesModulos, string> = {
   precificador: "Precificador",
   pedidos: "Pedidos/Encomendas",
   remessas_corporativas: "Remessas Corporativas",
+  marketing: "Marketing",
 };
 
 export const RECURSOS_LABELS: Record<keyof PermissoesRecursos, string> = {
@@ -268,4 +272,5 @@ export const ROTA_PARA_MODULO: Record<string, keyof PermissoesModulos> = {
   "/precificador": "precificador",
   "/pedidos": "pedidos",
   "/remessas": "remessas_corporativas",
+  "/marketing": "marketing",
 };

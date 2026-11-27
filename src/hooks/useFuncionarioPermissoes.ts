@@ -59,6 +59,7 @@ const PERMISSOES_DONO: Permissoes = {
     tutoriais: true,
     precificador: true,
     remessas_corporativas: true,
+    marketing: true,
   },
   recursos: {
     ver_custos: true,
@@ -106,6 +107,7 @@ const ROTA_MODULO_MAP: Record<string, keyof PermissoesModulos> = {
   "/plano": "plano",
   "/suporte": "suporte",
   "/novidades": "novidades",
+  "/marketing": "marketing",
 };
 
 export function useFuncionarioPermissoes(): FuncionarioPermissoesResult {

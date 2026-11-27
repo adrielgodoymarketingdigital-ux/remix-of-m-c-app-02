@@ -52,6 +52,7 @@ export const MENU_PRINCIPAL: ItemMenu[] = [
     { title: "📊 Relatórios", url: "/relatorios", modulo: "relatorios" },
   ]},
   { title: "Equipe", url: "/equipe", modulo: "equipe" },
+  { title: "Marketing", url: "/marketing", modulo: "marketing" },
   { title: "Configurações", url: "/configuracoes", modulo: "configuracoes" },
   // Só com ctx.fiscalVisivel (useFiscalVisivel: hoje, admin). Solto, logo abaixo de Configurações.
   { title: "Fiscal", url: "/configuracoes/fiscal", modulo: "configuracoes" },
@@ -72,7 +73,7 @@ export const MENU_PRINCIPAL: ItemMenu[] = [
 export const GRUPOS_MENU: { key: string; urls: string[] }[] = [
   { key: "atendimento", urls: ["/dashboard", "/pdv", "/os", "/orcamentos", "/pedidos", "/precificador"] },
   { key: "estoque", urls: ["/produtos", "/compatibilidade-pelicula", "/servicos", "/dispositivos", "/catalogo", "/origem-dispositivos", "/remessas"] },
-  { key: "pessoas", urls: ["/clientes", "/fornecedores", "/equipe"] },
+  { key: "pessoas", urls: ["/clientes", "/fornecedores", "/equipe", "/marketing"] },
   { key: "administrativo", urls: ["/contas", "/vendas", "/financeiro", "/multi-empresas"] },
   { key: "conta-suporte", urls: ["/plano", "/suporte", "/tutoriais", "/baixar-app"] },
 ];
@@ -113,7 +114,8 @@ export interface ContextoMenu {
 // Sem controle de plano: sempre aparecem para o dono.
 const URLS_SEM_RESTRICAO = ["/plano", "/suporte", "/tutoriais", "/baixar-app"];
 // Existem em PermissoesModulos mas não em LimitesPlano (sem restrição de plano).
-const MODULOS_SO_POR_FUNCIONARIO = ["novidades", "origem_dispositivos", "relatorios", "equipe", "remessas_corporativas"];
+// "marketing": liberado em todos os planos; funcionário só com o módulo liberado pelo dono.
+const MODULOS_SO_POR_FUNCIONARIO = ["novidades", "origem_dispositivos", "relatorios", "equipe", "remessas_corporativas", "marketing"];
 // Sempre no menu (o bloqueio acontece dentro da página via ComVerificacaoPlano).
 const MODULOS_SEMPRE_VISIVEIS = ["pedidos", "fornecedores"];
 // Funcionário nunca vê.

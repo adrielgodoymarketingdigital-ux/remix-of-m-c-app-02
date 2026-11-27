@@ -23,6 +23,7 @@ const menu: Traducao<typeof menuPtBR> = {
     vendas: "Ventas",
     financeiro: "Finanzas",
     equipe: "Personal",
+    marketing: "Marketing",
     configuracoes: "Configuración",
     configuracoes_fiscal: "Fiscal",
     "configuracoes_fiscal_xml-compra": "Importar XML de compra",

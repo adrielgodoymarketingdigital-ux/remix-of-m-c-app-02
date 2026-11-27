@@ -22,6 +22,7 @@ const menu = {
     vendas: "Vendas",
     financeiro: "Financeiro",
     equipe: "Equipe",
+    marketing: "Marketing",
     configuracoes: "Configurações",
     configuracoes_fiscal: "Fiscal",
     "configuracoes_fiscal_xml-compra": "Importar XML de compra",

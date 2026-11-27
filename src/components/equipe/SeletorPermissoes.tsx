@@ -44,6 +44,7 @@ const GRUPOS_MODULOS: Array<{
       { modulo: "fidelidade", label: "Fidelidade" },
     ],
   },
+  { tipo: "item", modulo: "marketing", label: "Marketing" },
   { tipo: "item", modulo: "orcamentos", label: "Orçamentos" },
   { tipo: "item", modulo: "contas", label: "Contas" },
   { tipo: "item", modulo: "vendas", label: "Vendas" },
